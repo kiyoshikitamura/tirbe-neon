@@ -441,6 +441,17 @@ This file defines the project-specific rules, design constraints, and technical 
 - **設定手順書への準拠**:
   - 詳細な手順、SQL適用順序、Auth Redirect URL設定、デプロイチェックリストは [specs/deployment_guide.md](file:///d:/dev/tribe-neon/specs/deployment_guide.md) に準拠します。
 
+---
+
+## 28. Phase 2 グラフィックアセット再定義 ＆ マスターリスト規約
+- **アセット管理仕様への準拠**:
+  - 全60キャラクター（`CHARACTERS_MASTER`）、背景画像（拠点・バトル・ガチャ・ギルド）、スキル/装備/アイテム/演出素材、UIパーツ（丸型漢字ボタン、外枠ベゼル、順位バッジ、称号バナー）は、すべて [specs/assets_phase2_master_list.md](file:///d:/dev/tribe-neon/specs/assets_phase2_master_list.md) に規定されたファイルパスおよび仕様に準拠します。
+- **エネミー/レイドボスへの流用マッピング**:
+  - レイドボス（`BOSS_001` 新宿カイザー）、PvPダミーNPC、GvG防衛NPCは、定義された60キャラクターの立ち絵アセットを流用・マッピングします。
+- **クロマキー自動透過処理パイプライン**:
+  - キャラクター等の画像生成時は緑背景 (`solid chroma key green background`) で出力し、`scratch/chromakey.js` によりピクセル走査・アルファ透過処理を行って `public/` へ配置します。
+
+
 
 
 
