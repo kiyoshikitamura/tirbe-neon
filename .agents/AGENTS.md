@@ -449,7 +449,8 @@ This file defines the project-specific rules, design constraints, and technical 
 - **エネミー/レイドボスへの流用マッピング**:
   - レイドボス（`BOSS_001` 新宿カイザー）、PvPダミーNPC、GvG防衛NPCは、定義された60キャラクターの立ち絵アセットを流用・マッピングします。
 - **クロマキー自動透過処理パイプライン**:
-  - キャラクター等の画像生成時は緑背景 (`solid chroma key green background`) で出力し、`scratch/chromakey.js` によりピクセル走査・アルファ透過処理を行って `public/` へ配置します。
+  - キャラクター等の画像生成時は原則として単色グリーンバック (`solid chroma key green background`) で出力し、`scratch/chromakey.js` によりピクセル走査・アルファ透過処理を行って `public/` へ配置します。
+  - **緑色被色時の背景変更ルール**: キャラクターの衣装・髪色・装飾等に緑色が多く含まれる場合は、自動透過時の誤透過（衣類の消え）を防ぐため、透過処理しやすい別の単色バック（例: `solid chroma key magenta background` / `blue background` 等）をプロンプトに指定して柔軟に変更・生成します。
 
 ---
 
