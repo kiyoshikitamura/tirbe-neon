@@ -1,0 +1,146 @@
+/* ====================================================================
+   TRIBE: NEON REIGN - PvP/アリーナ スタイル設計 (Matte Outlaw UI)
+   ==================================================================== */
+
+.pvp-view {
+  background: transparent;
+  color: #e2e8f0;
+}
+
+.opponents-actions-bar {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.opponents-actions-bar .sub-btn {
+  flex: 1;
+  padding: 8px 12px;
+  font-size: 0.8rem;
+  border-radius: 4px;
+  font-weight: bold;
+}
+
+.opponent-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(30, 41, 59, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+  padding: 12px;
+  margin-bottom: 8px;
+  transition: border-color 0.2s, background-color 0.2s;
+}
+
+.opponent-item:hover {
+  background: rgba(30, 41, 59, 0.6);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.item-metadata {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+
+.loading-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 120px;
+}
+
+/* つや消しメタル調の防衛設定パネル */
+.defense-setup-panel {
+  background: rgba(20, 25, 35, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+.panel-title {
+  color: #fff;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding-bottom: 6px;
+  font-weight: bold;
+}
+
+.tactic-dropdown {
+  width: 100%;
+  background: #10151f;
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+  outline: none;
+  font-weight: 500;
+  padding: 6px;
+  transition: border-color 0.2s;
+}
+
+.tactic-dropdown:focus {
+  border-color: #06b6d4;
+}
+
+.member-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+}
+
+.member-slot {
+  background: rgba(15, 23, 42, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.member-slot:hover {
+  background: rgba(30, 41, 59, 0.5);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.member-slot.selected {
+  background: rgba(6, 182, 212, 0.15);
+  border-color: #06b6d4;
+  box-shadow: 0 0 8px rgba(6, 182, 212, 0.2);
+}
+
+.save-deck-btn {
+  margin-top: 10px;
+  font-weight: bold;
+}
+
+/* スクロールバーのスタイル統一 (つや消しメタルグレー) */
+.scroll-container::-webkit-scrollbar {
+  width: 4px;
+}
+
+.scroll-container::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.scroll-container::-webkit-scrollbar-thumb {
+  background: rgba(160, 160, 170, 0.3);
+  border-radius: 2px;
+}
+
+.scroll-container::-webkit-scrollbar-thumb:hover {
+  background: rgba(160, 160, 170, 0.5);
+}
+
+.text-color-green {
+  color: #10b981;
+}
+
+.text-color-red {
+  color: #ef4444;
+}
+
+.flex-row-center-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}

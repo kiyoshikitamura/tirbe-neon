@@ -1,0 +1,379 @@
+/* ==================================================
+   Header - モバイルレイアウト（2行構成・枠ボックス）
+   ================================================== */
+
+.header-mobile {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  margin-top: 8px;
+  padding: 6px 10px 5px;
+  background: linear-gradient(180deg, rgba(22, 26, 40, 0.97) 0%, rgba(11, 15, 25, 0.97) 100%);
+  border-top: 1px solid;
+  border-bottom: 2px solid;
+  border-image: linear-gradient(90deg, rgba(180, 150, 80, 0.05), rgba(255, 215, 0, 0.35), rgba(180, 150, 80, 0.05)) 1;
+  flex-shrink: 0;
+  z-index: 10;
+  gap: 4px;
+}
+
+/* Row 1: ユーザー名 + ギルド名 + レイドアラート + 総合力 */
+.header-mobile-row1 {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.header-mobile-user {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.header-mobile-username {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--text-primary);
+  font-family: var(--font-inter);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 120px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.header-mobile-guild-name {
+  font-size: 8px;
+  font-weight: 700;
+  color: var(--neon-gold);
+  background: rgba(255, 215, 0, 0.1);
+  border: 1px solid rgba(255, 215, 0, 0.25);
+  padding: 1px 6px;
+  border-radius: 3px;
+  white-space: nowrap;
+  letter-spacing: 0.3px;
+}
+
+.header-mobile-power {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.header-mobile-power-label {
+  font-size: 8px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.header-mobile-power-value {
+  font-size: 12px;
+  font-weight: 900;
+  color: var(--neon-gold);
+  font-family: var(--font-outfit);
+  text-shadow: 0 0 6px rgba(255, 215, 0, 0.3);
+}
+
+/* Row 2: Lv + Cash + Diamond + Energy（個別枠ボックス） */
+.header-mobile-row2 {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.header-mobile-level-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 7px;
+  background: rgba(0, 240, 255, 0.08);
+  border: 1px solid rgba(0, 240, 255, 0.25);
+  border-radius: 3px;
+  font-size: 9px;
+  font-weight: 800;
+  color: var(--neon-cyan);
+  font-family: var(--font-outfit);
+  letter-spacing: 0.5px;
+  flex-shrink: 0;
+}
+
+.header-mobile-stats {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  justify-content: flex-end;
+}
+
+.header-mobile-stat {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 6px;
+  background: rgba(15, 20, 35, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+}
+
+.header-mobile-stat-label {
+  font-size: 7px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.35);
+  letter-spacing: 0.3px;
+}
+
+.header-mobile-stat-val {
+  font-size: 9px;
+  font-weight: 700;
+  font-family: var(--font-inter);
+}
+
+.header-mobile-stat-cash {
+  color: var(--text-primary);
+}
+
+.header-mobile-stat-diamond {
+  color: var(--neon-gold);
+}
+
+.header-mobile-stat-energy {
+  color: var(--neon-cyan);
+}
+
+/* レイドアラート（インライン） */
+.header-mobile-raid-alert {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: rgba(255, 0, 0, 0.15);
+  border: 1px solid rgba(255, 50, 50, 0.4);
+  color: var(--color-danger);
+  font-size: 8px;
+  font-weight: 800;
+  padding: 1px 6px;
+  border-radius: 3px;
+  cursor: pointer;
+  white-space: nowrap;
+  animation: header-raid-pulse 1.5s ease-in-out infinite;
+}
+
+.header-raid-dot {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--color-danger);
+  animation: header-dot-blink 1s ease-in-out infinite;
+}
+
+@keyframes header-raid-pulse {
+  0%, 100% { opacity: 0.85; }
+  50% { opacity: 1; }
+}
+
+@keyframes header-dot-blink {
+  0%, 100% { opacity: 1; box-shadow: 0 0 3px rgba(255, 50, 50, 0.8); }
+  50% { opacity: 0.4; box-shadow: none; }
+}
+
+/* ==================================================
+   Header - PCレイアウト
+   ================================================== */
+
+.header-pc {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 0 16px;
+  height: 60px;
+  min-height: 60px;
+  background: rgba(11, 15, 25, 0.95);
+  border-bottom: 1px solid rgba(0, 240, 255, 0.15);
+  flex-shrink: 0;
+  z-index: 10;
+  gap: 12px;
+}
+
+/* ロゴエリア */
+.header-pc-logo-area {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  margin-right: 8px;
+}
+
+.header-pc-logo {
+  font-family: var(--font-outfit);
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--neon-gold);
+  letter-spacing: 2px;
+  margin: 0;
+  padding: 0;
+}
+
+/* ナビゲーションタブ */
+.header-pc-nav {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex: 1;
+  justify-content: center;
+}
+
+.header-pc-nav-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 6px 10px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-secondary);
+  font-size: 10px;
+  font-weight: 600;
+  font-family: var(--font-inter);
+  cursor: pointer;
+  transition: color 0.2s, border-color 0.2s;
+  white-space: nowrap;
+}
+
+.header-pc-nav-btn:hover {
+  color: var(--text-primary);
+}
+
+.header-pc-nav-btn.active {
+  color: var(--neon-cyan);
+  border-bottom-color: var(--neon-cyan);
+}
+
+.header-pc-nav-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.header-pc-nav-label {
+  font-size: 10px;
+  letter-spacing: 0.3px;
+}
+
+/* 右側エリア */
+.header-pc-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+/* ステータス表示 */
+.header-pc-status {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.header-pc-user-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.header-pc-level {
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--neon-cyan);
+  font-family: var(--font-outfit);
+}
+
+.header-pc-username {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.header-pc-resources {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.header-pc-res-item {
+  font-size: 9px;
+  font-weight: 700;
+  font-family: var(--font-outfit);
+}
+
+.header-pc-res-cash {
+  color: var(--text-primary);
+}
+
+.header-pc-res-diamond {
+  color: var(--neon-gold);
+}
+
+.header-pc-res-energy {
+  color: var(--neon-cyan);
+}
+
+/* クイック3連ボタン */
+.header-pc-quick-btns {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.header-pc-quick-btn {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  width: 44px;
+  height: 38px;
+  background: rgba(14, 20, 32, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: color 0.2s, background 0.2s;
+  padding: 0;
+}
+
+.header-pc-quick-btn:hover {
+  background: rgba(20, 28, 44, 0.9);
+  color: var(--text-primary);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.header-pc-quick-label {
+  font-size: 6px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  color: inherit;
+}
+
+.header-pc-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 14px;
+  height: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 3px;
+  background: var(--neon-magenta);
+  border-radius: 7px;
+  font-size: 8px;
+  font-weight: 800;
+  color: #ffffff;
+  font-family: var(--font-outfit);
+  line-height: 1;
+}

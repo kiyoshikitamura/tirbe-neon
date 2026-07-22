@@ -1,0 +1,193 @@
+.ranking-tab-view {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+/* メインカテゴリタブ */
+.ranking-main-tabs {
+  display: flex;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  padding: 2px;
+  margin-bottom: 8px;
+}
+
+.ranking-main-tabs .tab-btn {
+  flex: 1;
+  text-align: center;
+  padding: 8px 4px;
+  background: transparent;
+  border: none;
+  border-radius: 3px;
+  color: var(--text-secondary);
+  font-family: var(--font-outfit);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.ranking-main-tabs .tab-btn.active {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5);
+  text-shadow: 0 0 4px rgba(255, 255, 255, 0.5);
+}
+
+/* サブトグル（デイリー / シーズン） */
+.ranking-sub-tabs {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 10px;
+}
+
+.toggle-switch-container {
+  display: flex;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 20px;
+  padding: 2px;
+  width: 200px;
+}
+
+.toggle-switch-btn {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 7px;
+  font-weight: bold;
+  padding: 6px 12px;
+  border-radius: 18px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+}
+
+.toggle-switch-btn.active {
+  background: var(--text-primary);
+  color: var(--bg-color);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+}
+
+/* 自分の順位・スコアを示す固定HUD (Sticky HUD) */
+.my-rank-sticky-bar {
+  background: linear-gradient(135deg, rgba(35, 42, 60, 0.9) 0%, rgba(22, 28, 43, 0.9) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.12); /* つや消しシルバーベゼル境界線 */
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 4px 10px rgba(0, 0, 0, 0.3);
+  border-radius: 6px;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+  flex-shrink: 0;
+}
+
+.my-rank-label {
+  font-size: 7px;
+  font-weight: bold;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+  text-transform: uppercase;
+}
+
+.my-rank-details {
+  display: flex;
+  justify-content: space-between;
+}
+
+.my-rank-value, .my-rank-score {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+/* つや消しスチール調の行スタイル */
+.steel-row {
+  background: linear-gradient(135deg, rgba(28, 35, 51, 0.7) 0%, rgba(18, 23, 36, 0.7) 100%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03), 0 4px 6px rgba(0, 0, 0, 0.15);
+  margin-bottom: 6px;
+  border-radius: 4px;
+  padding: 8px 12px;
+  transition: transform 0.15s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* クリッカブルアイテムのインタラクション */
+.clickable-item {
+  cursor: pointer;
+}
+
+.clickable-item:hover {
+  border-color: rgba(255, 255, 255, 0.15) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 4px 10px rgba(0, 0, 0, 0.25);
+  transform: translateY(-1px);
+}
+
+.clickable-item:active {
+  transform: scale(0.98);
+}
+
+/* 順位バッジ */
+.rank-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  font-size: 7px;
+  font-weight: bold;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* 金属反射を模したライティング表現 */
+.rank-badge.rank-1 {
+  background: linear-gradient(135deg, #ffd700 0%, #b8860b 100%);
+  border: 1px solid rgba(255, 215, 0, 0.4);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 0 6px rgba(255, 215, 0, 0.2);
+  color: #000;
+}
+
+.rank-badge.rank-2 {
+  background: linear-gradient(135deg, #c0c0c0 0%, #708090 100%);
+  border: 1px solid rgba(192, 192, 192, 0.4);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 0 6px rgba(192, 192, 192, 0.2);
+  color: #000;
+}
+
+.rank-badge.rank-3 {
+  background: linear-gradient(135deg, #cd7f32 0%, #8b4513 100%);
+  border: 1px solid rgba(205, 127, 50, 0.4);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 0 6px rgba(205, 127, 50, 0.2);
+  color: #fff;
+}
+
+/* スクロールバーのスタイル統一 */
+.ranking-content-area::-webkit-scrollbar,
+.max-height-90::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+.ranking-content-area::-webkit-scrollbar-track,
+.max-height-90::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 2px;
+}
+
+.ranking-content-area::-webkit-scrollbar-thumb,
+.max-height-90::-webkit-scrollbar-thumb {
+  background: rgba(160, 160, 170, 0.3);
+  border-radius: 2px;
+}
+
+.ranking-content-area::-webkit-scrollbar-thumb:hover,
+.max-height-90::-webkit-scrollbar-thumb:hover {
+  background: rgba(160, 160, 170, 0.5);
+}
+
+/* 管理者コンソール */
+.admin-console-panel {
+  margin-top: auto;
+  background: rgba(20, 20, 20, 0.8) !important;
+}

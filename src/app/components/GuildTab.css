@@ -1,0 +1,201 @@
+.guild-quit-btn-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* ギルドメインコンテナ外枠ベゼル装飾 */
+.guild-main-container {
+  transition: all 0.3s ease;
+  box-sizing: border-box;
+}
+
+/* 銅ベゼル */
+.bronze-border {
+  border: 2px solid rgba(170, 110, 60, 0.7) !important;
+  box-shadow: 0 0 12px rgba(170, 110, 60, 0.2), inset 0 0 10px rgba(0,0,0,0.5);
+  border-radius: 12px;
+}
+
+/* 銀ベゼル */
+.silver-border {
+  border: 2px solid rgba(180, 180, 195, 0.8) !important;
+  box-shadow: 0 0 15px rgba(180, 180, 195, 0.3), inset 0 0 10px rgba(0,0,0,0.5);
+  border-radius: 12px;
+}
+
+/* 金ベゼル */
+.gold-border {
+  border: 2px solid rgba(230, 190, 80, 0.8) !important;
+  box-shadow: 0 0 18px rgba(230, 190, 80, 0.4), inset 0 0 12px rgba(0,0,0,0.5);
+  border-radius: 12px;
+}
+
+/* 脈動ゴールドベゼル */
+@keyframes pulsingGoldBezel {
+  0% {
+    border-color: rgba(230, 190, 80, 0.6);
+    box-shadow: 0 0 15px rgba(230, 190, 80, 0.3), inset 0 0 10px rgba(230, 190, 80, 0.1);
+  }
+  50% {
+    border-color: rgba(255, 215, 0, 0.9);
+    box-shadow: 0 0 25px rgba(255, 215, 0, 0.6), inset 0 0 15px rgba(255, 215, 0, 0.2);
+  }
+  100% {
+    border-color: rgba(230, 190, 80, 0.6);
+    box-shadow: 0 0 15px rgba(230, 190, 80, 0.3), inset 0 0 10px rgba(230, 190, 80, 0.1);
+  }
+}
+.pulsing-gold-border {
+  border: 2px solid rgba(230, 190, 80, 0.8) !important;
+  animation: pulsingGoldBezel 3s infinite ease-in-out;
+  border-radius: 12px;
+}
+
+/* ギルドヘッダーHUD */
+.guild-header-hud {
+  background: rgba(12, 12, 14, 0.85);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-bottom: 2px solid rgba(255,255,255,0.08);
+}
+
+.xp-bar-container {
+  width: 100%;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.xp-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--neon-cyan), var(--neon-magenta));
+  transition: width 0.4s ease;
+}
+
+/* メンバーカード */
+.guild-member-card {
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+  background: rgba(18, 18, 22, 0.6);
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.interactive-member-item {
+  cursor: pointer;
+}
+
+.interactive-member-item:hover {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(0, 240, 255, 0.2);
+}
+
+.guild-member-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.guild-member-img {
+  width: 32px;
+  height: 32px;
+  object-fit: cover;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+.guild-member-actions-layout {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.member-loading-spinner {
+  width: 12px;
+  height: 12px;
+  border: 2px solid rgba(0, 240, 255, 0.2);
+  border-top-color: var(--neon-cyan);
+  border-radius: 50%;
+  animation: spinnerRotate 0.8s linear infinite;
+  margin-top: 2px;
+}
+
+@keyframes spinnerRotate {
+  to { transform: rotate(360deg); }
+}
+
+/* アライメント設定 */
+.alignment-btn {
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--text-secondary);
+  border-color: rgba(255, 255, 255, 0.05);
+  transition: all 0.2s ease;
+}
+
+.alignment-btn.active-main {
+  background: rgba(255, 0, 128, 0.15) !important;
+  color: #fff !important;
+  border-color: var(--neon-magenta) !important;
+  box-shadow: 0 0 10px rgba(255, 0, 128, 0.25);
+}
+
+.alignment-btn.active-sub {
+  background: rgba(0, 240, 255, 0.15) !important;
+  color: #fff !important;
+  border-color: var(--neon-cyan) !important;
+  box-shadow: 0 0 10px rgba(0, 240, 255, 0.25);
+}
+
+/* ショップ */
+.shop-item-card {
+  transition: border-color 0.2s ease;
+}
+.shop-item-card:hover {
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+/* モーダル */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.85);
+  z-index: 999;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.modal-content-panel {
+  width: 90%;
+  max-width: 380px;
+  background: rgba(18, 18, 22, 0.96);
+  border: 1px solid rgba(0, 240, 255, 0.25);
+  border-radius: 8px;
+  box-shadow: 0 0 30px rgba(0, 0, 0, 0.95), inset 0 0 15px rgba(255, 255, 255, 0.02);
+  transform: scale(0.98);
+  animation: modalIn 0.2s forwards cubic-bezier(0.1, 0.8, 0.3, 1);
+}
+
+@keyframes modalIn {
+  to {
+    transform: scale(1);
+  }
+}
+
+.modal-profile-img {
+  width: 48px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: 50%;
+  border: 2px solid rgba(0, 240, 255, 0.3);
+}
+
+.party-slot-avatar {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 4px;
+  padding: 6px 2px;
+}

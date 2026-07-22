@@ -1,0 +1,402 @@
+.bag-tab-view {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 1rem;
+  color: #fff;
+  font-family: 'Inter', 'Outfit', sans-serif;
+  overflow: hidden;
+}
+
+.bag-tab-header {
+  margin-bottom: 0.75rem;
+}
+
+.bag-tab-title {
+  font-size: 1.25rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding-bottom: 0.5rem;
+}
+
+/* カテゴリー切り替えタブ */
+.bag-category-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.category-tab-btn {
+  flex: 1;
+  background: rgba(30, 30, 35, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.5rem 0;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  backdrop-filter: blur(5px);
+}
+
+.category-tab-btn:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: #fff;
+}
+
+.category-tab-btn.active {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: var(--neon-cyan);
+  color: var(--neon-cyan);
+  text-shadow: 0 0 8px rgba(0, 242, 254, 0.3);
+}
+
+/* アイテムグリッド一覧 */
+.bag-items-container {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding-right: 0.25rem;
+}
+
+/* つや消しメタル調のスクロールバー */
+.bag-items-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.bag-items-container::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.bag-items-container::-webkit-scrollbar-thumb {
+  background: rgba(160, 160, 170, 0.3);
+  border-radius: 3px;
+}
+
+.bag-items-container::-webkit-scrollbar-thumb:hover {
+  background: rgba(160, 160, 170, 0.5);
+}
+
+/* アイテムカード */
+.bag-item-card {
+  display: flex;
+  background: rgba(20, 20, 25, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  padding: 0.75rem;
+  gap: 0.75rem;
+  position: relative;
+  transition: transform 0.2s ease, border-color 0.2s ease;
+  backdrop-filter: blur(10px);
+}
+
+.bag-item-card:hover {
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+/* レアリティ別ボーダー表現 */
+.bag-item-card.rarity-N {
+  border-left: 4px solid #6b7280; /* つや消しグレー */
+}
+
+.bag-item-card.rarity-R {
+  border-left: 4px solid #3b82f6; /* つや消しブルー */
+}
+
+.bag-item-card.rarity-SSR {
+  border-left: 4px solid #d97706; /* つや消しゴールド */
+}
+
+/* アイテムアイコン */
+.bag-item-icon-area {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3.5rem;
+  height: 3.5rem;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  color: #9ca3af;
+}
+
+.bag-item-card.rarity-R .bag-item-icon-area {
+  color: #60a5fa;
+  background: rgba(59, 130, 246, 0.1);
+  border-color: rgba(59, 130, 246, 0.2);
+}
+
+.bag-item-card.rarity-SSR .bag-item-icon-area {
+  color: #fbbf24;
+  background: rgba(217, 119, 6, 0.1);
+  border-color: rgba(217, 119, 6, 0.2);
+}
+
+/* アイテム情報 */
+.bag-item-info-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.bag-item-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.25rem;
+}
+
+.bag-item-name {
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: 0.5px;
+}
+
+.bag-item-rarity-badge {
+  font-size: 0.6rem;
+  font-weight: 900;
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.bag-item-rarity-badge.rarity-N {
+  color: #9ca3af;
+}
+
+.bag-item-rarity-badge.rarity-R {
+  color: #3b82f6;
+  background: rgba(59, 130, 246, 0.15);
+  border-color: rgba(59, 130, 246, 0.25);
+}
+
+.bag-item-rarity-badge.rarity-SSR {
+  color: #d97706;
+  background: rgba(217, 119, 6, 0.15);
+  border-color: rgba(217, 119, 6, 0.25);
+}
+
+.bag-item-desc {
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.5);
+  line-height: 1.3;
+  margin-bottom: 0.5rem;
+}
+
+.bag-item-action-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: auto;
+}
+
+.bag-item-quantity {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.quantity-num {
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: #fff;
+}
+
+/* 使用ボタン */
+.item-use-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.25rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.item-use-btn:hover:not(:disabled) {
+  background: #fff;
+  color: #000;
+  border-color: #fff;
+}
+
+.item-use-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.item-material-label {
+  font-size: 0.65rem;
+  color: rgba(255, 255, 255, 0.35);
+  border: 1px dashed rgba(255, 255, 255, 0.1);
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+
+/* 回復対象キャラクター選択モーダル */
+.recover-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  backdrop-filter: blur(5px);
+}
+
+.recover-modal-box {
+  width: 100%;
+  max-width: 400px;
+  background: rgba(20, 20, 25, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  max-height: 80vh;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+}
+
+.recover-modal-header {
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.recover-modal-header h3 {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: 0.5px;
+}
+
+.recover-modal-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+/* つや消しスクロールバー */
+.recover-modal-body::-webkit-scrollbar {
+  width: 5px;
+}
+
+.recover-modal-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.recover-modal-body::-webkit-scrollbar-thumb {
+  background: rgba(160, 160, 170, 0.3);
+  border-radius: 3px;
+}
+
+/* キャラクター選択行 */
+.recover-char-row {
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
+  padding: 0.5rem;
+  gap: 0.75rem;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+  transition: all 0.2s ease;
+}
+
+.recover-char-row:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.char-avatar-mini {
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.char-avatar-mini img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.char-recover-info {
+  flex: 1;
+}
+
+.char-recover-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.25rem;
+}
+
+.char-recover-name {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.char-recover-hp-text {
+  font-size: 0.65rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.char-recover-hp-bar {
+  height: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.char-recover-hp-fill {
+  height: 100%;
+  background: #10b981; /* 緑 */
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+/* フッター */
+.recover-modal-footer {
+  padding: 0.75rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.recover-close-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.4rem 1.25rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.recover-close-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+}

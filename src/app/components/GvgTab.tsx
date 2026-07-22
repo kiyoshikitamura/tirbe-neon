@@ -1,0 +1,432 @@
+"use client";
+
+import React, { useState, useEffect } from "react";
+import { useGame } from "../context/GameContext";
+import { BASE_MAP_MASTER } from "../../utils/game_constants";
+import { CHARACTERS_MASTER } from "../../utils/game_constants";
+import "./GvgTab.css";
+
+export default function GvgTab() {
+  const {
+    userGuild,
+    userGuildMember,
+    handleGvgDailyReset,
+    handleGvgSeasonReset,
+    gvgResetLoading,
+    gvgBases,
+    gvgSeasonDay,
+    setGvgSeasonDay,
+    myGvgMatch,
+    gvgMatches,
+    gvgDefenseDeck,
+    personalGvgPoints,
+    gvgActiveRound,
+    setGvgActiveRound,
+    startCardBattle,
+    handleDeployGvgDefense,
+    navigateTab,
+    userCharactersDbList,
+    playCyberSe
+  } = useGame();
+
+  const [showDefenseModal, setShowDefenseModal] = useState<boolean>(false);
+  const [tempSelectedChars, setTempSelectedChars] = useState<string[]>([]);
+  const [countdownStr, setCountdownStr] = useState<string>("30:00");
+
+  // カウントダウンエミュレーション
+  useEffect(() => {
+    if (gvgActiveRound === 0) return;
+    
+    // 単純な30分カウントダウン（シミュレート用）
+    let secondsLeft = 30 * 60;
+    const interval = setInterval(() => {
+      secondsLeft--;
+      if (secondsLeft <= 0) {
+        clearInterval(interval);
+        setCountdownStr("00:00");
+      } else {
+        const m = Math.floor(secondsLeft / 60);
+        const s = secondsLeft % 60;
+        setCountdownStr(`${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`);
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [gvgActiveRound]);
+
+  const openDefenseModal = () => {
+    playCyberSe?.("click");
+    // 既存デッキがあれば初期ロード
+    if (gvgDefenseDeck) {
+      const ids = [
+        gvgDefenseDeck.character_1_id,
+        gvgDefenseDeck.character_2_id,
+        gvgDefenseDeck.character_3_id,
+        gvgDefenseDeck.character_4_id,
+        gvgDefenseDeck.character_5_id
+      ].filter(Boolean);
+      setTempSelectedChars(ids);
+    } else {
+      setTempSelectedChars([]);
+    }
+    setShowDefenseModal(true);
+  };
+
+  const toggleCharSelection = (charId: string) => {
+    playCyberSe?.("click");
+    if (tempSelectedChars.includes(charId)) {
+      setTempSelectedChars(prev => prev.filter(id => id !== charId));
+    } else {
+      if (tempSelectedChars.length >= 5) {
+        alert("守備メンバーは最大5名までです。");
+        return;
+      }
+      setTempSelectedChars(prev => [...prev, charId]);
+    }
+  };
+
+  const saveDefenseDeck = async () => {
+    if (tempSelectedChars.length === 0) {
+      alert("守備デッキには最低1名のキャラクターを選択してください。");
+      return;
+    }
+    await handleDeployGvgDefense(tempSelectedChars);
+    setShowDefenseModal(false);
+  };
+
+  const removeDefenseDeck = async () => {
+    if (window.confirm("守備デッキの登録を解除しますか？")) {
+      await handleDeployGvgDefense([]);
+      setShowDefenseModal(false);
+    }
+  };
+
+  const getRoundLabel = (round: number) => {
+    if (round === 1) return "第1部 (12:00〜12:30)";
+    if (round === 2) return "第2部 (20:00〜20:30)";
+    if (round === 3) return "第3部 (23:00〜23:30)";
+    return "準備中";
+  };
+
+  const isFinalDay = gvgSeasonDay === 7;
+
+  // 自ギルドのアライメントと一致する守備（ホーム）拠点を動的マッピング
+  const myGuildAlignment = userGuild?.main_alignment || "";
+  const getHomeBaseId = (align: string) => {
+    if (align === "ORDER") return "neon_tower";
+    if (align === "EVIL") return "deep_dock";
+    if (align === "CHAOS") return "junk_bazar";
+    if (align === "JUSTICE") return "kitakura_gate";
+    return "";
+  };
+  const myHomeBaseId = getHomeBaseId(myGuildAlignment);
+
+  // マッチング対戦相手のギルド名を取得
+  const opponentGuildName = myGvgMatch
+    ? (myGvgMatch.guild_a_id === userGuild?.id ? myGvgMatch.guild_b?.name : myGvgMatch.guild_a?.name) || "対戦組織"
+    : "対戦相手なし (NPC)";
+
+  return (
+    <div className="view-container">
+      <div className="flex-row-space-between align-center mb-3">
+        <h2 className="view-title">抗争</h2>
+        <button
+          onClick={() => navigateTab("ranking", "season")}
+          className="sub-btn border-cyan-subtle font-size-8 height-26 px-3 active-scale-effect"
+        >
+          個人シーズン順位
+        </button>
+      </div>
+
+      <div className="scroll-container flex-1">
+        {userGuild ? (
+          <div className="flex-col-gap-3">
+            {/* GvG 開発・デバッグ用管理コンソール */}
+            <div className="gvg-console-layout p-3 flex-col-gap-2">
+              <div className="flex-row-space-between align-center">
+                <div>
+                  <span className="battle-card-title block text-color-cyan">抗争 開発エミュレータ</span>
+                  <span className="font-size-7 text-secondary">※実機検証・テスト用に時間帯や日数を手動で進められます。</span>
+                </div>
+                <div className="flex-row-gap-2">
+                  <button
+                    onClick={handleGvgDailyReset}
+                    disabled={gvgResetLoading}
+                    className="sub-btn border-cyan-subtle font-size-7 height-20 px-2 active-scale-effect"
+                  >
+                    24:00 日次集計
+                  </button>
+                  <button
+                    onClick={handleGvgSeasonReset}
+                    disabled={gvgResetLoading}
+                    className="sub-btn border-danger font-size-7 height-20 px-2 active-scale-effect text-color-danger"
+                  >
+                    シーズン終了
+                  </button>
+                </div>
+              </div>
+              <div className="border-top-subtle pt-2 flex-row-space-between align-center">
+                <div className="flex-row-gap-2 align-center">
+                  <span className="font-size-8 text-secondary">開催期:</span>
+                  <select
+                    value={gvgActiveRound}
+                    onChange={(e) => {
+                      playCyberSe?.("click");
+                      setGvgActiveRound(Number(e.target.value));
+                    }}
+                    className="font-size-8 bg-black-60 border-subtle text-white rounded height-20 px-1"
+                  >
+                    <option value={0}>非開催（準備中）</option>
+                    <option value={1}>第1部 (12:00〜)</option>
+                    <option value={2}>第2部 (20:00〜)</option>
+                    <option value={3}>第3部 (23:00〜)</option>
+                  </select>
+                </div>
+                <div className="flex-row-gap-2 align-center">
+                  <span className="font-size-8 text-secondary">シーズン経過日数:</span>
+                  <select
+                    value={gvgSeasonDay}
+                    onChange={(e) => {
+                      playCyberSe?.("click");
+                      setGvgSeasonDay(Number(e.target.value));
+                    }}
+                    className="font-size-8 bg-black-60 border-subtle text-white rounded height-20 px-1"
+                  >
+                    {[1, 2, 3, 4, 5, 6, 7].map(d => (
+                      <option key={d} value={d}>{d}日目{d === 7 ? " (決戦水曜)" : " (通常日)"}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* 抗争開催中HUD */}
+            <div className="hud-panel p-3 flex-col-gap-2">
+              <div className="flex-row-space-between align-center">
+                <span className="font-size-9 font-weight-bold text-white">
+                  {isFinalDay ? "【頂上決戦】決戦日・水曜日" : `抗争 シーズン経過: ${gvgSeasonDay}日目`}
+                </span>
+                <span className="font-size-8 text-secondary">
+                  ラウンド状態: <span className={gvgActiveRound > 0 ? "text-color-cyan font-weight-bold" : "text-secondary"}>
+                    {getRoundLabel(gvgActiveRound)}
+                  </span>
+                </span>
+              </div>
+
+              {gvgActiveRound > 0 ? (
+                <div className="bg-black-40 border-subtle rounded p-2 flex-col-gap-1">
+                  <div className="flex-row-space-between align-center">
+                    <span className="font-size-8 text-color-cyan">ラウンド開催中！</span>
+                    <span className="font-size-8 text-secondary">残り時間: <span className="text-white font-weight-bold">{countdownStr}</span></span>
+                  </div>
+                  <div className="border-top-subtle mt-1 pt-1 flex-row-space-between align-center">
+                    <div className="flex-col">
+                      <span className="font-size-7 text-secondary">対戦ギルド</span>
+                      <span className="font-size-9 font-weight-bold text-white">{opponentGuildName}</span>
+                    </div>
+                    <div className="flex-row-gap-2 align-center">
+                      <div className="text-right">
+                        <span className="font-size-7 block text-secondary">自ギルドpt / 相手pt</span>
+                        <span className="font-size-9 font-weight-bold text-color-cyan">
+                          {myGvgMatch ? `${myGvgMatch.guild_a_id === userGuild.id ? myGvgMatch.guild_a_points : myGvgMatch.guild_b_points} pts` : "0 pts"}
+                        </span>
+                        <span className="font-size-8 text-secondary"> / </span>
+                        <span className="font-size-9 font-weight-bold text-color-magenta">
+                          {myGvgMatch ? `${myGvgMatch.guild_a_id === userGuild.id ? myGvgMatch.guild_b_points : myGvgMatch.guild_a_points} pts` : "0 pts"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-black-40 border-subtle rounded p-2 text-center font-size-8 text-secondary">
+                  現在、抗争ラウンドの開催時間外です。メンバーは「守備登録」を行い、次戦に備えてください。
+                </div>
+              )}
+            </div>
+
+            {/* 自分の守備拠点情報 */}
+            <div className="gvg-base-card my-home-base p-3 flex-col-gap-2">
+              <div className="flex-row-space-between align-center">
+                <div>
+                  <span className="font-size-10 font-weight-bold text-color-cyan block">
+                    守備拠点: {BASE_MAP_MASTER.find(b => b.id === myHomeBaseId)?.name || "設定なし"}
+                  </span>
+                  <span className="font-size-7 text-secondary">（ギルドのメインアライメントと一致する拠点を防衛します）</span>
+                </div>
+                <button
+                  onClick={openDefenseModal}
+                  disabled={gvgResetLoading}
+                  className="sub-btn border-cyan height-26 px-3 font-weight-bold active-scale-effect text-color-cyan"
+                >
+                  {gvgResetLoading ? <span className="simple-spinner" /> : "守備登録"}
+                </button>
+              </div>
+
+              <div className="bg-black-40 border-subtle rounded p-2 flex-col-gap-1">
+                <span className="font-size-8 font-weight-bold text-white block">現在の守備デッキ登録状態:</span>
+                {gvgDefenseDeck ? (
+                  <div className="flex-row-gap-2 align-center mt-1">
+                    <span className="font-size-8 text-color-cyan font-weight-bold bg-black-60 px-2 py-0.5 rounded">配備済</span>
+                    <span className="font-size-8 text-secondary">更新日時: {new Date(gvgDefenseDeck.updated_at).toLocaleString()}</span>
+                  </div>
+                ) : (
+                  <span className="font-size-8 text-color-danger">※守備デッキが未登録です！ 侵攻に備えて登録してください。</span>
+                )}
+              </div>
+            </div>
+
+            {/* 侵攻先拠点リスト */}
+            <div className="list-container flex-col-gap-2">
+              <span className="font-size-9 font-weight-bold text-secondary px-1">侵攻対象拠点 (守備拠点以外の地区へ侵攻可能)</span>
+              {gvgBases.map((b: any) => {
+                const isHome = b.id === myHomeBaseId;
+                const isRoundActive = gvgActiveRound > 0;
+
+                return (
+                  <div key={b.id} className={`list-item flex-col-gap-2 p-3 gvg-base-card ${isHome ? "opacity-60" : ""}`}>
+                    <div className="flex-row-space-between align-center">
+                      <div className="flex-col">
+                        <span className="font-size-10 font-weight-bold text-white">{b.name}</span>
+                        <span className="font-size-7 text-secondary">属性: {b.alignment || "無属性"}</span>
+                      </div>
+                      <div className="flex-row-gap-2 align-center">
+                        <span className="font-size-8 bg-black-60 border-subtle px-2 py-0.5 rounded text-white">
+                          支配: {b.controlledBy}
+                        </span>
+                        {isHome && <span className="font-size-7 bg-cyan-subtle text-color-cyan px-2 py-0.5 rounded font-weight-bold">ホーム</span>}
+                      </div>
+                    </div>
+
+                    <div className="font-size-8 text-secondary line-height-14">{b.description}</div>
+
+                    {!isHome && (
+                      <div className="flex-row-space-between align-center border-top-subtle pt-2 mt-1">
+                        <div className="flex-col">
+                          <span className="font-size-7 text-secondary">他組織ポイント</span>
+                          <span className="font-size-9 font-weight-bold text-white">{b.topPoints} pts</span>
+                        </div>
+                        <div className="flex-row-gap-2">
+                          <button
+                            onClick={() => navigateTab("ranking", "daily")}
+                            className="sub-btn border-subtle font-size-8 height-26 px-3 active-scale-effect"
+                          >
+                            デイリー順位
+                          </button>
+                          <button
+                            disabled={!isRoundActive || gvgResetLoading}
+                            onClick={() => startCardBattle("GVG", `${b.name}防衛チーム`, b.id)}
+                            className={`sub-btn height-26 px-4 font-size-8 font-weight-bold active-scale-effect ${
+                              isRoundActive ? "border-cyan text-color-cyan" : "border-subtle text-secondary opacity-50"
+                            }`}
+                          >
+                            {gvgResetLoading ? <span className="simple-spinner" /> : isRoundActive ? "侵攻" : "準備中"}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* 練習用: 自ギルドの防衛チームとの演習バトル */}
+            <div className="gvg-base-card p-3 flex-row-space-between align-center border-magenta-subtle">
+              <div className="flex-col">
+                <span className="font-size-9 font-weight-bold text-color-magenta block">防衛演習 (練習バトル)</span>
+                <span className="font-size-7 text-secondary">自ギルドの登録防衛デッキと模擬戦を行い、防衛力を試せます。</span>
+              </div>
+              <button
+                disabled={gvgResetLoading}
+                onClick={() => startCardBattle("GVG", "防衛演習", userGuild.id)}
+                className="sub-btn border-magenta-subtle text-color-magenta height-26 px-4 font-size-8 font-weight-bold active-scale-effect"
+              >
+                {gvgResetLoading ? <span className="simple-spinner" /> : "演習開始"}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="battle-card border-danger text-color-danger font-size-10 text-center p-4">
+            ギルド未所属のため、抗争に参加できません。
+          </div>
+        )}
+      </div>
+
+      {/* 守備デッキ登録モーダル */}
+      {showDefenseModal && (
+        <div className="gvg-modal-overlay">
+          <div className="gvg-modal-content">
+            <div className="gvg-modal-header">
+              <span className="font-size-10 font-weight-bold text-white">守備デッキの配備</span>
+              <button
+                onClick={() => {
+                  playCyberSe?.("click");
+                  setShowDefenseModal(false);
+                }}
+                className="sub-btn border-none font-size-10 text-secondary active-scale-effect"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="gvg-modal-body flex-col-gap-2">
+              <span className="font-size-8 text-secondary block">
+                手持ちキャラクターから守備メンバー（最大5名）を選択してください。(選択中: {tempSelectedChars.length}/5名)
+              </span>
+              <div className="character-select-grid mt-2">
+                {userCharactersDbList.map((char: any) => {
+                  const master = CHARACTERS_MASTER.find(c => c.id === char.character_id);
+                  const isSelected = tempSelectedChars.includes(char.id);
+                  const avatarUrl = char.character_id === "11111111-1111-1111-1111-111111111111" 
+                    ? "/reiji_transparent_asset.png" 
+                    : char.character_id === "33333333-3333-3333-3333-333333333333" 
+                    ? "/rui_transparent_asset.png" 
+                    : "/chang_transparent_asset.png";
+
+                  return (
+                    <div
+                      key={char.id}
+                      onClick={() => toggleCharSelection(char.id)}
+                      className={`char-select-card ${isSelected ? "selected" : ""}`}
+                    >
+                      <img src={avatarUrl} alt={master?.jpName} className="char-select-img mb-1" />
+                      <span className="font-size-7 text-white font-weight-bold truncate block w-full text-center">
+                        {master?.jpName || "構成員"}
+                      </span>
+                      <span className="font-size-6 text-secondary">Lv.{char.level}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            <div className="gvg-modal-footer flex-row-space-between">
+              {gvgDefenseDeck && (
+                <button
+                  onClick={removeDefenseDeck}
+                  disabled={gvgResetLoading}
+                  className="sub-btn border-danger text-color-danger px-3 font-size-8 height-26 active-scale-effect"
+                >
+                  配備解除
+                </button>
+              )}
+              <div className="flex-row-gap-2 ml-auto">
+                <button
+                  onClick={() => setShowDefenseModal(false)}
+                  className="sub-btn border-subtle px-3 font-size-8 height-26 active-scale-effect"
+                >
+                  キャンセル
+                </button>
+                <button
+                  onClick={saveDefenseDeck}
+                  disabled={tempSelectedChars.length === 0 || gvgResetLoading}
+                  className="sub-btn border-cyan text-color-cyan px-4 font-size-8 font-weight-bold height-26 active-scale-effect"
+                >
+                  配備完了
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

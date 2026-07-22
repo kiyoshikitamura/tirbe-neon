@@ -1,0 +1,758 @@
+/* CardBattleView.css - Matte Outlaw Circular UI Battle Styling */
+
+.battle-screen {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle at center, rgba(30, 30, 35, 0.98) 0%, rgba(10, 10, 12, 1) 100%);
+  color: var(--text-color);
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.battle-arena {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+/* 1. SETUP出撃準備画面のレイアウト */
+.setup-container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  padding: 16px;
+  overflow-y: auto;
+  box-sizing: border-box;
+}
+
+.setup-title-bar {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--text-color);
+  text-align: center;
+  letter-spacing: 0.15em;
+  padding: 12px 0;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.08);
+  margin-bottom: 16px;
+  text-shadow: 0 0 8px rgba(255, 255, 255, 0.2);
+}
+
+.setup-scroll-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+/* 上段：エネミー情報 */
+.setup-enemy-wrapper {
+  background: rgba(20, 20, 25, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  padding: 12px;
+  box-shadow: inset 0 0 15px rgba(0, 0, 0, 0.6);
+}
+
+.setup-enemy-title {
+  font-size: 8px;
+  color: var(--text-color-magenta);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  margin-bottom: 6px;
+  border-left: 2px solid var(--text-color-magenta);
+  padding-left: 6px;
+}
+
+.setup-enemy-spec {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.setup-enemy-avatar {
+  width: 50px;
+  height: 50px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #111;
+  object-fit: cover;
+}
+
+.setup-enemy-detail-list {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* 敵が5人並ぶ場合のレイアウト */
+.setup-enemy-cards-row {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.setup-enemy-mini-card {
+  flex: 0 0 60px;
+  background: rgba(10, 10, 12, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  padding: 4px;
+  text-align: center;
+  font-size: 7px;
+}
+
+.setup-enemy-mini-card img {
+  width: 100%;
+  height: 40px;
+  object-fit: cover;
+  border-radius: 2px;
+  background: #222;
+}
+
+/* 下段：自部隊縦長カード編成 */
+.setup-player-wrapper {
+  background: rgba(20, 20, 25, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  padding: 12px;
+  box-shadow: inset 0 0 15px rgba(0, 0, 0, 0.6);
+}
+
+.setup-player-title {
+  font-size: 8px;
+  color: var(--text-color-cyan);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  margin-bottom: 6px;
+  border-left: 2px solid var(--text-color-cyan);
+  padding-left: 6px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.setup-cards-row {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.setup-char-card {
+  flex: 0 0 85px;
+  background: linear-gradient(180deg, rgba(30, 30, 35, 0.9) 0%, rgba(15, 15, 18, 0.95) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+  transition: transform 0.15s ease, border-color 0.15s ease;
+  position: relative;
+}
+
+.setup-char-card:active {
+  transform: scale(0.95);
+}
+
+.setup-char-card img {
+  width: 100%;
+  height: 80px;
+  object-fit: cover;
+  border-radius: 4px;
+  background: #111;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.setup-card-name {
+  font-size: 8px;
+  font-weight: 800;
+  color: #fff;
+  margin-top: 6px;
+  text-align: center;
+  width: 100%;
+}
+
+.setup-card-lv {
+  font-size: 6px;
+  color: var(--text-color-secondary);
+  margin-top: 1px;
+}
+
+.setup-card-hp-bar {
+  width: 100%;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+  margin-top: 5px;
+  overflow: hidden;
+}
+
+.setup-card-hp-fill {
+  height: 100%;
+  background: var(--text-color-cyan);
+}
+
+/* 下部：作戦選択 ＆ スタートボタン */
+.setup-tactic-wrapper {
+  background: rgba(20, 20, 25, 0.8);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  border-radius: 8px;
+}
+
+.tactic-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.tactic-btn {
+  background: rgba(30, 30, 35, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  padding: 8px;
+  font-size: 8px;
+  font-weight: 700;
+  color: var(--text-color-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+}
+
+.tactic-btn.active {
+  background: rgba(0, 240, 255, 0.06);
+  border-color: var(--text-color-cyan);
+  color: var(--text-color-cyan);
+  box-shadow: 0 0 10px rgba(0, 240, 255, 0.15);
+}
+
+.start-battle-btn {
+  background: linear-gradient(135deg, #b01030 0%, #700010 100%);
+  border: 1px solid #ff3344;
+  border-radius: 6px;
+  padding: 14px;
+  font-size: 11px;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: 0.3em;
+  text-shadow: 0 0 6px rgba(0, 0, 0, 0.8);
+  box-shadow: 0 4px 15px rgba(255, 0, 0, 0.15);
+  cursor: pointer;
+  text-align: center;
+  transition: transform 0.1s ease;
+}
+
+.start-battle-btn:active {
+  transform: scale(0.96);
+}
+
+/* 2. PLAYING戦闘中画面のレイアウト */
+.playing-container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  position: relative;
+  box-sizing: border-box;
+}
+
+/* 上段：エネミーエリア (PvPは5人、NPCは巨大ボス) */
+.playing-enemy-side {
+  flex: 0 0 100px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 12px 16px;
+  background: linear-gradient(180deg, rgba(20, 20, 25, 0.7) 0%, transparent 100%);
+}
+
+.enemy-5v5-row {
+  display: flex;
+  justify-content: space-around;
+  width: 100%;
+  gap: 8px;
+}
+
+.enemy-playing-card {
+  flex: 1;
+  max-width: 65px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: rgba(10, 10, 12, 0.8);
+  border: 1px solid rgba(255, 0, 80, 0.2);
+  border-radius: 4px;
+  padding: 4px;
+  position: relative;
+}
+
+.enemy-playing-card.active-turn {
+  border-color: var(--text-color-magenta) !important;
+  box-shadow: 0 0 10px rgba(255, 0, 80, 0.4);
+}
+
+.enemy-playing-card img {
+  width: 100%;
+  height: 45px;
+  object-fit: cover;
+  border-radius: 2px;
+  background: #111;
+}
+
+.enemy-card-name {
+  font-size: 6px;
+  font-weight: 700;
+  color: #fff;
+  margin-top: 3px;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+/* NPC巨大ボス */
+.single-enemy-boss-container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.boss-hp-bar-bg {
+  width: 100%;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.boss-hp-bar-fill {
+  height: 100%;
+  background: var(--text-color-magenta);
+}
+
+/* 中段：タイムライン ＆ レーザーライン ＆ カットイン */
+.playing-middle-stage {
+  flex: 1;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 8px 0;
+}
+
+.timeline-bar {
+  width: 100%;
+  background: rgba(10, 10, 12, 0.7);
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  padding: 4px 16px;
+}
+
+.timeline-flow-layout {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  align-items: center;
+  padding: 2px 0;
+}
+
+.timeline-node {
+  flex: 0 0 55px;
+  background: rgba(20, 20, 25, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  padding: 4px 6px;
+  text-align: center;
+  font-size: 6px;
+  white-space: nowrap;
+}
+
+.timeline-node.active {
+  border-color: #ffd700 !important;
+  box-shadow: 0 0 8px rgba(255, 215, 0, 0.3);
+  font-weight: 800;
+}
+
+.timeline-node.player {
+  background: rgba(0, 240, 255, 0.06);
+  border-color: rgba(0, 240, 255, 0.2);
+  color: var(--text-color-cyan);
+}
+
+.timeline-node.enemy {
+  background: rgba(255, 0, 80, 0.06);
+  border-color: rgba(255, 0, 80, 0.2);
+  color: var(--text-color-magenta);
+}
+
+/* ターゲットレーザーラインの描画領域 */
+.laser-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 80;
+}
+
+.laser-path {
+  stroke-dasharray: 6, 4;
+  animation: laser-move 0.8s linear infinite;
+}
+
+@keyframes laser-move {
+  to {
+    stroke-dashoffset: -20;
+  }
+}
+
+/* スキル発動カットイン */
+.skill-cutin-banner {
+  position: absolute;
+  top: 40%;
+  left: 0;
+  width: 100%;
+  background: linear-gradient(90deg, transparent 0%, rgba(25, 25, 30, 0.95) 15%, rgba(25, 25, 30, 0.95) 85%, transparent 100%);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 10px 0;
+  text-align: center;
+  z-index: 90;
+  transform: translateY(-50%);
+  box-shadow: 0 0 15px rgba(0, 0, 0, 0.8);
+}
+
+.cutin-char-name {
+  font-size: 7px;
+  color: var(--text-color-secondary);
+  letter-spacing: 0.1em;
+}
+
+.cutin-skill-name {
+  font-size: 13px;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: 0.2em;
+  margin-top: 2px;
+  text-shadow: 0 0 10px rgba(0, 240, 255, 0.4);
+}
+
+/* 下段：プレイヤー（味方5名個別HP/バリア） */
+.playing-player-side {
+  flex: 0 0 120px;
+  background: linear-gradient(0deg, rgba(20, 20, 25, 0.9) 0%, rgba(10, 10, 12, 0.95) 100%);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+.player-5v5-row {
+  display: flex;
+  justify-content: space-around;
+  width: 100%;
+  gap: 8px;
+}
+
+.player-playing-card {
+  flex: 1;
+  max-width: 65px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: rgba(15, 15, 18, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  padding: 4px;
+  position: relative;
+  transition: border-color 0.15s ease;
+}
+
+.player-playing-card.active-turn {
+  border-color: var(--text-color-cyan) !important;
+  box-shadow: 0 0 10px rgba(0, 240, 255, 0.4);
+}
+
+.player-playing-card img {
+  width: 100%;
+  height: 45px;
+  object-fit: cover;
+  border-radius: 2px;
+  background: #111;
+}
+
+.player-card-name {
+  font-size: 6px;
+  font-weight: 700;
+  color: #fff;
+  margin-top: 3px;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+/* HP / バリア ゲージ */
+.playing-stats-overlay {
+  width: 100%;
+  margin-top: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mini-hp-bar {
+  width: 100%;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 1.5px;
+  overflow: hidden;
+}
+
+.mini-hp-bar.enemy-color {
+  background: rgba(255, 0, 80, 0.2);
+}
+
+.mini-hp-fill {
+  height: 100%;
+  background: var(--text-color-cyan);
+}
+
+.mini-hp-fill.enemy-color {
+  background: var(--text-color-magenta);
+}
+
+.mini-shield-bar {
+  width: 100%;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 1px;
+  overflow: hidden;
+}
+
+.mini-shield-fill {
+  height: 100%;
+  background: #ffd700;
+}
+
+/* 死亡状態 */
+.playing-card.dead {
+  opacity: 0.3;
+  filter: grayscale(1);
+}
+
+.dead-badge {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(255, 0, 0, 0.7);
+  color: #fff;
+  font-size: 5px;
+  font-weight: 800;
+  padding: 2px 4px;
+  border-radius: 2px;
+  letter-spacing: 0.1em;
+}
+
+/* 3. 最下部アクション制御 / ログ */
+.battle-controls-layout {
+  background: rgba(10, 10, 12, 0.95);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.battle-control-hud-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.battle-log-box {
+  background: rgba(5, 5, 8, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 4px;
+  padding: 6px;
+  font-size: 6px;
+  color: var(--text-color-secondary);
+  height: 48px;
+  overflow-y: auto;
+}
+
+/* モックアップ用の再生速度 / 一時停止ボタン */
+.speed-toggle-btn, .pause-toggle-btn {
+  background: rgba(30, 30, 35, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--text-color);
+  font-size: 7px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.speed-toggle-btn.active {
+  border-color: var(--text-color-cyan);
+  color: var(--text-color-cyan);
+}
+
+/* 詳細確認ポップアップモーダル */
+.read-only-detail-modal {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.85);
+  z-index: 1000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 16px;
+  box-sizing: border-box;
+}
+
+.detail-modal-card {
+  background: #15151a;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.9);
+  border-radius: 8px;
+  width: 100%;
+  max-width: 320px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.detail-modal-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.detail-modal-body {
+  padding: 16px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.detail-modal-section-title {
+  font-size: 7px;
+  font-weight: 800;
+  color: var(--text-color-cyan);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  border-bottom: 1px solid rgba(0, 240, 255, 0.2);
+  padding-bottom: 3px;
+  margin-bottom: 6px;
+}
+
+.detail-modal-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 8px;
+  color: var(--text-color-secondary);
+}
+
+.detail-modal-row .val {
+  color: #fff;
+  font-weight: 700;
+}
+
+/* ポップアップ発生源 */
+.damage-popup-container {
+  position: absolute;
+  top: -20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 120;
+  pointer-events: none;
+}
+
+.damage-popup-widget {
+  font-weight: 800;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.damage-popup-widget.dmg {
+  color: var(--text-color-magenta);
+  text-shadow: 0 0 6px rgba(255, 0, 80, 0.5);
+}
+
+.damage-popup-widget.heal {
+  color: #00ff66;
+  text-shadow: 0 0 6px rgba(0, 255, 102, 0.5);
+}
+
+.damage-popup-widget.shield {
+  color: #ffd700;
+  text-shadow: 0 0 6px rgba(255, 215, 0, 0.5);
+}
+
+.damage-popup-widget.critical {
+  font-size: 16px;
+  font-weight: 900;
+  color: #ff2244;
+  text-shadow: 0 0 10px rgba(255, 0, 50, 0.9), 0 0 20px rgba(255, 215, 0, 0.8);
+  letter-spacing: 0.05em;
+}
+
+.critical-badge-overlay {
+  font-size: 10px;
+  font-weight: 900;
+  color: #ffd700;
+  text-shadow: 0 0 8px rgba(255, 215, 0, 0.9);
+  text-align: center;
+  margin-bottom: -2px;
+  letter-spacing: 0.1em;
+}
+
+/* 個別カードの振動効果 */
+.playing-card.shake {
+  animation: card-shake 0.3s ease-in-out;
+}
+
+@keyframes card-shake {
+  0% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  50% { transform: translateX(4px); }
+  75% { transform: translateX(-3px); }
+  100% { transform: translateX(0); }
+}
+
+.synergy-badge {
+  font-size: 6px;
+  font-weight: bold;
+  margin-left: 4px;
+  padding: 1px 3px;
+  background: var(--neon-magenta);
+  color: white;
+  border-radius: 2px;
+  display: inline-block;
+  vertical-align: middle;
+}

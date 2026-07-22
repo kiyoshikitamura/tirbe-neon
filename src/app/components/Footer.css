@@ -1,0 +1,71 @@
+/* ==========================================
+   Footer.css - TRIBE: NEON REIGN
+   つや消しフッターナビゲーション
+   ========================================== */
+
+.footer-nav {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  padding: 4px 0 6px;
+  background: rgba(11, 15, 25, 0.95);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  z-index: 20;
+  flex-shrink: 0;
+}
+
+/* PC版では非表示 (Header.tsx の PC用タブが担当) */
+@media (min-width: 768px) {
+  .footer-nav {
+    display: none;
+  }
+}
+
+.nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 6px;
+  color: var(--text-secondary);
+  transition: color 0.2s ease;
+  min-width: 0;
+  flex: 1;
+}
+
+.nav-item.active {
+  color: var(--neon-cyan);
+}
+
+.nav-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.nav-label-jp {
+  font-size: 8px;
+  letter-spacing: 0.3px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 60px;
+}
+
+.nav-badge-dot {
+  position: absolute;
+  top: 4px;
+  right: calc(50% - 16px);
+  width: 8px;
+  height: 8px;
+  background-color: #ff3366;
+  border-radius: 50%;
+  border: 1.5px solid #ffffff;
+  box-shadow: 0 0 4px rgba(255, 51, 102, 0.8);
+  z-index: 10;
+}

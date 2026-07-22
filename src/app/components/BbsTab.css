@@ -1,0 +1,507 @@
+/* BBSビューのコンテナ */
+.bbs-view-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  color: #e2e8f0;
+  box-sizing: border-box;
+  padding: 16px;
+  background: transparent;
+}
+
+/* ヘッダーパネル */
+.bbs-header-panel {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 12px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.bbs-header-tag {
+  font-size: 8px;
+  letter-spacing: 0.15em;
+  color: #8a8a93;
+  display: block;
+  margin-bottom: 2px;
+}
+
+.bbs-header-title {
+  font-size: 20px;
+  font-weight: 800;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+}
+
+.bbs-header-sub {
+  font-size: 10px;
+  color: #a1a1aa;
+  margin-left: 8px;
+  font-weight: 400;
+}
+
+/* 新規スレッドボタン */
+.bbs-create-btn {
+  padding: 8px 16px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #000;
+  background: linear-gradient(135deg, #e4e4e7, #a1a1aa);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  transition: transform 0.1s ease, filter 0.2s ease;
+}
+
+.bbs-create-btn:hover {
+  filter: brightness(1.1);
+}
+
+/* カテゴリ切り替えタブ */
+.bbs-category-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.bbs-category-tab {
+  flex: 1;
+  padding: 10px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #a1a1aa;
+  background: rgba(20, 20, 25, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.bbs-category-tab.active {
+  color: #ffffff;
+  background: rgba(45, 45, 55, 0.85);
+  border-color: rgba(255, 255, 255, 0.15);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 0 12px rgba(255, 255, 255, 0.03);
+}
+
+/* スレッド一覧リスト */
+.bbs-threads-list {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-right: 4px;
+}
+
+/* スレッドカード */
+.bbs-thread-card {
+  padding: 14px;
+  background: rgba(30, 30, 38, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: transform 0.1s ease, background 0.2s ease, border-color 0.2s ease;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+.bbs-thread-card:hover {
+  background: rgba(40, 40, 50, 0.85);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.bbs-thread-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 6px;
+}
+
+.bbs-thread-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #f4f4f5;
+  margin: 0;
+  word-break: break-all;
+  flex: 1;
+  padding-right: 8px;
+}
+
+.bbs-thread-date {
+  font-size: 10px;
+  color: #71717a;
+  white-space: nowrap;
+}
+
+.bbs-thread-preview {
+  font-size: 12px;
+  color: #a1a1aa;
+  margin: 0 0 8px 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-all;
+  line-height: 1.5;
+}
+
+.bbs-thread-footer {
+  font-size: 10px;
+  color: #71717a;
+  text-align: right;
+}
+
+/* 詳細パネル */
+.bbs-detail-panel {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  height: 100%;
+  overflow: hidden;
+}
+
+.bbs-detail-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.bbs-back-btn {
+  font-size: 12px;
+  color: #a1a1aa;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: color 0.2s, background 0.2s;
+}
+
+.bbs-back-btn:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.bbs-detail-category-badge {
+  font-size: 10px;
+  padding: 2px 8px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  color: #d4d4d8;
+  font-weight: 600;
+}
+
+/* スレッド親投稿カード */
+.bbs-thread-main-card {
+  padding: 16px;
+  background: rgba(45, 45, 55, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  margin-bottom: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.bbs-post-author-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.bbs-author-avatar-wrapper {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.bbs-author-avatar {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.bbs-author-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.bbs-author-name {
+  font-size: 11px;
+  font-weight: 700;
+  color: #e4e4e7;
+}
+
+.bbs-post-time {
+  font-size: 9px;
+  color: #71717a;
+}
+
+.bbs-thread-main-title {
+  font-size: 15px;
+  font-weight: 800;
+  color: #ffffff;
+  margin: 0 0 8px 0;
+  word-break: break-all;
+}
+
+.bbs-thread-main-content {
+  font-size: 13px;
+  color: #d4d4d8;
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-all;
+  line-height: 1.6;
+}
+
+/* 返信コンテナ */
+.bbs-posts-container {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 12px;
+  padding-right: 4px;
+}
+
+.bbs-no-posts {
+  text-align: center;
+  color: #71717a;
+  font-size: 11px;
+  margin: 32px 0;
+}
+
+.bbs-post-card {
+  padding: 12px;
+  background: rgba(30, 30, 38, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.bbs-post-content {
+  font-size: 12.5px;
+  color: #e4e4e7;
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-all;
+  line-height: 1.5;
+  padding-left: 2px;
+}
+
+/* 返信フォーム */
+.bbs-reply-form {
+  display: flex;
+  gap: 8px;
+  background: rgba(20, 20, 25, 0.9);
+  padding: 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.bbs-reply-textarea {
+  flex: 1;
+  height: 48px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  color: #ffffff;
+  padding: 8px;
+  font-size: 12px;
+  resize: none;
+  font-family: inherit;
+}
+
+.bbs-reply-textarea:focus {
+  outline: none;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.bbs-reply-submit-btn {
+  width: 72px;
+  font-size: 11px;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.bbs-reply-submit-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.bbs-reply-submit-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* モーダル */
+.bbs-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.75);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 999;
+  backdrop-filter: blur(4px);
+}
+
+.bbs-modal-content {
+  width: 90%;
+  max-width: 400px;
+  background: rgba(30, 30, 35, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.bbs-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.bbs-modal-header h3 {
+  font-size: 15px;
+  font-weight: 800;
+  margin: 0;
+  color: #ffffff;
+}
+
+.bbs-modal-close-btn {
+  background: transparent;
+  border: none;
+  color: #a1a1aa;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.bbs-form-group {
+  margin-bottom: 14px;
+}
+
+.bbs-form-group label {
+  display: block;
+  font-size: 11px;
+  color: #a1a1aa;
+  margin-bottom: 6px;
+  font-weight: 700;
+}
+
+.bbs-form-group input,
+.bbs-form-group textarea {
+  width: 100%;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  color: #ffffff;
+  padding: 10px;
+  font-size: 12px;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+.bbs-form-group input:focus,
+.bbs-form-group textarea:focus {
+  outline: none;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.bbs-form-group textarea {
+  height: 100px;
+  resize: none;
+}
+
+.bbs-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.bbs-modal-cancel-btn {
+  padding: 8px 16px;
+  font-size: 11px;
+  background: transparent;
+  color: #a1a1aa;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.bbs-modal-cancel-btn:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.bbs-modal-submit-btn {
+  padding: 8px 16px;
+  font-size: 11px;
+  font-weight: 700;
+  background: linear-gradient(135deg, #e4e4e7, #a1a1aa);
+  color: #000;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.bbs-modal-submit-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* スクロールバー共通設定 */
+.bbs-view-container .scroll-container::-webkit-scrollbar,
+.bbs-threads-list::-webkit-scrollbar,
+.bbs-posts-container::-webkit-scrollbar {
+  width: 4px;
+}
+
+.bbs-view-container .scroll-container::-webkit-scrollbar-track,
+.bbs-threads-list::-webkit-scrollbar-track,
+.bbs-posts-container::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.bbs-view-container .scroll-container::-webkit-scrollbar-thumb,
+.bbs-threads-list::-webkit-scrollbar-thumb,
+.bbs-posts-container::-webkit-scrollbar-thumb {
+  background: rgba(160, 160, 170, 0.3);
+  border-radius: 2px;
+}
+
+/* ローディング */
+.bbs-list-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 120px;
+}
+
+.bbs-empty-threads {
+  text-align: center;
+  color: #71717a;
+  font-size: 12px;
+  padding: 48px 16px;
+}
+
+/* タップリアクション */
+.active-scale-effect:active {
+  transform: scale(0.95);
+}

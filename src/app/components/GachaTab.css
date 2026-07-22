@@ -1,0 +1,76 @@
+.gacha-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.gacha-btn-layout {
+  display: flex;
+  gap: 8px;
+}
+
+.gacha-border-magenta {
+  border: 1px solid var(--neon-magenta) !important;
+}
+
+.gacha-magenta-outline {
+  border-color: var(--neon-magenta) !important;
+}
+
+.gacha-limit-card {
+  border: 1px solid #ffaa00 !important;
+  background: rgba(255, 170, 0, 0.05) !important;
+}
+
+.gacha-warning-outline {
+  border-color: #ffaa00 !important;
+}
+
+.text-color-warning {
+  color: #ffaa00;
+}
+
+/* 🎰 チュートリアルガチャ関連スタイル */
+.gacha-tutorial-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.85);
+  z-index: 999;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  backdrop-filter: blur(8px);
+}
+
+.tutorial-modal-card {
+  border: 1px solid var(--neon-cyan);
+  border-radius: 8px;
+  background: rgba(10, 10, 12, 0.95);
+  box-shadow: 0 0 30px rgba(0, 240, 255, 0.25);
+  padding: 24px;
+  width: 90%;
+  max-width: 320px;
+}
+
+.tutorial-gacha-btn {
+  background: linear-gradient(135deg, rgba(0, 240, 255, 0.2) 0%, rgba(0, 240, 255, 0.05) 100%);
+  border: 1px solid var(--neon-cyan);
+  color: #ffffff;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 0 10px rgba(0, 240, 255, 0.15);
+}
+
+.tutorial-gacha-btn:hover {
+  background: linear-gradient(135deg, rgba(0, 240, 255, 0.3) 0%, rgba(0, 240, 255, 0.1) 100%);
+  box-shadow: 0 0 15px rgba(0, 240, 255, 0.3);
+}
+
+.filter-blur {
+  filter: blur(6px);
+  pointer-events: none;
+}

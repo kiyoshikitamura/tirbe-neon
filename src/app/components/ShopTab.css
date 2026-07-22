@@ -1,0 +1,18 @@
+.shop-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.shop-border-magenta {
+  border: 1px solid var(--neon-magenta) !important;
+}
+
+.shop-btn-layout {
+  display: flex;
+  gap: 8px;
+}
+
+.shop-double-charge-btn {
+  border-color: var(--neon-magenta) !important;
+}
