@@ -6,6 +6,8 @@
 
 ## 1. 概要・環境分離アーキテクチャ
 
+- **公式 Git リポジトリ**: `https://github.com/kiyoshikitamura/tirbe-neon.git`
+
 | 環境 (Environment) | ホスティング (Vercel) | データベース (Supabase) | 目的 |
 | :--- | :--- | :--- | :--- |
 | **開発環境 (Development)** | Local (`localhost:3000`) / Vercel Preview | 開発用Supabaseプロジェクト | 機能開発、単体・結合テスト、モック検証 |

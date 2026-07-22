@@ -7,3 +7,7 @@
 - **プラットフォーム**: PC/スマートフォン ブラウザ (レスポンシブ対応)
 - **技術スタック**: Next.js (TypeScript) / Supabase (予定、既存資産 code:wirth-dawn 踏襲)
 - **マネタイズ**: スキルカードガチャ、装備品ガチャ、NPCアンロック直接課金、スタミナ回復アイテム (Stripe決済)
+
+## リポジトリ情報
+- **GitHub Repository**: [https://github.com/kiyoshikitamura/tirbe-neon.git](https://github.com/kiyoshikitamura/tirbe-neon.git)
+
