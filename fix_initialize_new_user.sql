@@ -18,7 +18,7 @@ DROP FUNCTION IF EXISTS initialize_new_user(UUID, TEXT, UUID, TEXT, TEXT);
 DROP FUNCTION IF EXISTS initialize_new_user(UUID, TEXT, UUID, TEXT);
 DROP FUNCTION IF EXISTS initialize_new_user(TEXT, UUID, TEXT, TEXT, TEXT, TEXT, UUID, TEXT);
 
--- 3. 最新の initialize_new_user 関数を作成
+-- 3. 最新の initialize_new_user 関数を作成 (重複時は安全復帰)
 CREATE OR REPLACE FUNCTION initialize_new_user(
     p_user_id UUID,
     p_username TEXT,
@@ -38,29 +38,19 @@ BEGIN
     -- デフォルトキャラIDの補正
     v_char_id := COALESCE(p_character_id, '11111111-1111-1111-1111-111111111111'::UUID);
 
-    -- A. 重複チェック
+    -- A. 登録済みユーザーの場合は安全に処理を正常完了（ログイン復帰を許可）
     IF EXISTS(SELECT 1 FROM users WHERE id = p_user_id) THEN
-        RAISE EXCEPTION 'すでに初期セットアップが完了しています。';
-    END IF;
-    IF EXISTS(SELECT 1 FROM users WHERE username = p_username) THEN
-        RAISE EXCEPTION 'このユーザー名は既に使用されています。';
+        RETURN;
     END IF;
 
     -- B. ギフトコードの評価 (入力がある場合)
     IF p_gift_code IS NOT NULL AND p_gift_code <> '' THEN
         SELECT id INTO v_inviter_id FROM users WHERE gift_code = p_gift_code;
-        IF v_inviter_id IS NULL THEN
-            RAISE EXCEPTION '無効なギフトコードです。';
-        END IF;
-        
-        IF v_inviter_id = p_user_id THEN
-            RAISE EXCEPTION '自分のギフトコードは使用できません。';
-        END IF;
-
-        -- 使用回数チェック (最大10人)
-        SELECT COUNT(*) INTO v_invite_count FROM user_invitations WHERE inviter_id = v_inviter_id;
-        IF v_invite_count >= 10 THEN
-            RAISE EXCEPTION 'このギフトコードは10人使用済です。';
+        IF v_inviter_id IS NOT NULL AND v_inviter_id <> p_user_id THEN
+            SELECT COUNT(*) INTO v_invite_count FROM user_invitations WHERE inviter_id = v_inviter_id;
+            IF v_invite_count >= 10 THEN
+                RAISE EXCEPTION 'このギフトコードは10人使用済です。';
+            END IF;
         END IF;
     END IF;
 
@@ -70,25 +60,23 @@ BEGIN
     ) VALUES (
         p_user_id, p_username, '歌舞伎町の覇権を握るため立ち上がる。', 
         CASE 
-            WHEN v_char_id = '11111111-1111-1111-1111-111111111111'::UUID THEN '/reiji_transparent_asset.png'
-            WHEN v_char_id = '33333333-3333-3333-3333-333333333333'::UUID THEN '/rui_transparent_asset.png'
-            ELSE '/chang_transparent_asset.png'
+            WHEN v_char_id = '11111111-1111-1111-1111-111111111111'::UUID THEN '/characters/reiji_transparent_asset.png'
+            WHEN v_char_id = '33333333-3333-3333-3333-333333333333'::UUID THEN '/characters/rui_transparent_asset.png'
+            ELSE '/characters/chang_transparent_asset.png'
         END,
         10000, 200, 100, 5, 
         CASE WHEN p_area_id = 'shinjuku' THEN 'neon_tower' ELSE p_area_id END, 
         v_char_id
-    );
+    ) ON CONFLICT (id) DO NOTHING;
 
     -- D. 招待関係の記録 ＆ 報酬付与
-    IF v_inviter_id IS NOT NULL THEN
-        -- 招待ログ追加（テーブルが存在する場合）
+    IF v_inviter_id IS NOT NULL AND v_inviter_id <> p_user_id THEN
         IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'user_invitations') THEN
-            INSERT INTO user_invitations (inviter_id, invitee_id) VALUES (v_inviter_id, p_user_id);
+            INSERT INTO user_invitations (inviter_id, invitee_id) VALUES (v_inviter_id, p_user_id) ON CONFLICT DO NOTHING;
         END IF;
         
         v_expire_at := NOW() + INTERVAL '30 days';
         
-        -- 被招待者（自分）にプレゼント付与
         IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'presents') THEN
             INSERT INTO presents (user_id, title, item_type, amount, expire_at)
             VALUES (p_user_id, '招待コード入力報酬', 'NEON_DIAMOND', 100, v_expire_at);

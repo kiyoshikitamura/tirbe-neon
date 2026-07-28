@@ -1685,6 +1685,18 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       });
 
       if (error) {
+        // すでに登録済みユーザーの場合はエラーで止めず、自動的にログイン完了＆マイページへリカバリー遷移
+        if (
+          error.message?.includes("すでに初期セットアップが完了") || 
+          error.message?.includes("already exists") ||
+          error.message?.includes("duplicate key")
+        ) {
+          setIsSetupRequired(false);
+          setSetupGiftCode("");
+          await syncBootstrapData(session.user.id);
+          navigateTab("home");
+          return;
+        }
         setErrorMessage(error.message);
         return;
       }
