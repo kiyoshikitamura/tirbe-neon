@@ -44,10 +44,10 @@
     - 例：`src/app/components/AuthView.tsx` から `import "./AuthView.css"` を実行。
 
 ### ⑦ 全環境共通・モバイル専用縦型レイアウト統一規約 (Single Mobile Architecture)
-- **PCレイアウトの完全撤去 ＆ スマホ表示の一元化**:
+- **PCレイアウトの完全撤去 ＆ 全画面フィット／純粋長方形枠の統一**:
   - 端末幅・解像度の違いによる黒帯や偏りを100%根絶するため、PC向けの3分割レイアウトを完全に廃止し、アプリ全体を**「モバイル専用縦型レイアウト」**に一元化・統一します。
-  - **スマホ・iPhoneアクセス時**: 左右の黒帯・余白ゼロの 100% 全画面フィット表示（`width: 100%; height: 100dvh;`）。
-  - **PCアクセス時**: 画面中央（`margin: 0 auto`）にスタイリッシュなスマートフォン型コンテナ（幅 `430px`, 高さ `100dvh`）として固定描画。
+  - **スマホ・iPhoneアクセス時 (`@media (max-width: 600px)`)**: 左右の黒帯・余白・境界線を完全排除した **100% 全画面フィット表示 (`width: 100%; height: 100dvh; margin: 0; border: none; border-radius: 0;`)**。
+  - **PCアクセス時 (`@media (min-width: 601px)`)**: 画面中央（`margin: 20px auto`）に、角丸を排除したシャープでソリッドな **純粋長方形枠コンテナ (`max-width: 430px; border-radius: 0; border: 1px solid rgba(255, 255, 255, 0.15);`)** として固定描画。
 - **アセットパス構造の統一**:
   - キャラクターの透過立ち絵画像はすべて **`public/characters/`** ディレクトリ配下に格納し、コード側からは必ず `getCharacterTransparentImg(name)` 経由で取得します。
   - 確定版透過前グリーンバック原画は **`public/raw_assets/<name>_raw.jpg`**（1アセットにつき確定原画1枚のみ）に選別保存します。

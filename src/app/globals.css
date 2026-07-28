@@ -61,20 +61,43 @@ html, body {
   background: var(--bg-color);
 }
 
-/* --- モバイルレイアウト (デフォルト) --- */
-/* --- 全環境共通: モバイル専用縦型レイアウト (Single Mobile-Centric Architecture) --- */
+/* --- モバイル専用縦型レイアウト (Single Mobile-Centric Architecture) --- */
 .app-container,
 .app-container--mobile {
   display: flex;
   flex-direction: column;
-  width: 100%;
-  max-width: 430px;
-  height: 100dvh;
-  margin: 0 auto;
   background: #000;
   position: relative;
   overflow: hidden;
-  box-shadow: 0 0 40px rgba(0, 0, 0, 0.8);
+}
+
+/* スマホ・iPhone実機 (画面幅 600px 以下): 100%全幅フィット・左右黒帯完全ゼロ */
+@media (max-width: 600px) {
+  .app-container,
+  .app-container--mobile {
+    width: 100%;
+    max-width: 100%;
+    height: 100dvh;
+    margin: 0;
+    padding: 0;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+  }
+}
+
+/* PCブラウザ (画面幅 601px 以上): 中央配置の純粋長方形枠 (border-radius: 0) */
+@media (min-width: 601px) {
+  .app-container,
+  .app-container--mobile {
+    width: 100%;
+    max-width: 430px;
+    height: calc(100dvh - 40px);
+    margin: 20px auto;
+    border-radius: 0; /* 純粋な長方形枠 */
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.9);
+  }
 }
 
 .main-content {
