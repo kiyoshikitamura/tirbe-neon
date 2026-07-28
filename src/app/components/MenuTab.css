@@ -123,15 +123,4 @@
   text-shadow: 0 0 6px rgba(192, 192, 192, 0.35);
 }
 
-/* --- PC responsive --- */
 
-@media (min-width: 768px) {
-  .menu-tab-view {
-    max-width: 500px;
-    margin: 0 auto;
-  }
-
-  .menu-tab-grid {
-    gap: 12px;
-  }
-}

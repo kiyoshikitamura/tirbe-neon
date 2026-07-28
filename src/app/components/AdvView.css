@@ -11,7 +11,7 @@
 
 .adv-dialog-box {
   width: 100%;
-  max-width: 480px;
+  max-width: 100%;
   background: rgba(11, 15, 25, 0.95);
   border: 1px solid var(--neon-magenta);
   box-shadow: var(--neon-glow-magenta);

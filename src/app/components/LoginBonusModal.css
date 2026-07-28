@@ -29,7 +29,7 @@
 
 .login-bonus-modal-card {
   width: 100%;
-  max-width: 480px;
+  max-width: 100%;
   max-height: 90vh;
   background: linear-gradient(165deg, rgba(28, 32, 42, 0.95) 0%, rgba(16, 18, 25, 0.98) 100%);
   border: 1px solid rgba(255, 255, 255, 0.12);

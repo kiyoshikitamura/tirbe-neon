@@ -16,12 +16,7 @@
   width: 100%;
 }
 
-/* PC版では非表示 (Header.tsx の PC用タブが担当) */
-@media (min-width: 768px) {
-  .footer-nav {
-    display: none;
-  }
-}
+
 
 .nav-item {
   display: flex;

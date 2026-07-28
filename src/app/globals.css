@@ -2101,94 +2101,7 @@ button:disabled {
 .rarity-badge.rarity-sr { background: rgba(208, 0, 255, 0.15) !important; border: 1px solid rgba(208, 0, 255, 0.3) !important; }
 .rarity-badge.rarity-ssr { background: rgba(255, 170, 0, 0.15) !important; border: 1px solid rgba(255, 170, 0, 0.3) !important; }
 
-/* PC表示時は共通リストレイアウトを2列のグリッドにして横幅の間延びを防ぐ */
-@media (min-width: 768px) {
-  .list-container {
-    display: grid !important;
-    grid-template-columns: repeat(2, 1fr) !important;
-    gap: 8px !important;
-    max-height: none !important;
-  }
-  
-  /* PC用の中央メイン要素：全画面化に伴い最大幅制限を解除 */
-}
 
-/* PC用レイアウトの競合バグをファイルの最末尾で上書き強制解決 */
-@media (min-width: 768px) {
-  .pc-center-main, .main-content, .scroll-container, .view-container {
-    width: 100% !important;
-    max-width: none !important;
-    min-width: 0 !important;
-    position: relative !important;
-  }
-  
-  .pc-center-main {
-    display: flex !important;
-    flex-direction: column !important;
-    flex: 1 !important;
-    width: 0 !important; /* flex-grow で残りの幅を自動で全幅吸収 */
-    height: 100% !important;
-    min-height: 0 !important;
-    overflow: hidden !important;
-  }
-  
-  header, .game-global-hud-bar {
-    display: flex !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-    position: relative !important; /* z-indexを確実に有効化する */
-    z-index: 9999 !important; /* 最前面へ強制描画 */
-    flex-shrink: 0 !important;
-    width: 100% !important;
-    max-width: none !important;
-  }
-
-  /* Next.js ルート DIV の縦中央寄せ・見切れを強制排除して上端揃えに統一 */
-  body > div {
-    height: 100% !important;
-    display: flex !important;
-    flex-direction: column !important;
-    justify-content: flex-start !important; /* 上端から配置し、上見切れを完全防止 */
-    align-items: center !important; /* 横方向は中央寄せ */
-  }
-
-  /* マイページの幅・横並び・スレート表示を強制解決 */
-  .mypage-view {
-    width: 100% !important;
-    max-width: none !important;
-    margin: 0 !important;
-    flex: 1 !important;
-    min-width: 0 !important;
-    display: flex !important;
-    flex-direction: column !important;
-  }
-
-
-/* PCモード時の絶対上書きクラス（display: none !important を撃破） */
-.mypage-view.pc-mode {
-  width: 100% !important;
-  max-width: none !important;
-  margin: 0 !important;
-  flex: 1 !important;
-  min-width: 0 !important;
-  display: flex !important;
-  flex-direction: column !important;
-  height: 100% !important;
-}
-
-.mypage-view.pc-mode .mypage-main-layout-wrapper {
-  display: flex !important;
-  flex-direction: row !important; /* 横並び強制 */
-  width: 100% !important;
-  height: 100% !important;
-  overflow: hidden !important;
-}
-
-.mypage-view.pc-mode {
-  background: transparent !important;
-  height: 100% !important;
-  width: 100% !important;
-}
 
 /* プレミアムすりガラスパネル (モックアップ完全再現) */
 .hud-glass-cyber {
@@ -2227,5 +2140,4 @@ button:disabled {
 @keyframes pulse-siren {
   0%, 100% { opacity: 0.5; transform: scale(0.96); }
   50% { opacity: 1; transform: scale(1.04); filter: drop-shadow(0 0 10px #ff0055); }
-}
 }

@@ -214,9 +214,9 @@ This file defines the project-specific rules, design constraints, and technical 
 
 ## 15. 抗争（GvG）マッチング ＆ シーズンランキング規約
 ## 16. 全環境共通・モバイル専用縦型レイアウト統一規約 (Single Mobile-Centric Architecture)
-- **PC/モバイル分岐(メディアクエリ)の完全撤去 ＆ 単一フレックスコンテナの一元化**:
-  - 端末幅・解像度の誤判定による黒帯発生やPC全画面見切れを100%構造的に根絶するため、CSS内の `@media` メディアクエリ分岐を全面廃止する。
-  - 単一のコンテナスタイル `width: 100vw; max-width: 430px; height: 100dvh; margin: 0 auto;` のみに一元化し、スマホ実機（幅 430px 以下）では `width: 100vw` により自動全幅表示（左右黒帯100%消失）、PC大画面では画面中央にスマート描画（フルスクリーン時も見切れ・黒画面化ゼロ）を両立する。
+- **PC/モバイル分岐(メディアクエリ)の全CSSファイルからの完全撤去 ＆ 単一フレックスコンテナの一元化**:
+  - 端末幅・解像度の誤判定による黒帯発生やPC全画面ブラックアウトを100%構造的に根絶するため、`globals.css` をはじめ `HomeTab.css`, `Footer.css`, `AdvView.css`, `MenuTab.css`, `RaidTab.css` 等、**全 CSS ファイルから `@media` メディアクエリ分岐および `max-width: 480px` などの固定幅指定を全面一掃・全滅**させる。
+  - ルートコンテナスタイル `width: 100vw; max-width: 430px; height: 100dvh; margin: 0 auto;` の単一定義のみに統一し、スマホ実機（幅 430px 以下）では自動全幅表示（左右黒帯100%消失）、PC大画面では画面中央描画（フルスクリーン時も見切れ・黒画面化ゼロ）を構造的に保証する。
 - **アセットフォルダ構造の正規化**:
   - キャラクターの透過立ち絵画像はすべて **`public/characters/`** ディレクトリ配下に格納し、コード側からは必ず `getCharacterTransparentImg(name)` 経由で取得する（`public/` 直下への直書き参照は禁止）。
   - 各キャラクター・背景の確定版透過前グリーンバック原画は、**`public/raw_assets/<name>_raw.jpg`**（1アセットにつき確定原画1枚のみ）に選別保存する。
