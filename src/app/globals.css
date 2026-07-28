@@ -61,38 +61,19 @@ html, body {
   background: var(--bg-color);
 }
 
-/* --- モバイル専用縦型レイアウト (Single Mobile-Centric Architecture) --- */
-
-/* デフォルト: 全てのスマートフォン・モバイル端末で100%全画面フィット (左右黒帯完全ゼロ) */
+/* --- メディアクエリ分岐完全ゼロ: 単一レイアウトコンテナ (Pure Single Mobile Container) --- */
 .app-container,
 .app-container--mobile {
   display: flex;
   flex-direction: column;
-  width: 100%;
-  max-width: 100%;
+  width: 100vw;
+  max-width: 430px;
   height: 100dvh;
-  margin: 0;
+  margin: 0 auto;
   padding: 0;
   background: #000;
   position: relative;
   overflow: hidden;
-  border: none;
-  border-radius: 0;
-  box-shadow: none;
-}
-
-/* PC大画面 (1024px以上 ＆ マウス操作): 画面中央に純粋長方形枠を表示 (全画面時も見切れない) */
-@media (min-width: 1024px) and (pointer: fine) {
-  .app-container,
-  .app-container--mobile {
-    max-width: 430px;
-    height: 100dvh;
-    margin: 0 auto;
-    border-radius: 0; /* 純粋な長方形枠 */
-    border-left: 1px solid rgba(255, 255, 255, 0.15);
-    border-right: 1px solid rgba(255, 255, 255, 0.15);
-    box-shadow: 0 0 50px rgba(0, 0, 0, 0.9);
-  }
 }
 
 .main-content {

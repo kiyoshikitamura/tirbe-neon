@@ -214,10 +214,9 @@ This file defines the project-specific rules, design constraints, and technical 
 
 ## 15. 抗争（GvG）マッチング ＆ シーズンランキング規約
 ## 16. 全環境共通・モバイル専用縦型レイアウト統一規約 (Single Mobile-Centric Architecture)
-- **PCレイアウトの完全撤去 ＆ 全画面フィット／純粋長方形枠の統一**:
-  - 端末幅・解像度の違いによる黒帯や偏りを100%根絶するため、PC向けの3分割レイアウトを完全に廃止し、アプリ全体を**「モバイル専用縦型レイアウト」**に一元化・統一する。
-  - **スマホ・iPhoneアクセス時 (デフォルト標準)**: 解像度や機種を問わず、全てのモバイル端末で左右の黒帯・余白・境界線を完全排除した **100% 全画面フィット表示 (`width: 100%; height: 100dvh; margin: 0; padding: 0; border: none; border-radius: 0;`)**。
-  - **PC大画面アクセス時 (`@media (min-width: 1024px) and (pointer: fine)`)**: 画面中央（`margin: 0 auto`）に、角丸を排除したシャープでソリッドな **純粋長方形枠コンテナ (`max-width: 430px; height: 100dvh; border-radius: 0; border-left/right: 1px solid rgba(255, 255, 255, 0.15);`)** として固定描画（全画面表示時も見切れない）。
+- **PC/モバイル分岐(メディアクエリ)の完全撤去 ＆ 単一フレックスコンテナの一元化**:
+  - 端末幅・解像度の誤判定による黒帯発生やPC全画面見切れを100%構造的に根絶するため、CSS内の `@media` メディアクエリ分岐を全面廃止する。
+  - 単一のコンテナスタイル `width: 100vw; max-width: 430px; height: 100dvh; margin: 0 auto;` のみに一元化し、スマホ実機（幅 430px 以下）では `width: 100vw` により自動全幅表示（左右黒帯100%消失）、PC大画面では画面中央にスマート描画（フルスクリーン時も見切れ・黒画面化ゼロ）を両立する。
 - **アセットフォルダ構造の正規化**:
   - キャラクターの透過立ち絵画像はすべて **`public/characters/`** ディレクトリ配下に格納し、コード側からは必ず `getCharacterTransparentImg(name)` 経由で取得する（`public/` 直下への直書き参照は禁止）。
   - 各キャラクター・背景の確定版透過前グリーンバック原画は、**`public/raw_assets/<name>_raw.jpg`**（1アセットにつき確定原画1枚のみ）に選別保存する。
