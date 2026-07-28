@@ -62,41 +62,36 @@ html, body {
 }
 
 /* --- モバイル専用縦型レイアウト (Single Mobile-Centric Architecture) --- */
+
+/* デフォルト: 全てのスマートフォン・モバイル端末で100%全画面フィット (左右黒帯完全ゼロ) */
 .app-container,
 .app-container--mobile {
   display: flex;
   flex-direction: column;
+  width: 100%;
+  max-width: 100%;
+  height: 100dvh;
+  margin: 0;
+  padding: 0;
   background: #000;
   position: relative;
   overflow: hidden;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
 }
 
-/* スマホ・iPhone実機 (画面幅 600px 以下): 100%全幅フィット・左右黒帯完全ゼロ */
-@media (max-width: 600px) {
+/* PC大画面 (1024px以上 ＆ マウス操作): 画面中央に純粋長方形枠を表示 (全画面時も見切れない) */
+@media (min-width: 1024px) and (pointer: fine) {
   .app-container,
   .app-container--mobile {
-    width: 100%;
-    max-width: 100%;
-    height: 100dvh;
-    margin: 0;
-    padding: 0;
-    border: none;
-    border-radius: 0;
-    box-shadow: none;
-  }
-}
-
-/* PCブラウザ (画面幅 601px 以上): 中央配置の純粋長方形枠 (border-radius: 0) */
-@media (min-width: 601px) {
-  .app-container,
-  .app-container--mobile {
-    width: 100%;
     max-width: 430px;
-    height: calc(100dvh - 40px);
-    margin: 20px auto;
+    height: 100dvh;
+    margin: 0 auto;
     border-radius: 0; /* 純粋な長方形枠 */
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.9);
+    border-left: 1px solid rgba(255, 255, 255, 0.15);
+    border-right: 1px solid rgba(255, 255, 255, 0.15);
+    box-shadow: 0 0 50px rgba(0, 0, 0, 0.9);
   }
 }
 
