@@ -868,12 +868,9 @@ export function getCharacterStaticImg(name: string): string {
 }
 
 export function getCharacterTransparentImg(name: string): string {
-  const transNames = ["reiji", "rui", "chang", "go", "kengo", "mio", "naoto", "rin", "serika", "shin", "tetsu", "yuji"];
-  const cleanName = name.toLowerCase();
-  if (transNames.includes(cleanName)) {
-    return `/${cleanName}_transparent_asset.png`;
-  }
-  return `/reiji_transparent_asset.png`;
+  if (!name) return `/characters/reiji_transparent_asset.png`;
+  const cleanName = name.toLowerCase().replace(/[^a-z0-9_]/g, "");
+  return `/characters/${cleanName}_transparent_asset.png`;
 }
 
 export function getAlignmentShortJp(align: string): { label: string; colorClass: string } {

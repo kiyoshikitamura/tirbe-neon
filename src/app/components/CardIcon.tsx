@@ -18,7 +18,7 @@ export interface CardIconProps {
 
 export const CardIcon: React.FC<CardIconProps> = memo(({
   rarity = "N",
-  img = "/reiji_transparent_asset.png",
+  img = "/characters/reiji_transparent_asset.png",
   jpName,
   name,
   attribute,
@@ -74,7 +74,7 @@ export const CardIcon: React.FC<CardIconProps> = memo(({
           }}
           onLoad={() => setIsLoaded(true)}
           onError={(e) => {
-            (e.target as HTMLImageElement).src = "/reiji_transparent_asset.png";
+            (e.target as HTMLImageElement).src = "/characters/reiji_transparent_asset.png";
             setIsLoaded(true);
           }}
         />
