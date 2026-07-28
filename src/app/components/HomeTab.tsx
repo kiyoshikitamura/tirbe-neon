@@ -8,9 +8,11 @@ import {
   MASTER_AVATARS,
   PROFILE_BACKGROUNDS,
   PROFILE_FRONT_EFFECTS,
-  PROFILE_TITLES
+  PROFILE_TITLES,
+  getCharacterTransparentImg
 } from "@/utils/game_constants";
 import { getCharacterTotalStats } from "@/utils/stats_calculator";
+import { useImagePreloader } from "../hooks/useImagePreloader";
 import AvatarRenderer from "./AvatarRenderer";
 import { LoginBonusModal } from "./LoginBonusModal";
 import "./HomeTab.css";
@@ -68,6 +70,17 @@ export default function HomeTab() {
 // 1. マイページ (メインパネル)
 // ==============================================
 function MainMyPage() {
+  // アセット事前高速メモリキャッシュ (ロード時間短縮 ＆ チラつき完全排除)
+  useImagePreloader([
+    "/bg/bg_base_neontower.png",
+    "/bg/bg_base_deepdock.png",
+    "/bg/bg_base_junkbazaar.png",
+    "/bg/bg_base_kitakuragate.png",
+    "/menu/menu_allies.png",
+    "/menu/menu_fight.png",
+    "/menu/menu_conquest.png"
+  ]);
+
   const {
     currentBaseId,
     gvgBaseControls,
@@ -255,9 +268,16 @@ function MainMyPage() {
           </button>
         </div>
 
-        {/* リーダー立ち絵画像 */}
+        {/* リーダー立ち絵画像 (修復: /characters/ パスより高画質全画面フィット) */}
         <div className="mypage-leader-container">
-          <img src={leaderChar.img} alt={leaderChar.jpName} className="mypage-leader-img" />
+          <img
+            src={getCharacterTransparentImg(leaderChar.name)}
+            alt={leaderChar.jpName}
+            className="mypage-leader-img"
+            onError={(e) => {
+              (e.target as HTMLImageElement).src = "/characters/reiji_transparent_asset.png";
+            }}
+          />
         </div>
       </div>
 

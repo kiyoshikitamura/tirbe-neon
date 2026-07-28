@@ -39,7 +39,7 @@ function AppContent() {
     const handleResize = () => {
       if (typeof window === "undefined") return;
       if (window.innerWidth <= 100) return;
-      setIsPc(window.innerWidth >= 768);
+      setIsPc(window.innerWidth >= 1024);
     };
 
     handleResize();

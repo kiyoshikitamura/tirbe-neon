@@ -96,7 +96,7 @@ html, body {
 }
 
 /* --- PCレイアウト --- */
-@media (min-width: 768px) {
+@media (min-width: 1024px) {
   html, body {
     max-width: none;
     width: 100%;
