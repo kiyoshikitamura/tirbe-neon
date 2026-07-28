@@ -789,7 +789,7 @@ export const BASE_MAP_MASTER = [
   { id: "neon_tower", name: "ネオンタワー", alignment: "ORDER", controlledBy: "黒曜会 (コクヨウカイ)", description: "高級キャバクラやホストクラブ、飲食店、違法IT取引、暗号資産の国際マネーロンダリングなどTOKYO of 夜の歓楽街のトップとして富裕層や犯罪者が街を見下ろしている。" },
   { id: "deep_dock", name: "ディープドック", alignment: "EVIL", controlledBy: "龍頭会 (リュウズカイ)", description: "重厚な港湾設備と薄暗い廃倉庫群。臨海地区のコンテナ密輸ルート、非合法地下格闘技（デスマッチ）、および武装ストリートギャング of たまり場。" },
   { id: "junk_bazar", name: "ジャンクバザール", alignment: "CHAOS", controlledBy: "裏情報屋グリッド", description: "雑多なネオン看板とジャンク電子パーツがひしめく闇市。違法ハッキングチップの売買、違法ジャンク武器の密売、コンカフェを介した情報売買などの闇情報ネットワークの巣窟。" },
-  { id: "kitakura_gate", name: "キタクラゲート", alignment: "JUSTICE", controlledBy: "華興幇 (ファンシンバン)", description: "伝統的な和風ネオン看板と鉄骨が入り乱れる歓楽街の入口。伝統的暴力団『黒曜会』の牙城。風俗街 of ショバ代徴収や、闇スロット店・裏バカラの運営権を握る武闘派組織の総本山。" }
+  { id: "kitakura_gate", name: "キタクラゲート", alignment: "JUSTICE", controlledBy: "華興幇 (ファンシンバン)", description: "北倉地区の地下深くに広がるアングラ地下立体駐車場。暴走集団や裏取引が集う危険な地下アジト関門。" }
 ];
 
 export const GEAR_SLOTS_MASTER = [

@@ -1,3 +1,101 @@
+/* ====================================================================
+   TRIBE: NEON REIGN - Gacha Tab Styles (Matte Outlaw UI)
+   ==================================================================== */
+
+.gacha-view-root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+/* 🎰 ガチャカテゴリ切り替えタブ */
+.gacha-category-tabs {
+  display: flex;
+  gap: 8px;
+}
+
+.gacha-tab-btn {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #a0a0b0;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.gacha-tab-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+}
+
+.active-tab-char {
+  background: rgba(0, 240, 255, 0.12) !important;
+  border-color: var(--neon-cyan) !important;
+  color: var(--neon-cyan) !important;
+}
+
+.active-tab-skill {
+  background: rgba(240, 0, 255, 0.12) !important;
+  border-color: var(--neon-magenta) !important;
+  color: var(--neon-magenta) !important;
+}
+
+.active-tab-equip {
+  background: rgba(255, 170, 0, 0.12) !important;
+  border-color: #ffaa00 !important;
+  color: #ffaa00 !important;
+}
+
+/* 🔴 FREE バッジ (タブ右上) */
+.free-badge-dot {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  background: #ff3366;
+  color: #ffffff;
+  font-size: 9px;
+  font-weight: bold;
+  padding: 1px 5px;
+  border-radius: 8px;
+  box-shadow: 0 0 6px rgba(255, 51, 102, 0.6);
+}
+
+/* 🎰 天井Ptステータスカード */
+.pity-status-card {
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.pity-progress-track {
+  width: 100%;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.pity-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #00f0ff 0%, #f000ff 100%);
+  transition: width 0.3s ease;
+}
+
+.btn-pity-ready {
+  background: linear-gradient(135deg, rgba(0, 240, 255, 0.3) 0%, rgba(240, 0, 255, 0.3) 100%);
+  border: 1px solid var(--neon-cyan);
+  color: #ffffff;
+  cursor: pointer;
+  box-shadow: 0 0 10px rgba(0, 240, 255, 0.3);
+}
+
+.btn-pity-disabled {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.3);
+  cursor: not-allowed;
+}
+
+/* 🎰 ガチャバナー・カード共通 */
 .gacha-title-row {
   display: flex;
   justify-content: space-between;
@@ -9,12 +107,26 @@
   gap: 8px;
 }
 
-.gacha-border-magenta {
-  border: 1px solid var(--neon-magenta) !important;
+.gacha-card-special {
+  background: rgba(240, 0, 255, 0.04) !important;
+  border-color: rgba(240, 0, 255, 0.4) !important;
 }
 
-.gacha-magenta-outline {
-  border-color: var(--neon-magenta) !important;
+.gacha-card-normal {
+  background: rgba(0, 240, 255, 0.04) !important;
+  border-color: rgba(0, 240, 255, 0.3) !important;
+}
+
+.gacha-free-btn {
+  background: linear-gradient(135deg, rgba(0, 240, 255, 0.25) 0%, rgba(0, 240, 255, 0.1) 100%);
+  border: 1px solid var(--neon-cyan);
+  color: #ffffff;
+  box-shadow: 0 0 12px rgba(0, 240, 255, 0.25);
+  cursor: pointer;
+}
+
+.gacha-free-btn:hover {
+  background: linear-gradient(135deg, rgba(0, 240, 255, 0.4) 0%, rgba(0, 240, 255, 0.2) 100%);
 }
 
 .gacha-limit-card {
@@ -30,47 +142,32 @@
   color: #ffaa00;
 }
 
-/* 🎰 チュートリアルガチャ関連スタイル */
-.gacha-tutorial-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.85);
-  z-index: 999;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  backdrop-filter: blur(8px);
+.gacha-magenta-outline {
+  border-color: var(--neon-magenta) !important;
 }
 
-.tutorial-modal-card {
-  border: 1px solid var(--neon-cyan);
-  border-radius: 8px;
-  background: rgba(10, 10, 12, 0.95);
-  box-shadow: 0 0 30px rgba(0, 240, 255, 0.25);
-  padding: 24px;
-  width: 90%;
-  max-width: 320px;
+.border-magenta-subtle {
+  border: 1px solid rgba(240, 0, 255, 0.3);
 }
 
-.tutorial-gacha-btn {
-  background: linear-gradient(135deg, rgba(0, 240, 255, 0.2) 0%, rgba(0, 240, 255, 0.05) 100%);
-  border: 1px solid var(--neon-cyan);
-  color: #ffffff;
+/* 🎰 SSR任意選択モーダル */
+.pity-select-grid {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(160, 160, 170, 0.3) transparent;
+}
+
+.pity-item-card {
+  background: rgba(255, 255, 255, 0.03);
   border-radius: 4px;
-  cursor: pointer;
   transition: all 0.2s ease;
-  box-shadow: 0 0 10px rgba(0, 240, 255, 0.15);
 }
 
-.tutorial-gacha-btn:hover {
-  background: linear-gradient(135deg, rgba(0, 240, 255, 0.3) 0%, rgba(0, 240, 255, 0.1) 100%);
-  box-shadow: 0 0 15px rgba(0, 240, 255, 0.3);
+.pity-item-card:hover {
+  background: rgba(255, 255, 255, 0.08);
 }
 
-.filter-blur {
-  filter: blur(6px);
-  pointer-events: none;
+.selected-pity-item {
+  background: rgba(0, 240, 255, 0.15) !important;
+  border-color: var(--neon-cyan) !important;
+  box-shadow: 0 0 10px rgba(0, 240, 255, 0.3);
 }

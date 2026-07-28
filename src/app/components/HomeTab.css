@@ -102,11 +102,14 @@
 .mypage-visual-area {
   position: relative;
   flex: 0 0 auto;
-  height: 50vh;
+  height: 48dvh;
+  min-height: 280px;
+  max-height: 420px;
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
   overflow: hidden;
+  width: 100%;
 }
 
 .mypage-visual-overlay {

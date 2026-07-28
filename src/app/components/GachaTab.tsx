@@ -1,242 +1,370 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { useGame } from "../context/GameContext";
+import { CHARACTERS_MASTER } from "../../utils/game_constants";
+import { SKILLS_MASTER_DATA } from "../../utils/skills_master_data";
+import { EQUIPMENTS_MASTER_DATA } from "../../utils/equipments_master_data";
 import "./GachaTab.css";
 
 export default function GachaTab() {
-  const { handleScout, gachaMasters, userCharactersDbList } = useGame();
+  const {
+    handleScout,
+    gachaMasters,
+    dailyFreeGachaFlags,
+    specialPityPoints,
+    handleExchangePityReward,
+    cash,
+    diamonds
+  } = useGame();
 
-  const isTutorial = !userCharactersDbList || userCharactersDbList.length === 0;
+  // 現在のカテゴリタブ ('CHARACTER' | 'SKILL' | 'EQUIPMENT')
+  const [activeCategory, setActiveCategory] = useState<"CHARACTER" | "SKILL" | "EQUIPMENT">("CHARACTER");
+  // 天井SSR任意選択モーダルの開閉状態
+  const [showPityModal, setShowPityModal] = useState<boolean>(false);
+  const [selectedPityRewardId, setSelectedPityRewardId] = useState<string>("");
 
-  // 各種マスタデータの参照
-  const normalGacha = gachaMasters?.find((g: any) => g.id === "CHAR_NORMAL");
-  const exGacha = gachaMasters?.find((g: any) => g.id === "CHAR_EX");
-  const limitGacha = gachaMasters?.find((g: any) => g.id === "CHAR_LIMIT");
-  const tutorialGacha = gachaMasters?.find((g: any) => g.id === "CHAR_TUTORIAL");
+  // 期間限定ガチャの有無判定
+  const limitCharGacha = gachaMasters?.find((g: any) => g.id === "CHAR_LIMIT");
+  const limitSkillGacha = gachaMasters?.find((g: any) => g.id === "LIMIT_SKILL");
+  const limitEquipGacha = gachaMasters?.find((g: any) => g.id === "LIMIT_EQUIP");
+
+  const hasDailyFree = dailyFreeGachaFlags[activeCategory];
+
+  // 天井選択肢リスト（SSRのみ）
+  const ssrCharacters = CHARACTERS_MASTER.filter((c: any) => c.rarity === "SSR");
+  const ssrSkills = SKILLS_MASTER_DATA.filter((s: any) => s.rarity === "SSR");
+  const ssrEquipments = EQUIPMENTS_MASTER_DATA.filter((e: any) => e.rarity === "SSR");
+
+  const getPityPool = () => {
+    if (activeCategory === "CHARACTER") return ssrCharacters;
+    if (activeCategory === "SKILL") return ssrSkills;
+    return ssrEquipments;
+  };
+
+  const handleConfirmPityExchange = () => {
+    if (!selectedPityRewardId) return;
+    handleExchangePityReward(activeCategory, selectedPityRewardId);
+    setShowPityModal(false);
+    setSelectedPityRewardId("");
+  };
 
   return (
-    <div className="view-container relative">
+    <div className="view-container relative gacha-view-root">
       <h2 className="view-title">スカウト (ガチャ)</h2>
 
-      {/* 🎰 チュートリアル100連無料ガチャの強制ガード */}
-      {isTutorial ? (
-        <div className="gacha-tutorial-overlay flex flex-col items-center justify-center p-6 text-center">
-          <div className="tutorial-modal-card border-cyan shadow-cyan-20 max-w-sm w-full p-6 background-black-90 border-cyan-glow">
-            <h3 className="font-size-14 text-color-cyan font-weight-bold mb-2 tracking-wider">
-              TUTORIAL SCOUT
-            </h3>
-            <p className="font-size-8 text-secondary mb-4 line-height-14">
-              抗争に参入するための最初の構成員をスカウトします。<br/>
-              チュートリアル限定で、**無料で100連**スカウトを実行できます！
-            </p>
-            <button 
-              className="claim-reward-btn active-scale-effect font-weight-bold py-3 width-100 font-size-9 tutorial-gacha-btn"
-              onClick={() => handleScout("CHAR_TUTORIAL", 100, "DIAMOND")}
+      {/* 🎰 カテゴリ切替タブ (キャラ / スキル / 装備) */}
+      <div className="gacha-category-tabs flex gap-2 mb-3">
+        <button
+          className={`gacha-tab-btn flex-1 py-2 font-weight-bold font-size-8 active-scale-effect relative ${
+            activeCategory === "CHARACTER" ? "active-tab-char" : ""
+          }`}
+          onClick={() => setActiveCategory("CHARACTER")}
+        >
+          キャラクター
+          {dailyFreeGachaFlags.CHARACTER && <span className="free-badge-dot">FREE</span>}
+        </button>
+
+        <button
+          className={`gacha-tab-btn flex-1 py-2 font-weight-bold font-size-8 active-scale-effect relative ${
+            activeCategory === "SKILL" ? "active-tab-skill" : ""
+          }`}
+          onClick={() => setActiveCategory("SKILL")}
+        >
+          スキル
+          {dailyFreeGachaFlags.SKILL && <span className="free-badge-dot">FREE</span>}
+        </button>
+
+        <button
+          className={`gacha-tab-btn flex-1 py-2 font-weight-bold font-size-8 active-scale-effect relative ${
+            activeCategory === "EQUIPMENT" ? "active-tab-equip" : ""
+          }`}
+          onClick={() => setActiveCategory("EQUIPMENT")}
+        >
+          装備品
+          {dailyFreeGachaFlags.EQUIPMENT && <span className="free-badge-dot">FREE</span>}
+        </button>
+      </div>
+
+      {/* 🎰 天井Ptプログレスバー ＆ 交換所ボタン */}
+      <div className="pity-status-card background-black-80 border-metal p-3 mb-3 flex items-center justify-between">
+        <div className="flex-1 mr-3">
+          <div className="flex justify-between items-center mb-1">
+            <span className="font-size-8 text-secondary">スペシャルガチャ天井Pt</span>
+            <span className="font-size-8 font-weight-bold text-color-cyan">
+              {specialPityPoints} / 200 Pt
+            </span>
+          </div>
+          <div className="pity-progress-track">
+            <div
+              className="pity-progress-bar"
+              style={{ width: `${Math.min(100, (specialPityPoints / 200) * 100)}%` }}
+            />
+          </div>
+        </div>
+        <button
+          className={`pity-exchange-btn py-2 px-3 active-scale-effect font-size-8 font-weight-bold ${
+            specialPityPoints >= 200 ? "btn-pity-ready" : "btn-pity-disabled"
+          }`}
+          onClick={() => setShowPityModal(true)}
+        >
+          SSR任意選択
+        </button>
+      </div>
+
+      {/* 🎰 メインガチャリスト (縦並び: 限定 ➔ スペシャル ➔ ノーマル) */}
+      <div className="scroll-container flex-1 flex-col-gap-3 pb-6">
+
+        {/* 1. 期間限定ガチャ (該当カテゴリがある場合のみ表示) */}
+        {activeCategory === "CHARACTER" && limitCharGacha && (
+          <div className="upgrade-card gacha-limit-card border-warning">
+            <div className="upgrade-card-title flex items-center justify-between gacha-title-row">
+              <span className="text-color-warning">【期間限定】情報屋ルイ ピックアップガチャ</span>
+              <span className="font-size-8 font-weight-bold text-color-warning">〜7/31まで</span>
+            </div>
+            <div className="font-size-8 text-gray-400 mt-1">
+              情報屋ルイ（SSR）の出現確率が大幅アップしている特別なスカウトです。
+            </div>
+            <div className="flex gap-2 mt-3 gacha-btn-layout">
+              <button
+                className="upgrade-btn flex-1 active-scale-effect font-size-8 py-2 gacha-warning-outline"
+                onClick={() => handleScout("CHAR_LIMIT", 1, "DIAMOND")}
+              >
+                1回 (ダイヤ 40)
+              </button>
+              <button
+                className="upgrade-btn flex-1 active-scale-effect font-size-8 py-2 gacha-warning-outline"
+                onClick={() => handleScout("CHAR_LIMIT", 10, "DIAMOND")}
+              >
+                10回 (ダイヤ 400)
+              </button>
+            </div>
+          </div>
+        )}
+
+        {activeCategory === "SKILL" && limitSkillGacha && (
+          <div className="upgrade-card gacha-limit-card border-warning">
+            <div className="upgrade-card-title flex items-center justify-between gacha-title-row">
+              <span className="text-color-warning">【期間限定】電子の女王スキルガチャ</span>
+              <span className="font-size-8 font-weight-bold text-color-warning">〜7/31まで</span>
+            </div>
+            <div className="font-size-8 text-gray-400 mt-1">
+              ルイ専用SSRスキル「ライトニング・グリッド」のピックアップ。
+            </div>
+            <div className="flex gap-2 mt-3 gacha-btn-layout">
+              <button
+                className="upgrade-btn flex-1 active-scale-effect font-size-8 py-2 gacha-warning-outline"
+                onClick={() => handleScout("LIMIT_SKILL", 1, "DIAMOND")}
+              >
+                1回 (ダイヤ 40)
+              </button>
+              <button
+                className="upgrade-btn flex-1 active-scale-effect font-size-8 py-2 gacha-warning-outline"
+                onClick={() => handleScout("LIMIT_SKILL", 10, "DIAMOND")}
+              >
+                10回 (ダイヤ 400)
+              </button>
+            </div>
+          </div>
+        )}
+
+        {activeCategory === "EQUIPMENT" && limitEquipGacha && (
+          <div className="upgrade-card gacha-limit-card border-warning">
+            <div className="upgrade-card-title flex items-center justify-between gacha-title-row">
+              <span className="text-color-warning">【期間限定】漆黒のギア装備ガチャ</span>
+              <span className="font-size-8 font-weight-bold text-color-warning">〜7/31まで</span>
+            </div>
+            <div className="font-size-8 text-gray-400 mt-1">
+              レオン・ユウキ専用SSR装備の出現率アップ。キャッシュでも引けます。
+            </div>
+            <div className="flex gap-2 mt-3 gacha-btn-layout">
+              <button
+                className="upgrade-btn flex-1 active-scale-effect font-size-8 py-2"
+                onClick={() => handleScout("LIMIT_EQUIP", 1, "CASH")}
+              >
+                1回 (金 12,000)
+              </button>
+              <button
+                className="upgrade-btn flex-1 active-scale-effect font-size-8 py-2"
+                onClick={() => handleScout("LIMIT_EQUIP", 10, "CASH")}
+              >
+                10回 (金 120,000)
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* 2. スペシャルガチャ (常設・R以上確定・200Pt天井) */}
+        <div className="upgrade-card border-magenta gacha-card-special">
+          <div className="upgrade-card-title flex items-center justify-between gacha-title-row">
+            <span className="text-color-magenta font-weight-bold">
+              {activeCategory === "CHARACTER" && "スペシャルスカウト"}
+              {activeCategory === "SKILL" && "スペシャルスキルガチャ"}
+              {activeCategory === "EQUIPMENT" && "スペシャル装備ガチャ"}
+            </span>
+            <span className="font-size-8 text-color-magenta font-weight-bold">
+              R以上確定 ｜ SSR 5%
+            </span>
+          </div>
+          <div className="font-size-8 text-gray-400 mt-1">
+            N出現なし。R 60% / SR 35% / SSR 5%。200Pt蓄積でSSRを任意選択可能！
+          </div>
+
+          {/* キャッシュ実行ボタン */}
+          <div className="flex gap-2 mt-3 gacha-btn-layout">
+            <button
+              className="upgrade-btn flex-1 active-scale-effect font-size-8 py-2 gacha-magenta-outline"
+              onClick={() => handleScout(`${activeCategory === "CHARACTER" ? "CHAR" : activeCategory}_SPECIAL`, 1, "CASH")}
             >
-              無料で100連を引く
+              1回 (金 3,000)
+            </button>
+            <button
+              className="upgrade-btn flex-1 active-scale-effect font-size-8 py-2 gacha-magenta-outline"
+              onClick={() => handleScout(`${activeCategory === "CHARACTER" ? "CHAR" : activeCategory}_SPECIAL`, 10, "CASH")}
+            >
+              10回 (金 30,000)
             </button>
           </div>
-        </div>
-      ) : null}
 
-      <div className={`scroll-container flex-1 flex-col-gap-3 ${isTutorial ? "filter-blur" : ""}`}>
-        
-        {/* 構成員 (キャラクター) ガチャセクション */}
-        <div className="gacha-section-title font-size-9 font-weight-bold text-white border-bottom-subtle pb-1">
-          構成員スカウト (キャラクター)
-        </div>
-
-        {/* 1. 定常構成員ガチャ */}
-        <div className="upgrade-card border-cyan">
-          <div className="upgrade-card-title flex items-center justify-between gacha-title-row">
-            <span>定常構成員ガチャ</span>
-            <span className="font-size-8 text-secondary">全構成員が均等確率で出現</span>
-          </div>
-          <div className="font-size-8 text-gray-400 mt-1">新たな構成員（キャラクター）をスカウトして、組織の戦力を拡張します。</div>
-          <div className="flex gap-2 mt-3 gacha-btn-layout">
-            <button className="upgrade-btn flex-1 active-scale-effect font-size-8 py-2" onClick={() => handleScout("CHAR_NORMAL", 1, "CASH")}>
-              1回 (金 {(normalGacha?.cost_cash || 50000).toLocaleString()})
-            </button>
-            <button className="upgrade-btn flex-1 active-scale-effect font-size-8 py-2" onClick={() => handleScout("CHAR_NORMAL", 10, "CASH")}>
-              10回 (金 {((normalGacha?.cost_cash || 50000) * 10).toLocaleString()})
-            </button>
-          </div>
+          {/* ダイヤ実行ボタン */}
           <div className="flex gap-2 mt-2 gacha-btn-layout">
-            <button className="upgrade-btn flex-1 active-scale-effect font-size-8 py-2 border-cyan-subtle" onClick={() => handleScout("CHAR_NORMAL", 1, "DIAMOND")}>
-              1回 (ダイヤ {normalGacha?.cost_diamond || 100})
+            <button
+              className="upgrade-btn flex-1 active-scale-effect font-size-8 py-2 border-magenta-subtle"
+              onClick={() => handleScout(`${activeCategory === "CHARACTER" ? "CHAR" : activeCategory}_SPECIAL`, 1, "DIAMOND")}
+            >
+              1回 (ダイヤ 300)
             </button>
-            <button className="upgrade-btn flex-1 active-scale-effect font-size-8 py-2 border-cyan-subtle" onClick={() => handleScout("CHAR_NORMAL", 10, "DIAMOND")}>
-              10回 (ダイヤ {(normalGacha?.cost_diamond || 100) * 10})
+            <button
+              className="upgrade-btn flex-1 active-scale-effect font-size-8 py-2 border-magenta-subtle"
+              onClick={() => handleScout(`${activeCategory === "CHARACTER" ? "CHAR" : activeCategory}_SPECIAL`, 10, "DIAMOND")}
+            >
+              10回 (ダイヤ 3,000)
             </button>
           </div>
         </div>
 
-        {/* 2. 有償限定構成員ガチャ */}
-        <div className="upgrade-card border-magenta gacha-border-magenta">
+        {/* 3. ノーマルガチャ (毎日10連無料 / N 50%, R 40%, SR 10%) */}
+        <div className="upgrade-card border-cyan gacha-card-normal">
           <div className="upgrade-card-title flex items-center justify-between gacha-title-row">
-            <span className="text-color-magenta">有償限定構成員ガチャ</span>
-            <span className="font-size-8 text-color-magenta font-weight-bold">10連でおまけ付き</span>
+            <span className="text-color-cyan font-weight-bold">
+              {activeCategory === "CHARACTER" && "ノーマルスカウト"}
+              {activeCategory === "SKILL" && "ノーマルスキルガチャ"}
+              {activeCategory === "EQUIPMENT" && "ノーマル装備ガチャ"}
+            </span>
+            <span className="font-size-8 text-secondary">
+              N 50% ｜ R 40% ｜ SR 10%
+            </span>
           </div>
-          <div className="font-size-8 text-gray-400 mt-1">有償ダイヤ限定。10連スカウト実行時に、おまけとして「抗争の掟 x1」を獲得できます。</div>
-          <div className="flex gap-2 mt-3 gacha-btn-layout">
-            <button className="upgrade-btn flex-1 active-scale-effect font-size-8 py-2 gacha-magenta-outline" onClick={() => handleScout("CHAR_EX", 1, "DIAMOND")}>
-              1回 (ダイヤ {exGacha?.cost_pay_diamond || 100})
-            </button>
-            <button className="upgrade-btn flex-1 active-scale-effect font-size-8 py-2 gacha-magenta-outline" onClick={() => handleScout("CHAR_EX", 10, "DIAMOND")}>
-              10回 (ダイヤ {(exGacha?.cost_pay_diamond || 100) * 10})
-            </button>
+          <div className="font-size-8 text-gray-400 mt-1">
+            毎日1回10連が無料！基本構成員・スキル・装備品を獲得します。
           </div>
-        </div>
 
-        {/* 3. 期間限定ピックアップ構成員ガチャ */}
-        <div className="upgrade-card gacha-limit-card border-warning">
-          <div className="upgrade-card-title flex items-center justify-between gacha-title-row">
-            <span className="text-color-warning">【期間限定】情報屋ルイ ピックアップガチャ</span>
-            <span className="font-size-8 font-weight-bold text-color-warning">〜7/31まで</span>
-          </div>
-          <div className="font-size-8 text-gray-400 mt-1">ルイ専用。情報屋ルイ（SSR）の出現率が大幅にアップしている特別なスカウトです。</div>
-          <div className="flex gap-2 mt-3 gacha-btn-layout">
-            <button className="upgrade-btn flex-1 active-scale-effect font-size-8 py-2 gacha-warning-outline" onClick={() => handleScout("CHAR_LIMIT", 1, "DIAMOND")}>
-              1回 (ダイヤ {limitGacha?.cost_diamond || 120})
-            </button>
-            <button className="upgrade-btn flex-1 active-scale-effect font-size-8 py-2 gacha-warning-outline" onClick={() => handleScout("CHAR_LIMIT", 10, "DIAMOND")}>
-              10回 (ダイヤ {(limitGacha?.cost_diamond || 120) * 10})
-            </button>
-          </div>
-        </div>
+          {/* 無料10連ボタン (未消化時のみ優先表示) */}
+          {hasDailyFree ? (
+            <div className="mt-3">
+              <button
+                className="claim-reward-btn active-scale-effect width-100 py-3 font-weight-bold font-size-9 gacha-free-btn"
+                onClick={() => handleScout(`${activeCategory === "CHARACTER" ? "CHAR" : activeCategory}_NORMAL`, 10, "FREE")}
+              >
+                毎日10連無料を引く
+              </button>
+            </div>
+          ) : (
+            <div className="font-size-8 text-color-cyan mt-2 text-center py-1 background-cyan-10 border-cyan-subtle">
+              本日の無料10連は使用済みです
+            </div>
+          )}
 
-        {/* スキル・装備ガチャセクション */}
-        <div className="gacha-section-title font-size-9 font-weight-bold text-white border-bottom-subtle pb-1 mt-2">
-          戦術拡張 (スキル ＆ 装備品)
-        </div>
-
-        {/* スキルカードガチャ */}
-        <div className="upgrade-card border-cyan">
-          <div className="upgrade-card-title flex items-center justify-between gacha-title-row">
-            <span>定常スキルカードガチャ</span>
-            <span className="font-size-8 text-secondary">N〜SSR排出</span>
-          </div>
-          <div className="font-size-8 text-gray-400 mt-1">スキルカードを獲得し、戦闘時の戦術を拡張します。</div>
+          {/* 有料実行ボタン (キャッシュ) */}
           <div className="flex gap-2 mt-3 gacha-btn-layout">
-            <button className="upgrade-btn flex-1 active-scale-effect font-size-8 py-2" onClick={() => handleScout("SKILL", 1, "CASH")}>
-              1回 (金10,000)
+            <button
+              className="upgrade-btn flex-1 active-scale-effect font-size-8 py-2"
+              onClick={() => handleScout(`${activeCategory === "CHARACTER" ? "CHAR" : activeCategory}_NORMAL`, 1, "CASH")}
+            >
+              1回 (金 1,000)
             </button>
-            <button className="upgrade-btn flex-1 active-scale-effect font-size-8 py-2" onClick={() => handleScout("SKILL", 10, "CASH")}>
-              10回 (金100,000)
+            <button
+              className="upgrade-btn flex-1 active-scale-effect font-size-8 py-2"
+              onClick={() => handleScout(`${activeCategory === "CHARACTER" ? "CHAR" : activeCategory}_NORMAL`, 10, "CASH")}
+            >
+              10回 (金 10,000)
             </button>
           </div>
+
+          {/* 有料実行ボタン (ダイヤ) */}
           <div className="flex gap-2 mt-2 gacha-btn-layout">
-            <button className="upgrade-btn flex-1 active-scale-effect font-size-8 py-2 border-cyan-subtle" onClick={() => handleScout("SKILL", 1, "DIAMOND")}>
-              1回 (ダイヤ30)
+            <button
+              className="upgrade-btn flex-1 active-scale-effect font-size-8 py-2 border-cyan-subtle"
+              onClick={() => handleScout(`${activeCategory === "CHARACTER" ? "CHAR" : activeCategory}_NORMAL`, 1, "DIAMOND")}
+            >
+              1回 (ダイヤ 100)
             </button>
-            <button className="upgrade-btn flex-1 active-scale-effect font-size-8 py-2 border-cyan-subtle" onClick={() => handleScout("SKILL", 10, "DIAMOND")}>
-              10回 (ダイヤ300)
-            </button>
-          </div>
-        </div>
-
-        {/* スキルカードガチャ (有償限定) */}
-        <div className="upgrade-card border-magenta gacha-border-magenta">
-          <div className="upgrade-card-title flex items-center justify-between gacha-title-row">
-            <span className="text-color-magenta">スキルカードガチャ (有償限定)</span>
-            <span className="font-size-8 text-color-magenta font-weight-bold">SSR 8% ｜ Nなし</span>
-          </div>
-          <div className="font-size-8 text-gray-400 mt-1">有償ダイヤ限定。SR以上確定、SSR確率が大幅に上昇しています。</div>
-          <div className="flex gap-2 mt-3 gacha-btn-layout">
-            <button className="upgrade-btn flex-1 active-scale-effect font-size-8 py-2 gacha-magenta-outline" onClick={() => handleScout("SKILL_EX", 1, "DIAMOND")}>
-              1回 (ダイヤ30)
-            </button>
-            <button className="upgrade-btn flex-1 active-scale-effect font-size-8 py-2 gacha-magenta-outline" onClick={() => handleScout("SKILL_EX", 10, "DIAMOND")}>
-              10回 (ダイヤ300)
-            </button>
-          </div>
-        </div>
-
-        {/* 装備品ガチャ */}
-        <div className="upgrade-card border-cyan">
-          <div className="upgrade-card-title flex items-center justify-between gacha-title-row">
-            <span>定常装備品ガチャ</span>
-            <span className="font-size-8 text-secondary">N〜SSR排出</span>
-          </div>
-          <div className="font-size-8 text-gray-400 mt-1">武器、防具、アクセサリーなどのハクスラ装備を獲得します。</div>
-          <div className="flex gap-2 mt-3 gacha-btn-layout">
-            <button className="upgrade-btn flex-1 active-scale-effect font-size-8 py-2" onClick={() => handleScout("EQUIP", 1, "CASH")}>
-              1回 (金10,000)
-            </button>
-            <button className="upgrade-btn flex-1 active-scale-effect font-size-8 py-2" onClick={() => handleScout("EQUIP", 10, "CASH")}>
-              10回 (金100,000)
-            </button>
-          </div>
-          <div className="flex gap-2 mt-2 gacha-btn-layout">
-            <button className="upgrade-btn flex-1 active-scale-effect font-size-8 py-2 border-cyan-subtle" onClick={() => handleScout("EQUIP", 1, "DIAMOND")}>
-              1回 (ダイヤ30)
-            </button>
-            <button className="upgrade-btn flex-1 active-scale-effect font-size-8 py-2 border-cyan-subtle" onClick={() => handleScout("EQUIP", 10, "DIAMOND")}>
-              10回 (ダイヤ300)
-            </button>
-          </div>
-        </div>
-
-        {/* 装備品ガチャ (有償限定) */}
-        <div className="upgrade-card border-magenta gacha-border-magenta">
-          <div className="upgrade-card-title flex items-center justify-between gacha-title-row">
-            <span className="text-color-magenta">装備品ガチャ (有償限定)</span>
-            <span className="font-size-8 text-color-magenta font-weight-bold">SSR 8% ｜ Nなし</span>
-          </div>
-          <div className="font-size-8 text-gray-400 mt-1">有償ダイヤ限定。強力なサブオプション付き装備の排出率アップ。</div>
-          <div className="flex gap-2 mt-3 gacha-btn-layout">
-            <button className="upgrade-btn flex-1 active-scale-effect font-size-8 py-2 gacha-magenta-outline" onClick={() => handleScout("EQUIP_EX", 1, "DIAMOND")}>
-              1回 (ダイヤ30)
-            </button>
-            <button className="upgrade-btn flex-1 active-scale-effect font-size-8 py-2 gacha-magenta-outline" onClick={() => handleScout("EQUIP_EX", 10, "DIAMOND")}>
-              10回 (ダイヤ300)
-            </button>
-          </div>
-        </div>
-
-        {/* 期間限定ガチャ (電子の女王 ＆ 漆黒のギア) */}
-        <div className="upgrade-card gacha-limit-card">
-          <div className="upgrade-card-title flex items-center justify-between gacha-title-row">
-            <span className="text-color-warning">【期間限定】電子の女王スキルガチャ</span>
-            <span className="font-size-8 font-weight-bold text-color-warning">〜7/31まで</span>
-          </div>
-          <div className="font-size-8 text-gray-400 mt-1">ルイ専用SSRスキル「ライトニング・グリッド」のピックアップ。</div>
-          <div className="flex gap-2 mt-3 gacha-btn-layout">
-            <button className="upgrade-btn flex-1 active-scale-effect font-size-8 py-2 gacha-warning-outline" onClick={() => handleScout("LIMIT_SKILL", 1, "DIAMOND")}>
-              1回 (ダイヤ40)
-            </button>
-            <button className="upgrade-btn flex-1 active-scale-effect font-size-8 py-2 gacha-warning-outline" onClick={() => handleScout("LIMIT_SKILL", 10, "DIAMOND")}>
-              10回 (ダイヤ400)
-            </button>
-          </div>
-        </div>
-
-        <div className="upgrade-card gacha-limit-card">
-          <div className="upgrade-card-title flex items-center justify-between gacha-title-row">
-            <span className="text-color-warning">【期間限定】漆黒のギア装備ガチャ</span>
-            <span className="font-size-8 font-weight-bold text-color-warning">〜7/31まで</span>
-          </div>
-          <div className="font-size-8 text-gray-400 mt-1">レオン、ユウキ専用SSR武器の出現率アップ。キャッシュでも引けます。</div>
-          <div className="flex gap-2 mt-3 gacha-btn-layout">
-            <button className="upgrade-btn flex-1 active-scale-effect font-size-8 py-2" onClick={() => handleScout("LIMIT_EQUIP", 1, "CASH")}>
-              1回 (金12,000)
-            </button>
-            <button className="upgrade-btn flex-1 active-scale-effect font-size-8 py-2" onClick={() => handleScout("LIMIT_EQUIP", 10, "CASH")}>
-              10回 (金120,000)
-            </button>
-          </div>
-          <div className="flex gap-2 mt-2 gacha-btn-layout">
-            <button className="upgrade-btn flex-1 active-scale-effect font-size-8 py-2 gacha-warning-outline" onClick={() => handleScout("LIMIT_EQUIP", 1, "DIAMOND")}>
-              1回 (ダイヤ40)
-            </button>
-            <button className="upgrade-btn flex-1 active-scale-effect font-size-8 py-2 gacha-warning-outline" onClick={() => handleScout("LIMIT_EQUIP", 10, "DIAMOND")}>
-              10回 (ダイヤ400)
+            <button
+              className="upgrade-btn flex-1 active-scale-effect font-size-8 py-2 border-cyan-subtle"
+              onClick={() => handleScout(`${activeCategory === "CHARACTER" ? "CHAR" : activeCategory}_NORMAL`, 10, "DIAMOND")}
+            >
+              10回 (ダイヤ 1,000)
             </button>
           </div>
         </div>
 
       </div>
+
+      {/* 🎰 SSR任意選択 (天井200Pt達成モーダル) */}
+      {showPityModal && (
+        <div className="common-modal-backdrop flex items-center justify-center p-4">
+          <div className="common-modal-card background-black-90 border-cyan max-w-md width-100 p-5">
+            <h3 className="font-size-11 text-color-cyan font-weight-bold mb-2">
+              SSR任意選択所 (天井交換)
+            </h3>
+            <p className="font-size-8 text-secondary mb-4">
+              スペシャルガチャPt (所持: {specialPityPoints} Pt) を200Pt消費して、任意のSSRアイテムを獲得できます。
+            </p>
+
+            <div className="pity-select-grid grid grid-cols-2 gap-2 max-height-300 overflow-y-auto mb-4 p-1">
+              {getPityPool().map((item: any) => {
+                const isSelected = selectedPityRewardId === item.id;
+                return (
+                  <div
+                    key={item.id}
+                    className={`pity-item-card p-2 border-metal flex items-center gap-2 cursor-pointer active-scale-effect ${
+                      isSelected ? "selected-pity-item" : ""
+                    }`}
+                    onClick={() => setSelectedPityRewardId(item.id)}
+                  >
+                    <div className="font-size-8 font-weight-bold text-white flex-1 truncate">
+                      {item.jpName || item.name}
+                    </div>
+                    <div className="font-size-7 text-color-cyan font-weight-bold">
+                      SSR
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="flex gap-2 justify-end mt-4">
+              <button
+                className="btn-secondary py-2 px-4 font-size-8"
+                onClick={() => setShowPityModal(false)}
+              >
+                キャンセル
+              </button>
+              <button
+                className={`py-2 px-4 font-size-8 font-weight-bold ${
+                  specialPityPoints >= 200 && selectedPityRewardId
+                    ? "claim-reward-btn active-scale-effect"
+                    : "btn-pity-disabled"
+                }`}
+                onClick={handleConfirmPityExchange}
+                disabled={specialPityPoints < 200 || !selectedPityRewardId}
+              >
+                200Ptで交換する
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

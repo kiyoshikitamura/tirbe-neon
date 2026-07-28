@@ -2,8 +2,9 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { useGame } from "../context/GameContext";
-import { CHARACTERS_MASTER } from "@/utils/game_constants";
+import { CHARACTERS_MASTER, getCharacterTransparentImg } from "@/utils/game_constants";
 import { EQUIPMENTS_MASTER_DATA } from "@/utils/equipments_master_data";
+import CardIcon from "./CardIcon";
 import "./CardBattleView.css";
 
 export default function CardBattleView() {
@@ -119,23 +120,30 @@ export default function CardBattleView() {
                 <span>自連合部隊 (編成キャラ)</span>
                 <span className="text-secondary font-size-6">※タップして詳細確認</span>
               </div>
-              <div className="setup-cards-row">
+              <div className="setup-cards-row gap-2 justify-between">
                 {playerPartyStates.map((charState: any, idx: number) => {
                   const hpPercent = (charState.hp / charState.maxHp) * 100;
+                  const masterData = CHARACTERS_MASTER.find(m => m.id === charState.characterId || m.name === charState.characterId);
+                  const rarity = (masterData as any)?.rarity || "R";
+
                   return (
                     <div 
                       key={idx} 
-                      className="setup-char-card"
+                      className="setup-char-card flex-col items-center cursor-pointer active-scale-effect"
                       onClick={() => { setSelectedCharDetail(charState); playCyberSe("click"); }}
                     >
-                      <img 
-                        src={`/char/${charState.characterId}.png`} 
-                        onError={(e) => { (e.target as HTMLImageElement).src = "/char/char_fallback.png"; }}
-                        alt={charState.name} 
+                      {/* 本番縦型スリムトレカ枠 CardIcon */}
+                      <CardIcon
+                        rarity={rarity}
+                        img={getCharacterTransparentImg(masterData?.name || "reiji")}
+                        jpName={charState.name}
+                        alignment={masterData?.alignment}
+                        size={56}
+                        mode="battle_slim"
                       />
-                      <div className="setup-card-name truncate">{charState.name}</div>
-                      <div className="setup-card-lv">Lv.{charState.level}</div>
-                      <div className="setup-card-hp-bar">
+                      <div className="setup-card-name truncate mt-1 font-size-6">{charState.name}</div>
+                      <div className="setup-card-lv font-size-6 text-amber-300">Lv.{charState.level}</div>
+                      <div className="setup-card-hp-bar w-full mt-1">
                         <div className="setup-card-hp-fill" style={{ width: `${hpPercent}%` }} />
                       </div>
                     </div>

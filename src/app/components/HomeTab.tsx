@@ -12,25 +12,56 @@ import {
 } from "@/utils/game_constants";
 import { getCharacterTotalStats } from "@/utils/stats_calculator";
 import AvatarRenderer from "./AvatarRenderer";
+import { LoginBonusModal } from "./LoginBonusModal";
 import "./HomeTab.css";
 
 // ==============================================
 // HomeTab - ルーター (homeSubPanel による画面切替)
 // ==============================================
 export default function HomeTab() {
-  const { homeSubPanel } = useGame();
+  const {
+    homeSubPanel,
+    showLoginBonusModal,
+    setShowLoginBonusModal,
+    loginBonusMasters,
+    userLoginBonus,
+    loginBonusClaimResult,
+    setHomeSubPanel,
+    setInboxTab,
+  } = useGame();
 
-  switch (homeSubPanel) {
-    case "profile":
-      return <ProfilePanel />;
-    case "missions":
-      return <MissionsPanel />;
-    case "inbox":
-      return <InboxPanel />;
-    case "main":
-    default:
-      return <MainMyPage />;
-  }
+  const renderContent = () => {
+    switch (homeSubPanel) {
+      case "profile":
+        return <ProfilePanel />;
+      case "missions":
+        return <MissionsPanel />;
+      case "inbox":
+        return <InboxPanel />;
+      case "main":
+      default:
+        return <MainMyPage />;
+    }
+  };
+
+  return (
+    <>
+      {renderContent()}
+      {showLoginBonusModal && (
+        <LoginBonusModal
+          masters={loginBonusMasters}
+          currentStep={userLoginBonus?.current_step || loginBonusClaimResult?.current_step || 1}
+          claimResult={loginBonusClaimResult}
+          onClose={() => setShowLoginBonusModal(false)}
+          onOpenPresents={() => {
+            setShowLoginBonusModal(false);
+            setHomeSubPanel("inbox");
+            setInboxTab("presents");
+          }}
+        />
+      )}
+    </>
+  );
 }
 
 // ==============================================
@@ -58,6 +89,11 @@ function MainMyPage() {
     setHomeSubPanel,
     setInboxTab,
     navigateTab,
+    showLoginBonusModal,
+    setShowLoginBonusModal,
+    loginBonusMasters,
+    userLoginBonus,
+    loginBonusClaimResult,
     playCyberSe,
     userCharactersDbList,
     userEquipmentsList,
@@ -93,12 +129,13 @@ function MainMyPage() {
     }, 0);
   }, [userCharactersDbList, userEquipmentsList]);
 
-  // 拠点背景URL
+  // 本番拠点背景URLの解決 (FIX済み public/bg/bg_base_*.png)
   const bgUrl =
-    currentBaseId === "neon_tower" ? "/shinjuku_neon_icon_1783765789862.png" :
-    currentBaseId === "deep_dock" ? "/tokyo_map.png" :
-    currentBaseId === "junk_bazar" ? "/shibuya_scramble.png" :
-    "/shinjuku_neon_icon_1783765789862.png";
+    currentBaseId === "neon_tower" || currentBaseId === "shinjuku" ? "/bg/bg_base_neontower.png" :
+    currentBaseId === "deep_dock" || currentBaseId === "shinagawa" ? "/bg/bg_base_deepdock.png" :
+    currentBaseId === "junk_bazar" || currentBaseId === "akihabara" ? "/bg/bg_base_junkbazaar.png" :
+    currentBaseId === "kitakura_gate" || currentBaseId === "ikebukuro" ? "/bg/bg_base_kitakuragate.png" :
+    "/bg/bg_base_neontower.png";
 
   // マウント時にスクロール位置をトップにリセット（タブ復帰時の見切れ防止）
   React.useEffect(() => {

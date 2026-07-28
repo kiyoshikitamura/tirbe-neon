@@ -13,9 +13,13 @@ import {
 import { SKILLS_MASTER_DATA } from "@/utils/skills_master_data";
 import { EQUIPMENTS_MASTER_DATA } from "@/utils/equipments_master_data";
 import { getCharacterTotalStats } from "@/utils/stats_calculator";
+import CardIcon from "./CardIcon";
+import { useImagePreloader } from "../hooks/useImagePreloader";
 import "./CharacterTab.css";
 
 export default function CharacterTab() {
+  // アセット事前自動メモリプリロード (チラつき完全排除)
+  useImagePreloader();
   const {
     upgradeSelectedCharId,
     setUpgradeSelectedCharId,
@@ -359,9 +363,9 @@ export default function CharacterTab() {
           </div>
         </div>
 
-        {/* 下部: 所持キャラクター 5列カードグリッド */}
+        {/* 下部: 所持キャラクター 5列カードグリッド (本番 CardIcon 適用) */}
         <div className="scroll-container flex-1">
-          <div className="char-card-grid-5">
+          <div className="char-card-grid-5 gap-2 p-2">
             {filteredSortedCharList.map((charRec: any) => {
               const masterData = CHARACTERS_MASTER.find(m => m.id === charRec.character_id);
               if (!masterData) return null;
@@ -369,12 +373,11 @@ export default function CharacterTab() {
               const partyIndex = selectedMembers.indexOf(masterData.id);
               const isInParty = partyIndex !== -1;
               const rarity = (masterData as any).rarity || "R";
-              const alignInfo = getAlignmentShortJp(masterData.alignment);
 
               return (
                 <div
                   key={charRec.id}
-                  className={`char-card-item rarity-frame-${rarity.toLowerCase()}`}
+                  className="relative flex-col items-center justify-center cursor-pointer active-scale-effect group mb-2"
                   onClick={() => {
                     playCyberSe("click");
                     if (opMode === "DECK") {
@@ -385,44 +388,29 @@ export default function CharacterTab() {
                     }
                   }}
                 >
-                  {/* 1文字属性バッジ */}
-                  <div className={`align-badge ${alignInfo.colorClass}`}>
-                    {alignInfo.label}
-                  </div>
+                  {/* 新本番 CardIcon (顔アップ ＋ レアリティ枠 ＋ 左上属性オーブ) */}
+                  <CardIcon
+                    rarity={rarity}
+                    img={getCharacterTransparentImg(masterData.name)}
+                    jpName={masterData.jpName}
+                    alignment={masterData.alignment}
+                    size={68}
+                    mode="square"
+                  />
 
-                  {/* 右上詳細小ボタン */}
-                  <button
-                    className="card-detail-btn active-scale-effect"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      playCyberSe("click");
-                      setUpgradeSelectedCharId(masterData.id);
-                      setMainViewMode("DETAIL");
-                    }}
-                  >
-                    詳細
-                  </button>
-
-                  {/* 編成中暗転バッジ */}
+                  {/* 編成中オーバーレイバッジ */}
                   {isInParty && (
-                    <div className="char-card-in-party-overlay">
-                      <span className="party-badge-tag">
-                        メンバ{partyIndex + 1}編成
+                    <div className="absolute inset-0 bg-black-60 rounded flex items-center justify-center z-30 pointer-events-none">
+                      <span className="bg-cyan-600 text-white font-size-6 font-bold px-1 py-0.5 rounded shadow">
+                        出撃{partyIndex + 1}
                       </span>
                     </div>
                   )}
 
-                  {/* アバター立ち絵 */}
-                  <img
-                    src={getCharacterTransparentImg(masterData.name)}
-                    alt={masterData.jpName}
-                    className="char-card-avatar"
-                    onError={(e) => { (e.target as HTMLImageElement).src = "/reiji_transparent_asset.png"; }}
-                  />
-
-                  {/* レベル */}
-                  <div className="char-card-lv-text">
-                    Lv.{charRec.level}
+                  {/* レベル ＆ キャラクター名 */}
+                  <div className="text-center mt-1 w-full overflow-hidden">
+                    <div className="font-size-6 text-amber-300 font-mono font-bold">Lv.{charRec.level}</div>
+                    <div className="font-size-6 text-gray-300 font-bold truncate">{masterData.jpName}</div>
                   </div>
                 </div>
               );

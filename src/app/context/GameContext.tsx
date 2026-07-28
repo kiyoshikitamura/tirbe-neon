@@ -16,8 +16,15 @@ import {
   CHARACTER_AWAKENING_MASTER,
   CHARACTER_GROWTH_PATTERNS
 } from "@/utils/game_constants";
+import {
+  LoginBonusMaster,
+  UserLoginBonus,
+  LoginBonusClaimResult,
+  DEFAULT_LOGIN_BONUS_MASTERS,
+} from "@/utils/login_bonus_master_data";
 import { useBattle } from "@/hooks/useBattle";
 import { getCharacterTotalStats } from "@/utils/stats_calculator";
+import { SHOP_PRODUCTS_MASTER, ShopProductItem } from "@/utils/shop_master_data";
 
 const GameContext = createContext<any>(null);
 
@@ -136,6 +143,12 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
   const [gachaMasters, setGachaMasters] = useState<any[]>([]);
   const [gachaItemsMaster, setGachaItemsMaster] = useState<any[]>([]);
+  const [dailyFreeGachaFlags, setDailyFreeGachaFlags] = useState<{ CHARACTER: boolean; SKILL: boolean; EQUIPMENT: boolean }>({
+    CHARACTER: true,
+    SKILL: true,
+    EQUIPMENT: true
+  });
+  const [specialPityPoints, setSpecialPityPoints] = useState<number>(0);
 
   const [scoutAnimationState, setScoutAnimationState] = useState<null | "FLASHING" | "SHOW_RESULTS">(null);
   const [scoutFlashingColor, setScoutFlashingColor] = useState<"BLUE" | "PURPLE" | "GOLD">("BLUE");
@@ -214,7 +227,10 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const [raidBossName, setRaidBossName] = useState<string>("極道連合組長");
 
   const [upgradeSubTab, setUpgradeSubTab] = useState<string>("character");
-  const [shopSubTab, setShopSubTab] = useState<string>("pack");
+  const [shopSubTab, setShopSubTab] = useState<string>("LIMITED");
+  const [userShopPurchases, setUserShopPurchases] = useState<Record<string, number>>({});
+  const [userCreatedAt, setUserCreatedAt] = useState<string | null>(null);
+  const [boughtResultModal, setBoughtResultModal] = useState<{ productTitle: string; items: ShopProductItem[]; message: string } | null>(null);
 
   const [missions, setMissions] = useState<any[]>([]);
   const [missionTab, setMissionTab] = useState<"DAILY" | "NORMAL">("DAILY");
@@ -223,6 +239,13 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const [presentsSyncing, setPresentsSyncing] = useState<boolean>(false);
   const [presentClaimLoading, setPresentClaimLoading] = useState<boolean>(false);
   const [missionClaimLoading, setMissionClaimLoading] = useState<boolean>(false);
+
+  // ログインボーナス用ステート
+  const [loginBonusMasters, setLoginBonusMasters] = useState<LoginBonusMaster[]>(DEFAULT_LOGIN_BONUS_MASTERS);
+  const [userLoginBonus, setUserLoginBonus] = useState<UserLoginBonus | null>(null);
+  const [showLoginBonusModal, setShowLoginBonusModal] = useState<boolean>(false);
+  const [loginBonusClaimResult, setLoginBonusClaimResult] = useState<LoginBonusClaimResult | null>(null);
+
   const [newsList, setNewsList] = useState<any[]>([]);
   const [selectedNews, setSelectedNews] = useState<any | null>(null);
   const [showImportantModal, setShowImportantModal] = useState<boolean>(true);
@@ -531,6 +554,43 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // ログインボーナスのチェックと受取処理 (RPC呼び出し)
+  const checkAndClaimLoginBonus = async (userId: string) => {
+    try {
+      const { data: masterData } = await supabase
+        .from("login_bonus_master")
+        .select("*")
+        .order("day_number", { ascending: true });
+      if (masterData && masterData.length > 0) {
+        setLoginBonusMasters(masterData as LoginBonusMaster[]);
+      }
+
+      const { data: result, error } = await supabase.rpc("process_login_bonus");
+      if (error) {
+        console.warn("Failed to process login bonus RPC:", error);
+        return;
+      }
+
+      if (result) {
+        const claimRes = result as LoginBonusClaimResult;
+        setLoginBonusClaimResult(claimRes);
+        setUserLoginBonus({
+          user_id: userId,
+          current_step: claimRes.current_step,
+          total_logins: claimRes.total_logins || claimRes.current_step,
+          last_claimed_date: claimRes.last_claimed_date || null
+        });
+
+        if (claimRes.claimed) {
+          setShowLoginBonusModal(true);
+          setPresentsPrefetched(false);
+        }
+      }
+    } catch (err: any) {
+      console.warn("checkAndClaimLoginBonus error:", err);
+    }
+  };
+
   // ==========================================
   // 4. Supabase DB実データ同期ロード
   // ==========================================
@@ -547,8 +607,9 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         supabase.from("equipment_level_up_master").select("*"),
         supabase.from("equipment_limit_break_master").select("*"),
         supabase.from("gacha_masters").select("*"),
-        supabase.from("gacha_items_master").select("*")
-      ]).then(([lvlRes, xpRes, skillLbrRes, eqLvlRes, eqLbrRes, gachaRes, gachaItemsRes]) => {
+        supabase.from("gacha_items_master").select("*"),
+        supabase.from("login_bonus_master").select("*").order("day_number", { ascending: true })
+      ]).then(([lvlRes, xpRes, skillLbrRes, eqLvlRes, eqLbrRes, gachaRes, gachaItemsRes, loginBonusRes]) => {
         if (lvlRes.data) setGuildLevelMaster(lvlRes.data);
         if (xpRes.data) setGuildXpActionMaster(xpRes.data);
         if (skillLbrRes.data) setSkillLimitBreakMaster(skillLbrRes.data);
@@ -556,12 +617,13 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         if (eqLbrRes.data) setEquipmentLimitBreakMaster(eqLbrRes.data);
         if (gachaRes.data) setGachaMasters(gachaRes.data);
         if (gachaItemsRes.data) setGachaItemsMaster(gachaItemsRes.data);
+        if (loginBonusRes.data && loginBonusRes.data.length > 0) setLoginBonusMasters(loginBonusRes.data as LoginBonusMaster[]);
       }).catch(err => {
         console.warn("Failed to fetch master data:", err);
       });
 
-
       await syncActiveUsers(userId);
+      await checkAndClaimLoginBonus(userId);
       const { data: recovered } = await supabase.rpc("sync_and_recover_vitality_and_tickets", {
         p_user_id: userId
       });
@@ -576,7 +638,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
       const { data: userProfile } = await supabase
         .from("users")
-        .select("username, favorite_character_id, bio, avatar_url, sound_settings, current_base_id, daily_cash_skips_count, last_guild_left_at, gift_code, title_equipped, equipped_background, equipped_front_effect, level, xp")
+        .select("username, favorite_character_id, bio, avatar_url, sound_settings, current_base_id, daily_cash_skips_count, last_guild_left_at, gift_code, title_equipped, equipped_background, equipped_front_effect, level, xp, created_at")
         .eq("id", userId)
         .single();
       
@@ -596,12 +658,65 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         setEquippedFrontEffect(userProfile.equipped_front_effect || "effect_none");
         setUserLevel(userProfile.level || 1);
         setUserXp(userProfile.xp || 0);
+        setUserCreatedAt((userProfile as any).created_at || null);
 
         if (userProfile.sound_settings) {
           const sound = userProfile.sound_settings as any;
           setBgmEnabled(sound.bgm ?? true);
           setSeEnabled(sound.se ?? true);
         }
+      }
+
+      // ショップ購入履歴の取得
+      try {
+        const { data: purchaseData } = await supabase
+          .from("user_shop_purchases")
+          .select("product_id, purchase_count")
+          .eq("user_id", userId);
+        
+        if (purchaseData) {
+          const pMap: Record<string, number> = {};
+          purchaseData.forEach((p: any) => {
+            pMap[p.product_id] = p.purchase_count;
+          });
+          setUserShopPurchases(pMap);
+        }
+      } catch (pErr) {
+        console.warn("Failed to fetch user shop purchases:", pErr);
+      }
+
+      // 無料ガチャ利用状況 ＆ 天井Ptのフェッチ
+      try {
+        const todayStr = new Date().toISOString().split("T")[0];
+        const { data: claimsData } = await supabase
+          .from("user_daily_gacha_claims")
+          .select("*")
+          .eq("user_id", userId);
+
+        if (claimsData) {
+          const flags = { CHARACTER: true, SKILL: true, EQUIPMENT: true };
+          claimsData.forEach((c: any) => {
+            if (c.last_claimed_date === todayStr) {
+              if (c.gacha_type === "CHARACTER") flags.CHARACTER = false;
+              if (c.gacha_type === "SKILL") flags.SKILL = false;
+              if (c.gacha_type === "EQUIPMENT") flags.EQUIPMENT = false;
+            }
+          });
+          setDailyFreeGachaFlags(flags);
+        }
+
+        const { data: pityData } = await supabase
+          .from("user_gacha_pity_points")
+          .select("current_points")
+          .eq("user_id", userId)
+          .eq("pity_master_id", "pity_special_common")
+          .maybeSingle();
+
+        if (pityData) {
+          setSpecialPityPoints(pityData.current_points || 0);
+        }
+      } catch (gachaErr) {
+        console.warn("Gacha daily/pity fetch warning:", gachaErr);
       }
 
       // --- アバターデータの同期 ---
@@ -1561,7 +1676,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       const { error } = await supabase.rpc("initialize_new_user", {
         p_user_id: session.user.id,
         p_username: setupUsername.trim(),
-        p_character_id: null, // 初期メンバー選択のオミット（null指定）
+        p_character_id: "11111111-1111-1111-1111-111111111111", // デフォルト初期リーダー（レイジ）
         p_area_id: setupAreaId,
         p_gift_code: setupGiftCode.trim() || null,
         p_gender: setupGender,
@@ -4021,97 +4136,102 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const handleScout = async (scoutType: "SKILL" | "SKILL_EX" | "EQUIP" | "EQUIP_EX" | "LIMIT_SKILL" | "LIMIT_EQUIP" | "CHAR" | "CHAR_EX" | "LIMIT_CHAR" | "TUTORIAL_CHAR", scoutCount: number, useCurrency: "CASH" | "DIAMOND") => {
+  const handleScout = async (
+    scoutType: string,
+    scoutCount: number,
+    useCurrency: "CASH" | "DIAMOND" | "FREE"
+  ) => {
     if (!session) return;
-    
-    let cost = 0;
-    const isCharGacha = scoutType.includes("CHAR");
-    const isLimit = scoutType.startsWith("LIMIT_");
-    const isExGacha = scoutType.endsWith("_EX");
 
     setUpgradeLoading(true);
     playCyberSe("click");
 
-    const isSkillGacha = scoutType.includes("SKILL");
-    const results: any[] = [];
-    let highestRarity: "BLUE" | "PURPLE" | "GOLD" = "BLUE";
+    let category: "CHARACTER" | "SKILL" | "EQUIPMENT" = "CHARACTER";
+    if (scoutType.includes("SKILL")) category = "SKILL";
+    else if (scoutType.includes("EQUIP")) category = "EQUIPMENT";
+
+    const isNormal = scoutType.endsWith("_NORMAL");
+    const isSpecial = scoutType.endsWith("_SPECIAL");
+    const isLimit = scoutType.startsWith("LIMIT_");
 
     try {
-      // 1. コスト判定と減算 (マスタデータ gachaMasters より動的取得)
-      if (isCharGacha) {
-        const gachaMaster = gachaMasters.find(g => g.id === scoutType);
-        if (!gachaMaster) {
-          throw new Error("ガチャマスタが見つかりません。");
+      // 1. コスト判定 ＆ 残高/無料フラグチェック
+      if (useCurrency === "FREE") {
+        if (!dailyFreeGachaFlags[category]) {
+          setErrorMessage("本日の無料10連ガチャは使用済みです。");
+          setUpgradeLoading(false);
+          return;
         }
+      } else if (useCurrency === "DIAMOND") {
+        let reqDia = 100;
+        if (isNormal) reqDia = scoutCount === 10 ? 1000 : 100;
+        else if (isSpecial) reqDia = scoutCount === 10 ? 3000 : 300;
+        else if (isLimit) reqDia = scoutCount === 10 ? 400 : 40;
 
-        if (useCurrency === "DIAMOND") {
-          const baseCost = gachaMaster.cost_pay_diamond > 0 ? gachaMaster.cost_pay_diamond : gachaMaster.cost_diamond;
-          cost = baseCost * scoutCount;
-          if (diamonds < cost) {
-            setErrorMessage("ダイヤが不足しています。");
-            setUpgradeLoading(false);
-            return;
-          }
-          const nextDiamonds = diamonds - cost;
-          await supabase.from("users").update({ neon_diamonds: nextDiamonds }).eq("id", session.user.id);
-          setDiamonds(nextDiamonds);
-        } else {
-          cost = gachaMaster.cost_cash * scoutCount;
-          if (cash < cost) {
-            setErrorMessage("キャッシュが不足しています。");
-            setUpgradeLoading(false);
-            return;
-          }
-          const nextCash = cash - cost;
-          await supabase.from("users").update({ cash: nextCash }).eq("id", session.user.id);
-          setCash(nextCash);
+        if (diamonds < reqDia) {
+          setErrorMessage("ダイヤが不足しています。ショップに遷移します。");
+          setActiveTab("shop");
+          setUpgradeLoading(false);
+          return;
         }
+        const nextDiamonds = diamonds - reqDia;
+        await supabase.from("users").update({ neon_diamonds: nextDiamonds }).eq("id", session.user.id);
+        setDiamonds(nextDiamonds);
       } else {
-        // スキル・装備品ガチャ (従来通り)
-        if (useCurrency === "DIAMOND") {
-          if (isLimit) cost = scoutCount === 10 ? 400 : 40;
-          else cost = scoutCount === 10 ? 300 : 30;
+        // CASH
+        let reqCash = 1000;
+        if (isNormal) reqCash = scoutCount === 10 ? 10000 : 1000;
+        else if (isSpecial) reqCash = scoutCount === 10 ? 30000 : 3000;
+        else if (isLimit) reqCash = scoutCount === 10 ? 120000 : 12000;
 
-          if (diamonds < cost) {
-            setErrorMessage("ダイヤが不足しています。");
-            setUpgradeLoading(false);
-            return;
-          }
-          const nextDiamonds = diamonds - cost;
-          await supabase.from("users").update({ neon_diamonds: nextDiamonds }).eq("id", session.user.id);
-          setDiamonds(nextDiamonds);
-        } else {
-          if (isExGacha) {
-            setErrorMessage("このガチャは有償ダイヤ限定です。");
-            setUpgradeLoading(false);
-            return;
-          }
-          if (isLimit) cost = scoutCount === 10 ? 120000 : 12000;
-          else cost = scoutCount === 10 ? 100000 : 10000;
-
-          if (cash < cost) {
-            setErrorMessage("キャッシュが不足しています。");
-            setUpgradeLoading(false);
-            return;
-          }
-          const nextCash = cash - cost;
-          await supabase.from("users").update({ cash: nextCash }).eq("id", session.user.id);
-          setCash(nextCash);
+        if (cash < reqCash) {
+          setErrorMessage("キャッシュが不足しています。ショップに遷移します。");
+          setActiveTab("shop");
+          setUpgradeLoading(false);
+          return;
         }
+        const nextCash = cash - reqCash;
+        await supabase.from("users").update({ cash: nextCash }).eq("id", session.user.id);
+        setCash(nextCash);
+      }
+
+      // 無料利用の更新
+      if (useCurrency === "FREE") {
+        const todayStr = new Date().toISOString().split("T")[0];
+        await supabase.from("user_daily_gacha_claims").upsert({
+          user_id: session.user.id,
+          gacha_type: category,
+          last_claimed_date: todayStr,
+          updated_at: new Date().toISOString()
+        }, { onConflict: "user_id,gacha_type" });
+        setDailyFreeGachaFlags(prev => ({ ...prev, [category]: false }));
+      }
+
+      // スペシャルガチャ天井Pt加算
+      if (isSpecial) {
+        const nextPts = specialPityPoints + scoutCount;
+        setSpecialPityPoints(nextPts);
+        await supabase.from("user_gacha_pity_points").upsert({
+          user_id: session.user.id,
+          pity_master_id: "pity_special_common",
+          current_points: nextPts,
+          updated_at: new Date().toISOString()
+        }, { onConflict: "user_id,pity_master_id" });
       }
 
       // 2. 抽選・排出処理
-      if (isCharGacha) {
-        // キャラクターガチャ
+      const results: any[] = [];
+      let highestRarity: "BLUE" | "PURPLE" | "GOLD" = "BLUE";
+
+      if (category === "CHARACTER") {
         const localUserCharList = [...userCharactersDbList];
         let isFirstCharAllocated = localUserCharList.length > 0;
 
-        const pool = gachaItemsMaster.filter((item: any) => item.gacha_id === scoutType);
+        let pool = gachaItemsMaster.filter((item: any) => item.gacha_id === scoutType);
         if (pool.length === 0) {
-          throw new Error("ガチャの排出テーブルデータが見つかりません。");
+          pool = gachaItemsMaster.filter((item: any) => item.gacha_id === "CHAR_SPECIAL");
         }
-
-        const totalWeight = pool.reduce((sum: number, item: any) => sum + item.weight, 0);
+        const totalWeight = pool.reduce((sum: number, item: any) => sum + item.weight, 0) || 100;
 
         for (let i = 0; i < scoutCount; i++) {
           let randVal = Math.random() * totalWeight;
@@ -4124,27 +4244,22 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
             }
           }
 
-          const selectedChar = CHARACTERS_MASTER.find(c => c.id === selectedItem.item_id) || CHARACTERS_MASTER[0];
-
-          // 所持確認
+          const selectedChar = CHARACTERS_MASTER.find(c => c.id === selectedItem?.item_id) || CHARACTERS_MASTER[0];
           const existCharIdx = localUserCharList.findIndex(c => c.character_id === selectedChar.id);
+
           if (existCharIdx !== -1) {
-            // 重複
             const existChar = localUserCharList[existCharIdx];
             if (existChar.awakening_level >= 5) {
-              // 素材変換
-              const { data: itemData } = await supabase.from("user_items").select("quantity").eq("user_id", session.user.id).eq("item_id", "LAW_OF_STRIFE").single();
+              const { data: itemData } = await supabase.from("user_items").select("quantity").eq("user_id", session.user.id).eq("item_id", "LAW_OF_STRIFE").maybeSingle();
               await supabase.from("user_items").upsert({ user_id: session.user.id, item_id: "LAW_OF_STRIFE", quantity: (itemData?.quantity || 0) + 1 });
-              results.push({ type: "CHARACTER", name: selectedChar.jpName, rarity: "SSR", converted: true, convertReward: "抗争の掟 x1" });
+              results.push({ type: "CHARACTER", name: selectedChar.jpName, rarity: selectedChar.rarity || "SSR", converted: true, convertReward: "抗争の掟 x1" });
             } else {
-              // 覚醒段階+1
               const newAwake = (existChar.awakening_level || 0) + 1;
               await supabase.from("user_characters").update({ awakening_level: newAwake }).eq("id", existChar.id);
               localUserCharList[existCharIdx].awakening_level = newAwake;
-              results.push({ type: "CHARACTER", name: selectedChar.jpName, rarity: "SSR", converted: false, convertReward: "覚醒段階+1" });
+              results.push({ type: "CHARACTER", name: selectedChar.jpName, rarity: selectedChar.rarity || "SSR", converted: false, convertReward: "覚醒段階+1" });
             }
           } else {
-            // 新規獲得
             const { data: insertData } = await supabase.from("user_characters").insert({
               user_id: session.user.id,
               character_id: selectedChar.id,
@@ -4154,14 +4269,10 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
             const newCharRec = insertData || { id: `c_${selectedChar.id}`, user_id: session.user.id, character_id: selectedChar.id, level: 1, awakening_level: 0 };
             localUserCharList.push(newCharRec);
-            results.push({ type: "CHARACTER", name: selectedChar.jpName, rarity: "SSR", converted: false, convertReward: "新規獲得" });
+            results.push({ type: "CHARACTER", name: selectedChar.jpName, rarity: selectedChar.rarity || "SSR", converted: false, convertReward: "新規獲得" });
 
-            // 最初の1体目の初期設定 (装備・スキル付与)
             if (!isFirstCharAllocated) {
-              // リーダー設定
               await supabase.from("users").update({ favorite_character_id: selectedChar.id }).eq("id", session.user.id);
-              
-              // 初期スキル
               const skillId = selectedChar.id === "11111111-1111-1111-1111-111111111111" ? "SKILL_037" : selectedChar.id === "33333333-3333-3333-3333-333333333333" ? "SKILL_039" : "SKILL_038";
               await supabase.from("user_skills").insert({
                 user_id: session.user.id,
@@ -4171,7 +4282,6 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
                 equipped_character_id: newCharRec.id
               });
 
-              // 初期装備
               const starterGears = [
                 { equipment_id: "WEAPON_001", slot_index: 0 },
                 { equipment_id: "HEAD_001", slot_index: 2 },
@@ -4198,89 +4308,84 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
               isFirstCharAllocated = true;
             }
           }
-          // キャラクター獲得演出は常にGOLDとする
-          highestRarity = "GOLD";
+          if (selectedChar.rarity === "SSR") highestRarity = "GOLD";
+          else if (selectedChar.rarity === "SR" && highestRarity !== "GOLD") highestRarity = "PURPLE";
         }
-
-        // 有償限定10連時のおまけ付与
-        if (scoutType === "CHAR_EX" && scoutCount === 10) {
-          const { data: itemData } = await supabase.from("user_items").select("quantity").eq("user_id", session.user.id).eq("item_id", "LAW_OF_STRIFE").single();
-          await supabase.from("user_items").upsert({ user_id: session.user.id, item_id: "LAW_OF_STRIFE", quantity: (itemData?.quantity || 0) + 1 });
-          results.push({ type: "ITEM", name: "抗争の掟 (10連おまけ)", rarity: "SSR", converted: false, convertReward: "獲得" });
-        }
-
-      } else {
-        // スキルまたは装備ガチャ (従来通り)
+      } else if (category === "SKILL") {
         for (let i = 0; i < scoutCount; i++) {
           const rand = Math.random();
           let targetRarity = "R";
-          
-          if (isExGacha) {
-            if (rand < 0.08) targetRarity = "SSR";
+          if (isNormal) {
+            if (rand < 0.10) targetRarity = "SR";
+            else if (rand < 0.50) targetRarity = "R";
+            else targetRarity = "N";
+          } else {
+            if (rand < 0.05) targetRarity = "SSR";
             else if (rand < 0.40) targetRarity = "SR";
             else targetRarity = "R";
-          } else if (isLimit) {
-            if (rand < 0.05) targetRarity = "SSR";
-            else if (rand < 0.30) targetRarity = "SR";
-            else if (rand < 0.80) targetRarity = "R";
-            else targetRarity = "N";
-          } else {
-            if (rand < 0.03) targetRarity = "SSR";
-            else if (rand < 0.20) targetRarity = "SR";
-            else if (rand < 0.70) targetRarity = "R";
-            else targetRarity = "N";
           }
 
-          if (isSkillGacha) {
-            let pool = SKILLS_MASTER_DATA.filter(s => s.rarity === targetRarity);
-            if (pool.length === 0) pool = SKILLS_MASTER_DATA;
-            const selected = pool[Math.floor(Math.random() * pool.length)];
+          let pool = SKILLS_MASTER_DATA.filter(s => s.rarity === targetRarity);
+          if (pool.length === 0) pool = SKILLS_MASTER_DATA;
+          const selected = pool[Math.floor(Math.random() * pool.length)];
 
-            const existSkill = userSkillsList.find(s => s.skill_card_id === selected.id);
-            if (existSkill) {
-              if (existSkill.plus_val >= 10) {
-                const { data: itemData } = await supabase.from("user_items").select("quantity").eq("user_id", session.user.id).eq("item_id", "TRAINING_MANUAL").single();
-                await supabase.from("user_items").upsert({ user_id: session.user.id, item_id: "TRAINING_MANUAL", quantity: (itemData?.quantity || 0) + 2 });
-                results.push({ type: "SKILL", name: selected.name, rarity: selected.rarity, converted: true, convertReward: "指南書 x2" });
-              } else {
-                await supabase.from("user_skills").update({ plus_val: existSkill.plus_val + 1 }).eq("id", existSkill.id);
-                results.push({ type: "SKILL", name: selected.name, rarity: selected.rarity, converted: false, convertReward: "限界突破+1" });
-              }
+          const existSkill = userSkillsList.find(s => s.skill_card_id === selected.id);
+          if (existSkill) {
+            if (existSkill.plus_val >= 10) {
+              const { data: itemData } = await supabase.from("user_items").select("quantity").eq("user_id", session.user.id).eq("item_id", "TRAINING_MANUAL").maybeSingle();
+              await supabase.from("user_items").upsert({ user_id: session.user.id, item_id: "TRAINING_MANUAL", quantity: (itemData?.quantity || 0) + 2 });
+              results.push({ type: "SKILL", name: selected.name, rarity: selected.rarity, converted: true, convertReward: "指南書 x2" });
             } else {
-              await supabase.from("user_skills").insert({ user_id: session.user.id, skill_card_id: selected.id, plus_val: 0 });
-              results.push({ type: "SKILL", name: selected.name, rarity: selected.rarity, converted: false, convertReward: "新規獲得" });
+              await supabase.from("user_skills").update({ plus_val: existSkill.plus_val + 1 }).eq("id", existSkill.id);
+              results.push({ type: "SKILL", name: selected.name, rarity: selected.rarity, converted: false, convertReward: "限界突破+1" });
             }
-
-            if (selected.rarity === "SSR") highestRarity = "GOLD";
-            else if (selected.rarity === "SR" && highestRarity !== "GOLD") highestRarity = "PURPLE";
-
           } else {
-            let pool = EQUIPMENTS_MASTER_DATA.filter(e => e.rarity === targetRarity);
-            if (pool.length === 0) pool = EQUIPMENTS_MASTER_DATA;
-            const selected = pool[Math.floor(Math.random() * pool.length)];
-
-            await supabase.from("user_equipments").insert({
-              user_id: session.user.id,
-              equipment_id: selected.id,
-              level: 1,
-              plus_val: 0,
-              random_options: [
-                { name: "クリティカル率", val: "+5%", unlocked: true },
-                { name: "命中率", val: "+8%", unlocked: false },
-                { name: "回避率", val: "+6%", unlocked: false },
-                { name: "防御貫通力", val: "+12%", unlocked: false }
-              ]
-            });
-
-            results.push({ type: "EQUIPMENT", name: selected.name, rarity: selected.rarity, converted: false, convertReward: "新規獲得" });
-
-            if (selected.rarity === "SSR") highestRarity = "GOLD";
-            else if (selected.rarity === "SR" && highestRarity !== "GOLD") highestRarity = "PURPLE";
+            await supabase.from("user_skills").insert({ user_id: session.user.id, skill_card_id: selected.id, plus_val: 0 });
+            results.push({ type: "SKILL", name: selected.name, rarity: selected.rarity, converted: false, convertReward: "新規獲得" });
           }
+
+          if (selected.rarity === "SSR") highestRarity = "GOLD";
+          else if (selected.rarity === "SR" && highestRarity !== "GOLD") highestRarity = "PURPLE";
+        }
+      } else {
+        // EQUIPMENT
+        for (let i = 0; i < scoutCount; i++) {
+          const rand = Math.random();
+          let targetRarity = "R";
+          if (isNormal) {
+            if (rand < 0.10) targetRarity = "SR";
+            else if (rand < 0.50) targetRarity = "R";
+            else targetRarity = "N";
+          } else {
+            if (rand < 0.05) targetRarity = "SSR";
+            else if (rand < 0.40) targetRarity = "SR";
+            else targetRarity = "R";
+          }
+
+          let pool = EQUIPMENTS_MASTER_DATA.filter(e => e.rarity === targetRarity);
+          if (pool.length === 0) pool = EQUIPMENTS_MASTER_DATA;
+          const selected = pool[Math.floor(Math.random() * pool.length)];
+
+          await supabase.from("user_equipments").insert({
+            user_id: session.user.id,
+            equipment_id: selected.id,
+            level: 1,
+            plus_val: 0,
+            random_options: [
+              { name: "クリティカル率", val: "+5%", unlocked: true },
+              { name: "命中率", val: "+8%", unlocked: false },
+              { name: "回避率", val: "+6%", unlocked: false },
+              { name: "防御貫通力", val: "+12%", unlocked: false }
+            ]
+          });
+
+          results.push({ type: "EQUIPMENT", name: selected.name, rarity: selected.rarity, converted: false, convertReward: "新規獲得" });
+
+          if (selected.rarity === "SSR") highestRarity = "GOLD";
+          else if (selected.rarity === "SR" && highestRarity !== "GOLD") highestRarity = "PURPLE";
         }
       }
 
-      // データ再同期
       await syncBootstrapData(session.user.id);
 
       setScoutResults(results);
@@ -4293,9 +4398,270 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       }, 1800);
 
     } catch (err: any) {
-      console.warn(err.message);
+      console.warn("Gacha execution error:", err.message);
     } finally {
       setUpgradeLoading(false);
+    }
+  };
+
+  const handleExchangePityReward = async (rewardType: "CHARACTER" | "SKILL" | "EQUIPMENT", rewardId: string) => {
+    if (!session) return;
+    if (specialPityPoints < 200) {
+      setErrorMessage("天井Ptが不足しています（200Pt必要）。");
+      return;
+    }
+
+    setUpgradeLoading(true);
+    try {
+      const nextPts = specialPityPoints - 200;
+      await supabase.from("user_gacha_pity_points").upsert({
+        user_id: session.user.id,
+        pity_master_id: "pity_special_common",
+        current_points: nextPts,
+        updated_at: new Date().toISOString()
+      }, { onConflict: "user_id,pity_master_id" });
+      setSpecialPityPoints(nextPts);
+
+      if (rewardType === "CHARACTER") {
+        const charMaster = CHARACTERS_MASTER.find(c => c.id === rewardId) || CHARACTERS_MASTER[0];
+        const existChar = userCharactersDbList.find(c => c.character_id === rewardId);
+        if (existChar) {
+          if (existChar.awakening_level >= 5) {
+            const { data: itemData } = await supabase.from("user_items").select("quantity").eq("user_id", session.user.id).eq("item_id", "LAW_OF_STRIFE").maybeSingle();
+            await supabase.from("user_items").upsert({ user_id: session.user.id, item_id: "LAW_OF_STRIFE", quantity: (itemData?.quantity || 0) + 1 });
+            setErrorMessage(`【天井交換】${charMaster.jpName}を交換！（所持上限につき「抗争の掟 x1」へ変換）`);
+          } else {
+            const newAwake = (existChar.awakening_level || 0) + 1;
+            await supabase.from("user_characters").update({ awakening_level: newAwake }).eq("id", existChar.id);
+            setErrorMessage(`【天井交換】${charMaster.jpName}を覚醒段階+${newAwake}に強化しました！`);
+          }
+        } else {
+          await supabase.from("user_characters").insert({
+            user_id: session.user.id,
+            character_id: rewardId,
+            level: 1,
+            awakening_level: 0
+          });
+          setErrorMessage(`【天井交換】${charMaster.jpName}を獲得しました！`);
+        }
+      } else if (rewardType === "SKILL") {
+        const skillMaster = SKILLS_MASTER_DATA.find(s => s.id === rewardId) || SKILLS_MASTER_DATA[0];
+        const existSkill = userSkillsList.find(s => s.skill_card_id === rewardId);
+        if (existSkill) {
+          if (existSkill.plus_val >= 10) {
+            const { data: itemData } = await supabase.from("user_items").select("quantity").eq("user_id", session.user.id).eq("item_id", "TRAINING_MANUAL").maybeSingle();
+            await supabase.from("user_items").upsert({ user_id: session.user.id, item_id: "TRAINING_MANUAL", quantity: (itemData?.quantity || 0) + 2 });
+            setErrorMessage(`【天井交換】${skillMaster.name}を交換！（「指南書 x2」へ変換）`);
+          } else {
+            await supabase.from("user_skills").update({ plus_val: existSkill.plus_val + 1 }).eq("id", existSkill.id);
+            setErrorMessage(`【天井交換】${skillMaster.name}を限界突破+${existSkill.plus_val + 1}に強化しました！`);
+          }
+        } else {
+          await supabase.from("user_skills").insert({ user_id: session.user.id, skill_card_id: rewardId, plus_val: 0 });
+          setErrorMessage(`【天井交換】${skillMaster.name}を獲得しました！`);
+        }
+      } else {
+        const equipMaster = EQUIPMENTS_MASTER_DATA.find(e => e.id === rewardId) || EQUIPMENTS_MASTER_DATA[0];
+        await supabase.from("user_equipments").insert({
+          user_id: session.user.id,
+          equipment_id: rewardId,
+          level: 1,
+          plus_val: 0,
+          random_options: [
+            { name: "クリティカル率", val: "+5%", unlocked: true },
+            { name: "命中率", val: "+8%", unlocked: false },
+            { name: "回避率", val: "+6%", unlocked: false },
+            { name: "防御貫通力", val: "+12%", unlocked: false }
+          ]
+        });
+        setErrorMessage(`【天井交換】${equipMaster.name}を獲得しました！`);
+      }
+
+      await syncBootstrapData(session.user.id);
+    } catch (err: any) {
+      console.error("Exchange pity error:", err);
+      setErrorMessage("天井交換に失敗しました。");
+    } finally {
+      setUpgradeLoading(false);
+    }
+  };
+
+  const handleBuyNormalProduct = async (productId: string, currencyType: "CASH" | "DIAMOND"): Promise<boolean> => {
+    if (!session) return false;
+    const product = SHOP_PRODUCTS_MASTER.find(p => p.id === productId);
+    if (!product) return false;
+
+    setUpgradeLoading(true);
+    playCyberSe("click");
+
+    const price = currencyType === "CASH" ? (product.priceCash || 0) : (product.priceDiamond || 0);
+
+    if (currencyType === "CASH" && cash < price) {
+      setErrorMessage("キャッシュが不足しています。");
+      setUpgradeLoading(false);
+      return false;
+    }
+    if (currencyType === "DIAMOND" && diamonds < price) {
+      setErrorMessage("ダイヤが不足しています。");
+      setUpgradeLoading(false);
+      return false;
+    }
+
+    try {
+      const { data: rpcRes, error } = await supabase.rpc("buy_normal_shop_product", {
+        p_user_id: session.user.id,
+        p_product_id: product.id,
+        p_currency_type: currencyType,
+        p_price: price,
+        p_items: product.items,
+        p_product_title: product.title
+      });
+
+      if (error) {
+        console.warn("buy_normal_shop_product rpc error, fallback execution:", error);
+        if (currencyType === "CASH") {
+          const nextCash = cash - price;
+          await supabase.from("users").update({ cash: nextCash }).eq("id", session.user.id);
+          setCash(nextCash);
+        } else {
+          const nextDia = diamonds - price;
+          await supabase.from("users").update({ neon_diamonds: nextDia }).eq("id", session.user.id);
+          setDiamonds(nextDia);
+        }
+
+        const expireAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+        const insertPresents = product.items.map(it => ({
+          user_id: session.user.id,
+          item_id: it.itemId,
+          quantity: it.quantity,
+          message: `ショップ購入: ${product.title}`,
+          status: "UNCLAIMED",
+          expire_at: expireAt
+        }));
+        await supabase.from("presents").insert(insertPresents);
+
+        await supabase.from("user_shop_purchases").upsert({
+          user_id: session.user.id,
+          product_id: product.id,
+          purchase_count: (userShopPurchases[product.id] || 0) + 1,
+          last_purchased_at: new Date().toISOString()
+        });
+      }
+
+      setBoughtResultModal({
+        productTitle: product.title,
+        items: product.items,
+        message: `${product.title} を購入しました！獲得アイテムはプレゼントBOXに送られました。`
+      });
+
+      playCyberSe("gacha");
+      await syncBootstrapData(session.user.id);
+      return true;
+    } catch (err: any) {
+      console.error("handleBuyNormalProduct error:", err);
+      setErrorMessage("購入処理中にエラーが発生しました。");
+      return false;
+    } finally {
+      setUpgradeLoading(false);
+    }
+  };
+
+  const handleBuyStripeProduct = async (productId: string, isSimulatedDuplicate: boolean = false): Promise<boolean> => {
+    if (!session) return false;
+    const product = SHOP_PRODUCTS_MASTER.find(p => p.id === productId);
+    if (!product) return false;
+
+    setProfileLoading(true);
+    playCyberSe("click");
+
+    const sessionId = isSimulatedDuplicate
+      ? lastPaymentSessionId
+      : `stripe_session_${Math.floor(Math.random() * 899999) + 100000}`;
+
+    if (!sessionId) {
+      setErrorMessage("前回のセッションが見つかりません。新規購入を行ってください。");
+      setProfileLoading(false);
+      return false;
+    }
+
+    try {
+      const isBeginner = product.category === "BEGINNER";
+      const purchaseLimit = product.purchaseLimit || 0;
+
+      const { data: rpcRes, error } = await supabase.rpc("process_stripe_shop_purchase", {
+        p_user_id: session.user.id,
+        p_stripe_session_id: sessionId,
+        p_product_id: product.id,
+        p_amount_jpy: product.priceJpy || 0,
+        p_items: product.items,
+        p_product_title: product.title,
+        p_is_beginner: isBeginner,
+        p_purchase_limit: purchaseLimit
+      });
+
+      if (error) {
+        console.warn("process_stripe_shop_purchase RPC error, fallback execution:", error);
+        const { data: existTx } = await supabase
+          .from("payment_transactions")
+          .select("id")
+          .eq("stripe_session_id", sessionId)
+          .limit(1);
+
+        if (existTx && existTx.length > 0) {
+          alert("【Stripe Webhook 冪等性競合検知】 重複トランザクションを安全に無視しました。");
+          setProfileLoading(false);
+          return false;
+        }
+
+        await supabase.from("payment_transactions").insert({
+          user_id: session.user.id,
+          stripe_session_id: sessionId,
+          amount: product.priceJpy || 0,
+          currency: "jpy",
+          diamonds_added: 0,
+          status: "COMPLETED"
+        });
+
+        const expireAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+        const insertPresents = product.items.map(it => ({
+          user_id: session.user.id,
+          item_id: it.itemId,
+          quantity: it.quantity,
+          message: `購入特典: ${product.title}`,
+          status: "UNCLAIMED",
+          expire_at: expireAt
+        }));
+        await supabase.from("presents").insert(insertPresents);
+
+        await supabase.from("user_shop_purchases").upsert({
+          user_id: session.user.id,
+          product_id: product.id,
+          purchase_count: (userShopPurchases[product.id] || 0) + 1,
+          last_purchased_at: new Date().toISOString()
+        });
+      } else if (rpcRes && rpcRes.duplicate) {
+        alert("【Stripe Webhook 冪等性競合検知】 重複トランザクションを安全に無視しました。");
+        setProfileLoading(false);
+        return false;
+      }
+
+      setLastPaymentSessionId(sessionId);
+
+      setBoughtResultModal({
+        productTitle: product.title,
+        items: product.items,
+        message: `${product.title} の購入が完了しました！獲得アイテムはプレゼントBOXに送付されました。`
+      });
+
+      playCyberSe("gacha");
+      await syncBootstrapData(session.user.id);
+      return true;
+    } catch (err: any) {
+      console.error("handleBuyStripeProduct error:", err);
+      setErrorMessage("決済処理中にエラーが発生しました。");
+      return false;
+    } finally {
+      setProfileLoading(false);
     }
   };
 
@@ -4906,6 +5272,14 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     presentsSyncing, setPresentsSyncing,
     presentClaimLoading, setPresentClaimLoading,
     missionClaimLoading, setMissionClaimLoading,
+
+    // ログインボーナス
+    loginBonusMasters, setLoginBonusMasters,
+    userLoginBonus, setUserLoginBonus,
+    showLoginBonusModal, setShowLoginBonusModal,
+    loginBonusClaimResult, setLoginBonusClaimResult,
+    checkAndClaimLoginBonus,
+
     newsList, setNewsList,
     selectedNews, setSelectedNews,
     showImportantModal, setShowImportantModal,
@@ -5044,6 +5418,9 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     skillLimitBreakMaster,
     exclusiveContracts,
     handleScout,
+    dailyFreeGachaFlags,
+    specialPityPoints,
+    handleExchangePityReward,
     handleBuyPack,
     gachaMasters,
     gachaItemsMaster,
@@ -5091,7 +5468,13 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     equipExpL,
     skillLbBooks,
     equipLbHammers,
-    handleUseItem
+    handleUseItem,
+    userShopPurchases,
+    userCreatedAt,
+    boughtResultModal,
+    setBoughtResultModal,
+    handleBuyNormalProduct,
+    handleBuyStripeProduct
   };
 
 

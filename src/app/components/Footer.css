@@ -7,11 +7,13 @@
   display: flex;
   justify-content: space-around;
   align-items: center;
-  padding: 4px 0 6px;
+  padding-top: 6px;
+  padding-bottom: calc(6px + env(safe-area-inset-bottom));
   background: rgba(11, 15, 25, 0.95);
   border-top: 1px solid rgba(255, 255, 255, 0.08);
   z-index: 20;
   flex-shrink: 0;
+  width: 100%;
 }
 
 /* PC版では非表示 (Header.tsx の PC用タブが担当) */
