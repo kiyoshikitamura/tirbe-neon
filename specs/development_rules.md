@@ -44,7 +44,8 @@
     - 例：`src/app/components/AuthView.tsx` から `import "./AuthView.css"` を実行。
 
 ### ⑦ 全環境共通・モバイル専用縦型レイアウト統一規約 (Single Mobile Architecture)
-- **レイアウト崩れ・横幅溢れ・黒帯発生の6大原因完全根絶**:
+- **レイアウト崩れ・横幅溢れ・黒帯発生の7大原因完全根絶**:
+  - **Next.js ルート DIV (`body > div`) のスタイル強制**: Next.js が自動生成するルート `div` に対し `width: 100% !important; display: flex !important; justify-content: center !important;` を適用し、iOS Safari での左寄せ固着を防止します。
   - **メディアクエリ・PC分岐の全面廃止**: 全 CSS ファイルから `@media` PC分岐および `max-width: 480px` などの固定幅残骸を一掃・全滅させます。
   - **相対配置 (`left: 50%; transform: translateX(-50%)`) の使用禁止**: 要素の右側領域の押し広げ・横ズレを防ぐため、中央配置はすべて純粋な Flexbox / Grid (`width: 100%; display: flex; justify-content: center;`) で行います。
   - **横幅指定の100%統一**: `100vw` の使用を全消去し、`width: 100%` に一元化。iOS Safari でのビューポートオーバーフローを防止します。

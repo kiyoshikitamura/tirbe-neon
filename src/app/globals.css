@@ -52,6 +52,19 @@ html, body {
   justify-content: center;
 }
 
+/* Next.js ルート DIV の中央寄せ・全幅スタイルの強制適用 */
+body > div {
+  width: 100% !important;
+  height: 100% !important;
+  height: 100dvh !important;
+  display: flex !important;
+  justify-content: center !important;
+  align-items: flex-start !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+}
+
 /* ==========================================
    アプリレイアウト構造定義 (全端末共通モバイル単一コンテナ)
    ========================================== */
