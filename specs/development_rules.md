@@ -44,9 +44,12 @@
     - 例：`src/app/components/AuthView.tsx` から `import "./AuthView.css"` を実行。
 
 ### ⑦ 全環境共通・モバイル専用縦型レイアウト統一規約 (Single Mobile Architecture)
-- **PC/モバイル分岐(メディアクエリ)の全CSSファイルからの完全撤去 ＆ 単一フレックスコンテナの一元化**:
-  - 端末幅・解像度の誤判定による黒帯発生やPC全画面ブラックアウトを100%構造的に根絶するため、`globals.css` をはじめ `HomeTab.css`, `Footer.css`, `AdvView.css`, `MenuTab.css`, `RaidTab.css` 等、**全 CSS ファイルから `@media` メディアクエリ分岐および `max-width: 480px` などの固定幅指定を全面一掃・全滅**させます。
-  - ルートコンテナスタイル `width: 100vw; max-width: 430px; height: 100dvh; margin: 0 auto;` の単一定義のみに統一し、スマホ実機（幅 430px 以下）では自動全幅表示（左右黒帯100%消失）、PC大画面では画面中央描画（フルスクリーン時も見切れ・黒画面化ゼロ）を構造的に保証します。
+- **レイアウト崩れ・横幅溢れ・黒帯発生の6大原因完全根絶**:
+  - **メディアクエリ・PC分岐の全面廃止**: 全 CSS ファイルから `@media` PC分岐および `max-width: 480px` などの固定幅残骸を一掃・全滅させます。
+  - **相対配置 (`left: 50%; transform: translateX(-50%)`) の使用禁止**: 要素の右側領域の押し広げ・横ズレを防ぐため、中央配置はすべて純粋な Flexbox / Grid (`width: 100%; display: flex; justify-content: center;`) で行います。
+  - **横幅指定の100%統一**: `100vw` の使用を全消去し、`width: 100%` に一元化。iOS Safari でのビューポートオーバーフローを防止します。
+  - **`layout.tsx` ＆ `globals.css` での横スライド物理ブロック**: `html, body` に対する `overflow-x: hidden !important;` を常時強制適用します。
+  - **Flexbox子要素の `min-width: 0;` 義務化**: 長いテキストや要素による親幅の突き破りを防止します。
 - **アセットパス構造の統一**:
   - キャラクターの透過立ち絵画像はすべて **`public/characters/`** ディレクトリ配下に格納し、コード側からは必ず `getCharacterTransparentImg(name)` 経由で取得します。
   - 確定版透過前グリーンバック原画は **`public/raw_assets/<name>_raw.jpg`**（1アセットにつき確定原画1枚のみ）に選別保存します。
