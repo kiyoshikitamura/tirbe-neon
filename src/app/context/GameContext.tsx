@@ -348,25 +348,34 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   // ==========================================
   // 3. Supabase Auth セッション監視
   // ==========================================
+  // ==========================================
+  // ⚡ デバッグ優先: 自動ログインバイパス (リロード時の認証・セットアップ省略)
+  // ==========================================
+  const DEBUG_DUMMY_SESSION: any = {
+    user: {
+      id: "11111111-1111-1111-1111-111111111111",
+      email: "demo@tribeneon.local"
+    }
+  };
+
   useEffect(() => {
+    // 既存セッションがある場合はそれを使い、無い場合でも自動でデバッグ用ダミーセッションで即時マイページへ
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      if (session) {
-        checkIfSetupRequired(session.user.id);
-      } else {
+      const activeSession = session || DEBUG_DUMMY_SESSION;
+      setSession(activeSession);
+      setIsSetupRequired(false);
+      syncBootstrapData(activeSession.user.id).finally(() => {
         setAuthLoading(false);
-      }
+      });
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      if (session) {
-        checkIfSetupRequired(session.user.id);
-      } else {
-        setSession(null);
-        setIsSetupRequired(false);
+      const activeSession = session || DEBUG_DUMMY_SESSION;
+      setSession(activeSession);
+      setIsSetupRequired(false);
+      syncBootstrapData(activeSession.user.id).finally(() => {
         setAuthLoading(false);
-      }
+      });
     });
 
     return () => subscription.unsubscribe();
