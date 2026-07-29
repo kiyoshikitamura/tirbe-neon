@@ -29,11 +29,11 @@ export default function TribeChatModal({ isOpen, onClose }: TribeChatModalProps)
   } = useGame();
 
   const [localDmText, setLocalDmText] = useState("");
-  const chatMessagesEndRef = useRef<HTMLDivElement>(null);
+  const chatBodyRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (isOpen) {
-      chatMessagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (isOpen && chatBodyRef.current) {
+      chatBodyRef.current.scrollTop = chatBodyRef.current.scrollHeight;
     }
   }, [guildChats, directMessages, isOpen, chatChannel]);
 
@@ -121,7 +121,7 @@ export default function TribeChatModal({ isOpen, onClose }: TribeChatModalProps)
         )}
 
         {/* チャットメッセージログ表示領域 */}
-        <div className="tribe-modal-body scroll-container">
+        <div className="tribe-modal-body scroll-container" ref={chatBodyRef}>
           {chatChannel === "DM" ? (
             safeDirectMessages.length === 0 ? (
               <div className="tribe-modal-empty">ダイレクトメッセージのログはありません</div>
@@ -159,7 +159,6 @@ export default function TribeChatModal({ isOpen, onClose }: TribeChatModalProps)
               })
             )
           )}
-          <div ref={chatMessagesEndRef} />
         </div>
 
         {/* メッセージ入力エリア */}
