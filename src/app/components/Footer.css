@@ -1,82 +1,69 @@
 /* ==========================================
    Footer.css - TRIBE: NEON REIGN
-   つや消しフッターナビゲーション
+   全13タブ共通フッターナビゲーション (Matte Outlaw UI)
    ========================================== */
 
-.footer-nav {
+.footer-mobile {
   display: flex;
   justify-content: space-around;
   align-items: center;
-  padding-top: 6px;
-  padding-bottom: calc(6px + env(safe-area-inset-bottom));
-  background: rgba(11, 15, 25, 0.95);
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  z-index: 20;
-  flex-shrink: 0;
   width: 100%;
+  padding: 6px 4px calc(6px + env(safe-area-inset-bottom, 0px));
+  background: rgba(9, 12, 20, 0.98);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-image: linear-gradient(to right, transparent, rgba(0, 240, 255, 0.4), transparent) 1;
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.8);
+  z-index: 25;
+  flex-shrink: 0;
+  box-sizing: border-box;
 }
 
-
-
-.nav-item {
+.footer-nav-item {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 2px;
-  background: none;
+  background: transparent;
   border: none;
+  color: #8a8a98;
+  padding: 4px 8px;
   cursor: pointer;
-  padding: 4px 6px;
-  color: var(--text-secondary);
-  transition: color 0.2s ease;
-  min-width: 0;
+  transition: all 0.15s ease;
+  position: relative;
   flex: 1;
 }
 
-.nav-item.active {
-  color: var(--neon-cyan);
+.footer-nav-item:hover {
+  color: #ffffff;
 }
 
-.nav-icon {
-  width: 20px;
-  height: 20px;
-  flex-shrink: 0;
+.footer-nav-item.active {
+  color: #00f0ff;
 }
 
-.nav-icon-img {
+.footer-nav-item.active::before {
+  content: "";
+  position: absolute;
+  top: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 24px;
+  height: 2px;
+  background: #00f0ff;
+  box-shadow: 0 0 8px #00f0ff;
+  border-radius: 1px;
+}
+
+.footer-png-icon {
   width: 22px;
   height: 22px;
   object-fit: contain;
-  flex-shrink: 0;
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4));
-  transition: transform 0.2s ease, filter 0.2s ease;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
 }
 
-.nav-item.active .nav-icon-img {
-  transform: scale(1.1);
-  filter: drop-shadow(0 0 6px rgba(0, 240, 255, 0.6));
-}
-
-.nav-label-jp {
-  font-size: 8px;
-  letter-spacing: 0.3px;
-  font-weight: 600;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 60px;
-}
-
-.nav-badge-dot {
-  position: absolute;
-  top: 4px;
-  right: calc(50% - 16px);
-  width: 8px;
-  height: 8px;
-  background-color: #ff3366;
-  border-radius: 50%;
-  border: 1.5px solid #ffffff;
-  box-shadow: 0 0 4px rgba(255, 51, 102, 0.8);
-  z-index: 10;
+.footer-nav-label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
 }

@@ -1,49 +1,36 @@
-# 🏆 TRIBE: NEON REIGN - マイページUI (HomeTab ＆ Header) 完全ゼロベースUI再構築 完了レポート
+# 🏆 TRIBE: NEON REIGN - レイアウト完全ゼロベース再構築 ＆ スライス分割 完了レポート
 
 ## 概要
-ユーザー様からの最新UI再構築仕様および機能要求に基づき、マイページ (`HomeTab`)、ヘッダー (`Header`)、フッター (`Footer`)、共通レイアウト (`globals.css`)、および暗号メッセージアプリ『トライブ』 (DM機能) のデータベース同期ロジックのゼロベース完全再構築を実施いたしました。
+表示崩れ（PC画面での右寄り・右端固着、モバイル画面でのヘッダー見切れ・食い込み、ロードスピナーの全画面化）を根絶するため、ツギハギのパッチ修正を全廃し、**レイアウト基盤の完全ゼロベース書き直し**および**肥大化コンポーネントのスライス分割**を完了いたしました。
 
 ---
 
-## 🛠️ 主な変更点 ＆ 実装内容
+## 🛠️ 主な対応 ＆ 再構築内容
 
-### 1. PC表示中央寄せ規格の修復 (`src/app/globals.css`)
-- PC環境で右寄りに崩れる不具合を修正し、画面中央に角ばった縦型モバイル枠 (`max-width: 430px; margin: 0 auto !important;`) でシャープに表示。
+### 1. 🧩 暗号メッセージアプリ『トライブ』モーダルのスライス独立化
+- **新規作成**: `src/app/components/TribeChatModal.tsx` / `TribeChatModal.css`
+- 約1,000行に膨らんでいた `HomeTab.tsx` からメッセージ通信・DM機能を分離切り出し。保守性とコード透過性を飛躍的に向上。
 
-### 2. 全17個の生成アイコン ＆ アイコン直下テキスト化 (`src/app/components/HomeTab.tsx` / `HomeTab.css`)
-- `public/ui/icon_*.png` を全面使用し、インラインSVGを排した画像アイコン＋直下テキストラベル構造に統一。
-- **左小アイコン (6個)**: ミッション、ランキング、友達、コミュニティ(BBSから変更)、レイド、マップ
-- **右小アイコン (4個)**: マイバッグ、お知らせ、プレゼントBOX、設定
+### 2. 🏛️ 単一モバイルコンテナ構造 (Single Mobile Container Architecture)
+- **`src/app/layout.tsx`**: 不用なインラインスタイル (`style={{...}}`) を全撤去し、最もクリーンな JSX 構造へ刷新。
+- **`src/app/globals.css`**: `html, body, body > div` の全親階層に `display: flex !important; justify-content: center !important; align-items: center !important;` を適用。
+- **アプリ枠 (`.app-container`)**: `width: 100% !important; max-width: 430px !important; margin: 0 auto !important;` を一元定義し、PC解像度に関わらず左右・上下とも完全正中央に配置。
 
-### 3. モバイルヘッダー 2行構成 (`src/app/components/Header.tsx` / `Header.css`)
-- **Row 1**: 通り名(称号) ｜ プレイヤー名 ｜ Lv. ｜ 所属ギルド ｜ (レイド中アラート)
-- **Row 2**: 取合力(総合力・金文字カンマ区切り) ｜ 💵Cash (`/ui/icon_cash.png`) ｜ 💎Dia (`/ui/icon_dia.png`) ｜ ⚡AP (`100/100` 表記)
+### 3. 🔄 ロード時スピナーの枠一元化 (`src/app/page.tsx`)
+- ログイン待ち（`authLoading`）のコンテナを通常の `.app-container` 枠と完全に一本化。ロード時も全画面に拡大されず **430px のモバイル枠の中で回転表示**されるよう修復。
 
-### 4. ビジュアルエリア (50vh) ＆ 重なり順 (z-index) レイヤー装飾
-- 最上段HUD: `拠点: [拠点名] ｜ 支配: [ギルド名]` ＋ 右側 `[拠点移動]` ボタン。
-- 最上段HUD直下中央: 薄い透過グレー背景の**取合力表示パネル**（文字サイズ大、カンマ桁区切り `12,500`）。
-- **任意背景選択機能**: 拠点自動連動背景（デフォルト）または所持背景から自由選択。
-- **重なり順 (z-index)**: 背景 (z:1) → 置物インテリア (z:2) → リーダー立ち絵キャラクター (z:3) → 称号プレートバナー (z:4) → 前面エフェクト (z:5)
-- **大ボタン (ネガティブマージン -48px)**: 🔴連合 (`menu_allies.png`, 80px)、🔵喧嘩 (`menu_fight.png`, 96px)、🟢制圧 (`menu_conquest.png`, 80px)
+### 4. 📱 全13タブ共通ヘッダー・フッター ＆ セーフエリア完全連動 (`Header.css`, `Footer.css`)
+- `padding-top: calc(8px + env(safe-area-inset-top, 0px))` をヘッダーに適用。ステータスバー（時計・電池ピクト）を綺麗に避けてその直下に Row1 (名前・Lv) と Row2 (資産) が収まるように修復。
+- `padding-bottom: calc(6px + env(safe-area-inset-bottom, 0px))` をフッターに適用。全13画面で一貫したグローバルナビゲーションを提供。
 
-### 5. イベントバナーエリア
-- 大ボタンの直下に設置。複数バナー画像、左右スライドボタン (`‹` `›`)、インジケータードット、4秒間隔の自動スライドタイマー。
-
-### 6. 1行チャットプレビュー ＆ 暗号メッセージアプリ『トライブ』モーダル
-- バナー下に全体チャット最新1行をプレビュー表示。
-- タップで『トライブ』モーダル起動。「全体」「ギルド」「個人チャット(DM)」切り替え、送信相手選択ドロップダウン、メッセージ送受信。
-
-### 7. フッターナビゲーションのショップ化 (`src/app/components/Footer.tsx`)
-- 5項目: `マイページ` (`icon_footer_mypage.png`)、`ギルド` (`icon_footer_guild.png`)、`キャラ` (`icon_footer_character.png`)、`ガチャ` (`icon_footer_gacha.png`)、`ショップ` (`icon_footer_shop.png`)
-
-### 8. データベース設計 ＆ SQLマイグレーション (`migration_add_tribe_dm_and_decorations.sql`)
-- `users` テーブルへの `selected_bg_mode`, `interior_item` カラム追加。
-- `direct_messages` (個人チャットDM用テーブル & RLS / Supabase Realtime 有効化)。
-- `user_profile_decorations` (所持背景・称号・インテリア等の所持・解放管理テーブル)。
-- `DROP POLICY IF EXISTS` を備えた安全な再実行対応 SQL ファイルを提示。
+### 5. 🚀 将来のボタン/アイコン増設への動的拡張性 (`HomeTab.tsx`)
+- 左右小アイコンを**データ配列 (`leftSubIcons`, `rightSubIcons`) に基づく動的描画 (`.map()`) 構造**にゼロからリファクタリング。将来の新機能追加時も配列に要素を追加するだけで崩れず安全拡張可能。
+- `useImagePreloader` による画像メモリ事前キャッシュ（全17個UIアイコン、背景全種、バナー全種）を完全適用（0秒描画）。
+- ビジュアルエリアの表記を正式名称 **`総合力`** に修正維持。
 
 ---
 
 ## 🔍 検証結果
-- `npm run build` による Next.js 16 (Turbopack) の生産ビルド、TypeScript 型チェック、静的ページ生成が **エラー 0 で正常完了**。
+- `npm run build` による Next.js 16 (Turbopack) の生産ビルド、TypeScript 型チェック、静的ページ生成が **エラー 0 で完全成功**。
+- `.agents/AGENTS.md` および `specs/development_rules.md` の仕様ドキュメントを最新状態へ更新。
 - `git commit` および `git push origin main` を完了。

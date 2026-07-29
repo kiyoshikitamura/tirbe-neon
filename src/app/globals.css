@@ -53,7 +53,8 @@ html, body {
   align-items: center !important;
 }
 
-/* Next.js ルート DIV の全階層中央寄せ・全幅スタイルの強制適用 */
+/* Next.js ルート DIV 全階層の Flexbox 左右・上下中央寄せ強制適用 */
+#__next,
 body > div,
 body > div > div {
   width: 100% !important;
@@ -61,7 +62,6 @@ body > div > div {
   height: 100% !important;
   height: 100dvh !important;
   display: flex !important;
-  flex-direction: column !important;
   justify-content: center !important;
   align-items: center !important;
   margin: 0 auto !important;
@@ -73,17 +73,9 @@ body > div > div {
    アプリレイアウト構造定義 (全端末共通モバイル単一コンテナ)
    ========================================== */
 
-/* ローディング状態 */
-.app-container--loading {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 100dvh;
-  background: var(--bg-color);
-}
-
 .app-container,
-.app-container--mobile {
+.app-container--mobile,
+.app-container--loading {
   display: flex;
   flex-direction: column;
   width: 100% !important;
@@ -93,7 +85,7 @@ body > div > div {
   margin: 0 auto !important;
   align-self: center !important;
   padding: 0;
-  background: #000;
+  background: #000000;
   position: relative;
   overflow: hidden;
   box-shadow: 0 0 50px rgba(0, 0, 0, 0.95);
@@ -102,25 +94,22 @@ body > div > div {
   flex-shrink: 0 !important;
 }
 
+/* ローディング時の共通中央寄せ */
+.app-container--loading {
+  align-items: center;
+  justify-content: center;
+}
+
 .main-content {
   display: flex;
   flex-direction: column;
   flex: 1;
   width: 100%;
-  min-height: 0;
+  min-height: 0; /* Flexbox子要素のスクロール・高さいきなり崩れ防止 */
+  position: relative;
   overflow-x: hidden;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-}
-
-/* メインコンテンツ共通 */
-.main-content {
-  flex: 1;
-  width: 100%;
-  min-height: 0;
-  overflow-y: auto;
-  overflow-x: hidden;
-  position: relative;
 }
 
 /* デザインスクロールバー（つや消しメタル調） */

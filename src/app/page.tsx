@@ -28,6 +28,7 @@ import BbsTab from "./components/BbsTab";
 function AppContent() {
   const { session, authLoading, isSetupRequired, activeTab } = useGame();
 
+  // 1. ログイン認証待ちローディング (430px単一モバイル枠内で回転スピナー表示)
   if (authLoading) {
     return (
       <div className="app-container app-container--loading">
@@ -36,17 +37,28 @@ function AppContent() {
     );
   }
 
+  // 2. 未ログイン認証画面
   if (!session) {
-    return <AuthView />;
+    return (
+      <div className="app-container app-container--mobile">
+        <AuthView />
+      </div>
+    );
   }
 
+  // 3. 組織設立・初期セットアップ画面
   if (isSetupRequired) {
-    return <SetupView />;
+    return (
+      <div className="app-container app-container--mobile">
+        <SetupView />
+      </div>
+    );
   }
 
+  // 4. メインゲーム画面 (全13タブ共通フレーム)
   return (
     <div className="app-container app-container--mobile">
-      {/* 共通モバイルヘッダー */}
+      {/* 全タブ共通 2行構成モバイルヘッダー */}
       <Header />
 
       {/* メインビューポートコンテンツ */}
@@ -68,9 +80,10 @@ function AppContent() {
         {activeTab === "bbs" && <BbsTab />}
       </main>
 
-      {/* 共通モバイルフッター */}
+      {/* 全タブ共通 モバイルフッター */}
       <Footer />
 
+      {/* 最前面全画面ダイアログ・バトル・共通モーダル (430px枠内収容) */}
       <AdvView />
       <CardBattleView />
       <CommonModals />

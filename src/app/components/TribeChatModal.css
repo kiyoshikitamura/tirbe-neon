@@ -1,0 +1,240 @@
+/* ==========================================
+   TribeChatModal.css - 暗号メッセージ『トライブ』モーダル
+   ========================================== */
+
+.tribe-modal-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(8px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.tribe-modal-container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 390px;
+  height: 85%;
+  max-height: 580px;
+  background: rgba(11, 15, 25, 0.98);
+  border: 1px solid rgba(0, 240, 255, 0.3);
+  box-shadow: 0 0 30px rgba(0, 240, 255, 0.2);
+  border-radius: 12px;
+  overflow: hidden;
+  position: relative;
+}
+
+.tribe-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 14px;
+  background: rgba(0, 0, 0, 0.4);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.tribe-modal-title-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.tribe-modal-tag {
+  font-size: 8px;
+  font-weight: 800;
+  color: var(--neon-cyan);
+  letter-spacing: 0.5px;
+}
+
+.tribe-modal-title {
+  font-size: 13px;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.tribe-modal-close-btn {
+  background: transparent;
+  border: none;
+  color: #a0a0ab;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 4px;
+  transition: color 0.2s;
+}
+
+.tribe-modal-close-btn:hover {
+  color: #ffffff;
+}
+
+.tribe-modal-tabs {
+  display: flex;
+  gap: 6px;
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.2);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.tribe-modal-tab-btn {
+  flex: 1;
+  padding: 6px 0;
+  font-size: 11px;
+  font-weight: 700;
+  color: #a0a0ab;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.tribe-modal-tab-btn.active {
+  color: #000000;
+  background: var(--neon-cyan);
+  border-color: var(--neon-cyan);
+  box-shadow: 0 0 10px rgba(0, 240, 255, 0.4);
+}
+
+.tribe-dm-recipient-selector {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: rgba(0, 240, 255, 0.05);
+  border-bottom: 1px solid rgba(0, 240, 255, 0.15);
+}
+
+.tribe-dm-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--neon-cyan);
+}
+
+.tribe-dm-recipient-input {
+  flex: 1;
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 10px;
+  color: #ffffff;
+}
+
+.tribe-modal-body {
+  flex: 1;
+  padding: 10px 12px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tribe-modal-empty {
+  font-size: 11px;
+  color: #707080;
+  text-align: center;
+  margin: auto;
+}
+
+.tribe-msg-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-width: 85%;
+}
+
+.tribe-msg-row.self {
+  align-self: flex-end;
+}
+
+.tribe-msg-row.other {
+  align-self: flex-start;
+}
+
+.tribe-msg-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 9px;
+}
+
+.tribe-msg-row.self .tribe-msg-header {
+  justify-content: flex-end;
+}
+
+.tribe-msg-author {
+  color: #a0a0ab;
+  font-weight: 700;
+}
+
+.tribe-msg-row.self .tribe-msg-author {
+  color: var(--neon-cyan);
+}
+
+.tribe-msg-time {
+  color: #606070;
+  font-size: 8px;
+}
+
+.tribe-msg-bubble {
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 11px;
+  line-height: 1.4;
+  word-break: break-all;
+}
+
+.tribe-msg-row.self .tribe-msg-bubble {
+  background: rgba(0, 240, 255, 0.15);
+  border: 1px solid rgba(0, 240, 255, 0.3);
+  color: #ffffff;
+  border-top-right-radius: 2px;
+}
+
+.tribe-msg-row.other .tribe-msg-bubble {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #e0e0e8;
+  border-top-left-radius: 2px;
+}
+
+.tribe-modal-footer {
+  display: flex;
+  gap: 8px;
+  padding: 10px 12px;
+  background: rgba(0, 0, 0, 0.4);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.tribe-modal-input {
+  flex: 1;
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 11px;
+  color: #ffffff;
+}
+
+.tribe-modal-input:focus {
+  outline: none;
+  border-color: var(--neon-cyan);
+}
+
+.tribe-modal-send-btn {
+  padding: 0 14px;
+  background: linear-gradient(135deg, #00f0ff, #0088ff);
+  border: none;
+  border-radius: 6px;
+  color: #000000;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
