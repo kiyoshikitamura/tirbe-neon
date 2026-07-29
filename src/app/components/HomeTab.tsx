@@ -105,7 +105,7 @@ function MainMyPage() {
   }
 
   // チャットプレビュー最新1行
-  const latestMessage = guildChats.length > 0 ? guildChats[guildChats.length - 1] : null;
+  const latestMessage = (guildChats || []).length > 0 ? guildChats[guildChats.length - 1] : null;
 
   // 🚀 動的拡張性: 左右小アイコン定義配列 (将来の新機能追加も配列追加で即座に対応)
   const leftSubIcons = [
@@ -166,7 +166,7 @@ function MainMyPage() {
       label: "プレゼント",
       icon: "/ui/icon_present.png",
       badge: unclaimedPresentsCount,
-      onClick: () => setInboxTab("present")
+      onClick: () => setInboxTab("presents")
     },
     {
       id: "settings",
@@ -203,7 +203,7 @@ function MainMyPage() {
         {/* 総合力 表示パネル (最上段下中央・透過グレー) */}
         <div className="mypage-power-panel">
           <span className="mypage-power-label">総合力</span>
-          <span className="mypage-power-val">{totalPower.toLocaleString()}</span>
+          <span className="mypage-power-val">{(totalPower || 0).toLocaleString()}</span>
         </div>
 
         {/* 左側小アイコン群 (動的配列レンダリング) */}

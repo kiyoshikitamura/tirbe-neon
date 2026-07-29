@@ -15,7 +15,6 @@ export default function TribeChatModal({ isOpen, onClose }: TribeChatModalProps)
     userGuildMember,
     chatChannel,
     setChatChannel,
-    activeUsersCount,
     guildChats,
     chatInput,
     setChatInput,
@@ -43,8 +42,8 @@ export default function TribeChatModal({ isOpen, onClose }: TribeChatModalProps)
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && !chatSending && chatCooldown === 0) {
       if (chatChannel === "DM") {
-        if (localDmText.trim()) {
-          handleSendDirectMessage(localDmText);
+        if (localDmText.trim() && dmRecipientId) {
+          handleSendDirectMessage(dmRecipientId, localDmText);
           setLocalDmText("");
         }
       } else {
@@ -57,8 +56,8 @@ export default function TribeChatModal({ isOpen, onClose }: TribeChatModalProps)
 
   const handleSend = () => {
     if (chatChannel === "DM") {
-      if (localDmText.trim()) {
-        handleSendDirectMessage(localDmText);
+      if (localDmText.trim() && dmRecipientId) {
+        handleSendDirectMessage(dmRecipientId, localDmText);
         setLocalDmText("");
       }
     } else {
@@ -67,6 +66,9 @@ export default function TribeChatModal({ isOpen, onClose }: TribeChatModalProps)
       }
     }
   };
+
+  const safeDirectMessages = directMessages || [];
+  const safeGuildChats = guildChats || [];
 
   return (
     <div className="tribe-modal-overlay" onClick={onClose}>
@@ -107,11 +109,11 @@ export default function TribeChatModal({ isOpen, onClose }: TribeChatModalProps)
         {/* DM相手選択ドロップダウン (DM時のみ) */}
         {chatChannel === "DM" && (
           <div className="tribe-dm-recipient-selector">
-            <label className="tribe-dm-label">送信相手:</label>
+            <label className="tribe-dm-label">送信相手ID:</label>
             <input
               type="text"
               placeholder="相手のユーザーIDを入力..."
-              value={dmRecipientId}
+              value={dmRecipientId || ""}
               onChange={(e) => setDmRecipientId(e.target.value)}
               className="tribe-dm-recipient-input"
             />
@@ -121,34 +123,37 @@ export default function TribeChatModal({ isOpen, onClose }: TribeChatModalProps)
         {/* チャットメッセージログ表示領域 */}
         <div className="tribe-modal-body scroll-container">
           {chatChannel === "DM" ? (
-            directMessages.length === 0 ? (
+            safeDirectMessages.length === 0 ? (
               <div className="tribe-modal-empty">ダイレクトメッセージのログはありません</div>
             ) : (
-              directMessages.map((msg: any, idx: number) => {
+              safeDirectMessages.map((msg: any, idx: number) => {
                 const isSelf = msg.sender_id === userGuildMember?.user_id;
+                const timeStr = msg?.created_at
+                  ? new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+                  : "";
                 return (
                   <div key={idx} className={`tribe-msg-row ${isSelf ? "self" : "other"}`}>
                     <div className="tribe-msg-header">
                       <span className="tribe-msg-author">{msg.sender_name || "ユーザー"}</span>
-                      <span className="tribe-msg-time">{new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                      {timeStr && <span className="tribe-msg-time">{timeStr}</span>}
                     </div>
-                    <div className="tribe-msg-bubble">{msg.content}</div>
+                    <div className="tribe-msg-bubble">{msg.message || msg.content || ""}</div>
                   </div>
                 );
               })
             )
           ) : (
-            guildChats.length === 0 ? (
+            safeGuildChats.length === 0 ? (
               <div className="tribe-modal-empty">メッセージログはありません</div>
             ) : (
-              guildChats.map((msg: any, idx: number) => {
+              safeGuildChats.map((msg: any, idx: number) => {
                 const isSelf = msg.user_id === userGuildMember?.user_id;
                 return (
                   <div key={idx} className={`tribe-msg-row ${isSelf ? "self" : "other"}`}>
                     <div className="tribe-msg-header">
                       <span className="tribe-msg-author">{msg.author_name}</span>
                     </div>
-                    <div className="tribe-msg-bubble">{msg.content}</div>
+                    <div className="tribe-msg-bubble">{msg.content || ""}</div>
                   </div>
                 );
               })

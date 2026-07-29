@@ -132,7 +132,7 @@ export default function PvpTab() {
 
         {battleLoading ? (
           <div className="loading-container">
-            <div className="spinner mx-auto animate-spin" />
+            <div className="spinner" />
           </div>
         ) : (
           <div className="pvp-content-area">
@@ -149,7 +149,7 @@ export default function PvpTab() {
 
                 {opponentsLoading && pvpOpponents.length === 0 ? (
                   <div className="loading-container py-8">
-                    <div className="spinner mx-auto animate-spin" />
+                    <div className="spinner" />
                   </div>
                 ) : (
                   <div className="list-container">

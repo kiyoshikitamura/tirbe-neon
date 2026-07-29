@@ -1,167 +1,126 @@
-/* ==========================================
-   Header.css - TRIBE: NEON REIGN
-   全13タブ共通モバイルヘッダー (Matte Outlaw UI)
-   ========================================== */
-
+/* モバイル専用2行ヘッダー (セーフエリア全自動フィッティング) */
 .header-mobile {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  width: 100%;
-  padding: calc(8px + env(safe-area-inset-top, 0px)) 10px 6px;
+  padding: calc(8px + env(safe-area-inset-top, 0px)) 12px 8px 12px;
   background: rgba(11, 15, 25, 0.95);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  border-image: linear-gradient(to right, transparent, rgba(212, 175, 55, 0.5), transparent) 1;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.8);
-  z-index: 25;
+  border-bottom: 1px solid rgba(0, 240, 255, 0.2);
+  z-index: 100;
   flex-shrink: 0;
-  box-sizing: border-box;
 }
 
-/* 1行目: 通り名 + 名前 + Lv + 所属ギルド + レイドアラート */
 .header-mobile-row1 {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  width: 100%;
+  justify-content: space-between;
 }
 
 .header-mobile-user {
   display: flex;
   align-items: center;
   gap: 6px;
-  min-width: 0;
-  width: 100%;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
 }
 
 .header-mobile-title {
-  font-size: 10px;
-  color: #d4af37;
-  background: rgba(212, 175, 55, 0.12);
-  border: 1px solid rgba(212, 175, 55, 0.3);
-  padding: 1px 5px;
-  border-radius: 3px;
-  font-weight: 700;
-  white-space: nowrap;
+  font-size: 11px;
+  color: var(--neon-gold);
+  background: rgba(255, 215, 0, 0.1);
+  padding: 1px 6px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 215, 0, 0.3);
 }
 
 .header-mobile-username {
-  font-size: 13px;
-  font-weight: 800;
+  font-size: 14px;
+  font-weight: 700;
   color: #ffffff;
-  letter-spacing: 0.3px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 110px;
 }
 
 .header-mobile-level-badge {
-  font-size: 9px;
-  font-weight: 800;
-  color: #00f0ff;
-  background: rgba(0, 240, 255, 0.12);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--neon-cyan);
+  background: rgba(0, 240, 255, 0.1);
+  padding: 1px 6px;
+  border-radius: 4px;
   border: 1px solid rgba(0, 240, 255, 0.3);
-  padding: 1px 5px;
-  border-radius: 3px;
-  flex-shrink: 0;
 }
 
 .header-mobile-guild-name {
-  font-size: 9px;
-  color: #a0a0ab;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  padding: 1px 5px;
-  border-radius: 3px;
-  white-space: nowrap;
-  margin-left: auto;
+  font-size: 11px;
+  color: var(--text-secondary);
 }
 
 .header-mobile-raid-alert {
   display: flex;
   align-items: center;
   gap: 4px;
-  font-size: 9px;
-  font-weight: 700;
-  color: #ff3366;
-  background: rgba(255, 51, 102, 0.15);
-  border: 1px solid rgba(255, 51, 102, 0.4);
-  padding: 1px 6px;
+  padding: 2px 8px;
+  background: rgba(255, 0, 127, 0.2);
+  border: 1px solid var(--neon-magenta);
   border-radius: 12px;
-  cursor: pointer;
-  flex-shrink: 0;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 700;
+  animation: pulse-alert 1.5s infinite;
 }
 
 .header-raid-dot {
-  width: 5px;
-  height: 5px;
-  background-color: #ff3366;
+  width: 6px;
+  height: 6px;
+  background: var(--neon-magenta);
   border-radius: 50%;
-  box-shadow: 0 0 6px #ff3366;
-  animation: raidPulse 1.2s infinite ease-in-out;
 }
 
-@keyframes raidPulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.4; transform: scale(0.8); }
+@keyframes pulse-alert {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
 }
 
-/* 2行目: 所持キャッシュ + 所持ダイヤ + AP (バランス配置) */
 .header-mobile-row2 {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 6px;
-  width: 100%;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .header-mobile-stat {
   display: flex;
   align-items: center;
-  justify-content: center;
   gap: 4px;
-  flex: 1;
-  background: rgba(0, 0, 0, 0.4);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  padding: 3px 6px;
-  border-radius: 4px;
-  min-width: 0;
 }
 
 .header-stat-icon {
-  width: 13px;
-  height: 13px;
+  width: 16px;
+  height: 16px;
   object-fit: contain;
-  flex-shrink: 0;
-}
-
-.header-mobile-stat-label {
-  font-size: 8px;
-  color: #8a8a98;
-  font-weight: 700;
-  text-transform: uppercase;
 }
 
 .header-mobile-stat-val {
-  font-size: 11px;
+  font-family: var(--font-outfit);
+  font-size: 12px;
   font-weight: 700;
-  color: #ffffff;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  font-family: "Outfit", "Inter", sans-serif;
 }
 
 .header-mobile-stat-cash {
-  color: #55ff99;
+  color: #00ff66;
 }
 
 .header-mobile-stat-diamond {
-  color: #00f0ff;
+  color: var(--neon-cyan);
+}
+
+.header-mobile-stat-label {
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--neon-gold);
 }
 
 .header-mobile-stat-energy {
-  color: #ffaa00;
+  color: #ffffff;
 }

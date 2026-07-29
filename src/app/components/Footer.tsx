@@ -22,14 +22,14 @@ export default function Footer() {
         return (
           <button
             key={item.id}
-            className={`footer-nav-item active-scale-effect ${isActive ? "active" : ""}`}
+            className={`footer-item active-scale-effect ${isActive ? "active" : ""}`}
             onClick={() => {
               navigateTab(item.id);
               playCyberSe("click");
             }}
           >
-            <img src={item.icon} alt={item.label} className="footer-png-icon" />
-            <span className="footer-nav-label">{item.label}</span>
+            <img src={item.icon} alt={item.label} className="footer-icon" />
+            <span className="footer-label">{item.label}</span>
           </button>
         );
       })}

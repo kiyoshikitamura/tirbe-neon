@@ -28,11 +28,13 @@ import BbsTab from "./components/BbsTab";
 function AppContent() {
   const { session, authLoading, isSetupRequired, activeTab } = useGame();
 
-  // 1. ログイン認証待ちローディング (430px単一モバイル枠内で回転スピナー表示)
+  // 1. ログイン認証待ちローディング (アプリ枠 .app-container は変化させず、内部に完全保護スクリーンを配置)
   if (authLoading) {
     return (
-      <div className="app-container app-container--loading">
-        <div className="spinner" />
+      <div className="app-container">
+        <div className="app-loading-screen">
+          <div className="spinner" />
+        </div>
       </div>
     );
   }
@@ -40,7 +42,7 @@ function AppContent() {
   // 2. 未ログイン認証画面
   if (!session) {
     return (
-      <div className="app-container app-container--mobile">
+      <div className="app-container">
         <AuthView />
       </div>
     );
@@ -49,7 +51,7 @@ function AppContent() {
   // 3. 組織設立・初期セットアップ画面
   if (isSetupRequired) {
     return (
-      <div className="app-container app-container--mobile">
+      <div className="app-container">
         <SetupView />
       </div>
     );
@@ -57,7 +59,7 @@ function AppContent() {
 
   // 4. メインゲーム画面 (全13タブ共通フレーム)
   return (
-    <div className="app-container app-container--mobile">
+    <div className="app-container">
       {/* 全タブ共通 2行構成モバイルヘッダー */}
       <Header />
 
@@ -83,7 +85,7 @@ function AppContent() {
       {/* 全タブ共通 モバイルフッター */}
       <Footer />
 
-      {/* 最前面全画面ダイアログ・バトル・共通モーダル (430px枠内収容) */}
+      {/* 最前面全画面ダイアログ・バトル・共通モーダル */}
       <AdvView />
       <CardBattleView />
       <CommonModals />

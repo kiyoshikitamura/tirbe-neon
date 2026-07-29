@@ -76,20 +76,23 @@ This file defines the project-specific rules, design constraints, and technical 
 ## 7. マイページ画面（HomeTab ＆ Header）完全ゼロベースUI ＆ レイアウト仕様
 
 ### PC画面中央寄せ規格 (Single Mobile Container Architecture)
-- PC表示で右寄りに崩れる不具合を完全に防止し、`html, body, body > div` の全階層 Flexbox 中央寄せ指定と `.app-container` への `width: 100% !important; max-width: 430px !important; margin: 0 auto !important;` を適用。どのような解像度でも画面中央に角ばった縦型枠で表示。
+- PC表示で右寄りに崩れる不具合を完全に防止し、`html, body, #__next, body > div` の全階層 Flexbox 中央寄せ指定と `.app-container` への `width: 100% !important; max-width: 430px !important; margin: 0 auto !important;` を適用。どのような解像度でも画面中央に角ばった縦型枠で表示。
+
+### SpinContainer Architecture (完全独立サイズ保護ローディング)
+- アプリ枠 `.app-container` の構造をローディング時も一切変形・変化させず、内部に完全保護スクリーン `<div className="app-loading-screen">` を中央配置。その内部で `.spinner` (`24px x 24px !important`) を固定回転させることで、ローディングスピナーの全画面拡大・楕円化を100%防止。
 
 ### ヘッダー（Header.tsx / Header.css） - 全13タブ共通
 - **2行構成のモバイルヘッダー**:
-  - **Row1**: 通り名(称号) ｜ 名前 ｜ Lv. ｜ 所属ギルド ｜ (レイド開催時アラート)
-  - **Row2**: 💵Cash (`/ui/icon_cash.png`) ｜ 💎Dia (`/ui/icon_dia.png`) ｜ ⚡AP (`100/100` 表記)
+  - **Row1**: 通り名(称号 `userTitle` / `titleEquipped`) ｜ 名前 ｜ Lv. ｜ 所属ギルド ｜ (レイド開催時アラート `isRaidActive`)
+  - **Row2**: 💵Cash (`/ui/icon_cash.png`) ｜ 💎Dia (`/ui/icon_dia.png`) ｜ ⚡AP (`vitality/100` 表記)
 - **セーフエリア対応**: `padding-top: calc(8px + env(safe-area-inset-top, 0px))` を適用し、ステータスバー（時計・電池ピクト）直下の安全領域に自動フィッティング。
 
 ### ビジュアルエリア（50vh 固定 ＆ 動的配列アイコン化 ＆ プリロード）
 - **最上段HUD (拠点情報オーバーレイ)**:
   - 拠点名 ｜ 支配: ギルド名 ｜ [拠点移動] ボタン (`/ui/icon_map.png`)
 - **総合力 表示パネル**:
-  - 最上段HUDの直下中央に配置。薄い透過グレー背景、文字サイズ大、カンマ桁区切り (`12,500`)。
-- **全17個の生成アイコン ＆ 動的配列レンダリング (`MYPAGE_LEFT_ICONS`, `MYPAGE_RIGHT_ICONS`)**:
+  - 最上段HUDの直下中央に配置。`GameContext` の `totalPower` ステートより同期表示。`{(totalPower || 0).toLocaleString()}` により型安全な桁区切り。
+- **全17個の生成アイコン ＆ 動的配列レンダリング (`leftSubIcons`, `rightSubIcons`)**:
   - 全ての小アイコンに `public/ui/icon_*.png` 画像を使用し、アイコン画像の下に小さな重ねテキストラベルを配置。将来の機能増設に対応するデータ駆動構造。
   - **左小アイコン (6個)**: ミッション、ランキング、友達、コミュニティ(BBS)、レイド、マップ
   - **右小アイコン (4個)**: マイバッグ、お知らせ、プレゼントBOX、設定
@@ -103,7 +106,8 @@ This file defines the project-specific rules, design constraints, and technical 
 
 ### 1行チャット ＆ 暗号メッセージアプリ『トライブ』モーダル (スライス切り出し: `TribeChatModal.tsx`)
 - イベントバナー直下に全体チャット最新1行をプレビュー表示（入力欄なし）。
-- プレビュータップでスライス切り出し独立コンポーネント `TribeChatModal.tsx` が起動。「全体」「ギルド」「個人チャット(DM機能)」を切り替えてメッセージ送信・閲覧。
+- プレビュータップでスライス切り出し独立コンポーネント `TribeChatModal.tsx` が起動。「全体」「ギルド」「個人チャット(DM機能)`chatChannel: "DM"`」を切り替えてメッセージ送信・閲覧。
+- `handleSendDirectMessage(dmRecipientId, localDmText)` の2引数正当呼び出し ＆ `{msg.message || msg.content}` フォールバックによる型安全保護。
 
 ### フッター (Footer.tsx / Footer.css) - 全13タブ共通
 - 5項目: `マイページ` (`icon_footer_mypage.png`)、`ギルド` (`icon_footer_guild.png`)、`キャラ` (`icon_footer_character.png`)、`ガチャ` (`icon_footer_gacha.png`)、`ショップ` (`icon_footer_shop.png`)

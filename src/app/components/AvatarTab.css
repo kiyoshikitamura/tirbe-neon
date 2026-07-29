@@ -17,16 +17,9 @@
   min-height: 0; /* フレックスコンテナ内のスクロール動作を有効にする */
 }
 
-/* モバイル表示への対応 (縦並び) */
-@media (max-width: 768px) {
-  .avatar-tab-content {
-    flex-direction: column;
-    overflow-y: auto;
-  }
-  
-  .avatar-preview-section {
-    flex: 0 0 auto !important;
-  }
+.avatar-tab-content {
+  flex-direction: column;
+  overflow-y: auto;
 }
 
 /* ------------------------------------------

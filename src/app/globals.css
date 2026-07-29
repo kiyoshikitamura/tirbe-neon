@@ -73,9 +73,7 @@ body > div > div {
    アプリレイアウト構造定義 (全端末共通モバイル単一コンテナ)
    ========================================== */
 
-.app-container,
-.app-container--mobile,
-.app-container--loading {
+.app-container {
   display: flex;
   flex-direction: column;
   width: 100% !important;
@@ -94,10 +92,15 @@ body > div > div {
   flex-shrink: 0 !important;
 }
 
-/* ローディング時の共通中央寄せ */
-.app-container--loading {
+/* SpinContainer Architecture: 完全独立サイズ保護ローディングスクリーン */
+.app-loading-screen {
+  position: absolute;
+  inset: 0;
+  display: flex;
   align-items: center;
   justify-content: center;
+  background: #000000;
+  z-index: 9999;
 }
 
 .main-content {
@@ -125,13 +128,6 @@ body > div > div {
 }
 .main-content::-webkit-scrollbar-thumb:hover {
   background: rgba(180, 180, 190, 0.5);
-}
-
-/* PC時はmain-contentのスクロールを無効化（各タブが自前でスクロール管理するため） */
-@media (min-width: 768px) {
-  .main-content {
-    overflow: hidden;
-  }
 }
 
 body::before {
@@ -188,11 +184,17 @@ button:disabled {
   pointer-events: none;
 }
 
-/* ローディングスピナー */
+/* ローディングスピナー (完全固定サイズ保護) */
 .spinner {
-  width: 20px;
-  height: 20px;
-  border: 2.5px solid rgba(255, 255, 255, 0.1);
+  width: 24px !important;
+  height: 24px !important;
+  min-width: 24px !important;
+  min-height: 24px !important;
+  max-width: 24px !important;
+  max-height: 24px !important;
+  flex-shrink: 0 !important;
+  align-self: center !important;
+  border: 2.5px solid rgba(255, 255, 255, 0.15);
   border-radius: 50%;
   border-top-color: var(--neon-cyan);
   animation: spin 0.8s linear infinite;
@@ -200,15 +202,6 @@ button:disabled {
 
 @keyframes spin {
   to { transform: rotate(360deg); }
-}
-
-/* ==========================================
-   アプリケーション共通レイアウト (ベース)
-   ※ height / position はモディファイア (--pc, --mobile) 側で定義
-   ========================================== */
-.app-container {
-  display: flex;
-  flex-direction: column;
 }
 
 /* ヘッダー (絵文字なし・シャープな英字表記) */

@@ -257,9 +257,10 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const [showImportantModal, setShowImportantModal] = useState<boolean>(true);
 
   const [guildChats, setGuildChats] = useState<any[]>([]);
-  const [chatChannel, setChatChannel] = useState<"GLOBAL" | "GUILD">("GLOBAL");
+  const [chatChannel, setChatChannel] = useState<"GLOBAL" | "GUILD" | "DM">("GLOBAL");
   const [chatInput, setChatInput] = useState<string>("");
   const [chatSending, setChatSending] = useState<boolean>(false);
+  const [totalPower, setTotalPower] = useState<number>(0);
 
   // 💬 BBS用ステート
   const [bbsThreads, setBbsThreads] = useState<any[]>([]);
@@ -1253,7 +1254,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
       // 総合力データの同期
       if (charsData && charsData.length > 0) {
-        await syncUserPower(userId, charsData, equipsData || [], localDeck);
+        const calculatedPower = await syncUserPower(userId, charsData, equipsData || [], localDeck);
+        setTotalPower(calculatedPower);
       }
 
       // 総合力およびギルド総合力ランキングの取得・集計
@@ -5376,6 +5378,9 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     equippedBackground, setEquippedBackground,
     equippedFrontEffect, setEquippedFrontEffect,
     titleEquipped, setTitleEquipped,
+    userTitle: titleEquipped || "半グレの首領",
+    totalPower,
+    isRaidActive: raidBossHp > 0 && raidBossSecondsLeft > 0,
 
     // アバターシステム状態
     setupGender, setSetupGender,

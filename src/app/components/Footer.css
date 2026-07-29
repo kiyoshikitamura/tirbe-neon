@@ -1,69 +1,43 @@
-/* ==========================================
-   Footer.css - TRIBE: NEON REIGN
-   全13タブ共通フッターナビゲーション (Matte Outlaw UI)
-   ========================================== */
-
+/* 全端末共通 5項目フッター (下部セーフエリア全自動フィッティング) */
 .footer-mobile {
   display: flex;
-  justify-content: space-around;
   align-items: center;
-  width: 100%;
-  padding: 6px 4px calc(6px + env(safe-area-inset-bottom, 0px));
-  background: rgba(9, 12, 20, 0.98);
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  border-image: linear-gradient(to right, transparent, rgba(0, 240, 255, 0.4), transparent) 1;
-  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.8);
-  z-index: 25;
+  justify-content: space-around;
+  padding: 6px 4px calc(6px + env(safe-area-inset-bottom, 0px)) 4px;
+  background: rgba(11, 15, 25, 0.98);
+  border-top: 1px solid rgba(0, 240, 255, 0.2);
+  z-index: 100;
   flex-shrink: 0;
-  box-sizing: border-box;
 }
 
-.footer-nav-item {
+.footer-item {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 2px;
-  background: transparent;
-  border: none;
-  color: #8a8a98;
-  padding: 4px 8px;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  position: relative;
   flex: 1;
+  padding: 4px 0;
+  opacity: 0.6;
+  transition: opacity 0.2s ease, transform 0.1s ease;
 }
 
-.footer-nav-item:hover {
-  color: #ffffff;
+.footer-item.active {
+  opacity: 1;
 }
 
-.footer-nav-item.active {
-  color: #00f0ff;
-}
-
-.footer-nav-item.active::before {
-  content: "";
-  position: absolute;
-  top: -6px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 24px;
-  height: 2px;
-  background: #00f0ff;
-  box-shadow: 0 0 8px #00f0ff;
-  border-radius: 1px;
-}
-
-.footer-png-icon {
+.footer-icon {
   width: 22px;
   height: 22px;
   object-fit: contain;
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
 }
 
-.footer-nav-label {
-  font-size: 9px;
+.footer-label {
+  font-size: 10px;
   font-weight: 700;
-  letter-spacing: 0.2px;
+  color: var(--text-secondary);
+}
+
+.footer-item.active .footer-label {
+  color: var(--neon-cyan);
 }
