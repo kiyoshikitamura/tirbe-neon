@@ -37,30 +37,23 @@
 
 html, body {
   width: 100%;
-  max-width: 100%;
   height: 100%;
   height: 100dvh;
   margin: 0;
   padding: 0;
-  overflow-x: hidden !important;
-  overflow-y: hidden !important;
+  overflow: hidden !important;
   background: var(--bg-color);
   color: var(--text-primary);
   font-family: var(--font-inter);
   -webkit-font-smoothing: antialiased;
-  display: flex !important;
-  justify-content: center !important;
-  align-items: stretch !important;
 }
 
-/* Next.js ルート DIV の Flexbox 中央寄せ (直接子のみ) */
+/* Next.js ルート DIV: ブロックレベル全幅全高 (Flex中央寄せは使わない) */
 body > div {
+  display: block !important;
   width: 100% !important;
   height: 100% !important;
   height: 100dvh !important;
-  display: flex !important;
-  justify-content: center !important;
-  align-items: stretch !important;
   margin: 0 !important;
   padding: 0 !important;
   overflow: hidden !important;
@@ -68,17 +61,18 @@ body > div {
 
 /* ==========================================
    アプリレイアウト構造定義 (全端末共通モバイル単一コンテナ)
+   margin: 0 auto による最もシンプルで確実な水平中央配置
    ========================================== */
 
 .app-container {
   display: flex;
   flex-direction: column;
-  width: 100% !important;
-  max-width: 430px !important;
-  height: 100% !important;
-  height: 100dvh !important;
-  margin: 0 auto !important;
-  padding: 0;
+  width: 100%;
+  max-width: 430px;
+  height: 100%;
+  height: 100dvh;
+  margin: 0 auto;
+  padding-top: env(safe-area-inset-top, 0px);
   background: #000000;
   position: relative;
   overflow-x: hidden;
@@ -86,7 +80,6 @@ body > div {
   box-shadow: 0 0 50px rgba(0, 0, 0, 0.95);
   border-left: 1px solid rgba(255, 255, 255, 0.1);
   border-right: 1px solid rgba(255, 255, 255, 0.1);
-  flex-shrink: 0 !important;
 }
 
 /* SpinContainer Architecture: 完全独立サイズ保護ローディングスクリーン */
