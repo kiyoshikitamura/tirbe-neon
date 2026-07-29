@@ -1,14 +1,16 @@
 /* 暗号メッセージアプリ『トライブ』モーダル (Matte Outlaw UI) */
+
+/* モーダルオーバーレイ: .app-container 内部で展開 (position: absolute) */
 .tribe-modal-overlay {
-  position: fixed;
+  position: absolute;
   inset: 0;
-  background: rgba(0, 0, 0, 0.8);
+  background: rgba(0, 0, 0, 0.85);
   backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
-  padding: 16px;
+  z-index: 500;
+  padding: 24px 12px;
 }
 
 .tribe-modal-container {
@@ -16,8 +18,8 @@
   flex-direction: column;
   width: 100%;
   max-width: 390px;
-  height: 80vh;
-  max-height: 560px;
+  height: 70vh;
+  max-height: 480px;
   background: #0d111c;
   border: 1px solid rgba(0, 240, 255, 0.3);
   border-radius: 12px;
@@ -32,6 +34,7 @@
   padding: 12px 14px;
   background: rgba(15, 20, 32, 0.95);
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
 }
 
 .tribe-modal-title-row {
@@ -67,6 +70,7 @@
   display: flex;
   background: rgba(0, 0, 0, 0.3);
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  flex-shrink: 0;
 }
 
 .tribe-modal-tab-btn {
@@ -92,6 +96,7 @@
   padding: 8px 12px;
   background: rgba(0, 0, 0, 0.4);
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  flex-shrink: 0;
 }
 
 .tribe-dm-label {
@@ -111,6 +116,7 @@
   outline: none;
 }
 
+/* メッセージログ表示領域 (デザインスクロールバー) */
 .tribe-modal-body {
   flex: 1;
   padding: 12px;
@@ -118,6 +124,22 @@
   flex-direction: column;
   gap: 10px;
   overflow-y: auto;
+  min-height: 0;
+}
+
+/* つや消しメタル調デザインスクロールバー */
+.tribe-modal-body::-webkit-scrollbar {
+  width: 4px;
+}
+.tribe-modal-body::-webkit-scrollbar-track {
+  background: rgba(20, 20, 30, 0.3);
+}
+.tribe-modal-body::-webkit-scrollbar-thumb {
+  background: rgba(160, 160, 170, 0.35);
+  border-radius: 2px;
+}
+.tribe-modal-body::-webkit-scrollbar-thumb:hover {
+  background: rgba(180, 180, 190, 0.5);
 }
 
 .tribe-modal-empty {
@@ -191,6 +213,7 @@
   padding: 10px 12px;
   background: rgba(15, 20, 32, 0.95);
   border-top: 1px solid rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
 }
 
 .tribe-modal-input {

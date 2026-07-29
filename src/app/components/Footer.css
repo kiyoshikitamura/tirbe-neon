@@ -3,11 +3,13 @@
   display: flex;
   align-items: center;
   justify-content: space-around;
+  min-height: 56px;
   padding: 6px 4px calc(6px + env(safe-area-inset-bottom, 0px)) 4px;
   background: rgba(11, 15, 25, 0.98);
   border-top: 1px solid rgba(0, 240, 255, 0.2);
   z-index: 100;
   flex-shrink: 0;
+  width: 100%;
 }
 
 .footer-item {
@@ -17,6 +19,7 @@
   justify-content: center;
   gap: 2px;
   flex: 1;
+  min-width: 0;
   padding: 4px 0;
   opacity: 0.6;
   transition: opacity 0.2s ease, transform 0.1s ease;
@@ -29,13 +32,17 @@
 .footer-icon {
   width: 22px;
   height: 22px;
+  min-width: 22px;
+  min-height: 22px;
   object-fit: contain;
+  flex-shrink: 0;
 }
 
 .footer-label {
   font-size: 10px;
   font-weight: 700;
   color: var(--text-secondary);
+  white-space: nowrap;
 }
 
 .footer-item.active .footer-label {

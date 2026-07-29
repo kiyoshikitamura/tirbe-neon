@@ -42,7 +42,7 @@ html, body {
   height: 100dvh;
   margin: 0;
   padding: 0;
-  overflow-x: hidden !important; /* 横ズレ・横スクロールを完全に物理ブロック */
+  overflow-x: hidden !important;
   overflow-y: hidden !important;
   background: var(--bg-color);
   color: var(--text-primary);
@@ -50,21 +50,18 @@ html, body {
   -webkit-font-smoothing: antialiased;
   display: flex !important;
   justify-content: center !important;
-  align-items: center !important;
+  align-items: stretch !important;
 }
 
-/* Next.js ルート DIV 全階層の Flexbox 左右・上下中央寄せ強制適用 */
-#__next,
-body > div,
-body > div > div {
+/* Next.js ルート DIV の Flexbox 中央寄せ (直接子のみ) */
+body > div {
   width: 100% !important;
-  max-width: 100% !important;
   height: 100% !important;
   height: 100dvh !important;
   display: flex !important;
   justify-content: center !important;
-  align-items: center !important;
-  margin: 0 auto !important;
+  align-items: stretch !important;
+  margin: 0 !important;
   padding: 0 !important;
   overflow: hidden !important;
 }
@@ -81,11 +78,11 @@ body > div > div {
   height: 100% !important;
   height: 100dvh !important;
   margin: 0 auto !important;
-  align-self: center !important;
   padding: 0;
   background: #000000;
   position: relative;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: hidden;
   box-shadow: 0 0 50px rgba(0, 0, 0, 0.95);
   border-left: 1px solid rgba(255, 255, 255, 0.1);
   border-right: 1px solid rgba(255, 255, 255, 0.1);

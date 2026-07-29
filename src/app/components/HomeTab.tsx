@@ -84,21 +84,27 @@ function MainMyPage() {
   // 拠点支配ギルド名
   const currentControl = gvgBaseControls?.find((b: any) => b.base_id === currentBaseId);
   const controllerName = currentControl?.guild_name || "未支配";
-  const baseName =
-    currentBaseId === "neontower"
-      ? "ネオンタワー"
-      : currentBaseId === "deepdock"
-      ? "ディープドック"
-      : currentBaseId === "junkbazaar"
-      ? "ジャンクバザール"
-      : "キタクラゲート";
+
+  // 拠点ID → 表示名・画像ファイル名のマッピング
+  const baseMap: { [key: string]: { name: string; file: string } } = {
+    "neon_tower": { name: "ネオンタワー", file: "neontower" },
+    "neontower": { name: "ネオンタワー", file: "neontower" },
+    "deep_dock": { name: "ディープドック", file: "deepdock" },
+    "deepdock": { name: "ディープドック", file: "deepdock" },
+    "junk_bazar": { name: "ジャンクバザール", file: "junkbazaar" },
+    "junkbazaar": { name: "ジャンクバザール", file: "junkbazaar" },
+    "kitakura_gate": { name: "キタクラゲート", file: "kitakuragate" },
+    "kitakuragate": { name: "キタクラゲート", file: "kitakuragate" },
+  };
+  const currentBase = baseMap[currentBaseId || "neon_tower"] || baseMap["neon_tower"];
+  const baseName = currentBase.name;
 
   // リーダーキャラクター立ち絵URL
   const leaderMaster = CHARACTERS_MASTER.find((c) => c.id === selectedLeader) || CHARACTERS_MASTER[0];
-  const leaderImgUrl = `/characters/chara_${leaderMaster?.id || "c001"}.png`;
+  const leaderImgUrl = `/characters/${leaderMaster?.name || "reiji"}_transparent_asset.png`;
 
   // 選択中背景URL
-  let bgUrl = `/bg/bg_base_${currentBaseId || "neontower"}.png`;
+  let bgUrl = `/bg/bg_base_${currentBase.file}.png`;
   if (selectedBgMode && selectedBgMode !== "auto") {
     const foundBg = PROFILE_BACKGROUNDS.find((b) => b.id === selectedBgMode);
     if (foundBg?.img) bgUrl = foundBg.img;
