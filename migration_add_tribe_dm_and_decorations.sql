@@ -1,6 +1,6 @@
 -- ===============================================================
 -- TRIBE: NEON REIGN
--- マイグレーション: 暗号メッセージ『トライブ』(DM) ＆ プロフィール任意背景・レイヤー装飾テーブル
+-- マイグレーション: 暗号メッセージ『トライブ』(DM) ＆ プロフィール任意背景・レイヤー装飾テーブル (安全再実行版)
 -- ===============================================================
 
 -- 1. users テーブルへの装着属性カラムの追加
@@ -37,6 +37,12 @@ CREATE TABLE IF NOT EXISTS public.user_profile_decorations (
 ALTER TABLE public.direct_messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.user_profile_decorations ENABLE ROW LEVEL SECURITY;
 
+-- 既存ポリシーが存在する場合にエラーにならないようドロップ
+DROP POLICY IF EXISTS "Users can view their own direct messages" ON public.direct_messages;
+DROP POLICY IF EXISTS "Users can insert direct messages as sender" ON public.direct_messages;
+DROP POLICY IF EXISTS "Users can view all user decorations" ON public.user_profile_decorations;
+DROP POLICY IF EXISTS "Users can insert their own decorations" ON public.user_profile_decorations;
+
 -- direct_messages: 自分が送信者または受信者であるメッセージのみ参照・追加可能
 CREATE POLICY "Users can view their own direct messages" 
   ON public.direct_messages FOR SELECT 
@@ -55,8 +61,15 @@ CREATE POLICY "Users can insert their own decorations"
   ON public.user_profile_decorations FOR INSERT 
   WITH CHECK (auth.uid() = user_id);
 
--- 5. Supabase Realtime の有効化 (リアルタイムDM受信)
-BEGIN;
-  DROP PUBLICATION IF EXISTS supabase_realtime;
-  CREATE PUBLICATION supabase_realtime FOR ALL TABLES;
-COMMIT;
+-- 5. Supabase Realtime の安全な有効化 (リアルタイムDM受信)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'supabase_realtime') THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.direct_messages;
+  ELSE
+    CREATE PUBLICATION supabase_realtime FOR TABLE public.direct_messages;
+  END IF;
+EXCEPTION
+  WHEN OTHERS THEN
+    NULL;
+END $$;
