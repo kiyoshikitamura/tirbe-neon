@@ -2014,6 +2014,23 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     setProfileLoading(true);
     playCyberSe("click");
 
+    // 🛡️ チート対策: 未解放の背景・称号・装飾の不正設定をバリデーション遮断
+    let safeBg = selectedBgMode;
+    let safeTitle = titleEquipped;
+    let safeInterior = interiorItem;
+
+    if (safeBg === "bg_kabukicho" && userLevel < 5) safeBg = "auto";
+    if (safeBg === "bg_wharf" && !userGuild) safeBg = "auto";
+    if (safeBg === "bg_bazar" && cash < 20000) safeBg = "auto";
+
+    if (safeTitle === "title_kabukicho_emperor" && userLevel < 15) safeTitle = "title_none";
+    if (safeTitle === "title_neon_overlord" && diamonds < 300) safeTitle = "title_none";
+    if (safeTitle === "title_gvg_champion" && !userGuild) safeTitle = "title_none";
+
+    setSelectedBgMode(safeBg);
+    setTitleEquipped(safeTitle);
+    setInteriorItem(safeInterior);
+
     try {
       const { error } = await supabase
         .from("users")
@@ -2023,11 +2040,11 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
           avatar_url: avatarUrl,
           current_base_id: currentBaseId,
           favorite_character_id: selectedLeader,
-          title_equipped: titleEquipped,
+          title_equipped: safeTitle,
           equipped_background: equippedBackground,
           equipped_front_effect: equippedFrontEffect,
-          selected_bg_mode: selectedBgMode,
-          interior_item: interiorItem
+          selected_bg_mode: safeBg,
+          interior_item: safeInterior
         })
         .eq("id", session.user.id);
       
