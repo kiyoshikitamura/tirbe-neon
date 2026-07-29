@@ -44,6 +44,20 @@
   flex-shrink: 0;
 }
 
+.nav-icon-img {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+  flex-shrink: 0;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4));
+  transition: transform 0.2s ease, filter 0.2s ease;
+}
+
+.nav-item.active .nav-icon-img {
+  transform: scale(1.1);
+  filter: drop-shadow(0 0 6px rgba(0, 240, 255, 0.6));
+}
+
 .nav-label-jp {
   font-size: 8px;
   letter-spacing: 0.3px;
