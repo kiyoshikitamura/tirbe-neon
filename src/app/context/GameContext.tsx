@@ -653,7 +653,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
       const { data: userProfile } = await supabase
         .from("users")
-        .select("username, favorite_character_id, bio, avatar_url, sound_settings, current_base_id, daily_cash_skips_count, last_guild_left_at, gift_code, title_equipped, equipped_background, equipped_front_effect, level, xp, created_at")
+        .select("username, favorite_character_id, bio, avatar_url, sound_settings, current_base_id, daily_cash_skips_count, last_guild_left_at, gift_code, title_equipped, equipped_background, equipped_front_effect, selected_bg_mode, interior_item, level, xp, created_at")
         .eq("id", userId)
         .single();
       
@@ -671,6 +671,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         setTitleEquipped(userProfile.title_equipped || "title_none");
         setEquippedBackground(userProfile.equipped_background || "bg_default");
         setEquippedFrontEffect(userProfile.equipped_front_effect || "effect_none");
+        if ((userProfile as any).selected_bg_mode) setSelectedBgMode((userProfile as any).selected_bg_mode);
+        if ((userProfile as any).interior_item) setInteriorItem((userProfile as any).interior_item);
         setUserLevel(userProfile.level || 1);
         setUserXp(userProfile.xp || 0);
         setUserCreatedAt((userProfile as any).created_at || null);
@@ -2023,7 +2025,9 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
           favorite_character_id: selectedLeader,
           title_equipped: titleEquipped,
           equipped_background: equippedBackground,
-          equipped_front_effect: equippedFrontEffect
+          equipped_front_effect: equippedFrontEffect,
+          selected_bg_mode: selectedBgMode,
+          interior_item: interiorItem
         })
         .eq("id", session.user.id);
       
