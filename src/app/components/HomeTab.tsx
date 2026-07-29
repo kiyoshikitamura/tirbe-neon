@@ -1,11 +1,10 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useGame } from "../context/GameContext";
 import {
   CHARACTERS_MASTER,
   BASE_MAP_MASTER,
-  MASTER_AVATARS,
   PROFILE_BACKGROUNDS,
   PROFILE_FRONT_EFFECTS,
   PROFILE_TITLES,
@@ -14,13 +13,30 @@ import {
 import { getCharacterTotalStats } from "@/utils/stats_calculator";
 import { useImagePreloader } from "../hooks/useImagePreloader";
 import { LoginBonusModal } from "./LoginBonusModal";
-import AvatarRenderer from "./AvatarRenderer";
 import "./HomeTab.css";
 
-/**
- * HomeTab - ルーター ＆ マイページ メインパネル
- * シングルモバイル中心アーキテクチャ (Matte Outlaw Circular UI)
- */
+// イベントバナー用サンプルデータ
+const EVENT_BANNERS = [
+  {
+    id: 1,
+    title: "【レイドイベント】強敵「雷神」襲来中！",
+    imgUrl: "/bg/bg_gacha_ssr.png",
+    targetTab: "raid"
+  },
+  {
+    id: 2,
+    title: "【ピックアップガチャ】SSR「剛」新登場！",
+    imgUrl: "/bg/bg_gacha_sr.png",
+    targetTab: "gacha"
+  },
+  {
+    id: 3,
+    title: "【GvG抗争】第2シーズン 覇権争奪戦 開幕",
+    imgUrl: "/bg/bg_gacha_normal.png",
+    targetTab: "guild"
+  }
+];
+
 export default function HomeTab() {
   const {
     homeSubPanel,
@@ -71,7 +87,7 @@ export default function HomeTab() {
  * MainMyPage - マイページメイン画面
  */
 function MainMyPage() {
-  // ⚡ ロード時間の最適化: 画像の事前面言キャッシュ (メモリプリロード) による0秒描画
+  // ⚡ ロード時間の最適化: 画像の事前メモリキャッシュ (全17個のアイコン含む)
   useImagePreloader([
     "/bg/bg_base_neontower.png",
     "/bg/bg_base_deepdock.png",
@@ -80,15 +96,23 @@ function MainMyPage() {
     "/menu/menu_allies.png",
     "/menu/menu_fight.png",
     "/menu/menu_conquest.png",
-    "/ui/icon_mission.png",
-    "/ui/icon_present.png",
-    "/ui/icon_ranking.png",
-    "/ui/icon_community.png",
-    "/ui/icon_news.png",
-    "/ui/icon_settings.png",
+    "/ui/icon_bag.png",
     "/ui/icon_cash.png",
+    "/ui/icon_community.png",
     "/ui/icon_dia.png",
-    "/ui/icon_map.png"
+    "/ui/icon_footer_character.png",
+    "/ui/icon_footer_gacha.png",
+    "/ui/icon_footer_guild.png",
+    "/ui/icon_footer_mypage.png",
+    "/ui/icon_footer_shop.png",
+    "/ui/icon_friends.png",
+    "/ui/icon_map.png",
+    "/ui/icon_mission.png",
+    "/ui/icon_news.png",
+    "/ui/icon_present.png",
+    "/ui/icon_raid.png",
+    "/ui/icon_ranking.png",
+    "/ui/icon_settings.png"
   ]);
 
   const {
@@ -98,25 +122,33 @@ function MainMyPage() {
     unreadMissionsCount,
     unclaimedPresentsCount,
     chatChannel,
-    setChatChannel,
     guildChats,
-    chatInput,
-    setChatInput,
-    chatCooldown,
-    chatSending,
-    handleSendChat,
     setHomeSubPanel,
     setInboxTab,
     navigateTab,
     playCyberSe,
-    newsList
+    newsList,
+    userCharactersDbList,
+    userEquipmentsList,
+    selectedBgMode,
+    titleEquipped,
+    interiorItem,
+    equippedFrontEffect
   } = useGame();
 
-  // チャットチャンネルタブ定義
-  const CHAT_TABS = [
-    { key: "GLOBAL" as const, label: "全体" },
-    { key: "GUILD" as const, label: "ギルド" },
-  ];
+  // モーダル表示フラグ (暗号メッセージアプリ『トライブ』)
+  const [showTribeChatModal, setShowTribeChatModal] = useState(false);
+
+  // イベントバナーのスライドステート
+  const [currentBannerIdx, setCurrentBannerIdx] = useState(0);
+
+  // バナー自動スライドタイマー
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentBannerIdx((prev) => (prev + 1) % EVENT_BANNERS.length);
+    }, 4000);
+    return () => clearInterval(timer);
+  }, []);
 
   // 拠点情報
   const currentBaseInfo = BASE_MAP_MASTER.find(b => b.id === currentBaseId);
@@ -127,34 +159,52 @@ function MainMyPage() {
   // お気に入りリーダーキャラクター
   const leaderChar = CHARACTERS_MASTER.find(c => c.id === selectedLeader) || CHARACTERS_MASTER[0];
 
-  // 拠点背景URLの解決
-  const bgUrl =
-    currentBaseId === "neon_tower" || currentBaseId === "shinjuku" ? "/bg/bg_base_neontower.png" :
-    currentBaseId === "deep_dock" || currentBaseId === "shinagawa" ? "/bg/bg_base_deepdock.png" :
-    currentBaseId === "junk_bazar" || currentBaseId === "akihabara" ? "/bg/bg_base_junkbazaar.png" :
-    currentBaseId === "kitakura_gate" || currentBaseId === "ikebukuro" ? "/bg/bg_base_kitakuragate.png" :
-    "/bg/bg_base_neontower.png";
-
-  // チャットオートスクロール
-  const chatLogRef = React.useRef<HTMLDivElement>(null);
-  React.useEffect(() => {
-    if (chatLogRef.current) {
-      chatLogRef.current.scrollTop = chatLogRef.current.scrollHeight;
+  // 背景URLの決定（任意背景選択 or 拠点自動連動）
+  const getBgUrl = () => {
+    if (selectedBgMode && selectedBgMode !== "auto") {
+      const customBg = PROFILE_BACKGROUNDS.find(b => b.id === selectedBgMode);
+      if (customBg && customBg.img) return customBg.img;
+      if (selectedBgMode === "shinjuku") return "/bg/bg_base_neontower.png";
+      if (selectedBgMode === "deepdock") return "/bg/bg_base_deepdock.png";
+      if (selectedBgMode === "junkbazaar") return "/bg/bg_base_junkbazaar.png";
+      if (selectedBgMode === "kitakuragate") return "/bg/bg_base_kitakuragate.png";
     }
+    // デフォルト拠点連動
+    if (currentBaseId === "neon_tower" || currentBaseId === "shinjuku") return "/bg/bg_base_neontower.png";
+    if (currentBaseId === "deep_dock" || currentBaseId === "shinagawa") return "/bg/bg_base_deepdock.png";
+    if (currentBaseId === "junk_bazar" || currentBaseId === "akihabara") return "/bg/bg_base_junkbazaar.png";
+    if (currentBaseId === "kitakura_gate" || currentBaseId === "ikebukuro") return "/bg/bg_base_kitakuragate.png";
+    return "/bg/bg_base_neontower.png";
+  };
+
+  const bgUrl = getBgUrl();
+
+  // 取合力 (総合力) の安全計算 (DBデータベース基準)
+  const totalPower = React.useMemo(() => {
+    if (!userCharactersDbList || userCharactersDbList.length === 0) return 0;
+    return userCharactersDbList.reduce((sum: number, charRec: any) => {
+      const stats = getCharacterTotalStats(charRec, userEquipmentsList || []);
+      return sum + stats.hp + stats.atk + stats.def + stats.spd + stats.luk;
+    }, 0);
+  }, [userCharactersDbList, userEquipmentsList]);
+
+  // 最新1行チャットの取得
+  const latestChatMsg = React.useMemo(() => {
+    if (guildChats && guildChats.length > 0) {
+      const last = guildChats[guildChats.length - 1];
+      return `[${last.user_name || "名無し"}]: ${last.message}`;
+    }
+    return "チャットメッセージはありません";
   }, [guildChats]);
 
   return (
     <div className="mypage-view">
+      {/* 1. ビジュアルエリア (50vh) */}
+      <div className="mypage-visual-area" style={{ backgroundImage: `url('${bgUrl}')` }}>
+        {/* レイヤー1: 暗部グラデーション */}
+        <div className="mypage-visual-overlay" />
 
-      {/* ビジュアルエリア (50vh: 拠点背景 + 立ち絵 + 拠点HUD + 左右サブアイコン) */}
-      <div
-        className="mypage-visual-area"
-        style={{ backgroundImage: `url('${bgUrl}')` }}
-      >
-        {/* 暗めの暗部グラデーション */}
-        <div className="mypage-visual-overlay"></div>
-
-        {/* 拠点情報オーバーレイ (最上部HUD) */}
+        {/* レイヤー2: 最上段HUD (拠点名 | 支配状況 | 拠点移動) */}
         <div className="mypage-base-overlay">
           <div className="mypage-base-overlay-info">
             <span className="mypage-base-overlay-label">拠点</span>
@@ -171,7 +221,13 @@ function MainMyPage() {
           </button>
         </div>
 
-        {/* サブメニューアイコン - 左側 (ゲームプレイ系: 透過PNG化) */}
+        {/* 取合力 (総合力) 表示パネル (最上段下中央・透過グレー) */}
+        <div className="mypage-power-panel">
+          <span className="mypage-power-label">取合力</span>
+          <span className="mypage-power-val">{totalPower.toLocaleString()}</span>
+        </div>
+
+        {/* 左小アイコン (6個) */}
         <div className="mypage-sub-icons-left">
           <button
             className="sub-icon-unit active-scale-effect"
@@ -181,6 +237,68 @@ function MainMyPage() {
             <span className="sub-icon-label">ミッション</span>
             {unreadMissionsCount > 0 && (
               <span className="small-badge-alert">{unreadMissionsCount}</span>
+            )}
+          </button>
+
+          <button
+            className="sub-icon-unit active-scale-effect"
+            onClick={() => { navigateTab("ranking"); playCyberSe("click"); }}
+          >
+            <img src="/ui/icon_ranking.png" alt="ランキング" className="sub-png-icon" />
+            <span className="sub-icon-label">ランキング</span>
+          </button>
+
+          <button
+            className="sub-icon-unit active-scale-effect"
+            onClick={() => { setHomeSubPanel("profile"); playCyberSe("click"); }}
+          >
+            <img src="/ui/icon_friends.png" alt="友達" className="sub-png-icon" />
+            <span className="sub-icon-label">友達</span>
+          </button>
+
+          <button
+            className="sub-icon-unit active-scale-effect"
+            onClick={() => { navigateTab("bbs"); playCyberSe("click"); }}
+          >
+            <img src="/ui/icon_community.png" alt="コミュニティ" className="sub-png-icon" />
+            <span className="sub-icon-label">コミュニティ</span>
+          </button>
+
+          <button
+            className="sub-icon-unit active-scale-effect"
+            onClick={() => { navigateTab("raid"); playCyberSe("click"); }}
+          >
+            <img src="/ui/icon_raid.png" alt="レイド" className="sub-png-icon" />
+            <span className="sub-icon-label">レイド</span>
+          </button>
+
+          <button
+            className="sub-icon-unit active-scale-effect"
+            onClick={() => { navigateTab("map"); playCyberSe("click"); }}
+          >
+            <img src="/ui/icon_map.png" alt="マップ" className="sub-png-icon" />
+            <span className="sub-icon-label">マップ</span>
+          </button>
+        </div>
+
+        {/* 右小アイコン (4個) */}
+        <div className="mypage-sub-icons-right">
+          <button
+            className="sub-icon-unit active-scale-effect"
+            onClick={() => { setHomeSubPanel("profile"); playCyberSe("click"); }}
+          >
+            <img src="/ui/icon_bag.png" alt="マイバッグ" className="sub-png-icon" />
+            <span className="sub-icon-label">マイバッグ</span>
+          </button>
+
+          <button
+            className="sub-icon-unit active-scale-effect"
+            onClick={() => { setHomeSubPanel("inbox"); setInboxTab("news"); playCyberSe("click"); }}
+          >
+            <img src="/ui/icon_news.png" alt="お知らせ" className="sub-png-icon" />
+            <span className="sub-icon-label">お知らせ</span>
+            {newsList && newsList.length > 0 && (
+              <span className="small-badge-alert">!</span>
             )}
           </button>
 
@@ -197,36 +315,6 @@ function MainMyPage() {
 
           <button
             className="sub-icon-unit active-scale-effect"
-            onClick={() => { navigateTab("ranking"); playCyberSe("click"); }}
-          >
-            <img src="/ui/icon_ranking.png" alt="ランキング" className="sub-png-icon" />
-            <span className="sub-icon-label">ランキング</span>
-          </button>
-
-          <button
-            className="sub-icon-unit active-scale-effect"
-            onClick={() => { navigateTab("bbs"); playCyberSe("click"); }}
-          >
-            <img src="/ui/icon_community.png" alt="BBS" className="sub-png-icon" />
-            <span className="sub-icon-label">BBS</span>
-          </button>
-        </div>
-
-        {/* サブメニューアイコン - 右側 (情報・設定系: 透過PNG化) */}
-        <div className="mypage-sub-icons-right">
-          <button
-            className="sub-icon-unit active-scale-effect"
-            onClick={() => { setHomeSubPanel("inbox"); setInboxTab("news"); playCyberSe("click"); }}
-          >
-            <img src="/ui/icon_news.png" alt="お知らせ" className="sub-png-icon" />
-            <span className="sub-icon-label">お知らせ</span>
-            {newsList && newsList.length > 0 && (
-              <span className="small-badge-alert">!</span>
-            )}
-          </button>
-
-          <button
-            className="sub-icon-unit active-scale-effect"
             onClick={() => { setHomeSubPanel("profile"); playCyberSe("click"); }}
           >
             <img src="/ui/icon_settings.png" alt="設定" className="sub-png-icon" />
@@ -234,7 +322,15 @@ function MainMyPage() {
           </button>
         </div>
 
-        {/* リーダー立ち絵画像 */}
+        {/* レイヤー構造 (重なり順 z-index) */}
+        {/* レイヤー: 置物インテリア (z-index: 2) */}
+        {interiorItem && interiorItem !== "none" && (
+          <div className="mypage-interior-layer">
+            <span className="mypage-interior-badge">{interiorItem}</span>
+          </div>
+        )}
+
+        {/* レイヤー: リーダー立ち絵キャラクター (z-index: 3) */}
         <div className="mypage-leader-container">
           <img
             src={getCharacterTransparentImg(leaderChar.name)}
@@ -245,9 +341,21 @@ function MainMyPage() {
             }}
           />
         </div>
+
+        {/* レイヤー: 称号プレートバナー (z-index: 4) */}
+        {titleEquipped && titleEquipped !== "title_none" && (
+          <div className="mypage-title-banner-layer">
+            <span className="mypage-title-banner-badge">{titleEquipped}</span>
+          </div>
+        )}
+
+        {/* レイヤー: 前面エフェクト (z-index: 5) */}
+        {equippedFrontEffect && equippedFrontEffect !== "effect_none" && (
+          <div className="mypage-front-effect-layer" />
+        )}
       </div>
 
-      {/* 丸型漢字メニューボタン (ビジュアルエリアにネガティブマージン -48px で重ね表示) */}
+      {/* 2. 丸型漢字メニューボタン (ネガティブマージン -48px でビジュアルエリアに重ね) */}
       <div className="mypage-circle-menu">
         <button
           className="mypage-circle-btn mypage-circle-btn-allies active-scale-effect"
@@ -269,54 +377,232 @@ function MainMyPage() {
         </button>
       </div>
 
-      {/* チャットウィジェット (固定高さ 108px) */}
-      <div className="mypage-chat-widget">
-        <div className="mypage-chat-header">
-          <div className="mypage-chat-tabs">
-            {CHAT_TABS.map((tab) => (
-              <button
-                key={tab.key}
-                className={`mypage-chat-tab ${chatChannel === tab.key ? "active" : ""}`}
-                onClick={() => setChatChannel(tab.key)}
-              >
-                {tab.label}
-              </button>
-            ))}
+      {/* 3. イベントバナーエリア (スライド＋矢印＋ドット) */}
+      <div className="mypage-event-banner-area">
+        <button
+          className="banner-arrow-btn left active-scale-effect"
+          onClick={() => {
+            setCurrentBannerIdx((prev) => (prev - 1 + EVENT_BANNERS.length) % EVENT_BANNERS.length);
+            playCyberSe("click");
+          }}
+        >
+          ‹
+        </button>
+
+        <div
+          className="banner-slide-content active-scale-effect"
+          onClick={() => {
+            const target = EVENT_BANNERS[currentBannerIdx].targetTab;
+            if (target) navigateTab(target);
+            playCyberSe("click");
+          }}
+        >
+          <img
+            src={EVENT_BANNERS[currentBannerIdx].imgUrl}
+            alt={EVENT_BANNERS[currentBannerIdx].title}
+            className="banner-img"
+          />
+          <div className="banner-title-overlay">
+            {EVENT_BANNERS[currentBannerIdx].title}
           </div>
         </div>
 
-        <div className="mypage-chat-log" ref={chatLogRef}>
-          {guildChats && guildChats.length > 0 ? (
-            guildChats.slice(-6).map((msg: any, index: number) => (
-              <div key={index} className="mypage-chat-line">
-                <span className="mypage-chat-author">[{msg.user_name || "名無し"}]:</span>
-                <span className="mypage-chat-content">{msg.message}</span>
+        <button
+          className="banner-arrow-btn right active-scale-effect"
+          onClick={() => {
+            setCurrentBannerIdx((prev) => (prev + 1) % EVENT_BANNERS.length);
+            playCyberSe("click");
+          }}
+        >
+          ›
+        </button>
+
+        {/* インジケータードット */}
+        <div className="banner-dots">
+          {EVENT_BANNERS.map((banner, idx) => (
+            <span
+              key={banner.id}
+              className={`banner-dot ${idx === currentBannerIdx ? "active" : ""}`}
+              onClick={() => setCurrentBannerIdx(idx)}
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* 4. 1行チャットプレビュー (タップで『トライブ』起動) */}
+      <div
+        className="mypage-chat-preview-bar active-scale-effect"
+        onClick={() => {
+          setShowTribeChatModal(true);
+          playCyberSe("click");
+        }}
+      >
+        <span className="chat-preview-tag">[チャット]</span>
+        <span className="chat-preview-text">{latestChatMsg}</span>
+        <span className="chat-preview-arrow">💬 『トライブ』を開く ▸</span>
+      </div>
+
+      {/* 暗号メッセージアプリ 『トライブ』 モーダル */}
+      {showTribeChatModal && (
+        <TribeChatModal onClose={() => setShowTribeChatModal(false)} />
+      )}
+    </div>
+  );
+}
+
+/**
+ * TribeChatModal - 暗号メッセージアプリ『トライブ』モーダル
+ */
+function TribeChatModal({ onClose }: { onClose: () => void }) {
+  const {
+    chatChannel,
+    setChatChannel,
+    guildChats,
+    chatInput,
+    setChatInput,
+    chatCooldown,
+    chatSending,
+    handleSendChat,
+    directMessages,
+    dmRecipientId,
+    setDmRecipientId,
+    handleSendDirectMessage,
+    playCyberSe
+  } = useGame();
+
+  const [activeTab, setActiveTab] = useState<"GLOBAL" | "GUILD" | "DM">(
+    chatChannel === "GUILD" ? "GUILD" : "GLOBAL"
+  );
+
+  const [dmText, setDmText] = useState("");
+
+  const chatLogRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (chatLogRef.current) {
+      chatLogRef.current.scrollTop = chatLogRef.current.scrollHeight;
+    }
+  }, [guildChats, directMessages, activeTab]);
+
+  const handleSend = () => {
+    if (activeTab === "DM") {
+      if (!dmText.trim() || !dmRecipientId) return;
+      handleSendDirectMessage(dmRecipientId, dmText);
+      setDmText("");
+    } else {
+      setChatChannel(activeTab);
+      handleSendChat();
+    }
+  };
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal-content tribe-modal" onClick={(e) => e.stopPropagation()}>
+        {/* モーダルヘッダー */}
+        <div className="tribe-modal-header">
+          <h3 className="tribe-modal-title">暗号メッセージ『トライブ』</h3>
+          <button className="tribe-modal-close-btn active-scale-effect" onClick={onClose}>
+            ✕ 閉じる
+          </button>
+        </div>
+
+        {/* タブ切り替え (全体 / ギルド / 個人チャット) */}
+        <div className="tribe-tabs">
+          <button
+            className={`tribe-tab-btn ${activeTab === "GLOBAL" ? "active" : ""}`}
+            onClick={() => { setActiveTab("GLOBAL"); setChatChannel("GLOBAL"); playCyberSe("click"); }}
+          >
+            全体
+          </button>
+          <button
+            className={`tribe-tab-btn ${activeTab === "GUILD" ? "active" : ""}`}
+            onClick={() => { setActiveTab("GUILD"); setChatChannel("GUILD"); playCyberSe("click"); }}
+          >
+            ギルド
+          </button>
+          <button
+            className={`tribe-tab-btn ${activeTab === "DM" ? "active" : ""}`}
+            onClick={() => { setActiveTab("DM"); playCyberSe("click"); }}
+          >
+            個人チャット (DM)
+          </button>
+        </div>
+
+        {/* DM時: 送信相手選択ドロップダウン */}
+        {activeTab === "DM" && (
+          <div className="tribe-dm-recipient-bar">
+            <span className="dm-recipient-label">送信先:</span>
+            <select
+              className="dm-recipient-select"
+              value={dmRecipientId}
+              onChange={(e) => setDmRecipientId(e.target.value)}
+            >
+              <option value="">-- 相手を選択 --</option>
+              <option value="usr_01">アキラ (ID: usr_01)</option>
+              <option value="usr_02">ケンジ (ID: usr_02)</option>
+              <option value="usr_03">レイジ (ID: usr_03)</option>
+            </select>
+          </div>
+        )}
+
+        {/* メッセージログ領域 */}
+        <div className="tribe-chat-log" ref={chatLogRef}>
+          {activeTab === "DM" ? (
+            directMessages && directMessages.length > 0 ? (
+              directMessages.map((msg: any) => (
+                <div key={msg.id} className="tribe-chat-line dm-line">
+                  <span className="tribe-chat-time">
+                    [{new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}]
+                  </span>
+                  <span className="tribe-chat-author">{msg.sender_name || "ユーザー"}:</span>
+                  <span className="tribe-chat-msg">{msg.message}</span>
+                </div>
+              ))
+            ) : (
+              <div className="tribe-chat-empty">個人メッセージはありません</div>
+            )
+          ) : guildChats && guildChats.length > 0 ? (
+            guildChats.map((msg: any, idx: number) => (
+              <div key={idx} className="tribe-chat-line">
+                <span className="tribe-chat-author">[{msg.user_name || "名無し"}]:</span>
+                <span className="tribe-chat-msg">{msg.message}</span>
               </div>
             ))
           ) : (
-            <div className="mypage-chat-empty">チャットメッセージはありません</div>
+            <div className="tribe-chat-empty">メッセージはありません</div>
           )}
         </div>
 
-        <div className="mypage-chat-input-row">
+        {/* 入力フォーム ＆ 送信ボタン */}
+        <div className="tribe-chat-input-row">
           <input
             type="text"
-            className="mypage-chat-input"
-            placeholder={chatCooldown > 0 ? `${chatCooldown}s クールダウン...` : "メッセージを入力..."}
-            value={chatInput}
-            onChange={(e) => setChatInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !chatSending && chatCooldown === 0) {
-                handleSendChat();
-              }
+            className="tribe-chat-input"
+            placeholder={
+              activeTab === "DM"
+                ? "個人メッセージを入力..."
+                : chatCooldown > 0
+                ? `${chatCooldown}s クールダウン...`
+                : "メッセージを入力..."
+            }
+            value={activeTab === "DM" ? dmText : chatInput}
+            onChange={(e) => {
+              if (activeTab === "DM") setDmText(e.target.value);
+              else setChatInput(e.target.value);
             }}
-            disabled={chatSending || chatCooldown > 0}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleSend();
+            }}
             maxLength={140}
           />
           <button
-            className="mypage-chat-send active-scale-effect"
-            onClick={handleSendChat}
-            disabled={chatSending || chatCooldown > 0 || !chatInput.trim()}
+            className="tribe-chat-send-btn active-scale-effect"
+            onClick={handleSend}
+            disabled={
+              activeTab === "DM"
+                ? !dmText.trim() || !dmRecipientId
+                : chatSending || chatCooldown > 0 || !chatInput.trim()
+            }
           >
             送信
           </button>
@@ -334,26 +620,25 @@ function ProfilePanel() {
     username,
     userBio,
     selectedLeader,
-    setSelectedLeader,
-    userCharactersDbList,
-    userEquipmentsList,
     userGiftCode,
     handleGenerateGiftCode,
     setHomeSubPanel,
     handleSaveProfile,
     playCyberSe,
-    userAvatar,
-    handleSaveAvatar,
-    userAvatarInventory
+    selectedBgMode,
+    setSelectedBgMode,
+    interiorItem,
+    setInteriorItem
   } = useGame();
 
-  const [editName, setEditName] = React.useState(username);
-  const [editBio, setEditBio] = React.useState(userBio || "");
-  const [editLeader, setEditLeader] = React.useState(selectedLeader);
-  const [showGiftModal, setShowGiftModal] = React.useState(false);
-  const [copied, setCopied] = React.useState(false);
+  const [editName, setEditName] = useState(username);
+  const [editBio, setEditBio] = useState(userBio || "");
+  const [editLeader, setEditLeader] = useState(selectedLeader);
+  const [editBg, setEditBg] = useState(selectedBgMode || "auto");
+  const [editInterior, setEditInterior] = useState(interiorItem || "none");
+  const [showGiftModal, setShowGiftModal] = useState(false);
+  const [copied, setCopied] = useState(false);
 
-  // 招待文の生成
   const inviteText = React.useMemo(() => {
     if (!userGiftCode) return "";
     return `【TRIBE: NEON REIGN】組織設立の招待状！招待コード[${userGiftCode}]を入力して豪華ボーナスを受け取ろう！`;
@@ -373,6 +658,8 @@ function ProfilePanel() {
   };
 
   const handleSave = async () => {
+    setSelectedBgMode(editBg);
+    setInteriorItem(editInterior);
     await handleSaveProfile(editName, editBio, editLeader);
     setHomeSubPanel("main");
   };
@@ -390,7 +677,7 @@ function ProfilePanel() {
       </div>
 
       <div className="subpanel-body">
-        {/* プレイヤー名編集 */}
+        {/* プレイヤー名 */}
         <div className="profile-field-group">
           <label className="profile-label">プレイヤー名</label>
           <input
@@ -402,7 +689,7 @@ function ProfilePanel() {
           />
         </div>
 
-        {/* 自己紹介編集 */}
+        {/* 自己紹介 */}
         <div className="profile-field-group">
           <label className="profile-label">自己紹介</label>
           <textarea
@@ -412,6 +699,41 @@ function ProfilePanel() {
             maxLength={100}
             rows={3}
           />
+        </div>
+
+        {/* 任意背景選択 */}
+        <div className="profile-field-group">
+          <label className="profile-label">マイページ背景設定</label>
+          <select
+            className="profile-select"
+            value={editBg}
+            onChange={(e) => setEditBg(e.target.value)}
+          >
+            <option value="auto">拠点自動連動 (デフォルト)</option>
+            <option value="shinjuku">新宿・歌舞伎町</option>
+            <option value="shibuya">渋谷・スクランブル</option>
+            <option value="ikebukuro">池袋・サンシャイン</option>
+            <option value="roppongi">六本木・ナイトクラブ</option>
+            <option value="deepdock">ディープドック</option>
+            <option value="junkbazaar">ジャンクバザール</option>
+            <option value="kitakuragate">キタクラゲート</option>
+          </select>
+        </div>
+
+        {/* 置物インテリア装飾選択 */}
+        <div className="profile-field-group">
+          <label className="profile-label">アジト置物インテリア</label>
+          <select
+            className="profile-select"
+            value={editInterior}
+            onChange={(e) => setEditInterior(e.target.value)}
+          >
+            <option value="none">なし</option>
+            <option value="ネオンサイン">ネオン看板</option>
+            <option value="レザーソファ">レザーソファ</option>
+            <option value="ゴールデントロフィー">黄金トロフィー</option>
+            <option value="大型バイク">改造アメリカンバイク</option>
+          </select>
         </div>
 
         {/* お気に入りリーダー設定 */}
@@ -435,7 +757,7 @@ function ProfilePanel() {
           </div>
         </div>
 
-        {/* ギフトコード招待機能 */}
+        {/* ギフトコード */}
         <div className="profile-field-group">
           <label className="profile-label">ユーザー招待・ギフトコード</label>
           <div className="gift-code-area">
@@ -466,14 +788,14 @@ function ProfilePanel() {
         </button>
       </div>
 
-      {/* ギフトコードポップアップモーダル */}
+      {/* ギフトコードモーダル */}
       {showGiftModal && (
         <div className="modal-backdrop" onClick={() => setShowGiftModal(false)}>
           <div className="modal-content gift-modal" onClick={(e) => e.stopPropagation()}>
             <h3 className="modal-title">招待ギフトコード</h3>
             <div className="gift-code-display">{userGiftCode}</div>
             <p className="gift-code-desc">
-              新規プレイヤーが組織設立時にこのコードを入力すると、お互いに報酬がプレゼントBOXへ届きます！（最大10名まで）
+              新規プレイヤーが組織設立時にこのコードを入力すると、お互いに報酬が届きます！
             </p>
             <div className="gift-actions">
               <button className="gift-action-btn copy-btn active-scale-effect" onClick={handleCopyCode}>

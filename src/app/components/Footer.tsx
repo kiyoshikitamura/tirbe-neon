@@ -11,23 +11,23 @@ const FOOTER_TABS = [
     iconSrc: "/ui/icon_footer_mypage.png",
   },
   {
-    id: "gacha",
-    label: "ガチャ",
-    iconSrc: "/ui/icon_footer_gacha.png",
-  },
-  {
     id: "guild",
     label: "ギルド",
     iconSrc: "/ui/icon_footer_guild.png",
   },
   {
     id: "character",
-    label: "キャラクター",
+    label: "キャラ",
     iconSrc: "/ui/icon_footer_character.png",
   },
   {
-    id: "menu",
-    label: "メニュー",
+    id: "gacha",
+    label: "ガチャ",
+    iconSrc: "/ui/icon_footer_gacha.png",
+  },
+  {
+    id: "shop",
+    label: "ショップ",
     iconSrc: "/ui/icon_footer_shop.png",
   },
 ];

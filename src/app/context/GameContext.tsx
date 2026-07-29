@@ -121,8 +121,14 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const polishingStones = equipExpS + equipExpM + equipExpL;
 
   const [equippedBackground, setEquippedBackground] = useState<string>("bg_default");
+  const [selectedBgMode, setSelectedBgMode] = useState<string>("auto");
   const [equippedFrontEffect, setEquippedFrontEffect] = useState<string>("effect_none");
   const [titleEquipped, setTitleEquipped] = useState<string>("title_none");
+  const [interiorItem, setInteriorItem] = useState<string>("none");
+
+  // --- DM (Direct Messages) 機能ステート ---
+  const [directMessages, setDirectMessages] = useState<any[]>([]);
+  const [dmRecipientId, setDmRecipientId] = useState<string>("");
 
   const [userEquipmentsList, setUserEquipmentsList] = useState<any[]>([]);
   const [selectedEquipment, setSelectedEquipment] = useState<any | null>(null);
@@ -4772,6 +4778,32 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // ✉️ 個人チャット(DM) 送信処理
+  const handleSendDirectMessage = async (recipientId: string, text: string) => {
+    if (!text.trim()) return;
+    playCyberSe("click");
+    const newMsg = {
+      id: "dm_" + Date.now(),
+      sender_id: session?.user?.id || "my_id",
+      sender_name: username,
+      recipient_id: recipientId,
+      message: text,
+      created_at: new Date().toISOString(),
+    };
+    try {
+      if (session?.user?.id) {
+        await supabase.from("direct_messages").insert({
+          sender_id: session.user.id,
+          recipient_id: recipientId,
+          message: text,
+        });
+      }
+    } catch (err: any) {
+      console.warn("direct_messages insert error:", err.message);
+    }
+    setDirectMessages((prev) => [...prev, newMsg]);
+  };
+
   // 💬 BBS用関数
   const fetchBbsThreads = async (category: "RECRUIT" | "STRATEGY_CHAT") => {
     setBbsLoading(true);
@@ -5495,7 +5527,16 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     boughtResultModal,
     setBoughtResultModal,
     handleBuyNormalProduct,
-    handleBuyStripeProduct
+    handleBuyStripeProduct,
+    selectedBgMode,
+    setSelectedBgMode,
+    interiorItem,
+    setInteriorItem,
+    directMessages,
+    setDirectMessages,
+    dmRecipientId,
+    setDmRecipientId,
+    handleSendDirectMessage
   };
 
 

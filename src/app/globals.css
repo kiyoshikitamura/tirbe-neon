@@ -59,8 +59,8 @@ body > div {
   height: 100dvh !important;
   display: flex !important;
   justify-content: center !important;
-  align-items: flex-start !important;
-  margin: 0 !important;
+  align-items: center !important;
+  margin: 0 auto !important;
   padding: 0 !important;
   overflow: hidden !important;
 }
@@ -78,7 +78,6 @@ body > div {
   background: var(--bg-color);
 }
 
-/* --- モバイル専用単一レイアウトコンテナ --- */
 .app-container,
 .app-container--mobile {
   display: flex;
@@ -86,11 +85,15 @@ body > div {
   width: 100%;
   max-width: 430px;
   height: 100dvh;
-  margin: 0 auto;
+  margin: 0 auto !important;
+  align-self: center;
   padding: 0;
   background: #000;
   position: relative;
   overflow: hidden;
+  box-shadow: 0 0 50px rgba(0, 0, 0, 0.95);
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .main-content {

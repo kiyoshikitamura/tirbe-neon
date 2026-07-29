@@ -7,12 +7,15 @@ import "./Header.css";
 
 /**
  * Header - TRIBE: NEON REIGN モバイル専用コンパクトヘッダー
- * モバイルファースト仕様 (2行構成: Row1 ユーザー名・ギルド・レイド・総合力 / Row2 Lv・Cash・Dia・AP)
+ * ユーザー指定完全仕様:
+ * 1行目: 通り名(称号) | 名前 | Lv | 所属ギルド
+ * 2行目: 総合力 | 所持キャッシュ (icon_cash.png) | 所持ダイヤ (icon_dia.png) | AP (Action Point / 行動スタミナ)
  */
 export default function Header() {
   const {
     username,
     userLevel,
+    userTitle,
     cash,
     diamonds,
     vitality,
@@ -36,10 +39,12 @@ export default function Header() {
 
   return (
     <header className="header-mobile">
-      {/* Row 1: ユーザー名 + 所属ギルド + レイドアラート + 総合力 */}
+      {/* 1行目: 通り名 + 名前 + Lv + 所属ギルド (+ レイド開催時アラート) */}
       <div className="header-mobile-row1">
         <div className="header-mobile-user">
+          <span className="header-mobile-title">{userTitle || "半グレの首領"}</span>
           <span className="header-mobile-username">{username || "プレイヤー"}</span>
+          <span className="header-mobile-level-badge">Lv.{userLevel || 1}</span>
           <span className="header-mobile-guild-name">
             {userGuild?.name ? userGuild.name : "未所属"}
           </span>
@@ -56,41 +61,40 @@ export default function Header() {
             </button>
           )}
         </div>
-        <div className="header-mobile-power">
-          <span className="header-mobile-power-label">総合力</span>
-          <span className="header-mobile-power-value">{totalPower.toLocaleString()}</span>
-        </div>
       </div>
 
-      {/* Row 2: ステータス (Lv.バッジ + Cash / Dia / AP) */}
+      {/* 2行目: 総合力 + 所持キャッシュ + 所持ダイヤ + AP */}
       <div className="header-mobile-row2">
-        <span className="header-mobile-level-badge">Lv.{userLevel || 1}</span>
-        <div className="header-mobile-stats">
-          {/* Cash */}
-          <div className="header-mobile-stat">
-            <img src="/ui/icon_cash.png" alt="Cash" className="header-stat-icon" />
-            <span className="header-mobile-stat-label">Cash</span>
-            <span className="header-mobile-stat-val header-mobile-stat-cash">
-              {(cash || 0).toLocaleString()}
-            </span>
-          </div>
+        {/* 総合力 */}
+        <div className="header-mobile-stat header-mobile-stat-power">
+          <span className="header-mobile-stat-label">取合力</span>
+          <span className="header-mobile-stat-val header-mobile-stat-power-val">
+            {totalPower.toLocaleString()}
+          </span>
+        </div>
 
-          {/* Dia */}
-          <div className="header-mobile-stat">
-            <img src="/ui/icon_dia.png" alt="Dia" className="header-stat-icon" />
-            <span className="header-mobile-stat-label">Dia</span>
-            <span className="header-mobile-stat-val header-mobile-stat-diamond">
-              {(diamonds || 0).toLocaleString()}
-            </span>
-          </div>
+        {/* 所持キャッシュ */}
+        <div className="header-mobile-stat">
+          <img src="/ui/icon_cash.png" alt="Cash" className="header-stat-icon" />
+          <span className="header-mobile-stat-val header-mobile-stat-cash">
+            {(cash || 0).toLocaleString()}
+          </span>
+        </div>
 
-          {/* AP */}
-          <div className="header-mobile-stat">
-            <span className="header-mobile-stat-label">AP</span>
-            <span className="header-mobile-stat-val header-mobile-stat-energy">
-              {vitality || 0}/100
-            </span>
-          </div>
+        {/* 所持ダイヤ */}
+        <div className="header-mobile-stat">
+          <img src="/ui/icon_dia.png" alt="Dia" className="header-stat-icon" />
+          <span className="header-mobile-stat-val header-mobile-stat-diamond">
+            {(diamonds || 0).toLocaleString()}
+          </span>
+        </div>
+
+        {/* AP (Action Point) */}
+        <div className="header-mobile-stat">
+          <span className="header-mobile-stat-label">AP</span>
+          <span className="header-mobile-stat-val header-mobile-stat-energy">
+            {vitality || 0}/100
+          </span>
         </div>
       </div>
     </header>
