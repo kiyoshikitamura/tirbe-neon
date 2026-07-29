@@ -171,7 +171,7 @@
 - SVGアイコン + テキストラベル構成。「メニュー」タップで各機能へのリンク一覧画面（MenuTab）に遷移する。
 
 ### ⑧ UIアセットのクロマキー透過処理ワークフロー
-- ゲームUI用のボタンやバッジ画像を新規に生成・追加する際は、`solid chroma key green background`（緑背景）で生成し、Node.jsスクリプト（`scratch/chromakey.js`）を通じて自動的に周囲 of 緑を透過（アルファ値0）した透過PNGに加工してから適用します。
+- ゲームUI用のボタンやバッジ、小アイコン画像を新規に生成・追加する際は、文字・背景台座・ファンタジー要素を排した `solid chroma key green background #00FF00`（完全単色緑背景）で生成し、Node.jsスクリプト（`scratch/chromakey_icon_generic.js`）を通じて自動的に周囲の緑を透過（アルファ値0）した透過PNG（`public/ui/<name>.png`）に加工してから適用します。原画は `public/raw_assets/<name>_raw.jpg` に管理保存します。
 
 ---
 

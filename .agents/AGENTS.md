@@ -223,7 +223,8 @@ This file defines the project-specific rules, design constraints, and technical 
   - **Flexbox子要素の `min-width: 0;` 義務化**: 長いテキストや要素による親幅の突き破りを防止する。
 - **アセットフォルダ構造の正規化**:
   - キャラクターの透過立ち絵画像はすべて **`public/characters/`** ディレクトリ配下に格納し、コード側からは必ず `getCharacterTransparentImg(name)` 経由で取得する（`public/` 直下への直書き参照は禁止）。
-  - 各キャラクター・背景の確定版透過前グリーンバック原画は、**`public/raw_assets/<name>_raw.jpg`**（1アセットにつき確定原画1枚のみ）に選別保存する。
+  - UI用生成アイコン（Cash, Dia, サイド小アイコン全10種等）の透過済みPNGアセットは **`public/ui/`** に配置し（例: `public/ui/icon_cash.png`）、原画は **`public/raw_assets/<name>_raw.jpg`** に選別保存する。
+  - アイコン画像生成時は文字・背景台座・ファンタジー要素を完全排出し、`#00FF00` の完全単色クロマキーグリーン背景で生成の上、Jimp スクリプト (`scratch/chromakey_icon_generic.js`) でアルファ値0の透過PNGに自動加工して `public/ui/` へ格納する。
 - **ロード時間の短縮 (メモリプリロード) ＆ スピナー原則**:
   - コンポーネント初期化時に `useImagePreloader` を呼び出し、立ち絵・背景・UIアセットを事前メモリキャッシュする。
   - 非同期ローディング表示は回転円環スピナーのみを表示し、「Loading...」や「読み込み中...」等のテキストラベル併記は一切禁止する。
