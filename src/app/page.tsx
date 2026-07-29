@@ -28,6 +28,21 @@ import BbsTab from "./components/BbsTab";
 function AppContent() {
   const { session, authLoading, isSetupRequired, activeTab } = useGame();
 
+  // ビューポートメタタグから viewport-fit=cover を強制除去（ブラウザキャッシュ対策）
+  // これにより、ステータスバー（時計・電池）の下にゲーム画面が表示されることを防止
+  React.useEffect(() => {
+    const meta = document.querySelector('meta[name="viewport"]');
+    if (meta) {
+      const content = meta.getAttribute("content") || "";
+      if (content.includes("viewport-fit")) {
+        meta.setAttribute(
+          "content",
+          content.replace(/,?\s*viewport-fit=cover/gi, "").trim()
+        );
+      }
+    }
+  }, []);
+
   // 1. ログイン認証待ちローディング (アプリ枠 .app-container は変化させず、内部に完全保護スクリーンを配置)
   if (authLoading) {
     return (
