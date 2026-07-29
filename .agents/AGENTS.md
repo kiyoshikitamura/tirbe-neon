@@ -15,8 +15,8 @@ This file defines the project-specific rules, design constraints, and technical 
 ## 2. 装備品ステータスのレベル・限界突破スケーリング
 - **パラメータ算出式**:
   - レベル（`Level`）および限界突破（`plus_val`）が進行した際の装備ステータス計算式：
-    - `ATK / DEF / HP / SPD / LUK` = `Math.floor(ベース値 * (1 + (Level - 1) * 0.05 + plus_val * 0.10))`
-    - ※対人戦バランスの最適化に伴い、SPD/LUKについても一律でスケーリングが適用されます。
+    - `ATK / DEF / HP` = `Math.floor(ベース値 * (1 + (Level - 1) * 0.05 + plus_val * 0.10))`
+    - `SPD / LUK` = インフレやバランス崩壊を防ぐため、常に**フラット（ベース値のまま変化なし）**で計算されます。
 - **実装箇所**:
   - `src/utils/stats_calculator.ts` の `getCharacterTotalStats` による計算処理。
   - `src/app/components/CharacterTab.tsx` の装備詳細パネル。
