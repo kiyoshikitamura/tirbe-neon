@@ -8,7 +8,7 @@
   flex-direction: column;
   gap: 6px;
   width: 100%;
-  padding: calc(8px + env(safe-area-inset-top, 0px)) 10px 6px;
+  padding: calc(12px + env(safe-area-inset-top, 0px)) 10px 6px;
   background: rgba(11, 15, 25, 0.95);
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   border-image: linear-gradient(to right, transparent, rgba(212, 175, 55, 0.5), transparent) 1;

@@ -48,8 +48,9 @@ html, body {
   color: var(--text-primary);
   font-family: var(--font-inter);
   -webkit-font-smoothing: antialiased;
-  display: flex;
-  justify-content: center;
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
 }
 
 /* Next.js ルート DIV の全階層中央寄せ・全幅スタイルの強制適用 */
@@ -60,6 +61,7 @@ body > div > div {
   height: 100% !important;
   height: 100dvh !important;
   display: flex !important;
+  flex-direction: column !important;
   justify-content: center !important;
   align-items: center !important;
   margin: 0 auto !important;
@@ -84,11 +86,12 @@ body > div > div {
 .app-container--mobile {
   display: flex;
   flex-direction: column;
-  width: 100%;
-  max-width: 430px;
-  height: 100dvh;
+  width: 100% !important;
+  max-width: 430px !important;
+  height: 100% !important;
+  height: 100dvh !important;
   margin: 0 auto !important;
-  align-self: center;
+  align-self: center !important;
   padding: 0;
   background: #000;
   position: relative;
@@ -96,6 +99,7 @@ body > div > div {
   box-shadow: 0 0 50px rgba(0, 0, 0, 0.95);
   border-left: 1px solid rgba(255, 255, 255, 0.1);
   border-right: 1px solid rgba(255, 255, 255, 0.1);
+  flex-shrink: 0 !important;
 }
 
 .main-content {
