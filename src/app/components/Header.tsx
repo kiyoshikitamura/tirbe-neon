@@ -63,15 +63,8 @@ export default function Header() {
         </div>
       </div>
 
-      {/* 2行目: 総合力 + 所持キャッシュ + 所持ダイヤ + AP */}
+      {/* 2行目: 所持キャッシュ + 所持ダイヤ + AP */}
       <div className="header-mobile-row2">
-        {/* 総合力 */}
-        <div className="header-mobile-stat header-mobile-stat-power">
-          <span className="header-mobile-stat-label">取合力</span>
-          <span className="header-mobile-stat-val header-mobile-stat-power-val">
-            {totalPower.toLocaleString()}
-          </span>
-        </div>
 
         {/* 所持キャッシュ */}
         <div className="header-mobile-stat">

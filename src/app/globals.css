@@ -52,9 +52,11 @@ html, body {
   justify-content: center;
 }
 
-/* Next.js ルート DIV の中央寄せ・全幅スタイルの強制適用 */
-body > div {
+/* Next.js ルート DIV の全階層中央寄せ・全幅スタイルの強制適用 */
+body > div,
+body > div > div {
   width: 100% !important;
+  max-width: 100% !important;
   height: 100% !important;
   height: 100dvh !important;
   display: flex !important;

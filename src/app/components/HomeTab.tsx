@@ -227,9 +227,9 @@ function MainMyPage() {
           </button>
         </div>
 
-        {/* 取合力 (総合力) 表示パネル (最上段下中央・透過グレー) */}
+        {/* 総合力 表示パネル (最上段下中央・透過グレー) */}
         <div className="mypage-power-panel">
-          <span className="mypage-power-label">取合力</span>
+          <span className="mypage-power-label">総合力</span>
           <span className="mypage-power-val">{totalPower.toLocaleString()}</span>
         </div>
 
