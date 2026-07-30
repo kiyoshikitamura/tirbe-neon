@@ -29,6 +29,17 @@ This file defines the project-specific rules, design constraints, and technical 
   - `src/utils/stats_calculator.ts` の `getCharacterBaseStats` 関数。
   - `src/app/context/GameContext.tsx` の `handleCharacterAwaken` 内のキャッシュコスト消費判定。
 
+## 2.2 キャラクター画面（CharacterTab）UI構造規約
+- **レイアウト構造**:
+  - ステージ高さを `360px` に固定（`!important`）。タブ切替・アイテム増減による立ち絵の拡大縮小・伸縮を防止。
+  - キャラ名・アライメント・Lv・リーダー設定ボタンは最上部の**1行横並びフレックスHUD**に統一し、立ち絵頭部との被りを禁止。
+  - 背景画像はクッキリ夜景表示（デフォルト `/bg/bg_base_neontower.png` フォールバック）。
+  - 左右装備スロット（左3枠/右4枠）は立ち絵の左右両端に固定配置。
+- **ボトムシートモーダル ＆ インライン4列グリッド**:
+  - モバイル画面（100dvh）でのフッター見切れ防止のため、ステータス育成・スキル編成・装備変更エリアは最下部3ボタンから立ち上がる**ボトムシートモーダル**に集約。
+  - ボトムシートモーダルは親コンテナ内 `position: absolute` で描写。
+  - モーダル内部での装備・スキル付け替え操作は**インライン4列グリッドアイコン**（2段階ドリルダウン）で展開。
+
 ## 3. 世界観・ビジュアルコンセプト (Matte Outlaw Circular UI)
 - **コンセプト (Matte Outlaw Circular UI)**:
   - 画面を四角いグリッド枠等で細かく分断せず、背景の夜の街のグラフィックが画面全体に広がり、その上に直接UI要素が浮き出る「シームレスな全画面一体キャンバス構造」を徹底する。
