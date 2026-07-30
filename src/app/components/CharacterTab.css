@@ -201,13 +201,13 @@
   50% { transform: translateX(-50%) scale(1.15) rotate(3deg); opacity: 1; }
 }
 
-/* Z-30: メインキャラクター透過立ち絵 (サイズ絶対固定) */
+/* Z-30: メインキャラクター透過立ち絵 (縮小＆余白確保) */
 .char-layer-character {
   position: absolute;
-  bottom: 0;
+  bottom: 10px;
   left: 50%;
   transform: translateX(-50%);
-  height: 340px;
+  height: 320px;
   z-index: 30;
   pointer-events: none;
   display: flex;
@@ -217,10 +217,37 @@
 
 .char-character-img {
   height: 100%;
-  max-height: 340px;
+  max-height: 310px;
   object-fit: contain;
   object-position: bottom center;
   filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.85));
+}
+
+/* 背景変更ボタン (ステージ右下) */
+.char-bg-change-btn {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  z-index: 50;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(11, 15, 25, 0.8);
+  border: 1px solid rgba(160, 160, 170, 0.4);
+  color: #a0a0ab;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  backdrop-filter: blur(4px);
+  transition: all 0.15s ease;
+}
+
+.char-bg-change-btn:active {
+  transform: scale(0.92);
+  border-color: var(--neon-cyan);
+  color: var(--neon-cyan);
 }
 
 /* Z-40: 前面エフェクト */
@@ -528,7 +555,7 @@
 }
 
 /* --------------------------------------------------------------------------
-   6. ボトムシートモーダル (position: absolute 親コンテナ内閉じ込め方式・iOS Safari対策)
+   6. 中央ポップアップモーダル (position: absolute 親コンテナ内閉じ込め・iOS Safari対策)
    -------------------------------------------------------------------------- */
 .char-bottom-modal-backdrop {
   position: absolute;
@@ -538,7 +565,8 @@
   z-index: 100;
   display: flex;
   flex-direction: column;
-  justify-content: flex-end;
+  justify-content: center;
+  align-items: center;
   animation: modal-fade-in 0.2s ease-out;
 }
 
@@ -548,24 +576,36 @@
 }
 
 .char-bottom-modal-sheet {
-  width: 100%;
-  max-height: 65vh;
+  width: 92%;
+  max-width: 400px;
+  max-height: 55vh;
   background: rgba(11, 15, 25, 0.96);
-  border-top: 1px solid var(--neon-cyan);
-  border-radius: 12px 12px 0 0;
+  border: 1px solid var(--neon-cyan);
+  border-radius: 12px;
   padding: 10px 12px 16px 12px;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 -6px 20px rgba(0, 0, 0, 0.8);
-  animation: modal-slide-up 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.9), 0 0 16px rgba(0, 240, 255, 0.15);
+  animation: modal-pop-in 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(160, 160, 170, 0.3) transparent;
 }
 
-@keyframes modal-slide-up {
-  from { transform: translateY(100%); }
-  to { transform: translateY(0); }
+.char-bottom-modal-sheet::-webkit-scrollbar {
+  width: 4px;
+}
+
+.char-bottom-modal-sheet::-webkit-scrollbar-thumb {
+  background: rgba(160, 160, 170, 0.3);
+  border-radius: 2px;
+}
+
+@keyframes modal-pop-in {
+  from { transform: scale(0.9); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
 }
 
 .char-modal-header {
@@ -860,4 +900,103 @@
   font-size: 10px;
   text-align: center;
   padding: 16px 0;
+}
+
+/* --------------------------------------------------------------------------
+   8. 背景選択グリッド (モーダル内)
+   -------------------------------------------------------------------------- */
+.char-bg-section-title {
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--neon-cyan);
+  margin: 8px 0 6px 0;
+  padding-top: 6px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.char-bg-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  max-height: 130px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.char-bg-grid::-webkit-scrollbar {
+  width: 3px;
+}
+
+.char-bg-grid::-webkit-scrollbar-thumb {
+  background: rgba(160, 160, 170, 0.3);
+  border-radius: 2px;
+}
+
+.char-bg-tile {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  border-radius: 4px;
+  background-size: cover;
+  background-position: center;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  cursor: pointer;
+  overflow: hidden;
+  transition: all 0.15s ease;
+}
+
+.char-bg-tile:active {
+  transform: scale(0.95);
+}
+
+.char-bg-tile.selected {
+  border-color: var(--neon-cyan);
+  box-shadow: 0 0 8px rgba(0, 240, 255, 0.5);
+}
+
+.char-bg-tile-label {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 2px 4px;
+  background: rgba(0, 0, 0, 0.7);
+  color: #ffffff;
+  font-size: 7px;
+  font-weight: 700;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* --------------------------------------------------------------------------
+   9. 一括操作バー (モーダル内)
+   -------------------------------------------------------------------------- */
+.char-action-bar {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.char-action-btn {
+  flex: 1;
+  padding: 6px 0;
+  background: rgba(20, 26, 38, 0.9);
+  border: 1px solid rgba(160, 160, 170, 0.3);
+  border-radius: 4px;
+  color: #a0a0ab;
+  font-size: 9px;
+  font-weight: 700;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.15s ease;
+}
+
+.char-action-btn:active {
+  transform: scale(0.95);
+}
+
+.char-action-btn.recommend {
+  border-color: rgba(0, 240, 255, 0.3);
+  color: var(--neon-cyan);
 }

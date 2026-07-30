@@ -41,7 +41,8 @@ export default function CharacterTab() {
     handleEquipSkillBulkRecommended,
     handleUnequipSkillBulk,
     playCyberSe,
-    equippedBackground
+    equippedBackground,
+    setEquippedBackground
   } = useGame();
 
   // ボトムシートモーダル状態: null (閉じ) | "STATUS" | "SKILL" | "GEAR"
@@ -256,6 +257,18 @@ export default function CharacterTab() {
         <div className="char-equip-column char-equip-column-right">
           {rightSlots.map(slot => renderEquipSlot(slot))}
         </div>
+
+        {/* 背景変更ボタン (ステージ右下) */}
+        <button
+          className="char-bg-change-btn active-scale-effect"
+          onClick={() => {
+            setBottomModalTab("GEAR");
+            playCyberSe("click");
+          }}
+          title="背景変更"
+        >
+          BG
+        </button>
       </div>
 
       {/* 3. メイン画面直下: 1行コンパクトステータスサマリー */}
@@ -597,6 +610,24 @@ export default function CharacterTab() {
                   >
                     一括解除
                   </button>
+                </div>
+
+                {/* 背景選択グリッド */}
+                <div className="char-bg-section-title">背景変更</div>
+                <div className="char-bg-grid">
+                  {PROFILE_BACKGROUNDS.map((bg: any) => (
+                    <div
+                      key={bg.id}
+                      className={`char-bg-tile ${equippedBackground === bg.id ? "selected" : ""} active-scale-effect`}
+                      style={{ backgroundImage: `url(${bg.img})` }}
+                      onClick={() => {
+                        setEquippedBackground(bg.id);
+                        playCyberSe("click");
+                      }}
+                    >
+                      <span className="char-bg-tile-label">{bg.name}</span>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}

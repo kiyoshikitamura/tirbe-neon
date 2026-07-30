@@ -14,12 +14,12 @@
   background: #090c14;
 }
 
-/* 1. ビジュアルエリア (50vh 固定) */
+/* 1. ビジュアルエリア (45vh 固定・チャット見切れ防止) */
 .mypage-visual-area {
   position: relative;
   width: 100%;
-  height: 50vh;
-  min-height: 320px;
+  height: 45vh;
+  min-height: 280px;
   max-height: 520px;
   background-size: cover;
   background-position: center top;
