@@ -36,20 +36,7 @@ import MoveBaseModal from "./components/MoveBaseModal";
 function AppContent() {
   const { session, authLoading, isSetupRequired, activeTab, showTitleView } = useGame();
 
-  // ビューポートメタタグから viewport-fit=cover を強制除去（ブラウザキャッシュ対策）
-  // これにより、ステータスバー（時計・電池）の下にゲーム画面が表示されることを防止
-  React.useEffect(() => {
-    const meta = document.querySelector('meta[name="viewport"]');
-    if (meta) {
-      const content = meta.getAttribute("content") || "";
-      if (content.includes("viewport-fit")) {
-        meta.setAttribute(
-          "content",
-          content.replace(/,?\s*viewport-fit=cover/gi, "").trim()
-        );
-      }
-    }
-  }, []);
+
 
   // 1. タイトル画面 (一番最初に表示)
   if (showTitleView) {
