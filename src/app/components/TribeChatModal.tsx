@@ -4,15 +4,14 @@ import React, { useState, useRef, useEffect } from "react";
 import { useGame } from "../context/GameContext";
 import "./TribeChatModal.css";
 
-interface TribeChatModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-}
-
-export default function TribeChatModal({ isOpen, onClose }: TribeChatModalProps) {
+export default function TribeChatModal() {
   const {
+    showTribeChatPanel,
+    setShowTribeChatPanel,
+    session,
     userGuild,
     userGuildMember,
+    guildMembersList,
     chatChannel,
     setChatChannel,
     guildChats,
@@ -32,12 +31,12 @@ export default function TribeChatModal({ isOpen, onClose }: TribeChatModalProps)
   const chatBodyRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (isOpen && chatBodyRef.current) {
+    if (showTribeChatPanel && chatBodyRef.current) {
       chatBodyRef.current.scrollTop = chatBodyRef.current.scrollHeight;
     }
-  }, [guildChats, directMessages, isOpen, chatChannel]);
+  }, [guildChats, directMessages, showTribeChatPanel, chatChannel]);
 
-  if (!isOpen) return null;
+  if (!showTribeChatPanel) return null;
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && !chatSending && chatCooldown === 0) {
@@ -71,7 +70,7 @@ export default function TribeChatModal({ isOpen, onClose }: TribeChatModalProps)
   const safeGuildChats = guildChats || [];
 
   return (
-    <div className="tribe-modal-overlay" onClick={onClose}>
+    <div className="tribe-modal-overlay" onClick={() => setShowTribeChatPanel(false)}>
       <div className="tribe-modal-container active-scale-effect-none" onClick={(e) => e.stopPropagation()}>
         {/* モーダルヘッダー */}
         <div className="tribe-modal-header">
@@ -79,7 +78,7 @@ export default function TribeChatModal({ isOpen, onClose }: TribeChatModalProps)
             <span className="tribe-modal-tag">SECURE COMM</span>
             <h3 className="tribe-modal-title">暗号メッセージ『トライブ』</h3>
           </div>
-          <button className="tribe-modal-close-btn" onClick={onClose}>✕</button>
+          <button className="tribe-modal-close-btn" onClick={() => setShowTribeChatPanel(false)}>✕</button>
         </div>
 
         {/* チャンネルタブ (全体 / ギルド / DM) */}
@@ -109,14 +108,33 @@ export default function TribeChatModal({ isOpen, onClose }: TribeChatModalProps)
         {/* DM相手選択ドロップダウン (DM時のみ) */}
         {chatChannel === "DM" && (
           <div className="tribe-dm-recipient-selector">
-            <label className="tribe-dm-label">送信相手ID:</label>
-            <input
-              type="text"
-              placeholder="相手のユーザーIDを入力..."
-              value={dmRecipientId || ""}
-              onChange={(e) => setDmRecipientId(e.target.value)}
-              className="tribe-dm-recipient-input"
-            />
+            <label className="tribe-dm-label">送信相手:</label>
+            <div style={{ display: 'flex', gap: '8px', flex: 1 }}>
+              <input
+                type="text"
+                placeholder="ユーザーIDを入力..."
+                value={dmRecipientId || ""}
+                onChange={(e) => setDmRecipientId(e.target.value)}
+                className="tribe-dm-recipient-input"
+                style={{ flex: 1 }}
+              />
+              {userGuild && guildMembersList && guildMembersList.length > 0 && (
+                <select
+                  value={dmRecipientId || ""}
+                  onChange={(e) => setDmRecipientId(e.target.value)}
+                  className="tribe-dm-recipient-select"
+                >
+                  <option value="">ギルドメンバーから選択</option>
+                  {guildMembersList.map((m: any) => (
+                    m.user_id !== session?.user?.id && (
+                      <option key={m.user_id} value={m.user_id}>
+                        {m.users?.username || "プレイヤー"} (Lv.{m.userLevel || 1})
+                      </option>
+                    )
+                  ))}
+                </select>
+              )}
+            </div>
           </div>
         )}
 
@@ -127,7 +145,7 @@ export default function TribeChatModal({ isOpen, onClose }: TribeChatModalProps)
               <div className="tribe-modal-empty">ダイレクトメッセージのログはありません</div>
             ) : (
               safeDirectMessages.map((msg: any, idx: number) => {
-                const isSelf = msg.sender_id === userGuildMember?.user_id;
+                const isSelf = msg.sender_id === session?.user?.id;
                 const timeStr = msg?.created_at
                   ? new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
                   : "";
@@ -147,7 +165,7 @@ export default function TribeChatModal({ isOpen, onClose }: TribeChatModalProps)
               <div className="tribe-modal-empty">メッセージログはありません</div>
             ) : (
               safeGuildChats.map((msg: any, idx: number) => {
-                const isSelf = msg.user_id === userGuildMember?.user_id;
+                const isSelf = msg.user_id === session?.user?.id;
                 return (
                   <div key={idx} className={`tribe-msg-row ${isSelf ? "self" : "other"}`}>
                     <div className="tribe-msg-header">

@@ -15,7 +15,7 @@ import GachaTab from "./components/GachaTab";
 import GuildTab from "./components/GuildTab";
 import CharacterTab from "./components/CharacterTab";
 import ShopTab from "./components/ShopTab";
-import MapTab from "./components/MapTab";
+
 import MenuTab from "./components/MenuTab";
 import RankingTab from "./components/RankingTab";
 import AvatarTab from "./components/AvatarTab";
@@ -24,9 +24,17 @@ import BagTab from "./components/BagTab";
 import CardBattleView from "./components/CardBattleView";
 import CommonModals from "./components/CommonModals";
 import BbsTab from "./components/BbsTab";
+import TribeChatModal from "./components/TribeChatModal";
+import InboxPanel from "./components/InboxPanel";
+import MissionPanel from "./components/MissionPanel";
+import FriendPanel from "./components/FriendPanel";
+import SettingsPanel from "./components/SettingsPanel";
+import LegalPanel from "./components/LegalPanel";
+import TitleView from "./components/TitleView";
+import MoveBaseModal from "./components/MoveBaseModal";
 
 function AppContent() {
-  const { session, authLoading, isSetupRequired, activeTab } = useGame();
+  const { session, authLoading, isSetupRequired, activeTab, showTitleView } = useGame();
 
   // ビューポートメタタグから viewport-fit=cover を強制除去（ブラウザキャッシュ対策）
   // これにより、ステータスバー（時計・電池）の下にゲーム画面が表示されることを防止
@@ -43,7 +51,16 @@ function AppContent() {
     }
   }, []);
 
-  // 1. ログイン認証待ちローディング (アプリ枠 .app-container は変化させず、内部に完全保護スクリーンを配置)
+  // 1. タイトル画面 (一番最初に表示)
+  if (showTitleView) {
+    return (
+      <div className="app-container">
+        <TitleView />
+      </div>
+    );
+  }
+
+  // 2. ログイン認証待ちローディング (アプリ枠 .app-container は変化させず、内部に完全保護スクリーンを配置)
   if (authLoading) {
     return (
       <div className="app-container">
@@ -89,7 +106,7 @@ function AppContent() {
         {activeTab === "guild" && <GuildTab />}
         {activeTab === "character" && <CharacterTab />}
         {activeTab === "shop" && <ShopTab />}
-        {activeTab === "map" && <MapTab />}
+
         {activeTab === "menu" && <MenuTab />}
         {activeTab === "bag" && <BagTab />}
         {activeTab === "ranking" && <RankingTab />}
@@ -100,10 +117,21 @@ function AppContent() {
       {/* 全タブ共通 モバイルフッター */}
       <Footer />
 
-      {/* 最前面全画面ダイアログ・バトル・共通モーダル */}
+      {/* Layer 3: コンパクトモーダル */}
+      <CommonModals />
+      <MoveBaseModal />
+
+      {/* Layer 4: フルスクリーンパネル */}
+      <TribeChatModal />
+      <InboxPanel />
+      <MissionPanel />
+      <FriendPanel />
+      <SettingsPanel />
+      <LegalPanel />
+
+      {/* Layer 5: システムオーバーレイ */}
       <AdvView />
       <CardBattleView />
-      <CommonModals />
     </div>
   );
 }

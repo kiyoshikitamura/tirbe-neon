@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useGame } from "../context/GameContext";
-import TribeChatModal from "./TribeChatModal";
+
 import { useImagePreloader } from "../hooks/useImagePreloader";
 import { PROFILE_BACKGROUNDS, CHARACTERS_MASTER } from "@/utils/game_constants";
 import "./HomeTab.css";
@@ -52,8 +52,13 @@ function MainMyPage() {
     unreadMissionsCount,
     unclaimedPresentsCount,
     guildChats,
-    setHomeSubPanel,
-    setInboxTab,
+    setShowMissionPanel,
+    setShowFriendPanel,
+    setShowInboxPanel,
+    setInboxPanelTab,
+    setShowSettingsPanel,
+    setShowMoveBaseModal,
+    setShowTribeChatPanel,
     navigateTab,
     playCyberSe,
     selectedBgMode,
@@ -63,8 +68,7 @@ function MainMyPage() {
     totalPower
   } = useGame();
 
-  // モーダル表示フラグ (暗号メッセージアプリ『トライブ』)
-  const [showTribeChatModal, setShowTribeChatModal] = useState(false);
+
 
   // イベントバナースライドインジケーター
   const [bannerIndex, setBannerIndex] = useState(0);
@@ -120,7 +124,7 @@ function MainMyPage() {
       label: "ミッション",
       icon: "/ui/icon_mission.png",
       badge: unreadMissionsCount,
-      onClick: () => setHomeSubPanel("mission")
+      onClick: () => setShowMissionPanel(true)
     },
     {
       id: "ranking",
@@ -132,7 +136,7 @@ function MainMyPage() {
       id: "friends",
       label: "友達",
       icon: "/ui/icon_friends.png",
-      onClick: () => setHomeSubPanel("friends")
+      onClick: () => setShowFriendPanel(true)
     },
     {
       id: "community",
@@ -153,20 +157,20 @@ function MainMyPage() {
       id: "news",
       label: "お知らせ",
       icon: "/ui/icon_news.png",
-      onClick: () => setInboxTab("news")
+      onClick: () => { setShowInboxPanel(true); setInboxPanelTab("news"); }
     },
     {
       id: "present",
       label: "プレゼント",
       icon: "/ui/icon_present.png",
       badge: unclaimedPresentsCount,
-      onClick: () => setInboxTab("presents")
+      onClick: () => { setShowInboxPanel(true); setInboxPanelTab("presents"); }
     },
     {
       id: "settings",
       label: "設定",
       icon: "/ui/icon_settings.png",
-      onClick: () => setHomeSubPanel("settings")
+      onClick: () => setShowSettingsPanel(true)
     },
     {
       id: "raid",
@@ -193,7 +197,7 @@ function MainMyPage() {
           </div>
           <button
             className="mypage-base-overlay-move active-scale-effect"
-            onClick={() => { navigateTab("map"); playCyberSe("click"); }}
+            onClick={() => { setShowMoveBaseModal(true); playCyberSe("click"); }}
           >
             <img src="/ui/icon_map.png" alt="Map" className="overlay-map-icon" />
             拠点移動
@@ -331,7 +335,7 @@ function MainMyPage() {
       <div className="mypage-chat-preview-area">
         <div
           className="chat-preview-bar active-scale-effect"
-          onClick={() => { setShowTribeChatModal(true); playCyberSe("click"); }}
+          onClick={() => { setShowTribeChatPanel(true); playCyberSe("click"); }}
         >
           <span className="chat-tag">[チャット]</span>
           <span className="chat-text">
@@ -341,11 +345,7 @@ function MainMyPage() {
         </div>
       </div>
 
-      {/* スライス分割した暗号メッセージ『トライブ』モーダル */}
-      <TribeChatModal
-        isOpen={showTribeChatModal}
-        onClose={() => setShowTribeChatModal(false)}
-      />
+
     </div>
   );
 }

@@ -243,7 +243,7 @@
 
 /* 回復対象キャラクター選択モーダル */
 .recover-modal-overlay {
-  position: fixed;
+  position: absolute;
   top: 0;
   left: 0;
   right: 0;

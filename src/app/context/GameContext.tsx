@@ -65,7 +65,14 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const [vitality, setVitality] = useState<number>(100);
   const [pvpTickets, setPvpTickets] = useState<number>(5);
   const [activeTab, setActiveTab] = useState<string>("home");
-  const [homeSubPanel, setHomeSubPanel] = useState<string>("main");
+  const [showInboxPanel, setShowInboxPanel] = useState(false);
+  const [showMissionPanel, setShowMissionPanel] = useState(false);
+  const [showFriendPanel, setShowFriendPanel] = useState(false);
+  const [showSettingsPanel, setShowSettingsPanel] = useState(false);
+  const [showTribeChatPanel, setShowTribeChatPanel] = useState(false);
+  const [showMoveBaseModal, setShowMoveBaseModal] = useState(false);
+  const [showLegalPage, setShowLegalPage] = useState<string | null>(null);
+  const [showTitleView, setShowTitleView] = useState(true);
 
   const [username, setUsername] = useState<string>("半グレの首領");
   const [bio, setBio] = useState<string>("歌舞伎町の覇権を握るため立ち上がる。");
@@ -77,7 +84,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const [profileLoading, setProfileLoading] = useState<boolean>(false);
   const [activeUsersCount, setActiveUsersCount] = useState<number>(1);
   const [chatCooldown, setChatCooldown] = useState<number>(0);
-  const [inboxTab, setInboxTab] = useState<"presents" | "news">("presents");
+  const [inboxPanelTab, setInboxPanelTab] = useState<"presents" | "news">("presents");
 
   const [userGuild, setUserGuild] = useState<any | null>(null);
   const [userGuildMember, setUserGuildMember] = useState<any | null>(null);
@@ -1574,7 +1581,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
   // SWR追加プレゼントフェッチ
   useEffect(() => {
-    if (session && activeTab === "home" && homeSubPanel === "presents" && !presentsPrefetched) {
+    if (session && showInboxPanel && inboxPanelTab === "presents" && !presentsPrefetched) {
       setPresentsSyncing(true);
       const timer = setTimeout(() => {
         setPresentsSyncing(false);
@@ -1591,7 +1598,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       }, 1500);
       return () => clearTimeout(timer);
     }
-  }, [activeTab, homeSubPanel, presentsPrefetched, session]);
+  }, [showInboxPanel, inboxPanelTab, presentsPrefetched, session]);
 
   // ==========================================
   // 5. 認証 ＆ 初期セットアップハンドラ
@@ -2060,7 +2067,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       }
 
       await syncBootstrapData(session.user.id);
-      setHomeSubPanel("main");
+      setShowSettingsPanel(false);
       alert("プロフィールを同期保存しました。");
     } catch (err: any) {
       console.warn("Profile update failed:", err.message);
@@ -4783,6 +4790,19 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       const leaderChar = CHARACTERS_MASTER.find(c => c.id === selectedLeader) || CHARACTERS_MASTER[0];
       const avatarUrlToSend = leaderChar.img;
 
+      const newPost = {
+        id: "temp_" + Date.now(),
+        user_id: session.user.id,
+        author_name: username,
+        author_avatar_url: avatarUrlToSend,
+        content: chatInput,
+        target_type: chatChannel,
+        target_id: targetId,
+        is_system: false,
+        created_at: new Date().toISOString()
+      };
+      setGuildChats(prev => [...prev, newPost]);
+
       await supabase.from("board_posts").insert({
         user_id: session.user.id,
         author_name: username,
@@ -5219,8 +5239,14 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     playCyberSe("click");
     setActiveTab(tabName);
     setSelectedNews(null);
-    // ホームに戻る際、または他タブに遷移する際にサブパネルをリセット
-    setHomeSubPanel("main");
+    // パネル系を全て閉じる
+    setShowInboxPanel(false);
+    setShowMissionPanel(false);
+    setShowFriendPanel(false);
+    setShowSettingsPanel(false);
+    setShowTribeChatPanel(false);
+    setShowMoveBaseModal(false);
+    setShowLegalPage(null);
     if (tabName === "ranking" && subTab) {
       setRankingActiveTab(subTab);
     }
@@ -5250,7 +5276,14 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     vitality, setVitality,
     pvpTickets, setPvpTickets,
     activeTab, setActiveTab,
-    homeSubPanel, setHomeSubPanel,
+    showInboxPanel, setShowInboxPanel,
+    showMissionPanel, setShowMissionPanel,
+    showFriendPanel, setShowFriendPanel,
+    showSettingsPanel, setShowSettingsPanel,
+    showTribeChatPanel, setShowTribeChatPanel,
+    showMoveBaseModal, setShowMoveBaseModal,
+    showLegalPage, setShowLegalPage,
+    showTitleView, setShowTitleView,
     bbsThreads, setBbsThreads,
     bbsActiveThread, setBbsActiveThread,
     bbsPosts, setBbsPosts,
@@ -5269,7 +5302,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     profileLoading, setProfileLoading,
     activeUsersCount, setActiveUsersCount,
     chatCooldown, setChatCooldown,
-    inboxTab, setInboxTab,
+    inboxPanelTab, setInboxPanelTab,
     userGuild, setUserGuild,
     userGuildMember, setUserGuildMember,
     guildMembersList, setGuildMembersList,

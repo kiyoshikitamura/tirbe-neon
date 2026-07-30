@@ -4,33 +4,27 @@ import { useGame } from "../context/GameContext";
 import "./MenuTab.css";
 
 export default function MenuTab() {
-  const { navigateTab, setHomeSubPanel, setInboxTab, playCyberSe } = useGame();
-
-  const handleMenuNav = (tab: string, subPanel?: string, inboxTab?: string) => {
-    playCyberSe("click");
-    navigateTab(tab);
-    if (subPanel) {
-      // Small delay to ensure tab switch completes before setting sub-panel
-      setTimeout(() => {
-        setHomeSubPanel(subPanel);
-        if (inboxTab) setInboxTab(inboxTab);
-      }, 50);
-    }
-  };
+  const {
+    navigateTab,
+    setShowMissionPanel,
+    setShowInboxPanel,
+    setInboxPanelTab,
+    setShowSettingsPanel,
+    playCyberSe
+  } = useGame();
 
   const MENU_ITEMS = [
-    { label: "クエスト", tab: "patrol", color: "green" },
-    { label: "PvP", tab: "pvp", color: "blue" },
-    { label: "GvG", tab: "gvg", color: "red" },
-    { label: "レイド", tab: "raid", color: "orange" },
-    { label: "ショップ", tab: "shop", color: "gold" },
-    { label: "マップ", tab: "map", color: "purple" },
-    { label: "ランキング", tab: "ranking", color: "silver" },
-    { label: "BBS", tab: "bbs", color: "silver" },
-    { label: "所持品", tab: "bag", color: "silver" },
-    { label: "ミッション", tab: "home", subPanel: "missions", color: "cyan" },
-    { label: "プレゼント", tab: "home", subPanel: "inbox", color: "magenta" },
-    { label: "設定", tab: "home", subPanel: "profile", color: "white" },
+    { label: "クエスト", action: () => navigateTab("patrol"), color: "green" },
+    { label: "PvP", action: () => navigateTab("pvp"), color: "blue" },
+    { label: "GvG", action: () => navigateTab("gvg"), color: "red" },
+    { label: "レイド", action: () => navigateTab("raid"), color: "orange" },
+    { label: "ショップ", action: () => navigateTab("shop"), color: "gold" },
+    { label: "ランキング", action: () => navigateTab("ranking"), color: "silver" },
+    { label: "BBS", action: () => navigateTab("bbs"), color: "silver" },
+    { label: "所持品", action: () => navigateTab("bag"), color: "silver" },
+    { label: "ミッション", action: () => setShowMissionPanel(true), color: "cyan" },
+    { label: "プレゼント", action: () => { setShowInboxPanel(true); setInboxPanelTab("presents"); }, color: "magenta" },
+    { label: "設定", action: () => setShowSettingsPanel(true), color: "white" },
   ];
 
   return (
@@ -43,7 +37,7 @@ export default function MenuTab() {
           <button
             key={item.label}
             className={`menu-tab-item menu-tab-item--${item.color} active-scale-effect`}
-            onClick={() => handleMenuNav(item.tab, item.subPanel)}
+            onClick={() => { item.action(); playCyberSe("click"); }}
           >
             <span className="menu-tab-item-label">{item.label}</span>
           </button>

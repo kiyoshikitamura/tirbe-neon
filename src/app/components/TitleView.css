@@ -1,0 +1,112 @@
+.title-view-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 600; /* 最前面 (Authより上) */
+  background-color: #000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+}
+
+.title-view-container {
+  width: 100%;
+  height: 100%;
+  max-width: 430px;
+  background-color: #0d0d12;
+  background-image: url('/bg/bg_base_neontower.png'); /* デフォルト背景 */
+  background-size: cover;
+  background-position: center;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 背景を暗くするオーバーレイ */
+.title-view-container::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.8) 100%);
+  z-index: 1;
+}
+
+.title-view-content {
+  position: relative;
+  z-index: 2;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  padding: 100px 20px 80px 20px;
+}
+
+.title-logo-area {
+  text-align: center;
+}
+
+.title-logo-text {
+  font-size: 42px;
+  font-weight: 900;
+  color: #fff;
+  line-height: 1.1;
+  text-shadow: 0 0 20px rgba(221, 51, 51, 0.8), 0 0 10px rgba(221, 51, 51, 0.5);
+  margin: 0 0 12px 0;
+  letter-spacing: 2px;
+}
+
+.title-subtitle {
+  font-size: 14px;
+  color: #aaa;
+  margin: 0;
+  letter-spacing: 4px;
+}
+
+.title-tap-area {
+  height: 60px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.title-tap-text {
+  font-size: 20px;
+  font-weight: bold;
+  color: #fff;
+  letter-spacing: 2px;
+  text-shadow: 0 0 10px rgba(255,255,255,0.5);
+}
+
+.title-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.title-loading span {
+  font-size: 14px;
+  color: #888;
+}
+
+.blink-animation {
+  animation: tapBlink 2s infinite ease-in-out;
+}
+
+@keyframes tapBlink {
+  0% { opacity: 0.3; }
+  50% { opacity: 1; }
+  100% { opacity: 0.3; }
+}
+
+.title-footer {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  justify-content: space-between;
+  padding: 16px 20px;
+  padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  font-size: 11px;
+  color: #666;
+}
