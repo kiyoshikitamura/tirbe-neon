@@ -6,7 +6,6 @@ import {
   CHARACTERS_MASTER,
   GEAR_SLOTS_MASTER,
   PROFILE_BACKGROUNDS,
-  PROFILE_TITLES,
   getCharacterTransparentImg,
   getAlignmentShortJp
 } from "@/utils/game_constants";
@@ -17,7 +16,7 @@ import { useImagePreloader } from "../hooks/useImagePreloader";
 import "./CharacterTab.css";
 
 export default function CharacterTab() {
-  // アセット事前自動メモリプリロード (チラつき完全排除)
+  // アセット事前自動メモリプリロード
   useImagePreloader();
 
   const {
@@ -31,10 +30,12 @@ export default function CharacterTab() {
     setSelectedLeader,
     handleCharacterLevelUp,
     handleCharacterAwaken,
+    setActiveGearSlot,
     handleEquipGear,
     handleUnequipGear,
     handleEquipGearBulkRecommended,
     handleUnequipGearBulk,
+    setActiveSkillSlot,
     handleEquipSkill,
     handleUnequipSkill,
     handleEquipSkillBulkRecommended,
@@ -43,16 +44,17 @@ export default function CharacterTab() {
     equippedBackground
   } = useGame();
 
-  // 下部パネル タブ状態: "STATUS" (ステータス・育成) | "SKILL" (スキルデッキ) | "GEAR" (装備詳細)
-  const [activeBottomTab, setActiveBottomTab] = useState<"STATUS" | "SKILL" | "GEAR">("STATUS");
+  // ボトムシートモーダル状態: null (閉じ) | "STATUS" | "SKILL" | "GEAR"
+  const [bottomModalTab, setBottomModalTab] = useState<"STATUS" | "SKILL" | "GEAR" | null>(null);
 
-  // インライン・選択中スロット枠 (0~6: 装備, 0~5: スキル)
+  // モーダル内部でのインライン選択中スロット枠 index (0~6: 装備, 0~5: スキル)
   const [selectedEquipSlotIdx, setSelectedEquipSlotIdx] = useState<number | null>(null);
   const [selectedSkillSlotIdx, setSelectedSkillSlotIdx] = useState<number | null>(null);
 
   // 選択中キャラクター情報の取得
   const ownedCharIds = useMemo(() => {
-    return (userCharactersDbList || []).map((uc: any) => uc.character_id);
+    const ids = (userCharactersDbList || []).map((uc: any) => uc.character_id);
+    return ids.length > 0 ? ids : ["reiji"];
   }, [userCharactersDbList]);
 
   const activeCharRecord = useMemo(() => {
@@ -60,9 +62,9 @@ export default function CharacterTab() {
   }, [userCharactersDbList, upgradeSelectedCharId]);
 
   const activeCharMaster = useMemo(() => {
-    if (!activeCharRecord) return CHARACTERS_MASTER[0];
-    return CHARACTERS_MASTER.find((c: any) => c.id === activeCharRecord.character_id) || CHARACTERS_MASTER[0];
-  }, [activeCharRecord]);
+    const charId = activeCharRecord?.character_id || upgradeSelectedCharId || "reiji";
+    return CHARACTERS_MASTER.find((c: any) => c.id === charId) || CHARACTERS_MASTER[0];
+  }, [activeCharRecord, upgradeSelectedCharId]);
 
   // キャラクター総ステータス算出 (stats_calculator.ts 準拠)
   const charStats = useMemo(() => {
@@ -91,19 +93,22 @@ export default function CharacterTab() {
     playCyberSe("click");
   };
 
-  // 背景画像URL
+  // 背景画像URL (実在確認済みのデフォルト背景を自動フォールバック)
   const bgData = PROFILE_BACKGROUNDS.find(bg => bg.id === equippedBackground);
-  const bgImgUrl = bgData?.img || "/shinjuku_neon_icon_1783765789862.png";
+  const bgImgUrl = bgData?.img || "/bg/bg_base_neontower.png";
 
   // --------------------------------------------------------------------------
   // 装備スロット レンダリング補助 (左右 7スロット)
   // --------------------------------------------------------------------------
   const renderEquipSlot = (slotDef: any) => {
-    if (!activeCharRecord) return null;
+    // 比較には DBレコードの UUID (activeCharRecord.id) を使用
+    const activeDbUuid = activeCharRecord?.id;
 
-    const equippedGear = (userEquipmentsList || []).find(
-      (e: any) => e.equipped_character_id === activeCharRecord.character_id && e.slot_index === slotDef.index
-    );
+    const equippedGear = activeDbUuid
+      ? (userEquipmentsList || []).find(
+          (e: any) => e.equipped_character_id === activeDbUuid && e.slot_index === slotDef.index
+        )
+      : null;
 
     const gearMaster = equippedGear ? EQUIPMENTS_MASTER_DATA.find((m: any) => m.id === equippedGear.equipment_id) : null;
     const rarity = (gearMaster?.rarity || "N").toUpperCase();
@@ -121,7 +126,7 @@ export default function CharacterTab() {
         className={`char-equip-slot ${equippedGear ? rarityClass : "slot-empty"} active-scale-effect`}
         onClick={() => {
           setSelectedEquipSlotIdx(slotDef.index);
-          setActiveBottomTab("GEAR");
+          setBottomModalTab("GEAR");
           playCyberSe("click");
         }}
       >
@@ -135,7 +140,7 @@ export default function CharacterTab() {
         {equippedGear ? (
           <>
             <div className="slot-gear-name">{gearMaster?.name || equippedGear.equipment_id}</div>
-            <div className="flex justify-between items-center w-full">
+            <div className="slot-footer-row">
               <span className="slot-gear-lv">Lv.{equippedGear.level}</span>
               {equippedGear.plus_val > 0 && (
                 <span className="slot-plus-badge">+{equippedGear.plus_val}</span>
@@ -149,14 +154,8 @@ export default function CharacterTab() {
     );
   };
 
-  // 左側スロット 3枠: 0(武器1), 1(武器2), 2(頭)
-  // 右側スロット 4枠: 3(胴), 4(脚), 5(アクセ1), 6(アクセ2)
   const leftSlots = GEAR_SLOTS_MASTER.slice(0, 3);
   const rightSlots = GEAR_SLOTS_MASTER.slice(3, 7);
-
-  // --------------------------------------------------------------------------
-  // 解放スキルスロット数計算 (初期3枠 + 覚醒+1毎に1枠解放、最大6枠)
-  // --------------------------------------------------------------------------
   const maxSkillSlots = Math.min(6, 3 + awakeningLevel);
 
   return (
@@ -165,11 +164,12 @@ export default function CharacterTab() {
       <div className="char-slider-header">
         <button className="char-slider-arrow" onClick={handlePrevChar}>◀</button>
         <div className="char-slider-track">
-          {(userCharactersDbList || []).map((uc: any) => {
-            const master = CHARACTERS_MASTER.find(m => m.id === uc.character_id);
-            if (!master) return null;
-
-            const isSelected = uc.character_id === activeCharRecord?.character_id;
+          {((userCharactersDbList && userCharactersDbList.length > 0)
+            ? userCharactersDbList
+            : [{ character_id: "reiji", id: "demo_reiji" }]
+          ).map((uc: any) => {
+            const master = CHARACTERS_MASTER.find(m => m.id === uc.character_id) || CHARACTERS_MASTER[0];
+            const isSelected = uc.character_id === activeCharMaster.id;
             const deckIndex = selectedMembers.indexOf(uc.character_id);
             const isInDeck = deckIndex !== -1;
             const isLeader = deckIndex === 0;
@@ -198,7 +198,7 @@ export default function CharacterTab() {
         <button className="char-slider-arrow" onClick={handleNextChar}>▶</button>
       </div>
 
-      {/* 2. 中央: 大画面5層レイヤーキャンバス & 左右装備7スロット */}
+      {/* 2. 中央: 大画面5層レイヤーキャンバス (高さ360px絶対固定) */}
       <div className="char-main-stage">
         {/* Z-10: 背景 */}
         <div className="char-layer-bg" style={{ backgroundImage: `url(${bgImgUrl})` }}>
@@ -210,7 +210,7 @@ export default function CharacterTab() {
           <div className={`char-layer-aura ${awakeningLevel >= 5 ? "char-aura-max" : "char-aura-small"}`} />
         )}
 
-        {/* Z-30: メインキャラクター透過立ち絵 */}
+        {/* Z-30: メインキャラクター透過立ち絵 (サイズ固定) */}
         <div className="char-layer-character">
           <img
             src={getCharacterTransparentImg(activeCharMaster.name)}
@@ -220,12 +220,12 @@ export default function CharacterTab() {
           />
         </div>
 
-        {/* Z-40: 前面エフェクト (フィルタ/パーティクル) */}
+        {/* Z-40: 前面エフェクト */}
         <div className="char-layer-front-effect" />
 
-        {/* Z-50: 最前面頭上HUD (キャラクター名・アライメント・覚醒・マイページリーダー設定) */}
-        <div className="char-hud-header">
-          <div className="char-hud-title-bar">
+        {/* Z-50: 最前面1行コンパクトHUD (被り100%排除) */}
+        <div className="char-hud-header-single">
+          <div className="char-hud-left-group">
             <span className={`char-hud-align-badge char-hud-align-${alignInfo.colorClass}`}>
               {alignInfo.label}
             </span>
@@ -237,13 +237,13 @@ export default function CharacterTab() {
           </div>
 
           <button
-            className={`char-leader-set-btn ${isCurrentLeader ? "is-active" : ""} active-scale-effect`}
+            className={`char-leader-set-btn-small ${isCurrentLeader ? "is-active" : ""} active-scale-effect`}
             onClick={() => {
               setSelectedLeader(activeCharMaster.id);
               playCyberSe("click");
             }}
           >
-            {isCurrentLeader ? "★ マイページリーダー設定中" : "マイページリーダーに設定"}
+            {isCurrentLeader ? "★ リーダー設定中" : "リーダー設定"}
           </button>
         </div>
 
@@ -258,265 +258,351 @@ export default function CharacterTab() {
         </div>
       </div>
 
-      {/* 3. 下部: 3タブ切替パネル */}
-      <div className="char-bottom-panel">
-        <div className="char-tab-bar">
-          <button
-            className={`char-tab-btn ${activeBottomTab === "STATUS" ? "active" : ""}`}
-            onClick={() => { setActiveBottomTab("STATUS"); playCyberSe("click"); }}
-          >
-            ステータス・育成
-          </button>
-          <button
-            className={`char-tab-btn ${activeBottomTab === "SKILL" ? "active" : ""}`}
-            onClick={() => { setActiveBottomTab("SKILL"); playCyberSe("click"); }}
-          >
-            スキルデッキ
-          </button>
-          <button
-            className={`char-tab-btn ${activeBottomTab === "GEAR" ? "active" : ""}`}
-            onClick={() => { setActiveBottomTab("GEAR"); playCyberSe("click"); }}
-          >
-            装備詳細
-          </button>
+      {/* 3. メイン画面直下: 1行コンパクトステータスサマリー */}
+      <div className="char-summary-bar">
+        <div className="char-summary-item">
+          <span className="char-summary-label">HP</span>
+          <span className="char-summary-val">{charStats.hp.toLocaleString()}</span>
         </div>
+        <div className="char-summary-item">
+          <span className="char-summary-label">ATK</span>
+          <span className="char-summary-val">{charStats.atk.toLocaleString()}</span>
+        </div>
+        <div className="char-summary-item">
+          <span className="char-summary-label">DEF</span>
+          <span className="char-summary-val">{charStats.def.toLocaleString()}</span>
+        </div>
+        <div className="char-summary-item">
+          <span className="char-summary-label">SPD</span>
+          <span className="char-summary-val">{charStats.spd.toLocaleString()}</span>
+        </div>
+      </div>
 
-        {/* タブA: ステータス・育成 */}
-        {activeBottomTab === "STATUS" && (
-          <div>
-            <div className="char-status-grid">
-              <div className="char-status-card">
-                <span className="char-status-label">HP</span>
-                <span className="char-status-val">{charStats.hp.toLocaleString()}</span>
+      {/* 4. メイン画面最下部: 3アクションボタン (タップでボトムシートモーダル起動) */}
+      <div className="char-main-actions">
+        <button
+          className={`char-main-action-btn ${bottomModalTab === "STATUS" ? "active" : ""} active-scale-effect`}
+          onClick={() => {
+            setBottomModalTab("STATUS");
+            playCyberSe("click");
+          }}
+        >
+          育成・強化
+        </button>
+        <button
+          className={`char-main-action-btn ${bottomModalTab === "SKILL" ? "active" : ""} active-scale-effect`}
+          onClick={() => {
+            setBottomModalTab("SKILL");
+            playCyberSe("click");
+          }}
+        >
+          スキル編成
+        </button>
+        <button
+          className={`char-main-action-btn ${bottomModalTab === "GEAR" ? "active" : ""} active-scale-effect`}
+          onClick={() => {
+            setBottomModalTab("GEAR");
+            playCyberSe("click");
+          }}
+        >
+          装備変更
+        </button>
+      </div>
+
+      {/* 5. ボトムシートモーダル (画面見切れ100%防止 ＆ モーダル内インライン4列グリッド) */}
+      {bottomModalTab !== null && (
+        <div className="char-bottom-modal-backdrop" onClick={() => setBottomModalTab(null)}>
+          <div className="char-bottom-modal-sheet" onClick={(e) => e.stopPropagation()}>
+            <div className="char-modal-header">
+              <div className="char-modal-title-tabs">
+                <button
+                  className={`char-modal-tab-btn ${bottomModalTab === "STATUS" ? "active" : ""}`}
+                  onClick={() => { setBottomModalTab("STATUS"); playCyberSe("click"); }}
+                >
+                  育成
+                </button>
+                <button
+                  className={`char-modal-tab-btn ${bottomModalTab === "SKILL" ? "active" : ""}`}
+                  onClick={() => { setBottomModalTab("SKILL"); playCyberSe("click"); }}
+                >
+                  スキル
+                </button>
+                <button
+                  className={`char-modal-tab-btn ${bottomModalTab === "GEAR" ? "active" : ""}`}
+                  onClick={() => { setBottomModalTab("GEAR"); playCyberSe("click"); }}
+                >
+                  装備
+                </button>
               </div>
-              <div className="char-status-card">
-                <span className="char-status-label">攻撃力 (ATK)</span>
-                <span className="char-status-val">{charStats.atk.toLocaleString()}</span>
-              </div>
-              <div className="char-status-card">
-                <span className="char-status-label">防御力 (DEF)</span>
-                <span className="char-status-val">{charStats.def.toLocaleString()}</span>
-              </div>
-              <div className="char-status-card">
-                <span className="char-status-label">素早さ (SPD)</span>
-                <span className="char-status-val">{charStats.spd.toLocaleString()}</span>
-              </div>
+
+              <button
+                className="char-modal-close-btn active-scale-effect"
+                onClick={() => setBottomModalTab(null)}
+              >
+                閉じる ✕
+              </button>
             </div>
 
-            <div className="char-upgrade-actions">
-              <button
-                className="char-upgrade-btn active-scale-effect"
-                onClick={() => {
-                  if (activeCharRecord) handleCharacterLevelUp(activeCharRecord.id);
-                  playCyberSe("click");
-                }}
-              >
-                <span>レベルアップ</span>
-                <span className="char-upgrade-sub">トレーニング教本消費</span>
-              </button>
-              <button
-                className="char-upgrade-btn awaken active-scale-effect"
-                onClick={() => {
-                  if (activeCharRecord) handleCharacterAwaken(activeCharRecord.id);
-                  playCyberSe("click");
-                }}
-              >
-                <span>覚醒限界突破</span>
-                <span className="char-upgrade-sub">抗争の掟消費 (+{awakeningLevel} → +{Math.min(5, awakeningLevel + 1)})</span>
-              </button>
-            </div>
-          </div>
-        )}
+            {/* モーダルコンテンツ: タブA 育成 */}
+            {bottomModalTab === "STATUS" && (
+              <div>
+                <div className="char-status-grid">
+                  <div className="char-status-card">
+                    <span className="char-status-label">HP</span>
+                    <span className="char-status-val">{charStats.hp.toLocaleString()}</span>
+                  </div>
+                  <div className="char-status-card">
+                    <span className="char-status-label">攻撃力 (ATK)</span>
+                    <span className="char-status-val">{charStats.atk.toLocaleString()}</span>
+                  </div>
+                  <div className="char-status-card">
+                    <span className="char-status-label">防御力 (DEF)</span>
+                    <span className="char-status-val">{charStats.def.toLocaleString()}</span>
+                  </div>
+                  <div className="char-status-card">
+                    <span className="char-status-label">素早さ (SPD)</span>
+                    <span className="char-status-val">{charStats.spd.toLocaleString()}</span>
+                  </div>
+                </div>
 
-        {/* タブB: スキルデッキ (最大6枠 & 得意スキルAP-1バッジ) */}
-        {activeBottomTab === "SKILL" && (
-          <div>
-            <div className="char-skills-grid">
-              {Array.from({ length: 6 }).map((_, slotIdx) => {
-                const isUnlocked = slotIdx < maxSkillSlots;
-                const equippedSkillRecord = (userSkillsList || []).find(
-                  (s: any) => s.equipped_character_id === activeCharRecord?.character_id && s.slot_index === slotIdx
-                );
-                const skillMaster = equippedSkillRecord ? SKILLS_MASTER_DATA.find((m: any) => m.id === equippedSkillRecord.skill_id) : null;
-                
-                // 得意スキル（シナジー）判定: exclusive_character_id == キャラID
-                const isSynergy = skillMaster && (skillMaster as any).exclusive_character_id === activeCharMaster.id;
-                const limitBreakPlus = equippedSkillRecord?.plus_val || 0;
-
-                let tierClass = "";
-                if (limitBreakPlus >= 10) tierClass = "skill-tier-max";
-                else if (limitBreakPlus >= 6) tierClass = "skill-tier-gold";
-                else if (limitBreakPlus >= 3) tierClass = "skill-tier-silver";
-
-                return (
-                  <div
-                    key={slotIdx}
-                    className={`char-skill-card ${isSynergy ? "synergy-ap-reduced" : ""} ${tierClass} ${!isUnlocked ? "opacity-40" : ""} active-scale-effect`}
+                <div className="char-upgrade-actions">
+                  <button
+                    className="char-upgrade-btn active-scale-effect"
                     onClick={() => {
-                      if (isUnlocked) {
-                        setSelectedSkillSlotIdx(slotIdx);
-                        playCyberSe("click");
-                      }
+                      if (activeCharRecord) handleCharacterLevelUp(activeCharRecord.id);
+                      playCyberSe("click");
                     }}
                   >
-                    {isSynergy && <span className="char-synergy-badge">AP-1</span>}
-                    {isUnlocked ? (
-                      equippedSkillRecord && skillMaster ? (
-                        <>
-                          <div className="char-skill-name">{skillMaster.name}</div>
-                          <div className="char-skill-cost">AP: {Math.max(1, (skillMaster.ap_cost || 2) - (isSynergy ? 1 : 0))}</div>
-                        </>
-                      ) : (
-                        <div className="text-gray-500 font-size-7 text-center py-2">未装着</div>
-                      )
-                    ) : (
-                      <div className="text-gray-500 font-size-6 text-center py-2">ロック</div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* インライン スキル選択 4列グリッドアイコンリスト (モーダル完全排除・visual_concept.md §5②) */}
-            {selectedSkillSlotIdx !== null && (
-              <div className="char-inline-selector">
-                <div className="char-inline-header">
-                  <span className="char-inline-title">スキル選択 (枠 {selectedSkillSlotIdx + 1})</span>
+                    <span>レベルアップ</span>
+                    <span className="char-upgrade-sub">教本・キャッシュ消費</span>
+                  </button>
                   <button
-                    className="text-gray-400 font-size-7 active-scale-effect"
-                    onClick={() => setSelectedSkillSlotIdx(null)}
+                    className="char-upgrade-btn awaken active-scale-effect"
+                    onClick={() => {
+                      if (activeCharRecord) handleCharacterAwaken(activeCharRecord.id);
+                      playCyberSe("click");
+                    }}
                   >
-                    閉じる
+                    <span>覚醒限界突破</span>
+                    <span className="char-upgrade-sub">掟消費 (+{awakeningLevel} → +{Math.min(5, awakeningLevel + 1)})</span>
                   </button>
                 </div>
-                <div className="char-inline-grid">
-                  <div
-                    className="char-tile-item active-scale-effect"
+              </div>
+            )}
+
+            {/* モーダルコンテンツ: タブB スキルデッキ */}
+            {bottomModalTab === "SKILL" && (
+              <div>
+                <div className="char-skills-grid">
+                  {Array.from({ length: 6 }).map((_, slotIdx) => {
+                    const isUnlocked = slotIdx < maxSkillSlots;
+                    const activeDbUuid = activeCharRecord?.id;
+                    const equippedSkillRecord = activeDbUuid
+                      ? (userSkillsList || []).find(
+                          (s: any) => s.equipped_character_id === activeDbUuid && s.slot_index === slotIdx
+                        )
+                      : null;
+                    const skillMaster = equippedSkillRecord ? SKILLS_MASTER_DATA.find((m: any) => m.id === equippedSkillRecord.skill_id) : null;
+                    
+                    const isSynergy = skillMaster && (skillMaster as any).exclusive_character_id === activeCharMaster.id;
+                    const limitBreakPlus = equippedSkillRecord?.plus_val || 0;
+
+                    let tierClass = "";
+                    if (limitBreakPlus >= 10) tierClass = "skill-tier-max";
+                    else if (limitBreakPlus >= 6) tierClass = "skill-tier-gold";
+                    else if (limitBreakPlus >= 3) tierClass = "skill-tier-silver";
+
+                    return (
+                      <div
+                        key={slotIdx}
+                        className={`char-skill-card ${isSynergy ? "synergy-ap-reduced" : ""} ${tierClass} ${!isUnlocked ? "char-skill-locked" : ""} active-scale-effect`}
+                        onClick={() => {
+                          if (isUnlocked) {
+                            setSelectedSkillSlotIdx(slotIdx);
+                            playCyberSe("click");
+                          }
+                        }}
+                      >
+                        {isSynergy && <span className="char-synergy-badge">AP-1</span>}
+                        {isUnlocked ? (
+                          equippedSkillRecord && skillMaster ? (
+                            <>
+                              <div className="char-skill-name">{skillMaster.name}</div>
+                              <div className="char-skill-cost">AP: {Math.max(1, (skillMaster.ap_cost || 2) - (isSynergy ? 1 : 0))}</div>
+                            </>
+                          ) : (
+                            <div className="char-skill-empty-label">未装着</div>
+                          )
+                        ) : (
+                          <div className="char-skill-lock-label">ロック</div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* モーダル内部でインライン展開する 4列グリッドアイコンリスト */}
+                {selectedSkillSlotIdx !== null && (
+                  <div className="char-inline-selector">
+                    <div className="char-inline-header">
+                      <span className="char-inline-title">スキル選択 (枠 {selectedSkillSlotIdx + 1})</span>
+                      <button
+                        className="char-inline-close-btn active-scale-effect"
+                        onClick={() => setSelectedSkillSlotIdx(null)}
+                      >
+                        閉じる
+                      </button>
+                    </div>
+                    <div className="char-inline-grid">
+                      <div
+                        className="char-tile-item active-scale-effect"
+                        onClick={() => {
+                          const activeDbUuid = activeCharRecord?.id;
+                          const currSkill = activeDbUuid
+                            ? (userSkillsList || []).find(
+                                (s: any) => s.equipped_character_id === activeDbUuid && s.slot_index === selectedSkillSlotIdx
+                              )
+                            : null;
+                          if (currSkill) handleUnequipSkill(currSkill.id);
+                          setSelectedSkillSlotIdx(null);
+                        }}
+                      >
+                        <span className="char-tile-remove-label">外す</span>
+                      </div>
+                      {(userSkillsList || [])
+                        .filter((s: any) => !s.equipped_character_id || s.equipped_character_id === activeCharRecord?.id)
+                        .map((sk: any) => {
+                          const mData = SKILLS_MASTER_DATA.find((m: any) => m.id === sk.skill_id);
+                          const isOwnerMatch = mData && (mData as any).exclusive_character_id === activeCharMaster.id;
+                          return (
+                            <div
+                              key={sk.id}
+                              className="char-tile-item active-scale-effect"
+                              onClick={() => {
+                                // 正規フロー: まずContextのactiveSkillSlotを設定してから1引数で呼び出し
+                                setActiveSkillSlot(selectedSkillSlotIdx);
+                                handleEquipSkill(sk.id);
+                                setSelectedSkillSlotIdx(null);
+                              }}
+                            >
+                              {isOwnerMatch && <span className="char-synergy-badge">AP-1</span>}
+                              <span className="char-tile-name">{mData?.name || sk.skill_id}</span>
+                            </div>
+                          );
+                        })}
+                    </div>
+                  </div>
+                )}
+
+                <div className="char-action-bar">
+                  <button
+                    className="char-action-btn recommend active-scale-effect"
                     onClick={() => {
-                      const currSkill = (userSkillsList || []).find(
-                        (s: any) => s.equipped_character_id === activeCharRecord?.character_id && s.slot_index === selectedSkillSlotIdx
-                      );
-                      if (currSkill) handleUnequipSkill(currSkill.id);
-                      setSelectedSkillSlotIdx(null);
+                      if (activeCharRecord) handleEquipSkillBulkRecommended(activeCharRecord.id);
+                      playCyberSe("click");
                     }}
                   >
-                    <span className="text-red-400 font-size-7 font-bold">外す</span>
+                    一括推奨スキル
+                  </button>
+                  <button
+                    className="char-action-btn active-scale-effect"
+                    onClick={() => {
+                      if (activeCharRecord) handleUnequipSkillBulk(activeCharRecord.id);
+                      playCyberSe("click");
+                    }}
+                  >
+                    一括解除
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* モーダルコンテンツ: タブC 装備詳細 */}
+            {bottomModalTab === "GEAR" && (
+              <div>
+                {selectedEquipSlotIdx !== null ? (
+                  <div className="char-inline-selector">
+                    <div className="char-inline-header">
+                      <span className="char-inline-title">
+                        {GEAR_SLOTS_MASTER[selectedEquipSlotIdx]?.label || "装備"}選択
+                      </span>
+                      <button
+                        className="char-inline-close-btn active-scale-effect"
+                        onClick={() => setSelectedEquipSlotIdx(null)}
+                      >
+                        閉じる
+                      </button>
+                    </div>
+
+                    <div className="char-inline-grid">
+                      <div
+                        className="char-tile-item active-scale-effect"
+                        onClick={() => {
+                          const activeDbUuid = activeCharRecord?.id;
+                          const currGear = activeDbUuid
+                            ? (userEquipmentsList || []).find(
+                                (e: any) => e.equipped_character_id === activeDbUuid && e.slot_index === selectedEquipSlotIdx
+                              )
+                            : null;
+                          if (currGear) handleUnequipGear(currGear.id);
+                          setSelectedEquipSlotIdx(null);
+                        }}
+                      >
+                        <span className="char-tile-remove-label">外す</span>
+                      </div>
+                      {(userEquipmentsList || [])
+                        .filter((e: any) => !e.equipped_character_id || e.equipped_character_id === activeCharRecord?.id)
+                        .map((eq: any) => {
+                          const gearMaster = EQUIPMENTS_MASTER_DATA.find((m: any) => m.id === eq.equipment_id);
+                          return (
+                            <div
+                              key={eq.id}
+                              className="char-tile-item active-scale-effect"
+                              onClick={() => {
+                                // 正規フロー: まずContextのactiveGearSlotを設定してから1引数で呼び出し
+                                setActiveGearSlot(selectedEquipSlotIdx);
+                                handleEquipGear(eq.id);
+                                setSelectedEquipSlotIdx(null);
+                              }}
+                            >
+                              <span className="char-tile-name">{gearMaster?.name || eq.equipment_id}</span>
+                              <span className="char-tile-lv-label">Lv.{eq.level}</span>
+                            </div>
+                          );
+                        })}
+                    </div>
                   </div>
-                  {(userSkillsList || [])
-                    .filter((s: any) => !s.equipped_character_id || s.equipped_character_id === activeCharRecord?.character_id)
-                    .map((sk: any) => {
-                      const mData = SKILLS_MASTER_DATA.find((m: any) => m.id === sk.skill_id);
-                      const isOwnerMatch = mData && (mData as any).exclusive_character_id === activeCharMaster.id;
-                      return (
-                        <div
-                          key={sk.id}
-                          className="char-tile-item active-scale-effect"
-                          onClick={() => {
-                            handleEquipSkill(sk.id, activeCharRecord.character_id, selectedSkillSlotIdx);
-                            setSelectedSkillSlotIdx(null);
-                          }}
-                        >
-                          {isOwnerMatch && <span className="char-synergy-badge">AP-1</span>}
-                          <span className="char-tile-name">{mData?.name || sk.skill_id}</span>
-                        </div>
-                      );
-                    })}
+                ) : (
+                  <div className="char-gear-placeholder-text">
+                    左右の装備スロットをタップすると装備選択メニューが開きます。
+                  </div>
+                )}
+
+                <div className="char-action-bar">
+                  <button
+                    className="char-action-btn recommend active-scale-effect"
+                    onClick={() => {
+                      if (activeCharRecord) handleEquipGearBulkRecommended(activeCharRecord.id);
+                      playCyberSe("click");
+                    }}
+                  >
+                    一括推奨装備
+                  </button>
+                  <button
+                    className="char-action-btn active-scale-effect"
+                    onClick={() => {
+                      if (activeCharRecord) handleUnequipGearBulk(activeCharRecord.id);
+                      playCyberSe("click");
+                    }}
+                  >
+                    一括解除
+                  </button>
                 </div>
               </div>
             )}
           </div>
-        )}
-
-        {/* タブC: 装備詳細 & インライン装備選択 */}
-        {activeBottomTab === "GEAR" && (
-          <div>
-            {selectedEquipSlotIdx !== null ? (
-              <div className="char-inline-selector">
-                <div className="char-inline-header">
-                  <span className="char-inline-title">
-                    {GEAR_SLOTS_MASTER[selectedEquipSlotIdx]?.label || "装備"}選択
-                  </span>
-                  <button
-                    className="text-gray-400 font-size-7 active-scale-effect"
-                    onClick={() => setSelectedEquipSlotIdx(null)}
-                  >
-                    閉じる
-                  </button>
-                </div>
-
-                {/* 4列 インライン グリッド タイルリスト */}
-                <div className="char-inline-grid">
-                  <div
-                    className="char-tile-item active-scale-effect"
-                    onClick={() => {
-                      const currGear = (userEquipmentsList || []).find(
-                        (e: any) => e.equipped_character_id === activeCharRecord?.character_id && e.slot_index === selectedEquipSlotIdx
-                      );
-                      if (currGear) handleUnequipGear(currGear.id);
-                      setSelectedEquipSlotIdx(null);
-                    }}
-                  >
-                    <span className="text-red-400 font-size-7 font-bold">外す</span>
-                  </div>
-                  {(userEquipmentsList || [])
-                    .filter((e: any) => !e.equipped_character_id || e.equipped_character_id === activeCharRecord?.character_id)
-                    .map((eq: any) => {
-                      const gearMaster = EQUIPMENTS_MASTER_DATA.find((m: any) => m.id === eq.equipment_id);
-                      return (
-                        <div
-                          key={eq.id}
-                          className="char-tile-item active-scale-effect"
-                          onClick={() => {
-                            handleEquipGear(eq.id, activeCharRecord.character_id, selectedEquipSlotIdx);
-                            setSelectedEquipSlotIdx(null);
-                          }}
-                        >
-                          <span className="char-tile-name">{gearMaster?.name || eq.equipment_id}</span>
-                          <span className="text-cyan-400 font-size-6">Lv.{eq.level}</span>
-                        </div>
-                      );
-                    })}
-                </div>
-              </div>
-            ) : (
-              <div className="text-secondary font-size-8 text-center py-4">
-                左右の装備スロットをタップすると装備変更メニューが開きます。
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* 6. 最下部: 一括操作アクションバー */}
-      <div className="char-action-bar">
-        <button
-          className="char-action-btn recommend active-scale-effect"
-          onClick={() => {
-            if (activeCharRecord) handleEquipGearBulkRecommended(activeCharRecord.character_id);
-            playCyberSe("click");
-          }}
-        >
-          一括推奨装備
-        </button>
-        <button
-          className="char-action-btn active-scale-effect"
-          onClick={() => {
-            if (activeCharRecord) handleUnequipGearBulk(activeCharRecord.character_id);
-            playCyberSe("click");
-          }}
-        >
-          一括解除
-        </button>
-        <button
-          className="char-action-btn recommend active-scale-effect"
-          onClick={() => {
-            if (activeCharRecord) handleEquipSkillBulkRecommended(activeCharRecord.character_id);
-            playCyberSe("click");
-          }}
-        >
-          一括推奨スキル
-        </button>
-      </div>
+        </div>
+      )}
     </div>
   );
 }
