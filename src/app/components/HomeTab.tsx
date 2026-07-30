@@ -145,12 +145,6 @@ function MainMyPage() {
       label: "レイド",
       icon: "/ui/icon_raid.png",
       onClick: () => navigateTab("raid")
-    },
-    {
-      id: "map",
-      label: "マップ",
-      icon: "/ui/icon_map.png",
-      onClick: () => navigateTab("map")
     }
   ];
 
@@ -273,7 +267,7 @@ function MainMyPage() {
         )}
       </div>
 
-      {/* 2. 丸型漢字メニューボタン (ネガティブマージン -48px 重ね配置) */}
+      {/* 2. 丸型漢字メニューボタン (4個均等配置・ネガティブマージン -48px 重ね配置) */}
       <div className="mypage-circle-menu-area">
         <button
           className="circle-menu-btn allies active-scale-effect"
@@ -286,14 +280,21 @@ function MainMyPage() {
           className="circle-menu-btn fight active-scale-effect"
           onClick={() => { navigateTab("pvp"); playCyberSe("click"); }}
         >
-          <img src="/menu/menu_fight.png" alt="喧嘩" className="circle-menu-img-large" />
+          <img src="/menu/menu_fight.png" alt="喧嘩" className="circle-menu-img" />
         </button>
 
         <button
           className="circle-menu-btn conquest active-scale-effect"
-          onClick={() => { navigateTab("gvg"); playCyberSe("click"); }}
+          onClick={() => { navigateTab("quest"); playCyberSe("click"); }}
         >
           <img src="/menu/menu_conquest.png" alt="制圧" className="circle-menu-img" />
+        </button>
+
+        <button
+          className="circle-menu-btn war active-scale-effect"
+          onClick={() => { navigateTab("gvg"); playCyberSe("click"); }}
+        >
+          <img src="/menu/menu_war.png" alt="抗争" className="circle-menu-img" />
         </button>
       </div>
 
