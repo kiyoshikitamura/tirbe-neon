@@ -142,24 +142,24 @@
   text-shadow: 0 0 8px rgba(255, 215, 0, 0.4);
 }
 
-/* サブメニューアイコン (左右分散配置) */
+/* サブメニューアイコン (左右分散配置・上詰め圧縮) */
 .mypage-sub-icons-left {
   position: absolute;
-  top: 76px;
+  top: 68px;
   left: 8px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
   z-index: 10;
 }
 
 .mypage-sub-icons-right {
   position: absolute;
-  top: 76px;
+  top: 68px;
   right: 8px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
   z-index: 10;
 }
 
@@ -170,8 +170,8 @@
   align-items: center;
   justify-content: center;
   gap: 1px;
-  width: 42px;
-  height: 42px;
+  width: 38px;
+  height: 38px;
   background: rgba(11, 15, 25, 0.85);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 8px;

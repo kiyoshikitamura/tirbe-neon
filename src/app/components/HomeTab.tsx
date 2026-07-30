@@ -139,12 +139,6 @@ function MainMyPage() {
       label: "コミュニティ",
       icon: "/ui/icon_community.png",
       onClick: () => navigateTab("bbs")
-    },
-    {
-      id: "raid",
-      label: "レイド",
-      icon: "/ui/icon_raid.png",
-      onClick: () => navigateTab("raid")
     }
   ];
 
@@ -173,6 +167,12 @@ function MainMyPage() {
       label: "設定",
       icon: "/ui/icon_settings.png",
       onClick: () => setHomeSubPanel("settings")
+    },
+    {
+      id: "raid",
+      label: "レイド",
+      icon: "/ui/icon_raid.png",
+      onClick: () => navigateTab("raid")
     }
   ];
 
