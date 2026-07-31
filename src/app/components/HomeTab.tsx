@@ -7,43 +7,44 @@ import { useImagePreloader } from "../hooks/useImagePreloader";
 import { PROFILE_BACKGROUNDS, CHARACTERS_MASTER } from "@/utils/game_constants";
 import "./HomeTab.css";
 
+const PRELOAD_IMAGES = [
+  "/bg/bg_base_neontower.png",
+  "/bg/bg_base_deepdock.png",
+  "/bg/bg_base_junkbazaar.png",
+  "/bg/bg_base_kitakuragate.png",
+  "/shinjuku_neon_icon_1783765789862.png",
+  "/tokyo_map.png",
+  "/shibuya_scramble.png",
+  "/bg/bg_gacha_ssr.png",
+  "/bg/bg_gacha_sr.png",
+  "/bg/bg_gacha_normal.png",
+  "/menu/menu_allies.png",
+  "/menu/menu_fight.png",
+  "/menu/menu_conquest.png",
+  "/ui/icon_bag.png",
+  "/ui/icon_cash.png",
+  "/ui/icon_community.png",
+  "/ui/icon_dia.png",
+  "/ui/icon_footer_character.png",
+  "/ui/icon_footer_gacha.png",
+  "/ui/icon_footer_guild.png",
+  "/ui/icon_footer_mypage.png",
+  "/ui/icon_footer_shop.png",
+  "/ui/icon_friends.png",
+  "/ui/icon_map.png",
+  "/ui/icon_mission.png",
+  "/ui/icon_news.png",
+  "/ui/icon_present.png",
+  "/ui/icon_raid.png",
+  "/ui/icon_ranking.png",
+  "/ui/icon_settings.png"
+];
+
 /**
  * MainMyPage - マイページメイン画面
  */
 function MainMyPage() {
-  // ⚡ ロード時間の最適化: 全17個のUIアイコン・拠点/所持背景・バナー画像事前メモリキャッシュ (0秒描画)
-  useImagePreloader([
-    "/bg/bg_base_neontower.png",
-    "/bg/bg_base_deepdock.png",
-    "/bg/bg_base_junkbazaar.png",
-    "/bg/bg_base_kitakuragate.png",
-    "/shinjuku_neon_icon_1783765789862.png",
-    "/tokyo_map.png",
-    "/shibuya_scramble.png",
-    "/bg/bg_gacha_ssr.png",
-    "/bg/bg_gacha_sr.png",
-    "/bg/bg_gacha_normal.png",
-    "/menu/menu_allies.png",
-    "/menu/menu_fight.png",
-    "/menu/menu_conquest.png",
-    "/ui/icon_bag.png",
-    "/ui/icon_cash.png",
-    "/ui/icon_community.png",
-    "/ui/icon_dia.png",
-    "/ui/icon_footer_character.png",
-    "/ui/icon_footer_gacha.png",
-    "/ui/icon_footer_guild.png",
-    "/ui/icon_footer_mypage.png",
-    "/ui/icon_footer_shop.png",
-    "/ui/icon_friends.png",
-    "/ui/icon_map.png",
-    "/ui/icon_mission.png",
-    "/ui/icon_news.png",
-    "/ui/icon_present.png",
-    "/ui/icon_raid.png",
-    "/ui/icon_ranking.png",
-    "/ui/icon_settings.png"
-  ]);
+  useImagePreloader(PRELOAD_IMAGES);
 
   const {
     currentBaseId,

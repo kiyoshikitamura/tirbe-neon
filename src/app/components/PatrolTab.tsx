@@ -6,21 +6,24 @@ import {
   CHARACTERS_MASTER,
   CHARACTER_GROWTH_PATTERNS
 } from "@/utils/game_constants";
+import OutlawCard from "./ui/OutlawCard";
+import OutlawButton from "./ui/OutlawButton";
+import SubTabNav from "./ui/SubTabNav";
+import SectionHeader from "./ui/SectionHeader";
 import "./PatrolTab.css";
 
 export default function PatrolTab() {
   const {
-    patrol,
+    activePatrols,
     selectedTown,
     setSelectedTown,
     selectedCourse,
     setSelectedCourse,
-    patrolMembers,
+    selectedPatrolMember,
     togglePatrolMemberSelection,
     userCharactersDbList,
     handleStartPatrol,
     dispatchLoading,
-    patrolLogs,
     handleInstantComplete,
     handleClaimRewards,
     playCyberSe,
@@ -29,7 +32,8 @@ export default function PatrolTab() {
     startCardBattle,
     lastPatrolRewards,
     showPatrolRewardModal,
-    setShowPatrolRewardModal
+    setShowPatrolRewardModal,
+    setGlobalInteractionBlocking
   } = useGame();
 
   // コースが未選択のときに初期選択を設定
@@ -44,233 +48,297 @@ export default function PatrolTab() {
 
   const activeCourse = patrolCourses.find((c: any) => c.id === selectedCourse);
 
-  // 現在見回り進行中のコース情報
-  const ongoingCourse = patrol && patrolCourses.find((c: any) => c.id === patrol.courseId);
+  const townTabs = [
+    { id: "shinjuku", label: "新宿" },
+    { id: "shibuya", label: "渋谷" },
+    { id: "ikebukuro", label: "池袋" },
+    { id: "roppongi", label: "六本木" },
+    { id: "akihabara", label: "秋葉原" },
+    { id: "kawasaki", label: "川崎" },
+    { id: "yokohama", label: "横浜" }
+  ];
+
+  const handleStart = async () => {
+    setGlobalInteractionBlocking(true);
+    await handleStartPatrol();
+    setGlobalInteractionBlocking(false);
+  };
+
+  const handleInstant = async (currency: "CASH" | "DIAMOND", pId: string) => {
+    setGlobalInteractionBlocking(true);
+    await handleInstantComplete(currency, pId);
+    setGlobalInteractionBlocking(false);
+  };
+
+  const handleClaim = async (pId: string) => {
+    setGlobalInteractionBlocking(true);
+    await handleClaimRewards(pId);
+    setGlobalInteractionBlocking(false);
+  };
+
+  // 背景画像の取得
+  const bgImage = `/bg/bg_street_${selectedTown}.png`;
 
   return (
-    <div className="view-container">
-      <h2 className="view-title">クエスト</h2>
-      
-      {!patrol ? (
-        <div className="quest-courses scroll-container flex-1">
-          <div className="flex-row-gap-2 expedition-town-tabs pb-2 border-bottom-subtle">
-            {[
-              { id: "shinjuku", name: "新宿" },
-              { id: "shibuya", name: "渋谷" },
-              { id: "ikebukuro", name: "池袋" },
-              { id: "roppongi", name: "六本木" },
-              { id: "akihabara", name: "秋葉原" },
-              { id: "kawasaki", name: "川崎" },
-              { id: "yokohama", name: "横浜" }
-            ].map(town => (
-              <button 
-                key={town.id} 
-                className={`tab-btn font-size-8 height-26 px-3 ${selectedTown === town.id ? "active" : ""}`} 
-                onClick={() => { 
-                  setSelectedTown(town.id); 
-                  const firstCourse = patrolCourses.find((c: any) => c.town_id === town.id);
-                  if (firstCourse) setSelectedCourse(firstCourse.id);
-                  else setSelectedCourse(""); 
-                  playCyberSe("click"); 
-                }}
-              >
-                {town.name}
-              </button>
-            ))}
-          </div>
+    <div className="view-container patrol-container">
+      {/* Background layer */}
+      <div 
+        className="patrol-background" 
+        style={{ backgroundImage: `url(${bgImage})` }}
+      />
+      <div className="patrol-background-overlay" />
 
-          <div className="mt-3 flex-col-gap-2">
-            {patrolCourses.filter((c: any) => c.town_id === selectedTown).map((c: any) => (
-              <div 
-                key={c.id} 
-                className={`course-card ${selectedCourse === c.id ? "active-border" : ""}`} 
-                onClick={() => { setSelectedCourse(c.id); playCyberSe("click"); }}
-              >
-                <div className="course-header">
-                  <span className="course-title">{c.name}</span>
-                  <span className={`course-badge course-badge--${c.course_type.toLowerCase()}`}>
-                    {c.course_type === 'EASY' ? '初級' : c.course_type === 'NORMAL' ? '中級' : '上級'}
-                  </span>
-                </div>
-                <div className="course-details">
-                  <span>所要: {c.duration_seconds}秒</span>
-                  <span>スタミナ: {c.cost_vitality}</span>
-                  <span>獲得キャッシュ: {c.reward_cash}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div className="char-picker-title mt-4">見回りメンバーの編成 (重複派遣不可・1名のみ)</div>
-          <div className="char-picker-grid">
-            {CHARACTERS_MASTER.map((c: any) => {
-              const isUnlocked = userCharactersDbList.some((uc: any) => uc.character_id === c.id);
-              const isHome = c.homeTown === selectedTown;
-              const isSelected = patrolMembers.includes(c.id);
-              
-              // ロード時間を短縮するため、ローカルでパターン情報を引く
-              const pattern = CHARACTER_GROWTH_PATTERNS.find((p: any) => p.pattern_id === c.growthPatternId) || CHARACTER_GROWTH_PATTERNS[0];
-              const baseLuk = pattern.base_luk;
-              
-              return (
-                <div 
-                  key={c.id} 
-                  className={`char-pick-item ${!isUnlocked ? "locked" : isSelected ? "selected" : ""} ${isHome ? "synergy-bonus" : ""}`} 
-                  onClick={() => isUnlocked && togglePatrolMemberSelection(c.id)}
-                >
-                  <div className="char-pick-name">{c.jpName}</div>
-                  {isHome && <div className="char-pick-badge text-color-yellow font-size-7 mt-1">地元一致 (LUK {baseLuk})</div>}
-                </div>
-              );
-            })}
-          </div>
-
-          <button 
-            className="dispatch-action-btn active-scale-effect mt-4" 
-            onClick={handleStartPatrol} 
-            disabled={dispatchLoading || !selectedCourse || patrolMembers.length === 0}
-          >
-            見回り開始
-          </button>
+      <div className="patrol-content scroll-container flex-1">
+        
+        <SectionHeader title={`新規クエスト派遣 (${activePatrols.length}/5 出撃中)`} />
+        
+        <div className="patrol-town-tabs-wrapper mb-3">
+          <SubTabNav 
+            tabs={townTabs} 
+            activeTabId={selectedTown} 
+            onSelect={(tabId) => {
+              setSelectedTown(tabId);
+              const firstCourse = patrolCourses.find((c: any) => c.town_id === tabId);
+              if (firstCourse) setSelectedCourse(firstCourse.id);
+              else setSelectedCourse("");
+              playCyberSe("click");
+            }} 
+          />
         </div>
-      ) : (
-        <div className="dispatching-layout">
-          <div className="progress-card">
-            <div className="progress-header">見回り任務進行中 ({ongoingCourse?.name || ""})</div>
-            <div className="time-display">{patrol.secondsLeft > 0 ? `${patrol.secondsLeft}秒` : "帰還完了"}</div>
-            <div className="progress-bar-bg">
-              <div 
-                className="progress-bar-fill" 
-                style={{ width: `${((patrol.secondsTotal - patrol.secondsLeft) / patrol.secondsTotal) * 100}%` }} 
-              />
+
+        {/* コース選択 */}
+        <div className="patrol-courses-grid mb-3">
+          {patrolCourses.filter((c: any) => c.town_id === selectedTown).map((c: any) => (
+            <div 
+              key={c.id} 
+              className={`patrol-course-item ${selectedCourse === c.id ? "active" : ""}`}
+              onClick={() => { setSelectedCourse(c.id); playCyberSe("click"); }}
+            >
+              <div className="course-name">{c.name}</div>
+              <div className={`course-badge badge-${c.course_type.toLowerCase()}`}>
+                {c.course_type === 'EASY' ? '初級' : c.course_type === 'NORMAL' ? '中級' : '上級'}
+              </div>
             </div>
-
-            {patrol.secondsLeft > 0 ? (
-              <div className="skip-actions">
-                <button className="skip-btn cash active-scale-effect" onClick={() => handleInstantComplete("CASH")} disabled={dispatchLoading}>キャッシュ時短</button>
-                <button className="skip-btn diamond active-scale-effect" onClick={() => handleInstantComplete("DIAMOND")} disabled={dispatchLoading}>ダイヤ時短</button>
-              </div>
-            ) : (
-              <div className="complete-actions w-full flex-col-gap-2">
-                {/* バトルイベントが発生しており、未解決の場合 */}
-                {patrol.has_battle_event && !patrol.battle_resolved ? (
-                  <div className="battle-event-alert flex-col-gap-2 mt-2">
-                    <div className="battle-event-title font-size-9 text-color-red font-bold">⚠️ 敵襲発生！</div>
-                    <div className="battle-event-desc font-size-7">見回りエリアでトラブルが発生しました。NPC戦を解決してください。</div>
-                    <button 
-                      className="claim-reward-btn claim-reward-btn--battle active-scale-effect" 
-                      onClick={() => {
-                        if (ongoingCourse && ongoingCourse.battle_npc_id) {
-                          const npc = patrolNpcs.find((n: any) => n.id === ongoingCourse.battle_npc_id);
-                          startCardBattle("PATROL", npc?.npc_name || "敵NPC", ongoingCourse.battle_npc_id);
-                        }
-                      }}
-                      disabled={dispatchLoading}
-                    >
-                      戦闘開始
-                    </button>
-                  </div>
-                ) : (
-                  <button className="claim-reward-btn active-scale-effect" onClick={handleClaimRewards} disabled={dispatchLoading}>
-                    {patrol.battle_resolved && patrol.battle_result === "VICTORY" ? "勝利報酬を獲得" : "報酬獲得"}
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
+          ))}
         </div>
-      )}
+
+        {/* 出撃メンバー選択 */}
+        {activeCourse && (
+          <OutlawCard className="mb-4">
+            <div className="font-size-8 text-color-gray mb-2">派遣メンバーの選択 (1名)</div>
+            <div className="patrol-char-grid mb-3">
+              {CHARACTERS_MASTER.map((c: any) => {
+                const isUnlocked = userCharactersDbList.some((uc: any) => uc.character_id === c.id);
+                const isHome = c.homeTown === selectedTown;
+                const isSelected = selectedPatrolMember === c.id;
+                
+                const isAlreadyDeployed = activePatrols.some((p: any) => p.characterId === c.id && p.status !== "COMPLETED");
+
+                const pattern = CHARACTER_GROWTH_PATTERNS.find((p: any) => p.pattern_id === c.growthPatternId) || CHARACTER_GROWTH_PATTERNS[0];
+                const baseLuk = pattern.base_luk;
+                
+                return (
+                  <div 
+                    key={c.id} 
+                    className={`patrol-char-item ${!isUnlocked ? "locked" : ""} ${isSelected ? "selected" : ""} ${isAlreadyDeployed ? "deployed" : ""}`} 
+                    onClick={() => {
+                      if (isUnlocked && !isAlreadyDeployed) {
+                        togglePatrolMemberSelection(c.id);
+                      } else if (isAlreadyDeployed) {
+                        playCyberSe("error");
+                      }
+                    }}
+                  >
+                    <div className="char-name">{c.jpName}</div>
+                    {isHome && <div className="char-bonus-badge">地元一致(LUK{baseLuk})</div>}
+                    {isAlreadyDeployed && <div className="char-deployed-badge">出撃中</div>}
+                  </div>
+                );
+              })}
+            </div>
+            <div className="course-cost-info mb-3 font-size-7 text-color-gray flex-row-gap-2">
+              <span>⏱ 所要: {activeCourse.duration_seconds}秒</span>
+              <span>⚡ スタミナ: {activeCourse.cost_vitality}</span>
+              <span>💰 基本報酬: {activeCourse.reward_cash}</span>
+            </div>
+            <OutlawButton 
+              onClick={handleStart}
+              disabled={dispatchLoading || !selectedCourse || !selectedPatrolMember || activePatrols.length >= 5}
+              fullWidth
+              variant="danger"
+            >
+              クエスト開始
+            </OutlawButton>
+          </OutlawCard>
+        )}
+
+        <SectionHeader title="進行中クエスト一覧" className="mt-4" />
+
+        <div className="active-patrols-list flex-col-gap-3 pb-4">
+          {activePatrols.length === 0 ? (
+            <div className="text-center font-size-7 text-color-gray p-4">現在進行中のクエストはありません。</div>
+          ) : (
+            activePatrols.map((p: any) => {
+              const pCourse = patrolCourses.find((c: any) => c.id === p.courseId);
+              const pChar = CHARACTERS_MASTER.find((c: any) => c.id === p.characterId);
+              const isComplete = p.secondsLeft <= 0;
+              const hasUnresolvedBattle = p.has_battle_event && !p.battle_resolved;
+
+              return (
+                <OutlawCard key={p.id} className="active-patrol-card">
+                  <div className="patrol-card-header flex-between mb-2">
+                    <div className="font-size-8 font-bold text-shadow-neon">{pCourse?.name || '不明なクエスト'}</div>
+                    <div className="font-size-7 text-color-gray">{pChar?.jpName || '不明なキャラ'} 派遣中</div>
+                  </div>
+                  
+                  {isComplete ? (
+                    <div className="patrol-card-complete flex-col-gap-2">
+                      <div className="progress-bar-container full">
+                        <div className="progress-bar-fill" style={{ width: '100%' }} />
+                        <span className="progress-text">帰還完了</span>
+                      </div>
+                      
+                      {hasUnresolvedBattle ? (
+                        <div className="battle-alert p-2 border-red mt-2">
+                          <div className="text-color-red font-bold font-size-8 mb-1">⚠️ 敵襲発生！</div>
+                          <div className="font-size-7 mb-2">エリア内でNPCとの戦闘が発生しました。</div>
+                          <OutlawButton 
+                            onClick={() => {
+                              if (pCourse && pCourse.battle_npc_id) {
+                                const npc = patrolNpcs.find((n: any) => n.id === pCourse.battle_npc_id);
+                                startCardBattle("PATROL", npc?.npc_name || "敵NPC", pCourse.battle_npc_id);
+                              }
+                            }}
+                            variant="danger"
+                            disabled={dispatchLoading}
+                            fullWidth
+                          >
+                            戦闘開始
+                          </OutlawButton>
+                        </div>
+                      ) : (
+                        <OutlawButton 
+                          onClick={() => handleClaim(p.id)}
+                          variant="primary"
+                          disabled={dispatchLoading}
+                          fullWidth
+                        >
+                          {p.battle_resolved && p.battle_result === "VICTORY" ? "勝利報酬を獲得" : "報酬獲得"}
+                        </OutlawButton>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="patrol-card-ongoing flex-col-gap-2">
+                      <div className="progress-bar-container">
+                        <div 
+                          className="progress-bar-fill" 
+                          style={{ width: `${((p.secondsTotal - p.secondsLeft) / p.secondsTotal) * 100}%` }} 
+                        />
+                        <span className="progress-text">残り {p.secondsLeft}秒</span>
+                      </div>
+                      <div className="flex-row-gap-2 mt-1">
+                        <OutlawButton onClick={() => handleInstant("CASH", p.id)} disabled={dispatchLoading} fullWidth>CASH時短</OutlawButton>
+                        <OutlawButton onClick={() => handleInstant("DIAMOND", p.id)} disabled={dispatchLoading} variant="primary" fullWidth>DIA時短</OutlawButton>
+                      </div>
+                    </div>
+                  )}
+                </OutlawCard>
+              );
+            })
+          )}
+        </div>
+      </div>
 
       {/* 見回り完了報酬モーダルポップアップ */}
       {showPatrolRewardModal && lastPatrolRewards && (
-        <div className="modal-overlay">
-          <div className="patrol-reward-modal scroll-container">
-            <h3 className="modal-title text-color-yellow font-size-10 mb-3">🚨 見回り完了報告</h3>
+        <div className="modal-overlay" style={{ zIndex: 9999 }}>
+          <OutlawCard className="patrol-reward-modal scroll-container">
+            <h3 className="modal-title text-color-yellow font-size-10 mb-3 text-center text-shadow-neon">🚨 クエスト完了報告</h3>
             <div className="modal-subtitle font-size-8 text-center text-color-gray mb-3 border-bottom pb-2">
               {lastPatrolRewards.courseName}
             </div>
 
             <div className="reward-section flex-col-gap-2">
-              <div className="reward-row">
-                <span className="reward-label">獲得基本キャッシュ:</span>
-                <span className="reward-val text-color-green">+{lastPatrolRewards.baseCash} CASH</span>
+              <div className="flex-between">
+                <span className="text-color-gray">獲得基本キャッシュ:</span>
+                <span className="text-color-green font-bold">+{lastPatrolRewards.baseCash} CASH</span>
               </div>
               
               {lastPatrolRewards.matchBonusApplied && (
-                <div className="reward-row reward-row--bonus font-size-7 text-color-yellow pl-3">
-                  <span>地元一致ボーナス:</span>
-                  <span>+{lastPatrolRewards.matchBonusCash} CASH</span>
+                <div className="flex-between font-size-7 pl-2">
+                  <span className="text-color-yellow">└ 地元一致ボーナス:</span>
+                  <span className="text-color-yellow">+{lastPatrolRewards.matchBonusCash} CASH</span>
                 </div>
               )}
 
-              <div className="reward-row reward-row--bonus font-size-7 text-color-cyan pl-3">
-                <span>キャラクターレベルボーナス:</span>
-                <span>+{lastPatrolRewards.levelBonusPercent}% (+{lastPatrolRewards.levelBonusCash} CASH)</span>
+              <div className="flex-between font-size-7 pl-2">
+                <span className="text-color-cyan">└ Lvボーナス ({lastPatrolRewards.levelBonusPercent}%):</span>
+                <span className="text-color-cyan">+{lastPatrolRewards.levelBonusCash} CASH</span>
               </div>
 
-              <div className="reward-row border-top pt-2">
-                <span className="reward-label">獲得経験値:</span>
-                <span className="reward-val text-color-cyan">+{lastPatrolRewards.baseXp} XP</span>
+              <div className="flex-between border-top pt-2 mt-1">
+                <span className="text-color-gray">獲得経験値:</span>
+                <span className="text-color-cyan font-bold">+{lastPatrolRewards.baseXp} XP</span>
               </div>
 
               {lastPatrolRewards.dropItemName && (
-                <div className="reward-row">
-                  <span className="reward-label">獲得ドロップ品:</span>
-                  <span className="reward-val text-color-yellow">{lastPatrolRewards.dropItemName} x{lastPatrolRewards.dropItemQty}</span>
+                <div className="flex-between">
+                  <span className="text-color-gray">獲得ドロップ品:</span>
+                  <span className="text-color-yellow font-bold">{lastPatrolRewards.dropItemName} x{lastPatrolRewards.dropItemQty}</span>
                 </div>
               )}
 
               {lastPatrolRewards.gearDropped && (
-                <div className="reward-row reward-row--epic">
-                  <span className="reward-label">🔥 追加ドロップ装備:</span>
-                  <span className="reward-val text-color-magenta">初期武器 (WEAPON_001) x1</span>
+                <div className="flex-between mt-1 p-2" style={{ background: 'rgba(255, 0, 255, 0.1)', border: '1px solid rgba(255, 0, 255, 0.3)' }}>
+                  <span className="text-color-magenta">🔥 追加ドロップ装備:</span>
+                  <span className="text-color-magenta font-bold">初期武器 x1</span>
                 </div>
               )}
 
-              {/* バトル結果表示 */}
               {lastPatrolRewards.hasBattle && (
                 <div className="battle-result-section border-top pt-2 mt-2">
-                  <div className={`battle-status-title font-size-8 font-bold ${lastPatrolRewards.battleVictory ? 'text-color-green' : 'text-color-red'}`}>
+                  <div className={`font-size-8 font-bold mb-1 ${lastPatrolRewards.battleVictory ? 'text-color-green' : 'text-color-red'}`}>
                     NPC遭遇バトル: {lastPatrolRewards.battleVictory ? '勝利' : '敗北'}
                   </div>
                   {lastPatrolRewards.battleVictory ? (
-                    <div className="battle-rewards-list pl-3 mt-1 flex-col-gap-1 font-size-7 text-color-green">
-                      <div>追加キャッシュ: +{lastPatrolRewards.battleCashBonus} CASH</div>
-                      <div>追加経験値: +{lastPatrolRewards.battleXpBonus} XP</div>
+                    <div className="pl-2 flex-col-gap-1 font-size-7 text-color-green">
+                      <div className="flex-between"><span>追加キャッシュ:</span><span>+{lastPatrolRewards.battleCashBonus} CASH</span></div>
+                      <div className="flex-between"><span>追加経験値:</span><span>+{lastPatrolRewards.battleXpBonus} XP</span></div>
                       {lastPatrolRewards.battleRewardItemName && (
-                        <div>追加アイテム: {lastPatrolRewards.battleRewardItemName} x{lastPatrolRewards.battleRewardItemQty}</div>
+                        <div className="flex-between"><span>追加アイテム:</span><span>{lastPatrolRewards.battleRewardItemName} x{lastPatrolRewards.battleRewardItemQty}</span></div>
                       )}
                     </div>
                   ) : (
-                    <div className="font-size-7 text-color-gray pl-3 mt-1">敗北したため、追加報酬はありません。</div>
+                    <div className="font-size-7 text-color-gray pl-2 mt-1">敗北したため、追加報酬はありません。</div>
                   )}
                 </div>
               )}
             </div>
 
-            <div className="total-summary-section border-top pt-3 mt-3 flex-col-gap-2">
-              <div className="reward-row font-size-9 font-bold">
-                <span>合計獲得キャッシュ:</span>
-                <span className="text-color-green font-size-10">{lastPatrolRewards.totalCash} CASH</span>
+            <div className="border-top pt-3 mt-3 flex-col-gap-2">
+              <div className="flex-between font-size-9">
+                <span className="font-bold">合計獲得キャッシュ:</span>
+                <span className="text-color-green font-bold text-shadow-neon">{lastPatrolRewards.totalCash} CASH</span>
               </div>
-              <div className="reward-row font-size-9 font-bold">
-                <span>合計獲得経験値:</span>
-                <span className="text-color-cyan font-size-10">{lastPatrolRewards.totalXp} XP</span>
+              <div className="flex-between font-size-9">
+                <span className="font-bold">合計獲得経験値:</span>
+                <span className="text-color-cyan font-bold text-shadow-neon">{lastPatrolRewards.totalXp} XP</span>
               </div>
               {lastPatrolRewards.levelUpMessage && (
-                <div className="level-up-alert text-color-yellow font-bold text-center mt-2 font-size-8">
+                <div className="text-color-yellow font-bold text-center mt-3 font-size-8 p-2" style={{ background: 'rgba(255, 204, 0, 0.1)' }}>
                   {lastPatrolRewards.levelUpMessage}
                 </div>
               )}
             </div>
 
-            <button 
-              className="modal-close-btn active-scale-effect mt-4" 
+            <OutlawButton 
               onClick={() => setShowPatrolRewardModal(false)}
+              className="mt-4"
+              fullWidth
             >
               閉じる
-            </button>
-          </div>
+            </OutlawButton>
+          </OutlawCard>
         </div>
       )}
     </div>

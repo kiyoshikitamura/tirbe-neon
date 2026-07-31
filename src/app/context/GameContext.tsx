@@ -178,20 +178,22 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
   const [selectedCourse, setSelectedCourse] = useState<string>("e1e1e1e1-e1e1-e1e1-e1e1-e1e1e1e1e1e1");
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
-  const [patrolMembers, setPatrolMembers] = useState<string[]>([]);
+  const [selectedPatrolMember, setSelectedPatrolMember] = useState<string | null>(null);
   const [dailyCashSkips, setDailyCashSkips] = useState<number>(0);
-  const [patrol, setPatrol] = useState<{
-    id?: string;
+  const [activePatrols, setActivePatrols] = useState<Array<{
+    id: string;
     courseId: string;
-    members: string[];
+    characterId: string;
     secondsTotal: number;
     secondsLeft: number;
-    status: "ONGOING" | "CLAIMABLE";
+    status: "ONGOING" | "CLAIMABLE" | "COMPLETED";
     has_battle_event?: boolean;
     battle_resolved?: boolean;
     battle_result?: "VICTORY" | "DEFEAT" | null;
     rewards_accrued?: any;
-  } | null>(null);
+    started_at?: string;
+    expires_at?: string;
+  }>>([]);
   const [patrolLogs, setPatrolLogs] = useState<Array<{ time: string; text: string }>>([]);
   const [patrolCourses, setPatrolCourses] = useState<any[]>([]);
   const [patrolNpcs, setPatrolNpcs] = useState<any[]>([]);
@@ -887,44 +889,45 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       }
 
       // 見回り関連データとマスタデータの同期
-      const { data: bootData, error: bootErr } = await supabase.rpc("get_bootstrap_sync_data", {
-        p_user_id: userId
-      });
+      const { data: questsData } = await supabase.from("quests").select("*");
+      if (questsData) setPatrolCourses(questsData);
 
-      if (!bootErr && bootData) {
-        if (bootData.patrol_courses) setPatrolCourses(bootData.patrol_courses);
-        if (bootData.patrol_npcs) setPatrolNpcs(bootData.patrol_npcs);
-        
-        const activePatrol = bootData.active_patrol;
-        if (activePatrol && activePatrol !== 'null' && activePatrol.status !== 'COMPLETED') {
-          const expiresAt = new Date(activePatrol.expires_at).getTime();
-          const startedAt = new Date(activePatrol.started_at).getTime();
+      const { data: npcsData } = await supabase.from("patrol_npcs").select("*");
+      if (npcsData) setPatrolNpcs(npcsData);
+
+      const { data: userPatrols } = await supabase.from("user_patrols").select("*").eq("user_id", userId);
+      
+      if (userPatrols) {
+        const active = userPatrols.filter((p: any) => p.status !== "COMPLETED");
+        const formattedPatrols = active.map((p: any) => {
+          const expiresAt = new Date(p.expires_at).getTime();
+          const startedAt = new Date(p.started_at).getTime();
           const now = Date.now();
           const secondsTotal = Math.ceil((expiresAt - startedAt) / 1000);
           const secondsLeft = Math.max(Math.ceil((expiresAt - now) / 1000), 0);
 
-          setPatrol({
-            id: activePatrol.id,
-            courseId: activePatrol.course_id,
-            members: [activePatrol.character_id].filter(Boolean),
+          return {
+            id: p.id,
+            courseId: p.course_id || p.quest_id,
+            characterId: p.character_id,
             secondsTotal,
             secondsLeft,
-            status: secondsLeft <= 0 ? "CLAIMABLE" : "ONGOING",
-            has_battle_event: activePatrol.has_battle_event,
-            battle_resolved: activePatrol.battle_resolved,
-            battle_result: activePatrol.battle_result,
-            rewards_accrued: activePatrol.rewards_accrued
-          });
+            status: (secondsLeft <= 0 ? "CLAIMABLE" : "ONGOING") as "ONGOING" | "CLAIMABLE",
+            has_battle_event: p.has_battle_event,
+            battle_resolved: p.battle_resolved,
+            battle_result: p.battle_result,
+            rewards_accrued: p.rewards_accrued,
+            started_at: p.started_at,
+            expires_at: p.expires_at
+          };
+        });
+        setActivePatrols(formattedPatrols);
 
-          // バッジの判定: 見回りが完了しており、かつバトルイベントが未消化
-          const needBadge = secondsLeft <= 0 && activePatrol.has_battle_event && !activePatrol.battle_resolved;
-          setHasActivePatrolBattle(needBadge);
-
-          setPatrolLogs([{ time: "復旧", text: "前回のリクエストセッションを安全に復元しました。" }]);
-        } else {
-          setPatrol(null);
-          setHasActivePatrolBattle(false);
-        }
+        const needBadge = formattedPatrols.some((p: any) => p.status === "CLAIMABLE" && p.has_battle_event && !p.battle_resolved);
+        setHasActivePatrolBattle(needBadge);
+      } else {
+        setActivePatrols([]);
+        setHasActivePatrolBattle(false);
       }
 
       const { data: pvpData } = await supabase
@@ -1567,26 +1570,33 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
   // 見回り進行タイマー
   useEffect(() => {
-    if (!patrol) return;
-    if (patrol.secondsLeft <= 0) return;
+    if (activePatrols.length === 0) return;
+    const hasOngoing = activePatrols.some(p => p.secondsLeft > 0);
+    if (!hasOngoing) return;
 
     const timer = setInterval(() => {
-      setPatrol((prev) => {
-        if (!prev) return null;
-        const nextLeft = prev.secondsLeft - 1;
-        if (nextLeft <= 0) {
-          clearInterval(timer);
-          if (session) {
-            syncBootstrapData(session.user.id);
+      setActivePatrols((prev) => {
+        let anyCompletedThisTick = false;
+        const nextPatrols = prev.map(p => {
+          if (p.secondsLeft <= 0) return p;
+          const nextLeft = p.secondsLeft - 1;
+          if (nextLeft <= 0) {
+            anyCompletedThisTick = true;
+            return { ...p, secondsLeft: 0, status: "CLAIMABLE" as const };
           }
-          return { ...prev, secondsLeft: 0, status: "CLAIMABLE" };
+          return { ...p, secondsLeft: nextLeft };
+        });
+
+        if (anyCompletedThisTick && session) {
+          syncBootstrapData(session.user.id);
         }
-        return { ...prev, secondsLeft: nextLeft };
+
+        return nextPatrols;
       });
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [patrol, session]);
+  }, [activePatrols, session]);
 
   // SWR追加プレゼントフェッチ
   useEffect(() => {
@@ -2718,8 +2728,18 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       setErrorMessage("スタミナが不足しています。");
       return;
     }
-    if (patrolMembers.length === 0) {
+    if (!selectedPatrolMember) {
       setErrorMessage("見回りさせるメンバーを選択してください。");
+      return;
+    }
+
+    if (activePatrols.length >= 5) {
+      setErrorMessage("出撃枠が上限（5枠）に達しています。");
+      return;
+    }
+
+    if (activePatrols.some(p => p.characterId === selectedPatrolMember && p.status !== "COMPLETED")) {
+      setErrorMessage("このキャラクターはすでに出撃中です。");
       return;
     }
 
@@ -2729,13 +2749,12 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       const startedAt = new Date();
       const expiresAt = new Date(startedAt.getTime() + course.duration_seconds * 1000);
 
-      // 見回り開始時にバトル発生判定 (DB登録用)
-      const hasBattle = Math.random() <= Number(course.battle_trigger_chance);
+      const hasBattle = Math.random() <= (Number(course.battle_trigger_chance) || 0.2);
 
       const { data, error } = await supabase.from("user_patrols").insert({
         user_id: session.user.id,
         course_id: course.id,
-        character_id: patrolMembers[0],
+        character_id: selectedPatrolMember,
         started_at: startedAt.toISOString(),
         expires_at: expiresAt.toISOString(),
         status: "ONGOING",
@@ -2746,20 +2765,24 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       if (error) throw error;
 
       await supabase.from("users").update({ vitality: vitality - course.cost_vitality }).eq("id", session.user.id);
-
       setVitality(prev => prev - course.cost_vitality);
-      setPatrol({
+
+      const newPatrol = {
         id: data.id,
         courseId: course.id,
-        members: patrolMembers,
+        characterId: selectedPatrolMember,
         secondsTotal: course.duration_seconds,
         secondsLeft: course.duration_seconds,
-        status: "ONGOING",
+        status: "ONGOING" as const,
         has_battle_event: hasBattle,
         battle_resolved: false,
-        battle_result: null
-      });
-      setPatrolLogs([{ time: "出撃", text: `${course.name} へ見回りに出発した。` }]);
+        battle_result: null,
+        started_at: startedAt.toISOString(),
+        expires_at: expiresAt.toISOString()
+      };
+
+      setActivePatrols(prev => [...prev, newPatrol]);
+      setSelectedPatrolMember(null); // クリア
     } catch (err: any) {
       console.warn(err.message);
     } finally {
@@ -2767,15 +2790,16 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const handleInstantComplete = async (currency: "CASH" | "DIAMOND") => {
-    if (!session || !patrol || !patrol.id) return;
+  const handleInstantComplete = async (currency: "CASH" | "DIAMOND", patrolId: string) => {
+    const targetPatrol = activePatrols.find(p => p.id === patrolId);
+    if (!session || !targetPatrol) return;
     setDispatchLoading(true);
     playCyberSe("click");
 
     try {
       const { data, error } = await supabase.rpc("complete_patrol_instantly", {
         p_user_id: session.user.id,
-        p_patrol_id: patrol.id,
+        p_patrol_id: patrolId,
         p_use_currency: currency
       });
 
@@ -2794,15 +2818,16 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const handleClaimRewards = async () => {
-    if (!session || !patrol) return;
-    const course = patrolCourses.find(c => c.id === patrol.courseId);
+  const handleClaimRewards = async (patrolId: string) => {
+    const targetPatrol = activePatrols.find(p => p.id === patrolId);
+    if (!session || !targetPatrol) return;
+    const course = patrolCourses.find(c => c.id === targetPatrol.courseId);
     if (!course) return;
 
     setDispatchLoading(true);
     playCyberSe("gacha");
     try {
-      const memberId = patrol.members[0];
+      const memberId = targetPatrol.characterId;
       const uChar = userCharactersDbList.find((uc: any) => uc.id === memberId);
       let charLevel = 1;
       let isHomeMatch = false;
@@ -2852,9 +2877,9 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       let battleXpBonus = 0;
       let battleRewardItemId = "";
       let battleRewardItemQty = 0;
-      const isBattleVictory = patrol.battle_result === "VICTORY";
+      const isBattleVictory = targetPatrol.battle_result === "VICTORY";
 
-      if (patrol.has_battle_event && isBattleVictory && course.battle_npc_id) {
+      if (targetPatrol.has_battle_event && isBattleVictory && course.battle_npc_id) {
         const npcMaster = patrolNpcs.find(n => n.id === course.battle_npc_id);
         if (npcMaster) {
           battleCashBonus = npcMaster.win_reward_cash_bonus || 0;
@@ -2870,7 +2895,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       const totalXp = finalXp + battleXpBonus;
 
       // DB更新 (完了)
-      await supabase.from("user_patrols").update({ status: "COMPLETED" }).eq("id", patrol.id);
+      await supabase.from("user_patrols").update({ status: "COMPLETED" }).eq("id", patrolId);
 
       const now = new Date();
       const expire = new Date(now.getTime() + 24 * 60 * 60 * 1000);
@@ -2954,7 +2979,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         dropItemName: rewardItemId ? (rewardItemId === 'TRAINING_MANUAL' ? '育成読本' : rewardItemId === 'POLISHING_STONE' ? '研磨石' : rewardItemId === 'LAW_OF_STRIFE' ? '闘争の掟' : rewardItemId) : '',
         dropItemQty: rewardQuantity,
         gearDropped,
-        hasBattle: patrol.has_battle_event,
+        hasBattle: targetPatrol.has_battle_event,
         battleVictory: isBattleVictory,
         battleCashBonus,
         battleXpBonus,
@@ -2967,9 +2992,10 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
       setLastPatrolRewards(rewardSummary);
       setShowPatrolRewardModal(true);
+      setHasActivePatrolBattle(false);
 
-      setPatrol(null);
-      setPatrolMembers([]);
+      // Local state clear
+      setActivePatrols(prev => prev.filter(p => p.id !== patrolId));
     } catch (err: any) {
       console.warn(err.message);
     } finally {
@@ -5199,10 +5225,10 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
   const togglePatrolMemberSelection = (charId: string) => {
     playCyberSe("click");
-    if (patrolMembers.includes(charId)) {
-      setPatrolMembers([]);
+    if (selectedPatrolMember === charId) {
+      setSelectedPatrolMember(null);
     } else {
-      setPatrolMembers([charId]);
+      setSelectedPatrolMember(charId);
     }
   };
 
@@ -5341,9 +5367,9 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     scoutResults, setScoutResults,
     selectedCourse, setSelectedCourse,
     selectedMembers, setSelectedMembers,
-    patrolMembers, setPatrolMembers,
+    selectedPatrolMember, setSelectedPatrolMember,
     dailyCashSkips, setDailyCashSkips,
-    patrol, setPatrol,
+    activePatrols, setActivePatrols,
     patrolLogs, setPatrolLogs,
     patrolCourses,
     patrolNpcs,
