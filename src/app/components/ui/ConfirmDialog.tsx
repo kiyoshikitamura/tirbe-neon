@@ -27,21 +27,24 @@ export default function ConfirmDialog({
 
   return (
     <div className="outlaw-confirm-overlay">
-      <div className="outlaw-confirm-dialog">
-        <div className={`confirm-header ${isDanger ? "danger" : ""}`}>
-          <div className="confirm-header-accent" />
-          <span className="confirm-title">{title}</span>
-        </div>
-        <div className="confirm-body">
-          {message}
-        </div>
-        <div className="confirm-actions">
-          <OutlawButton variant="secondary" onClick={onCancel} className="confirm-btn">
-            {cancelText}
-          </OutlawButton>
-          <OutlawButton variant={isDanger ? "danger" : "primary"} onClick={onConfirm} className="confirm-btn">
-            {confirmText}
-          </OutlawButton>
+      <div className={`outlaw-confirm-dialog ${isDanger ? "danger-mode" : "neon-mode"}`}>
+        <div className="confirm-content-wrapper">
+          <h3 className="confirm-title">{title}</h3>
+          
+          <div className="confirm-body">
+            {message}
+          </div>
+
+          <div className="confirm-actions">
+            {onCancel && cancelText && (
+              <OutlawButton variant="secondary" onClick={onCancel} className="confirm-btn flex-1">
+                {cancelText}
+              </OutlawButton>
+            )}
+            <OutlawButton variant="secondary" onClick={onConfirm} className="confirm-btn flex-1">
+              {confirmText}
+            </OutlawButton>
+          </div>
         </div>
       </div>
     </div>

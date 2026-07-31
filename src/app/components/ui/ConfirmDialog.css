@@ -3,7 +3,7 @@
 .outlaw-confirm-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.7);
+  background: rgba(0, 0, 0, 0.8);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
   display: flex;
@@ -15,65 +15,62 @@
 
 .outlaw-confirm-dialog {
   width: 90%;
-  max-width: 360px;
-  background: var(--bg-color);
-  border: 1px solid rgba(160, 160, 170, 0.3);
-  border-radius: 8px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  max-width: 380px;
+  background: #11131c; /* 暗い背景 */
+  border-radius: 16px;
   overflow: hidden;
   animation: popIn 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
-.confirm-header {
+/* 通常モード（例えばシアンやマゼンタ、画像に寄せるなら全体的にマゼンタ） */
+.outlaw-confirm-dialog.neon-mode {
+  border: 1px solid rgba(255, 0, 128, 0.6);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.9), 0 0 20px rgba(255, 0, 128, 0.15);
+}
+.outlaw-confirm-dialog.neon-mode .confirm-title {
+  color: #ff1493;
+  text-shadow: 0 0 10px rgba(255, 20, 147, 0.8);
+}
+
+/* 危険モード（赤など） */
+.outlaw-confirm-dialog.danger-mode {
+  border: 1px solid rgba(255, 51, 51, 0.8);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.9), 0 0 20px rgba(255, 51, 51, 0.3);
+}
+.outlaw-confirm-dialog.danger-mode .confirm-title {
+  color: #ff3333;
+  text-shadow: 0 0 10px rgba(255, 51, 51, 0.8);
+}
+
+.confirm-content-wrapper {
+  padding: 32px 24px 24px;
   display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
-  background: rgba(20, 26, 43, 0.9);
-  border-bottom: 1px solid rgba(160, 160, 170, 0.2);
-}
-
-.confirm-header-accent {
-  width: 4px;
-  height: 20px;
-  background: var(--neon-cyan);
-  box-shadow: var(--neon-glow-cyan);
-  border-radius: 2px;
-}
-
-.confirm-header.danger .confirm-header-accent {
-  background: var(--color-danger);
-  box-shadow: 0 0 8px rgba(255, 51, 51, 0.6);
+  flex-direction: column;
+  gap: 20px;
 }
 
 .confirm-title {
   font-family: var(--font-inter);
-  font-weight: 700;
-  font-size: 1.1rem;
-  color: #ffffff;
-  letter-spacing: 0.05em;
-}
-
-.confirm-header.danger .confirm-title {
-  color: #ffcccc;
+  font-weight: 800;
+  font-size: 1.2rem;
+  letter-spacing: 0.1em;
+  margin: 0;
+  text-align: center;
 }
 
 .confirm-body {
-  padding: 24px 16px;
   font-family: var(--font-inter);
-  font-size: 0.95rem;
-  color: var(--text-secondary);
-  line-height: 1.5;
-  text-align: center;
+  font-size: 0.9rem;
+  color: #cccccc;
+  line-height: 1.6;
+  text-align: left;
   white-space: pre-wrap;
 }
 
 .confirm-actions {
   display: flex;
   gap: 12px;
-  padding: 16px;
-  background: rgba(10, 14, 20, 0.5);
-  border-top: 1px solid rgba(160, 160, 170, 0.1);
+  margin-top: 8px;
 }
 
 .confirm-btn {
@@ -87,7 +84,7 @@
 
 @keyframes popIn {
   from {
-    transform: scale(0.9);
+    transform: scale(0.95);
     opacity: 0;
   }
   to {
