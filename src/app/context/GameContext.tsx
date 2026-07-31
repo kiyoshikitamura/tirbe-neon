@@ -32,6 +32,7 @@ import { useChat } from "./hooks/useChat";
 import { useInventory } from "./hooks/useInventory";
 import { useUserProfile } from "./hooks/useUserProfile";
 import { useGuild } from "./hooks/useGuild";
+import { usePvp } from "./hooks/usePvp";
 
 const GameContext = createContext<any>(null);
 
@@ -84,7 +85,6 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const [cash, setCash] = useState<number>(10000);
   const [diamonds, setDiamonds] = useState<number>(200);
   const [vitality, setVitality] = useState<number>(100);
-  const [pvpTickets, setPvpTickets] = useState<number>(5);
 
   const inventory = useInventory(
     session,
@@ -219,6 +219,33 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     handleToggleSound
   } = profile;
 
+  const pvp = usePvp(
+    session,
+    (loading: boolean) => setUpgradeLoading(loading),
+    setErrorMessage,
+    (type: string) => playCyberSe(type as any),
+    (userId: string) => syncBootstrapData(userId)
+  );
+
+  const {
+    pvpTickets, setPvpTickets,
+    battleSubTab, setBattleSubTab,
+    pvpOpponents, setPvpOpponents,
+    opponentsLoading, setOpponentsLoading,
+    pvpPoints, setPvpPoints,
+    pvpSubView, setPvpSubView,
+    myPvpDefenseDeck, setMyPvpDefenseDeck,
+    pvpRankings, setPvpRankings,
+    powerRankings, setPowerRankings,
+    guildPowerRankings, setGuildPowerRankings,
+    pvpSeasonLoading, setPvpSeasonLoading,
+    pvpDefenseLogs, setPvpDefenseLogs,
+    simulatingDefense, setSimulatingDefense,
+    fetchPvpOpponents,
+    savePvpDefenseDeck,
+    syncUserPower
+  } = pvp;
+
 
   const chat = useChat(
     session,
@@ -317,10 +344,6 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const [lastPatrolRewards, setLastPatrolRewards] = useState<any | null>(null);
   const [showPatrolRewardModal, setShowPatrolRewardModal] = useState<boolean>(false);
 
-  const [battleSubTab, setBattleSubTab] = useState<string>("pvp");
-  const [pvpOpponents, setPvpOpponents] = useState<any[]>([]);
-  const [opponentsLoading, setOpponentsLoading] = useState<boolean>(false);
-  const [pvpPoints, setPvpPoints] = useState<number>(1000);
   const [selectedTown, setSelectedTown] = useState<string>("shinjuku");
   
   const [gvgBases, setGvgBases] = useState<any[]>([]);
@@ -333,20 +356,11 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const [personalGvgPoints, setPersonalGvgPoints] = useState<number>(0);
   const [gvgActiveRound, setGvgActiveRound] = useState<number>(0);
 
-  const [pvpSubView, setPvpSubView] = useState<"opponents" | "daily" | "season" | "defense">("opponents");
-  const [myPvpDefenseDeck, setMyPvpDefenseDeck] = useState<any>(null);
-  const [pvpRankings, setPvpRankings] = useState<any[]>([]);
-  const [powerRankings, setPowerRankings] = useState<any[]>([]);
-  const [guildPowerRankings, setGuildPowerRankings] = useState<any[]>([]);
   const [raidDamageLogs, setRaidDamageLogs] = useState<any[]>([]);
   const [raidSeasonRankings, setRaidSeasonRankings] = useState<any[]>([]);
   const [activePlayerDetail, setActivePlayerDetail] = useState<any | null>(null);
   const [activeGuildDetail, setActiveGuildDetail] = useState<any | null>(null);
-  const [pvpSeasonLoading, setPvpSeasonLoading] = useState<boolean>(false);
   const [raidDefeatLoading, setRaidDefeatLoading] = useState<boolean>(false);
-
-  const [pvpDefenseLogs, setPvpDefenseLogs] = useState<any[]>([]);
-  const [simulatingDefense, setSimulatingDefense] = useState<boolean>(false);
 
   const [activeStorySession, setActiveStorySession] = useState<{
     stageId: string;
@@ -654,37 +668,6 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     addGuildXpAndContributionByAction
   });
 
-  const syncUserPower = async (userId: string, charsList: any[], equipsList: any[], selectedMembersList: string[]) => {
-    if (!userId || charsList.length === 0) return 0;
-    try {
-      let powerSum = 0;
-      selectedMembersList.forEach(id => {
-        const charRec = charsList.find(c => c.id === id || c.character_id === id);
-        if (charRec) {
-          const stats = getCharacterTotalStats(charRec, equipsList);
-          powerSum += stats.hp + stats.atk + stats.def + stats.spd + stats.luk;
-        }
-      });
-
-      if (powerSum === 0) return 0;
-
-      const { error } = await supabase
-        .from("user_power_rankings")
-        .upsert({
-          user_id: userId,
-          current_power: powerSum,
-          updated_at: new Date().toISOString()
-        }, { onConflict: "user_id" });
-
-      if (error) {
-        console.warn("Failed to sync user power:", error);
-      }
-      return powerSum;
-    } catch (err) {
-      console.warn("Failed to sync user power:", err);
-      return 0;
-    }
-  };
 
   // ログインボーナスのチェックと受取処理 (RPC呼び出し)
   const checkAndClaimLoginBonus = async (userId: string) => {
@@ -1915,73 +1898,6 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const fetchPvpOpponents = async (userId: string, myPoints: number) => {
-    if (!userId) return;
-    setOpponentsLoading(true);
-    try {
-      const { data, error } = await supabase.rpc("get_pvp_opponents", {
-        p_user_id: userId,
-        p_my_points: myPoints
-      });
-
-      if (error) throw error;
-      if (data) {
-        setPvpOpponents(data);
-        
-        // 🚀 ロード時間短縮：アセット（NPC立ち絵やギルドエンブレム）のバックグラウンドプリロード
-        if (typeof window !== "undefined") {
-          data.forEach((op: any) => {
-            if (op.defense_character_ids && op.defense_character_ids.length > 0) {
-              const charId = op.defense_character_ids[0];
-              const cleanId = charId.replace("c_", "");
-              const charMaster = CHARACTERS_MASTER.find(c => c.id === cleanId || c.id === charId);
-              if (charMaster) {
-                const img = new Image();
-                img.src = charMaster.img || `/${charMaster.name}_transparent_asset.png`;
-              }
-            }
-          });
-        }
-      }
-    } catch (err: any) {
-      console.warn("Failed to fetch PvP opponents:", err.message);
-    } finally {
-      setOpponentsLoading(false);
-    }
-  };
-
-  const savePvpDefenseDeck = async (members: string[], tactic: string = "OFFENSIVE") => {
-    if (!session?.user?.id) return { success: false, message: "ログインが必要です。" };
-    setUpgradeLoading(true);
-    playCyberSe("click");
-
-    try {
-      const { error } = await supabase
-        .from("pvp_defense_decks")
-        .upsert({
-          user_id: session.user.id,
-          character_1_id: members[0] || null,
-          character_2_id: members[1] || null,
-          character_3_id: members[2] || null,
-          character_4_id: members[3] || null,
-          character_5_id: members[4] || null,
-          tactic: tactic,
-          updated_at: new Date().toISOString()
-        }, { onConflict: "user_id" });
-
-      if (error) throw error;
-      
-      await syncBootstrapData(session.user.id);
-      alert("防衛デッキおよび作戦を保存しました。");
-      return { success: true };
-    } catch (err: any) {
-      console.warn("Failed to save pvp defense deck:", err.message);
-      setErrorMessage("防衛デッキの保存に失敗しました。");
-      return { success: false, message: err.message };
-    } finally {
-      setUpgradeLoading(false);
-    }
-  };
 
 
   const handleMoveBase = async (baseId: string) => {
