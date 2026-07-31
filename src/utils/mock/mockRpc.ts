@@ -269,5 +269,68 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     return { data: { status: "success", user }, error: null };
   }
 
+  if (funcName === "get_pvp_opponents") {
+    const { p_user_id, p_my_points } = params;
+    const users = client.getStorage("users") || [];
+    const candidates = users
+      .filter((u: any) => u.id !== p_user_id)
+      .slice(0, 3)
+      .map((u: any, idx: number) => ({
+        id: u.id,
+        username: u.username || `対戦者_${idx + 1}`,
+        avatar_url: u.avatar_url || "/reiji_transparent_asset.png",
+        title_equipped: u.title_equipped || "title_none",
+        pvp_points: u.pvp_points || 1000,
+        total_power: 15000 + idx * 2500,
+        defense_character_ids: ["c_reiji", "c_rui", "c_chang"]
+      }));
+
+    return { data: candidates, error: null };
+  }
+
+  if (funcName === "process_pvp_match_result") {
+    const { p_user_id, p_target_user_id, p_is_win } = params;
+    const users = client.getStorage("users") || [];
+    const user = users.find((u: any) => u.id === p_user_id);
+    if (!user) return { error: { message: "ユーザーが存在しません。" } };
+
+    const pointChange = p_is_win ? 16 : -10;
+    user.pvp_points = Math.max(0, (user.pvp_points || 1000) + pointChange);
+    user.pvp_tickets = Math.max(0, (user.pvp_tickets || 5) - 1);
+
+    client.setStorage("users", users);
+    return { data: { status: "success", pvp_points: user.pvp_points, pvp_tickets: user.pvp_tickets }, error: null };
+  }
+
+  if (funcName === "claim_gvg_base") {
+    const { p_guild_id, p_base_id } = params;
+    const bases = client.getStorage("gvg_bases") || [];
+    let base = bases.find((b: any) => b.id === p_base_id);
+    if (!base) {
+      base = { id: p_base_id, occupied_guild_id: p_guild_id, updated_at: new Date().toISOString() };
+      bases.push(base);
+    } else {
+      base.occupied_guild_id = p_guild_id;
+      base.updated_at = new Date().toISOString();
+    }
+    client.setStorage("gvg_bases", bases);
+    return { data: { status: "success", base }, error: null };
+  }
+
+  if (funcName === "record_raid_boss_damage") {
+    const { p_user_id, p_guild_id, p_boss_id, p_damage } = params;
+    const logs = client.getStorage("raid_damage_logs") || [];
+    logs.push({
+      id: `raid_${Date.now()}`,
+      user_id: p_user_id,
+      guild_id: p_guild_id,
+      boss_id: p_boss_id,
+      damage: p_damage,
+      created_at: new Date().toISOString()
+    });
+    client.setStorage("raid_damage_logs", logs);
+    return { data: { status: "success", total_damage: p_damage }, error: null };
+  }
+
   return { data: null, error: null };
 }
