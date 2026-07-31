@@ -3,6 +3,22 @@
 -- Migration: 20260731000001_rpc_functions.sql
 -- =================================================================
 
+-- 既存の関数宣言（戻り値型変更時等のエラー防止）の破棄
+DROP FUNCTION IF EXISTS public.generate_user_gift_code(UUID);
+DROP FUNCTION IF EXISTS public.add_user_xp(UUID, INTEGER);
+DROP FUNCTION IF EXISTS public.process_login_bonus();
+DROP FUNCTION IF EXISTS public.sync_and_recover_vitality_and_tickets(UUID);
+DROP FUNCTION IF EXISTS public.complete_patrol_instantly(UUID, UUID, TEXT);
+DROP FUNCTION IF EXISTS public.evaluate_mission_progress(UUID, TEXT, INTEGER);
+DROP FUNCTION IF EXISTS public.sync_and_evaluate_raid_timeout(UUID);
+DROP FUNCTION IF EXISTS public.unequip_gear_bulk(TEXT, UUID);
+DROP FUNCTION IF EXISTS public.equip_gear_bulk(TEXT, UUID, JSONB);
+DROP FUNCTION IF EXISTS public.unequip_skill_bulk(TEXT, UUID);
+DROP FUNCTION IF EXISTS public.equip_skill_bulk(TEXT, UUID, JSONB);
+DROP FUNCTION IF EXISTS public.sell_gear_bulk(UUID, JSONB);
+DROP FUNCTION IF EXISTS public.buy_normal_shop_product(UUID, TEXT);
+DROP FUNCTION IF EXISTS public.process_stripe_shop_purchase(UUID, TEXT);
+
 -- 1. ユーザーギフトコード生成
 CREATE OR REPLACE FUNCTION public.generate_user_gift_code(p_user_id UUID)
 RETURNS TEXT AS $$
