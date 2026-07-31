@@ -38,6 +38,7 @@ import { useRaid } from "./hooks/useRaid";
 import { usePatrol } from "./hooks/usePatrol";
 import { useGacha } from "./hooks/useGacha";
 import { useShop } from "./hooks/useShop";
+import { useStory } from "./hooks/useStory";
 
 const GameContext = createContext<any>(null);
 
@@ -341,6 +342,21 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     boughtResultModal, setBoughtResultModal
   } = shop;
 
+  const story = useStory(
+    session,
+    (type: string) => playCyberSe(type as any),
+    (userId: string) => syncBootstrapData(userId),
+    (mode: string, enemyName: string) => battle.startCardBattle(mode as any, enemyName)
+  );
+
+  const {
+    activeStorySession, setActiveStorySession,
+    storySending, setStorySending,
+    handleStoryNext,
+    completeStorySession,
+    triggerTutorialStory
+  } = story;
+
 
   const chat = useChat(
     session,
@@ -410,12 +426,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const [activePlayerDetail, setActivePlayerDetail] = useState<any | null>(null);
   const [activeGuildDetail, setActiveGuildDetail] = useState<any | null>(null);
 
-  const [activeStorySession, setActiveStorySession] = useState<{
-    stageId: string;
-    currentNodeId: number;
-    status: "INTRO_TALK" | "BATTLE" | "OUTRO_TALK" | "COMPLETED";
-  } | null>(null);
-  const [storySending, setStorySending] = useState<boolean>(false);
+
 
   const [paymentHistory, setPaymentHistory] = useState<any[]>([]);
   const [lastPaymentSessionId, setLastPaymentSessionId] = useState<string>("");
@@ -1965,105 +1976,6 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   };
 
 
-  const handleStoryNext = async () => {
-    if (!session || !activeStorySession) return;
-    setStorySending(true);
-    playCyberSe("click");
-
-    const episode = STORY_EPISODES_MASTER[activeStorySession.stageId];
-    if (!episode) {
-      setStorySending(false);
-      return;
-    }
-
-    const currentList = activeStorySession.status === "INTRO_TALK" ? episode.intro : episode.outro;
-    const nextNodeId = activeStorySession.currentNodeId + 1;
-
-    try {
-      if (nextNodeId >= currentList.length) {
-        if (activeStorySession.status === "INTRO_TALK") {
-          if (activeStorySession.stageId === "stage_tutorial_01") {
-            await supabase.from("story_sessions").update({ status: "BATTLE" }).eq("user_id", session.user.id);
-            setActiveStorySession({ stageId: "stage_tutorial_01", currentNodeId: nextNodeId, status: "BATTLE" });
-            setStorySending(false);
-            battle.startCardBattle("PVP", "新宿南部連合 (模擬戦)");
-          } else {
-            await completeStorySession();
-          }
-        } else {
-          await completeStorySession();
-        }
-      } else {
-        await supabase.from("story_sessions").upsert({
-          user_id: session.user.id,
-          stage_id: activeStorySession.stageId,
-          current_node_id: nextNodeId,
-          status: activeStorySession.status
-        }, { onConflict: "user_id" });
-
-        setActiveStorySession({
-          stageId: activeStorySession.stageId,
-          currentNodeId: nextNodeId,
-          status: activeStorySession.status
-        });
-      }
-    } catch (err) {
-      console.warn("ADV save failed:", err);
-    } finally {
-      setStorySending(false);
-    }
-  };
-
-  const completeStorySession = async () => {
-    if (!session || !activeStorySession) return;
-
-    try {
-      await supabase.from("story_sessions").update({ status: "COMPLETED" }).eq("user_id", session.user.id);
-
-      let rewardText = "模擬戦クリア報酬";
-      let bonusDiamonds = 150;
-      let bonusCash = 5000;
-
-      if (bonusDiamonds > 0 || bonusCash > 0) {
-        const expireAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
-        await supabase.from("presents").insert([
-          { user_id: session.user.id, item_id: "DIAMOND", quantity: bonusDiamonds, message: `${rewardText}: ダイヤ獲得`, expire_at: expireAt.toISOString(), status: "UNCLAIMED" },
-          { user_id: session.user.id, item_id: "CASH", quantity: bonusCash, message: `${rewardText}: キャッシュ獲得`, expire_at: expireAt.toISOString(), status: "UNCLAIMED" }
-        ]);
-      }
-
-      setActiveStorySession(null);
-      await syncBootstrapData(session.user.id);
-
-      alert("ストーリークリア報酬がプレゼントへ転送されました。");
-    } catch (err) {
-      console.warn("Complete story session failed:", err);
-    }
-  };
-
-  const triggerTutorialStory = async () => {
-    if (!session) return;
-    setStorySending(true);
-    playCyberSe("click");
-    try {
-      await supabase.from("story_sessions").upsert({
-        user_id: session.user.id,
-        stage_id: "stage_tutorial_01",
-        current_node_id: 0,
-        status: "INTRO_TALK"
-      }, { onConflict: "user_id" });
-
-      setActiveStorySession({
-        stageId: "stage_tutorial_01",
-        currentNodeId: 0,
-        status: "INTRO_TALK"
-      });
-    } catch (err) {
-      console.warn(err);
-    } finally {
-      setStorySending(false);
-    }
-  };
 
   const triggerStripeWebhookSimulation = async (duplicateRequest: boolean) => {
     if (!session) return;
