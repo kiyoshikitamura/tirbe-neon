@@ -220,5 +220,54 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     return { data: { status: "success" }, error: null };
   }
 
+  if (funcName === "donate_to_guild") {
+    const { p_user_id, p_guild_id, p_amount } = params;
+    const users = client.getStorage("users");
+    const user = users.find((u: any) => u.id === p_user_id);
+    if (!user || (user.cash || 0) < p_amount) {
+      return { error: { message: "キャッシュが不足しています。" } };
+    }
+
+    const guilds = client.getStorage("guilds");
+    const guild = guilds.find((g: any) => g.id === p_guild_id);
+    if (!guild) {
+      return { error: { message: "ギルドが存在しません。" } };
+    }
+
+    user.cash = (user.cash || 0) - p_amount;
+    guild.funds = Number(guild.funds || 0) + p_amount;
+
+    client.setStorage("users", users);
+    client.setStorage("guilds", guilds);
+    return { data: { status: "success", next_cash: user.cash, next_funds: guild.funds }, error: null };
+  }
+
+  if (funcName === "buy_normal_shop_product") {
+    const { p_user_id, p_product_id, p_price, p_currency } = params;
+    const users = client.getStorage("users");
+    const user = users.find((u: any) => u.id === p_user_id);
+    if (!user) return { error: { message: "ユーザーが存在しません。" } };
+
+    if (p_currency === "DIAMOND") {
+      if ((user.neon_diamonds || 0) < p_price) return { error: { message: "ダイヤが不足しています。" } };
+      user.neon_diamonds = (user.neon_diamonds || 0) - p_price;
+    } else {
+      if ((user.cash || 0) < p_price) return { error: { message: "キャッシュが不足しています。" } };
+      user.cash = (user.cash || 0) - p_price;
+    }
+
+    const purchases = client.getStorage("user_shop_purchases") || [];
+    purchases.push({
+      id: `p_${Date.now()}`,
+      user_id: p_user_id,
+      product_id: p_product_id,
+      purchased_at: new Date().toISOString()
+    });
+
+    client.setStorage("users", users);
+    client.setStorage("user_shop_purchases", purchases);
+    return { data: { status: "success", user }, error: null };
+  }
+
   return { data: null, error: null };
 }

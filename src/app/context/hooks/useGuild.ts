@@ -286,17 +286,15 @@ export function useGuild(
       const actionType = amount === 1000 ? "DONATE_SMALL" : amount === 5000 ? "DONATE_MEDIUM" : "DONATE_LARGE";
       const actionMaster = guildXpActionMaster.find(a => a.action_type === actionType) || { xp_gain: amount === 1000 ? 20 : amount === 5000 ? 120 : 300, contribution_gain: amount === 1000 ? 10 : amount === 5000 ? 60 : 150 };
 
-      const { error: gErr } = await supabase
-        .from("guilds")
-        .update({
-          funds: Number(userGuild.funds || 0) + amount
-        })
-        .eq("id", userGuild.id);
+      const { data: rpcRes, error: gErr } = await supabase.rpc("donate_to_guild", {
+        p_user_id: session.user.id,
+        p_guild_id: userGuild.id,
+        p_amount: amount
+      });
 
       if (gErr) throw gErr;
 
-      const nextCash = cash - amount;
-      await supabase.from("users").update({ cash: nextCash }).eq("id", session.user.id);
+      const nextCash = rpcRes?.next_cash ?? (cash - amount);
       setCash(nextCash);
 
       await addGuildXpAndContributionByAction(actionType);
