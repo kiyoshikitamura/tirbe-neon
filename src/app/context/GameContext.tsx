@@ -33,6 +33,7 @@ import { useInventory } from "./hooks/useInventory";
 import { useUserProfile } from "./hooks/useUserProfile";
 import { useGuild } from "./hooks/useGuild";
 import { usePvp } from "./hooks/usePvp";
+import { useGvg } from "./hooks/useGvg";
 
 const GameContext = createContext<any>(null);
 
@@ -246,6 +247,25 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     syncUserPower
   } = pvp;
 
+  const gvg = useGvg(
+    session,
+    setErrorMessage,
+    (type: string) => playCyberSe(type as any),
+    (userId: string) => syncBootstrapData(userId)
+  );
+
+  const {
+    gvgBases, setGvgBases,
+    gvgBaseControls, setGvgBaseControls,
+    gvgResetLoading, setGvgResetLoading,
+    gvgSeasonDay, setGvgSeasonDay,
+    gvgMatches, setGvgMatches,
+    myGvgMatch, setMyGvgMatch,
+    gvgDefenseDeck, setGvgDefenseDeck,
+    personalGvgPoints, setPersonalGvgPoints,
+    gvgActiveRound, setGvgActiveRound
+  } = gvg;
+
 
   const chat = useChat(
     session,
@@ -345,16 +365,6 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const [showPatrolRewardModal, setShowPatrolRewardModal] = useState<boolean>(false);
 
   const [selectedTown, setSelectedTown] = useState<string>("shinjuku");
-  
-  const [gvgBases, setGvgBases] = useState<any[]>([]);
-  const [gvgBaseControls, setGvgBaseControls] = useState<any[]>([]);
-  const [gvgResetLoading, setGvgResetLoading] = useState<boolean>(false);
-  const [gvgSeasonDay, setGvgSeasonDay] = useState<number>(1);
-  const [gvgMatches, setGvgMatches] = useState<any[]>([]);
-  const [myGvgMatch, setMyGvgMatch] = useState<any | null>(null);
-  const [gvgDefenseDeck, setGvgDefenseDeck] = useState<any | null>(null);
-  const [personalGvgPoints, setPersonalGvgPoints] = useState<number>(0);
-  const [gvgActiveRound, setGvgActiveRound] = useState<number>(0);
 
   const [raidDamageLogs, setRaidDamageLogs] = useState<any[]>([]);
   const [raidSeasonRankings, setRaidSeasonRankings] = useState<any[]>([]);
