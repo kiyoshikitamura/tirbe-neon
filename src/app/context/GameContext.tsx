@@ -34,6 +34,7 @@ import { useUserProfile } from "./hooks/useUserProfile";
 import { useGuild } from "./hooks/useGuild";
 import { usePvp } from "./hooks/usePvp";
 import { useGvg } from "./hooks/useGvg";
+import { useRaid } from "./hooks/useRaid";
 
 const GameContext = createContext<any>(null);
 
@@ -266,6 +267,26 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     gvgActiveRound, setGvgActiveRound
   } = gvg;
 
+  const raid = useRaid(
+    session,
+    setErrorMessage,
+    (type: string) => playCyberSe(type as any),
+    (userId: string) => syncBootstrapData(userId)
+  );
+
+  const {
+    raidBossHp, setRaidBossHp,
+    raidBossMaxHp, setRaidBossMaxHp,
+    raidBossSecondsLeft, setRaidBossSecondsLeft,
+    raidTotalDamage, setRaidTotalDamage,
+    raidBossBaseId, setRaidBossBaseId,
+    raidBossName, setRaidBossName,
+    raidDamageLogs, setRaidDamageLogs,
+    raidSeasonRankings, setRaidSeasonRankings,
+    raidDefeatLoading, setRaidDefeatLoading,
+    isRaidActive
+  } = raid;
+
 
   const chat = useChat(
     session,
@@ -366,11 +387,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
   const [selectedTown, setSelectedTown] = useState<string>("shinjuku");
 
-  const [raidDamageLogs, setRaidDamageLogs] = useState<any[]>([]);
-  const [raidSeasonRankings, setRaidSeasonRankings] = useState<any[]>([]);
   const [activePlayerDetail, setActivePlayerDetail] = useState<any | null>(null);
   const [activeGuildDetail, setActiveGuildDetail] = useState<any | null>(null);
-  const [raidDefeatLoading, setRaidDefeatLoading] = useState<boolean>(false);
 
   const [activeStorySession, setActiveStorySession] = useState<{
     stageId: string;
@@ -381,13 +399,6 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
   const [paymentHistory, setPaymentHistory] = useState<any[]>([]);
   const [lastPaymentSessionId, setLastPaymentSessionId] = useState<string>("");
-
-  const [raidBossHp, setRaidBossHp] = useState<number>(9452100);
-  const [raidBossMaxHp, setRaidBossMaxHp] = useState<number>(9999999);
-  const [raidBossSecondsLeft, setRaidBossSecondsLeft] = useState<number>(86400);
-  const [raidTotalDamage, setRaidTotalDamage] = useState<number>(0);
-  const [raidBossBaseId, setRaidBossBaseId] = useState<string>("neon_tower");
-  const [raidBossName, setRaidBossName] = useState<string>("極道連合組長");
 
   const [upgradeSubTab, setUpgradeSubTab] = useState<string>("character");
   const [shopSubTab, setShopSubTab] = useState<string>("LIMITED");
