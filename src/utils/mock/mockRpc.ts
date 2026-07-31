@@ -2,6 +2,7 @@
 
 import { CHARACTERS_MASTER, CHARACTER_AWAKENING_MASTER } from "../game_constants";
 
+
 export async function executeMockRpc(client: any, funcName: string, params: any): Promise<any> {
   console.log(`[Mock DB RPC] Calling ${funcName} with:`, params);
 
@@ -243,12 +244,12 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
   }
 
   if (funcName === "buy_normal_shop_product") {
-    const { p_user_id, p_product_id, p_price, p_currency } = params;
+    const { p_user_id, p_product_id, p_currency_type, p_price, p_items, p_product_title } = params;
     const users = client.getStorage("users");
     const user = users.find((u: any) => u.id === p_user_id);
     if (!user) return { error: { message: "ユーザーが存在しません。" } };
 
-    if (p_currency === "DIAMOND") {
+    if (p_currency_type === "DIAMOND") {
       if ((user.neon_diamonds || 0) < p_price) return { error: { message: "ダイヤが不足しています。" } };
       user.neon_diamonds = (user.neon_diamonds || 0) - p_price;
     } else {
@@ -256,17 +257,101 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
       user.cash = (user.cash || 0) - p_price;
     }
 
+    const expireAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+    const presents = client.getStorage("presents") || [];
+    if (p_items && p_items.length > 0) {
+      for (const it of p_items) {
+        presents.push({
+          id: `pres_${Date.now()}_${Math.random()}`,
+          user_id: p_user_id,
+          item_id: it.itemId,
+          quantity: it.quantity,
+          message: `ショップ購入: ${p_product_title}`,
+          status: "UNCLAIMED",
+          expire_at: expireAt,
+          sent_at: new Date().toISOString()
+        });
+      }
+    }
+
     const purchases = client.getStorage("user_shop_purchases") || [];
-    purchases.push({
-      id: `p_${Date.now()}`,
-      user_id: p_user_id,
-      product_id: p_product_id,
-      purchased_at: new Date().toISOString()
-    });
+    let purchaseRecord = purchases.find((p: any) => p.user_id === p_user_id && p.product_id === p_product_id);
+    if (purchaseRecord) {
+      purchaseRecord.purchase_count = (purchaseRecord.purchase_count || 0) + 1;
+      purchaseRecord.last_purchased_at = new Date().toISOString();
+    } else {
+      purchases.push({
+        id: `p_${Date.now()}`,
+        user_id: p_user_id,
+        product_id: p_product_id,
+        purchase_count: 1,
+        last_purchased_at: new Date().toISOString()
+      });
+    }
 
     client.setStorage("users", users);
     client.setStorage("user_shop_purchases", purchases);
+    client.setStorage("presents", presents);
     return { data: { status: "success", user }, error: null };
+  }
+
+  if (funcName === "process_stripe_shop_purchase") {
+    const { p_user_id, p_stripe_session_id, p_product_id, p_amount_jpy, p_items, p_product_title, p_is_beginner, p_purchase_limit } = params;
+    
+    const txs = client.getStorage("payment_transactions") || [];
+    const existTx = txs.find((t: any) => t.stripe_session_id === p_stripe_session_id);
+    if (existTx) {
+      return { data: { duplicate: true }, error: null };
+    }
+
+    txs.push({
+      id: `tx_${Date.now()}`,
+      user_id: p_user_id,
+      stripe_session_id: p_stripe_session_id,
+      amount: p_amount_jpy,
+      currency: "jpy",
+      diamonds_added: 0,
+      status: "COMPLETED",
+      created_at: new Date().toISOString()
+    });
+
+    const expireAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+    const presents = client.getStorage("presents") || [];
+    if (p_items && p_items.length > 0) {
+      for (const it of p_items) {
+        presents.push({
+          id: `pres_${Date.now()}_${Math.random()}`,
+          user_id: p_user_id,
+          item_id: it.itemId,
+          quantity: it.quantity,
+          message: `購入特典: ${p_product_title}`,
+          status: "UNCLAIMED",
+          expire_at: expireAt,
+          sent_at: new Date().toISOString()
+        });
+      }
+    }
+
+    const purchases = client.getStorage("user_shop_purchases") || [];
+    let purchaseRecord = purchases.find((p: any) => p.user_id === p_user_id && p.product_id === p_product_id);
+    if (purchaseRecord) {
+      purchaseRecord.purchase_count = (purchaseRecord.purchase_count || 0) + 1;
+      purchaseRecord.last_purchased_at = new Date().toISOString();
+    } else {
+      purchases.push({
+        id: `p_${Date.now()}`,
+        user_id: p_user_id,
+        product_id: p_product_id,
+        purchase_count: 1,
+        last_purchased_at: new Date().toISOString()
+      });
+    }
+
+    client.setStorage("payment_transactions", txs);
+    client.setStorage("presents", presents);
+    client.setStorage("user_shop_purchases", purchases);
+    
+    return { data: { status: "success" }, error: null };
   }
 
   if (funcName === "get_pvp_opponents") {
@@ -289,17 +374,37 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
   }
 
   if (funcName === "process_pvp_match_result") {
-    const { p_user_id, p_target_user_id, p_is_win } = params;
+    const { p_user_id, p_target_user_id, p_is_win, p_point_diff, p_cash_reward } = params;
     const users = client.getStorage("users") || [];
     const user = users.find((u: any) => u.id === p_user_id);
     if (!user) return { error: { message: "ユーザーが存在しません。" } };
 
-    const pointChange = p_is_win ? 16 : -10;
-    user.pvp_points = Math.max(0, (user.pvp_points || 1000) + pointChange);
-    user.pvp_tickets = Math.max(0, (user.pvp_tickets || 5) - 1);
+    user.pvp_points = Math.max(0, (user.pvp_points || 1000) + (p_point_diff || 0));
+    user.cash = (user.cash || 0) + (p_cash_reward || 0);
+    // Ticket handling should probably be handled before battle starts, but if we handle it here:
+    // user.pvp_tickets = Math.max(0, (user.pvp_tickets || 5) - 1);
+
+    const ranks = client.getStorage("pvp_ranks") || [];
+    let rank = ranks.find((r: any) => r.user_id === p_user_id);
+    if (rank) {
+      rank.rank_points = user.pvp_points;
+      if (p_is_win) {
+        rank.daily_wins = (rank.daily_wins || 0) + 1;
+        rank.season_wins = (rank.season_wins || 0) + 1;
+      }
+    } else {
+      ranks.push({
+        id: `pr_${Date.now()}`,
+        user_id: p_user_id,
+        rank_points: user.pvp_points,
+        daily_wins: p_is_win ? 1 : 0,
+        season_wins: p_is_win ? 1 : 0
+      });
+    }
 
     client.setStorage("users", users);
-    return { data: { status: "success", pvp_points: user.pvp_points, pvp_tickets: user.pvp_tickets }, error: null };
+    client.setStorage("pvp_ranks", ranks);
+    return { data: { status: "success", pvp_points: user.pvp_points }, error: null };
   }
 
   if (funcName === "claim_gvg_base") {
@@ -330,6 +435,102 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     });
     client.setStorage("raid_damage_logs", logs);
     return { data: { status: "success", total_damage: p_damage }, error: null };
+  }
+
+  
+  if (funcName === "record_raid_boss_damage_v2") {
+    const { p_user_id, p_boss_id, p_damage } = params;
+    const bosses = client.getStorage("raid_bosses") || [];
+    let boss = bosses.find((b: any) => b.id === p_boss_id);
+    if (!boss) return { error: { message: "ボスが存在しません" } };
+
+    const nextHp = Math.max(0, boss.current_hp - p_damage);
+    const isDefeated = nextHp === 0;
+    
+    if (isDefeated && boss.current_hp > 0) {
+      boss.current_hp = boss.max_hp; // Reset for mock
+      
+      const presents = client.getStorage("presents") || [];
+      const expireAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+      presents.push({
+        id: `pres_${Date.now()}_${Math.random()}`,
+        user_id: p_user_id,
+        item_id: "raid_medal",
+        quantity: 50,
+        message: "レイドボス討伐貢献報酬",
+        status: "UNCLAIMED",
+        expire_at: expireAt,
+        sent_at: new Date().toISOString()
+      });
+      client.setStorage("presents", presents);
+    } else {
+      boss.current_hp = nextHp;
+    }
+    client.setStorage("raid_bosses", bosses);
+    return { data: { status: "success", current_hp: boss.current_hp, is_defeated: isDefeated }, error: null };
+  }
+
+  if (funcName === "process_gvg_battle_result") {
+    const { p_user_id, p_guild_id, p_base_id, p_is_practice, p_is_win } = params;
+    
+    const baseControls = client.getStorage("guild_base_controls") || [];
+    let baseCtrl = baseControls.find((b: any) => b.base_id === p_base_id && b.guild_id === p_guild_id);
+    if (!baseCtrl) {
+      baseCtrl = { id: `gbc_${Date.now()}`, base_id: p_base_id, guild_id: p_guild_id, daily_points: 0 };
+      baseControls.push(baseCtrl);
+    }
+
+    const matches = client.getStorage("gvg_matches") || [];
+    let myMatch = matches.find((m: any) => m.status === "ONGOING" && (m.guild_a_id === p_guild_id || m.guild_b_id === p_guild_id));
+
+    let addedBasePoints = 0;
+    let addedMatchPoints = 0;
+    let addedPersonalPoints = 0;
+
+    if (p_is_practice) {
+      if (p_is_win) {
+        addedBasePoints = 100;
+        addedMatchPoints = 100;
+      }
+    } else {
+      if (p_is_win) {
+        addedBasePoints = 250;
+        addedMatchPoints = 250;
+        addedPersonalPoints = 250;
+      } else {
+        addedBasePoints = -100;
+        addedMatchPoints = -100;
+        addedPersonalPoints = -100;
+      }
+    }
+
+    baseCtrl.daily_points = Math.max(0, (baseCtrl.daily_points || 0) + addedBasePoints);
+
+    if (myMatch) {
+      if (myMatch.guild_a_id === p_guild_id) {
+        myMatch.guild_a_points = Math.max(0, (myMatch.guild_a_points || 0) + addedMatchPoints);
+        if (!p_is_win && !p_is_practice) myMatch.guild_b_points = (myMatch.guild_b_points || 0) + 100;
+      } else {
+        myMatch.guild_b_points = Math.max(0, (myMatch.guild_b_points || 0) + addedMatchPoints);
+        if (!p_is_win && !p_is_practice) myMatch.guild_a_points = (myMatch.guild_a_points || 0) + 100;
+      }
+    }
+
+    if (!p_is_practice) {
+      const gvgRanks = client.getStorage("user_gvg_ranks") || [];
+      let rank = gvgRanks.find((r: any) => r.user_id === p_user_id);
+      if (!rank) {
+        rank = { id: `ugr_${Date.now()}`, user_id: p_user_id, season_points: 0 };
+        gvgRanks.push(rank);
+      }
+      rank.season_points = Math.max(0, (rank.season_points || 0) + addedPersonalPoints);
+      client.setStorage("user_gvg_ranks", gvgRanks);
+    }
+
+    client.setStorage("guild_base_controls", baseControls);
+    client.setStorage("gvg_matches", matches);
+
+    return { data: { status: "success", added_base_points: addedBasePoints }, error: null };
   }
 
   return { data: null, error: null };

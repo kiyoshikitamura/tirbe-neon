@@ -729,7 +729,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     cash,
     setCash,
     setErrorMessage,
-    addGuildXpAndContributionByAction
+    addGuildXpAndContributionByAction,
+    setConfirmDialogConfig
   });
 
 
@@ -1942,19 +1943,23 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         points_change: diff
       });
 
-      const nextPoints = Math.max(pvpPoints + diff, 0);
-      await supabase.from("pvp_ranks").update({
-        rank_points: nextPoints
-      }).eq("id", session.user.id);
+      await supabase.rpc("process_pvp_match_result", {
+        p_user_id: session.user.id,
+        p_target_user_id: session.user.id,
+        p_is_win: res === "DEFENSE_SUCCESS",
+        p_point_diff: diff,
+        p_cash_reward: 0
+      });
 
       await syncBootstrapData(session.user.id);
 
-      alert(
-        `【非同期防衛抗争シミュレーション完了】\n\n` +
-        `・攻撃者: ${npc}\n` +
-        `・防衛結果: ${res === "DEFENSE_SUCCESS" ? "★防衛成功" : "❌防衛失敗"}\n` +
-        `・PvPランクポイント: ${diff >= 0 ? "+" : ""}${diff} pt`
-      );
+      setConfirmDialogConfig({
+        isOpen: true,
+        title: "シミュレーション完了",
+        message: `【非同期防衛抗争シミュレーション完了】\n\n・攻撃者: ${npc}\n・防衛結果: ${res === "DEFENSE_SUCCESS" ? "★防衛成功" : "❌防衛失敗"}\n・PvPランクポイント: ${diff >= 0 ? "+" : ""}${diff} pt`,
+        onConfirm: () => setConfirmDialogConfig(null),
+        onCancel: () => setConfirmDialogConfig(null)
+      });
     } catch (err: any) {
       console.warn("Defense simulation failed:", err.message);
     } finally {
@@ -3134,6 +3139,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     }
 
     try {
+      setGlobalInteractionBlocking(true);
       const { data: rpcRes, error } = await supabase.rpc("buy_normal_shop_product", {
         p_user_id: session.user.id,
         p_product_id: product.id,
@@ -3142,36 +3148,13 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         p_items: product.items,
         p_product_title: product.title
       });
+      setGlobalInteractionBlocking(false);
 
-      if (error) {
-        console.warn("buy_normal_shop_product rpc error, fallback execution:", error);
-        if (currencyType === "CASH") {
-          const nextCash = cash - price;
-          await supabase.from("users").update({ cash: nextCash }).eq("id", session.user.id);
-          setCash(nextCash);
-        } else {
-          const nextDia = diamonds - price;
-          await supabase.from("users").update({ neon_diamonds: nextDia }).eq("id", session.user.id);
-          setDiamonds(nextDia);
-        }
-
-        const expireAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
-        const insertPresents = product.items.map(it => ({
-          user_id: session.user.id,
-          item_id: it.itemId,
-          quantity: it.quantity,
-          message: `ショップ購入: ${product.title}`,
-          status: "UNCLAIMED",
-          expire_at: expireAt
-        }));
-        await supabase.from("presents").insert(insertPresents);
-
-        await supabase.from("user_shop_purchases").upsert({
-          user_id: session.user.id,
-          product_id: product.id,
-          purchase_count: (userShopPurchases[product.id] || 0) + 1,
-          last_purchased_at: new Date().toISOString()
-        });
+      if (error || !rpcRes) {
+        console.error("buy_normal_shop_product rpc error:", error);
+        setErrorMessage("購入処理中にエラーが発生しました。");
+        setUpgradeLoading(false);
+        return false;
       }
 
       setBoughtResultModal({
@@ -3214,6 +3197,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       const isBeginner = product.category === "BEGINNER";
       const purchaseLimit = product.purchaseLimit || 0;
 
+      setGlobalInteractionBlocking(true);
       const { data: rpcRes, error } = await supabase.rpc("process_stripe_shop_purchase", {
         p_user_id: session.user.id,
         p_stripe_session_id: sessionId,
@@ -3224,49 +3208,21 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         p_is_beginner: isBeginner,
         p_purchase_limit: purchaseLimit
       });
+      setGlobalInteractionBlocking(false);
 
       if (error) {
-        console.warn("process_stripe_shop_purchase RPC error, fallback execution:", error);
-        const { data: existTx } = await supabase
-          .from("payment_transactions")
-          .select("id")
-          .eq("stripe_session_id", sessionId)
-          .limit(1);
-
-        if (existTx && existTx.length > 0) {
-          alert("【Stripe Webhook 冪等性競合検知】 重複トランザクションを安全に無視しました。");
-          setProfileLoading(false);
-          return false;
-        }
-
-        await supabase.from("payment_transactions").insert({
-          user_id: session.user.id,
-          stripe_session_id: sessionId,
-          amount: product.priceJpy || 0,
-          currency: "jpy",
-          diamonds_added: 0,
-          status: "COMPLETED"
-        });
-
-        const expireAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
-        const insertPresents = product.items.map(it => ({
-          user_id: session.user.id,
-          item_id: it.itemId,
-          quantity: it.quantity,
-          message: `購入特典: ${product.title}`,
-          status: "UNCLAIMED",
-          expire_at: expireAt
-        }));
-        await supabase.from("presents").insert(insertPresents);
-
-        await supabase.from("user_shop_purchases").upsert({
-          user_id: session.user.id,
-          product_id: product.id,
-          purchase_count: (userShopPurchases[product.id] || 0) + 1,
-          last_purchased_at: new Date().toISOString()
-        });
+        console.error("process_stripe_shop_purchase RPC error:", error);
+        setErrorMessage("決済処理中にエラーが発生しました。");
+        setProfileLoading(false);
+        return false;
       } else if (rpcRes && rpcRes.duplicate) {
-        alert("【Stripe Webhook 冪等性競合検知】 重複トランザクションを安全に無視しました。");
+        setConfirmDialogConfig({
+          isOpen: true,
+          title: "重複トランザクション",
+          message: "【Stripe Webhook 冪等性競合検知】 重複トランザクションを安全に無視しました。",
+          onConfirm: () => setConfirmDialogConfig(null),
+          onCancel: () => setConfirmDialogConfig(null)
+        });
         setProfileLoading(false);
         return false;
       }

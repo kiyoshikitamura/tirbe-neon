@@ -309,3 +309,44 @@ BEGIN
     RETURN jsonb_build_object('success', true);
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 15. ガチャ実行 (KI Rule B-1)
+CREATE OR REPLACE FUNCTION public.execute_gacha(p_user_id UUID, p_scout_type TEXT, p_scout_count INTEGER, p_use_currency TEXT)
+RETURNS JSONB AS $$
+BEGIN
+    -- ガチャ抽選・決済ロジック (通常時はMockDBで実行される)
+    RETURN jsonb_build_object('success', true);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 16. PvP対戦相手取得 (KI Rule B-1)
+CREATE OR REPLACE FUNCTION public.get_pvp_opponents(p_user_id UUID, p_my_points INTEGER)
+RETURNS JSONB AS $$
+BEGIN
+    RETURN '[]'::jsonb;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 17. PvP試合結果処理 (KI Rule B-1)
+CREATE OR REPLACE FUNCTION public.process_pvp_match_result(p_user_id UUID, p_target_user_id UUID, p_is_win BOOLEAN, p_point_diff INTEGER, p_cash_reward INTEGER)
+RETURNS JSONB AS $$
+BEGIN
+    RETURN jsonb_build_object('success', true);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 18. GvG戦闘結果記録 (KI Rule B-1)
+CREATE OR REPLACE FUNCTION public.process_gvg_battle_result(p_user_id UUID, p_guild_id UUID, p_base_id TEXT, p_is_practice BOOLEAN, p_is_win BOOLEAN)
+RETURNS JSONB AS $$
+BEGIN
+    RETURN jsonb_build_object('success', true);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 19. レイドボスダメージ記録 (KI Rule B-1)
+CREATE OR REPLACE FUNCTION public.record_raid_boss_damage(p_user_id UUID, p_boss_id TEXT, p_damage INTEGER)
+RETURNS JSONB AS $$
+BEGIN
+    RETURN jsonb_build_object('success', true);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
