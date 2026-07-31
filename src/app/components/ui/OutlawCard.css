@@ -1,0 +1,65 @@
+/* OutlawCard.css */
+
+.outlaw-card {
+  position: relative;
+  background: var(--card-bg, rgba(20, 26, 43, 0.7));
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(160, 160, 170, 0.2);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+}
+
+.outlaw-card-inner {
+  position: relative;
+  z-index: 2;
+  padding: 16px;
+}
+
+/* インタラクティブ（タップ可能）な場合のスタイル */
+.outlaw-card-interactive {
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.outlaw-card-interactive:hover {
+  background: rgba(30, 38, 60, 0.85);
+  border-color: rgba(160, 160, 170, 0.4);
+}
+
+/* 枠線ネオン装飾 (Glow Line) */
+.outlaw-card[class*="glow-line-"]::before {
+  content: "";
+  position: absolute;
+  z-index: 3;
+  background: var(--neon-cyan);
+  box-shadow: var(--neon-glow-cyan);
+}
+
+.outlaw-card.glow-line-left::before {
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 2px;
+}
+
+.outlaw-card.glow-line-right::before {
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 2px;
+}
+
+.outlaw-card.glow-line-top::before {
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+}
+
+.outlaw-card.glow-line-bottom::before {
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+}

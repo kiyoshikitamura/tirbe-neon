@@ -1,0 +1,44 @@
+/* SectionHeader.css */
+
+.outlaw-section-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: linear-gradient(90deg, rgba(20, 26, 43, 0.9) 0%, rgba(20, 26, 43, 0) 100%);
+  border-bottom: 1px solid rgba(160, 160, 170, 0.2);
+  margin-bottom: 16px;
+}
+
+.section-header-accent {
+  width: 4px;
+  height: 24px;
+  background: var(--neon-cyan);
+  box-shadow: var(--neon-glow-cyan);
+  border-radius: 2px;
+}
+
+.section-header-texts {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.section-header-title {
+  font-family: var(--font-inter);
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: 0.1em;
+  margin: 0;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+.section-header-subtitle {
+  font-family: var(--font-outfit);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--neon-cyan);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}

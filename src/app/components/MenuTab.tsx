@@ -25,6 +25,7 @@ export default function MenuTab() {
     { label: "ミッション", action: () => setShowMissionPanel(true), color: "cyan" },
     { label: "プレゼント", action: () => { setShowInboxPanel(true); setInboxPanelTab("presents"); }, color: "magenta" },
     { label: "設定", action: () => setShowSettingsPanel(true), color: "white" },
+    { label: "UI Preview", action: () => navigateTab("ui_preview"), color: "cyan" },
   ];
 
   return (

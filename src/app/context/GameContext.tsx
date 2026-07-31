@@ -25,6 +25,7 @@ import {
 import { useBattle } from "@/hooks/useBattle";
 import { getCharacterTotalStats } from "@/utils/stats_calculator";
 import { SHOP_PRODUCTS_MASTER, ShopProductItem } from "@/utils/shop_master_data";
+import { ConfirmDialogConfig } from "@/app/components/ui/ConfirmDialog";
 
 const GameContext = createContext<any>(null);
 
@@ -98,6 +99,14 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const [selectedLeader, setSelectedLeader] = useState<string>("11111111-1111-1111-1111-111111111111");
   const [upgradeSelectedCharId, setUpgradeSelectedCharId] = useState<string>("11111111-1111-1111-1111-111111111111");
   const [characterLevel, setCharacterLevel] = useState<number>(1);
+  const [confirmDialogConfig, setConfirmDialogConfig] = useState<ConfirmDialogConfig>({
+    isOpen: false,
+    title: "",
+    message: "",
+    onConfirm: () => {},
+    onCancel: () => {},
+  });
+  const [globalInteractionBlocking, setGlobalInteractionBlocking] = useState<boolean>(false);
   const [characterAwaken, setCharacterAwaken] = useState<number>(0);
   const [userCharactersDbList, setUserCharactersDbList] = useState<any[]>([]);
 
@@ -5595,7 +5604,11 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     setDirectMessages,
     dmRecipientId,
     setDmRecipientId,
-    handleSendDirectMessage
+    handleSendDirectMessage,
+    confirmDialogConfig,
+    setConfirmDialogConfig,
+    globalInteractionBlocking,
+    setGlobalInteractionBlocking
   };
 
 

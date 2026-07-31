@@ -30,11 +30,17 @@ import MissionPanel from "./components/MissionPanel";
 import FriendPanel from "./components/FriendPanel";
 import SettingsPanel from "./components/SettingsPanel";
 import LegalPanel from "./components/LegalPanel";
+import ConfirmDialog from "./components/ui/ConfirmDialog";
+import GlobalInteractionBlocker from "./components/ui/GlobalInteractionBlocker";
 import TitleView from "./components/TitleView";
 import MoveBaseModal from "./components/MoveBaseModal";
+import UiPreviewTab from "./components/UiPreviewTab";
 
 function AppContent() {
-  const { session, authLoading, isSetupRequired, activeTab, showTitleView } = useGame();
+  const { session, authLoading, isSetupRequired, activeTab, showTitleView,
+    confirmDialogConfig,
+    globalInteractionBlocking
+  } = useGame();
 
 
 
@@ -99,6 +105,7 @@ function AppContent() {
         {activeTab === "ranking" && <RankingTab />}
         {activeTab === "avatar" && <AvatarTab />}
         {activeTab === "bbs" && <BbsTab />}
+        {activeTab === "ui_preview" && <UiPreviewTab />}
       </main>
 
       {/* 全タブ共通 モバイルフッター */}
@@ -119,6 +126,10 @@ function AppContent() {
       {/* Layer 5: システムオーバーレイ */}
       <AdvView />
       <CardBattleView />
+      
+      {/* Layer 6: 最上位の共通ダイアログとブロッカー */}
+      <ConfirmDialog {...confirmDialogConfig} />
+      <GlobalInteractionBlocker isBlocking={globalInteractionBlocking} />
     </div>
   );
 }

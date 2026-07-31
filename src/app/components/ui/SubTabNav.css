@@ -1,0 +1,68 @@
+/* SubTabNav.css */
+
+.outlaw-sub-tab-nav {
+  display: flex;
+  background: rgba(14, 18, 28, 0.9);
+  border-bottom: 2px solid rgba(40, 48, 65, 0.5);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* スクロールバー非表示 (ナビゲーションタブ用) */
+.outlaw-sub-tab-nav::-webkit-scrollbar {
+  display: none;
+}
+.outlaw-sub-tab-nav {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.sub-tab-item {
+  position: relative;
+  flex: 1;
+  min-width: 80px;
+  padding: 12px 16px;
+  background: transparent;
+  border: none;
+  font-family: var(--font-inter);
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.2s ease;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.sub-tab-item:hover {
+  color: #ffffff;
+}
+
+.sub-tab-item.active {
+  color: var(--neon-cyan);
+  font-weight: 700;
+}
+
+.sub-tab-indicator {
+  position: absolute;
+  bottom: -2px; /* 親のborder-bottomの上に被せる */
+  left: 10%;
+  right: 10%;
+  height: 2px;
+  background: var(--neon-cyan);
+  box-shadow: var(--neon-glow-cyan);
+  border-radius: 2px 2px 0 0;
+  animation: tabSlideIn 0.2s ease-out forwards;
+}
+
+@keyframes tabSlideIn {
+  from {
+    transform: scaleX(0);
+    opacity: 0;
+  }
+  to {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+}

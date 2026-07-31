@@ -139,13 +139,27 @@ body::before {
 }
 
 .scroll-container::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.2);
+  background: rgba(20, 20, 30, 0.3);
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(20, 20, 30, 0.3);
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(160, 160, 170, 0.35);
+  border-radius: 2px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(180, 180, 190, 0.5);
 }
 
 .scroll-container::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, var(--neon-cyan), var(--neon-magenta));
+  background: rgba(160, 160, 170, 0.3);
   border-radius: 1.5px;
-  box-shadow: 0 0 3px var(--neon-cyan);
+  box-shadow: none;
 }
 
 /* ボタン即時フィードバック */
