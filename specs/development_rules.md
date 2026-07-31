@@ -34,8 +34,10 @@
 ### ⑤ 巨大コンポーネントの回避と関心の分離（Context ＆ カスタムフック）
 - **追加ルール**: 
   - `page.tsx` 等の単一ファイルに状態や処理を集約することは禁止します。
-  - 状態定義とAPI/DB同期ライフサイクルは React Context (`GameContext.tsx`) にて一元管理し、バトル進行などの巨大なドメインロジックは専用カスタムフック (`useBattle.ts`) へ切り出してカプセル化します。
+  - 状態定義とAPI/DB同期ライフサイクルは React Context (`GameContext.tsx`) にて一元管理し、各ドメイン（認証, チャット, ギルド, PvP, GvG, レイド, クエスト, ガチャ, ショップ, ストーリー, 育成等）のロジックは `src/app/context/hooks/` 配下の14個の専用フックにカプセル化します。
+  - バトル進行などの巨大なドメインロジックは専用カスタムフック (`src/hooks/useBattle.ts`) およびそのサブモジュール (`src/hooks/battle/battleTypes.ts`, `battleAI.ts`, `battleUtils.ts`) へ切り出してカプセル化します。
   - 計算処理（装備品ステータスのスケーリングなど）は純粋関数モジュール (`stats_calculator.ts`) として隔離します。
+  - マスターデータ定義は `src/constants/` 配下（`characters.ts`, `enemies.ts` 等）へ分割し、モックDB実装は `src/utils/mock/` へ分離して一元管理します。
 
 ### ⑥ コンポーネント指向CSSの配置ルール
 - **追加ルール**:
@@ -60,6 +62,12 @@
 - **チート対策・セキュリティ標準 (RLS ＆ サーバーサイドRPC)**:
   - クライアント側（ブラウザ JS）からの不正な直接データ改ざんをシャットアウトするため、Supabase の Row Level Security (RLS) を全テーブルに適用します。
   - Cash, Diamond, Level, Exp, バトル報酬, ギルド献金等の主要トランザクションは、クライアントからの直接 UPDATE を禁止し、必ず PostgreSQL ストアドファンクション（RPC）内で所有権・整合性を検証の上、アトミックに加算・更新します。
+
+### ⑧ ダイアログと通知の統一規約
+- **ブラウザ標準ダイアログの完全禁止**:
+  - `alert()` や `window.confirm()` といったブラウザデフォルトのダイアログは、UIの世界観を損なうため使用を完全に禁止します。
+  - エラーメッセージや警告、処理完了の通知、確認ダイアログは、必ず `src/app/components/ui/ConfirmDialog.tsx` および `setConfirmDialogConfig` を利用してゲームの世界観に合わせたデザイン（Matte Outlaw UI）で表示してください。
+  - ダイアログを閉じる際は、必ず `setConfirmDialogConfig(null)` を呼び出し、安全にリセットしてください。
 
 ---
 
