@@ -1,7 +1,8 @@
-"use client";
-
 import React, { useState, useRef, useEffect } from "react";
 import { useGame } from "../context/GameContext";
+import FullScreenPanel from "./ui/FullScreenPanel";
+import SubTabNav from "./ui/SubTabNav";
+import OutlawButton from "./ui/OutlawButton";
 import "./TribeChatModal.css";
 
 export default function TribeChatModal() {
@@ -69,60 +70,44 @@ export default function TribeChatModal() {
   const safeDirectMessages = directMessages || [];
   const safeGuildChats = guildChats || [];
 
-  return (
-    <div className="tribe-modal-overlay" onClick={() => setShowTribeChatPanel(false)}>
-      <div className="tribe-modal-container active-scale-effect-none" onClick={(e) => e.stopPropagation()}>
-        {/* モーダルヘッダー */}
-        <div className="tribe-modal-header">
-          <div className="tribe-modal-title-row">
-            <span className="tribe-modal-tag">SECURE COMM</span>
-            <h3 className="tribe-modal-title">暗号メッセージ『トライブ』</h3>
-          </div>
-          <button className="tribe-modal-close-btn" onClick={() => setShowTribeChatPanel(false)}>✕</button>
-        </div>
+  const handleClose = () => {
+    setShowTribeChatPanel(false);
+  };
 
+  return (
+    <FullScreenPanel title="暗号メッセージ『トライブ』" onClose={handleClose}>
+      <div className="tribe-modal-container-inner flex-col" style={{ height: '100%' }}>
         {/* チャンネルタブ (全体 / ギルド / DM) */}
-        <div className="tribe-modal-tabs">
-          <button
-            className={`tribe-modal-tab-btn ${chatChannel === "GLOBAL" ? "active" : ""}`}
-            onClick={() => { setChatChannel("GLOBAL"); playCyberSe("click"); }}
-          >
-            全体
-          </button>
-          <button
-            className={`tribe-modal-tab-btn ${chatChannel === "GUILD" ? "active" : ""}`}
-            disabled={!userGuild}
-            onClick={() => { setChatChannel("GUILD"); playCyberSe("click"); }}
-            style={{ opacity: !userGuild ? 0.4 : 1 }}
-          >
-            ギルド
-          </button>
-          <button
-            className={`tribe-modal-tab-btn ${chatChannel === "DM" ? "active" : ""}`}
-            onClick={() => { setChatChannel("DM"); playCyberSe("click"); }}
-          >
-            個人(DM)
-          </button>
-        </div>
+        <SubTabNav
+          tabs={[
+            { id: "GLOBAL", label: "全体" },
+            { id: "GUILD", label: "ギルド", disabled: !userGuild },
+            { id: "DM", label: "個人(DM)" }
+          ]}
+          activeTabId={chatChannel}
+          onSelect={(id) => setChatChannel(id as any)}
+          className="mb-3"
+        />
 
         {/* DM相手選択ドロップダウン (DM時のみ) */}
         {chatChannel === "DM" && (
-          <div className="tribe-dm-recipient-selector">
-            <label className="tribe-dm-label">送信相手:</label>
-            <div style={{ display: 'flex', gap: '8px', flex: 1 }}>
+          <div className="tribe-dm-recipient-selector mb-3">
+            <label className="tribe-dm-label font-size-8 text-secondary mb-1 block">送信相手:</label>
+            <div style={{ display: 'flex', gap: '8px' }}>
               <input
                 type="text"
                 placeholder="ユーザーIDを入力..."
                 value={dmRecipientId || ""}
                 onChange={(e) => setDmRecipientId(e.target.value)}
-                className="tribe-dm-recipient-input"
+                className="tribe-dm-recipient-input form-input"
                 style={{ flex: 1 }}
               />
               {userGuild && guildMembersList && guildMembersList.length > 0 && (
                 <select
                   value={dmRecipientId || ""}
                   onChange={(e) => setDmRecipientId(e.target.value)}
-                  className="tribe-dm-recipient-select"
+                  className="tribe-dm-recipient-select form-input"
+                  style={{ flex: 1 }}
                 >
                   <option value="">ギルドメンバーから選択</option>
                   {guildMembersList.map((m: any) => (
@@ -139,7 +124,7 @@ export default function TribeChatModal() {
         )}
 
         {/* チャットメッセージログ表示領域 */}
-        <div className="tribe-modal-body scroll-container" ref={chatBodyRef}>
+        <div className="tribe-modal-body custom-scrollbar flex-1 mb-3" ref={chatBodyRef}>
           {chatChannel === "DM" ? (
             safeDirectMessages.length === 0 ? (
               <div className="tribe-modal-empty">ダイレクトメッセージのログはありません</div>
@@ -180,42 +165,46 @@ export default function TribeChatModal() {
         </div>
 
         {/* メッセージ入力エリア */}
-        <div className="tribe-modal-footer">
-          <input
-            type="text"
-            placeholder={
-              chatCooldown > 0
-                ? `送信制限中 (${chatCooldown}秒)`
-                : chatChannel === "DM"
-                ? "暗号DMを入力..."
-                : `${chatChannel === "GLOBAL" ? "全体" : "ギルド"}へ送信...`
-            }
-            value={chatChannel === "DM" ? localDmText : chatInput}
-            onChange={(e) => {
-              if (chatChannel === "DM") {
-                setLocalDmText(e.target.value);
-              } else {
-                setChatInput(e.target.value);
+        <div className="tribe-modal-footer" style={{ marginTop: 'auto' }}>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <input
+              type="text"
+              placeholder={
+                chatCooldown > 0
+                  ? `送信制限中 (${chatCooldown}秒)`
+                  : chatChannel === "DM"
+                  ? "暗号DMを入力..."
+                  : `${chatChannel === "GLOBAL" ? "全体" : "ギルド"}へ送信...`
               }
-            }}
-            onKeyDown={handleKeyDown}
-            maxLength={140}
-            disabled={chatCooldown > 0}
-            className="tribe-modal-input"
-          />
-          <button
-            onClick={handleSend}
-            disabled={
-              chatSending ||
-              chatCooldown > 0 ||
-              (chatChannel === "DM" ? !localDmText.trim() || !dmRecipientId : !chatInput.trim())
-            }
-            className="tribe-modal-send-btn active-scale-effect"
-          >
-            {chatSending ? <div className="spinner" /> : "送信"}
-          </button>
+              value={chatChannel === "DM" ? localDmText : chatInput}
+              onChange={(e) => {
+                if (chatChannel === "DM") {
+                  setLocalDmText(e.target.value);
+                } else {
+                  setChatInput(e.target.value);
+                }
+              }}
+              onKeyDown={handleKeyDown}
+              maxLength={140}
+              disabled={chatCooldown > 0}
+              className="tribe-modal-input form-input"
+              style={{ flex: 1 }}
+            />
+            <OutlawButton
+              variant="primary"
+              onClick={handleSend}
+              disabled={
+                chatSending ||
+                chatCooldown > 0 ||
+                (chatChannel === "DM" ? !localDmText.trim() || !dmRecipientId : !chatInput.trim())
+              }
+              style={{ width: '80px' }}
+            >
+              {chatSending ? <div className="spinner" /> : "送信"}
+            </OutlawButton>
+          </div>
         </div>
       </div>
-    </div>
+    </FullScreenPanel>
   );
 }

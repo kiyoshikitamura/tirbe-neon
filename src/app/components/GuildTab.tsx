@@ -4,6 +4,11 @@ import React, { useState } from "react";
 import { useGame } from "../context/GameContext";
 import { CHARACTERS_MASTER } from "@/utils/game_constants";
 import "./GuildTab.css";
+import SectionHeader from "./ui/SectionHeader";
+import SubTabNav from "./ui/SubTabNav";
+import OutlawCard from "./ui/OutlawCard";
+import OutlawButton from "./ui/OutlawButton";
+import FullScreenPanel from "./ui/FullScreenPanel";
 
 const DECORATIONS_SHOP = [
   { id: "bg_neon_kabukicho", name: "歌舞伎町ネオン背景", cost: 5000, type: "DECORATION", desc: "鈍く光るネオン街の夜背景" },
@@ -105,25 +110,25 @@ export default function GuildTab() {
   if (!userGuild) {
     return (
       <div className="view-container">
-        <h2 className="view-title">ギルド</h2>
+        <SectionHeader title="ギルド" />
         <div className="scroll-container flex-1 flex-col-gap-3">
           
           {/* ペナルティ警告 */}
           {userLevel < 3 && (
-            <div className="battle-card border-danger text-color-danger font-size-8 p-3 text-center mb-3">
+            <OutlawCard className="border-danger text-color-danger font-size-8 p-3 text-center mb-3">
               ギルド機能への参加にはプレイヤーレベル3以上が必要です。(現在のレベル: Lv.{userLevel})
-            </div>
+            </OutlawCard>
           )}
 
           {penalty.isPenalty && (
-            <div className="battle-card border-danger text-color-danger font-size-8 p-3 text-center">
+            <OutlawCard className="border-danger text-color-danger font-size-8 p-3 text-center">
               ギルド脱退後のペナルティ制限期間中です。残り時間: {Math.ceil(penalty.secondsLeft / 3600)}時間 ({penalty.secondsLeft.toLocaleString()}秒)
-            </div>
+            </OutlawCard>
           )}
 
           {/* 新規創設 */}
-          <div className="upgrade-card border-cyan">
-            <div className="upgrade-card-title text-color-cyan">新規ギルドの創設</div>
+          <OutlawCard glowLine="left">
+            <div className="font-bold text-neon-cyan mb-1">新規ギルドの創設</div>
             <p className="font-size-8 text-secondary mt-1 mb-3">創設コスト: 5,000キャッシュ ｜ ペナルティ期間中は不可</p>
             <div className="flex gap-2">
               <input 
@@ -135,19 +140,19 @@ export default function GuildTab() {
                 disabled={penalty.isPenalty || cash < 5000 || userLevel < 8}
                 className="flex-1 bg-black-60 border-subtle text-white font-size-9 p-2 rounded outline-none"
               />
-              <button 
-                className="bg-neon-cyan text-black font-size-9 px-4 font-weight-bold rounded active-scale-effect flex-row-center-spinner"
+              <OutlawButton 
+                variant="primary"
                 onClick={handleCreateGuild}
                 disabled={gvgResetLoading || penalty.isPenalty || cash < 5000 || !newGuildName.trim() || userLevel < 8}
               >
                 {gvgResetLoading ? <div className="spinner" /> : userLevel < 8 ? "Lv8が必要" : "創設"}
-              </button>
+              </OutlawButton>
             </div>
-          </div>
+          </OutlawCard>
 
           {/* ギルド一覧 */}
-          <div className="upgrade-card border-subtle">
-            <div className="upgrade-card-title">ギルド一覧 (デモ所属可能)</div>
+          <OutlawCard glowLine="bottom" className="mt-2">
+            <div className="font-bold mb-2">ギルド一覧 (デモ所属可能)</div>
             <div className="list-container mt-2">
               {allGuildsDbList.map((g: any) => (
                 <div key={g.id} className="list-item">
@@ -155,15 +160,18 @@ export default function GuildTab() {
                     <span className="item-title">{g.name}</span>
                     <span className="item-desc">Lv.{g.level}</span>
                   </div>
-                  <button 
-                    className="action-btn claim active-scale-effect font-size-8 px-3"
+                  <OutlawButton 
+                    variant="secondary"
+                    className="font-size-8 px-3"
                     disabled={gvgResetLoading || penalty.isPenalty || userLevel < 3}
                     onClick={() => handleDemoJoinGuild(g.id, g.name)}
-                  >{userLevel < 3 ? "Lv3制限" : "所属"}</button>
+                  >
+                    {userLevel < 3 ? "Lv3制限" : "所属"}
+                  </OutlawButton>
                 </div>
               ))}
             </div>
-          </div>
+          </OutlawCard>
 
         </div>
       </div>
@@ -220,10 +228,16 @@ export default function GuildTab() {
       </div>
       
       {/* サブタブメニュー */}
-      <div className="tab-menu mt-2">
-        <button className={`tab-btn ${guildSubTab === "members" ? "active" : ""}`} onClick={() => { setGuildSubTab("members"); playCyberSe("click"); }}>メンバー</button>
-        <button className={`tab-btn ${guildSubTab === "settings" ? "active" : ""}`} onClick={() => { setGuildSubTab("settings"); playCyberSe("click"); }}>属性設定</button>
-        <button className={`tab-btn ${guildSubTab === "shop" ? "active" : ""}`} onClick={() => { setGuildSubTab("shop"); playCyberSe("click"); }}>資金＆ショップ</button>
+      <div className="mt-3">
+        <SubTabNav
+          tabs={[
+            { id: "members", label: "メンバー" },
+            { id: "settings", label: "属性設定" },
+            { id: "shop", label: "資金＆ショップ" },
+          ]}
+          activeTabId={guildSubTab}
+          onSelect={setGuildSubTab}
+        />
       </div>
 
       <div className="scroll-container flex-1 mt-2">
@@ -233,13 +247,14 @@ export default function GuildTab() {
           <div className="flex-col-gap-3">
             <div className="flex justify-between items-center guild-quit-btn-row p-1">
               <span className="font-size-8 text-secondary">構成員階級と貢献度 (タップで詳細)</span>
-              <button 
+              <OutlawButton 
+                variant="danger"
                 onClick={handleLeaveGuild} 
                 disabled={gvgResetLoading}
-                className="sub-btn border-danger text-color-danger active-scale-effect font-size-8 py-1 px-3"
+                className="font-size-8 py-1 px-3"
               >
                 {gvgResetLoading ? <div className="spinner" /> : isMaster ? "解散 / 脱退" : "ギルド脱退"}
-              </button>
+              </OutlawButton>
             </div>
 
             <div className="list-container">
@@ -286,29 +301,32 @@ export default function GuildTab() {
                       <span>週間貢献度: <span className="text-white font-bold">{m.weekly_contribution || 0}</span></span>
                       {isMaster && !isMe && (
                         <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
-                          <button 
-                            className="sub-btn font-size-7 py-0.5 px-2 active-scale-effect" 
+                          <OutlawButton 
+                            variant="secondary"
+                            className="font-size-7 py-0.5 px-2" 
                             onClick={() => handleUpdateMemberRole(m.user_id, m.users?.username, m.role === "SUBMASTER" ? "MEMBER" : "SUBMASTER")}
                           >
                             {m.role === "SUBMASTER" ? "降格" : "昇格"}
-                          </button>
-                          <button 
-                            className="sub-btn border-danger text-color-danger font-size-7 py-0.5 px-2 active-scale-effect" 
+                          </OutlawButton>
+                          <OutlawButton 
+                            variant="danger"
+                            className="font-size-7 py-0.5 px-2" 
                             onClick={() => handleKickMember(m.user_id, m.users?.username)}
                           >
                             追放
-                          </button>
+                          </OutlawButton>
                         </div>
                       )}
                       {isSubMaster && !isMe && (
                         <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
                           {m.role === "MEMBER" ? (
-                            <button 
-                              className="sub-btn border-danger text-color-danger font-size-7 py-0.5 px-2 active-scale-effect" 
+                            <OutlawButton 
+                              variant="danger"
+                              className="font-size-7 py-0.5 px-2" 
                               onClick={() => handleKickMember(m.user_id, m.users?.username)}
                             >
                               追放
-                            </button>
+                            </OutlawButton>
                           ) : (
                             <span className="font-size-7 text-secondary">権限なし</span>
                           )}
@@ -325,8 +343,8 @@ export default function GuildTab() {
         {/* 2. 属性設定表示 */}
         {guildSubTab === "settings" && (
           <div className="flex-col-gap-3">
-            <div className="upgrade-card border-magenta">
-              <div className="upgrade-card-title text-color-magenta">ギルドアライメント設定</div>
+            <OutlawCard glowLine="right">
+              <div className="font-bold text-neon-magenta mb-1">ギルドアライメント設定</div>
               <p className="font-size-8 text-secondary mt-1 mb-4">GvGの攻撃力・HP倍率ボーナスに影響する属性を決定します。</p>
               
               <div className="flex-col-gap-3 text-left">
@@ -337,14 +355,15 @@ export default function GuildTab() {
                       const jpVal = alignmentEnToJp[val] || val;
                       const isSel = userGuild.main_alignment === val;
                       return (
-                        <button 
+                        <OutlawButton 
                           key={val}
+                          variant={isSel ? "neon" : "secondary"}
                           disabled={!isMaster}
                           onClick={() => handleUpdateGuildAlignment(val, userGuild.sub_alignment)}
-                          className={`flex-1 font-size-8 py-2 font-bold rounded border active-scale-effect alignment-btn ${isSel ? "active-main" : "border-subtle"}`}
+                          className="flex-1 font-size-8 py-2 font-bold"
                         >
                           {jpVal}
-                        </button>
+                        </OutlawButton>
                       );
                     })}
                   </div>
@@ -357,20 +376,21 @@ export default function GuildTab() {
                       const jpVal = alignmentEnToJp[val] || val;
                       const isSel = userGuild.sub_alignment === val;
                       return (
-                        <button 
+                        <OutlawButton 
                           key={val}
+                          variant={isSel ? "neon" : "secondary"}
                           disabled={!isMaster}
                           onClick={() => handleUpdateGuildAlignment(userGuild.main_alignment, val)}
-                          className={`flex-1 font-size-8 py-2 font-bold rounded border active-scale-effect alignment-btn ${isSel ? "active-sub" : "border-subtle"}`}
+                          className="flex-1 font-size-8 py-2 font-bold"
                         >
                           {jpVal}
-                        </button>
+                        </OutlawButton>
                       );
                     })}
                   </div>
                 </div>
               </div>
-            </div>
+            </OutlawCard>
           </div>
         )}
 
@@ -379,8 +399,8 @@ export default function GuildTab() {
           <div className="flex-col-gap-3 p-1">
             
             {/* 献金モジュール */}
-            <div className="upgrade-card border-cyan text-left">
-              <div className="upgrade-card-title text-color-cyan">ギルド献金</div>
+            <OutlawCard glowLine="left">
+              <div className="font-bold text-neon-cyan mb-1">ギルド献金</div>
               <p className="font-size-8 text-secondary mt-1 mb-3">
                 個人キャッシュをギルドに寄付し、ギルド資金の追加、ギルドXP・貢献度を獲得します。
               </p>
@@ -395,22 +415,22 @@ export default function GuildTab() {
                   <option value={5000}>5,000 Cash (XP+120 / 貢献度+60)</option>
                   <option value={10000}>10,000 Cash (XP+300 / 貢献度+150)</option>
                 </select>
-                <button 
+                <OutlawButton 
+                  variant="primary"
                   onClick={() => handleDonateToGuild(donateAmount)}
                   disabled={cash < donateAmount || gvgResetLoading}
-                  className="bg-neon-cyan text-black font-size-9 px-4 py-2 font-weight-bold rounded active-scale-effect"
                 >
                   献金する
-                </button>
+                </OutlawButton>
               </div>
               <div className="font-size-7 text-secondary mt-2 text-right">
                 あなたの所持金: <span className="text-white font-bold">{cash.toLocaleString()} Cash</span>
               </div>
-            </div>
+            </OutlawCard>
 
             {/* 装飾ショップモジュール */}
-            <div className="upgrade-card border-subtle text-left">
-              <div className="upgrade-card-title">装飾ショップ</div>
+            <OutlawCard>
+              <div className="font-bold mb-1">装飾ショップ</div>
               <p className="font-size-8 text-secondary mt-1 mb-3">
                 ギルド資金を使用して、マイページ背景装飾や称号バナーを購入・適用します（※マスタ/サブマスタ限定権限）。
               </p>
@@ -441,36 +461,39 @@ export default function GuildTab() {
 
                       <div className="flex gap-2">
                         {!isUnlocked ? (
-                          <button 
+                          <OutlawButton 
+                            variant="secondary"
                             disabled={!canManageDecorations || !canAfford || gvgResetLoading}
                             onClick={() => handleBuyGuildDecoration(item.id, item.cost, item.type as any)}
-                            className="bg-neon-magenta text-black font-size-8 px-3 py-1 font-weight-bold rounded active-scale-effect"
+                            className="font-size-8 px-3 py-1 text-neon-magenta"
                           >
                             購入
-                          </button>
+                          </OutlawButton>
                         ) : isEquipped ? (
-                          <button 
+                          <OutlawButton 
+                            variant="secondary"
                             disabled={!canManageDecorations || gvgResetLoading}
                             onClick={() => handleEquipGuildDecoration(item.type as any, null)}
-                            className="bg-gray-800 text-white font-size-8 px-3 py-1 rounded active-scale-effect border border-gray-700"
+                            className="font-size-8 px-3 py-1 text-gray-400"
                           >
                             解除
-                          </button>
+                          </OutlawButton>
                         ) : (
-                          <button 
+                          <OutlawButton 
+                            variant="primary"
                             disabled={!canManageDecorations || gvgResetLoading}
                             onClick={() => handleEquipGuildDecoration(item.type as any, item.id)}
-                            className="bg-neon-cyan text-black font-size-8 px-3 py-1 font-weight-bold rounded active-scale-effect"
+                            className="font-size-8 px-3 py-1"
                           >
                             適用
-                          </button>
+                          </OutlawButton>
                         )}
                       </div>
                     </div>
                   );
                 })}
               </div>
-            </div>
+            </OutlawCard>
 
           </div>
         )}
@@ -479,20 +502,13 @@ export default function GuildTab() {
 
       {/* --- 構成員詳細プロフィール紹介ポップアップモーダル --- */}
       {selectedMember && (
-        <div className="modal-overlay flex-row-center" onClick={() => setSelectedMember(null)}>
-          <div className="modal-content-panel p-4 text-left border-cyan bg-black-90" onClick={(e) => e.stopPropagation()}>
-            <div className="flex-row-space-between align-center pb-2 border-b border-gray-800">
-              <span className="font-size-10 font-weight-bold text-color-cyan">構成員データファイル</span>
-              <button 
-                onClick={() => setSelectedMember(null)}
-                className="sub-btn border-subtle text-secondary py-0.5 px-2 active-scale-effect font-size-7"
-              >
-                閉じる
-              </button>
-            </div>
-
+        <FullScreenPanel
+          onClose={() => setSelectedMember(null)}
+          title="構成員データファイル"
+        >
+          <div className="p-4 text-left">
             {/* 基本情報 */}
-            <div className="flex items-center gap-3 mt-3">
+            <div className="flex items-center gap-3">
               <img 
                 src={selectedMember.users?.avatar_url || "/reiji_transparent_asset.png"} 
                 className="rounded-full border-cyan modal-profile-img" 
@@ -559,9 +575,8 @@ export default function GuildTab() {
                 )}
               </div>
             </div>
-
           </div>
-        </div>
+        </FullScreenPanel>
       )}
 
     </div>

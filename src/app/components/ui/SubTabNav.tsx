@@ -5,6 +5,7 @@ import { useGame } from "../../context/GameContext";
 interface SubTabItem {
   id: string;
   label: string;
+  disabled?: boolean;
 }
 
 interface SubTabNavProps {
@@ -31,8 +32,9 @@ export default function SubTabNav({ tabs, activeTabId, onSelect, className = "" 
         return (
           <button
             key={tab.id}
-            className={`sub-tab-item ${isActive ? "active" : ""} active-scale-effect`}
-            onClick={() => handleSelect(tab.id)}
+            className={`sub-tab-item ${isActive ? "active" : ""} ${tab.disabled ? "disabled" : ""} active-scale-effect`}
+            onClick={() => !tab.disabled && handleSelect(tab.id)}
+            disabled={tab.disabled}
           >
             {tab.label}
             {isActive && <div className="sub-tab-indicator" />}

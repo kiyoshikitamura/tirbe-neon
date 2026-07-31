@@ -26,7 +26,8 @@ export default function GvgTab() {
     handleDeployGvgDefense,
     navigateTab,
     userCharactersDbList,
-    playCyberSe
+    playCyberSe,
+    setConfirmDialogConfig
   } = useGame();
 
   const [showDefenseModal, setShowDefenseModal] = useState<boolean>(false);
@@ -78,7 +79,13 @@ export default function GvgTab() {
       setTempSelectedChars(prev => prev.filter(id => id !== charId));
     } else {
       if (tempSelectedChars.length >= 5) {
-        alert("守備メンバーは最大5名までです。");
+        setConfirmDialogConfig({
+          isOpen: true,
+          title: "エラー",
+          message: "守備メンバーは最大5名までです。",
+          confirmText: "OK",
+          onConfirm: () => setConfirmDialogConfig({ isOpen: false })
+        });
         return;
       }
       setTempSelectedChars(prev => [...prev, charId]);
@@ -87,7 +94,13 @@ export default function GvgTab() {
 
   const saveDefenseDeck = async () => {
     if (tempSelectedChars.length === 0) {
-      alert("守備デッキには最低1名のキャラクターを選択してください。");
+      setConfirmDialogConfig({
+        isOpen: true,
+        title: "エラー",
+        message: "守備デッキには最低1名のキャラクターを選択してください。",
+        confirmText: "OK",
+        onConfirm: () => setConfirmDialogConfig({ isOpen: false })
+      });
       return;
     }
     await handleDeployGvgDefense(tempSelectedChars);
@@ -95,10 +108,19 @@ export default function GvgTab() {
   };
 
   const removeDefenseDeck = async () => {
-    if (window.confirm("守備デッキの登録を解除しますか？")) {
-      await handleDeployGvgDefense([]);
-      setShowDefenseModal(false);
-    }
+    setConfirmDialogConfig({
+      isOpen: true,
+      title: "確認",
+      message: "守備デッキの登録を解除しますか？",
+      confirmText: "解除",
+      cancelText: "キャンセル",
+      onConfirm: async () => {
+        setConfirmDialogConfig({ isOpen: false });
+        await handleDeployGvgDefense([]);
+        setShowDefenseModal(false);
+      },
+      onCancel: () => setConfirmDialogConfig({ isOpen: false })
+    });
   };
 
   const getRoundLabel = (round: number) => {

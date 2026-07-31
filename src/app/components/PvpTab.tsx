@@ -3,6 +3,10 @@
 import React from "react";
 import { useGame } from "../context/GameContext";
 import "./PvpTab.css";
+import SectionHeader from "./ui/SectionHeader";
+import SubTabNav from "./ui/SubTabNav";
+import OutlawCard from "./ui/OutlawCard";
+import OutlawButton from "./ui/OutlawButton";
 
 const tacticNames: { [key: string]: string } = {
   OFFENSIVE: "攻撃重視",
@@ -35,7 +39,9 @@ export default function PvpTab() {
     pvpDefenseLogs,
     playCyberSe,
     setActiveTab,
-    setRankingActiveTab
+    setRankingActiveTab,
+    setConfirmDialogConfig,
+    setGlobalInteractionBlocking
   } = useGame();
 
   const [selectedDefense, setSelectedDefense] = React.useState<string[]>([]);
@@ -61,7 +67,13 @@ export default function PvpTab() {
         return prev.filter(id => id !== charId);
       }
       if (prev.length >= 5) {
-        alert("防衛デッキは最大5名まで選択できます。");
+        setConfirmDialogConfig({
+          isOpen: true,
+          title: "エラー",
+          message: "防衛デッキは最大5名まで選択できます。",
+          confirmText: "OK",
+          onConfirm: () => setConfirmDialogConfig({ isOpen: false })
+        });
         return prev;
       }
       return [...prev, charId];
@@ -70,7 +82,13 @@ export default function PvpTab() {
 
   const handleSaveDeck = async () => {
     if (selectedDefense.length === 0) {
-      alert("防衛メンバーを1名以上選択してください。");
+      setConfirmDialogConfig({
+        isOpen: true,
+        title: "エラー",
+        message: "防衛メンバーを1名以上選択してください。",
+        confirmText: "OK",
+        onConfirm: () => setConfirmDialogConfig({ isOpen: false })
+      });
       return;
     }
     await savePvpDefenseDeck(selectedDefense, selectedTactic);
@@ -93,42 +111,24 @@ export default function PvpTab() {
 
   return (
     <div className="view-container pvp-view">
-      <h2 className="view-title">PvP</h2>
+      <SectionHeader title="PvP" />
       
       <div className="scroll-container flex-1">
-        <div className="battle-card">
-          <div className="battle-card-header">
-            <span className="battle-card-title text-glow-none">PvP</span>
-            <span className="battle-card-sub text-color-cyan">現在のレート: {pvpPoints} pt</span>
-          </div>
-        </div>
+        <OutlawCard className="mb-4 text-center">
+          <div className="text-xl font-bold mb-1 text-white text-shadow-glow">現在のレート</div>
+          <div className="text-3xl font-black text-neon-cyan text-shadow-cyan">{pvpPoints} pt</div>
+        </OutlawCard>
 
-        <div className="tab-menu sub-tab-menu-pvp">
-          <button 
-            className={`tab-btn font-size-9 ${pvpSubView === "opponents" ? "active" : ""}`} 
-            onClick={() => { setPvpSubView("opponents"); playCyberSe("click"); }}
-          >
-            対戦相手
-          </button>
-          <button 
-            className={`tab-btn font-size-9 ${pvpSubView === "daily" ? "active" : ""}`} 
-            onClick={() => { setPvpSubView("daily"); playCyberSe("click"); }}
-          >
-            勝利数
-          </button>
-          <button 
-            className={`tab-btn font-size-9 ${pvpSubView === "season" ? "active" : ""}`} 
-            onClick={() => { setPvpSubView("season"); playCyberSe("click"); }}
-          >
-            シーズン
-          </button>
-          <button 
-            className={`tab-btn font-size-9 ${pvpSubView === "defense" ? "active" : ""}`} 
-            onClick={() => { setPvpSubView("defense"); playCyberSe("click"); }}
-          >
-            防衛設定・履歴
-          </button>
-        </div>
+        <SubTabNav
+          tabs={[
+            { id: "opponents", label: "対戦相手" },
+            { id: "daily", label: "勝利数" },
+            { id: "season", label: "シーズン" },
+            { id: "defense", label: "防衛設定" },
+          ]}
+          activeTabId={pvpSubView}
+          onSelect={setPvpSubView}
+        />
 
         {battleLoading ? (
           <div className="loading-container">
@@ -138,13 +138,13 @@ export default function PvpTab() {
           <div className="pvp-content-area">
             {pvpSubView === "opponents" && (
               <div className="opponents-subtab">
-                <div className="opponents-actions-bar">
-                  <button className="sub-btn border-cyan-subtle refresh-btn active-scale-effect" onClick={handleRefreshOpponents} disabled={opponentsLoading}>
+                <div className="flex gap-2 mb-4">
+                  <OutlawButton variant="secondary" className="flex-1" onClick={handleRefreshOpponents} disabled={opponentsLoading}>
                     🔄 対戦相手更新
-                  </button>
-                  <button className="sub-btn border-gold-subtle ranking-btn active-scale-effect" onClick={handleNavigateToRanking}>
+                  </OutlawButton>
+                  <OutlawButton variant="secondary" className="flex-1 text-neon-gold" onClick={handleNavigateToRanking}>
                     🏆 PvPランキング
-                  </button>
+                  </OutlawButton>
                 </div>
 
                 {opponentsLoading && pvpOpponents.length === 0 ? (
@@ -159,19 +159,18 @@ export default function PvpTab() {
                       </div>
                     )}
                     {pvpOpponents.map((op: any) => (
-                      <div key={op.opponent_user_id} className="list-item opponent-item">
-                        <div className="item-left">
-                          <span className="item-title">{op.opponent_username}</span>
-                          <div className="item-metadata font-size-8 text-color-gray mt-1">
-                            <span className="opponent-guild">ギルド: {op.opponent_guild_name}</span>
+                      <OutlawCard key={op.opponent_user_id} className="mb-3 flex items-center justify-between">
+                        <div className="flex-1 pr-2">
+                          <div className="font-bold text-white mb-1">{op.opponent_username}</div>
+                          <div className="text-xs text-gray-400">
+                            <span>ギルド: {op.opponent_guild_name}</span><br />
+                            <span className="text-neon-cyan">{op.opponent_points} pt</span>
                             <span className="mx-1">｜</span>
-                            <span className="opponent-points text-color-cyan">{op.opponent_points} pt</span>
-                            <span className="mx-1">｜</span>
-                            <span className="opponent-tactic text-color-magenta">作戦: {tacticNames[op.tactic] || "攻撃重視"}</span>
+                            <span className="text-neon-magenta">作戦: {tacticNames[op.tactic] || "攻撃重視"}</span>
                           </div>
                         </div>
-                        <button 
-                          className="action-btn claim active-scale-effect" 
+                        <OutlawButton 
+                          variant="danger" 
                           onClick={() => startCardBattle(
                             "PVP", 
                             op.opponent_username, 
@@ -184,8 +183,8 @@ export default function PvpTab() {
                           )}
                         >
                           対戦
-                        </button>
-                      </div>
+                        </OutlawButton>
+                      </OutlawCard>
                     ))}
                   </div>
                 )}
@@ -193,42 +192,46 @@ export default function PvpTab() {
             )}
 
             {pvpSubView === "daily" && (
-              <div className="list-container">
+              <div className="list-container flex flex-col gap-2">
                 {[...pvpRankings].sort((a,b) => b.daily_wins - a.daily_wins).map((item, idx) => (
-                  <div key={item.user_id} className="list-item">
-                    <div className="item-left"><span className="item-title">{idx+1}位. {item.users?.username || "NPC"}</span></div>
-                    <span>勝利数: {item.daily_wins}回</span>
-                  </div>
+                  <OutlawCard key={item.user_id} className="flex justify-between items-center py-2 px-3">
+                    <div className="font-bold">{idx+1}位. {item.users?.username || "NPC"}</div>
+                    <div className="text-neon-cyan">勝利数: {item.daily_wins}回</div>
+                  </OutlawCard>
                 ))}
               </div>
             )}
 
             {pvpSubView === "season" && (
-              <div className="flex-col-gap-2">
-                <button onClick={handlePvpSeasonReset} disabled={pvpSeasonLoading} className="sub-btn border-cyan-subtle active-scale-effect">シーズンリセット実行</button>
-                <div className="list-container">
+              <div className="flex flex-col gap-3">
+                <OutlawButton variant="danger" fullWidth onClick={handlePvpSeasonReset} disabled={pvpSeasonLoading}>
+                  シーズンリセット実行
+                </OutlawButton>
+                <div className="list-container flex flex-col gap-2">
                   {[...pvpRankings].sort((a,b) => b.rank_points - a.rank_points).map((item, idx) => (
-                    <div key={item.user_id} className="list-item">
-                      <div className="item-left"><span className="item-title">{idx+1}位. {item.users?.username || "NPC"}</span></div>
-                      <span>{item.rank_points} pt</span>
-                    </div>
+                    <OutlawCard key={item.user_id} className="flex justify-between items-center py-2 px-3">
+                      <div className="font-bold">{idx+1}位. {item.users?.username || "NPC"}</div>
+                      <div className="text-neon-cyan">{item.rank_points} pt</div>
+                    </OutlawCard>
                   ))}
                 </div>
               </div>
             )}
 
             {pvpSubView === "defense" && (
-              <div className="defense-subtab flex-col-gap-3">
+              <div className="flex flex-col gap-4">
                 {/* 防衛デッキ・作戦設定パネル */}
-                <div className="defense-setup-panel border-metal p-3">
-                  <h3 className="panel-title text-glow-none font-size-10 mb-2">🛡️ 防衛デッキ・作戦設定</h3>
+                <OutlawCard glowLine="left">
+                  <h3 className="font-bold text-white mb-3 flex items-center gap-2">
+                    🛡️ 防衛デッキ・作戦設定
+                  </h3>
                   
-                  <div className="tactic-select-box mb-3">
-                    <label className="font-size-8 text-color-gray block mb-1">防衛時の作戦AI:</label>
+                  <div className="mb-4">
+                    <label className="text-xs text-gray-400 block mb-1">防衛時の作戦AI:</label>
                     <select 
                       value={selectedTactic} 
                       onChange={(e) => setSelectedTactic(e.target.value)}
-                      className="tactic-dropdown font-size-9 p-1 border-metal"
+                      className="w-full bg-gray-900 border border-gray-700 rounded p-2 text-white text-sm focus:border-neon-cyan outline-none"
                     >
                       <option value="OFFENSIVE">攻撃重視 (高火力スキルを優先使用)</option>
                       <option value="DEFENSIVE">防御重視 (自身へのシールド・防御を優先)</option>
@@ -239,40 +242,42 @@ export default function PvpTab() {
                     </select>
                   </div>
 
-                  <div className="defense-member-select mb-3">
-                    <label className="font-size-8 text-color-gray block mb-1">防衛メンバー選択 (最大5名):</label>
-                    <div className="member-grid">
+                  <div className="mb-4">
+                    <label className="text-xs text-gray-400 block mb-1">防衛メンバー選択 (最大5名):</label>
+                    <div className="grid grid-cols-4 gap-2">
                       {userCharactersDbList.map((char: any) => {
                         const isSelected = selectedDefense.includes(char.id);
                         return (
                           <div 
                             key={char.id} 
                             onClick={() => handleToggleDefenseMember(char.id)}
-                            className={`member-slot border-metal text-center p-1 cursor-pointer active-scale-effect ${isSelected ? "selected" : ""}`}
+                            className={`p-2 border rounded cursor-pointer text-center transition-colors
+                              ${isSelected ? 'bg-neon-cyan/20 border-neon-cyan' : 'bg-gray-800 border-gray-700'}`}
                           >
-                            <span className="font-size-8 block">{char.name || "構成員"}</span>
-                            <span className="font-size-7 text-color-gray">Lv.{char.level}</span>
+                            <span className="text-xs block text-white truncate">{char.name || "構成員"}</span>
+                            <span className="text-[10px] text-gray-400">Lv.{char.level}</span>
                           </div>
                         );
                       })}
                     </div>
                   </div>
 
-                  <button 
+                  <OutlawButton 
+                    variant="primary" 
+                    fullWidth 
                     onClick={handleSaveDeck} 
-                    className="sub-btn border-cyan-subtle save-deck-btn font-size-9 w-full py-1 text-center active-scale-effect"
                   >
                     💾 防衛設定を保存
-                  </button>
-                </div>
+                  </OutlawButton>
+                </OutlawCard>
 
                 {/* 防衛履歴リスト */}
-                <div className="defense-logs-section">
-                  <div className="flex-row-center-between mb-2">
-                    <h3 className="font-size-10 text-glow-none m-0">防衛戦闘ログ</h3>
-                    <button onClick={triggerNpcDefenseSimulation} disabled={simulatingDefense} className="sub-btn border-magenta-subtle active-scale-effect font-size-8">
+                <div className="flex flex-col gap-2">
+                  <div className="flex justify-between items-center mb-2">
+                    <h3 className="font-bold text-white m-0">防衛戦闘ログ</h3>
+                    <OutlawButton variant="secondary" onClick={triggerNpcDefenseSimulation} disabled={simulatingDefense} className="text-xs px-2 py-1">
                       防衛襲撃シミュレート
-                    </button>
+                    </OutlawButton>
                   </div>
                   
                   <div className="list-container">
@@ -282,15 +287,15 @@ export default function PvpTab() {
                       </div>
                     )}
                     {pvpDefenseLogs.map((log: any) => (
-                      <div key={log.id} className="list-item">
-                        <div className="item-left">
-                          <span className="item-title">{log.attacker_name} ({log.result === "VICTORY" ? "防衛失敗" : "防衛成功"})</span>
-                          <span className="item-desc font-size-7 text-color-gray">{new Date(log.created_at).toLocaleString()}</span>
+                      <OutlawCard key={log.id} className="flex justify-between items-center py-2 px-3 mb-2">
+                        <div>
+                          <div className="font-bold text-sm">{log.attacker_name} ({log.result === "VICTORY" ? "防衛失敗" : "防衛成功"})</div>
+                          <div className="text-[10px] text-gray-400">{new Date(log.created_at).toLocaleString()}</div>
                         </div>
-                        <span className={log.points_change >= 0 ? "text-color-green" : "text-color-red"}>
+                        <span className={`font-bold ${log.points_change >= 0 ? "text-neon-cyan" : "text-neon-magenta"}`}>
                           {log.points_change >= 0 ? "+" : ""}{log.points_change} pt
                         </span>
-                      </div>
+                      </OutlawCard>
                     ))}
                   </div>
                 </div>

@@ -4,6 +4,10 @@ import React, { useState, useEffect } from "react";
 import { useGame } from "../context/GameContext";
 import { SHOP_PRODUCTS_MASTER, ShopProduct, ShopProductItem } from "@/utils/shop_master_data";
 import "./ShopTab.css";
+import SectionHeader from "./ui/SectionHeader";
+import SubTabNav from "./ui/SubTabNav";
+import OutlawCard from "./ui/OutlawCard";
+import OutlawButton from "./ui/OutlawButton";
 
 export default function ShopTab() {
   const {
@@ -17,13 +21,10 @@ export default function ShopTab() {
     handleBuyStripeProduct,
     playCyberSe,
     profileLoading,
-    upgradeLoading
+    upgradeLoading,
+    setConfirmDialogConfig,
+    setGlobalInteractionBlocking
   } = useGame();
-
-  const [confirmNormalModal, setConfirmNormalModal] = useState<{
-    product: ShopProduct;
-    currencyType: "CASH" | "DIAMOND";
-  } | null>(null);
 
   const [timeLeftStr, setTimeLeftStr] = useState<string>("");
 
@@ -75,31 +76,88 @@ export default function ShopTab() {
 
   const isLoading = profileLoading || upgradeLoading;
 
+  // 購入完了モーダルの表示（GameContextのboughtResultModalを監視）
+  useEffect(() => {
+    if (boughtResultModal) {
+      setConfirmDialogConfig({
+        isOpen: true,
+        title: "購入完了",
+        message: (
+          <div className="flex flex-col gap-2">
+            {boughtResultModal.items.map((it: ShopProductItem, idx: number) => (
+              <div key={idx} className="flex justify-between items-center bg-gray-900/50 p-2 rounded">
+                <span>{it.itemName}</span>
+                <span className="text-gold font-bold">+{it.quantity.toLocaleString()}</span>
+              </div>
+            ))}
+            <p className="mt-4 text-sm text-gray-400">
+              獲得したアイテムは<span className="text-gold font-bold mx-1">プレゼントBOX</span>に転送されました。
+            </p>
+          </div>
+        ),
+        confirmText: "OK",
+        onConfirm: () => {
+          setConfirmDialogConfig({ isOpen: false });
+          setBoughtResultModal(null);
+        },
+        onCancel: () => {
+          setConfirmDialogConfig({ isOpen: false });
+          setBoughtResultModal(null);
+        }
+      });
+    }
+  }, [boughtResultModal, setConfirmDialogConfig, setBoughtResultModal]);
+
+  const handleBuyClick = (product: ShopProduct, currencyType: "CASH" | "DIAMOND") => {
+    setConfirmDialogConfig({
+      isOpen: true,
+      title: "購入の確認",
+      message: (
+        <p>
+          {product.title} を
+          <span className="font-bold text-gold mx-1">
+            {currencyType === "CASH" 
+              ? `${product.priceCash?.toLocaleString()} キャッシュ`
+              : `${product.priceDiamond?.toLocaleString()} ダイヤ`}
+          </span>
+          で購入しますか？
+        </p>
+      ),
+      confirmText: "購入する",
+      onConfirm: async () => {
+        setConfirmDialogConfig({ isOpen: false });
+        setGlobalInteractionBlocking(true);
+        try {
+          await handleBuyNormalProduct(product.id, currencyType);
+        } finally {
+          setGlobalInteractionBlocking(false);
+        }
+      },
+      onCancel: () => {
+        setConfirmDialogConfig({ isOpen: false });
+      }
+    });
+  };
+
+  const handleBuyStripeClick = (productId: string) => {
+    setGlobalInteractionBlocking(true);
+    handleBuyStripeProduct(productId);
+    setTimeout(() => setGlobalInteractionBlocking(false), 2000);
+  };
+
   return (
     <div className="view-container shop-tab-container">
-      <h2 className="view-title">ショップ</h2>
+      <SectionHeader title="ショップ" />
 
       {/* サブタブ切替 */}
-      <div className="tab-menu shop-tab-menu">
-        <button
-          className={`tab-btn ${shopSubTab === "LIMITED" ? "active" : ""}`}
-          onClick={() => {
-            setShopSubTab("LIMITED");
-            playCyberSe("click");
-          }}
-        >
-          限定ショップ
-        </button>
-        <button
-          className={`tab-btn ${shopSubTab === "NORMAL" ? "active" : ""}`}
-          onClick={() => {
-            setShopSubTab("NORMAL");
-            playCyberSe("click");
-          }}
-        >
-          通常ショップ
-        </button>
-      </div>
+      <SubTabNav
+        tabs={[
+          { id: "LIMITED", label: "限定ショップ" },
+          { id: "NORMAL", label: "通常ショップ" },
+        ]}
+        activeTabId={shopSubTab}
+        onSelect={setShopSubTab}
+      />
 
       <div className="scroll-container flex-1 shop-scroll-body">
         
@@ -122,7 +180,7 @@ export default function ShopTab() {
                 </div>
 
                 {beginnerProducts.map(product => (
-                  <div key={product.id} className="shop-card beginner-card border-gold">
+                  <OutlawCard key={product.id} glowLine="left" className="mb-4">
                     {/* 販促バナー */}
                     {product.bannerUrl && (
                       <div className="shop-banner-wrapper">
@@ -145,19 +203,21 @@ export default function ShopTab() {
                         ))}
                       </div>
 
-                      <button
-                        className="shop-buy-btn primary-gold-btn active-scale-effect mt-3"
+                      <OutlawButton
+                        variant="primary"
+                        fullWidth
+                        className="mt-4"
                         disabled={isLoading}
-                        onClick={() => handleBuyStripeProduct(product.id)}
+                        onClick={() => handleBuyStripeClick(product.id)}
                       >
                         {isLoading ? (
                           <span className="shop-btn-spinner" />
                         ) : (
                           `¥${product.priceJpy?.toLocaleString()} (税抜)`
                         )}
-                      </button>
+                      </OutlawButton>
                     </div>
-                  </div>
+                  </OutlawCard>
                 ))}
               </div>
             )}
@@ -170,7 +230,7 @@ export default function ShopTab() {
                 </div>
 
                 {limitedNProducts.map(product => (
-                  <div key={product.id} className="shop-card border-magenta">
+                  <OutlawCard key={product.id} glowLine="right" className="mb-4">
                     {product.bannerUrl && (
                       <div className="shop-banner-wrapper">
                         <img src={product.bannerUrl} alt={product.title} className="shop-banner-img" />
@@ -179,19 +239,21 @@ export default function ShopTab() {
                     <div className="shop-card-content">
                       <div className="shop-card-title">{product.title}</div>
                       <div className="shop-card-desc">{product.description}</div>
-                      <button
-                        className="shop-buy-btn primary-magenta-btn active-scale-effect mt-3"
+                      <OutlawButton
+                        variant="primary"
+                        fullWidth
+                        className="mt-4"
                         disabled={isLoading}
-                        onClick={() => handleBuyStripeProduct(product.id)}
+                        onClick={() => handleBuyStripeClick(product.id)}
                       >
                         {isLoading ? (
                           <span className="shop-btn-spinner" />
                         ) : (
                           `¥${product.priceJpy?.toLocaleString()} (税抜)`
                         )}
-                      </button>
+                      </OutlawButton>
                     </div>
-                  </div>
+                  </OutlawCard>
                 ))}
               </div>
             )}
@@ -204,32 +266,36 @@ export default function ShopTab() {
 
               <div className="diamond-products-grid">
                 {diamondProducts.map(product => (
-                  <div key={product.id} className="shop-card diamond-card border-subtle">
-                    <div className="diamond-icon-wrapper">
-                      <svg className="diamond-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                        <polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5 12 2" strokeWidth="1.5" />
-                        <line x1="12" y1="2" x2="12" y2="22" strokeWidth="1" opacity="0.4" />
-                        <line x1="2" y1="8.5" x2="22" y2="8.5" strokeWidth="1" opacity="0.4" />
-                      </svg>
+                  <OutlawCard key={product.id} glowLine="bottom" className="mb-4">
+                    <div className="flex items-center gap-4">
+                      <div className="diamond-icon-wrapper shrink-0">
+                        <svg className="diamond-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                          <polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5 12 2" strokeWidth="1.5" />
+                          <line x1="12" y1="2" x2="12" y2="22" strokeWidth="1" opacity="0.4" />
+                          <line x1="2" y1="8.5" x2="22" y2="8.5" strokeWidth="1" opacity="0.4" />
+                        </svg>
+                      </div>
+
+                      <div className="flex-1">
+                        <div className="shop-card-title">{product.title}</div>
+                        <div className="shop-card-desc">{product.description}</div>
+                      </div>
                     </div>
 
-                    <div className="diamond-card-info">
-                      <div className="shop-card-title">{product.title}</div>
-                      <div className="shop-card-desc">{product.description}</div>
-                    </div>
-
-                    <button
-                      className="shop-buy-btn border-metal-btn active-scale-effect"
+                    <OutlawButton
+                      variant="secondary"
+                      fullWidth
+                      className="mt-4"
                       disabled={isLoading}
-                      onClick={() => handleBuyStripeProduct(product.id)}
+                      onClick={() => handleBuyStripeClick(product.id)}
                     >
                       {isLoading ? (
                         <span className="shop-btn-spinner" />
                       ) : (
                         `¥${product.priceJpy?.toLocaleString()} (税抜)`
                       )}
-                    </button>
-                  </div>
+                    </OutlawButton>
+                  </OutlawCard>
                 ))}
               </div>
             </div>
@@ -249,45 +315,47 @@ export default function ShopTab() {
 
               <div className="normal-products-grid">
                 {normalItemProducts.map(product => (
-                  <div key={product.id} className="shop-card normal-item-card border-subtle">
-                    <div className="item-card-header flex items-center gap-3">
-                      <div className="item-icon-box">
+                  <OutlawCard key={product.id} glowLine="left" className="mb-3">
+                    <div className="flex items-center gap-3">
+                      <div className="item-icon-box shrink-0">
                         <svg className="item-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
                           <rect x="6" y="3" width="12" height="18" rx="2" strokeWidth="1.5" />
                           <path d="M9 7h6M9 11h6M9 15h4" strokeWidth="1.2" opacity="0.6" />
                         </svg>
                       </div>
-                      <div className="item-title-area flex-1">
+                      <div className="flex-1">
                         <div className="shop-card-title">{product.title}</div>
                         <div className="shop-card-desc">{product.description}</div>
                       </div>
                     </div>
 
                     {/* 購入支払い選択ボタン */}
-                    <div className="normal-buy-actions-row">
+                    <div className="flex gap-2 mt-4">
                       {product.priceCash !== undefined && (
-                        <button
-                          className="buy-currency-btn cash-btn active-scale-effect"
+                        <OutlawButton
+                          variant="secondary"
+                          className="flex-1"
                           disabled={isLoading}
-                          onClick={() => setConfirmNormalModal({ product, currencyType: "CASH" })}
+                          onClick={() => handleBuyClick(product, "CASH")}
                         >
-                          <span className="currency-label">Cash</span>
+                          <span className="currency-label mr-2">Cash</span>
                           <span className="currency-val">{product.priceCash.toLocaleString()}</span>
-                        </button>
+                        </OutlawButton>
                       )}
 
                       {product.priceDiamond !== undefined && (
-                        <button
-                          className="buy-currency-btn dia-btn active-scale-effect"
+                        <OutlawButton
+                          variant="secondary"
+                          className="flex-1 text-neon-cyan"
                           disabled={isLoading}
-                          onClick={() => setConfirmNormalModal({ product, currencyType: "DIAMOND" })}
+                          onClick={() => handleBuyClick(product, "DIAMOND")}
                         >
-                          <span className="currency-label">Dia</span>
+                          <span className="currency-label mr-2 text-white">Dia</span>
                           <span className="currency-val">{product.priceDiamond.toLocaleString()}</span>
-                        </button>
+                        </OutlawButton>
                       )}
                     </div>
-                  </div>
+                  </OutlawCard>
                 ))}
               </div>
             </div>
@@ -295,82 +363,6 @@ export default function ShopTab() {
         )}
 
       </div>
-
-      {/* ==================================================== */}
-      {/* ■ 通常アイテム購入確認モーダル                       */}
-      {/* ==================================================== */}
-      {confirmNormalModal && (
-        <div className="modal-overlay" onClick={() => setConfirmNormalModal(null)}>
-          <div className="modal-content shop-confirm-modal" onClick={e => e.stopPropagation()}>
-            <h3 className="modal-title">購入の確認</h3>
-            <p className="modal-body-text">
-              {confirmNormalModal.product.title} を
-              <span className="font-bold text-gold mx-1">
-                {confirmNormalModal.currencyType === "CASH" 
-                  ? `${confirmNormalModal.product.priceCash?.toLocaleString()} キャッシュ`
-                  : `${confirmNormalModal.product.priceDiamond?.toLocaleString()} ダイヤ`}
-              </span>
-              で購入しますか？
-            </p>
-
-            <div className="modal-actions">
-              <button
-                className="modal-cancel-btn active-scale-effect"
-                onClick={() => setConfirmNormalModal(null)}
-              >
-                キャンセル
-              </button>
-              <button
-                className="modal-confirm-btn active-scale-effect"
-                disabled={isLoading}
-                onClick={async () => {
-                  const target = confirmNormalModal;
-                  setConfirmNormalModal(null);
-                  await handleBuyNormalProduct(target.product.id, target.currencyType);
-                }}
-              >
-                {isLoading ? <span className="shop-btn-spinner" /> : "購入する"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ==================================================== */}
-      {/* ■ 購入完了・入手ログモーダル (プレゼントBOX送付告知)  */}
-      {/* ==================================================== */}
-      {boughtResultModal && (
-        <div className="modal-overlay" onClick={() => setBoughtResultModal(null)}>
-          <div className="modal-content shop-result-modal" onClick={e => e.stopPropagation()}>
-            <div className="result-modal-header">
-              <h3 className="result-modal-title">購入完了</h3>
-            </div>
-
-            <div className="result-items-list">
-              {boughtResultModal.items.map((it: ShopProductItem, idx: number) => (
-                <div key={idx} className="result-item-row">
-                  <span className="result-item-name">{it.itemName}</span>
-                  <span className="result-item-qty">+{it.quantity.toLocaleString()}</span>
-                </div>
-              ))}
-            </div>
-
-            <p className="result-notice-text">
-              獲得したアイテムは<span className="text-gold font-bold mx-1">プレゼントBOX</span>に転送されました。
-            </p>
-
-            <div className="modal-actions mt-4">
-              <button
-                className="modal-confirm-btn active-scale-effect w-full"
-                onClick={() => setBoughtResultModal(null)}
-              >
-                OK
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
     </div>
   );
 }

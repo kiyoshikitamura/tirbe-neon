@@ -1,15 +1,24 @@
 import React from "react";
 import { useGame } from "../context/GameContext";
+import FullScreenPanel from "./ui/FullScreenPanel";
 import "./LegalPanel.css";
 
 export default function LegalPanel() {
-  const { showLegalPage, setShowLegalPage, playCyberSe } = useGame();
+  const { showLegalPage, setShowLegalPage } = useGame();
 
   if (!showLegalPage) return null;
 
   const handleClose = () => {
-    playCyberSe("click");
     setShowLegalPage(null);
+  };
+
+  const getTitle = () => {
+    switch (showLegalPage) {
+      case "tos": return "利用規約";
+      case "privacy": return "プライバシーポリシー";
+      case "commercial": return "特定商取引法に基づく表記";
+      default: return "法的情報";
+    }
   };
 
   const renderContent = () => {
@@ -63,28 +72,10 @@ export default function LegalPanel() {
   };
 
   return (
-    <div className="legal-panel-overlay">
-      <div className="legal-panel-container">
-        {/* ヘッダー */}
-        <div className="legal-panel-header">
-          <button className="legal-back-btn active-scale-effect" onClick={handleClose}>
-            ‹ 戻る
-          </button>
-          <div className="legal-title">
-            <span>
-              {showLegalPage === "tos" ? "利用規約" : 
-               showLegalPage === "privacy" ? "プライバシーポリシー" : 
-               showLegalPage === "commercial" ? "特定商取引法に基づく表記" : "法的情報"}
-            </span>
-          </div>
-          <div className="legal-header-spacer"></div>
-        </div>
-
-        {/* コンテンツエリア */}
-        <div className="legal-panel-body scroll-container">
-          {renderContent()}
-        </div>
+    <FullScreenPanel title={getTitle()} onClose={handleClose}>
+      <div className="legal-panel-container-inner">
+        {renderContent()}
       </div>
-    </div>
+    </FullScreenPanel>
   );
 }
