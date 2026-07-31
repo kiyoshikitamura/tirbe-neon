@@ -28,6 +28,7 @@ import { SHOP_PRODUCTS_MASTER, ShopProductItem } from "@/utils/shop_master_data"
 import { ConfirmDialogConfig } from "@/app/components/ui/ConfirmDialog";
 import { useNavigation } from "./hooks/useNavigation";
 import { useAuth } from "./hooks/useAuth";
+import { useChat } from "./hooks/useChat";
 
 const GameContext = createContext<any>(null);
 
@@ -111,8 +112,6 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const [bgmEnabled, setBgmEnabled] = useState<boolean>(true);
   const [seEnabled, setSeEnabled] = useState<boolean>(true);
   const [profileLoading, setProfileLoading] = useState<boolean>(false);
-  const [activeUsersCount, setActiveUsersCount] = useState<number>(1);
-  const [chatCooldown, setChatCooldown] = useState<number>(0);
 
   const [userGuild, setUserGuild] = useState<any | null>(null);
   const [userGuildMember, setUserGuildMember] = useState<any | null>(null);
@@ -124,6 +123,35 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const [guildXpActionMaster, setGuildXpActionMaster] = useState<any[]>([]);
 
   const [selectedLeader, setSelectedLeader] = useState<string>("11111111-1111-1111-1111-111111111111");
+
+  const chat = useChat(
+    session,
+    username,
+    selectedLeader,
+    userGuildMember,
+    (type: string) => playCyberSe(type as any)
+  );
+
+  const {
+    guildChats, setGuildChats,
+    chatChannel, setChatChannel,
+    chatInput, setChatInput,
+    chatSending, setChatSending,
+    chatCooldown, setChatCooldown,
+    activeUsersCount, setActiveUsersCount,
+    directMessages, setDirectMessages,
+    dmRecipientId, setDmRecipientId,
+    bbsThreads, setBbsThreads,
+    bbsActiveThread, setBbsActiveThread,
+    bbsPosts, setBbsPosts,
+    bbsLoading, setBbsLoading,
+    handleSendChat,
+    handleSendDirectMessage,
+    fetchBbsThreads,
+    fetchBbsPosts,
+    createBbsThread,
+    createBbsPost
+  } = chat;
   const [upgradeSelectedCharId, setUpgradeSelectedCharId] = useState<string>("11111111-1111-1111-1111-111111111111");
   const [characterLevel, setCharacterLevel] = useState<number>(1);
   const [characterAwaken, setCharacterAwaken] = useState<number>(0);
@@ -160,10 +188,6 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const [equippedFrontEffect, setEquippedFrontEffect] = useState<string>("effect_none");
   const [titleEquipped, setTitleEquipped] = useState<string>("title_none");
   const [interiorItem, setInteriorItem] = useState<string>("none");
-
-  // --- DM (Direct Messages) 機能ステート ---
-  const [directMessages, setDirectMessages] = useState<any[]>([]);
-  const [dmRecipientId, setDmRecipientId] = useState<string>("");
 
   const [userEquipmentsList, setUserEquipmentsList] = useState<any[]>([]);
   const [selectedEquipment, setSelectedEquipment] = useState<any | null>(null);
@@ -292,17 +316,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const [selectedNews, setSelectedNews] = useState<any | null>(null);
   const [showImportantModal, setShowImportantModal] = useState<boolean>(true);
 
-  const [guildChats, setGuildChats] = useState<any[]>([]);
-  const [chatChannel, setChatChannel] = useState<"GLOBAL" | "GUILD" | "DM">("GLOBAL");
-  const [chatInput, setChatInput] = useState<string>("");
-  const [chatSending, setChatSending] = useState<boolean>(false);
   const [totalPower, setTotalPower] = useState<number>(0);
-
-  // 💬 BBS用ステート
-  const [bbsThreads, setBbsThreads] = useState<any[]>([]);
-  const [bbsActiveThread, setBbsActiveThread] = useState<any | null>(null);
-  const [bbsPosts, setBbsPosts] = useState<any[]>([]);
-  const [bbsLoading, setBbsLoading] = useState<boolean>(false);
 
   const [upgradeLoading, setUpgradeLoading] = useState<boolean>(false);
   const [dispatchLoading, setDispatchLoading] = useState<boolean>(false);
@@ -4681,166 +4695,6 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const handleSendChat = async () => {
-    if (!session || !chatInput.trim() || chatCooldown > 0) return;
-    setChatSending(true);
-    playCyberSe("click");
-
-    try {
-      const targetId = chatChannel === "GUILD" 
-        ? (userGuildMember?.guild_id || null) 
-        : null;
-
-      const leaderChar = CHARACTERS_MASTER.find(c => c.id === selectedLeader) || CHARACTERS_MASTER[0];
-      const avatarUrlToSend = leaderChar.img;
-
-      const newPost = {
-        id: "temp_" + Date.now(),
-        user_id: session.user.id,
-        author_name: username,
-        author_avatar_url: avatarUrlToSend,
-        content: chatInput,
-        target_type: chatChannel,
-        target_id: targetId,
-        is_system: false,
-        created_at: new Date().toISOString()
-      };
-      setGuildChats(prev => [...prev, newPost]);
-
-      await supabase.from("board_posts").insert({
-        user_id: session.user.id,
-        author_name: username,
-        author_avatar_url: avatarUrlToSend,
-        content: chatInput,
-        target_type: chatChannel,
-        target_id: targetId,
-        is_system: false
-      });
-      setChatInput("");
-      setChatCooldown(chatChannel === "GUILD" ? 3 : 10);
-    } catch (err: any) {
-      console.warn(err.message);
-    } finally {
-      setChatSending(false);
-    }
-  };
-
-  // ✉️ 個人チャット(DM) 送信処理
-  const handleSendDirectMessage = async (recipientId: string, text: string) => {
-    if (!text.trim()) return;
-    playCyberSe("click");
-    const newMsg = {
-      id: "dm_" + Date.now(),
-      sender_id: session?.user?.id || "my_id",
-      sender_name: username,
-      recipient_id: recipientId,
-      message: text,
-      created_at: new Date().toISOString(),
-    };
-    try {
-      if (session?.user?.id) {
-        await supabase.from("direct_messages").insert({
-          sender_id: session.user.id,
-          recipient_id: recipientId,
-          message: text,
-        });
-      }
-    } catch (err: any) {
-      console.warn("direct_messages insert error:", err.message);
-    }
-    setDirectMessages((prev) => [...prev, newMsg]);
-  };
-
-  // 💬 BBS用関数
-  const fetchBbsThreads = async (category: "RECRUIT" | "STRATEGY_CHAT") => {
-    setBbsLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from("bbs_threads")
-        .select("*")
-        .eq("category", category)
-        .order("updated_at", { ascending: false });
-      if (error) throw error;
-      setBbsThreads(data || []);
-    } catch (err: any) {
-      console.warn("fetchBbsThreads error:", err.message);
-    } finally {
-      setBbsLoading(false);
-    }
-  };
-
-  const createBbsThread = async (category: "RECRUIT" | "STRATEGY_CHAT", title: string, content: string) => {
-    if (!session) return;
-    try {
-      const leaderChar = CHARACTERS_MASTER.find(c => c.id === selectedLeader) || CHARACTERS_MASTER[0];
-      const avatarUrlToSend = leaderChar.img;
-
-      const { data, error } = await supabase
-        .from("bbs_threads")
-        .insert({
-          category,
-          title,
-          content,
-          user_id: session.user.id,
-          author_name: username,
-          author_avatar_url: avatarUrlToSend
-        })
-        .select()
-        .single();
-      if (error) throw error;
-
-      if (data) {
-        setBbsThreads(prev => [data, ...prev]);
-        setBbsActiveThread(data);
-        await fetchBbsPosts(data.id);
-      }
-    } catch (err: any) {
-      console.warn("createBbsThread error:", err.message);
-      throw err;
-    }
-  };
-
-  const fetchBbsPosts = async (threadId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from("bbs_posts")
-        .select("*")
-        .eq("thread_id", threadId)
-        .order("created_at", { ascending: true });
-      if (error) throw error;
-      setBbsPosts(data || []);
-    } catch (err: any) {
-      console.warn("fetchBbsPosts error:", err.message);
-    }
-  };
-
-  const createBbsPost = async (threadId: string, content: string) => {
-    if (!session) return;
-    try {
-      const leaderChar = CHARACTERS_MASTER.find(c => c.id === selectedLeader) || CHARACTERS_MASTER[0];
-      const avatarUrlToSend = leaderChar.img;
-
-      const { data, error } = await supabase
-        .from("bbs_posts")
-        .insert({
-          thread_id: threadId,
-          user_id: session.user.id,
-          author_name: username,
-          author_avatar_url: avatarUrlToSend,
-          content
-        })
-        .select()
-        .single();
-      if (error) throw error;
-
-      if (data) {
-        setBbsPosts(prev => [...prev, data]);
-      }
-    } catch (err: any) {
-      console.warn("createBbsPost error:", err.message);
-      throw err;
-    }
-  };
 
 
   const handleClaimPresent = async (id: string) => {
