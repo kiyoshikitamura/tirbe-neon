@@ -3,9 +3,12 @@
 -- Migration: 20260731000000_initial_schema.sql
 -- =================================================================
 
--- -----------------------------------------------------------------
--- 1. MASTER DATA TABLES
--- -----------------------------------------------------------------
+-- 既存の古いテーブル構造（UUID/TEXT型ミスマッチ等）が存在する場合に備えて再構築
+DROP TABLE IF EXISTS public.patrol_npcs CASCADE;
+DROP TABLE IF EXISTS public.quests CASCADE;
+DROP TABLE IF EXISTS public.quest_towns CASCADE;
+DROP TABLE IF EXISTS public.gacha_items_master CASCADE;
+DROP TABLE IF EXISTS public.gacha_masters CASCADE;
 
 CREATE TABLE IF NOT EXISTS public.character_growth_patterns (
     pattern_id TEXT PRIMARY KEY,
