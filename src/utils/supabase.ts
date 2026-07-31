@@ -4,8 +4,8 @@ import { CHARACTERS_MASTER, CHARACTER_GROWTH_PATTERNS, CHARACTER_AWAKENING_MASTE
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://ktpolnkyyfkowxdmijww.supabase.co";
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
 
-// アプリケーションがダミーのキーで実行されているか判定
-const isDummy = supabaseAnonKey.includes("dummy_key") || !supabaseAnonKey;
+// アプリケーションがダミーのキーで実行されているか、または強制モックモードか判定
+const isDummy = true; // 強制的にローカルモックDBを使用 (未作成のテーブルによるVercel環境での404エラーを防止)
 
 // ローカルストレージを利用した完全整合のモックデータベースクライアント
 class MockSupabaseClient {
