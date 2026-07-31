@@ -74,6 +74,19 @@ This file defines the project-specific rules, design constraints, and technical 
   - スクロールバーにネオンカラー（シアン・マゼンタのグラデーション等）を使用することを禁止する。
   - つや消しメタル調のグレー系（例: `rgba(160, 160, 170, 0.3)`）で統一する。
 
+## 4.1 共通UIコンポーネントとレイヤー型ナビゲーション規約
+- **レイヤーベースの画面スタック**:
+  - `Layer 1: Footer` (マイページ、ギルド等。メインタブ用)
+  - `Layer 2: Standard Views` (各メインタブのコンテンツ)
+  - `Layer 3: Compact Modals` (`ConfirmDialog`, `CommonModals`等。暗いオーバーレイの上に浮かぶ角丸モーダル。背景タップで閉じる/キャンセル)
+  - `Layer 4: Full-Screen Panels` (各種詳細パネル。画面最下部に大きく「閉じる」ボタンを固定配置する `FullScreenPanel` コンポーネントを使用し、ヘッダー左上の戻るボタンは廃止)
+- **共通UIコンポーネントの使用義務**:
+  - 新規UI実装・既存UIリファクタリング時は必ず `src/app/components/ui/` 以下の共通コンポーネント (`OutlawButton`, `OutlawCard`, `SectionHeader`, `SubTabNav`, `ConfirmDialog`, `FullScreenPanel`, `GlobalInteractionBlocker`) を使用すること。
+  - ダイアログはブラウザデフォルトの `window.confirm` や `alert` を一切禁止し、必ず `useGame().setConfirmDialogConfig` を用いて `ConfirmDialog` を呼び出すこと。
+  - `ConfirmDialog` のデザインはヘッダー帯を設けず、暗い背景（`#11131c`付近）にネオンカラーのボーダー（シアンまたはマゼンタ）を持たせ、タイトルにはネオン発光効果（`text-shadow`）を付与したスタイルに厳格に統一すること。
+- **連打防止 (Global Interaction Blocker)**:
+  - 非同期通信を伴う処理中や画面遷移中など、二重タップによるバグ発生が懸念される箇所では必ず `setGlobalInteractionBlocking(true)` を使用し、処理完了後に `false` に戻すこと。
+
 ## 5. アプリケーション設計と構造ルール
 - **Context ＆ カスタムフックへのロジック移譲**:
   - 状態定義および Supabase DB との状態同期は React Context (`GameContext.tsx`) にて一元管理し、バトル進行などの巨大なドメインロジックは専用カスタムフック (`useBattle.ts`) へ切り出してカプセル化します。
