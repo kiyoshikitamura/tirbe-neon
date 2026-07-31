@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import "./UiPreviewTab.css";
-import { useGame } from "../../context/GameContext";
+import { useGame } from "../context/GameContext";
 import OutlawButton from "./ui/OutlawButton";
 import OutlawCard from "./ui/OutlawCard";
 import SectionHeader from "./ui/SectionHeader";
