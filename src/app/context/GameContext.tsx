@@ -37,6 +37,7 @@ import { useGvg } from "./hooks/useGvg";
 import { useRaid } from "./hooks/useRaid";
 import { usePatrol } from "./hooks/usePatrol";
 import { useGacha } from "./hooks/useGacha";
+import { useShop } from "./hooks/useShop";
 
 const GameContext = createContext<any>(null);
 
@@ -331,6 +332,15 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     scoutResults, setScoutResults
   } = gacha;
 
+  const shop = useShop();
+
+  const {
+    shopSubTab, setShopSubTab,
+    userShopPurchases, setUserShopPurchases,
+    userCreatedAt, setUserCreatedAt,
+    boughtResultModal, setBoughtResultModal
+  } = shop;
+
 
   const chat = useChat(
     session,
@@ -411,10 +421,6 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const [lastPaymentSessionId, setLastPaymentSessionId] = useState<string>("");
 
   const [upgradeSubTab, setUpgradeSubTab] = useState<string>("character");
-  const [shopSubTab, setShopSubTab] = useState<string>("LIMITED");
-  const [userShopPurchases, setUserShopPurchases] = useState<Record<string, number>>({});
-  const [userCreatedAt, setUserCreatedAt] = useState<string | null>(null);
-  const [boughtResultModal, setBoughtResultModal] = useState<{ productTitle: string; items: ShopProductItem[]; message: string } | null>(null);
 
 
 
