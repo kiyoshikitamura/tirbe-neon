@@ -36,6 +36,7 @@ import { usePvp } from "./hooks/usePvp";
 import { useGvg } from "./hooks/useGvg";
 import { useRaid } from "./hooks/useRaid";
 import { usePatrol } from "./hooks/usePatrol";
+import { useGacha } from "./hooks/useGacha";
 
 const GameContext = createContext<any>(null);
 
@@ -318,6 +319,18 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     handleClaimRewards
   } = patrol;
 
+  const gacha = useGacha();
+
+  const {
+    gachaMasters, setGachaMasters,
+    gachaItemsMaster, setGachaItemsMaster,
+    dailyFreeGachaFlags, setDailyFreeGachaFlags,
+    specialPityPoints, setSpecialPityPoints,
+    scoutAnimationState, setScoutAnimationState,
+    scoutFlashingColor, setScoutFlashingColor,
+    scoutResults, setScoutResults
+  } = gacha;
+
 
   const chat = useChat(
     session,
@@ -378,18 +391,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const [activeSkillSlot, setActiveSkillSlot] = useState<number | null>(null);
   const [showSkillModal, setShowSkillModal] = useState<boolean>(false);
 
-  const [gachaMasters, setGachaMasters] = useState<any[]>([]);
-  const [gachaItemsMaster, setGachaItemsMaster] = useState<any[]>([]);
-  const [dailyFreeGachaFlags, setDailyFreeGachaFlags] = useState<{ CHARACTER: boolean; SKILL: boolean; EQUIPMENT: boolean }>({
-    CHARACTER: true,
-    SKILL: true,
-    EQUIPMENT: true
-  });
-  const [specialPityPoints, setSpecialPityPoints] = useState<number>(0);
 
-  const [scoutAnimationState, setScoutAnimationState] = useState<null | "FLASHING" | "SHOW_RESULTS">(null);
-  const [scoutFlashingColor, setScoutFlashingColor] = useState<"BLUE" | "PURPLE" | "GOLD">("BLUE");
-  const [scoutResults, setScoutResults] = useState<any[]>([]);
 
 
 
