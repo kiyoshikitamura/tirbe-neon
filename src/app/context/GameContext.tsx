@@ -26,6 +26,7 @@ import { useBattle } from "@/hooks/useBattle";
 import { getCharacterTotalStats } from "@/utils/stats_calculator";
 import { SHOP_PRODUCTS_MASTER, ShopProductItem } from "@/utils/shop_master_data";
 import { ConfirmDialogConfig } from "@/app/components/ui/ConfirmDialog";
+import { useNavigation } from "./hooks/useNavigation";
 
 const GameContext = createContext<any>(null);
 
@@ -65,15 +66,27 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const [diamonds, setDiamonds] = useState<number>(200);
   const [vitality, setVitality] = useState<number>(100);
   const [pvpTickets, setPvpTickets] = useState<number>(5);
-  const [activeTab, setActiveTab] = useState<string>("home");
-  const [showInboxPanel, setShowInboxPanel] = useState(false);
-  const [showMissionPanel, setShowMissionPanel] = useState(false);
-  const [showFriendPanel, setShowFriendPanel] = useState(false);
-  const [showSettingsPanel, setShowSettingsPanel] = useState(false);
-  const [showTribeChatPanel, setShowTribeChatPanel] = useState(false);
-  const [showMoveBaseModal, setShowMoveBaseModal] = useState(false);
-  const [showLegalPage, setShowLegalPage] = useState<string | null>(null);
-  const [showTitleView, setShowTitleView] = useState(true);
+
+  const nav = useNavigation(
+    (type: string) => {}, // Placeholder for playCyberSe
+    () => {} // Placeholder for handleFirstUserInteraction
+  );
+
+  const {
+    activeTab, setActiveTab,
+    showInboxPanel, setShowInboxPanel,
+    showMissionPanel, setShowMissionPanel,
+    showFriendPanel, setShowFriendPanel,
+    showSettingsPanel, setShowSettingsPanel,
+    showTribeChatPanel, setShowTribeChatPanel,
+    showMoveBaseModal, setShowMoveBaseModal,
+    showLegalPage, setShowLegalPage,
+    showTitleView, setShowTitleView,
+    inboxPanelTab, setInboxPanelTab,
+    rankingActiveTab, setRankingActiveTab,
+    confirmDialogConfig, setConfirmDialogConfig,
+    globalInteractionBlocking, setGlobalInteractionBlocking
+  } = nav;
 
   const [username, setUsername] = useState<string>("半グレの首領");
   const [bio, setBio] = useState<string>("歌舞伎町の覇権を握るため立ち上がる。");
@@ -85,7 +98,6 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const [profileLoading, setProfileLoading] = useState<boolean>(false);
   const [activeUsersCount, setActiveUsersCount] = useState<number>(1);
   const [chatCooldown, setChatCooldown] = useState<number>(0);
-  const [inboxPanelTab, setInboxPanelTab] = useState<"presents" | "news">("presents");
 
   const [userGuild, setUserGuild] = useState<any | null>(null);
   const [userGuildMember, setUserGuildMember] = useState<any | null>(null);
@@ -99,14 +111,6 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const [selectedLeader, setSelectedLeader] = useState<string>("11111111-1111-1111-1111-111111111111");
   const [upgradeSelectedCharId, setUpgradeSelectedCharId] = useState<string>("11111111-1111-1111-1111-111111111111");
   const [characterLevel, setCharacterLevel] = useState<number>(1);
-  const [confirmDialogConfig, setConfirmDialogConfig] = useState<ConfirmDialogConfig>({
-    isOpen: false,
-    title: "",
-    message: "",
-    onConfirm: () => {},
-    onCancel: () => {},
-  });
-  const [globalInteractionBlocking, setGlobalInteractionBlocking] = useState<boolean>(false);
   const [characterAwaken, setCharacterAwaken] = useState<number>(0);
   const [userCharactersDbList, setUserCharactersDbList] = useState<any[]>([]);
 
@@ -246,7 +250,6 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const [raidBossMaxHp, setRaidBossMaxHp] = useState<number>(9999999);
   const [raidBossSecondsLeft, setRaidBossSecondsLeft] = useState<number>(86400);
   const [raidTotalDamage, setRaidTotalDamage] = useState<number>(0);
-  const [rankingActiveTab, setRankingActiveTab] = useState<string>("power");
   const [raidBossBaseId, setRaidBossBaseId] = useState<string>("neon_tower");
   const [raidBossName, setRaidBossName] = useState<string>("極道連合組長");
 
@@ -5270,21 +5273,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const unclaimedPresentsCount = presents.filter(p => p.status === "UNCLAIMED").length;
 
   const navigateTab = (tabName: string, subTab?: string) => {
-    handleFirstUserInteraction();
-    playCyberSe("click");
-    setActiveTab(tabName);
     setSelectedNews(null);
-    // パネル系を全て閉じる
-    setShowInboxPanel(false);
-    setShowMissionPanel(false);
-    setShowFriendPanel(false);
-    setShowSettingsPanel(false);
-    setShowTribeChatPanel(false);
-    setShowMoveBaseModal(false);
-    setShowLegalPage(null);
-    if (tabName === "ranking" && subTab) {
-      setRankingActiveTab(subTab);
-    }
+    nav.navigateTab(tabName, subTab);
   };
 
   useEffect(() => {
