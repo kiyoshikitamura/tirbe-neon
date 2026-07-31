@@ -173,6 +173,12 @@ function MainMyPage() {
       onClick: () => setShowSettingsPanel(true)
     },
     {
+      id: "ui_preview",
+      label: "Preview",
+      icon: "/ui/icon_settings.png",
+      onClick: () => navigateTab("ui_preview")
+    },
+    {
       id: "raid",
       label: "レイド",
       icon: "/ui/icon_raid.png",
