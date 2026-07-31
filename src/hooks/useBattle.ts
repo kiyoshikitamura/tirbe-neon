@@ -11,66 +11,11 @@ import {
 } from "@/utils/game_constants";
 import { getCharacterTotalStats, getCharacterApBonus } from "@/utils/stats_calculator";
 
-export interface UseBattleOptions {
-  session: any;
-  userCharactersDbList: any[];
-  skillLimitBreakMaster: any[];
-  userEquipmentsList: any[];
-  userSkillsList: any[];
-  selectedMembers: string[];
-  selectedLeader: string;
-  userGuild: any;
-  userGuildMember: any;
-  gvgBaseControls: any[];
-  currentBaseId: string;
-  username: string;
-  playCyberSe: (type: "click" | "attack" | "hit" | "gacha") => void;
-  syncBootstrapData: (userId: string) => Promise<void>;
-  pvpTickets: number;
-  setPvpTickets: React.Dispatch<React.SetStateAction<number>>;
-  userLevel: number;
-  setUserLevel: React.Dispatch<React.SetStateAction<number>>;
-  userXp: number;
-  setUserXp: React.Dispatch<React.SetStateAction<number>>;
-  pvpPoints: number;
-  setPvpPoints: React.Dispatch<React.SetStateAction<number>>;
-  pvpRankings: any[];
-  raidBossHp: number;
-  setRaidBossHp: React.Dispatch<React.SetStateAction<number>>;
-  raidBossMaxHp: number;
-  setRaidBossMaxHp: React.Dispatch<React.SetStateAction<number>>;
-  raidTotalDamage: number;
-  setRaidTotalDamage: React.Dispatch<React.SetStateAction<number>>;
-  cash: number;
-  setCash: React.Dispatch<React.SetStateAction<number>>;
-  setErrorMessage: (msg: string | null) => void;
-  addGuildXpAndContributionByAction: (actionType: string) => Promise<void>;
-  patrolNpcs?: any[];
-  patrol?: any;
-}
+import { UseBattleOptions, ParticipantState, CardState, SkillLogItem } from "./battle/battleTypes";
+import { selectCharacterSkillByTactic } from "./battle/battleAI";
+import { postNpcYajiMessage, saveBattleSessionState } from "./battle/battleUtils";
 
-export interface ParticipantState {
-  id: string; // "char_xxx" or "ENEMY_xxx" or "ENEMY"
-  name: string;
-  characterId: string; // Master Character ID
-  alignment?: string; // アライメント (JUSTICE, EVIL, ORDER, CHAOS)
-  level: number;
-  hp: number;
-  maxHp: number;
-  shield: number;
-  isDead: boolean;
-  isEnemy: boolean;
-  tauntTurns: number;
-  stunTurns: number; // スタン手番スキップ用ターン数
-  stats: {
-    hp: number;
-    atk: number;
-    def: number;
-    spd: number;
-    luk: number;
-  };
-  skills: any[]; // List of master skills equipped
-}
+export type { UseBattleOptions, ParticipantState, CardState, SkillLogItem };
 
 export function useBattle(options: UseBattleOptions) {
   const {
@@ -136,56 +81,7 @@ export function useBattle(options: UseBattleOptions) {
   const [activeShakingCharId, setActiveShakingCharId] = useState<string | null>(null);
   const [damagePopup, setDamagePopup] = useState<{ val: number; type: "dmg" | "heal" | "shield"; isCritical?: boolean; x: number; y: number; charId: string } | null>(null);
 
-  const postNpcYajiMessage = async (type: "GLOBAL" | "BASE", baseId: string, triggerReason: string) => {
-    if (!session) return;
-    const npcs = ["リュウ", "カイ", "シン", "ハヤト", "ユキ"];
-    const npc = npcs[Math.floor(Math.random() * npcs.length)];
 
-    let text = "";
-    if (triggerReason === "PVP_WIN") {
-      text = `${username} がPvPで荒稼ぎしているらしいぞ。`;
-    } else if (triggerReason === "GVG_WIN") {
-      text = `拠点 ${baseId.toUpperCase()} で激しい縄張り争いが発生！ポイントが更新された！`;
-    } else if (triggerReason === "RAID_DAMAGE") {
-      text = `新宿カイザーのHPが削られたぞ！全構成員、攻撃を緩めるな！`;
-    } else {
-      text = `今夜の歓楽街、なんだかネオンが怪しく発光しているな。`;
-    }
-
-    try {
-      await supabase.from("board_posts").insert({
-        user_id: "00000000-0000-0000-0000-000000000099",
-        author_name: npc,
-        content: text,
-        target_type: type,
-        target_id: type === "BASE" ? baseId : null,
-        is_system: false
-      });
-    } catch (e) {
-      console.warn("NPC chat post failed:", e);
-    }
-  };
-
-  const saveBattleSessionState = async (
-    sId: string,
-    playerStates: ParticipantState[],
-    enemyStates: ParticipantState[],
-    apVal: number,
-    maxApVal: number,
-    tacticVal: any,
-    logs: string[],
-    tlIdx: number,
-    gvgAreaId: string | null
-  ) => {
-    try {
-      await supabase.from("battle_sessions").update({
-        player_state: { playerStates, ap: apVal, maxAp: maxApVal, tactic: tacticVal, log: logs, timelineIndex: tlIdx, gvgAreaId },
-        enemy_state: { enemyStates }
-      }).eq("id", sId);
-    } catch (err) {
-      console.warn(err);
-    }
-  };
 
   // 進行中のバトルセッションを復元 (Resume) する関数
   const resumeActiveBattleSession = async () => {
@@ -1181,103 +1077,9 @@ export function useBattle(options: UseBattleOptions) {
     }
 
     // 1. スキル候補の選定
-    const basicAttack = { id: "basic_attack", name: "通常攻撃", ap_cost: 0, power: 30, effect_type: "ATTACK", ownerId: "BASIC" };
-    const basicDefense = { id: "basic_defense", name: "通常防御", ap_cost: 0, power: 25, effect_type: "DEFENSE", ownerId: "BASIC" };
-
-    const pool = [...actor.skills, basicAttack, basicDefense];
-
-    // 消費AP軽減（得意スキルボーナス）の適用
-    const costEvaluatedPool = pool.map(s => {
-      const isSynergy = s.ownerId === actor.characterId;
-      const actualCost = isSynergy ? Math.max(s.ap_cost - 1, 1) : s.ap_cost;
-      return { ...s, actualCost };
-    });
-
-    // 部隊AP以下のスキルを抽出
-    let availableSkills = costEvaluatedPool.filter(s => s.actualCost <= ap);
-
-    // 2. 作戦AIによるスキル＆ターゲット決定
-    let chosenSkill: any = basicAttack;
-    let target: any = null;
-
-    const aliveEnemies = enemyPartyStates.filter(e => !e.isDead);
-    if (aliveEnemies.length === 0) return;
-
-    // 基本ターゲットはHP割合が最も低い敵
-    let defaultEnemyTarget = aliveEnemies.sort((a, b) => (a.hp / a.maxHp) - (b.hp / b.maxHp))[0];
-
-    if (tactic === "OFFENSIVE") {
-      // 攻撃最優先
-      const attackSkills = availableSkills.filter(s => s.effect_type === "ATTACK");
-      if (attackSkills.length > 0) {
-        chosenSkill = attackSkills.sort((a, b) => b.power - a.power)[0];
-      }
-      target = defaultEnemyTarget;
-    } else if (tactic === "DEFENSIVE") {
-      // 防御・シールド・挑発優先
-      const defenseSkills = availableSkills.filter(s => s.effect_type === "DEFENSE" || s.effect_type === "SUPPORT");
-      if (defenseSkills.length > 0) {
-        chosenSkill = defenseSkills.sort((a, b) => b.power - a.power)[0];
-      } else {
-        const attackSkills = availableSkills.filter(s => s.effect_type === "ATTACK");
-        if (attackSkills.length > 0) chosenSkill = attackSkills[0];
-      }
-      target = actor; // 自分自身、または味方全体
-    } else if (tactic === "HEALING") {
-      // HP70%以下の味方がいれば回復、いなければ攻撃
-      const alivePlayers = playerPartyStates.filter(p => !p.isDead);
-      const damagedPlayer = alivePlayers.sort((a, b) => (a.hp / a.maxHp) - (b.hp / b.maxHp))[0];
-      const needsHeal = damagedPlayer && (damagedPlayer.hp / damagedPlayer.maxHp) < 0.7;
-
-      const healSkills = availableSkills.filter(s => s.effect_type === "HEAL");
-
-      if (needsHeal && healSkills.length > 0) {
-        chosenSkill = healSkills.sort((a, b) => b.power - a.power)[0];
-        target = damagedPlayer;
-      } else {
-        const attackSkills = availableSkills.filter(s => s.effect_type === "ATTACK");
-        if (attackSkills.length > 0) {
-          chosenSkill = attackSkills[0];
-        }
-        target = defaultEnemyTarget;
-      }
-    } else if (tactic === "BALANCED") {
-      const alivePlayers = playerPartyStates.filter(p => !p.isDead);
-      const damagedPlayer = alivePlayers.sort((a, b) => (a.hp / a.maxHp) - (b.hp / b.maxHp))[0];
-      const needsHeal = damagedPlayer && (damagedPlayer.hp / damagedPlayer.maxHp) < 0.5;
-
-      const healSkills = availableSkills.filter(s => s.effect_type === "HEAL");
-      const attackSkills = availableSkills.filter(s => s.effect_type === "ATTACK");
-
-      if (needsHeal && healSkills.length > 0) {
-        chosenSkill = healSkills[0];
-        target = damagedPlayer;
-      } else if (attackSkills.length > 0) {
-        chosenSkill = attackSkills.sort((a, b) => b.power - a.power)[0];
-        target = defaultEnemyTarget;
-      } else {
-        target = actor;
-      }
-    } else if (tactic === "AP_CONSERVING") {
-      if (ap < 6) {
-        chosenSkill = basicAttack;
-      } else {
-        chosenSkill = availableSkills.sort((a, b) => b.actualCost - a.actualCost)[0] || basicAttack;
-      }
-      target = defaultEnemyTarget;
-    } else if (tactic === "TACTICAL") {
-      const supportSkills = availableSkills.filter(s => s.effect_type === "SUPPORT" || s.effect_type === "JAMMER");
-      if (supportSkills.length > 0) {
-        chosenSkill = supportSkills[0];
-        target = chosenSkill.effect_type === "SUPPORT" ? actor : defaultEnemyTarget;
-      } else {
-        const attackSkills = availableSkills.filter(s => s.effect_type === "ATTACK");
-        if (attackSkills.length > 0) chosenSkill = attackSkills[0];
-        target = defaultEnemyTarget;
-      }
-    }
-
-    if (!target) target = defaultEnemyTarget;
+    const aiResult = selectCharacterSkillByTactic(actor, ap, tactic, playerPartyStates, enemyPartyStates);
+    if (!aiResult) return;
+    const { chosenSkill, target } = aiResult;
 
     // AP消費
     const nextAp = Math.max(ap - (chosenSkill.actualCost || 0), 0);
@@ -1516,7 +1318,7 @@ export function useBattle(options: UseBattleOptions) {
         }
       }
 
-      postNpcYajiMessage("GLOBAL", currentBaseId, "PVP_WIN");
+      postNpcYajiMessage(session, username, "GLOBAL", currentBaseId, "PVP_WIN");
       await syncBootstrapData(session.user.id);
       alert(`PvPバトル終了: ${result === "VICTORY" ? "勝利" : "敗北"}\n獲得ポイント: ${pointsDiff >= 0 ? "+" : ""}${pointsDiff}\n獲得キャッシュ: +${rewardCash}\n獲得経験値: +${xpAmount} XP${levelUpMessage}`);
     } else if (modeTemp === "RAID") {
@@ -1624,7 +1426,7 @@ export function useBattle(options: UseBattleOptions) {
         alert(`レイド攻撃完了。今回の与ダメ: ${totalDmg.toLocaleString()}`);
       }
 
-      postNpcYajiMessage("GLOBAL", currentBaseId, "RAID_DAMAGE");
+      postNpcYajiMessage(session, username, "GLOBAL", currentBaseId, "RAID_DAMAGE");
     } else if (modeTemp === "GVG") {
       const guildIdFilter = userGuildMember?.guild_id || "";
       if (guildIdFilter && gvgAreaTemp) {
@@ -1709,7 +1511,7 @@ export function useBattle(options: UseBattleOptions) {
 
               await supabase.rpc("evaluate_mission_progress", { p_user_id: session.user.id, p_trigger_type: "GVG_WIN", p_progress_increment: 1 });
               await addGuildXpAndContributionByAction("GVG");
-              postNpcYajiMessage("BASE", gvgAreaTemp, "GVG_WIN");
+              postNpcYajiMessage(session, username, "BASE", gvgAreaTemp, "GVG_WIN");
               alert("侵攻勝利！ 自組織の抗争ポイント +250。個人抗争ポイント +250。");
             } else {
               // 自ギルド -100、相手 +100
