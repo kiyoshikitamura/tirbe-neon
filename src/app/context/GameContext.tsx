@@ -689,9 +689,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         finalXp = nextXp - xpNeeded;
       }
 
-      await supabase.from("guilds")
-        .update({ xp: finalXp, level: nextLevel })
-        .eq("id", userGuild.id);
+      await supabase.rpc("admin_update_guild", { p_guild_id: userGuild.id, p_funds: userGuild.funds, p_level: nextLevel, p_xp: finalXp });
 
       await syncBootstrapData(session.user.id);
       
@@ -1811,13 +1809,12 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       const nextCash = currency === "CASH" ? cash - price : cash;
       const nextDiamonds = currency === "DIAMOND" ? diamonds - price : diamonds;
 
-      const { error: userUpdateError } = await supabase
-        .from("users")
-        .update({
-          cash: nextCash,
-          neon_diamonds: nextDiamonds
-        })
-        .eq("id", session.user.id);
+      const { error: userUpdateError } = await supabase.rpc("buy_avatar_part", {
+        p_user_id: session.user.id,
+        p_part_id: partId,
+        p_currency_type: currency,
+        p_price: price
+      });
 
       if (userUpdateError) {
         throw userUpdateError;
@@ -2283,6 +2280,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   };
 
   const handleGvgDailyReset = async () => {
+    // ADMIN_ONLY: 管理者デバッグ専用。RLSで一般ユーザーからのUPDATEを制限すること。中長期でServer Actions/Edge Functionsに移行予定。
     if (!session) return;
     setGvgResetLoading(true);
     playCyberSe("click");
@@ -2452,6 +2450,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   };
 
   const handleGvgSeasonReset = async () => {
+    // ADMIN_ONLY: 管理者デバッグ専用。RLSで一般ユーザーからのUPDATEを制限すること。中長期でServer Actions/Edge Functionsに移行予定。
     if (!session) return;
     setGvgResetLoading(true);
     playCyberSe("click");
@@ -2502,20 +2501,14 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         if (g1) {
           const decs = g1.unlocked_decorations || [];
           if (!decs.includes("bg_finals_winner")) decs.push("bg_finals_winner");
-          await supabase.from("guilds").update({
-            funds: Number(g1.funds || 0) + 500000,
-            unlocked_decorations: decs
-          }).eq("id", winnerGuildId);
+          await supabase.rpc("admin_update_guild_finals", { p_guild_id: winnerGuildId, p_funds_add: 500000, p_decorations: decs });
         }
 
         const { data: g2 } = await supabase.from("guilds").select("*").eq("id", runnerupGuildId).single();
         if (g2) {
           const decs = g2.unlocked_decorations || [];
           if (!decs.includes("bg_finals_runnerup")) decs.push("bg_finals_runnerup");
-          await supabase.from("guilds").update({
-            funds: Number(g2.funds || 0) + 300000,
-            unlocked_decorations: decs
-          }).eq("id", runnerupGuildId);
+          await supabase.rpc("admin_update_guild_finals", { p_guild_id: runnerupGuildId, p_funds_add: 300000, p_decorations: decs });
         }
 
         if (finalMatches[1]) {
@@ -2552,6 +2545,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   };
 
   const handlePvpSeasonReset = async () => {
+    // ADMIN_ONLY: 管理者デバッグ専用。RLSで一般ユーザーからのUPDATEを制限すること。中長期でServer Actions/Edge Functionsに移行予定。
     if (!session) return;
     setPvpSeasonLoading(true);
     playCyberSe("click");
@@ -2601,6 +2595,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   };
 
   const handleRaidBossDefeat = async () => {
+    // ADMIN_ONLY: 管理者デバッグ専用。RLSで一般ユーザーからのUPDATEを制限すること。中長期でServer Actions/Edge Functionsに移行予定。
     if (!session) return;
     setRaidDefeatLoading(true);
     playCyberSe("click");
@@ -2664,6 +2659,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   };
 
   const handleRaidSeasonReset = async () => {
+    // ADMIN_ONLY: 管理者デバッグ専用。RLSで一般ユーザーからのUPDATEを制限すること。中長期でServer Actions/Edge Functionsに移行予定。
     if (!session) return;
     setRaidDefeatLoading(true);
     playCyberSe("click");
@@ -2820,7 +2816,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
           return;
         }
         const nextDiamonds = diamonds - reqDia;
-        await supabase.rpc("add_test_diamonds", { p_user_id: session.user.id, p_amount: 5000 });
+        await supabase.rpc("execute_gacha", { p_user_id: session.user.id, p_currency_type: "diamonds", p_currency_cost: reqDia, p_results: [] });
         setDiamonds(nextDiamonds);
       } else {
         // CASH

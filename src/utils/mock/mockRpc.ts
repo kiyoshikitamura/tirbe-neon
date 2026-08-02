@@ -1102,10 +1102,10 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
   }
 
   if (funcName === "add_test_diamonds") {
-    const { p_user_id } = params;
+    const { p_user_id, p_amount } = params;
     const users = client.getStorage("users") || [];
     const user = users.find((u: any) => u.id === p_user_id);
-    if (user) user.neon_diamonds = (user.neon_diamonds || 0) + 50;
+    if (user) user.neon_diamonds = (user.neon_diamonds || 0) + (p_amount || 50);
     client.setStorage("users", users);
     return { data: { status: "success" }, error: null };
   }
@@ -1474,5 +1474,88 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     return { data: { status: "success" }, error: null };
   }
 
+  // --- Phase 3-B: Additional Mock Stubs ---
+
+  if (funcName === "add_test_cash") {
+    const { p_user_id, p_amount } = params;
+    const users = client.getStorage("users") || [];
+    const user = users.find((u: any) => u.id === p_user_id);
+    if (user) user.cash = (user.cash || 0) + (p_amount || 10000);
+    client.setStorage("users", users);
+    return { data: { status: "success" }, error: null };
+  }
+
+  if (funcName === "add_user_vitality") {
+    const { p_user_id, p_amount } = params;
+    const users = client.getStorage("users") || [];
+    const user = users.find((u: any) => u.id === p_user_id);
+    if (user) user.vitality = Math.min((user.vitality || 0) + (p_amount || 100), 200);
+    client.setStorage("users", users);
+    return { data: { status: "success" }, error: null };
+  }
+
+  if (funcName === "update_favorite_character") {
+    const { p_user_id, p_character_id } = params;
+    const users = client.getStorage("users") || [];
+    const user = users.find((u: any) => u.id === p_user_id);
+    if (user) user.favorite_character_id = p_character_id;
+    client.setStorage("users", users);
+    return { data: { status: "success" }, error: null };
+  }
+
+  if (funcName === "buy_avatar_part") {
+    const { p_user_id, p_currency_type, p_price } = params;
+    const users = client.getStorage("users") || [];
+    const user = users.find((u: any) => u.id === p_user_id);
+    if (!user) return { error: { message: "User not found" } };
+    if (p_currency_type === "CASH") {
+      if (user.cash < p_price) return { error: { message: "キャッシュが不足しています。" } };
+      user.cash -= p_price;
+    } else {
+      if ((user.neon_diamonds || 0) < p_price) return { error: { message: "ダイヤが不足しています。" } };
+      user.neon_diamonds -= p_price;
+    }
+    client.setStorage("users", users);
+    return { data: { status: "success" }, error: null };
+  }
+
+  if (funcName === "admin_update_guild") {
+    const { p_guild_id, p_funds, p_level, p_xp } = params;
+    const guilds = client.getStorage("guilds") || [];
+    const guild = guilds.find((g: any) => g.id === p_guild_id);
+    if (guild) {
+      guild.funds = p_funds;
+      guild.level = p_level;
+      guild.xp = p_xp;
+    }
+    client.setStorage("guilds", guilds);
+    return { data: { status: "success" }, error: null };
+  }
+
+  if (funcName === "admin_add_guild_funds") {
+    const { p_guild_id, p_amount } = params;
+    const guilds = client.getStorage("guilds") || [];
+    const guild = guilds.find((g: any) => g.id === p_guild_id);
+    if (guild) guild.funds = (guild.funds || 0) + p_amount;
+    client.setStorage("guilds", guilds);
+    return { data: { status: "success" }, error: null };
+  }
+
+  if (funcName === "admin_update_guild_finals") {
+    const { p_guild_id, p_funds_add, p_decorations } = params;
+    const guilds = client.getStorage("guilds") || [];
+    const guild = guilds.find((g: any) => g.id === p_guild_id);
+    if (guild) {
+      guild.funds = (guild.funds || 0) + p_funds_add;
+      guild.unlocked_decorations = p_decorations;
+    }
+    client.setStorage("guilds", guilds);
+    return { data: { status: "success" }, error: null };
+  }
+
+  if (funcName === "reset_daily_power_rankings") return { data: { status: "success" }, error: null };
+  if (funcName === "reset_seasonal_power_rankings") return { data: { status: "success" }, error: null };
+
+  console.warn(`[Mock RPC] Unhandled RPC call: ${funcName}`);
   return { data: null, error: null };
 }
