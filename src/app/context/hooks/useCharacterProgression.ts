@@ -23,7 +23,8 @@ export function useCharacterProgression(
   upgradeSelectedCharId: string,
   setErrorMessage: (msg: string | null) => void,
   playCyberSe: (type: string) => void,
-  syncBootstrapData: (userId: string) => Promise<void>
+  syncBootstrapData: (userId: string) => Promise<void>,
+  setConfirmDialogConfig: React.Dispatch<React.SetStateAction<import("@/app/components/ui/ConfirmDialog").ConfirmDialogConfig | null>>
 ) {
   const [characterLevel, setCharacterLevel] = useState<number>(1);
   const [characterAwaken, setCharacterAwaken] = useState<number>(0);
@@ -87,11 +88,23 @@ export function useCharacterProgression(
     setUpgradeLoading(true);
     playCyberSe("click");
     try {
-      const nextLevel = Math.min(100, characterLevel + count);
-      await supabase.from("user_characters").update({ level: nextLevel }).eq("user_id", session.user.id).eq("character_id", upgradeSelectedCharId);
-      await supabase.from("users").update({ cash: cash - cost }).eq("id", session.user.id);
-      await supabase.from("user_items").update({ quantity: userItemQty - count }).eq("user_id", session.user.id).eq("item_id", expItemId);
-      await supabase.rpc("evaluate_mission_progress", { p_user_id: session.user.id, p_trigger_type: "CHAR_LEVEL_UP", p_progress_increment: count });
+      const res = await supabase.rpc("character_level_up", {
+        p_user_id: session.user.id,
+        p_character_id: upgradeSelectedCharId,
+        p_exp_item_id: expItemId,
+        p_count: count,
+        p_cash_cost: cost
+      });
+
+      if (res.error) {
+        setErrorMessage(res.error.message || "レベルアップに失敗しました。");
+        return;
+      }
+      if (res.data?.error) {
+        setErrorMessage(res.data.error);
+        return;
+      }
+
       await syncBootstrapData(session.user.id);
     } catch (err) {
       console.warn(err);
@@ -116,9 +129,21 @@ export function useCharacterProgression(
     setUpgradeLoading(true);
     playCyberSe("click");
     try {
-      await supabase.from("user_characters").update({ awakening_level: characterAwaken + 1 }).eq("user_id", session.user.id).eq("character_id", upgradeSelectedCharId);
-      await supabase.from("users").update({ cash: cash - cost }).eq("id", session.user.id);
-      await supabase.from("user_items").update({ quantity: lawsOfStrife - 1 }).eq("user_id", session.user.id).eq("item_id", "LAW_OF_STRIFE");
+      const res = await supabase.rpc("character_awaken", {
+        p_user_id: session.user.id,
+        p_character_id: upgradeSelectedCharId,
+        p_cash_cost: cost
+      });
+
+      if (res.error) {
+        setErrorMessage(res.error.message || "覚醒に失敗しました。");
+        return;
+      }
+      if (res.data?.error) {
+        setErrorMessage(res.data.error);
+        return;
+      }
+
       await syncBootstrapData(session.user.id);
     } catch (err) {
       console.warn(err);
@@ -397,10 +422,23 @@ export function useCharacterProgression(
     setUpgradeLoading(true);
     playCyberSe("click");
     try {
-      const nextLevel = Math.min(50, equipmentLevel + count);
-      await supabase.from("user_equipments").update({ level: nextLevel }).eq("id", selectedEquipment.id);
-      await supabase.from("users").update({ cash: cash - cost }).eq("id", session.user.id);
-      await supabase.from("user_items").update({ quantity: userItemQty - count }).eq("user_id", session.user.id).eq("item_id", expItemId);
+      const res = await supabase.rpc("upgrade_gear", {
+        p_user_id: session.user.id,
+        p_equipment_id: selectedEquipment.id,
+        p_exp_item_id: expItemId,
+        p_count: count,
+        p_cash_cost: cost
+      });
+
+      if (res.error) {
+        setErrorMessage(res.error.message || "装備強化に失敗しました。");
+        return;
+      }
+      if (res.data?.error) {
+        setErrorMessage(res.data.error);
+        return;
+      }
+
       await syncBootstrapData(session.user.id);
     } catch (err) {
       console.warn(err);
@@ -443,20 +481,32 @@ export function useCharacterProgression(
     });
 
     try {
-      if (useWildcard) {
-        await supabase.from("user_items").update({ quantity: equipLbHammers - 1 }).eq("user_id", session.user.id).eq("item_id", "EQUIP_LB_HAMMER");
-      } else {
+      let targetDupeId = null;
+      if (!useWildcard) {
         const dupes = userEquipmentsList.filter(e => e.id !== selectedEquipment.id && e.equipment_id === selectedEquipment.equipment_id && e.equipped_character_id === null);
-        const targetDupe = dupes[0];
-        if (targetDupe) {
-          await supabase.from("user_equipments").delete().eq("id", targetDupe.id);
-        }
+        targetDupeId = dupes[0]?.id;
       }
 
-      await supabase.from("user_equipments").update({ plus_val: nextLb, random_options: updatedOptions }).eq("id", selectedEquipment.id);
-      await supabase.from("users").update({ cash: cash - cost }).eq("id", session.user.id);
+      const res = await supabase.rpc("limit_break_gear_v2", {
+        p_user_id: session.user.id,
+        p_equipment_id: selectedEquipment.id,
+        p_cash_cost: cost,
+        p_use_wildcard: useWildcard,
+        p_dupe_id: targetDupeId,
+        p_new_options: updatedOptions
+      });
+
+      if (res.error) {
+        setErrorMessage(res.error.message || "限界突破処理に失敗しました。");
+        return;
+      }
+      if (res.data?.error) {
+        setErrorMessage(res.data.error);
+        return;
+      }
+
       await syncBootstrapData(session.user.id);
-      alert(`限界突破完了！ (+${nextLb})`);
+      setConfirmDialogConfig({ isOpen: true, title: "限界突破", message: `限界突破完了！ (+${nextLb})`, onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
     } catch (err: any) {
       console.warn(err.message);
     } finally {
@@ -501,34 +551,34 @@ export function useCharacterProgression(
     playCyberSe("click");
 
     try {
-      if (useWildcard) {
-        let currentQty = isExclusive ? exclusiveContracts : skillLbBooks;
-        await supabase
-          .from("user_items")
-          .upsert({ user_id: session.user.id, item_id: required_item_id, quantity: Math.max(0, currentQty - 1) });
-      } else {
+      let targetDupeId = null;
+      if (!useWildcard) {
         const dupes = userSkillsList.filter(s => s.id !== selectedSkill.id && s.skill_card_id === selectedSkill.skill_card_id && s.equipped_character_id === null);
-        const targetDupe = dupes[0];
-        if (targetDupe) {
-          await supabase.from("user_skills").delete().eq("id", targetDupe.id);
-        }
+        targetDupeId = dupes[0]?.id;
       }
 
-      // キャッシュの消費
-      const nextCash = cash - required_cash;
-      await supabase.from("users").update({ cash: nextCash }).eq("id", session.user.id);
-      setCash(nextCash);
+      const res = await supabase.rpc("limit_break_skill_v2", {
+        p_user_id: session.user.id,
+        p_skill_id: selectedSkill.id,
+        p_cash_cost: required_cash,
+        p_use_wildcard: useWildcard,
+        p_dupe_id: targetDupeId,
+        p_wildcard_item_id: required_item_id
+      });
 
-      // 限界突破
+      if (res.error) {
+        setErrorMessage(res.error.message || "限界突破処理に失敗しました。");
+        return;
+      }
+      if (res.data?.error) {
+        setErrorMessage(res.data.error);
+        return;
+      }
+
       const nextLb = selectedSkill.plus_val + 1;
-      await supabase
-        .from("user_skills")
-        .update({ plus_val: nextLb })
-        .eq("id", selectedSkill.id);
-
       await syncBootstrapData(session.user.id);
       setSelectedSkill((prev: any) => prev ? { ...prev, plus_val: nextLb } : null);
-      alert(`スキルカードの限界突破完了！ (+${nextLb})`);
+      setConfirmDialogConfig({ isOpen: true, title: "限界突破", message: `スキルカードの限界突破完了！ (+${nextLb})`, onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
     } catch (err: any) {
       console.warn(err.message);
     } finally {

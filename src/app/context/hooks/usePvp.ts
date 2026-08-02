@@ -10,7 +10,8 @@ export function usePvp(
   setUpgradeLoading: (loading: boolean) => void,
   setErrorMessage: (msg: string | null) => void,
   playCyberSe: (type: string) => void,
-  syncBootstrapData: (userId: string) => Promise<void>
+  syncBootstrapData: (userId: string) => Promise<void>,
+  setConfirmDialogConfig: React.Dispatch<React.SetStateAction<import("@/app/components/ui/ConfirmDialog").ConfirmDialogConfig | null>>
 ) {
   const [pvpTickets, setPvpTickets] = useState<number>(5);
   const [battleSubTab, setBattleSubTab] = useState<string>("pvp");
@@ -84,7 +85,7 @@ export function usePvp(
       if (error) throw error;
       
       await syncBootstrapData(session.user.id);
-      alert("防衛デッキおよび作戦を保存しました。");
+      setConfirmDialogConfig({ isOpen: true, title: "保存完了", message: "防衛デッキおよび作戦を保存しました。", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
       return { success: true };
     } catch (err: any) {
       console.warn("Failed to save pvp defense deck:", err.message);

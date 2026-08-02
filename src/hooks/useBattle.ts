@@ -49,6 +49,7 @@ export function useBattle(options: UseBattleOptions) {
     setCash,
     setErrorMessage,
     addGuildXpAndContributionByAction,
+    setConfirmDialogConfig,
     patrolNpcs = [],
     patrol
   } = options;
@@ -220,22 +221,13 @@ export function useBattle(options: UseBattleOptions) {
 
     if (mode === "PVP") {
       try {
-        const { data: payLoad, error: pvpErr } = await supabase
-          .from("users")
-          .update({
-            pvp_tickets: pvpTickets - 1,
-            pvp_tickets_last_recovered_at: pvpTickets === 5 ? new Date().toISOString() : undefined
-          })
-          .eq("id", session.user.id)
-          .gte("pvp_tickets", 1)
-          .select("pvp_tickets");
-
-        if (pvpErr || !payLoad || payLoad.length === 0) {
+        const res = await supabase.rpc("consume_pvp_ticket", { p_user_id: session.user.id });
+        if (res.error || res.data?.error) {
           setErrorMessage("PvP入場券が不足しています。");
           setBattleLoading(false);
           return;
         }
-        setPvpTickets(payLoad[0].pvp_tickets);
+        setPvpTickets(prev => prev - 1);
         
         // 対戦相手のレートと作戦を設定
         setOpponentPoints(oppPoints || 1000);
@@ -1240,7 +1232,15 @@ export function useBattle(options: UseBattleOptions) {
         }).eq("id", patrol.id);
       }
       await syncBootstrapData(session.user.id);
-      alert(`見回りバトル終了: ${result === "VICTORY" ? "勝利！追加報酬が確定しました。" : "敗北：追加報酬はありません。"}`);
+      if (setConfirmDialogConfig) {
+        setConfirmDialogConfig({
+          isOpen: true,
+          title: "バトル結果",
+          message: `見回りバトル終了: ${result === "VICTORY" ? "勝利！追加報酬が確定しました。" : "敗北：追加報酬はありません。"}`,
+          onConfirm: () => setConfirmDialogConfig(null),
+          onCancel: () => setConfirmDialogConfig(null)
+        });
+      }
     } else if (modeTemp === "PVP") {
       const diff = opponentPoints - pvpPoints;
       let pointsDiff = 0;
@@ -1295,13 +1295,14 @@ export function useBattle(options: UseBattleOptions) {
       const nextDaily = (existMe?.daily_wins || 0) + (isWin ? 1 : 0);
       const nextSeason = (existMe?.season_wins || 0) + (isWin ? 1 : 0);
 
-      await supabase.from("pvp_ranks").upsert({
-        user_id: session.user.id,
-        rank_points: nextPoints,
-        daily_wins: nextDaily,
-        season_wins: nextSeason
+      const res = await supabase.rpc("process_pvp_match_result_v2", {
+        p_user_id: session.user.id,
+        p_is_win: isWin,
+        p_point_diff: pointsDiff,
+        p_cash_reward: rewardCash
       });
-      await supabase.from("users").update({ cash: cash + rewardCash }).eq("id", session.user.id);
+      if (res.error) throw res.error;
+      if (res.data?.error) throw new Error(res.data.error);
 
       if (isWin) {
         await supabase.rpc("evaluate_mission_progress", { p_user_id: session.user.id, p_trigger_type: "PVP_WIN", p_progress_increment: 1 });
@@ -1320,7 +1321,15 @@ export function useBattle(options: UseBattleOptions) {
 
       postNpcYajiMessage(session, username, "GLOBAL", currentBaseId, "PVP_WIN");
       await syncBootstrapData(session.user.id);
-      alert(`PvPバトル終了: ${result === "VICTORY" ? "勝利" : "敗北"}\n獲得ポイント: ${pointsDiff >= 0 ? "+" : ""}${pointsDiff}\n獲得キャッシュ: +${rewardCash}\n獲得経験値: +${xpAmount} XP${levelUpMessage}`);
+      if (setConfirmDialogConfig) {
+        setConfirmDialogConfig({
+          isOpen: true,
+          title: "PvP結果",
+          message: `PvPバトル終了: ${result === "VICTORY" ? "勝利" : "敗北"}\n獲得ポイント: ${pointsDiff >= 0 ? "+" : ""}${pointsDiff}\n獲得キャッシュ: +${rewardCash}\n獲得経験値: +${xpAmount} XP${levelUpMessage}`,
+          onConfirm: () => setConfirmDialogConfig(null),
+          onCancel: () => setConfirmDialogConfig(null)
+        });
+      }
     } else if (modeTemp === "RAID") {
       const enemyBoss = enemyPartyStates.find(e => e.id === "ENEMY");
       const finalBossHp = enemyBoss ? enemyBoss.hp : 0;
@@ -1405,25 +1414,39 @@ export function useBattle(options: UseBattleOptions) {
           const bases = ["neon_tower", "deep_dock", "junk_bazar", "kitakura_gate"];
           const randomBase = bases[Math.floor(Math.random() * bases.length)];
 
-          await supabase.from("raid_bosses").update({
-            current_hp: maxHp,
-            base_id: randomBase,
-            status: "ACTIVE",
-            spawned_at: new Date().toISOString(),
-            expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
-          }).eq("id", RAID_BOSS_ID);
+          await supabase.rpc("admin_respawn_raid_boss", {
+            p_boss_id: RAID_BOSS_ID,
+            p_max_hp: maxHp,
+            p_base_id: randomBase
+          });
 
-          await supabase.from("raid_damage_logs").delete().eq("raid_boss_id", RAID_BOSS_ID);
-          await supabase.from("user_raid_claimed_rewards").delete().neq("user_id", "00000000-0000-0000-0000-000000000000");
-
-          alert(`💥 レイドボス討伐成功！\n\n討伐貢献報酬が参加者全員のプレゼントBOXへ届きました。\n次のボスが新しい拠点に出現しました！`);
+          if (setConfirmDialogConfig) {
+            setConfirmDialogConfig({
+              isOpen: true,
+              title: "レイドボス討伐",
+              message: `レイドボス討伐成功！\n\n討伐貢献報酬が参加者全員のプレゼントBOXへ届きました。\n次のボスが新しい拠点に出現しました！`,
+              onConfirm: () => setConfirmDialogConfig(null),
+              onCancel: () => setConfirmDialogConfig(null)
+            });
+          }
         } catch (err) {
           console.warn("Failed to process boss defeat rewards/reset:", err);
         }
       } else {
-        // 通常のHP減算
-        await supabase.from("raid_bosses").update({ current_hp: nextHp }).eq("id", RAID_BOSS_ID);
-        alert(`レイド攻撃完了。今回の与ダメ: ${totalDmg.toLocaleString()}`);
+        await supabase.rpc("record_raid_boss_damage_v2", {
+          p_user_id: session.user.id,
+          p_boss_id: RAID_BOSS_ID,
+          p_damage: totalDmg
+        });
+        if (setConfirmDialogConfig) {
+          setConfirmDialogConfig({
+            isOpen: true,
+            title: "レイド結果",
+            message: `レイド攻撃完了。今回の与ダメ: ${totalDmg.toLocaleString()}`,
+            onConfirm: () => setConfirmDialogConfig(null),
+            onCancel: () => setConfirmDialogConfig(null)
+          });
+        }
       }
 
       postNpcYajiMessage(session, username, "GLOBAL", currentBaseId, "RAID_DAMAGE");
@@ -1467,78 +1490,61 @@ export function useBattle(options: UseBattleOptions) {
               }
 
               await addGuildXpAndContributionByAction("GVG");
-              alert("防衛演習 勝利！ 自組織に100ポイント付与。");
+              if (setConfirmDialogConfig) {
+                setConfirmDialogConfig({
+                  isOpen: true,
+                  title: "防衛演習結果",
+                  message: "防衛演習 勝利！ 自組織に100ポイント付与。",
+                  onConfirm: () => setConfirmDialogConfig(null),
+                  onCancel: () => setConfirmDialogConfig(null)
+                });
+              }
             } else {
-              alert("防衛演習 敗北... (ポイント変動なし)");
+              if (setConfirmDialogConfig) {
+                setConfirmDialogConfig({
+                  isOpen: true,
+                  title: "防衛演習結果",
+                  message: "防衛演習 敗北... (ポイント変動なし)",
+                  onConfirm: () => setConfirmDialogConfig(null),
+                  onCancel: () => setConfirmDialogConfig(null)
+                });
+              }
             }
           } else {
             // 本番侵攻
-            const { data: dayRec } = await supabase.from("gvg_season_status").select("current_day").eq("id", 1).maybeSingle();
-            const currentDay = dayRec?.current_day || 1;
-            const isFinalDay = currentDay === 7;
-
-            const { data: matchRecs } = await supabase
-              .from("gvg_matches")
-              .select("*")
-              .eq("status", "ONGOING")
-              .eq("is_finals", isFinalDay);
-            
-            let myMatch = null;
-            if (matchRecs) {
-              myMatch = matchRecs.find((m: any) => m.guild_a_id === guildIdFilter || m.guild_b_id === guildIdFilter);
-            }
+            const res = await supabase.rpc("process_gvg_battle_result_v2", {
+              p_user_id: session.user.id,
+              p_guild_id: guildIdFilter,
+              p_base_id: gvgAreaTemp,
+              p_is_practice: false,
+              p_is_win: isWin
+            });
+            if (res.error) throw res.error;
+            if (res.data?.error) throw new Error(res.data.error);
 
             if (isWin) {
-              // 自ギルドポイントに +250
-              if (myMatch) {
-                const isGuildA = myMatch.guild_a_id === guildIdFilter;
-                const nextGuildPts = isGuildA ? (myMatch.guild_a_points || 0) + 250 : (myMatch.guild_b_points || 0) + 250;
-                await supabase
-                  .from("gvg_matches")
-                  .update(isGuildA ? { guild_a_points: nextGuildPts } : { guild_b_points: nextGuildPts })
-                  .eq("id", myMatch.id);
-              }
-
-              // 個人シーズンポイントに +250
-              const { data: rankRec } = await supabase.from("user_gvg_ranks").select("*").eq("user_id", session.user.id).maybeSingle();
-              const nextPersonalPts = (rankRec?.season_points || 0) + 250;
-              await supabase.from("user_gvg_ranks").upsert({ user_id: session.user.id, season_points: nextPersonalPts });
-
-              // デイリー拠点ランキングポイントに +250
-              const existRec = gvgBaseControls.find(g => g.base_id === gvgAreaTemp && g.guild_id === guildIdFilter);
-              const nextPoints = (existRec?.daily_points || 0) + 250;
-              await supabase.from("guild_base_controls").upsert({ base_id: gvgAreaTemp, guild_id: guildIdFilter, daily_points: nextPoints });
-
               await supabase.rpc("evaluate_mission_progress", { p_user_id: session.user.id, p_trigger_type: "GVG_WIN", p_progress_increment: 1 });
               await addGuildXpAndContributionByAction("GVG");
               postNpcYajiMessage(session, username, "BASE", gvgAreaTemp, "GVG_WIN");
-              alert("侵攻勝利！ 自組織の抗争ポイント +250。個人抗争ポイント +250。");
-            } else {
-              // 自ギルド -100、相手 +100
-              if (myMatch) {
-                const isGuildA = myMatch.guild_a_id === guildIdFilter;
-                const myNextPts = Math.max((isGuildA ? myMatch.guild_a_points : myMatch.guild_b_points) - 100, 0);
-                const oppNextPts = (isGuildA ? myMatch.guild_b_points : myMatch.guild_a_points) + 100;
-                await supabase
-                  .from("gvg_matches")
-                  .update(isGuildA 
-                    ? { guild_a_points: myNextPts, guild_b_points: oppNextPts } 
-                    : { guild_b_points: myNextPts, guild_a_points: oppNextPts }
-                  )
-                  .eq("id", myMatch.id);
+              if (setConfirmDialogConfig) {
+                setConfirmDialogConfig({
+                  isOpen: true,
+                  title: "抗争結果",
+                  message: "侵攻勝利！ 自組織の抗争ポイント +250。個人抗争ポイント +250。",
+                  onConfirm: () => setConfirmDialogConfig(null),
+                  onCancel: () => setConfirmDialogConfig(null)
+                });
               }
-
-              // 個人シーズンポイント -100 (最低0)
-              const { data: rankRec } = await supabase.from("user_gvg_ranks").select("*").eq("user_id", session.user.id).maybeSingle();
-              const nextPersonalPts = Math.max((rankRec?.season_points || 0) - 100, 0);
-              await supabase.from("user_gvg_ranks").upsert({ user_id: session.user.id, season_points: nextPersonalPts });
-
-              // デイリー拠点ランキングポイント -100 (最低0)
-              const existRec = gvgBaseControls.find(g => g.base_id === gvgAreaTemp && g.guild_id === guildIdFilter);
-              const nextPoints = Math.max((existRec?.daily_points || 0) - 100, 0);
-              await supabase.from("guild_base_controls").upsert({ base_id: gvgAreaTemp, guild_id: guildIdFilter, daily_points: nextPoints });
-
-              alert("侵攻失敗... 自組織の抗争ポイント -100。個人抗争ポイント -100。相手ギルド防衛ポイント +100。");
+            } else {
+              if (setConfirmDialogConfig) {
+                setConfirmDialogConfig({
+                  isOpen: true,
+                  title: "抗争結果",
+                  message: "侵攻失敗... 自組織の抗争ポイント -100。個人抗争ポイント -100。相手ギルド防衛ポイント +100。",
+                  onConfirm: () => setConfirmDialogConfig(null),
+                  onCancel: () => setConfirmDialogConfig(null)
+                });
+              }
             }
           }
         } catch (err: any) {

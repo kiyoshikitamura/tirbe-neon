@@ -45,6 +45,30 @@ const GameContext = createContext<any>(null);
 
 export function GameProvider({ children }: { children: React.ReactNode }) {
   // ==========================================
+  // 0. ナビゲーション ＆ UI状態管理
+  // ==========================================
+  const nav = useNavigation(
+    (type: string) => {}, // Placeholder for playCyberSe
+    () => {} // Placeholder for handleFirstUserInteraction
+  );
+
+  const {
+    activeTab, setActiveTab,
+    showInboxPanel, setShowInboxPanel,
+    showMissionPanel, setShowMissionPanel,
+    showFriendPanel, setShowFriendPanel,
+    showSettingsPanel, setShowSettingsPanel,
+    showTribeChatPanel, setShowTribeChatPanel,
+    showMoveBaseModal, setShowMoveBaseModal,
+    showLegalPage, setShowLegalPage,
+    showTitleView, setShowTitleView,
+    inboxPanelTab, setInboxPanelTab,
+    rankingActiveTab, setRankingActiveTab,
+    confirmDialogConfig, setConfirmDialogConfig,
+    globalInteractionBlocking, setGlobalInteractionBlocking
+  } = nav;
+
+  // ==========================================
   // 1. 認証 ＆ セッション管理ステート
   // ==========================================
   const auth = useAuth(
@@ -52,7 +76,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     () => stopCyberBgm(),
     (userId: string) => syncBootstrapData(userId),
     (tab: string, subTab?: string) => navigateTab(tab, subTab),
-    (userId: string) => checkIfSetupRequired(userId)
+    (userId: string) => checkIfSetupRequired(userId),
+    setConfirmDialogConfig
   );
 
   const {
@@ -99,7 +124,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     diamonds, setDiamonds,
     vitality, setVitality,
     (type: string) => playCyberSe(type as any),
-    (userId: string) => syncBootstrapData(userId)
+    (userId: string) => syncBootstrapData(userId),
+    setConfirmDialogConfig
   );
 
   const {
@@ -135,26 +161,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     handleDailyMissionReset
   } = inventory;
 
-  const nav = useNavigation(
-    (type: string) => {}, // Placeholder for playCyberSe
-    () => {} // Placeholder for handleFirstUserInteraction
-  );
 
-  const {
-    activeTab, setActiveTab,
-    showInboxPanel, setShowInboxPanel,
-    showMissionPanel, setShowMissionPanel,
-    showFriendPanel, setShowFriendPanel,
-    showSettingsPanel, setShowSettingsPanel,
-    showTribeChatPanel, setShowTribeChatPanel,
-    showMoveBaseModal, setShowMoveBaseModal,
-    showLegalPage, setShowLegalPage,
-    showTitleView, setShowTitleView,
-    inboxPanelTab, setInboxPanelTab,
-    rankingActiveTab, setRankingActiveTab,
-    confirmDialogConfig, setConfirmDialogConfig,
-    globalInteractionBlocking, setGlobalInteractionBlocking
-  } = nav;
 
 
   const guild = useGuild(
@@ -165,7 +172,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     setErrorMessage,
     (type: string) => playCyberSe(type as any),
     (userId: string) => syncBootstrapData(userId),
-    (actionType: string) => addGuildXpAndContributionByAction(actionType)
+    (actionType: string) => addGuildXpAndContributionByAction(actionType),
+    setConfirmDialogConfig
   );
 
   const {
@@ -203,7 +211,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     () => audioCtxRef.current,
     (userId: string) => syncBootstrapData(userId),
     setShowSettingsPanel,
-    setErrorMessage
+    setErrorMessage,
+    setConfirmDialogConfig
   );
 
   const {
@@ -231,7 +240,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     (loading: boolean) => setUpgradeLoading(loading),
     setErrorMessage,
     (type: string) => playCyberSe(type as any),
-    (userId: string) => syncBootstrapData(userId)
+    (userId: string) => syncBootstrapData(userId),
+    setConfirmDialogConfig
   );
 
   const {
@@ -347,7 +357,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     session,
     (type: string) => playCyberSe(type as any),
     (userId: string) => syncBootstrapData(userId),
-    (mode: string, enemyName: string) => battle.startCardBattle(mode as any, enemyName)
+    (mode: string, enemyName: string) => battle.startCardBattle(mode as any, enemyName),
+    setConfirmDialogConfig
   );
 
   const {
@@ -367,7 +378,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     upgradeSelectedCharId,
     setErrorMessage,
     (type: string) => playCyberSe(type as any),
-    (userId: string) => syncBootstrapData(userId)
+    (userId: string) => syncBootstrapData(userId),
+    setConfirmDialogConfig
   );
 
   const {
@@ -684,7 +696,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       await syncBootstrapData(session.user.id);
       
       if (nextLevel > userGuild.level) {
-        alert(`★ギルドレベルが ${nextLevel} に上昇しました！`);
+        setConfirmDialogConfig({ isOpen: true, title: "ギルドレベルアップ", message: `★ギルドレベルが ${nextLevel} に上昇しました！`, onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
       }
     } catch (err) {
       console.warn("Failed to update guild xp via action:", err);
@@ -1905,7 +1917,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       }
       if (data) {
         setGiftCode(data);
-        alert(`ギフトコード【${data}】を新規発行しました。`);
+        setConfirmDialogConfig({ isOpen: true, title: "ギフトコード", message: `ギフトコード【${data}】を新規発行しました。`, onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
       }
     } catch (e: any) {
       console.warn("Generate gift code failed:", e);
@@ -1987,7 +1999,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
       setSelectedMapAreaId(null);
       await syncBootstrapData(session.user.id);
-      alert(`瞬間移動完了。現在滞在拠点: ${BASE_MAP_MASTER.find(a => a.id === baseId)?.name}`);
+      setConfirmDialogConfig({ isOpen: true, title: "拠点移動", message: `瞬間移動完了。現在滞在拠点: ${BASE_MAP_MASTER.find(a => a.id === baseId)?.name}`, onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
     } catch (err: any) {
       console.warn("Move base failed, rolling back:", err.message);
       setCurrentBaseId(prevBase);
@@ -2022,7 +2034,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         .limit(1);
 
       if (existTx && existTx.length > 0) {
-        alert("【Stripe Webhook 冪等性競合検知】 重複トランザクションを安全に無視しました。");
+        setConfirmDialogConfig({ isOpen: true, title: "決済シミュレーション", message: "【Stripe Webhook 冪等性競合検知】 重複トランザクションを安全に無視しました。", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
         setProfileLoading(false);
         return;
       }
@@ -2037,13 +2049,13 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       });
 
       const nextDiamonds = diamonds + 120;
-      await supabase.from("users").update({ neon_diamonds: nextDiamonds }).eq("id", session.user.id);
+      await supabase.rpc("add_test_diamonds", { p_user_id: session.user.id, p_amount: 120 });
       
       setDiamonds(nextDiamonds);
       setLastPaymentSessionId(sessionId);
       await syncBootstrapData(session.user.id);
 
-      alert(`Stripe決済シミュレート完了。有償ダイヤ+120。`);
+      setConfirmDialogConfig({ isOpen: true, title: "決済完了", message: `Stripe決済シミュレート完了。有償ダイヤ+120。`, onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
     } catch (err: any) {
       console.warn(err.message);
     } finally {
@@ -2062,7 +2074,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     if (!session) return;
     const guildIdFilter = userGuildMember?.guild_id || "";
     if (!guildIdFilter) {
-      alert("ギルドに所属していないため、守備デッキの登録はできません。");
+      setConfirmDialogConfig({ isOpen: true, title: "GvG防衛", message: "ギルドに所属していないため、守備デッキの登録はできません。", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
       return;
     }
     playCyberSe("click");
@@ -2072,7 +2084,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       if (charIds.length === 0) {
         // 解除
         await supabase.from("gvg_defense_decks").delete().eq("user_id", session.user.id);
-        alert("守備デッキの登録を解除しました。");
+        setConfirmDialogConfig({ isOpen: true, title: "GvG防衛", message: "守備デッキの登録を解除しました。", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
       } else {
         // 登録・更新
         await supabase.from("gvg_defense_decks").upsert({
@@ -2084,25 +2096,26 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
           character_4_id: charIds[3] || null,
           character_5_id: charIds[4] || null
         });
-        alert("守備デッキを登録しました。");
+        setConfirmDialogConfig({ isOpen: true, title: "GvG防衛", message: "守備デッキを登録しました。", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
       }
       await syncBootstrapData(session.user.id);
     } catch (e: any) {
       console.warn("Failed to deploy GvG defense deck:", e.message);
-      alert("守備デッキの登録に失敗しました。");
+      setConfirmDialogConfig({ isOpen: true, title: "GvG防衛", message: "守備デッキの登録に失敗しました。", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
     } finally {
       setGvgResetLoading(false);
     }
   };
 
   const handlePowerDailyReset = async () => {
+    // ADMIN_ONLY: 管理者デバッグ専用。RLSで一般ユーザーからのUPDATEを制限すること。中長期でServer Actions/Edge Functionsに移行予定。
     if (!session) return;
     setGvgResetLoading(true);
     try {
       const { error } = await supabase.rpc("reset_daily_power_rankings");
       if (error) throw error;
       await syncBootstrapData(session.user.id);
-      alert("総合力デイリーリセットを実行しました（アクティブ状態の初期化）。");
+      setConfirmDialogConfig({ isOpen: true, title: "リセット完了", message: "総合力デイリーリセットを実行しました（アクティブ状態の初期化）。", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
     } catch (e: any) {
       console.warn("Failed to reset daily power rankings:", e.message);
     } finally {
@@ -2111,13 +2124,14 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   };
 
   const handlePowerSeasonReset = async () => {
+    // ADMIN_ONLY: 管理者デバッグ専用。RLSで一般ユーザーからのUPDATEを制限すること。中長期でServer Actions/Edge Functionsに移行予定。
     if (!session) return;
     setGvgResetLoading(true);
     try {
       const { error } = await supabase.rpc("reset_seasonal_power_rankings");
       if (error) throw error;
       await syncBootstrapData(session.user.id);
-      alert("総合力シーズンリセットを実行しました（全ユーザーの初期化）。");
+      setConfirmDialogConfig({ isOpen: true, title: "リセット完了", message: "総合力シーズンリセットを実行しました（全ユーザーの初期化）。", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
     } catch (e: any) {
       console.warn("Failed to reset seasonal power rankings:", e.message);
     } finally {
@@ -2320,7 +2334,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
               }
             }
 
-            await supabase.from("guilds").update({ funds: nextFunds, level: nextLvl, xp: nextXp }).eq("id", controllingGuildId);
+            await supabase.rpc("admin_update_guild", { p_guild_id: controllingGuildId, p_funds: nextFunds, p_level: nextLvl, p_xp: nextXp });
           }
 
           // 支配ギルドメンバー全員へのデイリー報酬配布 (ダイヤ+50, Cash+5000)
@@ -2429,7 +2443,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       await supabase.from("guild_base_controls").update({ daily_points: 0 }).neq("base_id", "");
 
       await syncBootstrapData(session.user.id);
-      alert(`GvG日次集計完了。自ギルドの支配権: ${wonAreasCount} 箇所。支配報酬（ダイヤ/Cash）を対象メンバーのプレゼントBOXへ配布しました。経過日数を ${nextDay} 日目に進め、新規マッチングを自動生成しました。`);
+      setConfirmDialogConfig({ isOpen: true, title: "リセット完了", message: `GvG日次集計完了。自ギルドの支配権: ${wonAreasCount} 箇所。支配報酬（ダイヤ/Cash）を対象メンバーのプレゼントBOXへ配布しました。経過日数を ${nextDay} 日目に進め、新規マッチングを自動生成しました。`, onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
     } catch (err: any) {
       console.warn(err.message);
     } finally {
@@ -2509,10 +2523,10 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
           const fourthGuildId = finalMatches[1].guild_a_points > finalMatches[1].guild_b_points ? finalMatches[1].guild_b_id : finalMatches[1].guild_a_id;
 
           const { data: g3 } = await supabase.from("guilds").select("*").eq("id", thirdGuildId).single();
-          if (g3) await supabase.from("guilds").update({ funds: Number(g3.funds || 0) + 100000 }).eq("id", thirdGuildId);
+          if (g3) await supabase.rpc("admin_add_guild_funds", { p_guild_id: thirdGuildId, p_amount: 100000 });
 
           const { data: g4 } = await supabase.from("guilds").select("*").eq("id", fourthGuildId).single();
-          if (g4) await supabase.from("guilds").update({ funds: Number(g4.funds || 0) + 100000 }).eq("id", fourthGuildId);
+          if (g4) await supabase.rpc("admin_add_guild_funds", { p_guild_id: fourthGuildId, p_amount: 100000 });
         }
       }
 
@@ -2529,7 +2543,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       setGvgSeasonDay(1);
 
       await syncBootstrapData(session.user.id);
-      alert("【GvG抗争 シーズンリセット完了】\n\nシーズン個人ランキングの最終順位に応じてダイヤ報酬を全員に配布しました。\n決戦進出ギルドへ最終順位報酬（ギルド資金、特別装飾背景）を付与しました。\n全ての累積支配日数・個人ポイントをリセットし、シーズン1日目へ移行しました。");
+      setConfirmDialogConfig({ isOpen: true, title: "リセット完了", message: "【GvG抗争 シーズンリセット完了】\n\nシーズン個人ランキングの最終順位に応じてダイヤ報酬を全員に配布しました。\n決戦進出ギルドへ最終順位報酬（ギルド資金、特別装飾背景）を付与しました。\n全ての累積支配日数・個人ポイントをリセットし、シーズン1日目へ移行しました。", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
     } catch (err: any) {
       console.warn("GvG season reset failed:", err.message);
     } finally {
@@ -2577,7 +2591,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         .neq("user_id", "00000000-0000-0000-0000-000000000099");
 
       await syncBootstrapData(session.user.id);
-      alert("PvPシーズン終了。報酬転送完了。");
+      setConfirmDialogConfig({ isOpen: true, title: "リセット完了", message: "PvPシーズン終了。報酬転送完了。", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
     } catch (err: any) {
       console.warn("Failed to reset PvP season:", err.message);
       setErrorMessage("シーズンリセット処理に失敗しました。");
@@ -2641,7 +2655,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       await supabase.from("user_raid_claimed_rewards").delete().neq("user_id", "00000000-0000-0000-0000-000000000000");
 
       await syncBootstrapData(session.user.id);
-      alert("レイドボス撃破完了。報酬配布 ＆ ボスランダム再配置完了。");
+      setConfirmDialogConfig({ isOpen: true, title: "レイドボス撃破", message: "レイドボス撃破完了。報酬配布 ＆ ボスランダム再配置完了。", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
     } catch (err: any) {
       console.warn(err.message);
     } finally {
@@ -2753,7 +2767,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       await supabase.from("user_raid_claimed_rewards").delete().neq("user_id", "00000000-0000-0000-0000-000000000000");
 
       await syncBootstrapData(session.user.id);
-      alert("【レイド シーズンリセット完了】\n\n個人・組織ランキング順位報酬をプレゼントBOXに配布しました。\nボスは全快し、ランダムな拠点へ再出現しました。");
+      setConfirmDialogConfig({ isOpen: true, title: "リセット完了", message: "【レイド シーズンリセット完了】\n\n個人・組織ランキング順位報酬をプレゼントBOXに配布しました。\nボスは全快し、ランダムな拠点へ再出現しました。", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
     } catch (err: any) {
       console.warn("Raid season reset failed:", err.message);
     } finally {
@@ -2806,7 +2820,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
           return;
         }
         const nextDiamonds = diamonds - reqDia;
-        await supabase.from("users").update({ neon_diamonds: nextDiamonds }).eq("id", session.user.id);
+        await supabase.rpc("add_test_diamonds", { p_user_id: session.user.id, p_amount: 5000 });
         setDiamonds(nextDiamonds);
       } else {
         // CASH
@@ -2822,7 +2836,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
           return;
         }
         const nextCash = cash - reqCash;
-        await supabase.from("users").update({ cash: nextCash }).eq("id", session.user.id);
+        await supabase.rpc("execute_gacha", { p_user_id: session.user.id, p_currency_type: "cash", p_currency_cost: reqCash, p_results: [] });
         setCash(nextCash);
       }
 
@@ -2903,7 +2917,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
             results.push({ type: "CHARACTER", name: selectedChar.jpName, rarity: selectedChar.rarity || "SSR", converted: false, convertReward: "新規獲得" });
 
             if (!isFirstCharAllocated) {
-              await supabase.from("users").update({ favorite_character_id: selectedChar.id }).eq("id", session.user.id);
+              await supabase.rpc("update_favorite_character", { p_user_id: session.user.id, p_character_id: selectedChar.id });
               const skillId = selectedChar.id === "11111111-1111-1111-1111-111111111111" ? "SKILL_037" : selectedChar.id === "33333333-3333-3333-3333-333333333333" ? "SKILL_039" : "SKILL_038";
               await supabase.from("user_skills").insert({
                 user_id: session.user.id,
@@ -3259,7 +3273,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       cost = 20;
       if (diamonds >= cost) {
         setVitality(prev => Math.min(prev + 100, 200));
-        await supabase.from("users").update({ vitality: Math.min(vitality + 100, 200) }).eq("id", session.user.id);
+        await supabase.rpc("add_user_vitality", { p_user_id: session.user.id, p_amount: 100 });
         success = true;
         message = "スタミナパックを購入しました！スタミナが100回復しました。";
       }
@@ -3285,7 +3299,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       cost = 30;
       if (diamonds >= cost) {
         setCash(prev => prev + 10000);
-        await supabase.from("users").update({ cash: cash + 10000 }).eq("id", session.user.id);
+        await supabase.rpc("add_test_cash", { p_user_id: session.user.id, p_amount: 10000 });
         success = true;
         message = "資金調達パックを購入しました！キャッシュ+10,000を獲得しました。";
       }
@@ -3293,9 +3307,9 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
     if (success) {
       const nextDiamonds = diamonds - cost;
-      await supabase.from("users").update({ neon_diamonds: nextDiamonds }).eq("id", session.user.id);
+      await supabase.rpc("add_test_diamonds", { p_user_id: session.user.id, p_amount: 5000 });
       setDiamonds(nextDiamonds);
-      alert(message);
+      setConfirmDialogConfig({ isOpen: true, title: "パック購入", message: message, onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
       await syncBootstrapData(session.user.id);
     } else {
       setErrorMessage("ダイヤが不足しています。");
@@ -3328,7 +3342,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       nextParty = nextParty.filter(id => id !== charId);
     } else {
       if (nextParty.length >= 5) {
-        alert("出撃パーティは最大5名までです。");
+        setConfirmDialogConfig({ isOpen: true, title: "パーティ編成", message: "出撃パーティは最大5名までです。", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
         return;
       }
       nextParty.push(charId);

@@ -16,7 +16,8 @@ export function useUserProfile(
   getAudioCtx: () => AudioContext | null,
   syncBootstrapData: (userId: string) => Promise<void>,
   setShowSettingsPanel: (show: boolean) => void,
-  setErrorMessage: (msg: string | null) => void
+  setErrorMessage: (msg: string | null) => void,
+  setConfirmDialogConfig: React.Dispatch<React.SetStateAction<import("@/app/components/ui/ConfirmDialog").ConfirmDialogConfig | null>>
 ) {
   const [username, setUsername] = useState<string>("半グレの首領");
   const [bio, setBio] = useState<string>("歌舞伎町の覇権を握るため立ち上がる。");
@@ -90,7 +91,7 @@ export function useUserProfile(
 
       await syncBootstrapData(session.user.id);
       setShowSettingsPanel(false);
-      alert("プロフィールを同期保存しました。");
+      setConfirmDialogConfig({ isOpen: true, title: "保存完了", message: "プロフィールを同期保存しました。", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
     } catch (err: any) {
       console.warn("Profile update failed:", err.message);
       setErrorMessage("プロフィールの更新に失敗しました。");

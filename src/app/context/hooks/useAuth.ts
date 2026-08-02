@@ -8,7 +8,8 @@ export function useAuth(
   stopCyberBgm: () => void,
   syncBootstrapData: (userId: string) => Promise<void>,
   navigateTab: (tabName: string) => void,
-  checkIfSetupRequired: (userId: string) => Promise<void>
+  checkIfSetupRequired: (userId: string) => Promise<void>,
+  setConfirmDialogConfig: React.Dispatch<React.SetStateAction<import("@/app/components/ui/ConfirmDialog").ConfirmDialogConfig | null>>
 ) {
   const [session, setSession] = useState<any>(null);
   const [authLoading, setAuthLoading] = useState<boolean>(true);
@@ -42,7 +43,7 @@ export function useAuth(
     try {
       const { error } = await supabase.auth.signUp({ email, password });
       if (error) throw error;
-      alert("サインアップに成功しました。確認メールをチェックしてログインしてください。");
+      setConfirmDialogConfig({ isOpen: true, title: "サインアップ完了", message: "サインアップに成功しました。確認メールをチェックしてログインしてください。", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
     } catch (e: any) {
       setErrorMessage(e.message);
     } finally {
@@ -105,10 +106,10 @@ export function useAuth(
 
       if (isNew) {
         setIsSetupRequired(true);
-        alert("【Googleデモ認証】 新しいデモセッションを作成しました。「ユーザー登録」画面へ進みます。");
+        setConfirmDialogConfig({ isOpen: true, title: "デモ認証", message: "【Googleデモ認証】 新しいデモセッションを作成しました。「ユーザー登録」画面へ進みます。", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
       } else {
         await checkIfSetupRequired(demoId);
-        alert("【Googleデモ認証】 既存のデモアカウントでログインしました。");
+        setConfirmDialogConfig({ isOpen: true, title: "デモ認証", message: "【Googleデモ認証】 既存のデモアカウントでログインしました。", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
       }
     } catch (err: any) {
       console.warn("Google demo auth failed:", err.message);
@@ -155,7 +156,7 @@ export function useAuth(
       setIsSetupRequired(false);
       setSetupGiftCode("");
       await syncBootstrapData(session.user.id);
-      alert("プレイヤー登録が完了し、東京支配の戦いに参入しました！まずはチュートリアルスカウトで最初の構成員をスカウトしてください。");
+      setConfirmDialogConfig({ isOpen: true, title: "登録完了", message: "プレイヤー登録が完了し、東京支配の戦いに参入しました！まずはチュートリアルスカウトで最初の構成員をスカウトしてください。", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
       navigateTab("gacha");
     } catch (err: any) {
       console.warn(err);
@@ -166,18 +167,26 @@ export function useAuth(
   };
 
   const handleLogout = async () => {
-    if (!confirm("本当にログアウトしますか？")) return;
-    stopCyberBgm();
-    
-    localStorage.removeItem("tribe_demo_uuid");
-    setSession(null);
-    setIsSetupRequired(false);
-    
-    try {
-      await supabase.auth.signOut();
-    } catch (e) {
-      console.warn("Signout error:", e);
-    }
+    setConfirmDialogConfig({
+      isOpen: true,
+      title: "ログアウト確認",
+      message: "本当にログアウトしますか？",
+      onConfirm: async () => {
+        setConfirmDialogConfig(null);
+        stopCyberBgm();
+        
+        localStorage.removeItem("tribe_demo_uuid");
+        setSession(null);
+        setIsSetupRequired(false);
+        
+        try {
+          await supabase.auth.signOut();
+        } catch (e) {
+          console.warn("Signout error:", e);
+        }
+      },
+      onCancel: () => setConfirmDialogConfig(null)
+    });
   };
 
   return {

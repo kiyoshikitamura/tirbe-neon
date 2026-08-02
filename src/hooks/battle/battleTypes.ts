@@ -34,7 +34,7 @@ export interface UseBattleOptions {
   setCash: React.Dispatch<React.SetStateAction<number>>;
   setErrorMessage: (msg: string | null) => void;
   addGuildXpAndContributionByAction: (actionType: string) => Promise<void>;
-  setConfirmDialogConfig?: (config: any) => void;
+  setConfirmDialogConfig?: React.Dispatch<React.SetStateAction<import("@/app/components/ui/ConfirmDialog").ConfirmDialogConfig | null>>;
   patrolNpcs?: any[];
   patrol?: any;
 }

@@ -74,30 +74,28 @@ export function usePatrol(
 
       const hasBattle = Math.random() <= (Number(course.battle_trigger_chance) || 0.2);
 
-      const { data, error } = await supabase.from("user_patrols").insert({
-        user_id: session.user.id,
-        course_id: course.id,
-        character_id: selectedPatrolMember,
-        started_at: startedAt.toISOString(),
-        expires_at: expiresAt.toISOString(),
-        status: "ONGOING",
-        has_battle_event: hasBattle,
-        battle_resolved: false
-      }).select().single();
+      const res = await supabase.rpc("start_patrol_v2", {
+        p_user_id: session.user.id,
+        p_course_id: course.id,
+        p_character_id: selectedPatrolMember,
+        p_duration_seconds: course.duration_seconds,
+        p_cost_vitality: course.cost_vitality,
+        p_battle_chance: course.battle_trigger_chance
+      });
 
-      if (error) throw error;
+      if (res.error) throw res.error;
+      if (res.data?.error) throw new Error(res.data.error);
 
-      await supabase.from("users").update({ vitality: vitality - course.cost_vitality }).eq("id", session.user.id);
       setVitality(prev => prev - course.cost_vitality);
 
       const newPatrol = {
-        id: data.id,
+        id: res.data.patrol_id,
         courseId: course.id,
         characterId: selectedPatrolMember,
         secondsTotal: course.duration_seconds,
         secondsLeft: course.duration_seconds,
         status: "ONGOING" as const,
-        has_battle_event: hasBattle,
+        has_battle_event: res.data.has_battle,
         battle_resolved: false,
         battle_result: null,
         started_at: startedAt.toISOString(),
@@ -213,56 +211,22 @@ export function usePatrol(
       const totalCash = finalCash + battleCashBonus;
       const totalXp = finalXp + battleXpBonus;
 
-      await supabase.from("user_patrols").update({ status: "COMPLETED" }).eq("id", patrolId);
-
-      const now = new Date();
-      const expire = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-
-      await supabase.from("presents").insert({
-        user_id: session.user.id,
-        item_id: "CASH",
-        quantity: totalCash,
-        message: `見回り完了報酬 (${course.name}${isBattleVictory ? '・バトル勝利' : ''})`,
-        status: "UNCLAIMED",
-        sent_at: now.toISOString(),
-        expire_at: expire.toISOString()
+      const res = await supabase.rpc("complete_patrol_v2", {
+        p_user_id: session.user.id,
+        p_patrol_id: patrolId,
+        p_cash: totalCash,
+        p_xp: totalXp,
+        p_course_name: course.name,
+        p_reward_item_id: rewardItemId || null,
+        p_reward_qty: rewardQuantity || 0,
+        p_gear_dropped: gearDropped,
+        p_is_victory: isBattleVictory,
+        p_battle_reward_item_id: battleRewardItemId || null,
+        p_battle_reward_qty: battleRewardItemQty || 0
       });
 
-      if (rewardItemId && rewardQuantity > 0) {
-        await supabase.from("presents").insert({
-          user_id: session.user.id,
-          item_id: rewardItemId,
-          quantity: rewardQuantity,
-          message: `見回りドロップ報酬 (${course.name})`,
-          status: "UNCLAIMED",
-          sent_at: now.toISOString(),
-          expire_at: expire.toISOString()
-        });
-      }
-
-      if (gearDropped) {
-        await supabase.from("presents").insert({
-          user_id: session.user.id,
-          item_id: "WEAPON_001",
-          quantity: 1,
-          message: `見回り追加ドロップ装備 (${course.name})`,
-          status: "UNCLAIMED",
-          sent_at: now.toISOString(),
-          expire_at: expire.toISOString()
-        });
-      }
-
-      if (battleRewardItemId && battleRewardItemQty > 0) {
-        await supabase.from("presents").insert({
-          user_id: session.user.id,
-          item_id: battleRewardItemId,
-          quantity: battleRewardItemQty,
-          message: `見回りバトル勝利追加報酬 (${course.name})`,
-          status: "UNCLAIMED",
-          sent_at: now.toISOString(),
-          expire_at: expire.toISOString()
-        });
-      }
+      if (res.error) throw res.error;
+      if (res.data?.error) throw new Error(res.data.error);
 
       await supabase.rpc("evaluate_mission_progress", {
         p_user_id: session.user.id,

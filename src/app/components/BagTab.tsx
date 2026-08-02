@@ -20,7 +20,8 @@ export default function BagTab() {
     equipLbHammers,
     handleUseItem,
     vitality,
-    playCyberSe
+    playCyberSe,
+    setConfirmDialogConfig
   } = useGame();
 
   const [activeCategory, setActiveCategory] = useState<"ALL" | "CONSUMABLE" | "CHAR_EXP" | "EQUIP_EXP" | "AWAKEN_LB">("ALL");
@@ -62,13 +63,13 @@ export default function BagTab() {
     playCyberSe("click");
     const qty = itemQuantities[item.id] || 0;
     if (qty <= 0) {
-      alert("このアイテムを所持していません。");
+      setConfirmDialogConfig({ isOpen: true, title: "アイテム使用", message: "このアイテムを所持していません。", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
       return;
     }
 
     if (item.id === "ENERGY_DRINK") {
       if (vitality >= 100) {
-        alert("スタミナが100以上の場合は使用できません。");
+        setConfirmDialogConfig({ isOpen: true, title: "使用不可", message: "スタミナが100以上の場合は使用できません。", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
         return;
       }
       await handleUseItem(item.id);

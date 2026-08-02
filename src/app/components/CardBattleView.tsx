@@ -22,6 +22,7 @@ export default function CardBattleView() {
     setBattleSpeed,
     isAutoPaused,
     setIsAutoPaused,
+    setConfirmDialogConfig,
     playerPartyStates,
     enemyPartyStates,
     timeline,
@@ -469,9 +470,16 @@ export default function CardBattleView() {
           <button 
             className="sub-btn border-red text-color-red font-size-8 py-2 rounded active-scale-effect text-center"
             onClick={() => {
-              if (confirm("抗争から撤退しますか？（敗北扱いとなります）")) {
-                endBattleSession("DEFEAT");
-              }
+              setConfirmDialogConfig({
+                isOpen: true,
+                title: "撤退確認",
+                message: "抗争から撤退しますか？（敗北扱いとなります）",
+                onConfirm: () => {
+                  setConfirmDialogConfig(null);
+                  endBattleSession("DEFEAT");
+                },
+                onCancel: () => setConfirmDialogConfig(null)
+              });
             }}
           >
             撤退する

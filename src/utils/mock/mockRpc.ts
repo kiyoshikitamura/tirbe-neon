@@ -533,5 +533,946 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     return { data: { status: "success", added_base_points: addedBasePoints }, error: null };
   }
 
+
+  if (funcName === "character_level_up") {
+    const { p_user_id, p_character_id, p_exp_item_id, p_count, p_cash_cost } = params;
+    const users = client.getStorage("users");
+    const user = users.find((u: any) => u.id === p_user_id);
+    if (!user || user.cash < p_cash_cost) return { error: { message: "キャッシュが不足しています。" } };
+    
+    const items = client.getStorage("user_items");
+    const expItem = items.find((i: any) => i.user_id === p_user_id && i.item_id === p_exp_item_id);
+    if (!expItem || expItem.quantity < p_count) return { error: { message: "経験の書が不足しています。" } };
+    
+    const chars = client.getStorage("user_characters");
+    const char = chars.find((c: any) => c.user_id === p_user_id && c.character_id === p_character_id);
+    if (!char) return { error: { message: "キャラクターが存在しません。" } };
+    
+    user.cash -= p_cash_cost;
+    expItem.quantity -= p_count;
+    char.level = Math.min(100, (char.level || 1) + p_count);
+    
+    client.setStorage("users", users);
+    client.setStorage("user_items", items);
+    client.setStorage("user_characters", chars);
+    
+    executeMockRpc(client, "evaluate_mission_progress", { p_user_id, p_trigger_type: "CHAR_LEVEL_UP", p_progress_increment: p_count });
+    return { data: { status: "success" }, error: null };
+  }
+
+  if (funcName === "character_awaken") {
+    const { p_user_id, p_character_id, p_cash_cost } = params;
+    const users = client.getStorage("users");
+    const user = users.find((u: any) => u.id === p_user_id);
+    if (!user || user.cash < p_cash_cost) return { error: { message: "キャッシュが不足しています。" } };
+    
+    const items = client.getStorage("user_items");
+    const awakenItem = items.find((i: any) => i.user_id === p_user_id && i.item_id === "LAW_OF_STRIFE");
+    if (!awakenItem || awakenItem.quantity < 1) return { error: { message: "覚醒の書が不足しています。" } };
+    
+    const chars = client.getStorage("user_characters");
+    const char = chars.find((c: any) => c.user_id === p_user_id && c.character_id === p_character_id);
+    if (!char || (char.awakening_level || 0) >= 5) return { error: { message: "キャラクターが存在しないか、覚醒上限です。" } };
+    
+    user.cash -= p_cash_cost;
+    awakenItem.quantity -= 1;
+    char.awakening_level = (char.awakening_level || 0) + 1;
+    
+    client.setStorage("users", users);
+    client.setStorage("user_items", items);
+    client.setStorage("user_characters", chars);
+    return { data: { status: "success" }, error: null };
+  }
+
+  if (funcName === "upgrade_gear") {
+    const { p_user_id, p_equipment_id, p_exp_item_id, p_count, p_cash_cost } = params;
+    const users = client.getStorage("users");
+    const user = users.find((u: any) => u.id === p_user_id);
+    if (!user || user.cash < p_cash_cost) return { error: { message: "キャッシュが不足しています。" } };
+    
+    const items = client.getStorage("user_items");
+    const expItem = items.find((i: any) => i.user_id === p_user_id && i.item_id === p_exp_item_id);
+    if (!expItem || expItem.quantity < p_count) return { error: { message: "強化素材が不足しています。" } };
+    
+    const equips = client.getStorage("user_equipments");
+    const equip = equips.find((e: any) => e.id === p_equipment_id && e.user_id === p_user_id);
+    if (!equip) return { error: { message: "装備が存在しません。" } };
+    
+    user.cash -= p_cash_cost;
+    expItem.quantity -= p_count;
+    equip.level = Math.min(100, (equip.level || 1) + p_count);
+    
+    client.setStorage("users", users);
+    client.setStorage("user_items", items);
+    client.setStorage("user_equipments", equips);
+    
+    executeMockRpc(client, "evaluate_mission_progress", { p_user_id, p_trigger_type: "GEAR_UPGRADE", p_progress_increment: p_count });
+    return { data: { status: "success" }, error: null };
+  }
+
+  if (funcName === "limit_break_gear") {
+    const { p_user_id, p_equipment_id, p_cash_cost, p_hammer_cost } = params;
+    const users = client.getStorage("users");
+    const user = users.find((u: any) => u.id === p_user_id);
+    if (!user || user.cash < p_cash_cost) return { error: { message: "キャッシュが不足しています。" } };
+    
+    const items = client.getStorage("user_items");
+    const hammerItem = items.find((i: any) => i.user_id === p_user_id && i.item_id === "EQUIP_LB_HAMMER");
+    if (!hammerItem || hammerItem.quantity < p_hammer_cost) return { error: { message: "限界突破ハンマーが不足しています。" } };
+    
+    const equips = client.getStorage("user_equipments");
+    const equip = equips.find((e: any) => e.id === p_equipment_id && e.user_id === p_user_id);
+    if (!equip) return { error: { message: "装備が存在しません。" } };
+    
+    user.cash -= p_cash_cost;
+    hammerItem.quantity -= p_hammer_cost;
+    equip.plus_val = (equip.plus_val || 0) + 1;
+    
+    client.setStorage("users", users);
+    client.setStorage("user_items", items);
+    client.setStorage("user_equipments", equips);
+    
+    executeMockRpc(client, "evaluate_mission_progress", { p_user_id, p_trigger_type: "GEAR_LIMIT_BREAK", p_progress_increment: 1 });
+    return { data: { status: "success" }, error: null };
+  }
+
+  if (funcName === "limit_break_skill") {
+    const { p_user_id, p_skill_id, p_cash_cost, p_book_cost } = params;
+    const users = client.getStorage("users");
+    const user = users.find((u: any) => u.id === p_user_id);
+    if (!user || user.cash < p_cash_cost) return { error: { message: "キャッシュが不足しています。" } };
+    
+    const items = client.getStorage("user_items");
+    const bookItem = items.find((i: any) => i.user_id === p_user_id && i.item_id === "SKILL_LB_BOOK");
+    if (!bookItem || bookItem.quantity < p_book_cost) return { error: { message: "奥義書が不足しています。" } };
+    
+    const skills = client.getStorage("user_skills");
+    const skill = skills.find((s: any) => s.id === p_skill_id && s.user_id === p_user_id);
+    if (!skill) return { error: { message: "スキルが存在しません。" } };
+    
+    user.cash -= p_cash_cost;
+    bookItem.quantity -= p_book_cost;
+    skill.plus_val = (skill.plus_val || 0) + 1;
+    
+    client.setStorage("users", users);
+    client.setStorage("user_items", items);
+    client.setStorage("user_skills", skills);
+    
+    executeMockRpc(client, "evaluate_mission_progress", { p_user_id, p_trigger_type: "SKILL_LIMIT_BREAK", p_progress_increment: 1 });
+    return { data: { status: "success" }, error: null };
+  }
+
+  if (funcName === "create_guild") {
+    const { p_user_id, p_guild_name, p_guild_description, p_guild_logo, p_guild_color, p_creation_cost } = params;
+    const users = client.getStorage("users");
+    const user = users.find((u: any) => u.id === p_user_id);
+    if (!user || user.cash < p_creation_cost) return { error: { message: "キャッシュが不足しています。" } };
+    
+    const guilds = client.getStorage("guilds") || [];
+    const newGuildId = "guild_" + Date.now();
+    const newGuild = {
+      id: newGuildId,
+      name: p_guild_name,
+      description: p_guild_description || "",
+      logo_icon: p_guild_logo || "guild_icon_default.png",
+      color_theme: p_guild_color || "red",
+      level: 1,
+      xp: 0,
+      cash: 0,
+      approval_required: false,
+      auto_kick_days: 7,
+      created_at: new Date().toISOString()
+    };
+    guilds.push(newGuild);
+    
+    const members = client.getStorage("guild_members") || [];
+    members.push({
+      id: "gm_" + Date.now(),
+      guild_id: newGuildId,
+      user_id: p_user_id,
+      role: "MASTER",
+      joined_at: new Date().toISOString()
+    });
+    
+    user.cash -= p_creation_cost;
+    user.guild_id = newGuildId;
+    
+    client.setStorage("users", users);
+    client.setStorage("guilds", guilds);
+    client.setStorage("guild_members", members);
+    
+    executeMockRpc(client, "evaluate_mission_progress", { p_user_id, p_trigger_type: "GUILD_JOIN", p_progress_increment: 1 });
+    return { data: { guild_id: newGuildId }, error: null };
+  }
+
+  if (funcName === "buy_guild_decoration") {
+    const { p_user_id, p_guild_id, p_decoration_id, p_cost } = params;
+    const guilds = client.getStorage("guilds") || [];
+    const guild = guilds.find((g: any) => g.id === p_guild_id);
+    if (!guild || (guild.cash || 0) < p_cost) return { error: { message: "ギルド資金が不足しています。" } };
+    
+    const decorations = client.getStorage("guild_decorations") || [];
+    decorations.push({
+      id: "gdec_" + Date.now(),
+      guild_id: p_guild_id,
+      decoration_id: p_decoration_id,
+      unlocked_at: new Date().toISOString()
+    });
+    
+    guild.cash -= p_cost;
+    
+    client.setStorage("guilds", guilds);
+    client.setStorage("guild_decorations", decorations);
+    return { data: { status: "success" }, error: null };
+  }
+
+  if (funcName === "use_inventory_item") {
+    const { p_user_id, p_item_id, p_quantity, p_vitality_gain } = params;
+    const items = client.getStorage("user_items");
+    const item = items.find((i: any) => i.user_id === p_user_id && i.item_id === p_item_id);
+    if (!item || item.quantity < p_quantity) return { error: { message: "アイテムが不足しています。" } };
+    
+    item.quantity -= p_quantity;
+    client.setStorage("user_items", items);
+    
+    if (p_vitality_gain > 0) {
+      const users = client.getStorage("users");
+      const user = users.find((u: any) => u.id === p_user_id);
+      if (user) {
+        user.vitality = Math.min(100, (user.vitality || 0) + p_vitality_gain);
+        client.setStorage("users", users);
+      }
+    }
+    
+    return { data: { status: "success" }, error: null };
+  }
+
+  if (funcName === "complete_patrol_instant") {
+    const { p_user_id, p_patrol_id, p_diamond_cost } = params;
+    const users = client.getStorage("users");
+    const user = users.find((u: any) => u.id === p_user_id);
+    if (!user || user.diamonds < p_diamond_cost) return { error: { message: "ダイヤが不足しています。" } };
+    
+    const patrols = client.getStorage("user_patrols") || [];
+    const patrolIndex = patrols.findIndex((p: any) => p.id === p_patrol_id && p.user_id === p_user_id);
+    if (patrolIndex === -1) return { error: { message: "クエストが存在しません。" } };
+    
+    user.diamonds -= p_diamond_cost;
+    patrols.splice(patrolIndex, 1);
+    
+    client.setStorage("users", users);
+    client.setStorage("user_patrols", patrols);
+    
+    return { data: { status: "success" }, error: null };
+  }
+
+  if (funcName === "claim_battle_rewards") {
+    const { p_user_id, p_cash_amount, p_exp_amount, p_item_rewards } = params;
+    const users = client.getStorage("users");
+    const user = users.find((u: any) => u.id === p_user_id);
+    if (!user) return { error: { message: "ユーザーが存在しません。" } };
+    
+    user.cash = (user.cash || 0) + p_cash_amount;
+    client.setStorage("users", users);
+    
+    if (p_exp_amount > 0) {
+      executeMockRpc(client, "add_user_xp", { p_user_id, p_xp_amount: p_exp_amount });
+    }
+    
+    const items = client.getStorage("user_items") || [];
+    if (p_item_rewards && p_item_rewards.length > 0) {
+      for (const reward of p_item_rewards) {
+        const existing = items.find((i: any) => i.user_id === p_user_id && i.item_id === reward.item_id);
+        if (existing) {
+          existing.quantity += reward.quantity;
+        } else {
+          items.push({
+            id: `ui_${Date.now()}_${Math.random()}`,
+            user_id: p_user_id,
+            item_id: reward.item_id,
+            quantity: reward.quantity
+          });
+        }
+      }
+      client.setStorage("user_items", items);
+    }
+    
+    return { data: { status: "success" }, error: null };
+  }
+  
+  if (funcName === "execute_gacha") {
+    const { p_user_id, p_currency_type, p_currency_cost, p_results } = params;
+    const users = client.getStorage("users");
+    const user = users.find((u: any) => u.id === p_user_id);
+    if (!user) return { error: { message: "ユーザーが存在しません。" } };
+    
+    if (p_currency_type === "cash") {
+      if (user.cash < p_currency_cost) return { error: { message: "キャッシュが不足しています。" } };
+      user.cash -= p_currency_cost;
+    } else if (p_currency_type === "diamonds") {
+      if (user.diamonds < p_currency_cost) return { error: { message: "ダイヤが不足しています。" } };
+      user.diamonds -= p_currency_cost;
+    } else if (p_currency_type === "free") {
+      // do nothing
+    } else if (p_currency_type === "ticket") {
+      const items = client.getStorage("user_items") || [];
+      const ticket = items.find((i: any) => i.user_id === p_user_id && i.item_id === "GACHA_TICKET");
+      if (!ticket || ticket.quantity < p_currency_cost) return { error: { message: "ガチャチケットが不足しています。" } };
+      ticket.quantity -= p_currency_cost;
+      client.setStorage("user_items", items);
+    } else {
+      return { error: { message: "不正な通貨タイプです。" } };
+    }
+    
+    if (p_currency_type !== "free") {
+       user.special_pity_points = (user.special_pity_points || 0) + p_results.length;
+    }
+    
+    client.setStorage("users", users);
+    
+    const items = client.getStorage("user_items") || [];
+    const characters = client.getStorage("user_characters") || [];
+    
+    for (const res of p_results) {
+      if (res.type === "character") {
+        const existingChar = characters.find((c: any) => c.user_id === p_user_id && c.character_id === res.character_id);
+        if (existingChar) {
+          const dupItemId = "CHAR_EXP_M";
+          const existingItem = items.find((i: any) => i.user_id === p_user_id && i.item_id === dupItemId);
+          if (existingItem) {
+             existingItem.quantity += 5;
+          } else {
+             items.push({ id: `ui_${Date.now()}_${Math.random()}`, user_id: p_user_id, item_id: dupItemId, quantity: 5 });
+          }
+        } else {
+          characters.push({
+            id: `uc_${Date.now()}_${Math.random()}`,
+            user_id: p_user_id,
+            character_id: res.character_id,
+            level: 1,
+            awakening_level: 0
+          });
+        }
+      } else if (res.type === "item") {
+         const existingItem = items.find((i: any) => i.user_id === p_user_id && i.item_id === res.item_id);
+         if (existingItem) {
+            existingItem.quantity += res.quantity;
+         } else {
+            items.push({ id: `ui_${Date.now()}_${Math.random()}`, user_id: p_user_id, item_id: res.item_id, quantity: res.quantity });
+         }
+      }
+    }
+    
+    client.setStorage("user_items", items);
+    client.setStorage("user_characters", characters);
+    
+    return { data: { status: "success" }, error: null };
+  }
+
+
+  if (funcName === "create_guild_v2") {
+    const { p_user_id, p_guild_name, p_creation_cost } = params;
+    const users = client.getStorage("users");
+    const user = users.find((u: any) => u.id === p_user_id);
+    if (!user || user.cash < p_creation_cost) return { error: { message: "キャッシュが不足しています。" } };
+    
+    const guilds = client.getStorage("guilds") || [];
+    if (guilds.some((g: any) => g.name === p_guild_name)) {
+       return { error: { message: "このギルド名は既に登録されています。" } };
+    }
+    
+    const newGuildId = "guild_" + Date.now();
+    const newGuild = {
+      id: newGuildId,
+      name: p_guild_name,
+      leader_id: p_user_id,
+      level: 1,
+      xp: 0,
+      funds: 0,
+      created_at: new Date().toISOString()
+    };
+    guilds.push(newGuild);
+    
+    const members = client.getStorage("guild_members") || [];
+    members.push({
+      id: "gm_" + Date.now(),
+      guild_id: newGuildId,
+      user_id: p_user_id,
+      role: "MASTER",
+      joined_at: new Date().toISOString()
+    });
+    
+    user.cash -= p_creation_cost;
+    user.guild_id = newGuildId;
+    
+    client.setStorage("users", users);
+    client.setStorage("guilds", guilds);
+    client.setStorage("guild_members", members);
+    
+    executeMockRpc(client, "evaluate_mission_progress", { p_user_id, p_trigger_type: "GUILD_JOIN", p_progress_increment: 1 });
+    return { data: { status: "success", guild_id: newGuildId }, error: null };
+  }
+
+  if (funcName === "limit_break_gear_v2") {
+    const { p_user_id, p_equipment_id, p_cash_cost, p_use_wildcard, p_dupe_id, p_new_options } = params;
+    const users = client.getStorage("users");
+    const user = users.find((u: any) => u.id === p_user_id);
+    if (!user || user.cash < p_cash_cost) return { error: { message: "キャッシュが不足しています。" } };
+    
+    if (p_use_wildcard) {
+      const items = client.getStorage("user_items");
+      const hammerItem = items.find((i: any) => i.user_id === p_user_id && i.item_id === "EQUIP_LB_HAMMER");
+      if (!hammerItem || hammerItem.quantity < 1) return { error: { message: "万能カスタムツールが不足しています。" } };
+      hammerItem.quantity -= 1;
+      client.setStorage("user_items", items);
+    } else {
+      const equips = client.getStorage("user_equipments");
+      const dupeIdx = equips.findIndex((e: any) => e.id === p_dupe_id && e.user_id === p_user_id);
+      if (dupeIdx === -1) return { error: { message: "同名の予備装備品が見つかりません。" } };
+      equips.splice(dupeIdx, 1);
+      client.setStorage("user_equipments", equips);
+    }
+    
+    const equips = client.getStorage("user_equipments");
+    const equip = equips.find((e: any) => e.id === p_equipment_id && e.user_id === p_user_id);
+    if (!equip) return { error: { message: "対象装備が存在しません。" } };
+    
+    user.cash -= p_cash_cost;
+    equip.plus_val = (equip.plus_val || 0) + 1;
+    if (p_new_options) equip.random_options = p_new_options;
+    
+    client.setStorage("users", users);
+    client.setStorage("user_equipments", equips);
+    return { data: { status: "success" }, error: null };
+  }
+
+  if (funcName === "limit_break_skill_v2") {
+    const { p_user_id, p_skill_id, p_cash_cost, p_use_wildcard, p_dupe_id, p_wildcard_item_id } = params;
+    const users = client.getStorage("users");
+    const user = users.find((u: any) => u.id === p_user_id);
+    if (!user || user.cash < p_cash_cost) return { error: { message: "キャッシュが不足しています。" } };
+    
+    if (p_use_wildcard) {
+      const items = client.getStorage("user_items");
+      const bookItem = items.find((i: any) => i.user_id === p_user_id && i.item_id === p_wildcard_item_id);
+      if (!bookItem || bookItem.quantity < 1) return { error: { message: "限界突破の書が不足しています。" } };
+      bookItem.quantity -= 1;
+      client.setStorage("user_items", items);
+    } else {
+      const skills = client.getStorage("user_skills");
+      const dupeIdx = skills.findIndex((s: any) => s.id === p_dupe_id && s.user_id === p_user_id);
+      if (dupeIdx === -1) return { error: { message: "同名の予備スキルカードが見つかりません。" } };
+      skills.splice(dupeIdx, 1);
+      client.setStorage("user_skills", skills);
+    }
+    
+    const skills = client.getStorage("user_skills");
+    const skill = skills.find((s: any) => s.id === p_skill_id && s.user_id === p_user_id);
+    if (!skill) return { error: { message: "対象スキルが存在しません。" } };
+    
+    user.cash -= p_cash_cost;
+    skill.plus_val = (skill.plus_val || 0) + 1;
+    
+    client.setStorage("users", users);
+    client.setStorage("user_skills", skills);
+    return { data: { status: "success" }, error: null };
+  }
+
+
+  if (funcName === "update_guild_alignment") {
+    const { p_guild_id, p_main, p_sub } = params;
+    const guilds = client.getStorage("guilds") || [];
+    const g = guilds.find((x: any) => x.id === p_guild_id);
+    if (g) {
+      g.main_alignment = p_main;
+      g.sub_alignment = p_sub;
+      client.setStorage("guilds", guilds);
+    }
+    return { data: { status: "success" }, error: null };
+  }
+  if (funcName === "leave_guild") {
+    const { p_user_id, p_guild_id, p_is_master, p_has_others } = params;
+    if (p_is_master && !p_has_others) {
+      const guilds = client.getStorage("guilds") || [];
+      client.setStorage("guilds", guilds.filter((g: any) => g.id !== p_guild_id));
+    } else {
+      const members = client.getStorage("guild_members") || [];
+      client.setStorage("guild_members", members.filter((m: any) => m.user_id !== p_user_id));
+    }
+    const users = client.getStorage("users") || [];
+    const u = users.find((x: any) => x.id === p_user_id);
+    if (u) {
+      u.last_guild_left_at = new Date().toISOString();
+      u.guild_id = null;
+      client.setStorage("users", users);
+    }
+    return { data: { status: "success" }, error: null };
+  }
+  if (funcName === "transfer_guild_leader") {
+    const { p_guild_id, p_old_id, p_new_id } = params;
+    const members = client.getStorage("guild_members") || [];
+    const oldM = members.find((m: any) => m.user_id === p_old_id);
+    if (oldM) oldM.role = "SUBMASTER";
+    const newM = members.find((m: any) => m.user_id === p_new_id);
+    if (newM) newM.role = "MASTER";
+    client.setStorage("guild_members", members);
+    
+    const guilds = client.getStorage("guilds") || [];
+    const g = guilds.find((x: any) => x.id === p_guild_id);
+    if (g) {
+      g.leader_id = p_new_id;
+      client.setStorage("guilds", guilds);
+    }
+    return { data: { status: "success" }, error: null };
+  }
+  if (funcName === "kick_guild_member") {
+    const { p_guild_id, p_user_id } = params;
+    const members = client.getStorage("guild_members") || [];
+    client.setStorage("guild_members", members.filter((m: any) => m.user_id !== p_user_id || m.guild_id !== p_guild_id));
+    
+    const users = client.getStorage("users") || [];
+    const u = users.find((x: any) => x.id === p_user_id);
+    if (u) {
+      u.last_guild_left_at = new Date().toISOString();
+      u.guild_id = null;
+      client.setStorage("users", users);
+    }
+    return { data: { status: "success" }, error: null };
+  }
+  if (funcName === "update_guild_settings") {
+    const { p_guild_id, p_desc, p_approval, p_kick_days } = params;
+    const guilds = client.getStorage("guilds") || [];
+    const g = guilds.find((x: any) => x.id === p_guild_id);
+    if (g) {
+      g.description = p_desc;
+      g.approval_required = p_approval;
+      g.auto_kick_days = p_kick_days;
+      client.setStorage("guilds", guilds);
+    }
+    return { data: { status: "success" }, error: null };
+  }
+  if (funcName === "equip_guild_decoration") {
+    const { p_guild_id, p_type, p_item_id } = params;
+    const guilds = client.getStorage("guilds") || [];
+    const g = guilds.find((x: any) => x.id === p_guild_id);
+    if (g) {
+      if (p_type === "DECORATION") g.equipped_decoration = p_item_id;
+      else g.equipped_banner = p_item_id;
+      client.setStorage("guilds", guilds);
+    }
+    return { data: { status: "success" }, error: null };
+  }
+
+
+  if (funcName === "buy_guild_decoration_v2") {
+    const { p_guild_id, p_type, p_item_id, p_cost } = params;
+    const guilds = client.getStorage("guilds") || [];
+    const g = guilds.find((x: any) => x.id === p_guild_id);
+    if (!g || (g.funds || 0) < p_cost) return { error: { message: "ギルド資金が不足しています。" } };
+    
+    if (p_type === "DECORATION") {
+      const list = Array.isArray(g.unlocked_decorations) ? g.unlocked_decorations : [];
+      if (list.includes(p_item_id)) return { error: { message: "このアイテムは既に購入済みです。" } };
+      g.unlocked_decorations = [...list, p_item_id];
+    } else {
+      const list = Array.isArray(g.unlocked_banners) ? g.unlocked_banners : [];
+      if (list.includes(p_item_id)) return { error: { message: "このアイテムは既に購入済みです。" } };
+      g.unlocked_banners = [...list, p_item_id];
+    }
+    g.funds -= p_cost;
+    client.setStorage("guilds", guilds);
+    return { data: { status: "success" }, error: null };
+  }
+
+
+  if (funcName === "use_energy_drink") {
+    const { p_user_id } = params;
+    const items = client.getStorage("user_items") || [];
+    const drink = items.find((i: any) => i.user_id === p_user_id && i.item_id === "ENERGY_DRINK");
+    if (!drink || drink.quantity < 1) return { error: { message: "エナジードリンクを所持していません。" } };
+    drink.quantity -= 1;
+    
+    const users = client.getStorage("users") || [];
+    const user = users.find((u: any) => u.id === p_user_id);
+    if (user) user.vitality = 100;
+    
+    client.setStorage("user_items", items);
+    client.setStorage("users", users);
+    return { data: { status: "success" }, error: null };
+  }
+
+  if (funcName === "add_test_diamonds") {
+    const { p_user_id } = params;
+    const users = client.getStorage("users") || [];
+    const user = users.find((u: any) => u.id === p_user_id);
+    if (user) user.neon_diamonds = (user.neon_diamonds || 0) + 50;
+    client.setStorage("users", users);
+    return { data: { status: "success" }, error: null };
+  }
+
+  if (funcName === "claim_present") {
+    const { p_user_id, p_present_id } = params;
+    const presents = client.getStorage("presents") || [];
+    const p = presents.find((x: any) => x.id === p_present_id && x.user_id === p_user_id && x.status === "UNCLAIMED");
+    if (!p) return { error: { message: "プレゼントが見つからないか、既に受け取り済みです。" } };
+    
+    const users = client.getStorage("users") || [];
+    const user = users.find((u: any) => u.id === p_user_id);
+    if (!user) return { error: { message: "User not found" } };
+    
+    if (p.item_id === "CASH") user.cash = (user.cash || 0) + p.quantity;
+    else if (p.item_id === "DIA") user.neon_diamonds = (user.neon_diamonds || 0) + p.quantity;
+    else if (p.item_id.startsWith("EQUIP_")) {
+      const equips = client.getStorage("user_equipments") || [];
+      equips.push({
+        id: "equip_" + Date.now(),
+        user_id: p_user_id,
+        equipment_master_id: p.item_id,
+        level: 1,
+        plus_val: 0
+      });
+      client.setStorage("user_equipments", equips);
+    } else {
+      const items = client.getStorage("user_items") || [];
+      const ex = items.find((i: any) => i.user_id === p_user_id && i.item_id === p.item_id);
+      if (ex) ex.quantity += p.quantity;
+      else items.push({ id: "itm_" + Date.now(), user_id: p_user_id, item_id: p.item_id, quantity: p.quantity });
+      client.setStorage("user_items", items);
+    }
+    
+    p.status = "CLAIMED";
+    p.claimed_at = new Date().toISOString();
+    
+    client.setStorage("users", users);
+    client.setStorage("presents", presents);
+    return { data: { status: "success" }, error: null };
+  }
+
+  if (funcName === "claim_all_presents") {
+    const { p_user_id } = params;
+    const presents = client.getStorage("presents") || [];
+    const users = client.getStorage("users") || [];
+    const user = users.find((u: any) => u.id === p_user_id);
+    if (!user) return { error: { message: "User not found" } };
+    let claimed = 0;
+    presents.filter((x: any) => x.user_id === p_user_id && x.status === "UNCLAIMED").forEach((p: any) => {
+      if (p.item_id === "CASH") user.cash = (user.cash || 0) + p.quantity;
+      else if (p.item_id === "DIA") user.neon_diamonds = (user.neon_diamonds || 0) + p.quantity;
+      else if (p.item_id.startsWith("EQUIP_")) {
+        const equips = client.getStorage("user_equipments") || [];
+        equips.push({
+          id: "equip_" + Date.now() + Math.random(),
+          user_id: p_user_id,
+          equipment_master_id: p.item_id,
+          level: 1,
+          plus_val: 0
+        });
+        client.setStorage("user_equipments", equips);
+      } else {
+        const items = client.getStorage("user_items") || [];
+        const ex = items.find((i: any) => i.user_id === p_user_id && i.item_id === p.item_id);
+        if (ex) ex.quantity += p.quantity;
+        else items.push({ id: "itm_" + Date.now() + Math.random(), user_id: p_user_id, item_id: p.item_id, quantity: p.quantity });
+        client.setStorage("user_items", items);
+      }
+      p.status = "CLAIMED";
+      p.claimed_at = new Date().toISOString();
+      claimed++;
+    });
+    client.setStorage("users", users);
+    client.setStorage("presents", presents);
+    return { data: { status: "success", claimed_count: claimed }, error: null };
+  }
+
+  if (funcName === "claim_mission_reward") {
+    const { p_user_id, p_mission_id } = params;
+    const userMissions = client.getStorage("user_missions") || [];
+    const um = userMissions.find((m: any) => m.user_id === p_user_id && m.mission_id === p_mission_id && m.status === "PROGRESS");
+    if (!um) return { error: { message: "ミッションが見つからないか未達成です。" } };
+    
+    um.status = "CLAIMED";
+    um.updated_at = new Date().toISOString();
+    
+    const presents = client.getStorage("presents") || [];
+    presents.push({
+      id: Date.now(),
+      user_id: p_user_id,
+      item_id: "DIA", // mock fallback
+      quantity: 100,
+      message: "ミッション報酬",
+      status: "UNCLAIMED"
+    });
+    
+    client.setStorage("user_missions", userMissions);
+    client.setStorage("presents", presents);
+    return { data: { status: "success" }, error: null };
+  }
+
+  if (funcName === "claim_all_mission_rewards") {
+    const { p_user_id, p_mission_ids } = params;
+    const userMissions = client.getStorage("user_missions") || [];
+    const presents = client.getStorage("presents") || [];
+    let count = 0;
+    userMissions.forEach((um: any) => {
+      if (um.user_id === p_user_id && p_mission_ids.includes(um.mission_id) && um.status === "PROGRESS") {
+        um.status = "CLAIMED";
+        um.updated_at = new Date().toISOString();
+        presents.push({
+          id: Date.now() + Math.random(),
+          user_id: p_user_id,
+          item_id: "CASH", // mock fallback
+          quantity: 5000,
+          message: "ミッション一括報酬",
+          status: "UNCLAIMED"
+        });
+        count++;
+      }
+    });
+    client.setStorage("user_missions", userMissions);
+    client.setStorage("presents", presents);
+    return { data: { status: "success", claimed_count: count }, error: null };
+  }
+
+  if (funcName === "admin_reset_daily_missions") {
+    const { p_user_id, p_mission_ids } = params;
+    const userMissions = client.getStorage("user_missions") || [];
+    userMissions.forEach((um: any) => {
+      if (um.user_id === p_user_id && p_mission_ids.includes(um.mission_id)) {
+        um.status = "PROGRESS";
+        um.current_progress = 0;
+        um.updated_at = new Date().toISOString();
+      }
+    });
+    client.setStorage("user_missions", userMissions);
+    return { data: { status: "success" }, error: null };
+  }
+
+
+  if (funcName === "start_patrol_v2") {
+    const { p_user_id, p_course_id, p_character_id, p_duration_seconds, p_cost_vitality, p_battle_chance } = params;
+    const users = client.getStorage("users") || [];
+    const user = users.find((u: any) => u.id === p_user_id);
+    if (!user || user.vitality < p_cost_vitality) return { error: { message: "スタミナが不足しています。" } };
+    
+    const has_battle = Math.random() <= (p_battle_chance || 0.2);
+    const newId = "patrol_" + Date.now();
+    const patrols = client.getStorage("user_patrols") || [];
+    
+    patrols.push({
+      id: newId,
+      user_id: p_user_id,
+      course_id: p_course_id,
+      character_id: p_character_id,
+      started_at: new Date().toISOString(),
+      expires_at: new Date(Date.now() + p_duration_seconds * 1000).toISOString(),
+      status: "ONGOING",
+      has_battle_event: has_battle,
+      battle_resolved: false
+    });
+    
+    user.vitality -= p_cost_vitality;
+    client.setStorage("users", users);
+    client.setStorage("user_patrols", patrols);
+    return { data: { status: "success", patrol_id: newId, has_battle }, error: null };
+  }
+
+  if (funcName === "complete_patrol_v2") {
+    const { p_user_id, p_patrol_id, p_cash, p_xp, p_course_name, p_reward_item_id, p_reward_qty, p_gear_dropped, p_is_victory, p_battle_reward_item_id, p_battle_reward_qty } = params;
+    const patrols = client.getStorage("user_patrols") || [];
+    const p = patrols.find((x: any) => x.id === p_patrol_id && x.user_id === p_user_id);
+    if (p) p.status = "COMPLETED";
+    
+    const presents = client.getStorage("presents") || [];
+    presents.push({
+      id: Date.now(),
+      user_id: p_user_id,
+      item_id: "CASH",
+      quantity: p_cash,
+      message: `見回り完了報酬 (${p_course_name}${p_is_victory ? '・バトル勝利' : ''})`,
+      status: "UNCLAIMED"
+    });
+    
+    if (p_reward_item_id && p_reward_qty > 0) {
+      presents.push({
+        id: Date.now() + 1,
+        user_id: p_user_id,
+        item_id: p_reward_item_id,
+        quantity: p_reward_qty,
+        message: `見回りドロップ報酬 (${p_course_name})`,
+        status: "UNCLAIMED"
+      });
+    }
+    
+    if (p_gear_dropped) {
+      presents.push({
+        id: Date.now() + 2,
+        user_id: p_user_id,
+        item_id: "WEAPON_001",
+        quantity: 1,
+        message: `見回り追加ドロップ装備 (${p_course_name})`,
+        status: "UNCLAIMED"
+      });
+    }
+
+    if (p_battle_reward_item_id && p_battle_reward_qty > 0) {
+      presents.push({
+        id: Date.now() + 3,
+        user_id: p_user_id,
+        item_id: p_battle_reward_item_id,
+        quantity: p_battle_reward_qty,
+        message: `見回りバトル勝利追加報酬 (${p_course_name})`,
+        status: "UNCLAIMED"
+      });
+    }
+
+    
+    client.setStorage("user_patrols", patrols);
+    client.setStorage("presents", presents);
+    return { data: { status: "success" }, error: null };
+  }
+
+
+  if (funcName === "consume_pvp_ticket") {
+    const { p_user_id } = params;
+    const users = client.getStorage("users") || [];
+    const user = users.find((u: any) => u.id === p_user_id);
+    if (!user || user.pvp_tickets < 1) return { error: { message: "PvP入場券が不足しています。" } };
+    
+    if (user.pvp_tickets === 5) user.pvp_tickets_last_recovered_at = new Date().toISOString();
+    user.pvp_tickets -= 1;
+    client.setStorage("users", users);
+    return { data: { status: "success" }, error: null };
+  }
+
+  if (funcName === "process_pvp_match_result_v2") {
+    const { p_user_id, p_is_win, p_point_diff, p_cash_reward } = params;
+    const ranks = client.getStorage("pvp_ranks") || [];
+    let r = ranks.find((x: any) => x.user_id === p_user_id);
+    if (!r) {
+      r = { user_id: p_user_id, rank_points: 1000, daily_wins: 0, season_wins: 0 };
+      ranks.push(r);
+    }
+    r.rank_points = Math.max(0, r.rank_points + p_point_diff);
+    if (p_is_win) {
+      r.daily_wins += 1;
+      r.season_wins += 1;
+    }
+    client.setStorage("pvp_ranks", ranks);
+    
+    if (p_cash_reward > 0) {
+      const users = client.getStorage("users") || [];
+      const u = users.find((x: any) => x.id === p_user_id);
+      if (u) {
+        u.cash = (u.cash || 0) + p_cash_reward;
+        client.setStorage("users", users);
+      }
+    }
+    return { data: { status: "success" }, error: null };
+  }
+
+  if (funcName === "record_raid_boss_damage_v2") {
+    const { p_user_id, p_boss_id, p_damage } = params;
+    const bosses = client.getStorage("raid_bosses") || [];
+    const b = bosses.find((x: any) => x.id === p_boss_id);
+    if (!b || b.status === "DEFEATED") return { error: { message: "ボスは既に討伐されています。" } };
+    
+    b.current_hp -= p_damage;
+    if (b.current_hp <= 0) {
+      b.current_hp = 0;
+      b.status = "DEFEATED";
+    }
+    b.updated_at = new Date().toISOString();
+    client.setStorage("raid_bosses", bosses);
+    return { data: { status: "success" }, error: null };
+  }
+
+
+  if (funcName === "process_gvg_battle_result_v2") {
+    const { p_user_id, p_guild_id, p_base_id, p_is_practice, p_is_win } = params;
+    if (p_is_practice) return { data: { status: "success", practice: true }, error: null };
+    
+    const seasonStatus = client.getStorage("gvg_season_status") || [{ id: 1, current_day: 1 }];
+    const currentDay = seasonStatus[0].current_day;
+    const isFinals = currentDay === 7;
+    
+    const matches = client.getStorage("gvg_matches") || [];
+    const myMatch = matches.find((m: any) => m.status === "ONGOING" && m.is_finals === isFinals && (m.guild_a_id === p_guild_id || m.guild_b_id === p_guild_id));
+    
+    if (p_is_win) {
+      if (myMatch) {
+        if (myMatch.guild_a_id === p_guild_id) myMatch.guild_a_points = (myMatch.guild_a_points || 0) + 250;
+        else myMatch.guild_b_points = (myMatch.guild_b_points || 0) + 250;
+        client.setStorage("gvg_matches", matches);
+      }
+      
+      const ranks = client.getStorage("user_gvg_ranks") || [];
+      let r = ranks.find((x: any) => x.user_id === p_user_id);
+      if (!r) { r = { user_id: p_user_id, season_points: 0 }; ranks.push(r); }
+      r.season_points += 250;
+      client.setStorage("user_gvg_ranks", ranks);
+      
+      const controls = client.getStorage("guild_base_controls") || [];
+      let c = controls.find((x: any) => x.base_id === p_base_id && x.guild_id === p_guild_id);
+      if (!c) { c = { base_id: p_base_id, guild_id: p_guild_id, daily_points: 0 }; controls.push(c); }
+      c.daily_points += 250;
+      client.setStorage("guild_base_controls", controls);
+    } else {
+      if (myMatch) {
+        if (myMatch.guild_a_id === p_guild_id) {
+          myMatch.guild_a_points = Math.max(0, (myMatch.guild_a_points || 0) - 100);
+          myMatch.guild_b_points = (myMatch.guild_b_points || 0) + 100;
+        } else {
+          myMatch.guild_b_points = Math.max(0, (myMatch.guild_b_points || 0) - 100);
+          myMatch.guild_a_points = (myMatch.guild_a_points || 0) + 100;
+        }
+        client.setStorage("gvg_matches", matches);
+      }
+      
+      const ranks = client.getStorage("user_gvg_ranks") || [];
+      let r = ranks.find((x: any) => x.user_id === p_user_id);
+      if (!r) { r = { user_id: p_user_id, season_points: 0 }; ranks.push(r); }
+      r.season_points = Math.max(0, r.season_points - 100);
+      client.setStorage("user_gvg_ranks", ranks);
+      
+      const controls = client.getStorage("guild_base_controls") || [];
+      let c = controls.find((x: any) => x.base_id === p_base_id && x.guild_id === p_guild_id);
+      if (!c) { c = { base_id: p_base_id, guild_id: p_guild_id, daily_points: 0 }; controls.push(c); }
+      c.daily_points = Math.max(0, c.daily_points - 100);
+      client.setStorage("guild_base_controls", controls);
+    }
+    
+    return { data: { status: "success" }, error: null };
+  }
+
+  if (funcName === "process_gvg_battle_result_old") {
+    const { p_guild_id, p_battle_id, p_points, p_is_guild_a } = params;
+    const battles = client.getStorage("gvg_battles") || [];
+    const b = battles.find((x: any) => x.id === p_battle_id);
+    if (b) {
+      if (p_is_guild_a) b.guild_a_points = (b.guild_a_points || 0) + p_points;
+      else b.guild_b_points = (b.guild_b_points || 0) + p_points;
+      client.setStorage("gvg_battles", battles);
+    }
+    return { data: { status: "success" }, error: null };
+  }
+
+
+  if (funcName === "admin_respawn_raid_boss") {
+    const { p_boss_id, p_max_hp, p_base_id } = params;
+    const bosses = client.getStorage("raid_bosses") || [];
+    const b = bosses.find((x: any) => x.id === p_boss_id);
+    if (b) {
+      b.current_hp = p_max_hp;
+      b.base_id = p_base_id;
+      b.status = "ACTIVE";
+      b.spawned_at = new Date().toISOString();
+      b.expires_at = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+      client.setStorage("raid_bosses", bosses);
+    }
+    client.setStorage("raid_damage_logs", []);
+    client.setStorage("user_raid_claimed_rewards", []);
+    return { data: { status: "success" }, error: null };
+  }
+
   return { data: null, error: null };
 }

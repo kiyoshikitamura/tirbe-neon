@@ -8,7 +8,8 @@ export function useStory(
   session: any,
   playCyberSe: (type: string) => void,
   syncBootstrapData: (userId: string) => Promise<void>,
-  startCardBattle: (mode: string, enemyName: string) => void
+  startCardBattle: (mode: string, enemyName: string) => void,
+  setConfirmDialogConfig: React.Dispatch<React.SetStateAction<import("@/app/components/ui/ConfirmDialog").ConfirmDialogConfig | null>>
 ) {
   const [activeStorySession, setActiveStorySession] = useState<{
     stageId: string;
@@ -38,7 +39,7 @@ export function useStory(
       setActiveStorySession(null);
       await syncBootstrapData(session.user.id);
 
-      alert("ストーリークリア報酬がプレゼントへ転送されました。");
+      setConfirmDialogConfig({ isOpen: true, title: "報酬獲得", message: "ストーリークリア報酬がプレゼントへ転送されました。", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
     } catch (err) {
       console.warn("Complete story session failed:", err);
     }
