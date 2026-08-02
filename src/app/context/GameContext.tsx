@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { createContext, useContext, useState, useEffect, useRef } from "react";
 import { supabase } from "@/utils/supabase";
@@ -113,7 +113,10 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   // 2. ゲーム内状態管理ステート
   // ==========================================
   const [userLevel, setUserLevel] = useState<number>(1);
+  const [hasShownGuildDialog, setHasShownGuildDialog] = useState<boolean>(false);
+  const [activeBanners, setActiveBanners] = useState<any[]>([]);
   const [userXp, setUserXp] = useState<number>(0);
+  const [raidAttemptsToday, setRaidAttemptsToday] = useState<number>(0);
   const [cash, setCash] = useState<number>(10000);
   const [diamonds, setDiamonds] = useState<number>(200);
   const [vitality, setVitality] = useState<number>(100);
@@ -245,11 +248,11 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   );
 
   const {
-    pvpTickets, setPvpTickets,
+    pvpPoints, setPvpPoints,
     battleSubTab, setBattleSubTab,
     pvpOpponents, setPvpOpponents,
     opponentsLoading, setOpponentsLoading,
-    pvpPoints, setPvpPoints,
+    pvpRate, setPvpRate,
     pvpSubView, setPvpSubView,
     myPvpDefenseDeck, setMyPvpDefenseDeck,
     pvpRankings, setPvpRankings,
@@ -721,15 +724,19 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     syncBootstrapData: async (userId: string) => {
       await syncBootstrapData(userId);
     },
-    pvpTickets,
-    setPvpTickets,
     pvpPoints,
     setPvpPoints,
+    pvpRate,
+    setPvpRate,
     pvpRankings,
     userLevel,
     setUserLevel,
     userXp,
     setUserXp,
+    raidAttemptsToday,
+    setRaidAttemptsToday,
+    vitality,
+    setVitality,
     raidBossHp,
     setRaidBossHp,
     raidBossMaxHp,
@@ -821,7 +828,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       if (recovered && recovered.length > 0) {
         const row = recovered[0];
         setVitality(row.out_vitality);
-        setPvpTickets(row.out_tickets);
+        setPvpPoints(row.out_tickets);
         setCash(Number(row.out_cash));
         setDiamonds(row.out_diamonds);
       }
@@ -840,7 +847,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         setBio(userProfile.bio || "歌舞伎町の覇権を握る。");
         setAvatarUrl(userProfile.avatar_url || "/reiji_transparent_asset.png");
         setDailyCashSkips(userProfile.daily_cash_skips_count);
-        setCurrentBaseId(userProfile.current_base_id || "neon_tower");
+        setCurrentBaseId(userProfile.current_base_id || "shinjuku");
         setLastGuildLeftAt(userProfile.last_guild_left_at);
         setGiftCode(userProfile.gift_code || null);
         setTitleEquipped(userProfile.title_equipped || "title_none");
@@ -849,7 +856,18 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         if ((userProfile as any).selected_bg_mode) setSelectedBgMode((userProfile as any).selected_bg_mode);
         if ((userProfile as any).interior_item) setInteriorItem((userProfile as any).interior_item);
         setUserLevel(userProfile.level || 1);
+        setHasShownGuildDialog((userProfile as any).has_shown_guild_dialog || false);
         setUserXp(userProfile.xp || 0);
+        
+        // Reset raid attempts if the date changed
+        const today = new Date().toISOString().split("T")[0];
+        const resetAt = (userProfile as any).raid_attempts_reset_at ? new Date((userProfile as any).raid_attempts_reset_at).toISOString().split("T")[0] : null;
+        if (resetAt !== today) {
+          setRaidAttemptsToday(0);
+          // Optional: we can do an async update to DB here or let RPC handle it on first attempt
+        } else {
+          setRaidAttemptsToday((userProfile as any).raid_attempts_today || 0);
+        }
         setUserCreatedAt((userProfile as any).created_at || null);
 
         if (userProfile.sound_settings) {
@@ -1095,7 +1113,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         setPvpRankings(pvpData);
         const me = pvpData.find(r => r.user_id === userId);
         if (me) {
-          setPvpPoints(me.rank_points);
+          setPvpRate(me.rank_points);
           fetchPvpOpponents(userId, me.rank_points);
         }
       }
@@ -1602,7 +1620,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         if (recovered && recovered.length > 0) {
           const row = recovered[0];
           setVitality(row.out_vitality);
-          setPvpTickets(row.out_tickets);
+          setPvpPoints(row.out_tickets);
           setCash(Number(row.out_cash));
           setDiamonds(row.out_diamonds);
         }
@@ -2243,12 +2261,12 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         if (leader) leaderName = leader.username;
       }
 
-      const bases = ["neon_tower", "deep_dock", "junk_bazar", "kitakura_gate"];
+      const bases = ["shinjuku", "shibuya", "ikebukuro", "roppongi", "akihabara"];
       const baseNames: { [key: string]: string } = {
-        neon_tower: "ネオンタワー",
-        deep_dock: "ディープドック",
-        junk_bazar: "ジャンクバザール",
-        kitakura_gate: "キタクラゲート"
+        shinjuku: "新宿",
+        shibuya: "渋谷",
+        ikebukuro: "池袋", roppongi: "六本木", akihabara: "秋葉原",
+        
       };
 
       const controlledBases: string[] = [];
@@ -2287,8 +2305,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     try {
       const guildIdFilter = userGuildMember?.guild_id || "";
 
-      // 1. 各拠点 (neon_tower, deep_dock, junk_bazar, kitakura_gate) ごとに daily_points トップのギルドを支配ギルドに設定
-      const bases = ["neon_tower", "deep_dock", "junk_bazar", "kitakura_gate"];
+      // 1. 各拠点 (shinjuku, deep_dock, junk_bazar, kitakura_gate) ごとに daily_points トップのギルドを支配ギルドに設定
+      const bases = ["shinjuku", "shibuya", "ikebukuro", "roppongi", "akihabara"];
       let wonAreasCount = 0;
 
       // ギルドXPマスタが必要なため並列フェッチ
@@ -2562,7 +2580,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       let rewardItemId = "DIAMOND";
 
       if (rewards && rewards.length > 0) {
-        const matched = rewards.find((r: any) => pvpPoints >= r.threshold_points);
+        const matched = rewards.find((r: any) => pvpRate >= r.threshold_points);
         if (matched) {
           rewardQuantity = matched.reward_quantity;
           rewardItemId = matched.reward_item_id;
@@ -2574,7 +2592,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         user_id: session.user.id,
         item_id: rewardItemId,
         quantity: rewardQuantity,
-        message: `PvP最終シーズン報酬 (到達レート: ${pvpPoints} pt)`,
+        message: `PvP最終シーズン報酬 (到達レート: ${pvpRate} pt)`,
         expire_at: expireAt.toISOString(),
         status: "UNCLAIMED"
       });
@@ -2634,7 +2652,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       }
 
       // 3. ランダムな出現拠点の選定
-      const bases = ["neon_tower", "deep_dock", "junk_bazar", "kitakura_gate"];
+      const bases = ["shinjuku", "shibuya", "ikebukuro", "roppongi", "akihabara"];
       const randomBase = bases[Math.floor(Math.random() * bases.length)];
 
       // 4. ボスの全快とランダム再配置、ダメージログの削除
@@ -2747,7 +2765,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       }
 
       // 2. 拠点のランダム再決定
-      const bases = ["neon_tower", "deep_dock", "junk_bazar", "kitakura_gate"];
+      const bases = ["shinjuku", "shibuya", "ikebukuro", "roppongi", "akihabara"];
       const randomBase = bases[Math.floor(Math.random() * bases.length)];
 
       // 3. ボスHP全快、ログ削除
@@ -3395,7 +3413,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     cash, setCash,
     diamonds, setDiamonds,
     vitality, setVitality,
-    pvpTickets, setPvpTickets,
+    pvpPoints, setPvpPoints,
     activeTab, setActiveTab,
     showInboxPanel, setShowInboxPanel,
     showMissionPanel, setShowMissionPanel,
@@ -3464,7 +3482,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     showPatrolRewardModal, setShowPatrolRewardModal,
     battleSubTab, setBattleSubTab,
     pvpOpponents,
-    pvpPoints, setPvpPoints,
+    pvpRate, setPvpRate,
     selectedTown, setSelectedTown,
     gvgBases, setGvgBases,
     gvgBaseControls, setGvgBaseControls,

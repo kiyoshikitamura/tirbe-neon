@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React from "react";
 import { useGame } from "../context/GameContext";
@@ -20,7 +20,7 @@ const tacticNames: { [key: string]: string } = {
 export default function PvpTab() {
   const {
     session,
-    pvpPoints,
+    pvpRate,
     pvpSubView,
     setPvpSubView,
     battleLoading,
@@ -97,7 +97,7 @@ export default function PvpTab() {
   const handleRefreshOpponents = () => {
     playCyberSe("click");
     if (session?.user?.id) {
-      fetchPvpOpponents(session.user.id, pvpPoints);
+      fetchPvpOpponents(session.user.id, pvpRate);
     }
   };
 
@@ -116,7 +116,7 @@ export default function PvpTab() {
       <div className="scroll-container flex-1">
         <OutlawCard className="mb-4 text-center">
           <div className="text-xl font-bold mb-1 text-white text-shadow-glow">現在のレート</div>
-          <div className="text-3xl font-black text-neon-cyan text-shadow-cyan">{pvpPoints} pt</div>
+          <div className="text-3xl font-black text-neon-cyan text-shadow-cyan">{pvpRate} pt</div>
         </OutlawCard>
 
         <SubTabNav

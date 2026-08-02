@@ -15,7 +15,9 @@ export default function GachaTab() {
     specialPityPoints,
     handleExchangePityReward,
     cash,
-    diamonds
+    diamonds,
+    userItems,
+    activeBanners
   } = useGame();
 
   // 現在のカテゴリタブ ('CHARACTER' | 'SKILL' | 'EQUIPMENT')
@@ -23,6 +25,8 @@ export default function GachaTab() {
   // 天井SSR任意選択モーダルの開閉状態
   const [showPityModal, setShowPityModal] = useState<boolean>(false);
   const [selectedPityRewardId, setSelectedPityRewardId] = useState<string>("");
+
+  const gachaTickets = userItems?.find((i: any) => i.item_id === "GACHA_TICKET")?.quantity || 0;
 
   // 期間限定ガチャの有無判定
   const limitCharGacha = gachaMasters?.find((g: any) => g.id === "CHAR_LIMIT");
@@ -115,84 +119,37 @@ export default function GachaTab() {
       {/* 🎰 メインガチャリスト (縦並び: 限定 ➔ スペシャル ➔ ノーマル) */}
       <div className="scroll-container flex-1 flex-col-gap-3 pb-6">
 
-        {/* 1. 期間限定ガチャ (該当カテゴリがある場合のみ表示) */}
-        {activeCategory === "CHARACTER" && limitCharGacha && (
-          <div className="upgrade-card gacha-limit-card border-warning">
+        {/* 1. 期間限定/ピックアップガチャ (マスタ連動) */}
+        {activeBanners?.filter((b: any) => b.gacha_category === activeCategory).map((banner: any) => (
+          <div key={banner.id} className="upgrade-card gacha-limit-card border-warning">
             <div className="upgrade-card-title flex items-center justify-between gacha-title-row">
-              <span className="text-color-warning">【期間限定】情報屋ルイ ピックアップガチャ</span>
-              <span className="font-size-8 font-weight-bold text-color-warning">〜7/31まで</span>
+              <span className="text-color-warning">{banner.description || "【期間限定】特別ピックアップ"}</span>
+              <span className="font-size-8 font-weight-bold text-color-warning">
+                〜{new Date(banner.end_at).toLocaleDateString()}まで
+              </span>
             </div>
-            <div className="font-size-8 text-gray-400 mt-1">
-              情報屋ルイ（SSR）の出現確率が大幅アップしている特別なスカウトです。
-            </div>
+            {banner.banner_image_url && (
+              <div className="mt-2 text-center">
+                {/* Fallback to simple text if image doesn't exist */}
+                <div className="font-size-8 text-secondary">[バナー画像: {banner.banner_image_url}]</div>
+              </div>
+            )}
             <div className="flex gap-2 mt-3 gacha-btn-layout">
               <button
                 className="upgrade-btn flex-1 active-scale-effect font-size-8 py-2 gacha-warning-outline"
-                onClick={() => handleScout("CHAR_LIMIT", 1, "DIAMOND")}
+                onClick={() => handleScout(banner.id, 1, "DIAMOND")}
               >
                 1回 (ダイヤ 40)
               </button>
               <button
                 className="upgrade-btn flex-1 active-scale-effect font-size-8 py-2 gacha-warning-outline"
-                onClick={() => handleScout("CHAR_LIMIT", 10, "DIAMOND")}
+                onClick={() => handleScout(banner.id, 10, "DIAMOND")}
               >
                 10回 (ダイヤ 400)
               </button>
             </div>
           </div>
-        )}
-
-        {activeCategory === "SKILL" && limitSkillGacha && (
-          <div className="upgrade-card gacha-limit-card border-warning">
-            <div className="upgrade-card-title flex items-center justify-between gacha-title-row">
-              <span className="text-color-warning">【期間限定】電子の女王スキルガチャ</span>
-              <span className="font-size-8 font-weight-bold text-color-warning">〜7/31まで</span>
-            </div>
-            <div className="font-size-8 text-gray-400 mt-1">
-              ルイ専用SSRスキル「ライトニング・グリッド」のピックアップ。
-            </div>
-            <div className="flex gap-2 mt-3 gacha-btn-layout">
-              <button
-                className="upgrade-btn flex-1 active-scale-effect font-size-8 py-2 gacha-warning-outline"
-                onClick={() => handleScout("LIMIT_SKILL", 1, "DIAMOND")}
-              >
-                1回 (ダイヤ 40)
-              </button>
-              <button
-                className="upgrade-btn flex-1 active-scale-effect font-size-8 py-2 gacha-warning-outline"
-                onClick={() => handleScout("LIMIT_SKILL", 10, "DIAMOND")}
-              >
-                10回 (ダイヤ 400)
-              </button>
-            </div>
-          </div>
-        )}
-
-        {activeCategory === "EQUIPMENT" && limitEquipGacha && (
-          <div className="upgrade-card gacha-limit-card border-warning">
-            <div className="upgrade-card-title flex items-center justify-between gacha-title-row">
-              <span className="text-color-warning">【期間限定】漆黒のギア装備ガチャ</span>
-              <span className="font-size-8 font-weight-bold text-color-warning">〜7/31まで</span>
-            </div>
-            <div className="font-size-8 text-gray-400 mt-1">
-              レオン・ユウキ専用SSR装備の出現率アップ。キャッシュでも引けます。
-            </div>
-            <div className="flex gap-2 mt-3 gacha-btn-layout">
-              <button
-                className="upgrade-btn flex-1 active-scale-effect font-size-8 py-2"
-                onClick={() => handleScout("LIMIT_EQUIP", 1, "CASH")}
-              >
-                1回 (金 12,000)
-              </button>
-              <button
-                className="upgrade-btn flex-1 active-scale-effect font-size-8 py-2"
-                onClick={() => handleScout("LIMIT_EQUIP", 10, "CASH")}
-              >
-                10回 (金 120,000)
-              </button>
-            </div>
-          </div>
-        )}
+        ))}
 
         {/* 2. スペシャルガチャ (常設・R以上確定・200Pt天井) */}
         <div className="upgrade-card border-magenta gacha-card-special">
@@ -304,6 +261,24 @@ export default function GachaTab() {
               onClick={() => handleScout(`${activeCategory === "CHARACTER" ? "CHAR" : activeCategory}_NORMAL`, 10, "DIAMOND")}
             >
               10回 (ダイヤ 1,000)
+            </button>
+          </div>
+
+          {/* チケット実行ボタン */}
+          <div className="flex gap-2 mt-2 gacha-btn-layout">
+            <button
+              className="upgrade-btn flex-1 active-scale-effect font-size-8 py-2 border-cyan-subtle"
+              onClick={() => handleScout(`${activeCategory === "CHARACTER" ? "CHAR" : activeCategory}_NORMAL`, 1, "ticket")}
+              disabled={gachaTickets < 1}
+            >
+              1回 (チケット 1枚)
+            </button>
+            <button
+              className="upgrade-btn flex-1 active-scale-effect font-size-8 py-2 border-cyan-subtle"
+              onClick={() => handleScout(`${activeCategory === "CHARACTER" ? "CHAR" : activeCategory}_NORMAL`, 10, "ticket")}
+              disabled={gachaTickets < 10}
+            >
+              10回 (チケット 10枚)
             </button>
           </div>
         </div>

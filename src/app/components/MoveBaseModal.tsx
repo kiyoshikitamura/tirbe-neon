@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 import { useGame } from "../context/GameContext";
 import "./MoveBaseModal.css";
 
@@ -13,10 +13,10 @@ export default function MoveBaseModal() {
   };
 
   const bases = [
-    { id: "neon_tower", name: "ネオンタワー", desc: "情報の集まる中心街" },
-    { id: "deep_dock", name: "ディープドック", desc: "密輸と取引の港湾" },
+    { id: "shinjuku", name: "新宿", desc: "情報の集まる中心街" },
+    { id: "shibuya", name: "渋谷", desc: "若者とギャングの街" },
     { id: "junk_bazaar", name: "ジャンクバザール", desc: "混沌の闇市" },
-    { id: "kitakura_gate", name: "キタクラゲート", desc: "荒くれ者たちの防衛線" }
+    { id: "ikebukuro", name: "池袋", desc: "ショバ代の巣窟" }, { id: "roppongi", name: "六本木", desc: "夜の街" }, { id: "akihabara", name: "秋葉原", desc: "闇市" }
   ];
 
   return (

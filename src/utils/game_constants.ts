@@ -1,42 +1,76 @@
 export { RAID_BOSS_ID, TEST_SKILL_ID, ENEMIES_MASTER } from "@/constants/enemies";
 export { CHARACTER_GROWTH_PATTERNS, CHARACTER_AWAKENING_MASTER, CHARACTERS_MASTER } from "@/constants/characters";
 
+export const VITALITY_MAX = 100;
+export const VITALITY_OVERFLOW_MAX = 200;
+export const VITALITY_RECOVERY_INTERVAL_SEC = 300; // 5分 = 300秒
+export const VITALITY_RECOVERY_AMOUNT = 1;
+export const GVG_ATTACK_COST = 20;
+
+export const GVG_DAILY_SESSIONS = [
+  { id: 1, startHour: 12, startMin: 0, durationMin: 30 },
+  { id: 2, startHour: 20, startMin: 0, durationMin: 30 },
+  { id: 3, startHour: 23, startMin: 0, durationMin: 30 },
+];
+
+export const RAID_FREE_ATTEMPTS = 3;
+export const RAID_MAX_DAILY = 10;
+export const RAID_COST_TABLE = [
+  { attempt: 1, type: "FREE", cost: 0 },
+  { attempt: 2, type: "FREE", cost: 0 },
+  { attempt: 3, type: "FREE", cost: 0 },
+  { attempt: 4, type: "CASH", cost: 2000 },
+  { attempt: 5, type: "CASH", cost: 4000 },
+  { attempt: 6, type: "CASH", cost: 8000 },
+  { attempt: 7, type: "DIAMOND", cost: 50 },
+  { attempt: 8, type: "DIAMOND", cost: 50 },
+  { attempt: 9, type: "DIAMOND", cost: 100 },
+  { attempt: 10, type: "DIAMOND", cost: 100 },
+];
 export const DISPATCH_COURSES = [
   // 新宿
-  { id: "q_shinjuku_easy", townId: "shinjuku", name: "新宿: 見回り (初級)", duration: 15, stamina: 10, rewardCash: 500, rewardItem: "CHAR_EXP_S", chance: 0.8, xpReward: 100 },
-  { id: "q_shinjuku_normal", townId: "shinjuku", name: "新宿: 用心棒 (中級)", duration: 45, stamina: 25, rewardCash: 2500, rewardItem: "EQUIP_EXP_S", chance: 0.5, xpReward: 300 },
-  { id: "q_shinjuku_hard", townId: "shinjuku", name: "新宿: 利権争い (上級)", duration: 120, stamina: 40, rewardCash: 6000, rewardItem: "LAW_OF_STRIFE", chance: 0.3, xpReward: 500 },
+  { id: "q_shinjuku_short", townId: "shinjuku", name: "新宿: 見回り (短期)", duration: 30, stamina: 10, rewardCash: 800, rewardItem: "CHAR_EXP_S", chance: 0.8, xpReward: 120 },
+  { id: "q_shinjuku_medium", townId: "shinjuku", name: "新宿: 任務 (中期)", duration: 120, stamina: 25, rewardCash: 3000, rewardItem: "EQUIP_EXP_S", chance: 0.6, xpReward: 350 },
+  { id: "q_shinjuku_long", townId: "shinjuku", name: "新宿: 抗争 (長期)", duration: 360, stamina: 40, rewardCash: 8000, rewardItem: "CHAR_EXP_M", chance: 0.5, xpReward: 600 },
+  { id: "q_shinjuku_idle", townId: "shinjuku", name: "新宿: 制圧 (放置)", duration: 480, stamina: 50, rewardCash: 12000, rewardItem: "LAW_OF_STRIFE", chance: 0.4, xpReward: 800 },
   // 渋谷
-  { id: "q_shibuya_easy", townId: "shibuya", name: "渋谷: パトロール (初級)", duration: 15, stamina: 10, rewardCash: 500, rewardItem: "CHAR_EXP_S", chance: 0.8, xpReward: 100 },
-  { id: "q_shibuya_normal", townId: "shibuya", name: "渋谷: 摘発支援 (中級)", duration: 45, stamina: 25, rewardCash: 2500, rewardItem: "EQUIP_EXP_S", chance: 0.5, xpReward: 300 },
-  { id: "q_shibuya_hard", townId: "shibuya", name: "渋谷: 流通支配 (上級)", duration: 120, stamina: 40, rewardCash: 6000, rewardItem: "LAW_OF_STRIFE", chance: 0.3, xpReward: 500 },
+  { id: "q_shibuya_short", townId: "shibuya", name: "渋谷: 見回り (短期)", duration: 30, stamina: 10, rewardCash: 800, rewardItem: "CHAR_EXP_S", chance: 0.8, xpReward: 120 },
+  { id: "q_shibuya_medium", townId: "shibuya", name: "渋谷: 任務 (中期)", duration: 120, stamina: 25, rewardCash: 3000, rewardItem: "EQUIP_EXP_S", chance: 0.6, xpReward: 350 },
+  { id: "q_shibuya_long", townId: "shibuya", name: "渋谷: 抗争 (長期)", duration: 360, stamina: 40, rewardCash: 8000, rewardItem: "CHAR_EXP_M", chance: 0.5, xpReward: 600 },
+  { id: "q_shibuya_idle", townId: "shibuya", name: "渋谷: 制圧 (放置)", duration: 480, stamina: 50, rewardCash: 12000, rewardItem: "LAW_OF_STRIFE", chance: 0.4, xpReward: 800 },
   // 池袋
-  { id: "q_ikebukuro_easy", townId: "ikebukuro", name: "池袋: 巡回 (初級)", duration: 15, stamina: 10, rewardCash: 500, rewardItem: "CHAR_EXP_S", chance: 0.8, xpReward: 100 },
-  { id: "q_ikebukuro_normal", townId: "ikebukuro", name: "池袋: ショバ代徴収 (中級)", duration: 45, stamina: 25, rewardCash: 2500, rewardItem: "EQUIP_EXP_S", chance: 0.5, xpReward: 300 },
-  { id: "q_ikebukuro_hard", townId: "ikebukuro", name: "池袋: 運営権強奪 (上級)", duration: 120, stamina: 40, rewardCash: 6000, rewardItem: "LAW_OF_STRIFE", chance: 0.3, xpReward: 500 },
+  { id: "q_ikebukuro_short", townId: "ikebukuro", name: "池袋: 見回り (短期)", duration: 30, stamina: 10, rewardCash: 800, rewardItem: "CHAR_EXP_S", chance: 0.8, xpReward: 120 },
+  { id: "q_ikebukuro_medium", townId: "ikebukuro", name: "池袋: 任務 (中期)", duration: 120, stamina: 25, rewardCash: 3000, rewardItem: "EQUIP_EXP_S", chance: 0.6, xpReward: 350 },
+  { id: "q_ikebukuro_long", townId: "ikebukuro", name: "池袋: 抗争 (長期)", duration: 360, stamina: 40, rewardCash: 8000, rewardItem: "CHAR_EXP_M", chance: 0.5, xpReward: 600 },
+  { id: "q_ikebukuro_idle", townId: "ikebukuro", name: "池袋: 制圧 (放置)", duration: 480, stamina: 50, rewardCash: 12000, rewardItem: "LAW_OF_STRIFE", chance: 0.4, xpReward: 800 },
   // 六本木
-  { id: "q_roppongi_easy", townId: "roppongi", name: "六本木: 案内 (初級)", duration: 15, stamina: 10, rewardCash: 500, rewardItem: "CHAR_EXP_S", chance: 0.8, xpReward: 100 },
-  { id: "q_roppongi_normal", townId: "roppongi", name: "六本木: カジノ警備 (中級)", duration: 45, stamina: 25, rewardCash: 2500, rewardItem: "EQUIP_EXP_S", chance: 0.5, xpReward: 300 },
-  { id: "q_roppongi_hard", townId: "roppongi", name: "六本木: 現金輸送 (上級)", duration: 120, stamina: 40, rewardCash: 6000, rewardItem: "LAW_OF_STRIFE", chance: 0.3, xpReward: 500 },
+  { id: "q_roppongi_short", townId: "roppongi", name: "六本木: 見回り (短期)", duration: 30, stamina: 10, rewardCash: 800, rewardItem: "CHAR_EXP_S", chance: 0.8, xpReward: 120 },
+  { id: "q_roppongi_medium", townId: "roppongi", name: "六本木: 任務 (中期)", duration: 120, stamina: 25, rewardCash: 3000, rewardItem: "EQUIP_EXP_S", chance: 0.6, xpReward: 350 },
+  { id: "q_roppongi_long", townId: "roppongi", name: "六本木: 抗争 (長期)", duration: 360, stamina: 40, rewardCash: 8000, rewardItem: "CHAR_EXP_M", chance: 0.5, xpReward: 600 },
+  { id: "q_roppongi_idle", townId: "roppongi", name: "六本木: 制圧 (放置)", duration: 480, stamina: 50, rewardCash: 12000, rewardItem: "LAW_OF_STRIFE", chance: 0.4, xpReward: 800 },
   // 秋葉原
-  { id: "q_akihabara_easy", townId: "akihabara", name: "秋葉原: ジャンク回収 (初級)", duration: 15, stamina: 10, rewardCash: 500, rewardItem: "CHAR_EXP_S", chance: 0.8, xpReward: 100 },
-  { id: "q_akihabara_normal", townId: "akihabara", name: "秋葉原: 情報買収 (中級)", duration: 45, stamina: 25, rewardCash: 2500, rewardItem: "EQUIP_EXP_S", chance: 0.5, xpReward: 300 },
-  { id: "q_akihabara_hard", townId: "akihabara", name: "秋葉原: チップ密売 (上級)", duration: 120, stamina: 40, rewardCash: 6000, rewardItem: "LAW_OF_STRIFE", chance: 0.3, xpReward: 500 },
+  { id: "q_akihabara_short", townId: "akihabara", name: "秋葉原: 見回り (短期)", duration: 30, stamina: 10, rewardCash: 800, rewardItem: "CHAR_EXP_S", chance: 0.8, xpReward: 120 },
+  { id: "q_akihabara_medium", townId: "akihabara", name: "秋葉原: 任務 (中期)", duration: 120, stamina: 25, rewardCash: 3000, rewardItem: "EQUIP_EXP_S", chance: 0.6, xpReward: 350 },
+  { id: "q_akihabara_long", townId: "akihabara", name: "秋葉原: 抗争 (長期)", duration: 360, stamina: 40, rewardCash: 8000, rewardItem: "CHAR_EXP_M", chance: 0.5, xpReward: 600 },
+  { id: "q_akihabara_idle", townId: "akihabara", name: "秋葉原: 制圧 (放置)", duration: 480, stamina: 50, rewardCash: 12000, rewardItem: "LAW_OF_STRIFE", chance: 0.4, xpReward: 800 },
   // 川崎
-  { id: "q_kawasaki_easy", townId: "kawasaki", name: "川崎: 偵察任務 (初級)", duration: 15, stamina: 10, rewardCash: 500, rewardItem: "CHAR_EXP_S", chance: 0.8, xpReward: 100 },
-  { id: "q_kawasaki_normal", townId: "kawasaki", name: "川崎: 闘技場対応 (中級)", duration: 45, stamina: 25, rewardCash: 2500, rewardItem: "EQUIP_EXP_S", chance: 0.5, xpReward: 300 },
-  { id: "q_kawasaki_hard", townId: "kawasaki", name: "川崎: 密輸支援 (上級)", duration: 120, stamina: 40, rewardCash: 6000, rewardItem: "LAW_OF_STRIFE", chance: 0.3, xpReward: 500 },
+  { id: "q_kawasaki_short", townId: "kawasaki", name: "川崎: 見回り (短期)", duration: 30, stamina: 10, rewardCash: 800, rewardItem: "CHAR_EXP_S", chance: 0.8, xpReward: 120 },
+  { id: "q_kawasaki_medium", townId: "kawasaki", name: "川崎: 任務 (中期)", duration: 120, stamina: 25, rewardCash: 3000, rewardItem: "EQUIP_EXP_S", chance: 0.6, xpReward: 350 },
+  { id: "q_kawasaki_long", townId: "kawasaki", name: "川崎: 抗争 (長期)", duration: 360, stamina: 40, rewardCash: 8000, rewardItem: "CHAR_EXP_M", chance: 0.5, xpReward: 600 },
+  { id: "q_kawasaki_idle", townId: "kawasaki", name: "川崎: 制圧 (放置)", duration: 480, stamina: 50, rewardCash: 12000, rewardItem: "LAW_OF_STRIFE", chance: 0.4, xpReward: 800 },
   // 横浜
-  { id: "q_yokohama_easy", townId: "yokohama", name: "横浜: 裏路地見回り (初級)", duration: 15, stamina: 10, rewardCash: 500, rewardItem: "CHAR_EXP_S", chance: 0.8, xpReward: 100 },
-  { id: "q_yokohama_normal", townId: "yokohama", name: "横浜: 倉庫警護 (中級)", duration: 45, stamina: 25, rewardCash: 2500, rewardItem: "EQUIP_EXP_S", chance: 0.5, xpReward: 300 },
-  { id: "q_yokohama_hard", townId: "yokohama", name: "横浜: 会談警備 (上級)", duration: 120, stamina: 40, rewardCash: 6000, rewardItem: "LAW_OF_STRIFE", chance: 0.3, xpReward: 500 }
+  { id: "q_yokohama_short", townId: "yokohama", name: "横浜: 見回り (短期)", duration: 30, stamina: 10, rewardCash: 800, rewardItem: "CHAR_EXP_S", chance: 0.8, xpReward: 120 },
+  { id: "q_yokohama_medium", townId: "yokohama", name: "横浜: 任務 (中期)", duration: 120, stamina: 25, rewardCash: 3000, rewardItem: "EQUIP_EXP_S", chance: 0.6, xpReward: 350 },
+  { id: "q_yokohama_long", townId: "yokohama", name: "横浜: 抗争 (長期)", duration: 360, stamina: 40, rewardCash: 8000, rewardItem: "CHAR_EXP_M", chance: 0.5, xpReward: 600 },
+  { id: "q_yokohama_idle", townId: "yokohama", name: "横浜: 制圧 (放置)", duration: 480, stamina: 50, rewardCash: 12000, rewardItem: "LAW_OF_STRIFE", chance: 0.4, xpReward: 800 }
 ];
 
 export const BASE_MAP_MASTER = [
-  { id: "neon_tower", name: "ネオンタワー", alignment: "ORDER", controlledBy: "黒曜会 (コクヨウカイ)", description: "高級キャバクラやホストクラブ、飲食店、違法IT取引、暗号資産の国際マネーロンダリングなどTOKYO of 夜の歓楽街のトップとして富裕層や犯罪者が街を見下ろしている。" },
-  { id: "deep_dock", name: "ディープドック", alignment: "EVIL", controlledBy: "龍頭会 (リュウズカイ)", description: "重厚な港湾設備と薄暗い廃倉庫群。臨海地区のコンテナ密輸ルート、非合法地下格闘技（デスマッチ）、および武装ストリートギャング of たまり場。" },
-  { id: "junk_bazar", name: "ジャンクバザール", alignment: "CHAOS", controlledBy: "裏情報屋グリッド", description: "雑多なネオン看板とジャンク電子パーツがひしめく闇市。違法ハッキングチップの売買、違法ジャンク武器の密売、コンカフェを介した情報売買などの闇情報ネットワークの巣窟。" },
-  { id: "kitakura_gate", name: "キタクラゲート", alignment: "JUSTICE", controlledBy: "華興幇 (ファンシンバン)", description: "北倉地区の地下深くに広がるアングラ地下立体駐車場。暴走集団や裏取引が集う危険な地下アジト関門。" }
+  { id: "shinjuku",   name: "新宿",   rank: "S", rewardMultiplier: 2.0, dailyRankPt: 30, description: "高級キャバクラやホストクラブ…都内最大の歓楽街。" },
+  { id: "shibuya",    name: "渋谷",   rank: "A", rewardMultiplier: 1.5, dailyRankPt: 20, description: "若者文化とストリートギャングが交差する街。" },
+  { id: "ikebukuro",  name: "池袋",   rank: "B", rewardMultiplier: 1.0, dailyRankPt: 10, description: "裏路地に潜むショバ代の巣窟。" },
+  { id: "roppongi",   name: "六本木", rank: "B", rewardMultiplier: 1.0, dailyRankPt: 10, description: "外資系富裕層と裏カジノが共存する夜の街。" },
+  { id: "akihabara",  name: "秋葉原", rank: "B", rewardMultiplier: 1.0, dailyRankPt: 10, description: "ジャンク電子パーツとコンカフェ情報網の闇市。" }
 ];
 
 export const GEAR_SLOTS_MASTER = [

@@ -185,3 +185,17 @@
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 8px;
 }
+
+.gvg-rank-badge-s {
+  background: linear-gradient(135deg, #b8860b, #ffd700, #b8860b);
+  color: #1a1a1a;
+  text-shadow: none;
+}
+.gvg-rank-badge-a {
+  background: linear-gradient(135deg, #808080, #c0c0c0, #808080);
+  color: #1a1a1a;
+}
+.gvg-rank-badge-b {
+  background: linear-gradient(135deg, #8b4513, #cd853f, #8b4513);
+  color: #fff;
+}

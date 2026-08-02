@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import { supabase } from "@/utils/supabase";
@@ -13,7 +13,7 @@ export function useRaid(
   const [raidBossMaxHp, setRaidBossMaxHp] = useState<number>(9999999);
   const [raidBossSecondsLeft, setRaidBossSecondsLeft] = useState<number>(86400);
   const [raidTotalDamage, setRaidTotalDamage] = useState<number>(0);
-  const [raidBossBaseId, setRaidBossBaseId] = useState<string>("neon_tower");
+  const [raidBossBaseId, setRaidBossBaseId] = useState<string>("shinjuku");
   const [raidBossName, setRaidBossName] = useState<string>("極道連合組長");
 
   const [raidDamageLogs, setRaidDamageLogs] = useState<any[]>([]);

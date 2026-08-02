@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useGame } from "../context/GameContext";
 import { BASE_MAP_MASTER } from "../../utils/game_constants";
 import { CHARACTERS_MASTER } from "../../utils/game_constants";
+import { getCurrentSession, getGvgPhase } from "../../utils/gvg_utils";
 import "./GvgTab.css";
 
 export default function GvgTab() {
@@ -27,11 +28,31 @@ export default function GvgTab() {
     navigateTab,
     userCharactersDbList,
     playCyberSe,
-    setConfirmDialogConfig
+    setConfirmDialogConfig,
+    vitality
   } = useGame();
 
   const [showDefenseModal, setShowDefenseModal] = useState<boolean>(false);
   const [tempSelectedChars, setTempSelectedChars] = useState<string[]>([]);
+  const [now, setNow] = useState<Date>(new Date());
+  
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+  
+  const currentSession = getCurrentSession(now);
+  const phase = getGvgPhase(now);
+  const isRoundActive = currentSession?.isActive || gvgActiveRound > 0;
+  
+  const formatTimeLeft = (target: Date) => {
+    const diff = target.getTime() - now.getTime();
+    if (diff <= 0) return "00:00:00";
+    const h = Math.floor(diff / 3600000).toString().padStart(2, "0");
+    const m = Math.floor((diff % 3600000) / 60000).toString().padStart(2, "0");
+    const s = Math.floor((diff % 60000) / 1000).toString().padStart(2, "0");
+    return `${h}:${m}:${s}`;
+  };
   const [countdownStr, setCountdownStr] = useState<string>("30:00");
 
   // カウントダウンエミュレーション
@@ -130,16 +151,16 @@ export default function GvgTab() {
     return "準備中";
   };
 
-  const isFinalDay = gvgSeasonDay === 7;
+  const isFinalDay = phase === "FINALS" || gvgSeasonDay === 7;
 
   // 自ギルドのアライメントと一致する守備（ホーム）拠点を動的マッピング
   const myGuildAlignment = userGuild?.main_alignment || "";
   const getHomeBaseId = (align: string) => {
-    if (align === "ORDER") return "neon_tower";
-    if (align === "EVIL") return "deep_dock";
-    if (align === "CHAOS") return "junk_bazar";
-    if (align === "JUSTICE") return "kitakura_gate";
-    return "";
+    if (align === "ORDER") return "shinjuku";
+    if (align === "EVIL") return "shibuya";
+    if (align === "CHAOS") return "ikebukuro";
+    if (align === "JUSTICE") return "roppongi";
+    return "akihabara";
   };
   const myHomeBaseId = getHomeBaseId(myGuildAlignment);
 
@@ -220,9 +241,30 @@ export default function GvgTab() {
                   </select>
                 </div>
               </div>
+
+              <div className="flex-row-space-between align-center border-top-subtle pt-2 mt-2">
+                <div className="flex-col">
+                  <span className="font-size-7 text-secondary">開催状況 (リアルタイム)</span>
+                  {currentSession?.isActive ? (
+                    <span className="font-size-9 font-weight-bold text-color-cyan">
+                      第{currentSession.id}部 開催中 (終了まで: {formatTimeLeft(currentSession.endsAt)})
+                    </span>
+                  ) : (
+                    <span className="font-size-9 font-weight-bold text-secondary">
+                      準備中 (次回 第{currentSession?.id}部 開始まで: {currentSession?.nextStartsAt ? formatTimeLeft(currentSession.nextStartsAt) : "--:--:--"})
+                    </span>
+                  )}
+                </div>
+                <div className="flex-col align-end">
+                  <span className="font-size-7 text-secondary">フェーズ</span>
+                  <span className="font-size-9 font-weight-bold text-white">
+                    {phase === "FINALS" ? "月末本戦 (FINALS)" : "通常戦 (DAILY)"}
+                  </span>
+                </div>
+              </div>
             </div>
 
-            {/* 抗争開催中HUD */}
+            {/* 本日の戦況HUD */}
             <div className="hud-panel p-3 flex-col-gap-2">
               <div className="flex-row-space-between align-center">
                 <span className="font-size-9 font-weight-bold text-white">
@@ -309,8 +351,12 @@ export default function GvgTab() {
                   <div key={b.id} className={`list-item flex-col-gap-2 p-3 gvg-base-card ${isHome ? "opacity-60" : ""}`}>
                     <div className="flex-row-space-between align-center">
                       <div className="flex-col">
-                        <span className="font-size-10 font-weight-bold text-white">{b.name}</span>
-                        <span className="font-size-7 text-secondary">属性: {b.alignment || "無属性"}</span>
+                        <div className="flex-row-gap-2 align-center">
+                          <span className={`gvg-rank-badge-${b.rank.toLowerCase()} font-size-8 font-weight-bold px-2 py-0.5 rounded`}>
+                            Rank {b.rank}
+                          </span>
+                          <span className="font-size-10 font-weight-bold text-white">{b.name}</span>
+                        </div>
                       </div>
                       <div className="flex-row-gap-2 align-center">
                         <span className="font-size-8 bg-black-60 border-subtle px-2 py-0.5 rounded text-white">
@@ -336,13 +382,13 @@ export default function GvgTab() {
                             デイリー順位
                           </button>
                           <button
-                            disabled={!isRoundActive || gvgResetLoading}
+                            disabled={!isRoundActive || gvgResetLoading || vitality < 20}
                             onClick={() => startCardBattle("GVG", `${b.name}防衛チーム`, b.id)}
                             className={`sub-btn height-26 px-4 font-size-8 font-weight-bold active-scale-effect ${
-                              isRoundActive ? "border-cyan text-color-cyan" : "border-subtle text-secondary opacity-50"
+                              isRoundActive && vitality >= 20 ? "border-cyan text-color-cyan" : "border-subtle text-secondary opacity-50"
                             }`}
                           >
-                            {gvgResetLoading ? <span className="simple-spinner" /> : isRoundActive ? "侵攻" : "準備中"}
+                            {gvgResetLoading ? <span className="simple-spinner" /> : isRoundActive ? "侵攻 (20 AP)" : "準備中"}
                           </button>
                         </div>
                       </div>

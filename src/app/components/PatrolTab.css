@@ -91,9 +91,10 @@
   font-weight: 700;
 }
 
-.badge-easy { background: rgba(0, 255, 102, 0.15); color: #00ff66; border: 1px solid rgba(0, 255, 102, 0.3); }
-.badge-normal { background: rgba(0, 153, 255, 0.15); color: #0099ff; border: 1px solid rgba(0, 153, 255, 0.3); }
-.badge-hard { background: rgba(255, 51, 102, 0.15); color: #ff3366; border: 1px solid rgba(255, 51, 102, 0.3); }
+.badge-short { background: rgba(0, 255, 102, 0.15); color: #00ff66; border: 1px solid rgba(0, 255, 102, 0.3); }
+.badge-medium { background: rgba(0, 153, 255, 0.15); color: #0099ff; border: 1px solid rgba(0, 153, 255, 0.3); }
+.badge-long { background: rgba(255, 153, 0, 0.15); color: #ff9900; border: 1px solid rgba(255, 153, 0, 0.3); }
+.badge-idle { background: rgba(255, 51, 102, 0.15); color: #ff3366; border: 1px solid rgba(255, 51, 102, 0.3); }
 
 /* ----------------------------------------------------
    キャラクター選択グリッド

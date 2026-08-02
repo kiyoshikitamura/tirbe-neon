@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState } from "react";
 import { useGame } from "../context/GameContext";
@@ -57,12 +57,12 @@ export default function GuildTab() {
   // 支配中拠点の動的取得
   const getControlledBases = () => {
     if (!userGuild || !gvgBaseControls) return [];
-    const bases = ["neon_tower", "deep_dock", "junk_bazar", "kitakura_gate"];
+    const bases = ["shinjuku", "shibuya", "ikebukuro", "roppongi", "akihabara"];
     const baseNames: { [key: string]: string } = {
-      neon_tower: "ネオンタワー",
-      deep_dock: "ディープドック",
-      junk_bazar: "ジャンクバザール",
-      kitakura_gate: "キタクラゲート"
+      shinjuku: "新宿",
+      shibuya: "渋谷",
+      ikebukuro: "池袋", roppongi: "六本木", akihabara: "秋葉原",
+      
     };
 
     const controlled: string[] = [];

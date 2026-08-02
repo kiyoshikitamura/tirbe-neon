@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useMemo, useEffect } from "react";
 import { useGame } from "../context/GameContext";
@@ -115,12 +115,12 @@ export default function RankingTab() {
 
     if (activeSubTab === "daily") {
       // 拠点ごとに支配ポイント順にギルドを並べる
-      const bases = ["neon_tower", "deep_dock", "junk_bazar", "kitakura_gate"];
+      const bases = ["shinjuku", "shibuya", "ikebukuro", "roppongi", "akihabara"];
       const baseNames: { [key: string]: string } = {
-        neon_tower: "ネオンタワー",
-        deep_dock: "ディープドック",
-        junk_bazar: "ジャンクバザール",
-        kitakura_gate: "キタクラゲート"
+        shinjuku: "新宿",
+        shibuya: "渋谷",
+        ikebukuro: "池袋", roppongi: "六本木", akihabara: "秋葉原",
+        
       };
 
       return bases.map((baseId: string) => {

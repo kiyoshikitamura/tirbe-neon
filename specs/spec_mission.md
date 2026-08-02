@@ -177,3 +177,8 @@
     ]
   }
   ```
+
+## 2026-08-04 実装完了 (Phase 5-C)
+- mission_master のシードロジックを GameContext.tsx に追加
+- レイドクリア (RAID_CLEAR) トリガーを useBattle.ts に追加
+- ガチャ実行 (GACHA_PULL) トリガーを GameContext.tsx に追加

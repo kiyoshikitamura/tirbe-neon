@@ -115,8 +115,8 @@ export default function PatrolTab() {
               onClick={() => { setSelectedCourse(c.id); playCyberSe("click"); }}
             >
               <div className="course-name">{c.name}</div>
-              <div className={`course-badge badge-${c.course_type.toLowerCase()}`}>
-                {c.course_type === 'EASY' ? '初級' : c.course_type === 'NORMAL' ? '中級' : '上級'}
+              <div className={`course-badge badge-${c.id.split('_').pop()}`}>
+                {c.id.includes('short') ? '短期' : c.id.includes('medium') ? '中期' : c.id.includes('long') ? '長期' : '放置'}
               </div>
             </div>
           ))}
@@ -157,7 +157,7 @@ export default function PatrolTab() {
               })}
             </div>
             <div className="course-cost-info mb-3 font-size-7 text-color-gray flex-row-gap-2">
-              <span>⏱ 所要: {activeCourse.duration_seconds}秒</span>
+              <span>⏱ 所要: {activeCourse.duration_seconds >= 60 ? `${activeCourse.duration_seconds / 60}分` : `${activeCourse.duration_seconds}秒`}</span>
               <span>⚡ スタミナ: {activeCourse.cost_vitality}</span>
               <span>💰 基本報酬: {activeCourse.reward_cash}</span>
             </div>

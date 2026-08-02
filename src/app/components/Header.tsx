@@ -2,6 +2,7 @@
 
 import React from "react";
 import { useGame } from "../context/GameContext";
+import { VITALITY_MAX } from "@/utils/game_constants";
 import "./Header.css";
 
 export default function Header() {
@@ -66,8 +67,8 @@ export default function Header() {
         {/* AP (Action Point) */}
         <div className="header-mobile-stat">
           <span className="header-mobile-stat-label">AP</span>
-          <span className="header-mobile-stat-val header-mobile-stat-energy">
-            {vitality || 0}/100
+          <span className={`header-mobile-stat-val header-mobile-stat-energy ${vitality > VITALITY_MAX ? 'header-mobile-stat-overflow' : ''}`}>
+            {vitality || 0}/{VITALITY_MAX}
           </span>
         </div>
       </div>

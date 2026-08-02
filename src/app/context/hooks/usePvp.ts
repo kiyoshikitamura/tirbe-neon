@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import { supabase } from "@/utils/supabase";
@@ -13,11 +13,11 @@ export function usePvp(
   syncBootstrapData: (userId: string) => Promise<void>,
   setConfirmDialogConfig: React.Dispatch<React.SetStateAction<import("@/app/components/ui/ConfirmDialog").ConfirmDialogConfig | null>>
 ) {
-  const [pvpTickets, setPvpTickets] = useState<number>(5);
+  const [pvpPoints, setPvpPoints] = useState<number>(5);
   const [battleSubTab, setBattleSubTab] = useState<string>("pvp");
   const [pvpOpponents, setPvpOpponents] = useState<any[]>([]);
   const [opponentsLoading, setOpponentsLoading] = useState<boolean>(false);
-  const [pvpPoints, setPvpPoints] = useState<number>(1000);
+  const [pvpRate, setPvpRate] = useState<number>(1000);
 
   const [pvpSubView, setPvpSubView] = useState<"opponents" | "daily" | "season" | "defense">("opponents");
   const [myPvpDefenseDeck, setMyPvpDefenseDeck] = useState<any>(null);
@@ -129,11 +129,11 @@ export function usePvp(
   };
 
   return {
-    pvpTickets, setPvpTickets,
+    pvpPoints, setPvpPoints,
     battleSubTab, setBattleSubTab,
     pvpOpponents, setPvpOpponents,
     opponentsLoading, setOpponentsLoading,
-    pvpPoints, setPvpPoints,
+    pvpRate, setPvpRate,
     pvpSubView, setPvpSubView,
     myPvpDefenseDeck, setMyPvpDefenseDeck,
     pvpRankings, setPvpRankings,

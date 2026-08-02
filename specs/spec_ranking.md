@@ -96,3 +96,8 @@ CREATE TABLE user_power_rankings (
   - 代表者（ギルドマスター）名、所属アライメント属性（ORDER: 青/金、CHAOS: 赤）
   - ギルド紹介文、メンバー数（所属数 / 上限）
   - 現在支配しているエリア一覧（「支配エリア: ネオンタワー」等と表記）
+
+## 2026-08-04 実装完了 (Phase 6)
+- distribute_ranking_rewards SQLマイグレーション追加
+- mockRpc.ts へ報酬配布スタブ追加
+- GameContext.tsx へシーズンリセット検知と報酬配布実行ロジック追加

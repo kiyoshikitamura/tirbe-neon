@@ -2,7 +2,7 @@
 
 import React from "react";
 import { useGame } from "../context/GameContext";
-import { BASE_MAP_MASTER } from "@/utils/game_constants";
+import { BASE_MAP_MASTER, RAID_COST_TABLE, RAID_MAX_DAILY } from "@/utils/game_constants";
 import "./RaidTab.css";
 
 export default function RaidTab() {
@@ -20,7 +20,11 @@ export default function RaidTab() {
     raidBossName,
     hasRaidControlBonus,
     navigateTab,
-    userLevel
+    userLevel,
+    raidAttemptsToday,
+    setConfirmDialogConfig,
+    cash,
+    diamonds
   } = useGame();
 
   // 残り時間のフォーマット
@@ -69,16 +73,40 @@ export default function RaidTab() {
             </span>
           </div>
 
-          <div className="flex justify-center mt-4" style={{ display: "flex", justifyContent: "center" }}>
-            <button 
-              onClick={() => { startCardBattle("RAID", raidBossName, raidBossBaseId); playCyberSe("click"); }}
-              disabled={raidBossHp <= 0 || raidBossSecondsLeft <= 0 || userLevel < 5}
-              className="action-btn claim font-weight-bold py-2 px-6 active-scale-effect width-100 flex-row-center-spinner justify-center"
-              style={{ background: "var(--neon-magenta)", border: "none", color: "#fff", width: "100%" }}
-            >
-              {userLevel < 5 ? "プレイヤーLv5以上で解放" : "強敵に挑む (バトル開始)"}
-            </button>
-          </div>
+            <div className="flex-col-gap-2 width-100">
+              <button 
+                onClick={() => {
+                  playCyberSe("click");
+                  const nextAttempt = raidAttemptsToday + 1;
+                  const costEntry = RAID_COST_TABLE[Math.min(nextAttempt - 1, RAID_COST_TABLE.length - 1)];
+                  
+                  if (costEntry.type !== "FREE") {
+                    setConfirmDialogConfig({
+                      isOpen: true,
+                      title: "レイド挑戦",
+                      message: `${costEntry.type === "CASH" ? "Cash" : "Diamond"} ${costEntry.cost.toLocaleString()} を消費してレイドに挑戦しますか？（本日 ${nextAttempt}/${RAID_MAX_DAILY} 回目）`,
+                      confirmText: "挑戦する",
+                      cancelText: "キャンセル",
+                      onConfirm: () => { startCardBattle("RAID", raidBossName, raidBossBaseId); setConfirmDialogConfig(null); },
+                      onCancel: () => setConfirmDialogConfig(null),
+                    });
+                  } else {
+                    startCardBattle("RAID", raidBossName, raidBossBaseId);
+                  }
+                }}
+                disabled={raidBossHp <= 0 || raidBossSecondsLeft <= 0 || userLevel < 5 || raidAttemptsToday >= RAID_MAX_DAILY}
+                className="action-btn claim font-weight-bold py-2 px-6 active-scale-effect width-100 flex-row-center-spinner justify-center"
+                style={{ background: "var(--neon-magenta)", border: "none", color: "#fff", width: "100%" }}
+              >
+                {userLevel < 5 ? "プレイヤーLv5以上で解放" : raidAttemptsToday >= RAID_MAX_DAILY ? "本日の挑戦回数上限" : "強敵に挑む (バトル開始)"}
+              </button>
+              {userLevel >= 5 && (
+                <div className="text-center font-size-8 text-secondary">
+                  本日挑戦: {raidAttemptsToday}/{RAID_MAX_DAILY} 回
+                  (次回コスト: {RAID_COST_TABLE[Math.min(raidAttemptsToday, RAID_COST_TABLE.length - 1)].type === "FREE" ? "無料" : `${RAID_COST_TABLE[Math.min(raidAttemptsToday, RAID_COST_TABLE.length - 1)].cost} ${RAID_COST_TABLE[Math.min(raidAttemptsToday, RAID_COST_TABLE.length - 1)].type}`})
+                </div>
+              )}
+            </div>
         </div>
 
         {/* 自組織の累積与ダメージ状況 */}

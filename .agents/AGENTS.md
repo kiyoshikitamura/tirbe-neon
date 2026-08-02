@@ -549,3 +549,6 @@ This file defines the project-specific rules, design constraints, and technical 
 
 
 
+
+## 実装履歴
+- 2026-08-04: Phase 5-C (ミッション連動) および Phase 6 (ランキング報酬シーズンリセット) 実装完了

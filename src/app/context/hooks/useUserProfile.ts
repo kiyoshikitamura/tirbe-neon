@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import { supabase } from "@/utils/supabase";
@@ -22,7 +22,7 @@ export function useUserProfile(
   const [username, setUsername] = useState<string>("半グレの首領");
   const [bio, setBio] = useState<string>("歌舞伎町の覇権を握るため立ち上がる。");
   const [avatarUrl, setAvatarUrl] = useState<string>("/reiji_transparent_asset.png");
-  const [currentBaseId, setCurrentBaseId] = useState<string>("neon_tower");
+  const [currentBaseId, setCurrentBaseId] = useState<string>("shinjuku");
   const [lastGuildLeftAt, setLastGuildLeftAt] = useState<string | null>(null);
   const [bgmEnabled, setBgmEnabled] = useState<boolean>(true);
   const [seEnabled, setSeEnabled] = useState<boolean>(true);

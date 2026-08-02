@@ -125,3 +125,7 @@
 .header-mobile-stat-energy {
   color: #ffffff;
 }
+
+.header-mobile-stat-overflow {
+  color: var(--color-warning);
+}

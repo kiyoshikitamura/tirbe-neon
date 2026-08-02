@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { executeMockRpc } from "./mockRpc";
 
@@ -111,6 +111,11 @@ export class MockSupabaseClient {
         return this;
       }
 
+      gte(field: string, val: any) {
+        this.filters.push({ type: "gte", field, val });
+        return this;
+      }
+
       neq(field: string, val: any) {
         this.filters.push({ type: "neq", field, val });
         return this;
@@ -189,6 +194,7 @@ export class MockSupabaseClient {
             for (const f of this.filters) {
               if (f.type === "eq" && row[f.field] !== f.val) matches = false;
               if (f.type === "neq" && row[f.field] === f.val) matches = false;
+              if (f.type === "gte" && row[f.field] < f.val) matches = false;
             }
             if (matches) {
               updatedCount++;
@@ -206,6 +212,7 @@ export class MockSupabaseClient {
             for (const f of this.filters) {
               if (f.type === "eq" && row[f.field] === f.val) return false;
               if (f.type === "neq" && row[f.field] !== f.val) return false;
+              if (f.type === "gte" && row[f.field] < f.val) return false;
             }
             return true;
           });
@@ -218,6 +225,7 @@ export class MockSupabaseClient {
           for (const f of this.filters) {
             if (f.type === "eq" && row[f.field] !== f.val) return false;
             if (f.type === "neq" && row[f.field] === f.val) return false;
+            if (f.type === "gte" && row[f.field] < f.val) return false;
             if (f.type === "in" && !f.vals.includes(row[f.field])) return false;
           }
           return true;

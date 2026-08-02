@@ -5,6 +5,7 @@ import { useGame } from "../context/GameContext";
 
 import { useImagePreloader } from "../hooks/useImagePreloader";
 import { PROFILE_BACKGROUNDS, CHARACTERS_MASTER } from "@/utils/game_constants";
+import MonthlyPassBanner from "./MonthlyPassBanner";
 import "./HomeTab.css";
 
 const PRELOAD_IMAGES = [
@@ -83,16 +84,16 @@ function MainMyPage() {
 
   // 拠点ID → 表示名・画像ファイル名のマッピング
   const baseMap: { [key: string]: { name: string; file: string } } = {
-    "neon_tower": { name: "ネオンタワー", file: "neontower" },
+    "shinjuku": { name: "新宿", file: "neontower" },
     "neontower": { name: "ネオンタワー", file: "neontower" },
-    "deep_dock": { name: "ディープドック", file: "deepdock" },
+    "shibuya": { name: "渋谷", file: "deepdock" },
     "deepdock": { name: "ディープドック", file: "deepdock" },
-    "junk_bazar": { name: "ジャンクバザール", file: "junkbazaar" },
+    "ikebukuro": { name: "池袋", file: "junkbazaar" },
     "junkbazaar": { name: "ジャンクバザール", file: "junkbazaar" },
-    "kitakura_gate": { name: "キタクラゲート", file: "kitakuragate" },
+    "roppongi": { name: "六本木", file: "kitakuragate" }, "akihabara": { name: "秋葉原", file: "junkbazaar" },
     "kitakuragate": { name: "キタクラゲート", file: "kitakuragate" },
   };
-  const currentBase = baseMap[currentBaseId || "neon_tower"] || baseMap["neon_tower"];
+  const currentBase = baseMap[currentBaseId || "shinjuku"] || baseMap["shinjuku"];
   const baseName = currentBase.name;
 
   // リーダーキャラクター立ち絵URL
@@ -300,49 +301,53 @@ function MainMyPage() {
         </button>
       </div>
 
-      {/* 3. イベントバナーエリア (大ボタン直下) */}
-      <div className="mypage-event-banner-area">
-        <div className="banner-slide-wrapper">
-          <button
-            className="banner-arrow left"
-            onClick={() => setBannerIndex((prev) => (prev - 1 + banners.length) % banners.length)}
-          >
-            ‹
-          </button>
-          <div className="banner-card">
-            <img src={banners[bannerIndex].img} alt="Banner" className="banner-bg-img" />
-            <div className="banner-info-overlay">
-              <span className="banner-title">{banners[bannerIndex].title}</span>
+      <div className="px-3 pb-3 flex-col-gap-2">
+        {/* 月額VIPパスバナー */}
+        <MonthlyPassBanner />
+
+        {/* 3. イベントバナーエリア (大ボタン直下) */}
+        <div className="mypage-event-banner-area">
+          <div className="banner-slide-wrapper">
+            <button
+              className="banner-arrow left"
+              onClick={() => setBannerIndex((prev) => (prev - 1 + banners.length) % banners.length)}
+            >
+              ‹
+            </button>
+            <div className="banner-card">
+              <img src={banners[bannerIndex].img} alt="Banner" className="banner-bg-img" />
+              <div className="banner-info-overlay">
+                <span className="banner-title">{banners[bannerIndex].title}</span>
+              </div>
             </div>
+            <button
+              className="banner-arrow right"
+              onClick={() => setBannerIndex((prev) => (prev + 1) % banners.length)}
+            >
+              ›
+            </button>
           </div>
-          <button
-            className="banner-arrow right"
-            onClick={() => setBannerIndex((prev) => (prev + 1) % banners.length)}
+          <div className="banner-dots">
+            {banners.map((_, i) => (
+              <span key={i} className={`dot ${i === bannerIndex ? "active" : ""}`} />
+            ))}
+          </div>
+        </div>
+
+        {/* 4. 1行チャットプレビュー ＆ 暗号メッセージアプリ『トライブ』起動 */}
+        <div className="mypage-chat-preview-area">
+          <div
+            className="chat-preview-bar active-scale-effect"
+            onClick={() => { setShowTribeChatPanel(true); playCyberSe("click"); }}
           >
-            ›
-          </button>
-        </div>
-        <div className="banner-dots">
-          {banners.map((_, i) => (
-            <span key={i} className={`dot ${i === bannerIndex ? "active" : ""}`} />
-          ))}
-        </div>
-      </div>
-
-      {/* 4. 1行チャットプレビュー ＆ 暗号メッセージアプリ『トライブ』起動 */}
-      <div className="mypage-chat-preview-area">
-        <div
-          className="chat-preview-bar active-scale-effect"
-          onClick={() => { setShowTribeChatPanel(true); playCyberSe("click"); }}
-        >
-          <span className="chat-tag">[チャット]</span>
-          <span className="chat-text">
-            {latestMessage ? `${latestMessage.author_name}: ${latestMessage.content}` : "チャットメッセージはありません"}
-          </span>
-          <span className="tribe-app-link">💬 『トライブ』を開く ›</span>
+            <span className="chat-tag">[チャット]</span>
+            <span className="chat-text">
+              {latestMessage ? `${latestMessage.author_name}: ${latestMessage.content}` : "チャットメッセージはありません"}
+            </span>
+            <span className="tribe-app-link">💬 『トライブ』を開く ›</span>
+          </div>
         </div>
       </div>
-
 
     </div>
   );

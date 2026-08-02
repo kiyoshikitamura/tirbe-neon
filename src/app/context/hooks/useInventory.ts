@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { supabase } from "@/utils/supabase";
+import { VITALITY_OVERFLOW_MAX } from "@/utils/game_constants";
 
 export function useInventory(
   session: any,
@@ -57,7 +58,7 @@ export function useInventory(
       
       const prevQuantity = energyDrinks;
       const prevVitality = vitality;
-      const nextVitality = prevVitality + 50;
+      const nextVitality = Math.min(prevVitality + 50, VITALITY_OVERFLOW_MAX);
       
       setEnergyDrinks(prev => Math.max(0, prev - 1));
       setVitality(nextVitality);

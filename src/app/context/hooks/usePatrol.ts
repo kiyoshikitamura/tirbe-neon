@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/utils/supabase";
-import { CHARACTERS_MASTER, CHARACTER_GROWTH_PATTERNS } from "@/utils/game_constants";
+import { DISPATCH_COURSES, CHARACTERS_MASTER, CHARACTER_GROWTH_PATTERNS } from "@/utils/game_constants";
 
 export function usePatrol(
   session: any,
@@ -35,7 +35,19 @@ export function usePatrol(
     expires_at?: string;
   }>>([]);
   const [patrolLogs, setPatrolLogs] = useState<Array<{ time: string; text: string }>>([]);
-  const [patrolCourses, setPatrolCourses] = useState<any[]>([]);
+  const mappedCourses = DISPATCH_COURSES.map(c => ({
+    ...c,
+    town_id: c.townId,
+    duration_seconds: c.duration * 60,
+    cost_vitality: c.stamina,
+    battle_trigger_chance: c.chance,
+    reward_cash: c.rewardCash,
+    reward_xp: c.xpReward,
+    reward_item_chance: c.chance,
+    reward_item_id: c.rewardItem,
+    battle_npc_id: "npc_thug_01"
+  }));
+  const [patrolCourses, setPatrolCourses] = useState<any[]>(mappedCourses);
   const [patrolNpcs, setPatrolNpcs] = useState<any[]>([]);
   const [hasActivePatrolBattle, setHasActivePatrolBattle] = useState<boolean>(false);
   const [lastPatrolRewards, setLastPatrolRewards] = useState<any | null>(null);

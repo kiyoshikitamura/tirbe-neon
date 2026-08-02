@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { CHARACTERS_MASTER, CHARACTER_AWAKENING_MASTER } from "../game_constants";
 
@@ -33,6 +33,158 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     return { data: code, error: null };
   }
 
+          if (funcName === "send_friend_request") {
+    const { p_user_id, p_friend_id } = params;
+    if (p_user_id === p_friend_id) return { data: null, error: { message: "自分自身には申請できません。" } };
+    
+    const friends = client.getStorage("user_friends") || [];
+    
+    // Check if already exists
+    if (friends.find((f: any) => f.user_id === p_user_id && f.friend_id === p_friend_id)) {
+      return { data: { success: true }, error: null };
+    }
+
+    friends.push({
+      id: "mock_friend_" + Date.now(),
+      user_id: p_user_id,
+      friend_id: p_friend_id,
+      status: "PENDING",
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    });
+    
+    friends.push({
+      id: "mock_friend_" + (Date.now() + 1),
+      user_id: p_friend_id,
+      friend_id: p_user_id,
+      status: "RECEIVED",
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    });
+    
+    client.setStorage("user_friends", friends);
+    return { data: { success: true }, error: null };
+  }
+
+  if (funcName === "accept_friend_request") {
+    const { p_user_id, p_friend_id } = params;
+    const friends = client.getStorage("user_friends") || [];
+    
+    const f1 = friends.find((f: any) => f.user_id === p_user_id && f.friend_id === p_friend_id);
+    const f2 = friends.find((f: any) => f.user_id === p_friend_id && f.friend_id === p_user_id);
+    
+    if (f1) { f1.status = "ACCEPTED"; f1.updated_at = new Date().toISOString(); }
+    if (f2) { f2.status = "ACCEPTED"; f2.updated_at = new Date().toISOString(); }
+    
+    client.setStorage("user_friends", friends);
+    return { data: { success: true }, error: null };
+  }
+
+  if (funcName === "remove_friend") {
+    const { p_user_id, p_friend_id } = params;
+    let friends = client.getStorage("user_friends") || [];
+    
+    friends = friends.filter((f: any) => !(f.user_id === p_user_id && f.friend_id === p_friend_id) && !(f.user_id === p_friend_id && f.friend_id === p_user_id));
+    
+    client.setStorage("user_friends", friends);
+    return { data: { success: true }, error: null };
+  }
+  if (funcName === "purchase_monthly_pass") {
+    const { p_user_id } = params;
+    const passes = client.getStorage("user_monthly_passes") || [];
+    const activePass = passes.find((p: any) => p.user_id === p_user_id && p.is_active);
+    
+    if (activePass) {
+      // Extend 30 days
+      const currentExpires = new Date(activePass.expires_at);
+      currentExpires.setDate(currentExpires.getDate() + 30);
+      activePass.expires_at = currentExpires.toISOString();
+    } else {
+      const d = new Date();
+      d.setDate(d.getDate() + 30);
+      passes.push({
+        id: "mock_pass_" + Date.now(),
+        user_id: p_user_id,
+        purchased_at: new Date().toISOString(),
+        expires_at: d.toISOString(),
+        daily_claimed_at: null,
+        is_active: true
+      });
+    }
+    client.setStorage("user_monthly_passes", passes);
+    return { data: { success: true }, error: null };
+  }
+
+  if (funcName === "claim_daily_pass_reward") {
+    const { p_user_id } = params;
+    const passes = client.getStorage("user_monthly_passes") || [];
+    const activePass = passes.find((p: any) => p.user_id === p_user_id && p.is_active && new Date(p.expires_at) > new Date());
+    
+    if (!activePass) {
+      return { data: null, error: { message: "有効な月額パスがありません。" } };
+    }
+    
+    const today = new Date().toISOString().split("T")[0];
+    if (activePass.daily_claimed_at === today) {
+      return { data: null, error: { message: "本日の報酬は既に受け取り済みです。" } };
+    }
+    
+    activePass.daily_claimed_at = today;
+    client.setStorage("user_monthly_passes", passes);
+    
+    const users = client.getStorage("users") || [];
+    const uIdx = users.findIndex((u: any) => u.id === p_user_id);
+    if (uIdx !== -1) {
+      users[uIdx].diamonds = (users[uIdx].diamonds || 0) + 100;
+      client.setStorage("users", users);
+    }
+    
+    return { data: { success: true }, error: null };
+  }
+  if (funcName === "consume_raid_attempt") {
+    const { p_user_id, p_cost_type, p_cost_amount } = params;
+    const users = client.getStorage("users") || [];
+    const idx = users.findIndex((u: any) => u.id === p_user_id);
+    if (idx !== -1) {
+      if (p_cost_type === "CASH" && users[idx].cash < p_cost_amount) {
+        return { data: null, error: { message: "Cashが不足しています。" } };
+      }
+      if (p_cost_type === "DIAMOND" && users[idx].diamonds < p_cost_amount) {
+        return { data: null, error: { message: "ダイヤが不足しています。" } };
+      }
+      
+      if (p_cost_type === "CASH") users[idx].cash -= p_cost_amount;
+      if (p_cost_type === "DIAMOND") users[idx].diamonds -= p_cost_amount;
+      
+      const today = new Date().toISOString().split("T")[0];
+      const resetAt = users[idx].raid_attempts_reset_at ? new Date(users[idx].raid_attempts_reset_at).toISOString().split("T")[0] : null;
+      if (resetAt !== today) {
+        users[idx].raid_attempts_today = 1;
+        users[idx].raid_attempts_reset_at = new Date().toISOString();
+      } else {
+        users[idx].raid_attempts_today = (users[idx].raid_attempts_today || 0) + 1;
+      }
+      
+      client.setStorage("users", users);
+      return { data: { success: true }, error: null };
+    }
+    return { data: null, error: { message: "ユーザーが見つかりません。" } };
+  }
+  if (funcName === "consume_vitality_for_gvg") {
+    const { p_user_id, p_cost } = params;
+    const users = client.getStorage("users") || [];
+    const idx = users.findIndex((u: any) => u.id === p_user_id);
+    if (idx !== -1 && users[idx].vitality >= p_cost) {
+      users[idx].vitality -= p_cost;
+      client.setStorage("users", users);
+      return { data: { success: true }, error: null };
+    }
+    return { data: null, error: { message: "行動力が不足しています。" } };
+  }
+    if (funcName === "distribute_ranking_rewards") {
+    // In mock, just return success
+    return { data: { success: true }, error: null };
+  }
   if (funcName === "add_user_xp") {
     const { p_user_id, p_xp_amount } = params;
     const users = client.getStorage("users");
@@ -133,9 +285,9 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
       cash: 10000,
       neon_diamonds: 200,
       vitality: 100,
-      pvp_tickets: 5,
+      pvp_points: 5,
       sound_settings: { bgm: true, se: true },
-      current_base_id: p_area_id === "shinjuku" ? "neon_tower" : p_area_id,
+      current_base_id: p_area_id === "shinjuku" ? "shinjuku" : p_area_id,
       last_tribute_claimed_at: null,
       favorite_character_id: p_character_id || null,
       title_equipped: "title_none",
@@ -382,7 +534,7 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     user.pvp_points = Math.max(0, (user.pvp_points || 1000) + (p_point_diff || 0));
     user.cash = (user.cash || 0) + (p_cash_reward || 0);
     // Ticket handling should probably be handled before battle starts, but if we handle it here:
-    // user.pvp_tickets = Math.max(0, (user.pvp_tickets || 5) - 1);
+    // user.pvp_points = Math.max(0, (user.pvp_points || 5) - 1);
 
     const ranks = client.getStorage("pvp_ranks") || [];
     let rank = ranks.find((r: any) => r.user_id === p_user_id);
@@ -1332,14 +1484,14 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
   }
 
 
-  if (funcName === "consume_pvp_ticket") {
+  if (funcName === "consume_pvp_point") {
     const { p_user_id } = params;
     const users = client.getStorage("users") || [];
     const user = users.find((u: any) => u.id === p_user_id);
-    if (!user || user.pvp_tickets < 1) return { error: { message: "PvP入場券が不足しています。" } };
+    if (!user || user.pvp_points < 1) return { error: { message: "PvP入場券が不足しています。" } };
     
-    if (user.pvp_tickets === 5) user.pvp_tickets_last_recovered_at = new Date().toISOString();
-    user.pvp_tickets -= 1;
+    if (user.pvp_points === 5) user.pvp_points_last_recovered_at = new Date().toISOString();
+    user.pvp_points -= 1;
     client.setStorage("users", users);
     return { data: { status: "success" }, error: null };
   }

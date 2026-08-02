@@ -1,0 +1,23 @@
+.monthly-pass-banner {
+  background: linear-gradient(135deg, #11131c, #1a1c29);
+  border: 1px solid var(--neon-gold, #ffd700);
+  box-shadow: 0 0 10px rgba(255, 215, 0, 0.2);
+  border-radius: 8px;
+  overflow: hidden;
+  position: relative;
+}
+
+.monthly-pass-banner::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: linear-gradient(45deg, transparent 45%, rgba(255, 215, 0, 0.1) 50%, transparent 55%);
+  background-size: 200% 200%;
+  animation: shine 3s infinite linear;
+  pointer-events: none;
+}
+
+@keyframes shine {
+  0% { background-position: -100% -100%; }
+  100% { background-position: 200% 200%; }
+}

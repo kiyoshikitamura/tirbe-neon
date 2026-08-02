@@ -14,6 +14,7 @@ import { getCharacterTotalStats, getCharacterApBonus } from "@/utils/stats_calcu
 import { UseBattleOptions, ParticipantState, CardState, SkillLogItem } from "./battle/battleTypes";
 import { selectCharacterSkillByTactic } from "./battle/battleAI";
 import { postNpcYajiMessage, saveBattleSessionState } from "./battle/battleUtils";
+import { RAID_COST_TABLE, RAID_MAX_DAILY } from "../utils/game_constants";
 
 export type { UseBattleOptions, ParticipantState, CardState, SkillLogItem };
 
@@ -33,20 +34,26 @@ export function useBattle(options: UseBattleOptions) {
     username,
     playCyberSe,
     syncBootstrapData,
-    pvpTickets,
-    setPvpTickets,
+    pvpPoints,
+    setPvpPoints,
     userLevel,
     setUserLevel,
     userXp,
     setUserXp,
-    pvpPoints,
+    vitality,
+    setVitality,
+    pvpRate,
     pvpRankings,
+    raidAttemptsToday,
+    setRaidAttemptsToday,
+    cash,
+    setCash,
+    diamonds,
+    setDiamonds,
     raidBossHp,
     raidBossMaxHp,
     raidTotalDamage,
     setRaidTotalDamage,
-    cash,
-    setCash,
     setErrorMessage,
     addGuildXpAndContributionByAction,
     setConfirmDialogConfig,
@@ -221,13 +228,13 @@ export function useBattle(options: UseBattleOptions) {
 
     if (mode === "PVP") {
       try {
-        const res = await supabase.rpc("consume_pvp_ticket", { p_user_id: session.user.id });
+        const res = await supabase.rpc("consume_pvp_point", { p_user_id: session.user.id });
         if (res.error || res.data?.error) {
-          setErrorMessage("PvP入場券が不足しています。");
+          setErrorMessage("PvPポイントが不足しています。");
           setBattleLoading(false);
           return;
         }
-        setPvpTickets(prev => prev - 1);
+        setPvpPoints(prev => prev - 1);
         
         // 対戦相手のレートと作戦を設定
         setOpponentPoints(oppPoints || 1000);
@@ -241,8 +248,71 @@ export function useBattle(options: UseBattleOptions) {
 
     setBattleMode(mode);
     setBattleOpponentName(targetName);
-    if (mode === "GVG" && areaIdOrOpponentUserId) setGvgTargetBaseId(areaIdOrOpponentUserId);
-    else setGvgTargetBaseId(null);
+    
+    if (mode === "RAID") {
+      const nextAttempt = (raidAttemptsToday || 0) + 1;
+      if (nextAttempt > RAID_MAX_DAILY) {
+        setErrorMessage("本日のレイド挑戦回数の上限に達しました。");
+        setBattleLoading(false);
+        return;
+      }
+      const costEntry = RAID_COST_TABLE[Math.min(nextAttempt - 1, RAID_COST_TABLE.length - 1)];
+      if (costEntry.type !== "FREE") {
+        try {
+          const res = await supabase.rpc("consume_raid_attempt", { 
+            p_user_id: session.user.id, 
+            p_cost_type: costEntry.type, 
+            p_cost_amount: costEntry.cost 
+          });
+          if (res.error) {
+            setErrorMessage(res.error.message || "コストが不足しています。");
+            setBattleLoading(false);
+            return;
+          }
+          if (costEntry.type === "CASH" && setCash) setCash((prev: number) => prev - costEntry.cost);
+          if (costEntry.type === "DIAMOND" && setDiamonds) setDiamonds((prev: number) => prev - costEntry.cost);
+        } catch (err) {
+          console.warn(err);
+          setBattleLoading(false);
+          return;
+        }
+      }
+      if (setRaidAttemptsToday) {
+        setRaidAttemptsToday((prev: number) => prev + 1);
+      }
+    }
+    
+    if (mode === "GVG") {
+      if (areaIdOrOpponentUserId && !areaIdOrOpponentUserId.startsWith("npc_dummy")) {
+        setGvgTargetBaseId(areaIdOrOpponentUserId);
+      } else {
+        setGvgTargetBaseId(null);
+      }
+      
+      // 本番侵攻の行動力消費
+      if (!areaIdOrOpponentUserId?.startsWith("npc_dummy")) {
+        if (vitality < 20) {
+          setErrorMessage("行動力が不足しています。");
+          setBattleLoading(false);
+          return;
+        }
+        try {
+          const res = await supabase.rpc("consume_vitality_for_gvg", { p_user_id: session.user.id, p_cost: 20 });
+          if (res.error) {
+            setErrorMessage("行動力が不足しています。");
+            setBattleLoading(false);
+            return;
+          }
+          setVitality(prev => prev - 20);
+        } catch (err) {
+          console.warn("GVG consume vitality error", err);
+          setBattleLoading(false);
+          return;
+        }
+      }
+    } else {
+      setGvgTargetBaseId(null);
+    }
 
     // 自部隊5名のロード
     const party = selectedMembers.length > 0 ? selectedMembers : userCharactersDbList.slice(0, 5).map(c => c.character_id);
@@ -1242,7 +1312,7 @@ export function useBattle(options: UseBattleOptions) {
         });
       }
     } else if (modeTemp === "PVP") {
-      const diff = opponentPoints - pvpPoints;
+      const diff = opponentPoints - pvpRate;
       let pointsDiff = 0;
       let rewardCash = 0;
       let xpAmount = 0;
@@ -1289,7 +1359,7 @@ export function useBattle(options: UseBattleOptions) {
         }
       }
 
-      const nextPoints = Math.max(pvpPoints + pointsDiff, 0);
+      const nextPoints = Math.max(pvpRate + pointsDiff, 0);
 
       const existMe = pvpRankings.find(r => r.user_id === session.user.id);
       const nextDaily = (existMe?.daily_wins || 0) + (isWin ? 1 : 0);
@@ -1450,6 +1520,9 @@ export function useBattle(options: UseBattleOptions) {
       }
 
       postNpcYajiMessage(session, username, "GLOBAL", currentBaseId, "RAID_DAMAGE");
+
+      // ミッション: レイド参加
+      await supabase.rpc("evaluate_mission_progress", { p_user_id: session.user.id, p_trigger_type: "RAID_CLEAR", p_progress_increment: 1 });
     } else if (modeTemp === "GVG") {
       const guildIdFilter = userGuildMember?.guild_id || "";
       if (guildIdFilter && gvgAreaTemp) {
