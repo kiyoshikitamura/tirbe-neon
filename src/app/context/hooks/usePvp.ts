@@ -114,7 +114,7 @@ export function usePvp(
         .from("user_power_rankings")
         .upsert({
           user_id: userId,
-          current_power: powerSum,
+           total_power: powerSum,
           updated_at: new Date().toISOString()
         }, { onConflict: "user_id" });
 

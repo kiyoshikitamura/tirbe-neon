@@ -1,0 +1,29 @@
+CREATE OR REPLACE FUNCTION public.get_public_battle_roster(p_target_user_id uuid)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_user record;
+  v_roster jsonb;
+BEGIN
+  IF auth.uid() IS NULL OR p_target_user_id IS NULL THEN
+    RAISE EXCEPTION 'not authorized';
+  END IF;
+  SELECT username INTO v_user FROM public.users WHERE id = p_target_user_id;
+  SELECT COALESCE(jsonb_agg(jsonb_build_object(
+    'id', c.id,
+    'character_id', c.character_id,
+    'level', c.level,
+    'awakening_level', c.awakening_level,
+    'equipments', COALESCE((SELECT jsonb_agg(jsonb_build_object('equipment_id', e.equipment_id, 'level', e.level, 'plus_val', e.plus_val, 'slot_index', e.slot_index, 'random_options', e.random_options)) FROM public.user_equipments e WHERE e.user_id = c.user_id AND e.equipped_character_id = c.id::text), '[]'::jsonb),
+    'skills', COALESCE((SELECT jsonb_agg(jsonb_build_object('skill_card_id', s.skill_card_id, 'plus_val', s.plus_val, 'slot_index', s.slot_index)) FROM public.user_skills s WHERE s.user_id = c.user_id AND s.equipped_character_id = c.id::text), '[]'::jsonb)
+  ) ORDER BY c.level DESC, c.awakening_level DESC), '[]'::jsonb) INTO v_roster
+  FROM public.user_characters c WHERE c.user_id = p_target_user_id;
+  RETURN jsonb_build_object('username', v_user.username, 'characters', v_roster);
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.get_public_battle_roster(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.get_public_battle_roster(uuid) TO authenticated;

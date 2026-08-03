@@ -49,7 +49,7 @@ PvPでの戦績を競います。
 ```sql
 CREATE TABLE user_power_rankings (
     user_id UUID REFERENCES users(id) ON DELETE CASCADE PRIMARY KEY,
-    current_power INT NOT NULL DEFAULT 0,
+    total_power INT NOT NULL DEFAULT 0,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
 ```

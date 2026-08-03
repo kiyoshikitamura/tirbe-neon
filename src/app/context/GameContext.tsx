@@ -621,12 +621,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const checkIfSetupRequired = async (userId: string) => {
     setAuthLoading(true);
     try {
-      const { data, error } = await supabase
-        .from("users")
-        .select("id")
-        .eq("id", userId)
-        .maybeSingle();
-
+      const { data, error } = await supabase.rpc("get_user_setup_status");
       if (error) throw error;
       if (!data) {
         setIsSetupRequired(true);
@@ -643,21 +638,9 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
   const syncActiveUsers = async (userId: string) => {
     try {
-      const now = new Date();
-      await supabase
-        .from("users")
-        .update({ last_active_at: now.toISOString() })
-        .eq("id", userId);
-
-      const fiveMinutesAgo = new Date(now.getTime() - 5 * 60 * 1000).toISOString();
-      const { data } = await supabase
-        .from("users")
-        .select("id")
-        .gte("last_active_at", fiveMinutesAgo);
-
-      if (data) {
-        setActiveUsersCount(data.length);
-      }
+      const { data, error } = await supabase.rpc("sync_active_users");
+      if (error) throw error;
+      if (typeof data === "number") setActiveUsersCount(data);
     } catch (err) {
       console.warn("Failed to sync active users:", err);
     }
@@ -1036,25 +1019,29 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
         const { data: membersList } = await supabase
           .from("guild_members")
-          .select("*, users ( username, avatar_url, bio, favorite_character_id )")
+          .select("*")
           .eq("guild_id", guildMemberRec.guild_id)
           .order("role", { ascending: true });
         
         if (membersList && membersList.length > 0) {
+          const memberUserIds = membersList.map((m: any) => m.user_id);
+          const { data: publicProfiles } = await supabase.rpc("get_public_profiles", { p_user_ids: memberUserIds });
+          const profileByUserId = new Map((publicProfiles || []).map((p: any) => [p.user_id, p]));
+          const membersWithProfiles = membersList.map((m: any) => ({ ...m, users: profileByUserId.get(m.user_id) || null }));
           // 初期プレースホルダー表示用にnullを設定
-          setGuildMembersList(membersList.map((m: any) => ({ ...m, userLevel: null, userPower: null, partyCharIds: null })));
+          setGuildMembersList(membersWithProfiles.map((m: any) => ({ ...m, userLevel: null, userPower: null, partyCharIds: null })));
 
-          const userIds = membersList.map((m: any) => m.user_id);
+          const userIds = membersWithProfiles.map((m: any) => m.user_id);
 
           Promise.all([
-            supabase.from("user_power_rankings").select("user_id, current_power").in("user_id", userIds),
-            supabase.from("user_characters").select("id, user_id, character_id, level").in("user_id", userIds),
+            supabase.from("user_power_rankings").select("user_id, total_power").in("user_id", userIds),
+            supabase.rpc("get_public_leader_characters", { p_user_ids: userIds }),
             supabase.from("pvp_defense_decks").select("user_id, character_1_id, character_2_id, character_3_id, character_4_id, character_5_id").in("user_id", userIds)
           ]).then(([powersRes, charsRes, decksRes]) => {
-            const mappedMembers = membersList.map((m: any) => {
-              const userPower = powersRes.data?.find((p: any) => p.user_id === m.user_id)?.current_power ?? 0;
+            const mappedMembers = membersWithProfiles.map((m: any) => {
+              const userPower = powersRes.data?.find((p: any) => p.user_id === m.user_id)?.total_power ?? 0;
               const favCharId = m.users?.favorite_character_id;
-              const userChars = charsRes.data?.filter((c: any) => c.user_id === m.user_id) || [];
+              const userChars = (charsRes.data || []).filter((c: any) => c.user_id === m.user_id);
               const leaderChar = userChars.find((c: any) => c.character_id === favCharId) || userChars[0];
               const userLevel = leaderChar ? leaderChar.level : 1;
 
@@ -1068,7 +1055,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
               ].filter(Boolean) : [];
 
               const partyCharIds = partyIds.map(id => {
-                const charRec = userChars.find(c => c.id === id);
+                const charRec = userChars.find((c: any) => c.id === id);
                 return charRec ? charRec.character_id : null;
               }).filter(Boolean);
 
@@ -1143,14 +1130,16 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         setHasActivePatrolBattle(false);
       }
 
-      const { data: pvpData } = await supabase
+      const { data: pvpRanks } = await supabase
         .from("pvp_ranks")
-        .select("*, users ( username, avatar_url )")
+        .select("*")
         .order("rank_points", { ascending: false });
-      
-      if (pvpData) {
+      const { data: pvpProfiles } = await supabase.rpc("get_public_profiles", { p_user_ids: (pvpRanks || []).map((r: any) => r.user_id) });
+      const pvpProfileById = new Map((pvpProfiles || []).map((p: any) => [p.user_id, p]));
+      const pvpData = (pvpRanks || []).map((r: any) => ({ ...r, users: pvpProfileById.get(r.user_id) || null }));
+      if (pvpData.length > 0) {
         setPvpRankings(pvpData);
-        const me = pvpData.find(r => r.user_id === userId);
+        const me = pvpData.find((r: any) => r.user_id === userId);
         if (me) {
           setPvpRate(me.rank_points);
           fetchPvpOpponents(userId, me.rank_points);
@@ -1291,11 +1280,14 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         if (r.out_boss_name) setRaidBossName(r.out_boss_name);
       }
 
-      const { data: dmgLogsData } = await supabase
+      const { data: rawDmgLogsData } = await supabase
         .from("raid_damage_logs")
-        .select("*, users ( username ), guilds ( name )")
+        .select("*, guilds ( name )")
         .eq("raid_boss_id", RAID_BOSS_ID)
         .order("damage_dealt", { ascending: false });
+      const { data: dmgProfiles } = await supabase.rpc("get_public_profiles", { p_user_ids: (rawDmgLogsData || []).map((d: any) => d.user_id) });
+      const dmgProfileById = new Map((dmgProfiles || []).map((p: any) => [p.user_id, p]));
+      const dmgLogsData = (rawDmgLogsData || []).map((d: any) => ({ ...d, users: dmgProfileById.get(d.user_id) || null }));
       
       if (dmgLogsData) {
         setRaidDamageLogs(dmgLogsData);
@@ -1305,9 +1297,12 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         setRaidTotalDamage(myDmg);
       }
 
-      const { data: allRaidLogs } = await supabase
+      const { data: rawAllRaidLogs } = await supabase
         .from("raid_damage_logs")
-        .select("*, users ( username ), guilds ( name )");
+        .select("*, guilds ( name )");
+      const { data: allRaidProfiles } = await supabase.rpc("get_public_profiles", { p_user_ids: (rawAllRaidLogs || []).map((d: any) => d.user_id) });
+      const allRaidProfileById = new Map((allRaidProfiles || []).map((p: any) => [p.user_id, p]));
+      const allRaidLogs = (rawAllRaidLogs || []).map((d: any) => ({ ...d, users: allRaidProfileById.get(d.user_id) || null }));
       if (allRaidLogs) {
         setRaidSeasonRankings(allRaidLogs);
       }
@@ -1491,23 +1486,17 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       }
 
       // 総合力およびギルド総合力ランキングの取得・集計
-      const { data: rawPowerRankings } = await supabase
-        .from("user_power_rankings")
-        .select(`
-          user_id,
-          current_power,
-          updated_at,
-          users (
-            username,
-            avatar_url,
-            guild_members (
-              guild_id,
-              guilds (
-                name
-              )
-            )
-          )
-        `);
+      const { data: publicPowerRankings } = await supabase.rpc("get_public_power_rankings");
+      const rawPowerRankings = (publicPowerRankings || []).map((r: any) => ({
+        user_id: r.user_id,
+        current_power: r.current_power,
+        updated_at: r.updated_at,
+        users: {
+          username: r.username,
+          avatar_url: r.avatar_url,
+          guild_members: r.guild_id ? [{ guild_id: r.guild_id, guilds: r.guild_name ? { name: r.guild_name } : null }] : []
+        }
+      }));
 
       if (rawPowerRankings) {
         setPowerRankings(rawPowerRankings);
@@ -2195,13 +2184,9 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
   const fetchPlayerDetail = async (userId: string) => {
     try {
-      const { data: user, error: userErr } = await supabase
-        .from("users")
-        .select("id, username, bio, level")
-        .eq("id", userId)
-        .maybeSingle();
-
+      const { data: profiles, error: userErr } = await supabase.rpc("get_public_profiles", { p_user_ids: [userId] });
       if (userErr) throw userErr;
+      const user = profiles?.[0];
       if (!user) return;
 
       const { data: deck, error: deckErr } = await supabase
@@ -2292,11 +2277,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
       let leaderName = "不明";
       if (guild.leader_id) {
-        const { data: leader } = await supabase
-          .from("users")
-          .select("username")
-          .eq("id", guild.leader_id)
-          .maybeSingle();
+        const { data: leaderProfiles } = await supabase.rpc("get_public_profiles", { p_user_ids: [guild.leader_id] });
+        const leader = leaderProfiles?.[0];
         if (leader) leaderName = leader.username;
       }
 
@@ -2610,7 +2592,64 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     const isLimit = scoutType.startsWith("LIMIT_");
 
     try {
+      if ((category as string) === "CHARACTER") {
+        const serverCurrency = useCurrency === "FREE" ? "free" : useCurrency === "DIAMOND" ? "diamonds" : useCurrency === "TICKET" ? "ticket" : "cash";
+        const drawResult = await supabase.rpc("execute_character_gacha", {
+          p_user_id: session.user.id,
+          p_gacha_id: scoutType === "CHAR_NORMAL" || scoutType === "CHAR_SPECIAL" ? scoutType : "CHAR_SPECIAL",
+          p_pull_count: scoutCount,
+          p_currency_type: serverCurrency
+        });
+        if (drawResult.error || drawResult.data?.error) {
+          throw drawResult.error || new Error(drawResult.data.error);
+        }
+
+        const serverResults = drawResult.data?.results || [];
+        const results = serverResults.map((result: { character_id: string; outcome: string }) => {
+          const character = CHARACTERS_MASTER.find(c => c.id === result.character_id);
+          return {
+            type: "CHARACTER",
+            name: character?.jpName || result.character_id,
+            rarity: character?.rarity || "SSR",
+            converted: result.outcome === "converted",
+            convertReward: result.outcome === "awakening" ? "覚醒段階+1" : result.outcome === "converted" ? "抗争の掟 x1" : "新規獲得"
+          };
+        });
+        if (typeof drawResult.data?.cash === "number") setCash(drawResult.data.cash);
+        if (typeof drawResult.data?.diamonds === "number") setDiamonds(drawResult.data.diamonds);
+        if (useCurrency === "FREE") setDailyFreeGachaFlags(prev => ({ ...prev, CHARACTER: false }));
+        await syncBootstrapData(session.user.id);
+        setScoutResults(results);
+        setScoutFlashingColor(results.some((r: { rarity: string }) => r.rarity === "SSR") ? "GOLD" : results.some((r: { rarity: string }) => r.rarity === "SR") ? "PURPLE" : "BLUE");
+        setScoutAnimationState("FLASHING");
+        playCyberSe("gacha");
+        setTimeout(() => setScoutAnimationState("SHOW_RESULTS"), 1800);
+        return;
+      }
+
       // 1. コスト判定 ＆ 残高/無料フラグチェック
+      const assetGachaId = category === "SKILL"
+        ? (scoutType === "SKILL_NORMAL" || scoutType === "SKILL_SPECIAL" ? scoutType : "SKILL_SPECIAL")
+        : (scoutType === "EQUIP_NORMAL" || scoutType === "EQUIP_SPECIAL" ? scoutType : "EQUIP_SPECIAL");
+      const serverCurrency = useCurrency === "FREE" ? "free" : useCurrency === "DIAMOND" ? "diamonds" : useCurrency === "TICKET" ? "ticket" : "cash";
+      const drawResult = await supabase.rpc("execute_asset_gacha", { p_user_id: session.user.id, p_gacha_id: assetGachaId, p_pull_count: scoutCount, p_currency_type: serverCurrency });
+      if (drawResult.error || drawResult.data?.error) throw drawResult.error || new Error(drawResult.data.error);
+      const serverResults = drawResult.data?.results || [];
+      const assetResults = serverResults.map((result: { type: string; item_id: string; outcome: string }) => {
+        const master = result.type === "SKILL" ? SKILLS_MASTER_DATA.find(s => s.id === result.item_id) : EQUIPMENTS_MASTER_DATA.find(e => e.id === result.item_id);
+        return { type: result.type, name: master?.name || result.item_id, rarity: master?.rarity || "R", converted: result.outcome === "converted", convertReward: result.outcome === "converted" ? "TRAINING_MANUAL x2" : result.outcome === "limit_break" ? "限界突破 +1" : "新規獲得" };
+      });
+      if (typeof drawResult.data?.cash === "number") setCash(drawResult.data.cash);
+      if (typeof drawResult.data?.diamonds === "number") setDiamonds(drawResult.data.diamonds);
+      if (useCurrency === "FREE") setDailyFreeGachaFlags(prev => ({ ...prev, [category]: false }));
+      await syncBootstrapData(session.user.id);
+      setScoutResults(assetResults);
+      setScoutFlashingColor(assetResults.some((r: { rarity: string }) => r.rarity === "SSR") ? "GOLD" : assetResults.some((r: { rarity: string }) => r.rarity === "SR") ? "PURPLE" : "BLUE");
+      setScoutAnimationState("FLASHING");
+      playCyberSe("gacha");
+      setTimeout(() => setScoutAnimationState("SHOW_RESULTS"), 1800);
+      return;
+
       if (useCurrency === "FREE") {
         if (!dailyFreeGachaFlags[category]) {
           setErrorMessage("本日の無料10連ガチャは使用済みです。");
@@ -2619,7 +2658,10 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         }
       } else if (useCurrency === "TICKET") {
         const ticketCount = scoutCount;
-        await supabase.rpc("execute_gacha", { p_user_id: session.user.id, p_currency_type: "ticket", p_currency_cost: ticketCount, p_results: [] });
+        const chargeResult = await supabase.rpc("execute_gacha", { p_user_id: session.user.id, p_currency_type: "ticket", p_currency_cost: ticketCount, p_results: [] });
+        if (chargeResult.error || chargeResult.data?.error) {
+          throw chargeResult.error || new Error(chargeResult.data.error);
+        }
       } else if (useCurrency === "DIAMOND") {
         let reqDia = 100;
         if (isNormal) reqDia = scoutCount === 10 ? 1000 : 100;
@@ -2633,7 +2675,10 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
           return;
         }
         const nextDiamonds = diamonds - reqDia;
-        await supabase.rpc("execute_gacha", { p_user_id: session.user.id, p_currency_type: "diamonds", p_currency_cost: reqDia, p_results: [] });
+        const chargeResult = await supabase.rpc("execute_gacha", { p_user_id: session.user.id, p_currency_type: "diamonds", p_currency_cost: reqDia, p_results: [] });
+        if (chargeResult.error || chargeResult.data?.error) {
+          throw chargeResult.error || new Error(chargeResult.data.error);
+        }
         setDiamonds(nextDiamonds);
       } else {
         // CASH
@@ -2649,7 +2694,10 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
           return;
         }
         const nextCash = cash - reqCash;
-        await supabase.rpc("execute_gacha", { p_user_id: session.user.id, p_currency_type: "cash", p_currency_cost: reqCash, p_results: [] });
+        const chargeResult = await supabase.rpc("execute_gacha", { p_user_id: session.user.id, p_currency_type: "cash", p_currency_cost: reqCash, p_results: [] });
+        if (chargeResult.error || chargeResult.data?.error) {
+          throw chargeResult.error || new Error(chargeResult.data.error);
+        }
         setCash(nextCash);
       }
 
@@ -2681,7 +2729,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       const results: any[] = [];
       let highestRarity: "BLUE" | "PURPLE" | "GOLD" = "BLUE";
 
-      if (category === "CHARACTER") {
+      if ((category as string) === "CHARACTER") {
         const localUserCharList = [...userCharactersDbList];
         let isFirstCharAllocated = localUserCharList.length > 0;
 
@@ -2855,8 +2903,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         setScoutAnimationState("SHOW_RESULTS");
       }, 1800);
 
-    } catch (err: any) {
-      console.warn("Gacha execution error:", err.message);
+    } catch (err: unknown) {
+      console.warn("Gacha execution error:", err instanceof Error ? err.message : err);
     } finally {
       try {
         await supabase.rpc("evaluate_mission_progress", {
@@ -2878,6 +2926,16 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
     setUpgradeLoading(true);
     try {
+      const { data: pityResult, error: pityError } = await supabase.rpc("exchange_pity_reward", {
+        p_user_id: session.user.id,
+        p_reward_type: rewardType,
+        p_reward_id: rewardId
+      });
+      if (pityError || pityResult?.error) throw pityError || new Error(pityResult.error);
+      setSpecialPityPoints((pityResult?.current_points ?? Math.max(0, specialPityPoints - 200)) as number);
+      await syncBootstrapData(session.user.id);
+      return;
+
       const nextPts = specialPityPoints - 200;
       await supabase.from("user_gacha_pity_points").upsert({
         user_id: session.user.id,
@@ -2943,7 +3001,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       }
 
       await syncBootstrapData(session.user.id);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Exchange pity error:", err);
       setErrorMessage("天井交換に失敗しました。");
     } finally {

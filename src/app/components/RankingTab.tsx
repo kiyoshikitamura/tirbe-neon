@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo } from "react";
 import { useGame } from "../context/GameContext";
 import { supabase } from "../../utils/supabase";
 import "./RankingTab.css";
@@ -45,12 +45,14 @@ export default function RankingTab() {
       const loadRanks = async () => {
         setGvgSeasonLoading(true);
         try {
-          const { data } = await supabase
+          const { data: ranks } = await supabase
             .from("user_gvg_ranks")
-            .select("*, users ( username, avatar_url )")
+            .select("*")
             .order("season_points", { ascending: false });
-          if (data) {
-            setGvgSeasonPersonalRanks(data);
+          if (ranks) {
+            const { data: profiles } = await supabase.rpc("get_public_profiles", { p_user_ids: ranks.map((r: any) => r.user_id) });
+            const profileById = new Map((profiles || []).map((p: any) => [p.user_id, p]));
+            setGvgSeasonPersonalRanks(ranks.map((r: any) => ({ ...r, users: profileById.get(r.user_id) || null })));
           }
         } catch (err: any) {
           console.warn("Failed to load GvG rankings:", err.message);

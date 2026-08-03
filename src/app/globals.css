@@ -1,5 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Outfit:wght@400;600;800&display=swap');
-
 :root {
   /* プレミアム・テーマカラー */
   --bg-color: #0b0f19;              /* リッチブラック */
@@ -24,8 +22,8 @@
   --neon-glow-purple: 0 0 8px rgba(139, 0, 255, 0.6), 0 0 15px rgba(139, 0, 255, 0.3);
   --neon-glow-gold: 0 0 8px rgba(255, 215, 0, 0.6), 0 0 15px rgba(255, 215, 0, 0.3);
 
-  --font-inter: 'Inter', sans-serif;
-  --font-outfit: 'Outfit', sans-serif;
+  --font-inter: Arial, "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  --font-outfit: Arial, "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
 }
 
 * {

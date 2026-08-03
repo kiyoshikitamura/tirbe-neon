@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/utils/supabase";
 import { SKILLS_MASTER_DATA } from "@/utils/skills_master_data";
-import { EQUIPMENTS_MASTER_DATA } from "@/utils/equipments_master_data";
 import {
   RAID_BOSS_ID,
   CHARACTERS_MASTER,
@@ -419,19 +418,17 @@ export function useBattle(options: UseBattleOptions) {
 
     if (options.selectedBattleHelper && !supportCharacter) {
       try {
-        const { data: hUser } = await supabase.from("users").select("username").eq("id", options.selectedBattleHelper).single();
-        const { data: hChars } = await supabase.from("user_characters").select("*").eq("user_id", options.selectedBattleHelper).order("level", { ascending: false }).limit(1);
-        
-        if (hUser && hChars && hChars.length > 0) {
-          const hChar = hChars[0];
+        const { data: loadout, error: loadoutError } = await supabase.rpc("get_public_battle_loadout", { p_target_user_id: options.selectedBattleHelper });
+        const hUser = loadout?.username ? { username: loadout.username } : null;
+        const hChar = loadout?.character;
+        const hEquips = loadout?.equipments || [];
+        const hSkills = loadout?.skills || [];
+        if (!loadoutError && hUser && hChar) {
           const hMaster = CHARACTERS_MASTER.find(c => c.id === hChar.character_id);
           
-          const { data: hEquips } = await supabase.from("user_equipments").select("*").eq("user_id", options.selectedBattleHelper).eq("equipped_character_id", hChar.id);
-          const { data: hSkills } = await supabase.from("user_skills").select("*").eq("user_id", options.selectedBattleHelper).eq("equipped_character_id", hChar.id);
+          const baseStats = getCharacterTotalStats(hChar, hEquips);
           
-          const baseStats = getCharacterTotalStats(hChar, hEquips || []); 
-          
-          const hSkillsList = (hSkills || []).map(us => {
+          const hSkillsList = hSkills.map((us: any) => {
             const skillMaster = SKILLS_MASTER_DATA.find(s => s.id === us.skill_card_id);
             const isExclusive = !!skillMaster?.is_exclusive;
             const masterRec = skillLimitBreakMaster ? skillLimitBreakMaster.find(m => m.plus_val === us.plus_val && m.is_exclusive === isExclusive) : null;
@@ -513,26 +510,23 @@ export function useBattle(options: UseBattleOptions) {
       loadedRealEnemy = true;
     } else if (mode === "PVP" && areaIdOrOpponentUserId && !areaIdOrOpponentUserId.startsWith("npc_dummy_")) {
       try {
-        const { data: dbChars } = await supabase
-          .from("user_characters")
-          .select("*")
-          .eq("user_id", areaIdOrOpponentUserId);
+        const { data: publicRoster, error: rosterError } = await supabase.rpc("get_public_battle_roster", { p_target_user_id: areaIdOrOpponentUserId });
+        const dbChars = (publicRoster?.characters || []).map((character: any) => ({
+          ...character,
+          id: character.id,
+          user_id: areaIdOrOpponentUserId
+        }));
 
-        if (dbChars && dbChars.length > 0) {
-          const charIds = dbChars.map(c => c.id);
-          const [equipsRes, skillsRes] = await Promise.all([
-            supabase.from("user_equipments").select("*").in("equipped_character_id", charIds),
-            supabase.from("user_skills").select("*").in("equipped_character_id", charIds)
-          ]);
-
-          const enemyEquips = equipsRes.data || [];
-          const enemySkills = skillsRes.data || [];
+        if (!rosterError && dbChars.length > 0) {
+          const charIds = dbChars.map((c: any) => c.id);
+          const enemyEquips = dbChars.flatMap((character: any) => (character.equipments || []).map((equipment: any) => ({ ...equipment, equipped_character_id: character.id })));
+          const enemySkills = dbChars.flatMap((character: any) => (character.skills || []).map((skill: any) => ({ ...skill, id: `${character.id}_${skill.skill_card_id}`, equipped_character_id: character.id })));
 
           // 対戦相手の防衛デッキのキャラクター順序を再現
           let sortedEnemyChars = [...dbChars];
           if (opponentDefenseCharIds && opponentDefenseCharIds.length > 0) {
             sortedEnemyChars = opponentDefenseCharIds.map(id => {
-              return dbChars.find(c => c.id === id || c.character_id === id || c.character_id === id.replace("c_", ""));
+              return dbChars.find((c: any) => c.id === id || c.character_id === id || c.character_id === id.replace("c_", ""));
             }).filter(Boolean);
           }
           if (sortedEnemyChars.length === 0) {
@@ -559,8 +553,8 @@ export function useBattle(options: UseBattleOptions) {
             }
 
             const charSkills = enemySkills
-              .filter(us => us.equipped_character_id === charRecord.id && us.slot_index !== null)
-              .map(us => {
+              .filter((us: any) => us.equipped_character_id === charRecord.id && us.slot_index !== null)
+              .map((us: any) => {
                 const skillMaster = SKILLS_MASTER_DATA.find(s => s.id === us.skill_card_id);
                 const isExclusive = !!skillMaster?.is_exclusive;
                 const masterRec = skillLimitBreakMaster ? skillLimitBreakMaster.find(m => m.plus_val === us.plus_val && m.is_exclusive === isExclusive) : null;
@@ -654,11 +648,8 @@ export function useBattle(options: UseBattleOptions) {
             const opponentUserId = randomDeck.user_id;
 
             // 相手ユーザー情報を取得
-            const { data: oppUser } = await supabase
-              .from("users")
-              .select("username")
-              .eq("id", opponentUserId)
-              .maybeSingle();
+            const { data: oppProfiles } = await supabase.rpc("get_public_profiles", { p_user_ids: [opponentUserId] });
+            const oppUser = oppProfiles?.[0];
 
             const oppUsername = oppUser?.username || "対戦相手";
 
@@ -673,22 +664,15 @@ export function useBattle(options: UseBattleOptions) {
 
             if (charIds.length > 0) {
               // キャラクター・装備・スキルのロード
-              const { data: dbChars } = await supabase
-                .from("user_characters")
-                .select("*")
-                .in("id", charIds);
+              const { data: publicRoster, error: rosterError } = await supabase.rpc("get_public_battle_roster_by_character_ids", { p_character_ids: charIds });
+              const dbChars = (publicRoster || []).map((character: any) => ({ ...character, user_id: "public" }));
 
-              if (dbChars && dbChars.length > 0) {
+              if (!rosterError && dbChars.length > 0) {
                 // ソート順の維持
                 const sortedChars = charIds.map(cid => dbChars.find((c: any) => c.id === cid)).filter(Boolean);
 
-                const [equipsRes, skillsRes] = await Promise.all([
-                  supabase.from("user_equipments").select("*").in("equipped_character_id", charIds),
-                  supabase.from("user_skills").select("*").in("equipped_character_id", charIds)
-                ]);
-
-                const enemyEquips = equipsRes.data || [];
-                const enemySkills = skillsRes.data || [];
+                const enemyEquips = dbChars.flatMap((character: any) => (character.equipments || []).map((equipment: any) => ({ ...equipment, equipped_character_id: character.id })));
+                const enemySkills = dbChars.flatMap((character: any) => (character.skills || []).map((skill: any) => ({ ...skill, id: `${character.id}_${skill.skill_card_id}`, equipped_character_id: character.id })));
 
                 // 支配ギルド判定 (防衛バフ +10% 適用)
                 let isOpponentControlling = false;
@@ -726,8 +710,8 @@ export function useBattle(options: UseBattleOptions) {
                   }
 
                   const charSkills = enemySkills
-                    .filter(us => us.equipped_character_id === charRecord.id && us.slot_index !== null)
-                    .map(us => {
+                    .filter((us: any) => us.equipped_character_id === charRecord.id && us.slot_index !== null)
+                    .map((us: any) => {
                       const skillMaster = SKILLS_MASTER_DATA.find(s => s.id === us.skill_card_id);
                       const isExclusive = !!skillMaster?.is_exclusive;
                       const masterRec = skillLimitBreakMaster ? skillLimitBreakMaster.find(m => m.plus_val === us.plus_val && m.is_exclusive === isExclusive) : null;

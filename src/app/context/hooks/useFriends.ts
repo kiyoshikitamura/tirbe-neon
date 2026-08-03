@@ -24,22 +24,18 @@ export const useFriends = () => {
       
       if (data && data.length > 0) {
         const friendIds = data.map(f => f.user_id_1 === userId ? f.user_id_2 : f.user_id_1);
-        const { data: usersData, error: usersError } = await supabase
-          .from("users")
-          .select("id, username, level, avatar_url, title_equipped")
-          .in("id", friendIds);
-          
+        const { data: usersData, error: usersError } = await supabase.rpc("get_public_profiles", { p_user_ids: friendIds });
         if (usersError) throw usersError;
         
         const { data: powerData } = await supabase
           .from("user_power_rankings")
-          .select("user_id, current_power")
+          .select("user_id, total_power")
           .in("user_id", friendIds);
 
-        const mergedFriends = usersData.map(u => ({
+        const mergedFriends = (usersData || []).map((u: any) => ({
           ...u,
           friendshipId: data.find(f => (f.user_id_1 === userId && f.user_id_2 === u.id) || (f.user_id_2 === userId && f.user_id_1 === u.id))?.id,
-          power: powerData?.find(p => p.user_id === u.id)?.current_power || 0
+          power: powerData?.find(p => p.user_id === u.id)?.total_power || 0
         }));
         
         setUserFriends(mergedFriends);
@@ -53,21 +49,23 @@ export const useFriends = () => {
 
   const fetchFriendRequests = useCallback(async (userId: string) => {
     try {
-      const { data, error } = await supabase
+        const { data, error } = await supabase
         .from("friend_requests")
-        .select("*, users!friend_requests_sender_id_fkey(username, avatar_url, level)")
+        .select("*")
         .eq("receiver_id", userId)
         .eq("status", "PENDING");
 
       if (error) throw error;
       
       if (data) {
+        const { data: profiles } = await supabase.rpc("get_public_profiles", { p_user_ids: data.map((r: any) => r.sender_id) });
+        const profileById = new Map<string, any>((profiles || []).map((p: any) => [p.user_id, p]));
         setFriendRequests(data.map((r: any) => ({
           id: r.id,
           senderId: r.sender_id,
-          username: r.users?.username || "Unknown",
-          avatarUrl: r.users?.avatar_url,
-          level: r.users?.level || 1,
+          username: profileById.get(r.sender_id)?.username || "Unknown",
+          avatarUrl: profileById.get(r.sender_id)?.avatar_url,
+          level: profileById.get(r.sender_id)?.level || 1,
           createdAt: r.created_at
         })));
       }
