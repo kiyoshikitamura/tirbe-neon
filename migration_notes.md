@@ -74,6 +74,7 @@
 - Preview static asset check found 7 script references; the first 3 JavaScript chunks all returned HTTP 200.
 - Preview headers include HSTS and standard cache/content type headers; `x-frame-options` and `x-content-type-options` were not present, so adding explicit security headers remains a Preview hardening candidate before production release.
 - Added explicit `X-Content-Type-Options`, `X-Frame-Options`, and `Referrer-Policy` headers in `next.config.ts`; typecheck and optimized build both pass.
+- After pushing `534de66`, the provided Preview URL returned HTTP 200 and exposed all three configured security headers, confirming automatic Preview deployment reflection.
 - Removed build-time and runtime Google Fonts dependencies from `layout.tsx`/`globals.css`; `npm run build` now succeeds without network font fetching.
 - Production release remains out of scope; controlled rollout follows baseline reconciliation.
 
