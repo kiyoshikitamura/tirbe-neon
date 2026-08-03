@@ -7,38 +7,11 @@ import { supabase } from "@/utils/supabase";
 import "./MonthlyPassBanner.css";
 
 export default function MonthlyPassBanner() {
-  const { playCyberSe, setConfirmDialogConfig, session } = useGame();
-  const [passActive, setPassActive] = useState(false);
-  const [claimedToday, setClaimedToday] = useState(false);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchPassStatus = async () => {
-      if (!session?.user?.id) return;
-      try {
-        // mock checking logic (In a real app, this would hit the DB via Context or query)
-        const { data, error } = await supabase
-          .from("user_monthly_passes")
-          .select("*")
-          .eq("user_id", session.user.id)
-          .eq("is_active", true)
-          .gte("expires_at", new Date().toISOString());
-
-        if (data && data.length > 0) {
-          setPassActive(true);
-          const today = new Date().toISOString().split("T")[0];
-          setClaimedToday(data[0].daily_claimed_at === today);
-        } else {
-          setPassActive(false);
-        }
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchPassStatus();
-  }, [session]);
+  const { 
+    playCyberSe, setConfirmDialogConfig, session,
+    monthlyPassActive, monthlyPassClaimedToday,
+    handlePurchaseMonthlyPass, handleClaimDailyPassReward
+  } = useGame();
 
   const handlePurchase = async () => {
     playCyberSe("click");
@@ -50,10 +23,8 @@ export default function MonthlyPassBanner() {
       cancelText: "キャンセル",
       onConfirm: async () => {
         setConfirmDialogConfig(null);
-        try {
-          await supabase.rpc("purchase_monthly_pass", { p_user_id: session?.user?.id });
-          setPassActive(true);
-          setClaimedToday(false);
+        const res = await handlePurchaseMonthlyPass();
+        if (res?.success) {
           setConfirmDialogConfig({
             isOpen: true,
             title: "購入完了",
@@ -61,8 +32,14 @@ export default function MonthlyPassBanner() {
             confirmText: "OK",
             onConfirm: () => setConfirmDialogConfig(null)
           });
-        } catch (err: any) {
-          console.error(err);
+        } else {
+          setConfirmDialogConfig({
+            isOpen: true,
+            title: "購入失敗",
+            message: res?.message || "購入に失敗しました。",
+            confirmText: "OK",
+            onConfirm: () => setConfirmDialogConfig(null)
+          });
         }
       },
       onCancel: () => setConfirmDialogConfig(null)
@@ -71,11 +48,10 @@ export default function MonthlyPassBanner() {
 
   const handleClaim = async () => {
     playCyberSe("click");
-    if (claimedToday) return;
-    try {
-      const res = await supabase.rpc("claim_daily_pass_reward", { p_user_id: session?.user?.id });
-      if (res.error) throw res.error;
-      setClaimedToday(true);
+    if (monthlyPassClaimedToday) return;
+    
+    const res = await handleClaimDailyPassReward();
+    if (res?.success) {
       setConfirmDialogConfig({
         isOpen: true,
         title: "報酬獲得",
@@ -83,41 +59,50 @@ export default function MonthlyPassBanner() {
         confirmText: "OK",
         onConfirm: () => setConfirmDialogConfig(null)
       });
-    } catch (err: any) {
-      console.error(err);
+    } else {
       setConfirmDialogConfig({
         isOpen: true,
         title: "エラー",
-        message: err.message || "報酬の受け取りに失敗しました。",
+        message: res?.message || "報酬の受け取りに失敗しました。",
         confirmText: "OK",
         onConfirm: () => setConfirmDialogConfig(null)
       });
     }
   };
 
-  if (loading) return null;
-
   return (
     <div className="monthly-pass-banner p-3 mb-3 flex-col-gap-2">
       <div className="flex-row-space-between align-center">
         <div className="flex-col">
           <span className="font-size-10 font-weight-bold" style={{ color: "var(--neon-gold, #ffd700)" }}>VIP PASS</span>
-          <span className="font-size-7 text-secondary">毎日ログインでダイヤを獲得</span>
+          <div className="monthly-pass-content flex-col gap-2 relative z-10 w-full">
+            {monthlyPassActive ? (
+              <div className="flex-col items-center gap-1 w-full text-center">
+                <span className="font-size-8 font-weight-bold text-white text-shadow-black">
+                  VIPパス有効中
+                </span>
+                <span className="font-size-6 text-emerald-300">
+                  {monthlyPassClaimedToday ? "本日の報酬は受け取り済みです。" : "本日のダイヤ(100個)を受け取れます。"}
+                </span>
+                <OutlawButton 
+                  variant={monthlyPassClaimedToday ? "secondary" : "primary"}
+                  onClick={handleClaim}
+                  className="mt-2 py-1 px-4"
+                  disabled={monthlyPassClaimedToday}
+                >
+                  {monthlyPassClaimedToday ? "受取済" : "報酬を受け取る"}
+                </OutlawButton>
+              </div>
+            ) : (
+              <div className="flex-col items-center gap-2">
+                <span className="font-size-7 text-secondary">毎日ログインでダイヤを獲得</span>
+                <OutlawButton variant="danger" onClick={handlePurchase} className="px-4 py-1 font-size-8">
+                  購入する
+                </OutlawButton>
+              </div>
+            )}
+          </div>
         </div>
-        {!passActive ? (
-          <OutlawButton variant="danger" onClick={handlePurchase} className="px-4 py-1 font-size-8">
-            購入する
-          </OutlawButton>
-        ) : (
-          <OutlawButton 
-            variant={claimedToday ? "secondary" : "primary"} 
-            onClick={handleClaim} 
-            disabled={claimedToday}
-            className="px-4 py-1 font-size-8"
-          >
-            {claimedToday ? "受取済" : "報酬を受取"}
-          </OutlawButton>
-        )}
       </div>
     </div>
   );

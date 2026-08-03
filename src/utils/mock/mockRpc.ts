@@ -33,50 +33,76 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     return { data: code, error: null };
   }
 
-          if (funcName === "send_friend_request") {
-    const { p_user_id, p_friend_id } = params;
-    if (p_user_id === p_friend_id) return { data: null, error: { message: "自分自身には申請できません。" } };
+  if (funcName === "search_user_by_name") {
+    const { p_username } = params;
+    const users = client.getStorage("users") || [];
+    const results = users.filter((u: any) => u.username.includes(p_username)).map((u: any) => ({
+      id: u.id,
+      username: u.username,
+      avatar_url: u.avatar_url,
+      level: u.level
+    }));
+    return { data: results, error: null };
+  }
+
+  if (funcName === "send_friend_request") {
+    const { p_sender_id, p_receiver_id } = params;
+    if (p_sender_id === p_receiver_id) return { data: null, error: { message: "自分自身には申請できません。" } };
     
+    // §26: 友達は最大30人
     const friends = client.getStorage("user_friends") || [];
+    const myFriendsCount = friends.filter((f: any) => f.user_id_1 === p_sender_id || f.user_id_2 === p_sender_id).length;
+    if (myFriendsCount >= 30) return { data: null, error: { message: "友達の最大数(30人)に達しています。" } };
     
-    // Check if already exists
-    if (friends.find((f: any) => f.user_id === p_user_id && f.friend_id === p_friend_id)) {
-      return { data: { success: true }, error: null };
+    const requests = client.getStorage("friend_requests") || [];
+    if (requests.find((r: any) => r.sender_id === p_sender_id && r.receiver_id === p_receiver_id && r.status === "PENDING")) {
+      return { data: null, error: { message: "既に申請済みです。" } };
     }
 
-    friends.push({
-      id: "mock_friend_" + Date.now(),
-      user_id: p_user_id,
-      friend_id: p_friend_id,
+    requests.push({
+      id: "req_" + Date.now(),
+      sender_id: p_sender_id,
+      receiver_id: p_receiver_id,
       status: "PENDING",
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
+      created_at: new Date().toISOString()
     });
     
-    friends.push({
-      id: "mock_friend_" + (Date.now() + 1),
-      user_id: p_friend_id,
-      friend_id: p_user_id,
-      status: "RECEIVED",
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    });
-    
-    client.setStorage("user_friends", friends);
+    client.setStorage("friend_requests", requests);
     return { data: { success: true }, error: null };
   }
 
   if (funcName === "accept_friend_request") {
-    const { p_user_id, p_friend_id } = params;
-    const friends = client.getStorage("user_friends") || [];
+    const { p_request_id } = params;
+    const requests = client.getStorage("friend_requests") || [];
+    const req = requests.find((r: any) => r.id === p_request_id);
     
-    const f1 = friends.find((f: any) => f.user_id === p_user_id && f.friend_id === p_friend_id);
-    const f2 = friends.find((f: any) => f.user_id === p_friend_id && f.friend_id === p_user_id);
+    if (req) {
+      req.status = "ACCEPTED";
+      client.setStorage("friend_requests", requests);
+      
+      const friends = client.getStorage("user_friends") || [];
+      friends.push({
+        id: "friendship_" + Date.now(),
+        user_id_1: req.sender_id,
+        user_id_2: req.receiver_id,
+        created_at: new Date().toISOString()
+      });
+      client.setStorage("user_friends", friends);
+    }
     
-    if (f1) { f1.status = "ACCEPTED"; f1.updated_at = new Date().toISOString(); }
-    if (f2) { f2.status = "ACCEPTED"; f2.updated_at = new Date().toISOString(); }
+    return { data: { success: true }, error: null };
+  }
+
+  if (funcName === "reject_friend_request") {
+    const { p_request_id } = params;
+    const requests = client.getStorage("friend_requests") || [];
+    const req = requests.find((r: any) => r.id === p_request_id);
     
-    client.setStorage("user_friends", friends);
+    if (req) {
+      req.status = "REJECTED";
+      client.setStorage("friend_requests", requests);
+    }
+    
     return { data: { success: true }, error: null };
   }
 
@@ -84,9 +110,94 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     const { p_user_id, p_friend_id } = params;
     let friends = client.getStorage("user_friends") || [];
     
-    friends = friends.filter((f: any) => !(f.user_id === p_user_id && f.friend_id === p_friend_id) && !(f.user_id === p_friend_id && f.friend_id === p_user_id));
+    friends = friends.filter((f: any) => !(f.user_id_1 === p_user_id && f.user_id_2 === p_friend_id) && !(f.user_id_1 === p_friend_id && f.user_id_2 === p_user_id));
     
     client.setStorage("user_friends", friends);
+    return { data: { success: true }, error: null };
+  }
+
+  if (funcName === "process_daily_reset") {
+    const { p_user_id } = params;
+    const users = client.getStorage("users") || [];
+    const userIdx = users.findIndex((u: any) => u.id === p_user_id);
+    if (userIdx !== -1) {
+      const today = new Date().toISOString().split("T")[0];
+      const user = users[userIdx];
+      
+      if (user.last_login_date !== today) {
+        user.last_login_date = today;
+        user.raid_attempts_today = 0;
+        if (user.vitality < 100) {
+          user.vitality = 100;
+        }
+        
+        // Reset missions
+        const missions = client.getStorage("user_missions") || [];
+        missions.forEach((m: any) => {
+          if (m.user_id === p_user_id) {
+            // In a real app we check if mission_id is DAILY category
+            // For mock, just reset all that look like daily
+            m.status = "IN_PROGRESS";
+            m.progress_val = 0;
+            m.claimed_at = null;
+          }
+        });
+        client.setStorage("user_missions", missions);
+        client.setStorage("users", users);
+      }
+    }
+    return { data: { success: true }, error: null };
+  }
+
+  if (funcName === "process_stripe_shop_purchase") {
+    const { p_user_id, p_product_id } = params;
+    // mock behavior
+    const users = client.getStorage("users") || [];
+    const user = users.find((u: any) => u.id === p_user_id);
+    if (user) {
+      if (p_product_id.includes("diamond")) {
+        user.diamonds = (user.diamonds || 0) + 1000;
+      }
+      client.setStorage("users", users);
+    }
+    return { data: { success: true }, error: null };
+  }
+
+  if (funcName === "gvg_season_reset") {
+    // mock behavior: reset gvg data
+    client.setStorage("user_gvg_ranks", []);
+    client.setStorage("gvg_season_status", [{ id: 1, current_day: 1 }]);
+    const controls = client.getStorage("guild_base_controls") || [];
+    controls.forEach((c: any) => {
+      c.daily_points = 0;
+      c.total_seasonal_days = 0;
+      c.is_controlling = false;
+    });
+    client.setStorage("guild_base_controls", controls);
+    return { data: { success: true }, error: null };
+  }
+
+  if (funcName === "pvp_season_reset") {
+    const ranks = client.getStorage("pvp_ranks") || [];
+    ranks.forEach((r: any) => {
+      if (r.user_id !== "00000000-0000-0000-0000-000000000099") {
+        r.rank_points = 1000;
+        r.daily_wins = 0;
+        r.season_wins = 0;
+      }
+    });
+    client.setStorage("pvp_ranks", ranks);
+    return { data: { success: true }, error: null };
+  }
+
+  if (funcName === "raid_boss_defeat") {
+    client.setStorage("raid_damage_logs", []);
+    return { data: { success: true }, error: null };
+  }
+
+  if (funcName === "raid_season_reset") {
+    client.setStorage("raid_damage_logs", []);
+    client.setStorage("user_raid_claimed_rewards", []);
     return { data: { success: true }, error: null };
   }
   if (funcName === "purchase_monthly_pass") {

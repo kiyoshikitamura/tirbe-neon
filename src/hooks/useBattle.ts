@@ -417,6 +417,63 @@ export function useBattle(options: UseBattleOptions) {
       });
     }
 
+    if (options.selectedBattleHelper && !supportCharacter) {
+      try {
+        const { data: hUser } = await supabase.from("users").select("username").eq("id", options.selectedBattleHelper).single();
+        const { data: hChars } = await supabase.from("user_characters").select("*").eq("user_id", options.selectedBattleHelper).order("level", { ascending: false }).limit(1);
+        
+        if (hUser && hChars && hChars.length > 0) {
+          const hChar = hChars[0];
+          const hMaster = CHARACTERS_MASTER.find(c => c.id === hChar.character_id);
+          
+          const { data: hEquips } = await supabase.from("user_equipments").select("*").eq("user_id", options.selectedBattleHelper).eq("equipped_character_id", hChar.id);
+          const { data: hSkills } = await supabase.from("user_skills").select("*").eq("user_id", options.selectedBattleHelper).eq("equipped_character_id", hChar.id);
+          
+          const baseStats = getCharacterTotalStats(hChar, hEquips || []); 
+          
+          const hSkillsList = (hSkills || []).map(us => {
+            const skillMaster = SKILLS_MASTER_DATA.find(s => s.id === us.skill_card_id);
+            const isExclusive = !!skillMaster?.is_exclusive;
+            const masterRec = skillLimitBreakMaster ? skillLimitBreakMaster.find(m => m.plus_val === us.plus_val && m.is_exclusive === isExclusive) : null;
+            const multiplier = masterRec ? Number(masterRec.power_multiplier) : (1.0 + us.plus_val * 0.20);
+            return {
+              id: us.id,
+              skill_card_id: us.skill_card_id,
+              name: skillMaster?.name || "助っ人攻撃",
+              ap_cost: skillMaster?.ap_cost ?? 2,
+              power: Math.floor((skillMaster?.power ?? 100) * multiplier),
+              effect_type: skillMaster?.effect_type || "ATTACK",
+              plus_val: us.plus_val,
+              ownerId: null // §1: 助っ人は得意スキルボーナス（AP軽減）適用外とする
+            };
+          });
+
+          if (hSkillsList.length === 0) {
+            hSkillsList.push({ id: "sk_sup_1", skill_card_id: "sk_sup_1", name: "通常攻撃", ap_cost: 1, power: 100, effect_type: "ATTACK", plus_val: 0, ownerId: null });
+          }
+
+          initialPlayerParty.push({
+            id: `support_${hChar.character_id}`,
+            name: `[助っ人] ${hUser.username || "フレンド"}`,
+            characterId: hChar.character_id,
+            alignment: hMaster?.alignment || "ORDER",
+            level: hChar.level,
+            hp: baseStats.hp,
+            maxHp: baseStats.hp,
+            shield: 0,
+            isDead: false,
+            isEnemy: false,
+            tauntTurns: 0,
+            stunTurns: 0,
+            stats: baseStats,
+            skills: hSkillsList
+          });
+        }
+      } catch (err) {
+        console.warn("Failed to fetch helper:", err);
+      }
+    }
+
     setPlayerPartyStates(initialPlayerParty);
 
     // 敵（エネミー）部隊の構築

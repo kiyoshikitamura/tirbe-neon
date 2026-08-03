@@ -25,7 +25,7 @@ export default function Header() {
       <div className="header-mobile-row1">
         <div className="header-mobile-user">
           <span className="header-mobile-title">{userTitle || "半グレの首領"}</span>
-          <span className="header-mobile-username">{username || "プレイヤー"}</span>
+          <span className="header-mobile-username">{username || "プレイヤー名"}</span>
           <span className="header-mobile-level-badge">Lv.{userLevel || 1}</span>
           <span className="header-mobile-guild-name">
             {userGuild?.name ? userGuild.name : "未所属"}

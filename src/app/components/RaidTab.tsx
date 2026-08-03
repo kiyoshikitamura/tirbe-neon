@@ -121,7 +121,7 @@ export default function RaidTab() {
         {/* ランキング画面への遷移 */}
         <div className="battle-card p-3 text-center">
           <div className="upgrade-card-title mb-2">ダメージランキング</div>
-          <p className="font-size-8 text-secondary mb-3">全プレイヤーおよび組織の与ダメージランキングは、ランキング画面で確認できます。</p>
+          <p className="font-size-8 text-secondary mb-3">全プレイヤー名の与ダメージランキングは、ランキング画面で確認できます。</p>
           <button 
             onClick={() => { navigateTab("ranking", "raid"); playCyberSe("click"); }}
             className="action-btn sub-btn font-weight-bold py-2 px-6 active-scale-effect width-100"

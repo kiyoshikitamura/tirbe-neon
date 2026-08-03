@@ -36,7 +36,8 @@ export default function CardBattleView() {
     userEquipmentsList,
     userSkillsList,
     playCyberSe,
-    handleFirstUserInteraction
+    handleFirstUserInteraction,
+    setShowFriendPanel
   } = useGame();
 
   // SETUP画面でカードタップ時に開く閲覧専用詳細ポップアップ
@@ -89,8 +90,8 @@ export default function CardBattleView() {
                   {enemyPartyStates.map((enemy: any, idx: number) => (
                     <div key={idx} className="setup-enemy-mini-card">
                       <img 
-                        src={`/char/char_dummy_enemy_${idx}.png`} 
-                        onError={(e) => { (e.target as HTMLImageElement).src = "/char/char_fallback.png"; }}
+                        src={`/characters/char_dummy_enemy_${idx}.png`} 
+                        onError={(e) => { (e.target as HTMLImageElement).src = "/characters/reiji_transparent_asset.png"; }}
                         alt={enemy.name} 
                       />
                       <div className="setup-card-name">{enemy.name}</div>
@@ -101,8 +102,8 @@ export default function CardBattleView() {
               ) : (
                 <div className="setup-enemy-spec">
                   <img 
-                    src="/char/char_boss_shinjuku.png" 
-                    onError={(e) => { (e.target as HTMLImageElement).src = "/char/char_fallback.png"; }}
+                    src="/characters/char_boss_shinjuku.png" 
+                    onError={(e) => { (e.target as HTMLImageElement).src = "/characters/reiji_transparent_asset.png"; }}
                     className="setup-enemy-avatar" 
                     alt={battleOpponentName} 
                   />
@@ -150,6 +151,16 @@ export default function CardBattleView() {
                     </div>
                   );
                 })}
+                {playerPartyStates.length < 6 && (
+                  <div 
+                    className="setup-char-card flex-col items-center justify-center cursor-pointer active-scale-effect border-subtle bg-black-60"
+                    onClick={() => { playCyberSe("click"); setShowFriendPanel(true); }}
+                    style={{ minHeight: "100px" }}
+                  >
+                    <span className="text-color-cyan font-size-8 font-weight-bold">+</span>
+                    <span className="font-size-6 text-secondary mt-1">助っ人</span>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -265,8 +276,8 @@ export default function CardBattleView() {
                     className={`enemy-playing-card ${enemy.isDead ? "dead" : ""} ${isActiveTurn ? "active-turn" : ""} ${isShaking ? "shake" : ""}`}
                   >
                     <img 
-                      src={`/char/char_dummy_enemy_${idx}.png`} 
-                      onError={(e) => { (e.target as HTMLImageElement).src = "/char/char_fallback.png"; }}
+                      src={`/characters/char_dummy_enemy_${idx}.png`} 
+                      onError={(e) => { (e.target as HTMLImageElement).src = "/characters/reiji_transparent_asset.png"; }}
                       alt={enemy.name} 
                     />
                     <div className="enemy-card-name">{enemy.name}</div>
@@ -388,8 +399,8 @@ export default function CardBattleView() {
                   className={`player-playing-card ${player.isDead ? "dead" : ""} ${isActiveTurn ? "active-turn" : ""} ${isShaking ? "shake" : ""}`}
                 >
                   <img 
-                    src={`/char/${player.characterId}.png`} 
-                    onError={(e) => { (e.target as HTMLImageElement).src = "/char/char_fallback.png"; }}
+                    src={`/characters/${player.characterId}.png`} 
+                    onError={(e) => { (e.target as HTMLImageElement).src = "/characters/reiji_transparent_asset.png"; }}
                     alt={player.name} 
                   />
                   <div className="player-card-name">{player.name}</div>

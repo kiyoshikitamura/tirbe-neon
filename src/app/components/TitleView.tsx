@@ -28,7 +28,6 @@ export default function TitleView() {
             {authLoading ? (
               <div className="title-loading">
                 <div className="spinner"></div>
-                <span>通信中...</span>
               </div>
             ) : (
               <span className="title-tap-text blink-animation">TAP TO START</span>

@@ -113,7 +113,7 @@ export default function TribeChatModal() {
                   {guildMembersList.map((m: any) => (
                     m.user_id !== session?.user?.id && (
                       <option key={m.user_id} value={m.user_id}>
-                        {m.users?.username || "プレイヤー"} (Lv.{m.userLevel || 1})
+                        {m.users?.username || "プレイヤー名"} (Lv.{m.userLevel || 1})
                       </option>
                     )
                   ))}

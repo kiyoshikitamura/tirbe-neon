@@ -91,7 +91,7 @@ function AppContent() {
       {/* メインビューポートコンテンツ */}
       <main className="main-content">
         {activeTab === "home" && <HomeTab />}
-        {activeTab === "patrol" && <PatrolTab />}
+        {(activeTab === "patrol" || activeTab === "quest") && <PatrolTab />}
         {activeTab === "pvp" && <PvpTab />}
         {activeTab === "gvg" && <GvgTab />}
         {activeTab === "raid" && <RaidTab />}

@@ -28,6 +28,7 @@ import { SHOP_PRODUCTS_MASTER, ShopProductItem } from "@/utils/shop_master_data"
 import { ConfirmDialogConfig } from "@/app/components/ui/ConfirmDialog";
 import { useNavigation } from "./hooks/useNavigation";
 import { useAuth } from "./hooks/useAuth";
+import { useFriends } from "./hooks/useFriends";
 import { useChat } from "./hooks/useChat";
 import { useInventory } from "./hooks/useInventory";
 import { useUserProfile } from "./hooks/useUserProfile";
@@ -71,6 +72,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   // ==========================================
   // 1. 認証 ＆ セッション管理ステート
   // ==========================================
+  const friends = useFriends();
+  
   const auth = useAuth(
     (type: string) => playCyberSe(type as any),
     () => stopCyberBgm(),
@@ -120,6 +123,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const [cash, setCash] = useState<number>(10000);
   const [diamonds, setDiamonds] = useState<number>(200);
   const [vitality, setVitality] = useState<number>(100);
+  const [monthlyPassActive, setMonthlyPassActive] = useState<boolean>(false);
+  const [monthlyPassClaimedToday, setMonthlyPassClaimedToday] = useState<boolean>(false);
 
   const inventory = useInventory(
     session,
@@ -737,6 +742,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     setRaidAttemptsToday,
     vitality,
     setVitality,
+    selectedBattleHelper: friends.selectedBattleHelper,
     raidBossHp,
     setRaidBossHp,
     raidBossMaxHp,
@@ -822,10 +828,41 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       });
 
       await syncActiveUsers(userId);
+      await friends.fetchFriends(userId);
+      await friends.fetchFriendRequests(userId);
+      
+      // デイリーリセット機構 (Phase 3)
+      try {
+        await supabase.rpc("process_daily_reset", { p_user_id: userId });
+      } catch (err) {
+        console.warn("Failed to process daily reset:", err);
+      }
+
       await checkAndClaimLoginBonus(userId);
       const { data: recovered } = await supabase.rpc("sync_and_recover_vitality_and_tickets", {
         p_user_id: userId
       });
+      
+      // 月額パス状態フェッチ
+      try {
+        const { data: mpData } = await supabase
+          .from("user_monthly_passes")
+          .select("*")
+          .eq("user_id", userId)
+          .eq("is_active", true)
+          .gte("expires_at", new Date().toISOString());
+
+        if (mpData && mpData.length > 0) {
+          setMonthlyPassActive(true);
+          const today = new Date().toISOString().split("T")[0];
+          setMonthlyPassClaimedToday(mpData[0].daily_claimed_at === today);
+        } else {
+          setMonthlyPassActive(false);
+          setMonthlyPassClaimedToday(false);
+        }
+      } catch (err) {
+        console.warn("Failed to fetch monthly pass:", err);
+      }
       
       if (recovered && recovered.length > 0) {
         const row = recovered[0];
@@ -2476,83 +2513,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     playCyberSe("click");
 
     try {
-      // 1. 個人シーズンランキング報酬の自動配布
-      const { data: personalRanks } = await supabase
-        .from("user_gvg_ranks")
-        .select("*, users ( username )")
-        .order("season_points", { ascending: false });
-
-      if (personalRanks && personalRanks.length > 0) {
-        const now = new Date();
-        const expire = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
-
-        for (let i = 0; i < personalRanks.length; i++) {
-          const rank = i + 1;
-          const uId = personalRanks[i].user_id;
-          let rewardQty = 100; // 参加賞
-          if (rank === 1) rewardQty = 500;
-          else if (rank === 2) rewardQty = 300;
-          else if (rank === 3) rewardQty = 200;
-
-          await supabase.from("presents").insert({
-            user_id: uId,
-            item_id: "DIAMOND",
-            quantity: rewardQty,
-            message: `GvG個人シーズンポイント最終順位報酬 (${rank}位 / 累計: ${personalRanks[i].season_points} pts)`,
-            status: "UNCLAIMED",
-            sent_at: now.toISOString(),
-            expire_at: expire.toISOString()
-          });
-        }
-      }
-
-      // 2. 7日目の最終決戦ギルド順位に基づく報酬配布 (覇者、準覇者など)
-      const { data: finalMatches } = await supabase
-        .from("gvg_matches")
-        .select("*")
-        .eq("is_finals", true)
-        .eq("round", 3);
-
-      if (finalMatches && finalMatches.length > 0) {
-        const winnerGuildId = finalMatches[0].guild_a_points > finalMatches[0].guild_b_points ? finalMatches[0].guild_a_id : finalMatches[0].guild_b_id;
-        const runnerupGuildId = finalMatches[0].guild_a_points > finalMatches[0].guild_b_points ? finalMatches[0].guild_b_id : finalMatches[0].guild_a_id;
-        
-        const { data: g1 } = await supabase.from("guilds").select("*").eq("id", winnerGuildId).single();
-        if (g1) {
-          const decs = g1.unlocked_decorations || [];
-          if (!decs.includes("bg_finals_winner")) decs.push("bg_finals_winner");
-          await supabase.rpc("admin_update_guild_finals", { p_guild_id: winnerGuildId, p_funds_add: 500000, p_decorations: decs });
-        }
-
-        const { data: g2 } = await supabase.from("guilds").select("*").eq("id", runnerupGuildId).single();
-        if (g2) {
-          const decs = g2.unlocked_decorations || [];
-          if (!decs.includes("bg_finals_runnerup")) decs.push("bg_finals_runnerup");
-          await supabase.rpc("admin_update_guild_finals", { p_guild_id: runnerupGuildId, p_funds_add: 300000, p_decorations: decs });
-        }
-
-        if (finalMatches[1]) {
-          const thirdGuildId = finalMatches[1].guild_a_points > finalMatches[1].guild_b_points ? finalMatches[1].guild_a_id : finalMatches[1].guild_b_id;
-          const fourthGuildId = finalMatches[1].guild_a_points > finalMatches[1].guild_b_points ? finalMatches[1].guild_b_id : finalMatches[1].guild_a_id;
-
-          const { data: g3 } = await supabase.from("guilds").select("*").eq("id", thirdGuildId).single();
-          if (g3) await supabase.rpc("admin_add_guild_funds", { p_guild_id: thirdGuildId, p_amount: 100000 });
-
-          const { data: g4 } = await supabase.from("guilds").select("*").eq("id", fourthGuildId).single();
-          if (g4) await supabase.rpc("admin_add_guild_funds", { p_guild_id: fourthGuildId, p_amount: 100000 });
-        }
-      }
-
-      // 3. シーズンリセット処理の実行
-      await supabase.from("user_gvg_ranks").delete().neq("user_id", "00000000-0000-0000-0000-000000000000");
-
-      await supabase.from("guild_base_controls").update({
-        daily_points: 0,
-        total_seasonal_days: 0,
-        is_controlling: false
-      }).neq("base_id", "");
-
-      await supabase.from("gvg_season_status").update({ current_day: 1 }).eq("id", 1);
+      const { error } = await supabase.rpc("gvg_season_reset");
+      if (error) throw error;
       setGvgSeasonDay(1);
 
       await syncBootstrapData(session.user.id);
@@ -2570,39 +2532,11 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     setPvpSeasonLoading(true);
     playCyberSe("click");
     try {
-      // 1. pvp_rewards_master から該当する報酬を取得
-      const { data: rewards, error: rewardErr } = await supabase
-        .from("pvp_rewards_master")
-        .select("*")
-        .order("threshold_points", { ascending: false });
-
-      if (rewardErr) throw rewardErr;
-
-      let rewardQuantity = 50; // 最低保障
-      let rewardItemId = "DIAMOND";
-
-      if (rewards && rewards.length > 0) {
-        const matched = rewards.find((r: any) => pvpRate >= r.threshold_points);
-        if (matched) {
-          rewardQuantity = matched.reward_quantity;
-          rewardItemId = matched.reward_item_id;
-        }
-      }
-
-      const expireAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
-      await supabase.from("presents").insert({
-        user_id: session.user.id,
-        item_id: rewardItemId,
-        quantity: rewardQuantity,
-        message: `PvP最終シーズン報酬 (到達レート: ${pvpRate} pt)`,
-        expire_at: expireAt.toISOString(),
-        status: "UNCLAIMED"
+      const { error } = await supabase.rpc("pvp_season_reset", {
+        p_user_id: session.user.id,
+        p_current_rate: pvpRate
       });
-
-      // 2. ランクポイントと勝利数のリセット (NPCは除外)
-      await supabase.from("pvp_ranks")
-        .update({ rank_points: 1000, daily_wins: 0, season_wins: 0 })
-        .neq("user_id", "00000000-0000-0000-0000-000000000099");
+      if (error) throw error;
 
       await syncBootstrapData(session.user.id);
       setConfirmDialogConfig({ isOpen: true, title: "リセット完了", message: "PvPシーズン終了。報酬転送完了。", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
@@ -2620,54 +2554,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     setRaidDefeatLoading(true);
     playCyberSe("click");
     try {
-      // 1. ボスマスターと報酬マスターを取得
-      const { data: masterData } = await supabase.from("raid_boss_master").select("*").eq("id", "BOSS_001").maybeSingle();
-      const maxHp = masterData ? Number(masterData.max_hp) : 9999999;
-
-      // 2. 討伐報酬の配布 (報酬マスタのDEFEATしきい値とダメージログを比較)
-      const { data: rewardList } = await supabase.from("raid_rewards_master").select("*").eq("reward_type", "DEFEAT");
-      const { data: dmgLogs } = await supabase.from("raid_damage_logs").select("*").eq("raid_boss_id", RAID_BOSS_ID);
-
-      if (rewardList && dmgLogs) {
-        // 与ダメのプレイヤー別集計
-        const userDmgMap: { [key: string]: number } = {};
-        dmgLogs.forEach((log: any) => {
-          userDmgMap[log.user_id] = (userDmgMap[log.user_id] || 0) + Number(log.damage_dealt);
-        });
-
-        // 報酬配布
-        const expireAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
-        for (const [userId, totalDmg] of Object.entries(userDmgMap)) {
-          for (const reward of rewardList) {
-            if (totalDmg >= Number(reward.threshold_val)) {
-              await supabase.from("presents").insert({
-                user_id: userId,
-                item_id: reward.reward_item_id,
-                quantity: reward.reward_quantity,
-                message: `レイドボス討伐貢献報酬 (累計ダメージ: ${totalDmg.toLocaleString()})`,
-                expire_at: expireAt,
-                status: "UNCLAIMED"
-              });
-            }
-          }
-        }
-      }
-
-      // 3. ランダムな出現拠点の選定
-      const bases = ["shinjuku", "shibuya", "ikebukuro", "roppongi", "akihabara"];
-      const randomBase = bases[Math.floor(Math.random() * bases.length)];
-
-      // 4. ボスの全快とランダム再配置、ダメージログの削除
-      await supabase.from("raid_bosses").update({
-        current_hp: maxHp,
-        base_id: randomBase,
-        status: "ACTIVE",
-        spawned_at: new Date().toISOString(),
-        expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
-      }).eq("id", RAID_BOSS_ID);
-
-      await supabase.from("raid_damage_logs").delete().eq("raid_boss_id", RAID_BOSS_ID);
-      await supabase.from("user_raid_claimed_rewards").delete().neq("user_id", "00000000-0000-0000-0000-000000000000");
+      const { error } = await supabase.rpc("raid_boss_defeat");
+      if (error) throw error;
 
       await syncBootstrapData(session.user.id);
       setConfirmDialogConfig({ isOpen: true, title: "レイドボス撃破", message: "レイドボス撃破完了。報酬配布 ＆ ボスランダム再配置完了。", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
@@ -2685,103 +2573,9 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     playCyberSe("click");
 
     try {
-      const { data: masterData } = await supabase.from("raid_boss_master").select("*").eq("id", "BOSS_001").maybeSingle();
-      const maxHp = masterData ? Number(masterData.max_hp) : 9999999;
-
-      // 1. シーズン報酬（個人/ギルドランキング）の集計・配布
-      const { data: rewardList } = await supabase.from("raid_rewards_master").select("*");
-      const { data: allLogs } = await supabase.from("raid_damage_logs").select("*, users(username), guilds(name)");
-
-      if (rewardList && allLogs) {
-        const personalRewards = rewardList.filter((r: any) => r.reward_type === "RANK_PERSONAL");
-        const guildRewards = rewardList.filter((r: any) => r.reward_type === "RANK_GUILD");
-        const expireAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
-
-        // 個人ランキングの集計
-        const userDmgMap: { [key: string]: { name: string; dmg: number } } = {};
-        allLogs.forEach((log: any) => {
-          const uId = log.user_id;
-          if (!userDmgMap[uId]) userDmgMap[uId] = { name: log.users?.username || "プレイヤー名", dmg: 0 };
-          userDmgMap[uId].dmg += Number(log.damage_dealt);
-        });
-        const personalRank = Object.entries(userDmgMap)
-          .map(([id, val]) => ({ user_id: id, ...val }))
-          .sort((a, b) => b.dmg - a.dmg);
-
-        // 個人ランキング報酬の配布
-        for (let idx = 0; idx < personalRank.length; idx++) {
-          const rank = idx + 1;
-          const record = personalRank[idx];
-          const applicable = personalRewards
-            .filter((r: any) => rank <= Number(r.threshold_val))
-            .sort((a, b) => Number(a.threshold_val) - Number(b.threshold_val))[0];
-
-          if (applicable) {
-            await supabase.from("presents").insert({
-              user_id: record.user_id,
-              item_id: applicable.reward_item_id,
-              quantity: applicable.reward_quantity,
-              message: `レイド個人ランキング第${rank}位報酬`,
-              expire_at: expireAt,
-              status: "UNCLAIMED"
-            });
-          }
-        }
-
-        // ギルドランキングの集計
-        const guildDmgMap: { [key: string]: { name: string; dmg: number } } = {};
-        allLogs.forEach((log: any) => {
-          const gId = log.guild_id;
-          if (gId && log.guilds?.name) {
-            if (!guildDmgMap[gId]) guildDmgMap[gId] = { name: log.guilds.name, dmg: 0 };
-            guildDmgMap[gId].dmg += Number(log.damage_dealt);
-          }
-        });
-        const guildRank = Object.entries(guildDmgMap)
-          .map(([id, val]) => ({ guild_id: id, ...val }))
-          .sort((a, b) => b.dmg - a.dmg);
-
-        // ギルドランキング報酬の配布 (該当ギルドのメンバー全員)
-        const { data: allGuildMembers } = await supabase.from("guild_members").select("user_id, guild_id");
-        for (let idx = 0; idx < guildRank.length; idx++) {
-          const rank = idx + 1;
-          const gRecord = guildRank[idx];
-          const applicable = guildRewards
-            .filter((r: any) => rank <= Number(r.threshold_val))
-            .sort((a, b) => Number(a.threshold_val) - Number(b.threshold_val))[0];
-
-          if (applicable && allGuildMembers) {
-            const members = allGuildMembers.filter((m: any) => m.guild_id === gRecord.guild_id);
-            for (const m of members) {
-              await supabase.from("presents").insert({
-                user_id: m.user_id,
-                item_id: applicable.reward_item_id,
-                quantity: applicable.reward_quantity,
-                message: `レイド組織ランキング第${rank}位報酬 [${gRecord.name}]`,
-                expire_at: expireAt,
-                status: "UNCLAIMED"
-              });
-            }
-          }
-        }
-      }
-
-      // 2. 拠点のランダム再決定
-      const bases = ["shinjuku", "shibuya", "ikebukuro", "roppongi", "akihabara"];
-      const randomBase = bases[Math.floor(Math.random() * bases.length)];
-
-      // 3. ボスHP全快、ログ削除
-      await supabase.from("raid_bosses").update({
-        current_hp: maxHp,
-        base_id: randomBase,
-        status: "ACTIVE",
-        spawned_at: new Date().toISOString(),
-        expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
-      }).eq("id", RAID_BOSS_ID);
-
-      await supabase.from("raid_damage_logs").delete().eq("raid_boss_id", RAID_BOSS_ID);
-      await supabase.from("user_raid_claimed_rewards").delete().neq("user_id", "00000000-0000-0000-0000-000000000000");
-
+      const { error } = await supabase.rpc("raid_season_reset");
+      if (error) throw error;
+      
       await syncBootstrapData(session.user.id);
       setConfirmDialogConfig({ isOpen: true, title: "リセット完了", message: "【レイド シーズンリセット完了】\n\n個人・組織ランキング順位報酬をプレゼントBOXに配布しました。\nボスは全快し、ランダムな拠点へ再出現しました。", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
     } catch (err: any) {
@@ -3411,6 +3205,36 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     return () => clearTimeout(timer);
   }, [chatCooldown]);
 
+  const handlePurchaseMonthlyPass = async () => {
+    if (!session?.user?.id) return { success: false, message: "Not logged in" };
+    try {
+      const res = await supabase.rpc("purchase_monthly_pass", { p_user_id: session.user.id });
+      if (res.error) throw res.error;
+      
+      setMonthlyPassActive(true);
+      setMonthlyPassClaimedToday(false);
+      return { success: true };
+    } catch (err: any) {
+      console.warn("Failed to purchase monthly pass:", err);
+      return { success: false, message: err.message };
+    }
+  };
+
+  const handleClaimDailyPassReward = async () => {
+    if (!session?.user?.id || monthlyPassClaimedToday) return { success: false, message: "Already claimed" };
+    try {
+      const res = await supabase.rpc("claim_daily_pass_reward", { p_user_id: session.user.id });
+      if (res.error) throw res.error;
+      
+      setMonthlyPassClaimedToday(true);
+      setDiamonds(prev => prev + 100);
+      return { success: true };
+    } catch (err: any) {
+      console.warn("Failed to claim daily pass reward:", err);
+      return { success: false, message: err.message };
+    }
+  };
+
   const value = {
     // 状態
     session, setSession,
@@ -3753,9 +3577,12 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     setGlobalInteractionBlocking,
     activeBanners, setActiveBanners,
     userItems, setUserItems,
-    raidAttemptsToday, setRaidAttemptsToday
+    raidAttemptsToday, setRaidAttemptsToday,
+    monthlyPassActive, setMonthlyPassActive,
+    monthlyPassClaimedToday, setMonthlyPassClaimedToday,
+    handlePurchaseMonthlyPass, handleClaimDailyPassReward,
+    ...friends
   };
-
 
   return <GameContext.Provider value={value}>{children}</GameContext.Provider>;
 }

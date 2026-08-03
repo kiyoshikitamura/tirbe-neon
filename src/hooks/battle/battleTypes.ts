@@ -43,6 +43,7 @@ export interface UseBattleOptions {
   setConfirmDialogConfig?: React.Dispatch<React.SetStateAction<import("@/app/components/ui/ConfirmDialog").ConfirmDialogConfig | null>>;
   patrolNpcs?: any[];
   patrol?: any;
+  selectedBattleHelper?: string | null;
 }
 
 export interface ParticipantState {

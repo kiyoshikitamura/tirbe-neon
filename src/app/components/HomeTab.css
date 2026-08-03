@@ -76,6 +76,10 @@
 .mypage-base-overlay-name {
   font-weight: 700;
   color: #ffffff;
+  max-width: 80px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .mypage-base-overlay-sep {
@@ -85,6 +89,10 @@
 .mypage-base-overlay-controller {
   font-size: 10px;
   color: #a0a0ab;
+  max-width: 90px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .mypage-base-overlay-move {

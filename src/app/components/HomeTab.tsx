@@ -66,9 +66,9 @@ function MainMyPage() {
   // イベントバナースライドインジケーター
   const [bannerIndex, setBannerIndex] = useState(0);
   const banners = [
-    { id: "b1", title: "【GvG抗争】第2シーズン 覇権争奪戦 開幕", img: "/bg/bg_gacha_ssr.png" },
-    { id: "b2", title: "【ピックアップガチャ】SSR「剛」新登場！", img: "/bg/bg_gacha_sr.png" },
-    { id: "b3", title: "【レイドイベント】強敵「雷神」襲来中！", img: "/bg/bg_gacha_normal.png" }
+    { id: "b1", title: "【GvG抗争】第2シーズン 覇権争奪戦 開幕", img: "/gacha/bg_gacha_ssr.png" },
+    { id: "b2", title: "【ピックアップガチャ】SSR「剛」新登場！", img: "/gacha/bg_gacha_sr.png" },
+    { id: "b3", title: "【レイドイベント】強敵「雷神」襲来中！", img: "/gacha/bg_gacha_normal.png" }
   ];
 
   useEffect(() => {
@@ -288,7 +288,7 @@ function MainMyPage() {
 
         <button
           className="circle-menu-btn conquest active-scale-effect"
-          onClick={() => { navigateTab("quest"); playCyberSe("click"); }}
+          onClick={() => { navigateTab("patrol"); playCyberSe("click"); }}
         >
           <img src="/menu/menu_conquest.png" alt="制圧" className="circle-menu-img" />
         </button>

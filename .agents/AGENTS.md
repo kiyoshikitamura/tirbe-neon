@@ -105,8 +105,9 @@ This file defines the project-specific rules, design constraints, and technical 
 ## 5.2 サーバー側アトミックRPC（ストアドファンクション）保護規約 (方針B)
 - **直接UPDATEの禁止**:
   - ユーザーの所持金（Cash / Diamond）、ガチャ引き直し、ショップ購買、ギルド寄付、PvP勝敗・レート、GvG拠点占領、レイドダメージ蓄積等の経済・対戦・進行処理において、クライアント側からの直接 `supabase.from('users').update()` や `supabase.from('guilds').update()` を行わないこと。
+  - シーズンリセット（GvG/PvP/Raid）やデイリーリセット、MonthlyPass購入処理についても、クライアント側からの直接のUPDATE/DELETE処理は禁止する。
 - **RPC経由の厳密保護**:
-  - 必ず Supabase RPC 関数（`execute_gacha`, `buy_normal_shop_product`, `donate_to_guild`, `process_pvp_match_result`, `claim_gvg_base`, `record_raid_boss_damage`, `add_user_xp`, `evaluate_mission_progress` 等）を介してアトミックにサーバー側で検証・算術更新を行うこと。
+  - 必ず Supabase RPC 関数（`execute_gacha`, `buy_normal_shop_product`, `donate_to_guild`, `process_pvp_match_result`, `claim_gvg_base`, `record_raid_boss_damage`, `add_user_xp`, `evaluate_mission_progress`, `process_daily_reset`, `gvg_season_reset`, `pvp_season_reset`, `raid_season_reset` 等）を介してアトミックにサーバー側で検証・算術更新を行うこと。
 
 ## 6. ユーザー招待・ギフトコード機能の仕様
 - **仕様詳細**:

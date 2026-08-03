@@ -1,9 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useGame } from "../context/GameContext";
 import FullScreenPanel from "./ui/FullScreenPanel";
 import SubTabNav from "./ui/SubTabNav";
 import OutlawButton from "./ui/OutlawButton";
-import { supabase } from "@/utils/supabase";
 import "./FriendPanel.css";
 
 export default function FriendPanel() {
@@ -12,14 +11,30 @@ export default function FriendPanel() {
     setShowFriendPanel, 
     userFriends, 
     friendRequests, 
+    friendSearchResult,
+    searchUserByName,
+    sendFriendRequest,
+    acceptFriendRequest,
+    rejectFriendRequest,
+    removeFriend,
+    fetchFriends,
+    fetchFriendRequests,
     setConfirmDialogConfig,
     session,
     playCyberSe,
-    syncBootstrapData
+    selectedBattleHelper,
+    setSelectedBattleHelper
   } = useGame();
   
   const [activeTab, setActiveTab] = useState<string>("list");
-  const [friendIdInput, setFriendIdInput] = useState<string>("");
+  const [friendNameInput, setFriendNameInput] = useState<string>("");
+
+  useEffect(() => {
+    if (showFriendPanel && session?.user?.id) {
+      fetchFriends(session.user.id);
+      fetchFriendRequests(session.user.id);
+    }
+  }, [showFriendPanel, session?.user?.id, fetchFriends, fetchFriendRequests]);
 
   if (!showFriendPanel) return null;
 
@@ -29,116 +44,134 @@ export default function FriendPanel() {
 
   const tabs = [
     { id: "list", label: "一覧" },
-    { id: "add", label: "検索追加" },
+    { id: "add", label: "友達追加" },
     { id: "requests", label: "承認待ち" }
   ];
 
-  const handleSendRequest = async () => {
+  const handleSearch = async () => {
     playCyberSe("click");
-    if (!friendIdInput) return;
-    try {
-      const res = await supabase.rpc("send_friend_request", { p_user_id: session?.user?.id, p_friend_id: friendIdInput });
-      if (res.error) throw res.error;
-      
-      setConfirmDialogConfig({
-        isOpen: true,
-        title: "フレンド申請",
-        message: "フレンド申請を送信しました。",
-        confirmText: "OK",
-        onConfirm: () => { setConfirmDialogConfig(null); setFriendIdInput(""); syncBootstrapData(); }
-      });
-    } catch (err: any) {
-      setConfirmDialogConfig({
-        isOpen: true,
-        title: "エラー",
-        message: err.message || "申請に失敗しました。",
-        confirmText: "OK",
-        onConfirm: () => setConfirmDialogConfig(null)
-      });
-    }
+    if (!friendNameInput) return;
+    await searchUserByName(friendNameInput);
   };
 
-  const handleAcceptRequest = async (friendId: string) => {
+  const handleSendRequest = async (targetId: string) => {
     playCyberSe("click");
-    try {
-      const res = await supabase.rpc("accept_friend_request", { p_user_id: session?.user?.id, p_friend_id: friendId });
-      if (res.error) throw res.error;
-      syncBootstrapData();
-    } catch (err: any) {
-      console.error(err);
-    }
+    if (!session?.user?.id) return;
+    
+    const res = await sendFriendRequest(session.user.id, targetId);
+    
+    setConfirmDialogConfig({
+      isOpen: true,
+      title: "友達申請",
+      message: res.success ? "友達申請を送信しました。" : (res.message || "申請に失敗しました。"),
+      confirmText: "OK",
+      onConfirm: () => setConfirmDialogConfig(null)
+    });
+  };
+
+  const handleAcceptRequest = async (requestId: string) => {
+    playCyberSe("click");
+    if (!session?.user?.id) return;
+    await acceptFriendRequest(requestId, session.user.id);
+  };
+
+  const handleRejectRequest = async (requestId: string) => {
+    playCyberSe("click");
+    if (!session?.user?.id) return;
+    await rejectFriendRequest(requestId, session.user.id);
   };
 
   const handleRemoveFriend = async (friendId: string) => {
     playCyberSe("click");
+    if (!session?.user?.id) return;
+    
     setConfirmDialogConfig({
       isOpen: true,
-      title: "フレンド解除",
-      message: "このプレイヤーをフレンドから削除しますか？",
+      title: "友達解除",
+      message: "このプレイヤーを友達から削除しますか？",
       confirmText: "削除",
       cancelText: "キャンセル",
       onConfirm: async () => {
         setConfirmDialogConfig(null);
-        try {
-          const res = await supabase.rpc("remove_friend", { p_user_id: session?.user?.id, p_friend_id: friendId });
-          if (res.error) throw res.error;
-          syncBootstrapData();
-        } catch (err) {
-          console.error(err);
-        }
+        await removeFriend(session.user.id, friendId);
       },
       onCancel: () => setConfirmDialogConfig(null)
     });
   };
 
   return (
-    <FullScreenPanel title="フレンド" onClose={handleClose}>
+    <FullScreenPanel title="友達" onClose={handleClose}>
       <SubTabNav tabs={tabs} activeTabId={activeTab} onSelect={setActiveTab} />
       
       <div className="friend-panel-container-inner flex-1 p-3 scroll-container flex-col-gap-3">
         {activeTab === "list" && (
           <div className="flex-col-gap-2">
-            <h3 className="font-size-9 text-color-cyan font-weight-bold">フレンド一覧 ({userFriends?.length || 0}/50)</h3>
+            <h3 className="font-size-9 text-color-cyan font-weight-bold">友達一覧 ({userFriends?.length || 0}/30)</h3>
+            <p className="font-size-7 text-secondary">「助っ人選択」でバトル時の6人目として呼び出せます。</p>
             {userFriends && userFriends.length > 0 ? (
               userFriends.map((f: any) => (
                 <div key={f.id} className="friend-card border-subtle p-2 flex-row-space-between align-center bg-black-60">
-                  <div className="flex-col">
-                    <span className="font-size-8 font-weight-bold text-white">{f.friend?.name || f.friend_id.slice(0, 8)}</span>
-                    <span className="font-size-7 text-secondary">Lv.{f.friend?.level || 1}</span>
+                  <div className="flex flex-row gap-2 align-center">
+                    <img src={f.avatar_url || "/characters/reiji_transparent_asset.png"} alt="avatar" className="w-12 h-12 object-contain" />
+                    <div className="flex-col">
+                      <span className="font-size-8 font-weight-bold text-white">{f.username}</span>
+                      <span className="font-size-7 text-secondary">Lv.{f.level} | 総合力: {f.power?.toLocaleString() || 0}</span>
+                    </div>
                   </div>
-                  <OutlawButton variant="danger" onClick={() => handleRemoveFriend(f.friend_id)} className="px-2 py-1 font-size-7">
-                    解除
-                  </OutlawButton>
+                  <div className="flex-col gap-1">
+                    <OutlawButton 
+                      variant={selectedBattleHelper === f.id ? "primary" : "secondary"} 
+                      onClick={() => { playCyberSe("click"); setSelectedBattleHelper(selectedBattleHelper === f.id ? null : f.id); }} 
+                      className="px-2 py-1 font-size-7"
+                    >
+                      {selectedBattleHelper === f.id ? "助っ人選択中" : "助っ人選択"}
+                    </OutlawButton>
+                    <OutlawButton variant="danger" onClick={() => handleRemoveFriend(f.id)} className="px-2 py-1 font-size-7">
+                      解除
+                    </OutlawButton>
+                  </div>
                 </div>
               ))
             ) : (
-              <p className="font-size-8 text-secondary">フレンドがいません。</p>
+              <p className="font-size-8 text-secondary">友達がいません。</p>
             )}
           </div>
         )}
 
         {activeTab === "add" && (
           <div className="flex-col-gap-2">
-            <h3 className="font-size-9 text-color-cyan font-weight-bold">ID検索</h3>
-            <p className="font-size-7 text-secondary">友達のプレイヤーIDを入力してフレンド申請を送ります。</p>
+            <h3 className="font-size-9 text-color-cyan font-weight-bold">プレイヤー検索</h3>
+            <p className="font-size-7 text-secondary">プレイヤー名で検索して友達申請を送ります。</p>
             <div className="flex gap-2">
               <input
                 type="text"
                 className="game-input flex-1 p-2 font-size-8"
-                placeholder="プレイヤーID (UUID)"
-                value={friendIdInput}
-                onChange={(e) => setFriendIdInput(e.target.value)}
+                placeholder="プレイヤー名"
+                value={friendNameInput}
+                onChange={(e) => setFriendNameInput(e.target.value)}
               />
-              <OutlawButton variant="primary" onClick={handleSendRequest} className="px-3" disabled={!friendIdInput}>
-                申請
+              <OutlawButton variant="primary" onClick={handleSearch} className="px-3" disabled={!friendNameInput}>
+                検索
               </OutlawButton>
             </div>
             
-            <div className="mt-4 pt-3 border-top-subtle">
-              <h3 className="font-size-8 text-color-magenta mb-2">あなたのID</h3>
-              <div className="p-2 bg-black-80 border-magenta-subtle rounded font-size-7 text-white text-center break-all user-select-all">
-                {session?.user?.id}
-              </div>
+            <div className="mt-4">
+              {friendSearchResult ? (
+                <div className="friend-card border-subtle p-2 flex-row-space-between align-center bg-black-60">
+                  <div className="flex flex-row gap-2 align-center">
+                    <img src={friendSearchResult.avatar_url || "/characters/reiji_transparent_asset.png"} alt="avatar" className="w-12 h-12 object-contain" />
+                    <div className="flex-col">
+                      <span className="font-size-8 font-weight-bold text-white">{friendSearchResult.username}</span>
+                      <span className="font-size-7 text-secondary">Lv.{friendSearchResult.level}</span>
+                    </div>
+                  </div>
+                  <OutlawButton variant="primary" onClick={() => handleSendRequest(friendSearchResult.id)} className="px-2 py-1 font-size-7">
+                    申請
+                  </OutlawButton>
+                </div>
+              ) : (
+                <p className="font-size-8 text-secondary">検索結果がありません。</p>
+              )}
             </div>
           </div>
         )}
@@ -149,17 +182,21 @@ export default function FriendPanel() {
             
             <div className="mt-2">
               <h4 className="font-size-8 text-white mb-2">受信した申請</h4>
-              {friendRequests && friendRequests.filter((f: any) => f.status === "RECEIVED").length > 0 ? (
-                friendRequests.filter((f: any) => f.status === "RECEIVED").map((f: any) => (
+              {friendRequests && friendRequests.length > 0 ? (
+                friendRequests.map((f: any) => (
                   <div key={f.id} className="friend-card border-subtle p-2 flex-row-space-between align-center bg-black-60 mb-2">
-                    <div className="flex-col">
-                      <span className="font-size-8 font-weight-bold text-white">{f.friend?.name || f.friend_id.slice(0, 8)}</span>
+                    <div className="flex flex-row gap-2 align-center">
+                      <img src={f.avatarUrl || "/characters/reiji_transparent_asset.png"} alt="avatar" className="w-10 h-10 object-contain" />
+                      <div className="flex-col">
+                        <span className="font-size-8 font-weight-bold text-white">{f.username}</span>
+                        <span className="font-size-7 text-secondary">Lv.{f.level}</span>
+                      </div>
                     </div>
                     <div className="flex gap-2">
-                      <OutlawButton variant="primary" onClick={() => handleAcceptRequest(f.friend_id)} className="px-2 py-1 font-size-7">
+                      <OutlawButton variant="primary" onClick={() => handleAcceptRequest(f.id)} className="px-2 py-1 font-size-7">
                         承認
                       </OutlawButton>
-                      <OutlawButton variant="danger" onClick={() => handleRemoveFriend(f.friend_id)} className="px-2 py-1 font-size-7">
+                      <OutlawButton variant="danger" onClick={() => handleRejectRequest(f.id)} className="px-2 py-1 font-size-7">
                         拒否
                       </OutlawButton>
                     </div>
@@ -167,25 +204,6 @@ export default function FriendPanel() {
                 ))
               ) : (
                 <p className="font-size-8 text-secondary">受信した申請はありません。</p>
-              )}
-            </div>
-            
-            <div className="mt-4 pt-2 border-top-subtle">
-              <h4 className="font-size-8 text-white mb-2">送信した申請</h4>
-              {friendRequests && friendRequests.filter((f: any) => f.status === "PENDING").length > 0 ? (
-                friendRequests.filter((f: any) => f.status === "PENDING").map((f: any) => (
-                  <div key={f.id} className="friend-card border-subtle p-2 flex-row-space-between align-center bg-black-60 mb-2">
-                    <div className="flex-col">
-                      <span className="font-size-8 font-weight-bold text-white">{f.friend?.name || f.friend_id.slice(0, 8)}</span>
-                      <span className="font-size-7 text-secondary">承認待ち</span>
-                    </div>
-                    <OutlawButton variant="danger" onClick={() => handleRemoveFriend(f.friend_id)} className="px-2 py-1 font-size-7">
-                      取消
-                    </OutlawButton>
-                  </div>
-                ))
-              ) : (
-                <p className="font-size-8 text-secondary">送信した申請はありません。</p>
               )}
             </div>
           </div>
