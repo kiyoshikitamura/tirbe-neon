@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { createContext, useContext, useState, useEffect, useRef } from "react";
 import { supabase } from "@/utils/supabase";
@@ -745,6 +745,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     setRaidTotalDamage,
     cash,
     setCash,
+    diamonds,
+    setDiamonds,
     setErrorMessage,
     addGuildXpAndContributionByAction,
     setConfirmDialogConfig
@@ -2798,7 +2800,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const handleScout = async (
     scoutType: string,
     scoutCount: number,
-    useCurrency: "CASH" | "DIAMOND" | "FREE"
+    useCurrency: "CASH" | "DIAMOND" | "FREE" | "TICKET"
   ) => {
     if (!session) return;
 
@@ -2821,6 +2823,9 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
           setUpgradeLoading(false);
           return;
         }
+      } else if (useCurrency === "TICKET") {
+        const ticketCount = scoutCount;
+        await supabase.rpc("execute_gacha", { p_user_id: session.user.id, p_currency_type: "ticket", p_currency_cost: ticketCount, p_results: [] });
       } else if (useCurrency === "DIAMOND") {
         let reqDia = 100;
         if (isNormal) reqDia = scoutCount === 10 ? 1000 : 100;
@@ -3059,6 +3064,13 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     } catch (err: any) {
       console.warn("Gacha execution error:", err.message);
     } finally {
+      try {
+        await supabase.rpc("evaluate_mission_progress", {
+          p_user_id: session.user.id,
+          p_trigger_type: "GACHA_PULL",
+          p_progress_increment: scoutCount
+        });
+      } catch (e) { /* mission update failure is non-critical */ }
       setUpgradeLoading(false);
     }
   };
@@ -3738,7 +3750,10 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     confirmDialogConfig,
     setConfirmDialogConfig,
     globalInteractionBlocking,
-    setGlobalInteractionBlocking
+    setGlobalInteractionBlocking,
+    activeBanners, setActiveBanners,
+    userItems, setUserItems,
+    raidAttemptsToday, setRaidAttemptsToday
   };
 
 

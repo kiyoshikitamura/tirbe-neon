@@ -268,14 +268,14 @@ export default function GachaTab() {
           <div className="flex gap-2 mt-2 gacha-btn-layout">
             <button
               className="upgrade-btn flex-1 active-scale-effect font-size-8 py-2 border-cyan-subtle"
-              onClick={() => handleScout(`${activeCategory === "CHARACTER" ? "CHAR" : activeCategory}_NORMAL`, 1, "ticket")}
+              onClick={() => handleScout(`${activeCategory === "CHARACTER" ? "CHAR" : activeCategory}_NORMAL`, 1, "TICKET")}
               disabled={gachaTickets < 1}
             >
               1回 (チケット 1枚)
             </button>
             <button
               className="upgrade-btn flex-1 active-scale-effect font-size-8 py-2 border-cyan-subtle"
-              onClick={() => handleScout(`${activeCategory === "CHARACTER" ? "CHAR" : activeCategory}_NORMAL`, 10, "ticket")}
+              onClick={() => handleScout(`${activeCategory === "CHARACTER" ? "CHAR" : activeCategory}_NORMAL`, 10, "TICKET")}
               disabled={gachaTickets < 10}
             >
               10回 (チケット 10枚)

@@ -1,6 +1,6 @@
-﻿"use client";
+"use client";
 
-import { CHARACTERS_MASTER, CHARACTER_AWAKENING_MASTER } from "../game_constants";
+
 
 
 export async function executeMockRpc(client: any, funcName: string, params: any): Promise<any> {
@@ -149,12 +149,12 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
       if (p_cost_type === "CASH" && users[idx].cash < p_cost_amount) {
         return { data: null, error: { message: "Cashが不足しています。" } };
       }
-      if (p_cost_type === "DIAMOND" && users[idx].diamonds < p_cost_amount) {
+      if (p_cost_type === "DIAMOND" && users[idx].neon_diamonds < p_cost_amount) {
         return { data: null, error: { message: "ダイヤが不足しています。" } };
       }
       
       if (p_cost_type === "CASH") users[idx].cash -= p_cost_amount;
-      if (p_cost_type === "DIAMOND") users[idx].diamonds -= p_cost_amount;
+      if (p_cost_type === "DIAMOND") users[idx].neon_diamonds -= p_cost_amount;
       
       const today = new Date().toISOString().split("T")[0];
       const resetAt = users[idx].raid_attempts_reset_at ? new Date(users[idx].raid_attempts_reset_at).toISOString().split("T")[0] : null;
@@ -903,13 +903,13 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     const { p_user_id, p_patrol_id, p_diamond_cost } = params;
     const users = client.getStorage("users");
     const user = users.find((u: any) => u.id === p_user_id);
-    if (!user || user.diamonds < p_diamond_cost) return { error: { message: "ダイヤが不足しています。" } };
+    if (!user || user.neon_diamonds < p_diamond_cost) return { error: { message: "ダイヤが不足しています。" } };
     
     const patrols = client.getStorage("user_patrols") || [];
     const patrolIndex = patrols.findIndex((p: any) => p.id === p_patrol_id && p.user_id === p_user_id);
     if (patrolIndex === -1) return { error: { message: "クエストが存在しません。" } };
     
-    user.diamonds -= p_diamond_cost;
+    user.neon_diamonds -= p_diamond_cost;
     patrols.splice(patrolIndex, 1);
     
     client.setStorage("users", users);
@@ -962,8 +962,8 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
       if (user.cash < p_currency_cost) return { error: { message: "キャッシュが不足しています。" } };
       user.cash -= p_currency_cost;
     } else if (p_currency_type === "diamonds") {
-      if (user.diamonds < p_currency_cost) return { error: { message: "ダイヤが不足しています。" } };
-      user.diamonds -= p_currency_cost;
+      if (user.neon_diamonds < p_currency_cost) return { error: { message: "ダイヤが不足しています。" } };
+      user.neon_diamonds -= p_currency_cost;
     } else if (p_currency_type === "free") {
       // do nothing
     } else if (p_currency_type === "ticket") {
@@ -1339,7 +1339,7 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
   if (funcName === "claim_mission_reward") {
     const { p_user_id, p_mission_id } = params;
     const userMissions = client.getStorage("user_missions") || [];
-    const um = userMissions.find((m: any) => m.user_id === p_user_id && m.mission_id === p_mission_id && m.status === "PROGRESS");
+    const um = userMissions.find((m: any) => m.user_id === p_user_id && m.mission_id === p_mission_id && m.status === "COMPLETED");
     if (!um) return { error: { message: "ミッションが見つからないか未達成です。" } };
     
     um.status = "CLAIMED";
@@ -1366,7 +1366,7 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     const presents = client.getStorage("presents") || [];
     let count = 0;
     userMissions.forEach((um: any) => {
-      if (um.user_id === p_user_id && p_mission_ids.includes(um.mission_id) && um.status === "PROGRESS") {
+      if (um.user_id === p_user_id && p_mission_ids.includes(um.mission_id) && um.status === "COMPLETED") {
         um.status = "CLAIMED";
         um.updated_at = new Date().toISOString();
         presents.push({
@@ -1390,7 +1390,7 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     const userMissions = client.getStorage("user_missions") || [];
     userMissions.forEach((um: any) => {
       if (um.user_id === p_user_id && p_mission_ids.includes(um.mission_id)) {
-        um.status = "PROGRESS";
+        um.status = "IN_PROGRESS";
         um.current_progress = 0;
         um.updated_at = new Date().toISOString();
       }
@@ -1522,21 +1522,7 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     return { data: { status: "success" }, error: null };
   }
 
-  if (funcName === "record_raid_boss_damage_v2") {
-    const { p_user_id, p_boss_id, p_damage } = params;
-    const bosses = client.getStorage("raid_bosses") || [];
-    const b = bosses.find((x: any) => x.id === p_boss_id);
-    if (!b || b.status === "DEFEATED") return { error: { message: "ボスは既に討伐されています。" } };
-    
-    b.current_hp -= p_damage;
-    if (b.current_hp <= 0) {
-      b.current_hp = 0;
-      b.status = "DEFEATED";
-    }
-    b.updated_at = new Date().toISOString();
-    client.setStorage("raid_bosses", bosses);
-    return { data: { status: "success" }, error: null };
-  }
+  // Duplicate record_raid_boss_damage_v2 handler removed (handled at L593)
 
 
   if (funcName === "process_gvg_battle_result_v2") {
