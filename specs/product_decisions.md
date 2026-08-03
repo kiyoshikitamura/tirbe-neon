@@ -56,3 +56,6 @@ PvP・GvG・レイドをゲーム継続の中心コンテンツとする。
 3. ギルド／フレンド／ランキングの継続利用導線
 4. Stripe実決済（収集補助を主軸とした商品設計）
 5. シナリオ／ADV／アバターはリリース後候補として保留
+## 2026-08-03 priority correction
+
+The final content hierarchy is: **GvG as the main content**, with **raid, PvP, and quests as sub-content**. This supersedes the earlier wording that listed PvP/GvG/raid at the same priority.

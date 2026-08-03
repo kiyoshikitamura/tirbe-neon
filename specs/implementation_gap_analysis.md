@@ -33,3 +33,4 @@
 ## 実装済みとして扱える主要領域
 
 キャラクター/スキル/装備ガチャ、通貨・チケット・無料10連、ピティ・交換、公開プロフィール/ランキング、PvP/GvG/レイドの主要RPC、所有者RLS、BBS Realtime、Preview配信・ビルド・型検査は開発環境で検証済みです。
+Priority correction: GvG is the primary retention loop. Raid, PvP, and quests are supporting loops, followed by collection, growth, and social rewards.
