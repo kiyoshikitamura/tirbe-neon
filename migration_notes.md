@@ -115,3 +115,4 @@
 - 新規環境では `supabase/migrations/` を番号順に適用する。適用前に対象環境のmigration historyと差分を必ず確認する。
 - `.env`、`.env.local`、`.env.development`、`.env.production` が存在する。値をログ・コミット・ドキュメントへ転載しない。
 - 本番化前にRLS、RPCの所有者検証、テスト用RPCの公開状態を監査する。詳細は `specs/implementation_plan.md` を参照する。
+- Applied `20260805000025_login_bonus_30_cycle.sql` to the development DB. `login_bonus_master` now contains days 1-30, `process_login_bonus()` loops modulo 30 with JST duplicate-day protection, and unauthenticated calls are rejected.
