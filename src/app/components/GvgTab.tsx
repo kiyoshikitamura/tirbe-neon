@@ -151,7 +151,7 @@ export default function GvgTab() {
     return "準備中";
   };
 
-  const isFinalDay = phase === "FINALS" || gvgSeasonDay === 7;
+  const isFinalDay = phase === "FINALS";
 
   // 自ギルドのアライメントと一致する守備（ホーム）拠点を動的マッピング
   const myGuildAlignment = userGuild?.main_alignment || "";

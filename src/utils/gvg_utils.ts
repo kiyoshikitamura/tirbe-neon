@@ -1,11 +1,13 @@
 import { GVG_DAILY_SESSIONS } from "./game_constants";
 
 export function getGvgPhase(date: Date): "DAILY" | "FINALS" | "OFF" {
-  const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+  const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+  const daysUntilLastSunday = (7 - lastDay.getDay()) % 7;
+  const lastSundayDate = lastDay.getDate() + daysUntilLastSunday;
   const dayOfMonth = date.getDate();
   // 月末の金土日を本戦とする
   // 簡易実装: 最終3日間を本戦とする
-  if (dayOfMonth >= lastDay - 2) return "FINALS";
+  if (dayOfMonth >= lastSundayDate - 2 && dayOfMonth <= lastSundayDate) return "FINALS";
   return "DAILY";
 }
 
