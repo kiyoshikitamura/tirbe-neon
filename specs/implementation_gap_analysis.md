@@ -34,3 +34,8 @@
 
 キャラクター/スキル/装備ガチャ、通貨・チケット・無料10連、ピティ・交換、公開プロフィール/ランキング、PvP/GvG/レイドの主要RPC、所有者RLS、BBS Realtime、Preview配信・ビルド・型検査は開発環境で検証済みです。
 Priority correction: GvG is the primary retention loop. Raid, PvP, and quests are supporting loops, followed by collection, growth, and social rewards.
+## GvG仕様確定に伴う実装ギャップ
+
+- 現行UIの開催枠（12:00 / 20:00 / 23:00、各30分）は確定仕様と一致。
+- `getGvgPhase()`の月末判定、月次シーズンの上位ギルド特別戦参加資格、報酬マスタ参照による自動集計・配布は実装確認・修正が必要。
+- 旧7日周期ロジックを残したままにせず、月次シーズン基準へ置換する。

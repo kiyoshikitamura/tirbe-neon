@@ -59,3 +59,9 @@ PvP・GvG・レイドをゲーム継続の中心コンテンツとする。
 ## 2026-08-03 priority correction
 
 The final content hierarchy is: **GvG as the main content**, with **raid, PvP, and quests as sub-content**. This supersedes the earlier wording that listed PvP/GvG/raid at the same priority.
+## GvG確定仕様（2026-08-05）
+
+- 開催は毎日3回（12:00開始、20:00開始、23:00開始）。各回30分。
+- シーズンは月次。毎月の最終金曜・土曜・日曜は通常戦ではなく、上位ギルドのみ参加できる特別戦とする。
+- 通常戦、特別戦、日次・月次報酬の内容と数量は報酬マスタで管理する。
+- GvGの開催判定、参加資格、集計、報酬配布は上記ルールを単一の基準とする。
