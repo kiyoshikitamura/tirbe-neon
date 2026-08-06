@@ -19,5 +19,6 @@ export default defineConfig({
     url: "http://127.0.0.1:3100",
     reuseExistingServer: true,
     timeout: 120_000,
+    env: { ...process.env, NEXT_PUBLIC_USE_MOCK_DB: "true" },
   },
 });

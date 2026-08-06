@@ -132,6 +132,7 @@
   backdrop-filter: blur(6px);
   z-index: 12;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.6);
+  cursor: pointer;
 }
 
 .mypage-power-label {
@@ -156,6 +157,15 @@
   animation: mypage-power-loading 0.9s ease-in-out infinite alternate;
 }
 
+.mypage-power-rank-link {
+  padding-left: 6px;
+  border-left: 1px solid rgba(255, 215, 0, 0.3);
+  color: rgba(255, 215, 0, 0.72);
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+}
+
 @keyframes mypage-power-loading {
   from { opacity: 0.45; }
   to { opacity: 1; }
@@ -168,7 +178,7 @@
   left: 8px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 7px;
   z-index: 10;
 }
 
@@ -178,7 +188,7 @@
   right: 8px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 7px;
   z-index: 10;
 }
 
@@ -189,25 +199,25 @@
   align-items: center;
   justify-content: center;
   gap: 1px;
-  width: 38px;
-  height: 38px;
-  background: rgba(11, 15, 25, 0.85);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 8px;
+  width: 44px;
+  height: 44px;
+  background: linear-gradient(145deg, rgba(20, 28, 44, 0.94), rgba(6, 10, 18, 0.9));
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 10px;
   cursor: pointer;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 5px 14px rgba(0, 0, 0, 0.58), inset 0 1px 0 rgba(255, 255, 255, 0.06);
   backdrop-filter: blur(4px);
 }
 
 .sub-png-icon {
-  width: 22px;
-  height: 22px;
+  width: 24px;
+  height: 24px;
   object-fit: contain;
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.6));
 }
 
 .sub-icon-label {
-  font-size: 7px;
+  font-size: 8px;
   font-weight: 700;
   color: #d0d0e0;
   letter-spacing: 0.2px;
@@ -419,7 +429,7 @@
 
 /* 4. 1行チャットプレビュー */
 .mypage-chat-preview-area {
-  padding: 6px 14px 14px;
+  display: none;
 }
 
 .chat-preview-bar {

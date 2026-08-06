@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { supabase } from "@/utils/supabase";
+import { supabase, usingMockSupabase } from "@/utils/supabase";
 
 export function useAuth(
   playCyberSe: (type: string) => void,
@@ -86,6 +86,16 @@ export function useAuth(
     playCyberSe("click");
     
     try {
+      // Production-like environments must use a real Supabase identity. A
+      // fabricated browser ID cannot pass RLS or load owned player data.
+      if (!usingMockSupabase) {
+        const { data, error } = await supabase.auth.signInAnonymously();
+        if (error || !data.session) throw error || new Error("Demo session could not be created");
+        setSession(data.session);
+        await checkIfSetupRequired(data.session.user.id);
+        return;
+      }
+
       let demoId = localStorage.getItem("tribe_demo_uuid");
       let isNew = false;
       

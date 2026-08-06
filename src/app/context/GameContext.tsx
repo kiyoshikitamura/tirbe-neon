@@ -635,6 +635,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       }
     } catch (err) {
       console.warn("Check setup required failed:", err);
+      setTotalPowerLoading(false);
     } finally {
       setAuthLoading(false);
     }

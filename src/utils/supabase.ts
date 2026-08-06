@@ -8,6 +8,8 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
 const forceMock = process.env.NEXT_PUBLIC_USE_MOCK_DB === "true";
 const isDummy = forceMock || !supabaseAnonKey || supabaseAnonKey.includes("dummy_key");
 
+export const usingMockSupabase = isDummy;
+
 export const supabase = (isDummy
   ? (new MockSupabaseClient() as any)
   : createClient(supabaseUrl, supabaseAnonKey)) as SupabaseClient<any, "public", any>;

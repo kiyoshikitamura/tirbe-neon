@@ -150,6 +150,12 @@ function MainMyPage() {
     }
   ];
 
+  // Ranking is reached from the power panel, and raid is surfaced from the
+  // header only while active. Keep the home rails focused on six direct
+  // personal, social, inbox, and system actions.
+  const visibleLeftSubIcons = leftSubIcons.filter((item) => item.id !== "ranking");
+  const visibleRightSubIcons = rightSubIcons.filter((item) => item.id !== "bag" && item.id !== "raid");
+
   return (
     <div className="mypage-view">
       {/* 1. ビジュアルエリア (50vh 固定) */}
@@ -175,16 +181,29 @@ function MainMyPage() {
         </div>
 
         {/* 総合力 表示パネル (最上段下中央・透過グレー) */}
-        <div className="mypage-power-panel">
+        <div
+          className="mypage-power-panel active-scale-effect"
+          role="button"
+          tabIndex={0}
+          aria-label="総合力ランキングを開く"
+          onClick={() => { navigateTab("ranking"); playCyberSe("click"); }}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              navigateTab("ranking");
+              playCyberSe("click");
+            }
+          }}
+        >
           <span className="mypage-power-label">総合力</span>
           <span className={`mypage-power-val${totalPowerLoading ? " is-loading" : ""}`}>
             {totalPowerLoading ? "—" : totalPower.toLocaleString()}
           </span>
+          <span className="mypage-power-rank-link">RANK</span>
         </div>
 
         {/* 左側小アイコン群 (動的配列レンダリング) */}
         <div className="mypage-sub-icons-left">
-          {leftSubIcons.map((item) => (
+          {visibleLeftSubIcons.map((item) => (
             <button
               key={item.id}
               className="sub-icon-unit active-scale-effect"
@@ -201,7 +220,7 @@ function MainMyPage() {
 
         {/* 右側小アイコン群 (動的配列レンダリング) */}
         <div className="mypage-sub-icons-right">
-          {rightSubIcons.map((item) => (
+          {visibleRightSubIcons.map((item) => (
             <button
               key={item.id}
               className="sub-icon-unit active-scale-effect"
