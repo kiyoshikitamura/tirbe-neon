@@ -484,6 +484,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const [showImportantModal, setShowImportantModal] = useState<boolean>(true);
 
   const [totalPower, setTotalPower] = useState<number>(0);
+  // A displayed zero is valid only after the character and deck data has loaded.
+  const [totalPowerLoading, setTotalPowerLoading] = useState<boolean>(true);
 
 
 
@@ -788,6 +790,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     let localGuildRec: any = null;
     let localCharIds: string[] = [];
     let localDeck: string[] = [];
+    setTotalPowerLoading(true);
     try {
       // 各種マスタデータのフェッチとメモリキャッシュ (並列 Promise.all 実行)
       Promise.all([
@@ -1634,6 +1637,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
     } catch (err: any) {
       console.warn("Sync error:", err.message);
+    } finally {
+      setTotalPowerLoading(false);
     }
   };
 
@@ -2032,11 +2037,13 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
   const handleMoveBase = async (baseId: string) => {
     if (!session) return;
-    setMovingAreaLoading(true);
     playCyberSe("click");
 
     const prevBase = currentBaseId;
+    // Switch the scene before persisting it. A failed request is the only case
+    // in which the player needs to wait for a rollback.
     setCurrentBaseId(baseId);
+    setSelectedMapAreaId(null);
 
     try {
       const { error } = await supabase
@@ -2046,15 +2053,10 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
       if (error) throw error;
 
-      setSelectedMapAreaId(null);
-      await syncBootstrapData(session.user.id);
-      setConfirmDialogConfig({ isOpen: true, title: "拠点移動", message: `瞬間移動完了。現在滞在拠点: ${BASE_MAP_MASTER.find(a => a.id === baseId)?.name}`, onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
     } catch (err: any) {
       console.warn("Move base failed, rolling back:", err.message);
       setCurrentBaseId(prevBase);
       setErrorMessage("拠点移動の同期に失敗しました。");
-    } finally {
-      setMovingAreaLoading(false);
     }
   };
 
@@ -3511,6 +3513,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     ownedTitles,
     userTitle: ownedTitles.find((title) => title.id === titleEquipped)?.name || titleEquipped || "称号なし",
     totalPower,
+    totalPowerLoading,
     isRaidActive: raidBossHp > 0 && raidBossSecondsLeft > 0,
 
     // アバターシステム状態

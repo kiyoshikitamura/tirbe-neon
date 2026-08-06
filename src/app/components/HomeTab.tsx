@@ -59,7 +59,8 @@ function MainMyPage() {
     ownedTitles,
     interiorItem,
     equippedFrontEffect,
-    totalPower
+    totalPower,
+    totalPowerLoading
   } = useGame();
 
   const equippedTitleName = ownedTitles.find((title: { id: string }) => title.id === titleEquipped)?.name || titleEquipped;
@@ -202,7 +203,9 @@ function MainMyPage() {
         {/* 総合力 表示パネル (最上段下中央・透過グレー) */}
         <div className="mypage-power-panel">
           <span className="mypage-power-label">総合力</span>
-          <span className="mypage-power-val">{(totalPower || 0).toLocaleString()}</span>
+          <span className={`mypage-power-val${totalPowerLoading ? " is-loading" : ""}`}>
+            {totalPowerLoading ? "—" : totalPower.toLocaleString()}
+          </span>
         </div>
 
         {/* 左側小アイコン群 (動的配列レンダリング) */}

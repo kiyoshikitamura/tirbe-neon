@@ -150,6 +150,17 @@
   text-shadow: 0 0 8px rgba(255, 215, 0, 0.4);
 }
 
+.mypage-power-val.is-loading {
+  min-width: 18px;
+  color: rgba(255, 215, 0, 0.58);
+  animation: mypage-power-loading 0.9s ease-in-out infinite alternate;
+}
+
+@keyframes mypage-power-loading {
+  from { opacity: 0.45; }
+  to { opacity: 1; }
+}
+
 /* サブメニューアイコン (左右分散配置・上詰め圧縮) */
 .mypage-sub-icons-left {
   position: absolute;
