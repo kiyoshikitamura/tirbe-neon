@@ -791,6 +791,37 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     let localCharIds: string[] = [];
     let localDeck: string[] = [];
     setTotalPowerLoading(true);
+
+    // The Home HUD must not wait for the complete bootstrap (rankings, chat,
+    // raids, etc.). Fetch the three inputs it needs independently so the
+    // total-power value becomes available as soon as the player data is.
+    const primeHomePower = async () => {
+      try {
+        const [charactersResult, equipmentsResult, deckResult] = await Promise.all([
+          supabase.from("user_characters").select("*").eq("user_id", userId),
+          supabase.from("user_equipments").select("*").eq("user_id", userId),
+          supabase.from("pvp_defense_decks").select("character_1_id, character_2_id, character_3_id, character_4_id, character_5_id").eq("user_id", userId).maybeSingle(),
+        ]);
+        const characters = charactersResult.data || [];
+        const equipments = equipmentsResult.data || [];
+        const deck = deckResult.data;
+        const memberIds = deck
+          ? [deck.character_1_id, deck.character_2_id, deck.character_3_id, deck.character_4_id, deck.character_5_id].filter(Boolean)
+          : characters.slice(0, 5).map((character: any) => character.character_id);
+        const power = memberIds.reduce((sum: number, memberId: string) => {
+          const character = characters.find((entry: any) => entry.id === memberId || entry.character_id === memberId);
+          if (!character) return sum;
+          const stats = getCharacterTotalStats(character, equipments);
+          return sum + stats.hp + stats.atk + stats.def + stats.spd + stats.luk;
+        }, 0);
+        setTotalPower(power);
+      } catch (err) {
+        console.warn("Failed to prime home power:", err);
+      } finally {
+        setTotalPowerLoading(false);
+      }
+    };
+    void primeHomePower();
     try {
       // 各種マスタデータのフェッチとメモリキャッシュ (並列 Promise.all 実行)
       Promise.all([

@@ -3,41 +3,13 @@
 import React, { useState, useEffect } from "react";
 import { useGame } from "../context/GameContext";
 
-import { useImagePreloader } from "../hooks/useImagePreloader";
 import { PROFILE_BACKGROUNDS, CHARACTERS_MASTER } from "@/utils/game_constants";
-import MonthlyPassBanner from "./MonthlyPassBanner";
 import "./HomeTab.css";
-
-const PRELOAD_IMAGES = [
-  "/bg/bg_base_neontower.png",
-  "/bg/bg_base_deepdock.png",
-  "/bg/bg_base_junkbazaar.png",
-  "/bg/bg_base_kitakuragate.png",
-  "/ui/icon_bag.png",
-  "/ui/icon_cash.png",
-  "/ui/icon_community.png",
-  "/ui/icon_dia.png",
-  "/ui/icon_footer_character.png",
-  "/ui/icon_footer_gacha.png",
-  "/ui/icon_footer_guild.png",
-  "/ui/icon_footer_mypage.png",
-  "/ui/icon_footer_shop.png",
-  "/ui/icon_friends.png",
-  "/ui/icon_map.png",
-  "/ui/icon_mission.png",
-  "/ui/icon_news.png",
-  "/ui/icon_present.png",
-  "/ui/icon_raid.png",
-  "/ui/icon_ranking.png",
-  "/ui/icon_settings.png"
-];
 
 /**
  * MainMyPage - マイページメイン画面
  */
 function MainMyPage() {
-  useImagePreloader(PRELOAD_IMAGES);
-
   const {
     currentBaseId,
     gvgBaseControls,
@@ -60,7 +32,8 @@ function MainMyPage() {
     interiorItem,
     equippedFrontEffect,
     totalPower,
-    totalPowerLoading
+    totalPowerLoading,
+    monthlyPassActive
   } = useGame();
 
   const equippedTitleName = ownedTitles.find((title: { id: string }) => title.id === titleEquipped)?.name || titleEquipped;
@@ -68,7 +41,8 @@ function MainMyPage() {
 
   // イベントバナースライドインジケーター
   const [bannerIndex, setBannerIndex] = useState(0);
-  const banners = [
+  const banners: Array<{ id: string; title: string; img: string; onClick?: () => void }> = [
+    { id: "vip", title: monthlyPassActive ? "VIP PASS｜本日の特典を確認" : "VIP PASS｜毎日ログインでダイヤを獲得", img: "/gacha/bg_gacha_ssr.png", onClick: () => navigateTab("shop", "LIMITED") },
     { id: "b1", title: "【GvG抗争】第2シーズン 覇権争奪戦 開幕", img: "/gacha/bg_gacha_ssr.png" },
     { id: "b2", title: "【ピックアップガチャ】SSR「剛」新登場！", img: "/gacha/bg_gacha_sr.png" },
     { id: "b3", title: "【レイドイベント】強敵「雷神」襲来中！", img: "/gacha/bg_gacha_normal.png" }
@@ -302,8 +276,6 @@ function MainMyPage() {
 
       <div className="px-3 pb-3 flex-col-gap-2">
         {/* 月額VIPパスバナー */}
-        <MonthlyPassBanner />
-
         {/* 3. イベントバナーエリア (大ボタン直下) */}
         <div className="mypage-event-banner-area">
           <div className="banner-slide-wrapper">
@@ -313,12 +285,15 @@ function MainMyPage() {
             >
               ‹
             </button>
-            <div className="banner-card">
+            <button
+              className={`banner-card${banners[bannerIndex].id === "vip" ? " vip" : ""}`}
+              onClick={banners[bannerIndex].onClick}
+            >
               <img src={banners[bannerIndex].img} alt="Banner" className="banner-bg-img" />
               <div className="banner-info-overlay">
                 <span className="banner-title">{banners[bannerIndex].title}</span>
               </div>
-            </div>
+            </button>
             <button
               className="banner-arrow right"
               onClick={() => setBannerIndex((prev) => (prev + 1) % banners.length)}
