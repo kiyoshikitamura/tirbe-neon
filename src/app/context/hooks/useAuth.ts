@@ -104,6 +104,13 @@ export function useAuth(
 
       setSession(mockSession);
 
+      // In the browser QA environment a new demo identity is provisioned by
+      // get_user_setup_status. Do not route the reviewer through onboarding.
+      if (isNew) {
+        await checkIfSetupRequired(demoId);
+        return;
+      }
+
       if (isNew) {
         setIsSetupRequired(true);
         setConfirmDialogConfig({ isOpen: true, title: "デモ認証", message: "【Googleデモ認証】 新しいデモセッションを作成しました。「ユーザー登録」画面へ進みます。", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });

@@ -75,7 +75,22 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
   if (funcName === "get_user_setup_status") {
     const userId = typeof window === "undefined" ? null : localStorage.getItem("tribe_demo_uuid");
     const users = client.getStorage("users") || [];
-    return { data: !!userId && users.some((user: any) => user.id === userId), error: null };
+    // The browser demo is a QA environment, not the production onboarding.
+    // Give each persisted demo identity a baseline profile on first use so a
+    // refresh never sends a reviewer back to player registration.
+    if (userId && !users.some((user: any) => user.id === userId)) {
+      const shortId = userId.slice(-4);
+      const seeded = await executeMockRpc(client, "initialize_new_user", {
+        p_user_id: userId,
+        p_username: `検証${shortId}`,
+        p_character_id: "11111111-1111-1111-1111-111111111111",
+        p_area_id: "shinjuku",
+        p_gift_code: null,
+      });
+      if (seeded.error) return seeded;
+    }
+    const currentUsers = client.getStorage("users") || [];
+    return { data: !!userId && currentUsers.some((user: any) => user.id === userId), error: null };
   }
 
   if (funcName === "get_public_profiles") {
