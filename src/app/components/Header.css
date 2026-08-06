@@ -4,7 +4,9 @@
   flex-direction: column;
   gap: 6px;
   padding: 8px 12px;
-  padding-top: 8px;
+  /* Keep the header surface behind iPhone status indicators, while placing
+     its controls below them. Applying this at the shell causes a black gap. */
+  padding-top: max(44px, calc(8px + env(safe-area-inset-top, 0px)));
   background: rgba(11, 15, 25, 0.95);
   border-bottom: 1px solid rgba(0, 240, 255, 0.2);
   z-index: 100;
