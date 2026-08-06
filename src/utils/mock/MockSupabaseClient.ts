@@ -71,15 +71,12 @@ export class MockSupabaseClient {
       return { error: null };
     },
     signInAnonymously: async () => {
-      if (typeof window === "undefined") return { data: { session: null }, error: null };
-      let demoId = localStorage.getItem("tribe_demo_uuid");
-      if (!demoId) {
-        demoId = "00000000-0000-4000-8000-" + Math.floor(100000000000 + Math.random() * 900000000000).toString();
-        localStorage.setItem("tribe_demo_uuid", demoId);
-      }
+      // A fresh QA browser should reach the authentication screen. A demo
+      // identity is created only after the reviewer explicitly selects the
+      // Google-demo action; persisted identities are restored by getSession.
       return {
-        data: { session: { user: { id: demoId, email: null, is_anonymous: true } } },
-        error: null
+        data: { session: null },
+        error: { message: "No persisted demo session" }
       };
     },
     signInWithPassword: async ({ email }: any) => {
