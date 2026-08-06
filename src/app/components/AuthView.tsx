@@ -14,7 +14,6 @@ export default function AuthView() {
     handleEmailLogin,
     handleEmailSignup,
     handleGoogleLogin,
-    handleGoogleDemoLogin,
     handleFirstUserInteraction,
     errorMessage,
     setErrorMessage
@@ -70,13 +69,6 @@ export default function AuthView() {
               Googleでログイン
             </button>
 
-            <button 
-              onClick={handleGoogleDemoLogin}
-              disabled={setupLoading}
-              className="auth-btn-google-demo active-scale-effect"
-            >
-              Googleデモ認証でテスト
-            </button>
           </div>
         </div>
 
