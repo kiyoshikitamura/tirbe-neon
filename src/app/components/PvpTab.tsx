@@ -9,12 +9,15 @@ import OutlawCard from "./ui/OutlawCard";
 import OutlawButton from "./ui/OutlawButton";
 
 const tacticNames: { [key: string]: string } = {
-  OFFENSIVE: "攻撃重視",
-  DEFENSIVE: "防御重視",
-  HEALING: "回復重視",
+  ATTACK_PRIORITY: "攻撃優先",
+  HEAL_PRIORITY: "回復優先",
+  SKILL_PRIORITY: "スキル優先",
   BALANCED: "バランス",
-  AP_CONSERVING: "AP温存",
-  TACTICAL: "特殊戦術"
+  WEAKNESS_FOCUS: "弱点集中",
+  // 保存済みデッキの表示互換
+  OFFENSIVE: "攻撃優先",
+  HEALING: "回復優先",
+  TACTICAL: "弱点集中"
 };
 
 export default function PvpTab() {
@@ -40,12 +43,13 @@ export default function PvpTab() {
     playCyberSe,
     setActiveTab,
     setRankingActiveTab,
-    setConfirmDialogConfig,
-    setGlobalInteractionBlocking
+  setConfirmDialogConfig,
+    setGlobalInteractionBlocking,
+    pvpPoints
   } = useGame();
 
   const [selectedDefense, setSelectedDefense] = React.useState<string[]>([]);
-  const [selectedTactic, setSelectedTactic] = React.useState<string>("OFFENSIVE");
+  const [selectedTactic, setSelectedTactic] = React.useState<string>("ATTACK_PRIORITY");
 
   React.useEffect(() => {
     if (myPvpDefenseDeck) {
@@ -57,7 +61,7 @@ export default function PvpTab() {
         myPvpDefenseDeck.character_5_id
       ].filter(Boolean);
       setSelectedDefense(members);
-      setSelectedTactic(myPvpDefenseDeck.tactic || "OFFENSIVE");
+      setSelectedTactic(myPvpDefenseDeck.tactic || "ATTACK_PRIORITY");
     }
   }, [myPvpDefenseDeck]);
 
@@ -117,6 +121,7 @@ export default function PvpTab() {
         <OutlawCard className="mb-4 text-center">
           <div className="text-xl font-bold mb-1 text-white text-shadow-glow">現在のレート</div>
           <div className="text-3xl font-black text-neon-cyan text-shadow-cyan">{pvpRate} pt</div>
+          <div className="text-xs text-gray-400 mt-2">PvPポイント: {pvpPoints}/5（1時間ごとに1回復）</div>
         </OutlawCard>
 
         <SubTabNav
@@ -166,7 +171,7 @@ export default function PvpTab() {
                             <span>ギルド: {op.opponent_guild_name}</span><br />
                             <span className="text-neon-cyan">{op.opponent_points} pt</span>
                             <span className="mx-1">｜</span>
-                            <span className="text-neon-magenta">作戦: {tacticNames[op.tactic] || "攻撃重視"}</span>
+                            <span className="text-neon-magenta">作戦: {tacticNames[op.tactic] || "攻撃優先"}</span>
                           </div>
                         </div>
                         <OutlawButton 
@@ -233,12 +238,11 @@ export default function PvpTab() {
                       onChange={(e) => setSelectedTactic(e.target.value)}
                       className="w-full bg-gray-900 border border-gray-700 rounded p-2 text-white text-sm focus:border-neon-cyan outline-none"
                     >
-                      <option value="OFFENSIVE">攻撃重視 (高火力スキルを優先使用)</option>
-                      <option value="DEFENSIVE">防御重視 (自身へのシールド・防御を優先)</option>
-                      <option value="HEALING">回復重視 (HPの低下した仲間を優先回復)</option>
+                      <option value="ATTACK_PRIORITY">攻撃優先 (攻撃スキルを優先使用)</option>
+                      <option value="HEAL_PRIORITY">回復優先 (HPの低下した仲間を優先回復)</option>
+                      <option value="SKILL_PRIORITY">スキル優先 (使用可能なスキルを優先)</option>
                       <option value="BALANCED">バランス (回復と攻撃を状況に応じて選択)</option>
-                      <option value="AP_CONSERVING">AP温存 (APを極力溜めつつ戦う)</option>
-                      <option value="TACTICAL">特殊戦術 (バフ・デバフによる支援優先)</option>
+                      <option value="WEAKNESS_FOCUS">弱点集中 (有利属性の敵を優先)</option>
                     </select>
                   </div>
 

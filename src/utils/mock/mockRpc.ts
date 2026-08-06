@@ -6,6 +6,204 @@
 export async function executeMockRpc(client: any, funcName: string, params: any): Promise<any> {
   console.log(`[Mock DB RPC] Calling ${funcName} with:`, params);
 
+  if (funcName === "begin_gvg_attack") {
+    const userId = typeof window === "undefined" ? null : localStorage.getItem("tribe_demo_uuid");
+    const users = client.getStorage("users") || [];
+    const user = users.find((entry: any) => entry.id === userId);
+    const members = client.getStorage("guild_members") || [];
+    const membership = members.find((entry: any) => entry.user_id === userId);
+    const matches = client.getStorage("gvg_match_sessions") || [];
+    const match = matches.find((entry: any) => entry.id === params.p_match_session_id && entry.status === "ACTIVE");
+    if (!user || !membership || !match || Number(user.vitality || 0) < 20) return { data: null, error: { message: "公式GvGに参加できません。" } };
+    const defenderSide = match.guild_a_id === membership.guild_id ? "B" : "A";
+    const snapshots = client.getStorage("gvg_match_member_snapshots") || [];
+    const candidates = snapshots.filter((entry: any) => entry.match_session_id === match.id && entry.side === defenderSide);
+    const target = candidates[0];
+    if (!target) return { data: null, error: { message: "防衛スナップショットがありません。" } };
+    user.vitality -= 20;
+    const attacks = client.getStorage("gvg_attack_logs") || [];
+    const attack = { id: `gvg_attack_${Date.now()}`, match_session_id: match.id, attacker_user_id: userId, attacker_guild_id: membership.guild_id, defender_snapshot_id: target.id, battle_result: "PENDING", raw_damage: 0, applied_damage: 0 };
+    attacks.push(attack);
+    client.setStorage("users", users);
+    client.setStorage("gvg_attack_logs", attacks);
+    return { data: { attack_id: attack.id, remaining_ap: user.vitality, defense_deck: target.defense_deck || [] }, error: null };
+  }
+
+  if (funcName === "cancel_unresolved_gvg_attack") {
+    const userId = typeof window === "undefined" ? null : localStorage.getItem("tribe_demo_uuid");
+    const attacks = client.getStorage("gvg_attack_logs") || [];
+    const attack = attacks.find((entry: any) => entry.id === params.p_attack_id && entry.attacker_user_id === userId && entry.battle_result === "PENDING");
+    if (!attack) return { data: null, error: { message: "未確定の公式GvG攻撃がありません。" } };
+
+    const replays = client.getStorage("battle_replay_sessions") || [];
+    const relatedReplays = replays.filter((entry: any) => entry.requester_user_id === userId && entry.battle_mode === "GVG" && entry.source_reference_id === attack.id);
+    if (relatedReplays.some((entry: any) => entry.status !== "PENDING")) {
+      return { data: null, error: { message: "確定済みの公式GvGリプレイは取消できません。" } };
+    }
+
+    client.setStorage("battle_replay_sessions", replays.filter((entry: any) => !relatedReplays.includes(entry)));
+    client.setStorage("gvg_attack_logs", attacks.filter((entry: any) => entry !== attack));
+    return { data: null, error: null };
+  }
+
+  if (funcName === "create_battle_replay_pending") {
+    const userId = typeof window === "undefined" ? null : localStorage.getItem("tribe_demo_uuid");
+    if (!userId || !Array.isArray(params.p_player_snapshot) || !Array.isArray(params.p_enemy_snapshot)) return { data: null, error: { message: "リプレイ入力が不正です。" } };
+    const sessions = client.getStorage("battle_replay_sessions") || [];
+    const id = `replay_${Date.now()}`;
+    sessions.push({ id, requester_user_id: userId, battle_mode: params.p_battle_mode, tactic_id: params.p_tactic_id, random_seed: params.p_random_seed, source_reference_id: params.p_source_reference_id || null, status: "PENDING", player_snapshot: params.p_player_snapshot, enemy_snapshot: params.p_enemy_snapshot });
+    client.setStorage("battle_replay_sessions", sessions);
+    return { data: id, error: null };
+  }
+
+  if (funcName === "resolve_gvg_attack") {
+    const attacks = client.getStorage("gvg_attack_logs") || [];
+    const replays = client.getStorage("battle_replay_sessions") || [];
+    const attack = attacks.find((entry: any) => entry.id === params.p_attack_id && entry.battle_result === "PENDING");
+    const replay = replays.find((entry: any) => entry.id === params.p_battle_replay_session_id && entry.status === "RESOLVED" && entry.source_reference_id === params.p_attack_id);
+    if (!attack || !replay) return { data: null, error: { message: "公式GvG結果を確定できません。" } };
+    const rawDamage = Number(replay.result?.playerRawDamage || 0);
+    const isVictory = replay.result?.winner === "PLAYER";
+    attack.battle_result = isVictory ? "VICTORY" : "DEFEAT";
+    attack.raw_damage = rawDamage;
+    attack.applied_damage = Math.floor(rawDamage * (isVictory ? 1.5 : 1));
+    attack.battle_replay_session_id = replay.id;
+    client.setStorage("gvg_attack_logs", attacks);
+    return { data: { raw_damage: rawDamage, applied_damage: attack.applied_damage }, error: null };
+  }
+
+  if (funcName === "get_user_setup_status") {
+    const userId = typeof window === "undefined" ? null : localStorage.getItem("tribe_demo_uuid");
+    const users = client.getStorage("users") || [];
+    return { data: !!userId && users.some((user: any) => user.id === userId), error: null };
+  }
+
+  if (funcName === "get_public_profiles") {
+    const userIds = params.p_user_ids || [];
+    const users = client.getStorage("users") || [];
+    const members = client.getStorage("guild_members") || [];
+    const guilds = client.getStorage("guilds") || [];
+    return {
+      data: users.filter((user: any) => userIds.includes(user.id)).map((user: any) => {
+        const membership = members.find((member: any) => member.user_id === user.id);
+        const guild = guilds.find((entry: any) => entry.id === membership?.guild_id);
+        return { ...user, user_id: user.id, title_name: user.title_equipped || "称号なし", guild_id: membership?.guild_id || null, guild_name: guild?.name || null };
+      }),
+      error: null
+    };
+  }
+
+  if (funcName === "start_tutorial_progress") {
+    const userId = typeof window === "undefined" ? null : localStorage.getItem("tribe_demo_uuid");
+    if (!userId) return { data: null, error: { message: "Authentication is required" } };
+    const progress = client.getStorage("tutorial_progress") || [];
+    if (!progress.some((entry: any) => entry.user_id === userId)) {
+      progress.push({ user_id: userId, step_id: "WORLD_INTRO" });
+      client.setStorage("tutorial_progress", progress);
+    }
+    return { data: "WORLD_INTRO", error: null };
+  }
+
+  if (funcName === "advance_tutorial_progress") {
+    const userId = typeof window === "undefined" ? null : localStorage.getItem("tribe_demo_uuid");
+    const progress = client.getStorage("tutorial_progress") || [];
+    const entry = progress.find((value: any) => value.user_id === userId);
+    if (!entry || entry.step_id !== params.p_expected_step) return { data: null, error: { message: "Unexpected tutorial step" } };
+    entry.step_id = params.p_next_step;
+    client.setStorage("tutorial_progress", progress);
+    return { data: entry.step_id, error: null };
+  }
+
+  if (funcName === "complete_tutorial_authentication") {
+    const userId = typeof window === "undefined" ? null : localStorage.getItem("tribe_demo_uuid");
+    const progress = client.getStorage("tutorial_progress") || [];
+    const entry = progress.find((value: any) => value.user_id === userId);
+    if (!entry || entry.step_id !== "COMPLETE") return { data: null, error: { message: "Tutorial completion is required" } };
+    const methods = client.getStorage("user_account_auth_methods") || [];
+    if (methods.some((value: any) => value.user_id === userId)) return { data: null, error: { message: "An authentication method is already linked" } };
+    methods.push({ user_id: userId, auth_method: params.p_auth_method });
+    entry.step_id = "AUTHENTICATION";
+    client.setStorage("tutorial_progress", progress);
+    client.setStorage("user_account_auth_methods", methods);
+    return { data: "AUTHENTICATION", error: null };
+  }
+
+  if (funcName === "send_direct_message") {
+    const { p_recipient_id, p_message } = params;
+    const senderId = typeof window === "undefined" ? null : localStorage.getItem("tribe_demo_uuid");
+    const users = client.getStorage("users") || [];
+    const recipientExists = users.some((user: any) => user.id === p_recipient_id);
+    if (!senderId || !p_recipient_id || p_recipient_id === senderId || typeof p_message !== "string" || !p_message.trim() || p_message.length > 140 || !recipientExists) {
+      return { data: null, error: { message: "Invalid direct-message recipient" } };
+    }
+    const messages = client.getStorage("direct_messages") || [];
+    const message = { id: `dm_${Date.now()}`, sender_id: senderId, recipient_id: p_recipient_id, message: p_message.trim(), created_at: new Date().toISOString() };
+    messages.push(message);
+    client.setStorage("direct_messages", messages);
+    return { data: message, error: null };
+  }
+
+  if (funcName === "mark_direct_message_read") {
+    const recipientId = typeof window === "undefined" ? null : localStorage.getItem("tribe_demo_uuid");
+    const messages = client.getStorage("direct_messages") || [];
+    const message = messages.find((entry: any) => entry.id === params.p_message_id && entry.recipient_id === recipientId);
+    if (!message) {
+      return { data: null, error: { message: "Direct message was not found" } };
+    }
+    message.is_read = true;
+    client.setStorage("direct_messages", messages);
+    return { data: null, error: null };
+  }
+
+  if (funcName === "send_chat_message") {
+    const { p_target_type, p_content } = params;
+    const userId = typeof window === "undefined" ? null : localStorage.getItem("tribe_demo_uuid");
+    const users = client.getStorage("users") || [];
+    const user = users.find((entry: any) => entry.id === userId);
+    const members = client.getStorage("guild_members") || [];
+    const membership = members.find((entry: any) => entry.user_id === userId);
+    if (!user || !["GLOBAL", "GUILD"].includes(p_target_type) || !p_content?.trim() || p_content.trim().length > 140 || (p_target_type === "GUILD" && !membership)) {
+      return { data: null, error: { message: "Invalid chat message" } };
+    }
+    const posts = client.getStorage("board_posts") || [];
+    const post = { id: `chat_${Date.now()}`, title: "", user_id: userId, author_id: userId, author_name: user.username || "Player", author_avatar_url: user.avatar_url, content: p_content.trim(), target_type: p_target_type, target_id: p_target_type === "GUILD" ? membership.guild_id : null, is_system: false, created_at: new Date().toISOString() };
+    posts.push(post);
+    client.setStorage("board_posts", posts);
+    return { data: post, error: null };
+  }
+
+  if (funcName === "create_bbs_thread") {
+    const { p_category, p_title, p_content } = params;
+    const userId = typeof window === "undefined" ? null : localStorage.getItem("tribe_demo_uuid");
+    const user = (client.getStorage("users") || []).find((entry: any) => entry.id === userId);
+    if (!userId || !user || !["RECRUIT", "STRATEGY_CHAT"].includes(p_category) || !p_title?.trim() || p_title.trim().length > 50 || !p_content?.trim() || p_content.trim().length > 200) {
+      return { data: null, error: { message: "Invalid BBS thread" } };
+    }
+    const threads = client.getStorage("bbs_threads") || [];
+    const thread = { id: `bbs_thread_${Date.now()}`, category: p_category, title: p_title.trim(), content: p_content.trim(), user_id: userId, author_name: user.username || "Player", author_avatar_url: user.avatar_url, created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
+    threads.unshift(thread);
+    client.setStorage("bbs_threads", threads);
+    return { data: thread, error: null };
+  }
+
+  if (funcName === "create_bbs_post") {
+    const { p_thread_id, p_content } = params;
+    const userId = typeof window === "undefined" ? null : localStorage.getItem("tribe_demo_uuid");
+    const user = (client.getStorage("users") || []).find((entry: any) => entry.id === userId);
+    const threads = client.getStorage("bbs_threads") || [];
+    if (!userId || !user || !threads.some((thread: any) => thread.id === p_thread_id) || !p_content?.trim() || p_content.trim().length > 200) {
+      return { data: null, error: { message: "Invalid BBS post" } };
+    }
+    const posts = client.getStorage("bbs_posts") || [];
+    const post = { id: `bbs_post_${Date.now()}`, thread_id: p_thread_id, user_id: userId, author_name: user.username || "Player", author_avatar_url: user.avatar_url, content: p_content.trim(), created_at: new Date().toISOString() };
+    posts.push(post);
+    const thread = threads.find((entry: any) => entry.id === p_thread_id);
+    if (thread) thread.updated_at = post.created_at;
+    client.setStorage("bbs_posts", posts);
+    client.setStorage("bbs_threads", threads);
+    return { data: post, error: null };
+  }
+
   if (funcName === "generate_user_gift_code") {
     const { p_user_id } = params;
     const users = client.getStorage("users");
@@ -486,6 +684,18 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
 
   if (funcName === "donate_to_guild") {
     const { p_user_id, p_guild_id, p_amount } = params;
+    const donationRewards: Record<number, { xp: number; contribution: number }> = {
+      1000: { xp: 20, contribution: 10 },
+      5000: { xp: 120, contribution: 60 },
+      10000: { xp: 300, contribution: 150 }
+    };
+    const reward = donationRewards[p_amount];
+    const currentUserId = typeof window === "undefined" ? null : localStorage.getItem("tribe_demo_uuid");
+    const members = client.getStorage("guild_members") || [];
+    const member = members.find((entry: any) => entry.guild_id === p_guild_id && entry.user_id === p_user_id);
+    if (currentUserId !== p_user_id || !reward || !member) {
+      return { data: null, error: { message: "Invalid guild donation" } };
+    }
     const users = client.getStorage("users");
     const user = users.find((u: any) => u.id === p_user_id);
     if (!user || (user.cash || 0) < p_amount) {
@@ -500,10 +710,15 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
 
     user.cash = (user.cash || 0) - p_amount;
     guild.funds = Number(guild.funds || 0) + p_amount;
+    guild.xp = Number(guild.xp || 0) + reward.xp;
+    member.weekly_contribution = Number(member.weekly_contribution || 0) + reward.contribution;
+    member.total_contribution = Number(member.total_contribution || 0) + reward.contribution;
+    member.contribution_points = Number(member.contribution_points || 0) + reward.contribution;
 
     client.setStorage("users", users);
     client.setStorage("guilds", guilds);
-    return { data: { status: "success", next_cash: user.cash, next_funds: guild.funds }, error: null };
+    client.setStorage("guild_members", members);
+    return { data: { status: "success", next_cash: user.cash, next_funds: guild.funds, xp_gained: reward.xp, contribution_gained: reward.contribution }, error: null };
   }
 
   if (funcName === "buy_normal_shop_product") {
@@ -538,7 +753,7 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     }
 
     const purchases = client.getStorage("user_shop_purchases") || [];
-    let purchaseRecord = purchases.find((p: any) => p.user_id === p_user_id && p.product_id === p_product_id);
+    const purchaseRecord = purchases.find((p: any) => p.user_id === p_user_id && p.product_id === p_product_id);
     if (purchaseRecord) {
       purchaseRecord.purchase_count = (purchaseRecord.purchase_count || 0) + 1;
       purchaseRecord.last_purchased_at = new Date().toISOString();
@@ -596,7 +811,7 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     }
 
     const purchases = client.getStorage("user_shop_purchases") || [];
-    let purchaseRecord = purchases.find((p: any) => p.user_id === p_user_id && p.product_id === p_product_id);
+    const purchaseRecord = purchases.find((p: any) => p.user_id === p_user_id && p.product_id === p_product_id);
     if (purchaseRecord) {
       purchaseRecord.purchase_count = (purchaseRecord.purchase_count || 0) + 1;
       purchaseRecord.last_purchased_at = new Date().toISOString();
@@ -620,15 +835,23 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
   if (funcName === "get_pvp_opponents") {
     const { p_user_id, p_my_points } = params;
     const users = client.getStorage("users") || [];
+    const ranks = client.getStorage("pvp_ranks") || [];
     const candidates = users
       .filter((u: any) => u.id !== p_user_id)
       .slice(0, 3)
       .map((u: any, idx: number) => ({
+        opponent_user_id: u.id,
+        opponent_username: u.username || `Player ${idx + 1}`,
+        opponent_guild_name: "No Guild",
+        opponent_points: ranks.find((rank: any) => rank.user_id === u.id)?.rank_points ?? 1000,
+        tactic: "BALANCED",
+        opponent_guild_main_alignment: "NEUTRAL",
+        opponent_guild_sub_alignment: "NEUTRAL",
         id: u.id,
         username: u.username || `対戦者_${idx + 1}`,
         avatar_url: u.avatar_url || "/reiji_transparent_asset.png",
         title_equipped: u.title_equipped || "title_none",
-        pvp_points: u.pvp_points || 1000,
+        pvp_points: u.pvp_points ?? 5,
         total_power: 15000 + idx * 2500,
         defense_character_ids: ["c_reiji", "c_rui", "c_chang"]
       }));
@@ -642,15 +865,13 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     const user = users.find((u: any) => u.id === p_user_id);
     if (!user) return { error: { message: "ユーザーが存在しません。" } };
 
-    user.pvp_points = Math.max(0, (user.pvp_points || 1000) + (p_point_diff || 0));
+    user.pvp_points = user.pvp_points ?? 5;
     user.cash = (user.cash || 0) + (p_cash_reward || 0);
-    // Ticket handling should probably be handled before battle starts, but if we handle it here:
-    // user.pvp_points = Math.max(0, (user.pvp_points || 5) - 1);
 
     const ranks = client.getStorage("pvp_ranks") || [];
-    let rank = ranks.find((r: any) => r.user_id === p_user_id);
+    const rank = ranks.find((r: any) => r.user_id === p_user_id);
     if (rank) {
-      rank.rank_points = user.pvp_points;
+      rank.rank_points = Math.max(0, (rank.rank_points ?? 1000) + (p_point_diff || 0));
       if (p_is_win) {
         rank.daily_wins = (rank.daily_wins || 0) + 1;
         rank.season_wins = (rank.season_wins || 0) + 1;
@@ -659,7 +880,7 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
       ranks.push({
         id: `pr_${Date.now()}`,
         user_id: p_user_id,
-        rank_points: user.pvp_points,
+        rank_points: Math.max(0, 1000 + (p_point_diff || 0)),
         daily_wins: p_is_win ? 1 : 0,
         season_wins: p_is_win ? 1 : 0
       });
@@ -667,7 +888,7 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
 
     client.setStorage("users", users);
     client.setStorage("pvp_ranks", ranks);
-    return { data: { status: "success", pvp_points: user.pvp_points }, error: null };
+    return { data: { status: "success", rank_points: rank?.rank_points ?? Math.max(0, 1000 + (p_point_diff || 0)) }, error: null };
   }
 
   if (funcName === "claim_gvg_base") {
@@ -704,7 +925,7 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
   if (funcName === "record_raid_boss_damage_v2") {
     const { p_user_id, p_boss_id, p_damage } = params;
     const bosses = client.getStorage("raid_bosses") || [];
-    let boss = bosses.find((b: any) => b.id === p_boss_id);
+    const boss = bosses.find((b: any) => b.id === p_boss_id);
     if (!boss) return { error: { message: "ボスが存在しません" } };
 
     const nextHp = Math.max(0, boss.current_hp - p_damage);
@@ -744,7 +965,7 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     }
 
     const matches = client.getStorage("gvg_matches") || [];
-    let myMatch = matches.find((m: any) => m.status === "ONGOING" && (m.guild_a_id === p_guild_id || m.guild_b_id === p_guild_id));
+    const myMatch = matches.find((m: any) => m.status === "ONGOING" && (m.guild_a_id === p_guild_id || m.guild_b_id === p_guild_id));
 
     let addedBasePoints = 0;
     let addedMatchPoints = 0;
@@ -1010,6 +1231,21 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     return { data: { status: "success" }, error: null };
   }
 
+  if (funcName === "complete_patrol_instantly") {
+    const { p_user_id, p_patrol_id, p_use_currency } = params;
+    const patrols = client.getStorage("user_patrols") || [];
+    const patrol = patrols.find((entry: any) => entry.id === p_patrol_id && entry.user_id === p_user_id);
+    if (!patrol) return { data: null, error: { message: "Patrol not found" } };
+    if (p_use_currency === "FREE_TUTORIAL") {
+      const progress = (client.getStorage("tutorial_progress") || []).find((entry: any) => entry.user_id === p_user_id);
+      if (progress?.step_id !== "FREE_INSTANT") return { data: null, error: { message: "Free completion is unavailable" } };
+    }
+    patrol.status = "CLAIMABLE";
+    patrol.expires_at = new Date().toISOString();
+    client.setStorage("user_patrols", patrols);
+    return { data: { status: "success" }, error: null };
+  }
+
   if (funcName === "complete_patrol_instant") {
     const { p_user_id, p_patrol_id, p_diamond_cost } = params;
     const users = client.getStorage("users");
@@ -1063,6 +1299,88 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     return { data: { status: "success" }, error: null };
   }
   
+  if (funcName === "execute_asset_gacha") {
+    const { p_user_id, p_gacha_id, p_pull_count, p_currency_type } = params;
+    const currentUserId = typeof window === "undefined" ? null : localStorage.getItem("tribe_demo_uuid");
+    if (!currentUserId || currentUserId !== p_user_id) return { data: null, error: { message: "認証が必要です。" } };
+    if (!Number.isInteger(p_pull_count) || p_pull_count < 1 || p_pull_count > 10) return { data: null, error: { message: "ガチャ回数が不正です。" } };
+    if (p_currency_type === "free" && p_pull_count !== 10) return { data: null, error: { message: "無料ガチャは10連のみです。" } };
+
+    const users = client.getStorage("users") || [];
+    const user = users.find((entry: any) => entry.id === p_user_id);
+    const gachas = client.getStorage("gacha_masters") || [];
+    const gacha = gachas.find((entry: any) => entry.id === p_gacha_id && (entry.gacha_type === "SKILL" || entry.gacha_type === "EQUIPMENT"));
+    const pool = (client.getStorage("gacha_items_master") || []).filter((entry: any) => entry.gacha_id === p_gacha_id && entry.item_id);
+    if (!user || !gacha || pool.length === 0) return { data: null, error: { message: "ガチャ設定が見つかりません。" } };
+
+    const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Tokyo" });
+    const claims = client.getStorage("user_daily_gacha_claims") || [];
+    if (p_currency_type === "free") {
+      const claim = claims.find((entry: any) => entry.user_id === p_user_id && entry.gacha_type === gacha.gacha_type);
+      if (claim?.last_claimed_date === today) return { data: null, error: { message: "本日の無料ガチャは受取済みです。" } };
+      if (claim) claim.last_claimed_date = today;
+      else claims.push({ user_id: p_user_id, gacha_type: gacha.gacha_type, last_claimed_date: today });
+    } else if (p_currency_type === "cash" || p_currency_type === "diamonds") {
+      const field = p_currency_type === "cash" ? "cash" : "neon_diamonds";
+      const unitCost = Number(p_currency_type === "cash" ? gacha.cost_cash : gacha.cost_diamond);
+      const cost = unitCost * p_pull_count;
+      if (!Number.isFinite(unitCost) || unitCost < 0 || Number(user[field] || 0) < cost) return { data: null, error: { message: "ガチャ通貨が不足しています。" } };
+      user[field] = Number(user[field] || 0) - cost;
+    } else if (p_currency_type === "ticket") {
+      const items = client.getStorage("user_items") || [];
+      const ticket = items.find((entry: any) => entry.user_id === p_user_id && entry.item_id === "GACHA_TICKET");
+      if (!ticket || Number(ticket.quantity || 0) < p_pull_count) return { data: null, error: { message: "ガチャチケットが不足しています。" } };
+      ticket.quantity -= p_pull_count;
+      client.setStorage("user_items", items);
+    } else {
+      return { data: null, error: { message: "通貨種別が不正です。" } };
+    }
+
+    const weightedPick = () => {
+      const total = pool.reduce((sum: number, entry: any) => sum + Math.max(1, Number(entry.weight || 1)), 0);
+      let roll = Math.random() * total;
+      return pool.find((entry: any) => (roll -= Math.max(1, Number(entry.weight || 1))) <= 0) || pool[pool.length - 1];
+    };
+    const results: { type: "SKILL" | "EQUIPMENT"; item_id: string; outcome: "new" | "limit_break" | "converted" }[] = [];
+    const skills = client.getStorage("user_skills") || [];
+    const equipments = client.getStorage("user_equipments") || [];
+    const items = client.getStorage("user_items") || [];
+    for (let index = 0; index < p_pull_count; index += 1) {
+      const picked = weightedPick();
+      if (gacha.gacha_type === "SKILL") {
+        const existing = skills.find((entry: any) => entry.user_id === p_user_id && entry.skill_card_id === picked.item_id);
+        if (!existing) {
+          skills.push({ id: `mock_skill_${Date.now()}_${index}`, user_id: p_user_id, skill_card_id: picked.item_id, plus_val: 0 });
+          results.push({ type: "SKILL", item_id: picked.item_id, outcome: "new" });
+        } else if (Number(existing.plus_val || 0) < 10) {
+          existing.plus_val = Number(existing.plus_val || 0) + 1;
+          results.push({ type: "SKILL", item_id: picked.item_id, outcome: "limit_break" });
+        } else {
+          const manual = items.find((entry: any) => entry.user_id === p_user_id && entry.item_id === "TRAINING_MANUAL");
+          if (manual) manual.quantity = Number(manual.quantity || 0) + 2;
+          else items.push({ user_id: p_user_id, item_id: "TRAINING_MANUAL", quantity: 2 });
+          results.push({ type: "SKILL", item_id: picked.item_id, outcome: "converted" });
+        }
+      } else {
+        equipments.push({ id: `mock_equipment_${Date.now()}_${index}`, user_id: p_user_id, equipment_id: picked.item_id, level: 1, plus_val: 0, random_options: [] });
+        results.push({ type: "EQUIPMENT", item_id: picked.item_id, outcome: "new" });
+      }
+    }
+    client.setStorage("users", users);
+    client.setStorage("user_daily_gacha_claims", claims);
+    client.setStorage("user_skills", skills);
+    client.setStorage("user_equipments", equipments);
+    client.setStorage("user_items", items);
+    if (p_currency_type !== "free" && (p_gacha_id === "SKILL_SPECIAL" || p_gacha_id === "EQUIP_SPECIAL")) {
+      const pityPoints = client.getStorage("user_gacha_pity_points") || [];
+      const pity = pityPoints.find((entry: any) => entry.user_id === p_user_id && entry.pity_master_id === "pity_special_common");
+      if (pity) pity.current_points = Number(pity.current_points || 0) + p_pull_count;
+      else pityPoints.push({ user_id: p_user_id, pity_master_id: "pity_special_common", current_points: p_pull_count });
+      client.setStorage("user_gacha_pity_points", pityPoints);
+    }
+    return { data: { status: "success", results, cash: user.cash, diamonds: user.neon_diamonds }, error: null };
+  }
+
   if (funcName === "execute_gacha") {
     const { p_user_id, p_currency_type, p_currency_cost, p_results } = params;
     const users = client.getStorage("users");
@@ -1176,6 +1494,27 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     return { data: { status: "success", guild_id: newGuildId }, error: null };
   }
 
+  if (funcName === "join_guild") {
+    const { p_guild_id } = params;
+    const currentUserId = typeof window === "undefined" ? null : localStorage.getItem("tribe_demo_uuid");
+    const users = client.getStorage("users") || [];
+    const user = users.find((entry: any) => entry.id === currentUserId);
+    const guilds = client.getStorage("guilds") || [];
+    const guild = guilds.find((entry: any) => entry.id === p_guild_id);
+    const members = client.getStorage("guild_members") || [];
+    const memberLimit = guild?.member_limit || (guild?.level >= 5 ? 20 : guild?.level === 4 ? 18 : guild?.level === 3 ? 15 : guild?.level === 2 ? 12 : 10);
+    const leftAt = user?.last_guild_left_at ? new Date(user.last_guild_left_at).getTime() : 0;
+    if (!user || user.level < 3 || !guild || guild.approval_required || members.some((entry: any) => entry.user_id === currentUserId)
+      || (leftAt > 0 && Date.now() - leftAt < 24 * 60 * 60 * 1000) || members.filter((entry: any) => entry.guild_id === p_guild_id).length >= memberLimit) {
+      return { data: null, error: { message: "Guild joining requirements are not met" } };
+    }
+    members.push({ id: `gm_${Date.now()}`, guild_id: p_guild_id, user_id: currentUserId, role: "MEMBER", weekly_contribution: 0, total_contribution: 0 });
+    user.guild_id = p_guild_id;
+    client.setStorage("guild_members", members);
+    client.setStorage("users", users);
+    return { data: { status: "success" }, error: null };
+  }
+
   if (funcName === "limit_break_gear_v2") {
     const { p_user_id, p_equipment_id, p_cash_cost, p_use_wildcard, p_dupe_id, p_new_options } = params;
     const users = client.getStorage("users");
@@ -1244,6 +1583,12 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
 
   if (funcName === "update_guild_alignment") {
     const { p_guild_id, p_main, p_sub } = params;
+    const currentUserId = typeof window === "undefined" ? null : localStorage.getItem("tribe_demo_uuid");
+    const members = client.getStorage("guild_members") || [];
+    const membership = members.find((member: any) => member.guild_id === p_guild_id && member.user_id === currentUserId);
+    if (membership?.role !== "MASTER" || !["JUSTICE", "EVIL", "ORDER", "CHAOS"].includes(p_main) || !["JUSTICE", "EVIL", "ORDER", "CHAOS"].includes(p_sub)) {
+      return { data: null, error: { message: "Invalid guild alignment" } };
+    }
     const guilds = client.getStorage("guilds") || [];
     const g = guilds.find((x: any) => x.id === p_guild_id);
     if (g) {
@@ -1255,12 +1600,18 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
   }
   if (funcName === "leave_guild") {
     const { p_user_id, p_guild_id, p_is_master, p_has_others } = params;
-    if (p_is_master && !p_has_others) {
+    const currentUserId = typeof window === "undefined" ? null : localStorage.getItem("tribe_demo_uuid");
+    const members = client.getStorage("guild_members") || [];
+    const membership = members.find((member: any) => member.guild_id === p_guild_id && member.user_id === currentUserId);
+    const hasOtherMembers = members.some((member: any) => member.guild_id === p_guild_id && member.user_id !== currentUserId);
+    if (p_user_id !== currentUserId || !membership || (membership.role === "MASTER" && hasOtherMembers)) {
+      return { data: null, error: { message: "Invalid guild leave" } };
+    }
+    if (membership.role === "MASTER") {
       const guilds = client.getStorage("guilds") || [];
       client.setStorage("guilds", guilds.filter((g: any) => g.id !== p_guild_id));
     } else {
-      const members = client.getStorage("guild_members") || [];
-      client.setStorage("guild_members", members.filter((m: any) => m.user_id !== p_user_id));
+      client.setStorage("guild_members", members.filter((member: any) => member.user_id !== p_user_id || member.guild_id !== p_guild_id));
     }
     const users = client.getStorage("users") || [];
     const u = users.find((x: any) => x.id === p_user_id);
@@ -1274,9 +1625,13 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
   if (funcName === "transfer_guild_leader") {
     const { p_guild_id, p_old_id, p_new_id } = params;
     const members = client.getStorage("guild_members") || [];
-    const oldM = members.find((m: any) => m.user_id === p_old_id);
+    const currentUserId = typeof window === "undefined" ? null : localStorage.getItem("tribe_demo_uuid");
+    const oldM = members.find((member: any) => member.guild_id === p_guild_id && member.user_id === p_old_id);
+    const newM = members.find((member: any) => member.guild_id === p_guild_id && member.user_id === p_new_id);
+    if (currentUserId !== p_old_id || p_old_id === p_new_id || oldM?.role !== "MASTER" || !newM) {
+      return { data: null, error: { message: "Invalid guild leadership transfer" } };
+    }
     if (oldM) oldM.role = "SUBMASTER";
-    const newM = members.find((m: any) => m.user_id === p_new_id);
     if (newM) newM.role = "MASTER";
     client.setStorage("guild_members", members);
     
@@ -1288,9 +1643,30 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     }
     return { data: { status: "success" }, error: null };
   }
+  if (funcName === "set_guild_member_role") {
+    const { p_guild_id, p_target_user_id, p_new_role } = params;
+    const currentUserId = typeof window === "undefined" ? null : localStorage.getItem("tribe_demo_uuid");
+    const members = client.getStorage("guild_members") || [];
+    const actor = members.find((member: any) => member.guild_id === p_guild_id && member.user_id === currentUserId);
+    const target = members.find((member: any) => member.guild_id === p_guild_id && member.user_id === p_target_user_id);
+    if (actor?.role !== "MASTER" || !target || target.role === "MASTER" || p_target_user_id === currentUserId || !["MEMBER", "SUBMASTER"].includes(p_new_role)) {
+      return { data: null, error: { message: "Invalid guild role change" } };
+    }
+    target.role = p_new_role;
+    client.setStorage("guild_members", members);
+    return { data: { status: "success" }, error: null };
+  }
   if (funcName === "kick_guild_member") {
     const { p_guild_id, p_user_id } = params;
     const members = client.getStorage("guild_members") || [];
+    const currentUserId = typeof window === "undefined" ? null : localStorage.getItem("tribe_demo_uuid");
+    const actor = members.find((member: any) => member.guild_id === p_guild_id && member.user_id === currentUserId);
+    const target = members.find((member: any) => member.guild_id === p_guild_id && member.user_id === p_user_id);
+    const isAllowed = (actor?.role === "MASTER" && ["SUBMASTER", "MEMBER"].includes(target?.role))
+      || (actor?.role === "SUBMASTER" && target?.role === "MEMBER");
+    if (!isAllowed || p_user_id === currentUserId) {
+      return { data: null, error: { message: "Insufficient guild member removal permission" } };
+    }
     client.setStorage("guild_members", members.filter((m: any) => m.user_id !== p_user_id || m.guild_id !== p_guild_id));
     
     const users = client.getStorage("users") || [];
@@ -1317,8 +1693,21 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
   if (funcName === "equip_guild_decoration") {
     const { p_guild_id, p_type, p_item_id } = params;
     const guilds = client.getStorage("guilds") || [];
+    const members = client.getStorage("guild_members") || [];
+    const currentUserId = typeof window === "undefined" ? null : localStorage.getItem("tribe_demo_uuid");
+    const membership = members.find((member: any) => member.guild_id === p_guild_id && member.user_id === currentUserId);
+    if (membership?.role !== "MASTER") {
+      return { data: null, error: { message: "Only the guild master can change guild page items" } };
+    }
     const g = guilds.find((x: any) => x.id === p_guild_id);
     if (g) {
+      const ownedItems = p_type === "DECORATION" ? g.unlocked_decorations : g.unlocked_banners;
+      if (p_type !== "DECORATION" && p_type !== "BANNER") {
+        return { data: null, error: { message: "Invalid guild item type" } };
+      }
+      if (p_item_id !== null && !(Array.isArray(ownedItems) && ownedItems.includes(p_item_id))) {
+        return { data: null, error: { message: "Guild item is not owned" } };
+      }
       if (p_type === "DECORATION") g.equipped_decoration = p_item_id;
       else g.equipped_banner = p_item_id;
       client.setStorage("guilds", guilds);
@@ -1329,7 +1718,25 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
 
   if (funcName === "buy_guild_decoration_v2") {
     const { p_guild_id, p_type, p_item_id, p_cost } = params;
+    const guildShopPrices: Record<string, number> = {
+      bg_neon_kabukicho: 5000,
+      bg_industrial_docks: 10000,
+      banner_neon_reign: 3000,
+      banner_kabukicho_king: 8000
+    };
     const guilds = client.getStorage("guilds") || [];
+    const members = client.getStorage("guild_members") || [];
+    const currentUserId = typeof window === "undefined" ? null : localStorage.getItem("tribe_demo_uuid");
+    const membership = members.find((member: any) => member.guild_id === p_guild_id && member.user_id === currentUserId);
+    if (membership?.role !== "MASTER" && membership?.role !== "SUBMASTER") {
+      return { data: null, error: { message: "Only guild masters and submasters can purchase guild items" } };
+    }
+    const expectedCost = guildShopPrices[p_item_id];
+    const isValidType = (p_type === "DECORATION" && ["bg_neon_kabukicho", "bg_industrial_docks"].includes(p_item_id))
+      || (p_type === "BANNER" && ["banner_neon_reign", "banner_kabukicho_king"].includes(p_item_id));
+    if (!isValidType || typeof p_cost !== "number" || p_cost !== expectedCost) {
+      return { data: null, error: { message: "Invalid guild item purchase" } };
+    }
     const g = guilds.find((x: any) => x.id === p_guild_id);
     if (!g || (g.funds || 0) < p_cost) return { error: { message: "ギルド資金が不足しています。" } };
     
@@ -1517,7 +1924,8 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     const user = users.find((u: any) => u.id === p_user_id);
     if (!user || user.vitality < p_cost_vitality) return { error: { message: "スタミナが不足しています。" } };
     
-    const has_battle = Math.random() <= (p_battle_chance || 0.2);
+    const tutorialProgress = (client.getStorage("tutorial_progress") || []).find((entry: any) => entry.user_id === p_user_id);
+    const has_battle = tutorialProgress?.step_id === "DISPATCH" || Math.random() <= (p_battle_chance || 0.2);
     const newId = "patrol_" + Date.now();
     const patrols = client.getStorage("user_patrols") || [];
     
@@ -1599,7 +2007,7 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     const { p_user_id } = params;
     const users = client.getStorage("users") || [];
     const user = users.find((u: any) => u.id === p_user_id);
-    if (!user || user.pvp_points < 1) return { error: { message: "PvP入場券が不足しています。" } };
+    if (!user || user.pvp_points < 1) return { error: { message: "PvPポイントが不足しています。" } };
     
     if (user.pvp_points === 5) user.pvp_points_last_recovered_at = new Date().toISOString();
     user.pvp_points -= 1;

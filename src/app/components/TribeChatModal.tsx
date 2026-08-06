@@ -13,6 +13,7 @@ export default function TribeChatModal() {
     userGuild,
     userGuildMember,
     guildMembersList,
+    userFriends,
     chatChannel,
     setChatChannel,
     guildChats,
@@ -25,11 +26,17 @@ export default function TribeChatModal() {
     dmRecipientId,
     setDmRecipientId,
     directMessages,
-    handleSendDirectMessage
+    handleSendDirectMessage,
+    fetchPlayerDetail
   } = useGame();
 
   const [localDmText, setLocalDmText] = useState("");
   const chatBodyRef = useRef<HTMLDivElement>(null);
+  const hasProfileSelectedRecipient = Boolean(
+    dmRecipientId
+      && !guildMembersList?.some((member: any) => member.user_id === dmRecipientId)
+      && !userFriends?.some((friend: any) => friend.id === dmRecipientId)
+  );
 
   useEffect(() => {
     if (showTribeChatPanel && chatBodyRef.current) {
@@ -39,12 +46,12 @@ export default function TribeChatModal() {
 
   if (!showTribeChatPanel) return null;
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && !chatSending && chatCooldown === 0) {
       if (chatChannel === "DM") {
         if (localDmText.trim() && dmRecipientId) {
-          handleSendDirectMessage(dmRecipientId, localDmText);
-          setLocalDmText("");
+          const sent = await handleSendDirectMessage(dmRecipientId, localDmText);
+          if (sent) setLocalDmText("");
         }
       } else {
         if (chatInput.trim()) {
@@ -54,11 +61,11 @@ export default function TribeChatModal() {
     }
   };
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (chatChannel === "DM") {
       if (localDmText.trim() && dmRecipientId) {
-        handleSendDirectMessage(dmRecipientId, localDmText);
-        setLocalDmText("");
+        const sent = await handleSendDirectMessage(dmRecipientId, localDmText);
+        if (sent) setLocalDmText("");
       }
     } else {
       if (chatInput.trim()) {
@@ -95,28 +102,40 @@ export default function TribeChatModal() {
             <label className="tribe-dm-label font-size-8 text-secondary mb-1 block">送信相手:</label>
             <div style={{ display: 'flex', gap: '8px' }}>
               <input
-                type="text"
+                type="hidden"
                 placeholder="ユーザーIDを入力..."
                 value={dmRecipientId || ""}
                 onChange={(e) => setDmRecipientId(e.target.value)}
                 className="tribe-dm-recipient-input form-input"
                 style={{ flex: 1 }}
               />
-              {userGuild && guildMembersList && guildMembersList.length > 0 && (
+              {(
                 <select
                   value={dmRecipientId || ""}
                   onChange={(e) => setDmRecipientId(e.target.value)}
                   className="tribe-dm-recipient-select form-input"
                   style={{ flex: 1 }}
                 >
+                  {hasProfileSelectedRecipient && (
+                    <option value={dmRecipientId}>プロフィールから選択したユーザー</option>
+                  )}
                   <option value="">ギルドメンバーから選択</option>
-                  {guildMembersList.map((m: any) => (
+                  {guildMembersList?.map((m: any) => (
                     m.user_id !== session?.user?.id && (
                       <option key={m.user_id} value={m.user_id}>
                         {m.users?.username || "プレイヤー名"} (Lv.{m.userLevel || 1})
                       </option>
                     )
                   ))}
+                  {userFriends?.length > 0 && (
+                    <optgroup label="フレンド">
+                      {userFriends.map((friend: any) => (
+                        <option key={friend.id} value={friend.id}>
+                          {friend.username || "プレイヤー"} (Lv.{friend.level || 1})
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
                 </select>
               )}
             </div>
@@ -137,7 +156,16 @@ export default function TribeChatModal() {
                 return (
                   <div key={idx} className={`tribe-msg-row ${isSelf ? "self" : "other"}`}>
                     <div className="tribe-msg-header">
-                      <span className="tribe-msg-author">{msg.sender_name || "ユーザー"}</span>
+                      <button
+                        type="button"
+                        className="tribe-msg-author"
+                        onClick={() => {
+                          const profileUserId = isSelf ? msg.recipient_id : msg.sender_id;
+                          if (profileUserId) fetchPlayerDetail(profileUserId);
+                        }}
+                      >
+                        {msg.sender_name || "ユーザー"}
+                      </button>
                       {timeStr && <span className="tribe-msg-time">{timeStr}</span>}
                     </div>
                     <div className="tribe-msg-bubble">{msg.message || msg.content || ""}</div>
@@ -154,7 +182,15 @@ export default function TribeChatModal() {
                 return (
                   <div key={idx} className={`tribe-msg-row ${isSelf ? "self" : "other"}`}>
                     <div className="tribe-msg-header">
-                      <span className="tribe-msg-author">{msg.author_name}</span>
+                      <button
+                        type="button"
+                        className="tribe-msg-author"
+                        onClick={() => {
+                          if (msg.user_id && msg.user_id !== session?.user?.id) fetchPlayerDetail(msg.user_id);
+                        }}
+                      >
+                        {msg.author_name}
+                      </button>
                     </div>
                     <div className="tribe-msg-bubble">{msg.content || ""}</div>
                   </div>

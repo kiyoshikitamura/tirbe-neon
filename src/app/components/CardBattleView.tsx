@@ -14,12 +14,11 @@ export default function CardBattleView() {
     battleState,
     setBattleState,
     battleLog,
-    ap,
-    maxAp,
     tactic,
     setTactic,
     battleSpeed,
     setBattleSpeed,
+    monthlyPassActive,
     isAutoPaused,
     setIsAutoPaused,
     setConfirmDialogConfig,
@@ -27,6 +26,7 @@ export default function CardBattleView() {
     enemyPartyStates,
     timeline,
     timelineIndex,
+    battleRound,
     activeSkillCutIn,
     targetLine,
     activeShakingCharId,
@@ -73,12 +73,24 @@ export default function CardBattleView() {
   // 1. SETUP 出撃準備画面
   if (battleState === "SETUP") {
     const isPvP = battleMode === "PVP" || battleMode === "GVG";
+    const enemyPower = enemyPartyStates.reduce((total: number, enemy: any) => {
+      const stats = enemy.stats || {};
+      return total + Number(enemy.maxHp || 0) + Number(stats.atk || 0) + Number(stats.def || 0);
+    }, 0);
+    const enemySkills = enemyPartyStates.flatMap((enemy: any) => enemy.skills || []);
 
     return (
       <div className="battle-screen" onClick={handleFirstUserInteraction}>
         <div className="setup-container scroll-container">
           <div className="setup-title-bar">
             抗争準備フェーズ (SETUP)
+          </div>
+
+          <div className="setup-match-heading" aria-label="battle briefing">
+            <span className="setup-mode-stamp">
+              {battleMode === "GVG" ? "抗争" : battleMode === "PVP" ? "対決" : battleMode === "RAID" ? "討伐" : "出撃"}
+            </span>
+            <span className="setup-match-copy">AUTO BATTLE BRIEFING</span>
           </div>
 
           <div className="setup-scroll-area">
@@ -114,9 +126,22 @@ export default function CardBattleView() {
                   </div>
                 </div>
               )}
+              <div className="setup-enemy-detail-list mt-2">
+                <span className="font-size-7 text-secondary">POWER: {enemyPower.toLocaleString()}</span>
+                <span className="font-size-7 text-secondary">
+                  STATS: ATK {enemyPartyStates.reduce((total: number, enemy: any) => total + Number(enemy.stats?.atk || 0), 0).toLocaleString()}
+                  {" / "}DEF {enemyPartyStates.reduce((total: number, enemy: any) => total + Number(enemy.stats?.def || 0), 0).toLocaleString()}
+                  {" / "}SPD {enemyPartyStates.reduce((total: number, enemy: any) => total + Number(enemy.stats?.spd || 0), 0).toLocaleString()}
+                </span>
+                {enemySkills.length > 0 && (
+                  <span className="font-size-7 text-secondary">SKILLS: {enemySkills.map((skill: any) => skill.name).join(", ")}</span>
+                )}
+              </div>
             </div>
 
             {/* 下段：自部隊カード編成 */}
+            <div className="setup-versus-marker" aria-hidden="true"><span>VS</span></div>
+
             <div className="setup-player-wrapper">
               <div className="setup-player-title">
                 <span>自連合部隊 (編成キャラ)</span>
@@ -151,7 +176,7 @@ export default function CardBattleView() {
                     </div>
                   );
                 })}
-                {playerPartyStates.length < 6 && (
+                {!isPvP && playerPartyStates.length < 6 && (
                   <div 
                     className="setup-char-card flex-col items-center justify-center cursor-pointer active-scale-effect border-subtle bg-black-60"
                     onClick={() => { playCyberSe("click"); setShowFriendPanel(true); }}
@@ -171,12 +196,11 @@ export default function CardBattleView() {
               </div>
               <div className="tactic-grid">
                 {[
-                  { id: "OFFENSIVE", label: "攻撃重視" },
-                  { id: "DEFENSIVE", label: "防御重視" },
-                  { id: "HEALING", label: "回復重視" },
+                  { id: "ATTACK_PRIORITY", label: "攻撃優先" },
+                  { id: "HEAL_PRIORITY", label: "回復優先" },
+                  { id: "SKILL_PRIORITY", label: "スキル優先" },
                   { id: "BALANCED", label: "バランス" },
-                  { id: "AP_CONSERVING", label: "速攻/AP温存" },
-                  { id: "TACTICAL", label: "支援/妨害重視" }
+                  { id: "WEAKNESS_FOCUS", label: "弱点集中" }
                 ].map(t => (
                   <button
                     key={t.id}
@@ -228,15 +252,12 @@ export default function CardBattleView() {
                   <div className="detail-modal-section-title">装備スキル (Skills)</div>
                   {selectedCharDetail.skills.length > 0 ? (
                     selectedCharDetail.skills.map((sk: any, idx: number) => {
-                      const isSynergy = sk.ownerId && sk.ownerId === selectedCharDetail.characterId;
-                      const displayCost = isSynergy ? Math.max(sk.ap_cost - 1, 1) : sk.ap_cost;
                       return (
                         <div key={idx} className="detail-modal-row mb-1">
                           <span className="text-white">
                             {sk.name}
-                            {isSynergy && <span className="synergy-badge">得意</span>}
                           </span>
-                          <span className="val">Cost:{displayCost} ｜ Pwr:{sk.power}</span>
+                          <span className="val">倍率: {sk.power}%</span>
                         </div>
                       );
                     })
@@ -440,24 +461,28 @@ export default function CardBattleView() {
         {/* 最下部：AP、作戦表示、戦闘ログ、制御ボタン */}
         <div className="battle-controls-layout">
           <div className="battle-control-hud-row">
-            <div className="flex items-center gap-2">
-              <span className="font-size-7 text-secondary">部隊AP:</span>
-              <span className="font-size-12 font-bold text-color-cyan">{ap} / {maxAp}</span>
-            </div>
+            <span className="font-size-7 text-secondary">フルオート進行</span>
             <div className="flex items-center gap-1.5">
               <span className="font-size-6 text-secondary">現在の作戦:</span>
               <span className="font-size-7 font-weight-bold text-white bg-black-40 px-2 py-0.5 border border-white-08 rounded">
-                {tactic === "OFFENSIVE" ? "攻撃重視" :
-                 tactic === "DEFENSIVE" ? "防御重視" :
-                 tactic === "HEALING" ? "回復重視" :
-                 tactic === "BALANCED" ? "バランス" :
-                 tactic === "AP_CONSERVING" ? "速攻/AP温存" : "支援/妨害重視"}
+                {tactic === "ATTACK_PRIORITY" ? "攻撃優先" :
+                 tactic === "HEAL_PRIORITY" ? "回復優先" :
+                 tactic === "SKILL_PRIORITY" ? "スキル優先" :
+                 tactic === "WEAKNESS_FOCUS" ? "弱点集中" : "バランス"}
               </span>
             </div>
             <div className="flex items-center gap-2">
+              <span className="font-size-7 font-weight-bold text-white bg-black-40 px-2 py-0.5 border border-white-08 rounded">
+                Round {battleRound}/{battleMode === "RAID" ? 30 : battleMode === "PVP" || battleMode === "GVG" ? 20 : 15}
+              </span>
               <button 
-                className={`speed-toggle-btn active-scale-effect ${battleSpeed === 2 ? "active" : ""}`}
-                onClick={() => { setBattleSpeed(battleSpeed === 1 ? 2 : 1); playCyberSe("click"); }}
+                className={`speed-toggle-btn active-scale-effect ${battleSpeed > 1 ? "active" : ""}`}
+                onClick={() => {
+                  const nextSpeed = battleSpeed === 1 ? 2 : battleSpeed === 2 && monthlyPassActive ? 3 : 1;
+                  setBattleSpeed(nextSpeed);
+                  playCyberSe("click");
+                }}
+                title={monthlyPassActive ? "1倍・2倍・3倍速を切替" : "通常は1倍・2倍速。3倍速はVIPパス限定"}
               >
                 {battleSpeed}x速
               </button>

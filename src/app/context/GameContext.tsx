@@ -236,6 +236,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     selectedBgMode, setSelectedBgMode,
     equippedFrontEffect, setEquippedFrontEffect,
     titleEquipped, setTitleEquipped,
+    ownedTitles,
     interiorItem, setInteriorItem,
     selectedLeader, setSelectedLeader,
     upgradeSelectedCharId, setUpgradeSelectedCharId,
@@ -433,7 +434,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     username,
     selectedLeader,
     userGuildMember,
-    (type: string) => playCyberSe(type as any)
+    (type: string) => playCyberSe(type as any),
+    setErrorMessage
   );
 
   const {
@@ -572,31 +574,31 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   // ==========================================
   // ⚡ デバッグ優先: 自動ログインバイパス (リロード時の認証・セットアップ省略)
   // ==========================================
-  const DEBUG_DUMMY_SESSION: any = {
-    user: {
-      id: "11111111-1111-1111-1111-111111111111",
-      email: "demo@tribeneon.local"
-    }
-  };
-
   useEffect(() => {
     // 既存セッションがある場合はそれを使い、無い場合でも自動でデバッグ用ダミーセッションで即時マイページへ
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      const activeSession = session || DEBUG_DUMMY_SESSION;
-      setSession(activeSession);
-      setIsSetupRequired(false);
-      syncBootstrapData(activeSession.user.id).finally(() => {
+    const startAnonymousSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        setSession(session);
+        await checkIfSetupRequired(session.user.id);
+        return;
+      }
+      const { data, error } = await supabase.auth.signInAnonymously();
+      if (error || !data.session) {
+        console.warn("Anonymous game session could not be created", error);
+        setSession(null);
         setAuthLoading(false);
-      });
-    });
+        return;
+      }
+      setSession(data.session);
+      await checkIfSetupRequired(data.session.user.id);
+    };
+    void startAnonymousSession();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      const activeSession = session || DEBUG_DUMMY_SESSION;
-      setSession(activeSession);
-      setIsSetupRequired(false);
-      syncBootstrapData(activeSession.user.id).finally(() => {
-        setAuthLoading(false);
-      });
+      if (!session) return;
+      setSession(session);
+      void checkIfSetupRequired(session.user.id);
     });
 
     return () => subscription.unsubscribe();
@@ -822,7 +824,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       }
 
       await checkAndClaimLoginBonus(userId);
-      const { data: recovered } = await supabase.rpc("sync_and_recover_vitality_and_tickets", {
+      const { data: recovered } = await supabase.rpc("sync_and_recover_vitality_and_pvp_points", {
         p_user_id: userId
       });
       
@@ -847,10 +849,10 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         console.warn("Failed to fetch monthly pass:", err);
       }
       
-      if (recovered && recovered.length > 0) {
-        const row = recovered[0];
+      if (recovered) {
+        const row = Array.isArray(recovered) ? recovered[0] : recovered;
         setVitality(row.out_vitality);
-        setPvpPoints(row.out_tickets);
+        setPvpPoints(row.out_pvp_points);
         setCash(Number(row.out_cash));
         setDiamonds(row.out_diamonds);
       }
@@ -1613,7 +1615,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       if (missionsData) {
         setMissions(missionsData.map(um => {
           const m = (um.missions as any) || {};
-          let rewardLabel = `${m.reward_item_id === "CASH" ? "キャッシュ" : m.reward_item_id === "DIAMOND" ? "ダイヤ" : "強化素材"} +${m.reward_quantity || 0}`;
+          const rewardLabel = `${m.reward_item_id === "CASH" ? "キャッシュ" : m.reward_item_id === "DIAMOND" ? "ダイヤ" : "強化素材"} +${m.reward_quantity || 0}`;
           return {
             id: um.mission_id,
             title: m.title || "不明なミッション",
@@ -1641,14 +1643,14 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     if (!session) return;
     const recoveryTimer = setInterval(async () => {
       try {
-        const { data: recovered } = await supabase.rpc("sync_and_recover_vitality_and_tickets", {
+        const { data: recovered } = await supabase.rpc("sync_and_recover_vitality_and_pvp_points", {
           p_user_id: session.user.id
         });
         
-        if (recovered && recovered.length > 0) {
-          const row = recovered[0];
+        if (recovered) {
+          const row = Array.isArray(recovered) ? recovered[0] : recovered;
           setVitality(row.out_vitality);
-          setPvpPoints(row.out_tickets);
+          setPvpPoints(row.out_pvp_points);
           setCash(Number(row.out_cash));
           setDiamonds(row.out_diamonds);
         }
@@ -1678,6 +1680,10 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   // 💬 チャットフェッチ ＆ Realtime
   useEffect(() => {
     if (!session) return;
+    if (chatChannel === "DM") {
+      setGuildChats([]);
+      return;
+    }
     
     const fetchChats = async () => {
       let query = supabase
@@ -2247,9 +2253,14 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       }
 
       setActivePlayerDetail({
+        id: user.id,
         username: user.username,
+        avatarUrl: user.avatar_url || "/reiji_transparent_asset.png",
         bio: user.bio || "自己紹介が未設定です。",
         level: user.level,
+        xp: user.xp || 0,
+        titleName: user.title_name || user.title_equipped || "称号なし",
+        guildName: user.guild_name || null,
         party: partyDetails
       });
     } catch (e: any) {
@@ -2305,7 +2316,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         name: guild.name,
         level: guild.level,
         xp: guild.xp,
-        member_limit: guild.member_limit || 15,
+        member_limit: guild.member_limit || (guild.level <= 1 ? 10 : guild.level === 2 ? 12 : guild.level === 3 ? 15 : guild.level === 4 ? 18 : 20),
         member_count: count || 0,
         main_alignment: guild.main_alignment,
         sub_alignment: guild.sub_alignment,
@@ -2421,12 +2432,12 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       const { data: guildsAll } = await supabase.from("guilds").select("id");
       if (guildsAll && guildsAll.length > 0) {
         const nextIsFinal = nextDay === 7;
-        let matchGuilds = [...guildsAll];
+        const matchGuilds = [...guildsAll];
 
         if (nextIsFinal) {
           // 7日目の決戦: 4拠点の支配ギルド（計4ギルド）を抽出
           const { data: finalGuildsCtrl } = await supabase.from("guild_base_controls").select("guild_id").eq("is_controlling", true);
-          let finalGuilds = finalGuildsCtrl?.map((c: any) => c.guild_id).filter(Boolean) || [];
+          const finalGuilds = finalGuildsCtrl?.map((c: any) => c.guild_id).filter(Boolean) || [];
 
           // 4つに満たない場合は支配日数の多い順に補填
           if (finalGuilds.length < 4) {
@@ -2619,6 +2630,12 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         if (typeof drawResult.data?.diamonds === "number") setDiamonds(drawResult.data.diamonds);
         if (useCurrency === "FREE") setDailyFreeGachaFlags(prev => ({ ...prev, CHARACTER: false }));
         await syncBootstrapData(session.user.id);
+        if (useCurrency === "FREE" && scoutType === "CHAR_NORMAL" && scoutCount === 10) {
+          await supabase.rpc("advance_tutorial_progress", {
+            p_expected_step: "FREE_GACHA",
+            p_next_step: "AUTO_FORMATION"
+          });
+        }
         setScoutResults(results);
         setScoutFlashingColor(results.some((r: { rarity: string }) => r.rarity === "SSR") ? "GOLD" : results.some((r: { rarity: string }) => r.rarity === "SR") ? "PURPLE" : "BLUE");
         setScoutAnimationState("FLASHING");
@@ -3071,6 +3088,10 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     if (!session) return false;
     const product = SHOP_PRODUCTS_MASTER.find(p => p.id === productId);
     if (!product) return false;
+    if (product.id === "vip_pass_01") {
+      const result = await handlePurchaseMonthlyPass();
+      return !!result?.success;
+    }
 
     setProfileLoading(true);
     playCyberSe("click");
@@ -3245,6 +3266,49 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     } else {
       setSelectedMembers(nextParty);
     }
+  };
+
+  const handleAutoFormation = async () => {
+    const nextParty = [...userCharactersDbList]
+      .sort((left: any, right: any) => {
+        const leftStats = getCharacterTotalStats(left, userEquipmentsList);
+        const rightStats = getCharacterTotalStats(right, userEquipmentsList);
+        const leftPower = leftStats.hp + leftStats.atk + leftStats.def;
+        const rightPower = rightStats.hp + rightStats.atk + rightStats.def;
+        return rightPower - leftPower;
+      })
+      .slice(0, 5)
+      .map((character: any) => character.character_id);
+
+    if (nextParty.length === 0) {
+      setErrorMessage("No characters are available for formation.");
+      return false;
+    }
+
+    playCyberSe("click");
+    if (session?.user?.id) {
+      const { error } = await supabase.from("pvp_defense_decks").upsert({
+        user_id: session.user.id,
+        character_1_id: nextParty[0] || null,
+        character_2_id: nextParty[1] || null,
+        character_3_id: nextParty[2] || null,
+        character_4_id: nextParty[3] || null,
+        character_5_id: nextParty[4] || null,
+        updated_at: new Date().toISOString()
+      }, { onConflict: "user_id" });
+      if (error) {
+        setErrorMessage("Failed to save the formation.");
+        return false;
+      }
+      await supabase.rpc("advance_tutorial_progress", {
+        p_expected_step: "AUTO_FORMATION",
+        p_next_step: "DISPATCH"
+      });
+    }
+    setSelectedMembers(nextParty);
+    setUpgradeSelectedCharId(nextParty[0]);
+    navigateTab("patrol");
+    return true;
   };
 
   const unreadMissionsCount = missions.filter(m => m.status === "CLEAR").length;
@@ -3444,7 +3508,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     equippedBackground, setEquippedBackground,
     equippedFrontEffect, setEquippedFrontEffect,
     titleEquipped, setTitleEquipped,
-    userTitle: titleEquipped || "半グレの首領",
+    ownedTitles,
+    userTitle: ownedTitles.find((title) => title.id === titleEquipped)?.name || titleEquipped || "称号なし",
     totalPower,
     isRaidActive: raidBossHp > 0 && raidBossSecondsLeft > 0,
 
@@ -3488,6 +3553,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     setTimeline: battle.setTimeline,
     timelineIndex: battle.timelineIndex,
     setTimelineIndex: battle.setTimelineIndex,
+    battleRound: battle.battleRound,
     activeSkillCutIn: battle.activeSkillCutIn,
     targetLine: battle.targetLine,
     activeShakingCharId: battle.activeShakingCharId,
@@ -3578,6 +3644,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     selectUpgradeEquipment,
     togglePatrolMemberSelection,
     handleTogglePartyMember,
+    handleAutoFormation,
     navigateTab,
     getGuildPenaltyState,
     handlePowerDailyReset,

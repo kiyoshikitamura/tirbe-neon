@@ -24,9 +24,9 @@ export function useStory(
     try {
       await supabase.from("story_sessions").update({ status: "COMPLETED" }).eq("user_id", session.user.id);
 
-      let rewardText = "模擬戦クリア報酬";
-      let bonusDiamonds = 150;
-      let bonusCash = 5000;
+      const rewardText = "模擬戦クリア報酬";
+      const bonusDiamonds = 150;
+      const bonusCash = 5000;
 
       if (bonusDiamonds > 0 || bonusCash > 0) {
         const expireAt = new Date(Date.now() + 24 * 60 * 60 * 1000);

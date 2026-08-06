@@ -1,6 +1,8 @@
 -- 20260804000001_vitality_timer_recovery.sql
 
-CREATE OR REPLACE FUNCTION sync_and_recover_vitality_and_tickets(p_user_id UUID)
+DROP FUNCTION IF EXISTS public.sync_and_recover_vitality_and_pvp_points(UUID);
+
+CREATE OR REPLACE FUNCTION sync_and_recover_vitality_and_pvp_points(p_user_id UUID)
 RETURNS json
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -13,7 +15,7 @@ DECLARE
     v_pvp_elapsed_sec INT;
     v_pvp_recovery INT;
     v_out_vitality INT;
-    v_out_pvp_tickets INT;
+    v_out_pvp_points INT;
 BEGIN
     SELECT * INTO v_user FROM users WHERE id = p_user_id FOR UPDATE;
     IF NOT FOUND THEN
@@ -32,19 +34,19 @@ BEGIN
     END IF;
 
     -- PvPポイント (30分 = 1800秒 / 1pt, 上限5)
-    v_out_pvp_tickets := v_user.pvp_tickets;
-    IF v_user.pvp_tickets < 5 THEN
-        v_pvp_elapsed_sec := EXTRACT(EPOCH FROM (v_now - COALESCE(v_user.pvp_tickets_last_recovered_at, v_now)));
-        v_pvp_recovery := FLOOR(v_pvp_elapsed_sec / 1800);
+    v_out_pvp_points := v_user.pvp_points;
+    IF v_user.pvp_points < 5 THEN
+        v_pvp_elapsed_sec := EXTRACT(EPOCH FROM (v_now - COALESCE(v_user.pvp_points_last_recovered_at, v_now)));
+        v_pvp_recovery := FLOOR(v_pvp_elapsed_sec / 3600);
         IF v_pvp_recovery > 0 THEN
-            v_out_pvp_tickets := LEAST(5, v_user.pvp_tickets + v_pvp_recovery);
-            UPDATE users SET pvp_tickets = v_out_pvp_tickets, pvp_tickets_last_recovered_at = v_now WHERE id = p_user_id;
+            v_out_pvp_points := LEAST(5, v_user.pvp_points + v_pvp_recovery);
+            UPDATE users SET pvp_points = v_out_pvp_points, pvp_points_last_recovered_at = v_now WHERE id = p_user_id;
         END IF;
     END IF;
 
     RETURN json_build_object(
         'out_vitality', v_out_vitality,
-        'out_pvp_tickets', v_out_pvp_tickets
+        'out_pvp_points', v_out_pvp_points
     );
 END;
 $$;

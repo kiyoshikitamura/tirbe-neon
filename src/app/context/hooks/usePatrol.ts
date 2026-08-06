@@ -116,6 +116,10 @@ export function usePatrol(
 
       setActivePatrols(prev => [...prev, newPatrol]);
       setSelectedPatrolMember(null);
+      await supabase.rpc("advance_tutorial_progress", {
+        p_expected_step: "DISPATCH",
+        p_next_step: "FREE_INSTANT"
+      });
     } catch (err: any) {
       console.warn(err.message);
     } finally {
@@ -123,9 +127,9 @@ export function usePatrol(
     }
   };
 
-  const handleInstantComplete = async (currency: "CASH" | "DIAMOND", patrolId: string) => {
+  const handleInstantComplete = async (currency: "CASH" | "DIAMOND" | "FREE_TUTORIAL", patrolId: string) => {
     const targetPatrol = activePatrols.find(p => p.id === patrolId);
-    if (!session || !targetPatrol) return;
+    if (!session || !targetPatrol) return false;
     setDispatchLoading(true);
     playCyberSe("click");
 
@@ -138,17 +142,25 @@ export function usePatrol(
 
       if (error) {
         setErrorMessage(error.message);
-        return;
+        return false;
       }
 
       if (data && data.status === "success") {
+        if (currency === "FREE_TUTORIAL") {
+          await supabase.rpc("advance_tutorial_progress", {
+            p_expected_step: "FREE_INSTANT",
+            p_next_step: "TUTORIAL_BATTLE"
+          });
+        }
         await syncBootstrapData(session.user.id);
+        return true;
       }
     } catch (err: any) {
       console.warn(err.message);
     } finally {
       setDispatchLoading(false);
     }
+    return false;
   };
 
   const handleClaimRewards = async (patrolId: string) => {
@@ -183,8 +195,8 @@ export function usePatrol(
 
       const lvlBonusMultiplier = 1.0 + (charLevel - 1) * 0.01;
 
-      let finalCash = Math.floor((course.reward_cash + cashBonus) * lvlBonusMultiplier);
-      let finalXp = Math.floor(course.reward_xp * lvlBonusMultiplier);
+      const finalCash = Math.floor((course.reward_cash + cashBonus) * lvlBonusMultiplier);
+      const finalXp = Math.floor(course.reward_xp * lvlBonusMultiplier);
 
       let rewardItemId = "";
       let rewardQuantity = 0;

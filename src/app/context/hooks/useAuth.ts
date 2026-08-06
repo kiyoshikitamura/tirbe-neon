@@ -124,6 +124,10 @@ export function useAuth(
       setErrorMessage("ユーザー名を入力してください。");
       return;
     }
+    if (Array.from(setupUsername.trim()).length > 8) {
+      setErrorMessage("ユーザー名は8文字以内で入力してください。");
+      return;
+    }
     setSetupLoading(true);
     try {
       const { error } = await supabase.rpc("initialize_new_user", {
@@ -153,8 +157,10 @@ export function useAuth(
         return;
       }
 
-      setIsSetupRequired(false);
       setSetupGiftCode("");
+      const { error: tutorialError } = await supabase.rpc("start_tutorial_progress");
+      if (tutorialError) throw tutorialError;
+      setIsSetupRequired(false);
       await syncBootstrapData(session.user.id);
       setConfirmDialogConfig({ isOpen: true, title: "登録完了", message: "プレイヤー登録が完了し、東京支配の戦いに参入しました！まずはチュートリアルスカウトで最初の構成員をスカウトしてください。", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
       navigateTab("gacha");

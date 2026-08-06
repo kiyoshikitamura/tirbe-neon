@@ -1,16 +1,20 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Image from "next/image";
 import { useGame } from "../context/GameContext";
 import { BASE_MAP_MASTER } from "../../utils/game_constants";
 import { CHARACTERS_MASTER } from "../../utils/game_constants";
 import { getCurrentSession, getGvgPhase } from "../../utils/gvg_utils";
+import GvgMatchStatusPanel from "./GvgMatchStatusPanel";
 import "./GvgTab.css";
+
+type GvgBaseView = { id: string; rank: string; name: string; controlledBy: string; description: string; topPoints: number };
+type UserCharacterView = { id: string; character_id: string; level: number };
 
 export default function GvgTab() {
   const {
     userGuild,
-    userGuildMember,
     handleGvgDailyReset,
     handleGvgSeasonReset,
     gvgResetLoading,
@@ -18,9 +22,7 @@ export default function GvgTab() {
     gvgSeasonDay,
     setGvgSeasonDay,
     myGvgMatch,
-    gvgMatches,
     gvgDefenseDeck,
-    personalGvgPoints,
     gvgActiveRound,
     setGvgActiveRound,
     startCardBattle,
@@ -43,7 +45,6 @@ export default function GvgTab() {
   
   const currentSession = getCurrentSession(now);
   const phase = getGvgPhase(now);
-  const isRoundActive = currentSession?.isActive || gvgActiveRound > 0;
   
   const formatTimeLeft = (target: Date) => {
     const diff = target.getTime() - now.getTime();
@@ -184,11 +185,15 @@ export default function GvgTab() {
       <div className="scroll-container flex-1">
         {userGuild ? (
           <div className="flex-col-gap-3">
-            {/* GvG 開発・デバッグ用管理コンソール */}
-            <div className="gvg-console-layout p-3 flex-col-gap-2">
+            <GvgMatchStatusPanel
+              guildId={userGuild.id}
+              onStartAttack={(matchId) => startCardBattle("GVG", "公式GvG防衛チーム", `gvg_match:${matchId}`)}
+            />
+            {/* 旧拠点制の移行中表示。公式マッチ以外では侵攻できない。 */}
+            <div className="gvg-console-layout p-3 flex-col-gap-2" hidden>
               <div className="flex-row-space-between align-center">
                 <div>
-                  <span className="battle-card-title block text-color-cyan">抗争 開発エミュレータ</span>
+                  <span className="battle-card-title block text-color-cyan">旧拠点制情報（参照のみ）</span>
                   <span className="font-size-7 text-secondary">※実機検証・テスト用に時間帯や日数を手動で進められます。</span>
                 </div>
                 <div className="flex-row-gap-2">
@@ -341,9 +346,9 @@ export default function GvgTab() {
             </div>
 
             {/* 侵攻先拠点リスト */}
-            <div className="list-container flex-col-gap-2">
+            <div className="list-container flex-col-gap-2" hidden>
               <span className="font-size-9 font-weight-bold text-secondary px-1">侵攻対象拠点 (守備拠点以外の地区へ侵攻可能)</span>
-              {gvgBases.map((b: any) => {
+              {(gvgBases as GvgBaseView[]).map((b) => {
                 const isHome = b.id === myHomeBaseId;
                 const isRoundActive = gvgActiveRound > 0;
 
@@ -382,13 +387,13 @@ export default function GvgTab() {
                             デイリー順位
                           </button>
                           <button
-                            disabled={!isRoundActive || gvgResetLoading || vitality < 20}
+                            disabled
                             onClick={() => startCardBattle("GVG", `${b.name}防衛チーム`, b.id)}
                             className={`sub-btn height-26 px-4 font-size-8 font-weight-bold active-scale-effect ${
                               isRoundActive && vitality >= 20 ? "border-cyan text-color-cyan" : "border-subtle text-secondary opacity-50"
                             }`}
                           >
-                            {gvgResetLoading ? <span className="simple-spinner" /> : isRoundActive ? "侵攻 (20 AP)" : "準備中"}
+                            旧拠点制は廃止
                           </button>
                         </div>
                       </div>
@@ -399,17 +404,17 @@ export default function GvgTab() {
             </div>
 
             {/* 練習用: 自ギルドの防衛チームとの演習バトル */}
-            <div className="gvg-base-card p-3 flex-row-space-between align-center border-magenta-subtle">
+            <div className="gvg-base-card p-3 flex-row-space-between align-center border-magenta-subtle" hidden>
               <div className="flex-col">
                 <span className="font-size-9 font-weight-bold text-color-magenta block">防衛演習 (練習バトル)</span>
                 <span className="font-size-7 text-secondary">自ギルドの登録防衛デッキと模擬戦を行い、防衛力を試せます。</span>
               </div>
               <button
-                disabled={gvgResetLoading}
+                disabled
                 onClick={() => startCardBattle("GVG", "防衛演習", userGuild.id)}
                 className="sub-btn border-magenta-subtle text-color-magenta height-26 px-4 font-size-8 font-weight-bold active-scale-effect"
               >
-                {gvgResetLoading ? <span className="simple-spinner" /> : "演習開始"}
+                新GvGへ統合
               </button>
             </div>
           </div>
@@ -441,7 +446,7 @@ export default function GvgTab() {
                 手持ちキャラクターから守備メンバー（最大5名）を選択してください。(選択中: {tempSelectedChars.length}/5名)
               </span>
               <div className="character-select-grid mt-2">
-                {userCharactersDbList.map((char: any) => {
+                {(userCharactersDbList as UserCharacterView[]).map((char) => {
                   const master = CHARACTERS_MASTER.find(c => c.id === char.character_id);
                   const isSelected = tempSelectedChars.includes(char.id);
                   const avatarUrl = char.character_id === "11111111-1111-1111-1111-111111111111" 
@@ -456,7 +461,7 @@ export default function GvgTab() {
                       onClick={() => toggleCharSelection(char.id)}
                       className={`char-select-card ${isSelected ? "selected" : ""}`}
                     >
-                      <img src={avatarUrl} alt={master?.jpName} className="char-select-img mb-1" />
+                      <Image src={avatarUrl} alt={master?.jpName || "構成員"} width={72} height={72} className="char-select-img mb-1" />
                       <span className="font-size-7 text-white font-weight-bold truncate block w-full text-center">
                         {master?.jpName || "構成員"}
                       </span>

@@ -7,7 +7,7 @@
 DROP FUNCTION IF EXISTS public.generate_user_gift_code(UUID);
 DROP FUNCTION IF EXISTS public.add_user_xp(UUID, INTEGER);
 DROP FUNCTION IF EXISTS public.process_login_bonus();
-DROP FUNCTION IF EXISTS public.sync_and_recover_vitality_and_tickets(UUID);
+DROP FUNCTION IF EXISTS public.sync_and_recover_vitality_and_pvp_points(UUID);
 DROP FUNCTION IF EXISTS public.complete_patrol_instantly(UUID, UUID, TEXT);
 DROP FUNCTION IF EXISTS public.evaluate_mission_progress(UUID, TEXT, INTEGER);
 DROP FUNCTION IF EXISTS public.sync_and_evaluate_raid_timeout(UUID);
@@ -125,22 +125,22 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- 4. スタミナ・チケット自動回復判定
-CREATE OR REPLACE FUNCTION public.sync_and_recover_vitality_and_tickets(p_user_id UUID)
+CREATE OR REPLACE FUNCTION public.sync_and_recover_vitality_and_pvp_points(p_user_id UUID)
 RETURNS JSONB AS $$
 DECLARE
     v_vitality INTEGER;
-    v_tickets INTEGER;
+    v_pvp_points INTEGER;
 BEGIN
-    SELECT vitality, pvp_tickets INTO v_vitality, v_tickets FROM public.users WHERE id = p_user_id;
+    SELECT vitality, pvp_points INTO v_vitality, v_pvp_points FROM public.users WHERE id = p_user_id;
     IF v_vitality < 100 THEN
         v_vitality := LEAST(100, v_vitality + 10);
     END IF;
-    IF v_tickets < 5 THEN
-        v_tickets := LEAST(5, v_tickets + 1);
+    IF v_pvp_points < 5 THEN
+        v_pvp_points := LEAST(5, v_pvp_points + 1);
     END IF;
 
-    UPDATE public.users SET vitality = v_vitality, pvp_tickets = v_tickets WHERE id = p_user_id;
-    RETURN jsonb_build_object('vitality', v_vitality, 'pvp_tickets', v_tickets);
+    UPDATE public.users SET vitality = v_vitality, pvp_points = v_pvp_points WHERE id = p_user_id;
+    RETURN jsonb_build_object('out_vitality', v_vitality, 'out_pvp_points', v_pvp_points);
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 

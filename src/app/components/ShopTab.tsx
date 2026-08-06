@@ -34,7 +34,7 @@ export default function ShopTab() {
 
     const calcTimeLeft = () => {
       const createdTime = new Date(userCreatedAt).getTime();
-      const expireTime = createdTime + 24 * 60 * 60 * 1000;
+      const expireTime = createdTime + 72 * 60 * 60 * 1000;
       const now = Date.now();
       const diff = expireTime - now;
 
@@ -63,13 +63,14 @@ export default function ShopTab() {
   const isBeginnerAvailable = (() => {
     if (!userCreatedAt) return true;
     const createdTime = new Date(userCreatedAt).getTime();
-    const isWithin24h = Date.now() < createdTime + 24 * 60 * 60 * 1000;
+    const isWithin72h = Date.now() < createdTime + 72 * 60 * 60 * 1000;
     const purchased = (userShopPurchases["beginner_pack_01"] || 0) > 0;
-    return isWithin24h && !purchased;
+    return isWithin72h && !purchased;
   })();
 
   // 商品フィルタリング
   const beginnerProducts = SHOP_PRODUCTS_MASTER.filter(p => p.category === "BEGINNER" && isBeginnerAvailable);
+  const vipProducts = SHOP_PRODUCTS_MASTER.filter(p => p.category === "VIP");
   const limitedNProducts = SHOP_PRODUCTS_MASTER.filter(p => p.category === "LIMITED_N" && ((userShopPurchases[p.id] || 0) < (p.purchaseLimit || 999)));
   const diamondProducts = SHOP_PRODUCTS_MASTER.filter(p => p.category === "DIAMOND").sort((a, b) => a.sortOrder - b.sortOrder);
   const normalItemProducts = SHOP_PRODUCTS_MASTER.filter(p => p.shopType === "NORMAL").sort((a, b) => a.sortOrder - b.sortOrder);
@@ -223,6 +224,25 @@ export default function ShopTab() {
             )}
 
             {/* 2. 限定N回販売商品 (該当商品がある場合のみ描画) */}
+            {vipProducts.length > 0 && (
+              <div className="shop-section">
+                <div className="shop-section-header">
+                  <span className="shop-section-title text-gold">VIP PASS</span>
+                </div>
+                {vipProducts.map(product => (
+                  <OutlawCard key={product.id} glowLine="bottom" className="mb-4">
+                    <div className="shop-card-content">
+                      <div className="shop-card-title">{product.title}</div>
+                      <div className="shop-card-desc">{product.description}</div>
+                      <OutlawButton variant="primary" fullWidth className="mt-4" disabled={isLoading} onClick={() => handleBuyStripeClick(product.id)}>
+                        {isLoading ? <span className="shop-btn-spinner" /> : `¥${product.priceJpy?.toLocaleString()}`}
+                      </OutlawButton>
+                    </div>
+                  </OutlawCard>
+                ))}
+              </div>
+            )}
+
             {limitedNProducts.length > 0 && (
               <div className="shop-section">
                 <div className="shop-section-header">

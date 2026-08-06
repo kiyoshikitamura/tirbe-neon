@@ -2,6 +2,7 @@
 
 import React from "react";
 import { useGame } from "../context/GameContext";
+import { supabase } from "@/utils/supabase";
 import {
   CHARACTERS_MASTER,
   CHARACTER_GROWTH_PATTERNS
@@ -33,8 +34,23 @@ export default function PatrolTab() {
     lastPatrolRewards,
     showPatrolRewardModal,
     setShowPatrolRewardModal,
-    setGlobalInteractionBlocking
+    setGlobalInteractionBlocking,
+    session
   } = useGame();
+  const [tutorialStep, setTutorialStep] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (!session?.user?.id) return;
+    const loadTutorialStep = async () => {
+      const { data } = await supabase
+        .from("tutorial_progress")
+        .select("step_id")
+        .eq("user_id", session.user.id)
+        .maybeSingle();
+      setTutorialStep(data?.step_id ?? null);
+    };
+    void loadTutorialStep();
+  }, [session?.user?.id]);
 
   // コースが未選択のときに初期選択を設定
   React.useEffect(() => {
@@ -64,9 +80,10 @@ export default function PatrolTab() {
     setGlobalInteractionBlocking(false);
   };
 
-  const handleInstant = async (currency: "CASH" | "DIAMOND", pId: string) => {
+  const handleInstant = async (currency: "CASH" | "DIAMOND" | "FREE_TUTORIAL", pId: string) => {
     setGlobalInteractionBlocking(true);
     await handleInstantComplete(currency, pId);
+    if (currency === "FREE_TUTORIAL") setTutorialStep("TUTORIAL_BATTLE");
     setGlobalInteractionBlocking(false);
   };
 

@@ -56,11 +56,13 @@ function MainMyPage() {
     playCyberSe,
     selectedBgMode,
     titleEquipped,
+    ownedTitles,
     interiorItem,
     equippedFrontEffect,
     totalPower
   } = useGame();
 
+  const equippedTitleName = ownedTitles.find((title: { id: string }) => title.id === titleEquipped)?.name || titleEquipped;
 
 
   // イベントバナースライドインジケーター
@@ -166,12 +168,6 @@ function MainMyPage() {
       onClick: () => setShowSettingsPanel(true)
     },
     {
-      id: "ui_preview",
-      label: "Preview",
-      icon: "/ui/icon_settings.png",
-      onClick: () => navigateTab("ui_preview")
-    },
-    {
       id: "raid",
       label: "レイド",
       icon: "/ui/icon_raid.png",
@@ -258,7 +254,7 @@ function MainMyPage() {
         {/* 層構造装飾: z-4 称号プレートバナー */}
         {titleEquipped && titleEquipped !== "title_none" && (
           <div className="mypage-title-banner-layer">
-            <span className="mypage-title-banner-badge">{titleEquipped}</span>
+            <span className="mypage-title-banner-badge">{equippedTitleName}</span>
           </div>
         )}
 

@@ -1,29 +1,30 @@
 "use client";
 
 import React from "react";
+import dynamic from "next/dynamic";
 import { GameProvider, useGame } from "./context/GameContext";
 import AuthView from "./components/AuthView";
 import SetupView from "./components/SetupView";
 import Header from "./components/Header";
 import Footer from "./components/Footer";
 import HomeTab from "./components/HomeTab";
-import PatrolTab from "./components/PatrolTab";
-import PvpTab from "./components/PvpTab";
-import GvgTab from "./components/GvgTab";
-import RaidTab from "./components/RaidTab";
-import GachaTab from "./components/GachaTab";
-import GuildTab from "./components/GuildTab";
-import CharacterTab from "./components/CharacterTab";
-import ShopTab from "./components/ShopTab";
-
-import MenuTab from "./components/MenuTab";
-import RankingTab from "./components/RankingTab";
-import AvatarTab from "./components/AvatarTab";
-import AdvView from "./components/AdvView";
-import BagTab from "./components/BagTab";
-import CardBattleView from "./components/CardBattleView";
+const TabLoading = () => <div className="app-loading-screen"><div className="spinner" /></div>;
+const PatrolTab = dynamic(() => import("./components/PatrolTab"), { loading: TabLoading });
+const PvpTab = dynamic(() => import("./components/PvpTab"), { loading: TabLoading });
+const GvgTab = dynamic(() => import("./components/GvgTab"), { loading: TabLoading });
+const RaidTab = dynamic(() => import("./components/RaidTab"), { loading: TabLoading });
+const GachaTab = dynamic(() => import("./components/GachaTab"), { loading: TabLoading });
+const GuildTab = dynamic(() => import("./components/GuildTab"), { loading: TabLoading });
+const CharacterTab = dynamic(() => import("./components/CharacterTab"), { loading: TabLoading });
+const ShopTab = dynamic(() => import("./components/ShopTab"), { loading: TabLoading });
+const MenuTab = dynamic(() => import("./components/MenuTab"), { loading: TabLoading });
+const RankingTab = dynamic(() => import("./components/RankingTab"), { loading: TabLoading });
+const AvatarTab = dynamic(() => import("./components/AvatarTab"), { loading: TabLoading });
+const BbsTab = dynamic(() => import("./components/BbsTab"), { loading: TabLoading });
+const AdvView = dynamic(() => import("./components/AdvView"));
+const BagTab = dynamic(() => import("./components/BagTab"), { loading: TabLoading });
+const CardBattleView = dynamic(() => import("./components/CardBattleView"));
 import CommonModals from "./components/CommonModals";
-import BbsTab from "./components/BbsTab";
 import TribeChatModal from "./components/TribeChatModal";
 import InboxPanel from "./components/InboxPanel";
 import MissionPanel from "./components/MissionPanel";
@@ -34,7 +35,11 @@ import ConfirmDialog from "./components/ui/ConfirmDialog";
 import GlobalInteractionBlocker from "./components/ui/GlobalInteractionBlocker";
 import TitleView from "./components/TitleView";
 import MoveBaseModal from "./components/MoveBaseModal";
-import UiPreviewTab from "./components/UiPreviewTab";
+import TutorialWorldIntro from "./components/TutorialWorldIntro";
+import TutorialFreeInstant from "./components/TutorialFreeInstant";
+import TutorialRuleGuide from "./components/TutorialRuleGuide";
+import TutorialBattlePrompt from "./components/TutorialBattlePrompt";
+import TutorialAuthentication from "./components/TutorialAuthentication";
 
 function AppContent() {
   const { session, authLoading, isSetupRequired, activeTab, showTitleView,
@@ -105,7 +110,6 @@ function AppContent() {
         {activeTab === "ranking" && <RankingTab />}
         {activeTab === "avatar" && <AvatarTab />}
         {activeTab === "bbs" && <BbsTab />}
-        {activeTab === "ui_preview" && <UiPreviewTab />}
       </main>
 
       {/* 全タブ共通 モバイルフッター */}
@@ -126,6 +130,11 @@ function AppContent() {
       {/* Layer 5: システムオーバーレイ */}
       <AdvView />
       <CardBattleView />
+      <TutorialWorldIntro />
+      <TutorialFreeInstant />
+      <TutorialRuleGuide />
+      <TutorialBattlePrompt />
+      <TutorialAuthentication />
       
       {/* Layer 6: 最上位の共通ダイアログとブロッカー */}
       <ConfirmDialog {...confirmDialogConfig} />

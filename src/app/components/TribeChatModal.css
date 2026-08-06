@@ -77,6 +77,15 @@
 .tribe-msg-author {
   font-weight: 700;
   color: #a0aec0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+}
+
+.tribe-msg-author:hover {
+  color: var(--neon-cyan);
 }
 
 .tribe-msg-time {

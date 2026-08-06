@@ -22,6 +22,9 @@ export default function BbsTab() {
     fetchBbsPosts,
     createBbsPost,
     playCyberSe,
+    setShowTribeChatPanel,
+    setChatChannel,
+    fetchPlayerDetail,
   } = useGame();
 
   const [activeCategory, setActiveCategory] = useState<"RECRUIT" | "STRATEGY_CHAT">("RECRUIT");
@@ -180,6 +183,16 @@ export default function BbsTab() {
             BBS <span className="bbs-header-sub">【BBSテスト環境検証用】</span>
           </h2>
         </div>
+        <button
+          className="bbs-create-btn active-scale-effect"
+          onClick={() => {
+            setChatChannel("GLOBAL");
+            setShowTribeChatPanel(true);
+            playCyberSe("click");
+          }}
+        >
+          チャット
+        </button>
         {!bbsActiveThread && (
           <button
             className="bbs-create-btn active-scale-effect"
@@ -223,7 +236,9 @@ export default function BbsTab() {
                 />
               </div>
               <div className="bbs-author-info">
-                <span className="bbs-author-name">{bbsActiveThread.author_name}</span>
+                <button type="button" className="bbs-author-name bbs-author-profile-link" onClick={() => bbsActiveThread.user_id && fetchPlayerDetail(bbsActiveThread.user_id)}>
+                  {bbsActiveThread.author_name}
+                </button>
                 <span className="bbs-post-time">{formatTime(bbsActiveThread.created_at)}</span>
               </div>
             </div>
@@ -247,7 +262,9 @@ export default function BbsTab() {
                       />
                     </div>
                     <div className="bbs-author-info">
-                      <span className="bbs-author-name">{post.author_name}</span>
+                      <button type="button" className="bbs-author-name bbs-author-profile-link" onClick={() => post.user_id && fetchPlayerDetail(post.user_id)}>
+                        {post.author_name}
+                      </button>
                       <span className="bbs-post-time">{formatTime(post.created_at)}</span>
                     </div>
                   </div>

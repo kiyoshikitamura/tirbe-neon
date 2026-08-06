@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/utils/supabase";
 
 export function useUserProfile(
@@ -19,6 +19,7 @@ export function useUserProfile(
   setErrorMessage: (msg: string | null) => void,
   setConfirmDialogConfig: React.Dispatch<React.SetStateAction<import("@/app/components/ui/ConfirmDialog").ConfirmDialogConfig | null>>
 ) {
+  const [ownedTitles, setOwnedTitles] = useState<Array<{ id: string; name: string }>>([]);
   const [username, setUsername] = useState<string>("半グレの首領");
   const [bio, setBio] = useState<string>("歌舞伎町の覇権を握るため立ち上がる。");
   const [avatarUrl, setAvatarUrl] = useState<string>("/reiji_transparent_asset.png");
@@ -34,6 +35,25 @@ export function useUserProfile(
   const [titleEquipped, setTitleEquipped] = useState<string>("title_none");
   const [interiorItem, setInteriorItem] = useState<string>("none");
 
+  useEffect(() => {
+    if (!session?.user?.id) {
+      setOwnedTitles([]);
+      return;
+    }
+    const loadOwnedTitles = async () => {
+      const { data, error } = await supabase
+        .from("user_titles")
+        .select("title_id, title_master(id, name)")
+        .eq("user_id", session.user.id);
+      if (error) {
+        console.warn("Failed to load owned titles:", error.message);
+        return;
+      }
+      setOwnedTitles((data || []).map((row: any) => ({ id: row.title_id, name: row.title_master?.name || row.title_id })));
+    };
+    void loadOwnedTitles();
+  }, [session?.user?.id]);
+
   const [selectedLeader, setSelectedLeader] = useState<string>("11111111-1111-1111-1111-111111111111");
   const [upgradeSelectedCharId, setUpgradeSelectedCharId] = useState<string>("11111111-1111-1111-1111-111111111111");
 
@@ -43,27 +63,29 @@ export function useUserProfile(
       setErrorMessage("ユーザー名は空欄にできません。");
       return;
     }
+    if (Array.from(username.trim()).length > 8) {
+      setErrorMessage("ユーザー名は8文字以内で入力してください。");
+      return;
+    }
     setProfileLoading(true);
     playCyberSe("click");
 
     // 🛡️ チート対策: 未解放の背景・称号・装飾の不正設定をバリデーション遮断
     let safeBg = selectedBgMode;
-    let safeTitle = titleEquipped;
-    let safeInterior = interiorItem;
+    const safeTitle = titleEquipped;
+    const safeInterior = interiorItem;
 
     if (safeBg === "bg_kabukicho" && userLevel < 5) safeBg = "auto";
     if (safeBg === "bg_wharf" && !userGuild) safeBg = "auto";
     if (safeBg === "bg_bazar" && cash < 20000) safeBg = "auto";
-
-    if (safeTitle === "title_kabukicho_emperor" && userLevel < 15) safeTitle = "title_none";
-    if (safeTitle === "title_neon_overlord" && diamonds < 300) safeTitle = "title_none";
-    if (safeTitle === "title_gvg_champion" && !userGuild) safeTitle = "title_none";
 
     setSelectedBgMode(safeBg);
     setTitleEquipped(safeTitle);
     setInteriorItem(safeInterior);
 
     try {
+      const { error: titleError } = await supabase.rpc("equip_owned_title", { p_title_id: safeTitle });
+      if (titleError) throw titleError;
       const { error } = await supabase
         .from("users")
         .update({
@@ -72,7 +94,6 @@ export function useUserProfile(
           avatar_url: avatarUrl,
           current_base_id: currentBaseId,
           favorite_character_id: selectedLeader,
-          title_equipped: safeTitle,
           equipped_background: equippedBackground,
           equipped_front_effect: equippedFrontEffect,
           selected_bg_mode: safeBg,
@@ -94,7 +115,13 @@ export function useUserProfile(
       setConfirmDialogConfig({ isOpen: true, title: "保存完了", message: "プロフィールを同期保存しました。", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
     } catch (err: any) {
       console.warn("Profile update failed:", err.message);
-      setErrorMessage("プロフィールの更新に失敗しました。");
+      if (err.message?.includes("Username can only be changed once per day")) {
+        setErrorMessage("ユーザー名は1日1回まで変更できます。");
+      } else if (err.message?.includes("Bio can only be changed once per day")) {
+        setErrorMessage("自己紹介は1日1回まで変更できます。");
+      } else {
+        setErrorMessage("プロフィールの更新に失敗しました。");
+      }
     } finally {
       setProfileLoading(false);
     }
@@ -174,6 +201,7 @@ export function useUserProfile(
     selectedBgMode, setSelectedBgMode,
     equippedFrontEffect, setEquippedFrontEffect,
     titleEquipped, setTitleEquipped,
+    ownedTitles,
     interiorItem, setInteriorItem,
     selectedLeader, setSelectedLeader,
     upgradeSelectedCharId, setUpgradeSelectedCharId,

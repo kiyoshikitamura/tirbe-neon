@@ -8,7 +8,11 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
+    "test:e2e": "playwright test",
     "verify:asset-gacha": "node scripts/verify_asset_gacha.mjs",
+    "verify:mock-asset-gacha": "node --experimental-strip-types scripts/verify_mock_asset_gacha.mjs",
+    "verify:mock-direct-message-read": "node --experimental-strip-types scripts/verify_mock_direct_message_read.mjs",
+    "verify:mock-gvg-cancellation": "node --experimental-strip-types scripts/verify_mock_gvg_cancellation.mjs",
     "verify:owner-rls": "node scripts/verify_owner_rls.mjs"
   },
   "dependencies": {
@@ -19,6 +23,7 @@
     "react-dom": "19.2.4"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",

@@ -505,3 +505,14 @@
 .active-scale-effect:active {
   transform: scale(0.95);
 }
+.bbs-author-profile-link {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+}
+
+.bbs-author-profile-link:hover {
+  color: var(--neon-cyan);
+}

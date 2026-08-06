@@ -52,7 +52,8 @@ export default function GuildTab() {
 
   const isMaster = userGuildMember?.role === "MASTER";
   const isSubMaster = userGuildMember?.role === "SUBMASTER";
-  const canManageDecorations = isMaster || isSubMaster;
+  const canPurchaseDecorations = isMaster || isSubMaster;
+  const canChangeDecorations = isMaster;
 
   // 支配中拠点の動的取得
   const getControlledBases = () => {
@@ -98,6 +99,16 @@ export default function GuildTab() {
 
   const controlledBases = getControlledBases();
   const borderClass = userGuild ? getLevelBorderClass(userGuild.level) : "";
+  const decorationClass = userGuild?.equipped_decoration === "bg_neon_kabukicho"
+    ? "guild-decoration-neon-kabukicho"
+    : userGuild?.equipped_decoration === "bg_industrial_docks"
+      ? "guild-decoration-industrial-docks"
+      : "";
+  const bannerClass = userGuild?.equipped_banner === "banner_neon_reign"
+    ? "guild-banner-neon-reign"
+    : userGuild?.equipped_banner === "banner_kabukicho_king"
+      ? "guild-banner-kabukicho-king"
+      : "";
 
   // アライメント変換マップ
   const alignmentEnToJp: { [key: string]: string } = {
@@ -184,10 +195,10 @@ export default function GuildTab() {
   const xpPercent = Math.min((userGuild.xp / xpNeeded) * 100, 100);
 
   return (
-    <div className={`view-container guild-main-container ${borderClass}`}>
+    <div className={`view-container guild-main-container ${borderClass} ${decorationClass}`}>
       
       {/* ギルド情報ヘッダーエリア */}
-      <div className="guild-header-hud bg-black-80 p-3 rounded border-bottom-edge">
+      <div className={`guild-header-hud bg-black-80 p-3 rounded border-bottom-edge ${bannerClass}`}>
         <div className="flex-row-space-between align-center">
           <div>
             <h2 className="guild-title-name text-white font-weight-bold font-size-12">
@@ -432,7 +443,7 @@ export default function GuildTab() {
             <OutlawCard>
               <div className="font-bold mb-1">装飾ショップ</div>
               <p className="font-size-8 text-secondary mt-1 mb-3">
-                ギルド資金を使用して、マイページ背景装飾や称号バナーを購入・適用します（※マスタ/サブマスタ限定権限）。
+                ギルド資金を使用して、マイページ背景装飾や称号バナーを購入します。購入はマスター／副マスター、適用・解除はマスターのみ行えます。
               </p>
 
               <div className="flex-col-gap-2">
@@ -463,7 +474,7 @@ export default function GuildTab() {
                         {!isUnlocked ? (
                           <OutlawButton 
                             variant="secondary"
-                            disabled={!canManageDecorations || !canAfford || gvgResetLoading}
+                            disabled={!canPurchaseDecorations || !canAfford || gvgResetLoading}
                             onClick={() => handleBuyGuildDecoration(item.id, item.cost, item.type as any)}
                             className="font-size-8 px-3 py-1 text-neon-magenta"
                           >
@@ -472,7 +483,7 @@ export default function GuildTab() {
                         ) : isEquipped ? (
                           <OutlawButton 
                             variant="secondary"
-                            disabled={!canManageDecorations || gvgResetLoading}
+                            disabled={!canChangeDecorations || gvgResetLoading}
                             onClick={() => handleEquipGuildDecoration(item.type as any, null)}
                             className="font-size-8 px-3 py-1 text-gray-400"
                           >
@@ -481,7 +492,7 @@ export default function GuildTab() {
                         ) : (
                           <OutlawButton 
                             variant="primary"
-                            disabled={!canManageDecorations || gvgResetLoading}
+                            disabled={!canChangeDecorations || gvgResetLoading}
                             onClick={() => handleEquipGuildDecoration(item.type as any, item.id)}
                             className="font-size-8 px-3 py-1"
                           >

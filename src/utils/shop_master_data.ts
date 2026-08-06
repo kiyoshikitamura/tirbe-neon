@@ -7,7 +7,7 @@ export interface ShopProductItem {
 export interface ShopProduct {
   id: string;
   shopType: "LIMITED" | "NORMAL";
-  category: "BEGINNER" | "LIMITED_N" | "DIAMOND" | "NORMAL_ITEM";
+  category: "BEGINNER" | "VIP" | "LIMITED_N" | "DIAMOND" | "NORMAL_ITEM";
   title: string;
   description: string;
   priceJpy?: number;        // 日本円（Stripe決済時）
@@ -35,7 +35,7 @@ export const SHOP_PRODUCTS_MASTER: ShopProduct[] = [
     description: "ゲーム開始24時間限定！爆速スタートを決める超お得コンテンツ詰め合わせパック！",
     priceJpy: 100,
     purchaseLimit: 1,
-    timeLimitHours: 24,
+    timeLimitHours: 72,
     bannerUrl: "/banner_beginner_pack.png",
     items: [
       { itemId: "CASH", itemName: "キャッシュ", quantity: 10000 },
@@ -44,6 +44,17 @@ export const SHOP_PRODUCTS_MASTER: ShopProduct[] = [
       { itemId: "EQUIP_EXP_M", itemName: "カスタムオイル [中]", quantity: 5 }
     ],
     sortOrder: 1
+  },
+  {
+    id: "vip_pass_01",
+    shopType: "LIMITED",
+    category: "VIP",
+    title: "VIP PASS",
+    description: "VIP pass benefits are provisional. Includes 3x battle playback while the pass is active.",
+    priceJpy: 980,
+    purchaseLimit: 1,
+    items: [],
+    sortOrder: 2
   },
 
   // 2. 限定N回販売 (リリース時商品なし / 枠組み拡張用)

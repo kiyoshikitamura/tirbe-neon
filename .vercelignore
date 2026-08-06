@@ -1,0 +1,11 @@
+# Local development and verification outputs
+.git
+.next
+node_modules
+test-results
+playwright-report
+
+# Specifications, database artifacts, and local-only source material
+specs
+supabase
+mockups

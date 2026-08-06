@@ -147,12 +147,13 @@ export function useGuild(
         return;
       }
 
-      await supabase.rpc("leave_guild", {
+      const { error } = await supabase.rpc("leave_guild", {
         p_user_id: session.user.id,
         p_guild_id: userGuild.id,
         p_is_master: isMaster,
         p_has_others: otherMembers.length > 0
       });
+      if (error) throw error;
 
       if (isMaster && otherMembers.length === 0) {
         setConfirmDialogConfig({ isOpen: true, title: "ギルド解散", message: "ギルドは自動解散されました。", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
@@ -188,19 +189,17 @@ export function useGuild(
         .select("user_id")
         .eq("guild_id", targetGuildId);
 
-      if (mCount && mCount.length >= 10) {
+      const targetGuild = allGuildsDbList.find((guild: any) => guild.id === targetGuildId);
+      const targetGuildCap = Number(targetGuild?.member_limit
+        ?? (targetGuild?.level >= 5 ? 20 : targetGuild?.level === 4 ? 18 : targetGuild?.level === 3 ? 15 : targetGuild?.level === 2 ? 12 : 10));
+      if (mCount && mCount.length >= targetGuildCap) {
         setConfirmDialogConfig({ isOpen: true, title: "加入失敗", message: "対象ギルドは上限人数（10名）に達しています。", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
         setGvgResetLoading(false);
         return;
       }
 
-      await supabase.from("guild_members").insert({
-        guild_id: targetGuildId,
-        user_id: session.user.id,
-        role: "MEMBER",
-        weekly_contribution: 0,
-        total_contribution: 0
-      });
+      const { error } = await supabase.rpc("join_guild", { p_guild_id: targetGuildId });
+      if (error) throw error;
 
       setConfirmDialogConfig({ isOpen: true, title: "ギルド加入", message: `ギルド『${guildName}』にデモ所属しました！`, onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
       await syncBootstrapData(session.user.id);
@@ -218,14 +217,20 @@ export function useGuild(
 
     try {
       if (newRole === "MASTER") {
-        await supabase.rpc("transfer_guild_leader", {
+        const { error } = await supabase.rpc("transfer_guild_leader", {
           p_guild_id: userGuild.id,
           p_old_id: session.user.id,
           p_new_id: targetUserId
         });
+        if (error) throw error;
         setConfirmDialogConfig({ isOpen: true, title: "マスター交代", message: `マスター権限を『${targetName}』へ譲渡しました。`, onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
       } else {
-        await supabase.from("guild_members").update({ role: newRole }).eq("user_id", targetUserId);
+        const { error } = await supabase.rpc("set_guild_member_role", {
+          p_guild_id: userGuild.id,
+          p_target_user_id: targetUserId,
+          p_new_role: newRole
+        });
+        if (error) throw error;
         setConfirmDialogConfig({ isOpen: true, title: "役職変更", message: `『${targetName}』の階級を ${newRole} へ変更しました。`, onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
       }
       await syncBootstrapData(session.user.id);
@@ -257,10 +262,11 @@ export function useGuild(
         setGvgResetLoading(true);
         playCyberSe("click");
         try {
-          await supabase.rpc("kick_guild_member", {
+          const { error } = await supabase.rpc("kick_guild_member", {
             p_guild_id: userGuild.id,
             p_user_id: targetUserId
           });
+          if (error) throw error;
           setConfirmDialogConfig({ isOpen: true, title: "追放完了", message: `『${targetName}』を追放しました。`, onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
           await syncBootstrapData(session.user.id);
         } catch (err: any) {
@@ -285,7 +291,12 @@ export function useGuild(
 
     try {
       const actionType = amount === 1000 ? "DONATE_SMALL" : amount === 5000 ? "DONATE_MEDIUM" : "DONATE_LARGE";
-      const actionMaster = guildXpActionMaster.find(a => a.action_type === actionType) || { xp_gain: amount === 1000 ? 20 : amount === 5000 ? 120 : 300, contribution_gain: amount === 1000 ? 10 : amount === 5000 ? 60 : 150 };
+      const fallbackActionMaster = { xp_gain: amount === 1000 ? 20 : amount === 5000 ? 120 : 300, contribution_gain: amount === 1000 ? 10 : amount === 5000 ? 60 : 150 };
+      const actionMasterRecord = guildXpActionMaster.find(a => a.action_type === actionType);
+      const actionMaster = {
+        xp_gain: actionMasterRecord?.xp_grant ?? actionMasterRecord?.xp_gain ?? fallbackActionMaster.xp_gain,
+        contribution_gain: actionMasterRecord?.contribution_grant ?? actionMasterRecord?.contribution_gain ?? fallbackActionMaster.contribution_gain
+      };
 
       const { data: rpcRes, error: gErr } = await supabase.rpc("donate_to_guild", {
         p_user_id: session.user.id,
@@ -297,8 +308,6 @@ export function useGuild(
 
       const nextCash = rpcRes?.next_cash ?? (cash - amount);
       setCash(nextCash);
-
-      await addGuildXpAndContributionByAction(actionType);
 
       setConfirmDialogConfig({ isOpen: true, title: "献金完了", message: `ギルドに ${amount.toLocaleString()} キャッシュを献金しました！\n(ギルド資金 +${amount.toLocaleString()} / ギルドXP +${actionMaster.xp_gain} / 貢献度 +${actionMaster.contribution_gain})`, onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
     } catch (e: any) {
@@ -354,7 +363,7 @@ export function useGuild(
 
   const handleEquipGuildDecoration = async (type: "DECORATION" | "BANNER", itemId: string | null) => {
     if (!session || !userGuild || !userGuildMember) return;
-    if (userGuildMember.role !== "MASTER" && userGuildMember.role !== "SUBMASTER") {
+    if (userGuildMember.role !== "MASTER") {
       setConfirmDialogConfig({ isOpen: true, title: "権限エラー", message: "装飾の変更はマスターまたはサブマスターのみ可能です。", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
       return;
     }

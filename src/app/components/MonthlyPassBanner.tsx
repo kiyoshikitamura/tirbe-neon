@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React from "react";
 import { useGame } from "../context/GameContext";
 import OutlawButton from "./ui/OutlawButton";
 import { supabase } from "@/utils/supabase";
@@ -8,43 +8,10 @@ import "./MonthlyPassBanner.css";
 
 export default function MonthlyPassBanner() {
   const { 
-    playCyberSe, setConfirmDialogConfig, session,
+    playCyberSe, setConfirmDialogConfig,
     monthlyPassActive, monthlyPassClaimedToday,
-    handlePurchaseMonthlyPass, handleClaimDailyPassReward
+    handleClaimDailyPassReward, navigateTab
   } = useGame();
-
-  const handlePurchase = async () => {
-    playCyberSe("click");
-    setConfirmDialogConfig({
-      isOpen: true,
-      title: "VIPパス購入",
-      message: "月額パス (VIPパス) を購入しますか？",
-      confirmText: "購入する",
-      cancelText: "キャンセル",
-      onConfirm: async () => {
-        setConfirmDialogConfig(null);
-        const res = await handlePurchaseMonthlyPass();
-        if (res?.success) {
-          setConfirmDialogConfig({
-            isOpen: true,
-            title: "購入完了",
-            message: "VIPパスを購入しました！毎日ダイヤを受け取れます。",
-            confirmText: "OK",
-            onConfirm: () => setConfirmDialogConfig(null)
-          });
-        } else {
-          setConfirmDialogConfig({
-            isOpen: true,
-            title: "購入失敗",
-            message: res?.message || "購入に失敗しました。",
-            confirmText: "OK",
-            onConfirm: () => setConfirmDialogConfig(null)
-          });
-        }
-      },
-      onCancel: () => setConfirmDialogConfig(null)
-    });
-  };
 
   const handleClaim = async () => {
     playCyberSe("click");
@@ -96,7 +63,7 @@ export default function MonthlyPassBanner() {
             ) : (
               <div className="flex-col items-center gap-2">
                 <span className="font-size-7 text-secondary">毎日ログインでダイヤを獲得</span>
-                <OutlawButton variant="danger" onClick={handlePurchase} className="px-4 py-1 font-size-8">
+                <OutlawButton variant="danger" onClick={() => { playCyberSe("click"); navigateTab("shop", "LIMITED"); }} className="px-4 py-1 font-size-8">
                   購入する
                 </OutlawButton>
               </div>

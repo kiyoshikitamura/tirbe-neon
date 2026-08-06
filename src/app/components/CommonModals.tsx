@@ -29,6 +29,10 @@ export default function CommonModals() {
     playCyberSe,
     activePlayerDetail,
     setActivePlayerDetail,
+    session,
+    setDmRecipientId,
+    setShowTribeChatPanel,
+    setChatChannel,
     activeGuildDetail,
     setActiveGuildDetail
   } = useGame();
@@ -213,13 +217,36 @@ export default function CommonModals() {
             
             <div className="modal-body-content mt-3">
               <div className="profile-section mb-3">
+                <img
+                  src={activePlayerDetail.avatarUrl || "/reiji_transparent_asset.png"}
+                  alt=""
+                  className="modal-profile-img mb-2"
+                />
                 <div className="font-size-9 font-weight-bold text-white">{activePlayerDetail.username}</div>
+                <div className="font-size-7 text-color-cyan mt-1">称号: {activePlayerDetail.titleName || "称号なし"}</div>
                 <div className="font-size-7 text-secondary mt-1">プレイヤーレベル: Lv.{activePlayerDetail.level}</div>
+                <div className="font-size-7 text-secondary mt-1">ユーザー経験値: {Number(activePlayerDetail.xp || 0).toLocaleString()}</div>
+                <div className="font-size-7 text-secondary mt-1">所属ギルド: {activePlayerDetail.guildName || "未所属"}</div>
               </div>
 
               <div className="bio-section steel-tray p-2.5 mb-3 font-size-8 text-white line-height-14">
                 {activePlayerDetail.bio}
               </div>
+
+              {activePlayerDetail.id && activePlayerDetail.id !== session?.user?.id && (
+                <button
+                  className="action-btn claim active-scale-effect font-size-8 px-3 mb-3"
+                  onClick={() => {
+                    setDmRecipientId(activePlayerDetail.id);
+                    setActivePlayerDetail(null);
+                    setChatChannel("DM");
+                    setShowTribeChatPanel(true);
+                    playCyberSe("click");
+                  }}
+                >
+                  DMを送る
+                </button>
+              )}
 
               <div className="party-section">
                 <span className="section-subtitle font-size-7 text-secondary block mb-2">出撃パーティ</span>

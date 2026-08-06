@@ -10,10 +10,12 @@ import {
 } from "@/utils/game_constants";
 import { getCharacterTotalStats, getCharacterApBonus } from "@/utils/stats_calculator";
 
-import { UseBattleOptions, ParticipantState, CardState, SkillLogItem } from "./battle/battleTypes";
+import { CompatibleBattleTacticId, UseBattleOptions, ParticipantState, CardState, SkillLogItem } from "./battle/battleTypes";
 import { selectCharacterSkillByTactic } from "./battle/battleAI";
 import { postNpcYajiMessage, saveBattleSessionState } from "./battle/battleUtils";
 import { RAID_COST_TABLE, RAID_MAX_DAILY } from "../utils/game_constants";
+import { participantsToBattleUnits, toDeterministicTactic } from "./battle/deterministicBattleAdapter";
+import { gvgDefenseSnapshotToParticipants } from "./battle/gvgSnapshotAdapter";
 
 export type { UseBattleOptions, ParticipantState, CardState, SkillLogItem };
 
@@ -68,19 +70,23 @@ export function useBattle(options: UseBattleOptions) {
   const [battleLog, setBattleLog] = useState<string[]>([]);
   const [ap, setAp] = useState<number>(3);
   const [maxAp, setMaxAp] = useState<number>(10);
-  const [tactic, setTactic] = useState<"OFFENSIVE" | "DEFENSIVE" | "HEALING" | "BALANCED" | "AP_CONSERVING" | "TACTICAL">("OFFENSIVE");
+  const [tactic, setTactic] = useState<CompatibleBattleTacticId>("ATTACK_PRIORITY");
   const [battleSpeed, setBattleSpeed] = useState<number>(1); // 1 = 1x, 2 = 2x
   const [isAutoPaused, setIsAutoPaused] = useState<boolean>(false);
   const [gvgTargetBaseId, setGvgTargetBaseId] = useState<string | null>(null);
   const [battleLoading, setBattleLoading] = useState<boolean>(false);
   const [enemyTactic, setEnemyTactic] = useState<string>("OFFENSIVE");
   const [opponentPoints, setOpponentPoints] = useState<number>(1000);
+  const [officialGvgAttackId, setOfficialGvgAttackId] = useState<string | null>(null);
+  const [officialGvgReplayId, setOfficialGvgReplayId] = useState<string | null>(null);
+  const [officialGvgWinner, setOfficialGvgWinner] = useState<"PLAYER" | "ENEMY" | null>(null);
 
   // 5v5 状態管理
   const [playerPartyStates, setPlayerPartyStates] = useState<ParticipantState[]>([]);
   const [enemyPartyStates, setEnemyPartyStates] = useState<ParticipantState[]>([]);
   const [timeline, setTimeline] = useState<any[]>([]);
   const [timelineIndex, setTimelineIndex] = useState<number>(0);
+  const [battleRound, setBattleRound] = useState<number>(1);
 
   // 演出・ポップアップ
   const [activeSkillCutIn, setActiveSkillCutIn] = useState<{ charName: string; skillName: string } | null>(null);
@@ -121,7 +127,11 @@ export function useBattle(options: UseBattleOptions) {
         if (playerStateData.tactic) setTactic(playerStateData.tactic);
         if (playerStateData.log) setBattleLog(playerStateData.log);
         if (playerStateData.timelineIndex !== undefined) setTimelineIndex(playerStateData.timelineIndex);
+        setBattleRound(1);
         if (playerStateData.gvgAreaId) setGvgTargetBaseId(playerStateData.gvgAreaId);
+        setOfficialGvgAttackId(playerStateData.officialGvgAttackId || null);
+        setOfficialGvgReplayId(playerStateData.officialGvgReplayId || null);
+        setOfficialGvgWinner(playerStateData.officialGvgWinner === "PLAYER" ? "PLAYER" : playerStateData.officialGvgWinner === "ENEMY" ? "ENEMY" : null);
 
         setBattleState("PLAYING");
         return true;
@@ -145,12 +155,23 @@ export function useBattle(options: UseBattleOptions) {
     supportCharacter?: any
   ) => {
     if (!session) return;
+    if (mode === "GVG" && !areaIdOrOpponentUserId?.startsWith("gvg_match:")) {
+      setErrorMessage("GvGは公式マッチが開催中の場合のみ開始できます。");
+      return;
+    }
     if (mode === "RAID" && userLevel < 5) {
       setErrorMessage("レイドへの参加にはプレイヤーレベル5以上が必要です。");
       return;
     }
     setBattleLoading(true);
     playCyberSe("click");
+    setOfficialGvgAttackId(null);
+    setOfficialGvgReplayId(null);
+    setOfficialGvgWinner(null);
+    let officialGvgDefenseDeck: unknown = null;
+    let officialGvgAttackIdForBattle: string | null = null;
+    let officialGvgReplayIdForBattle: string | null = null;
+    let officialGvgWinnerForBattle: "PLAYER" | "ENEMY" | null = null;
 
     // レイドボスマスターデータの取得
     let bossMaster = {
@@ -282,6 +303,20 @@ export function useBattle(options: UseBattleOptions) {
     }
     
     if (mode === "GVG") {
+      if (areaIdOrOpponentUserId?.startsWith("gvg_match:")) {
+        const { data, error } = await supabase.rpc("begin_gvg_attack", {
+          p_match_session_id: areaIdOrOpponentUserId.slice("gvg_match:".length),
+        });
+        if (error || !data?.attack_id) {
+          setErrorMessage(error?.message || "公式GvG攻撃を開始できませんでした。");
+          setBattleLoading(false);
+          return;
+        }
+        officialGvgDefenseDeck = data.defense_deck;
+        officialGvgAttackIdForBattle = data.attack_id;
+        setOfficialGvgAttackId(data.attack_id);
+        setVitality(Number(data.remaining_ap ?? Math.max(0, vitality - 20)));
+      }
       if (areaIdOrOpponentUserId && !areaIdOrOpponentUserId.startsWith("npc_dummy")) {
         setGvgTargetBaseId(areaIdOrOpponentUserId);
       } else {
@@ -289,7 +324,7 @@ export function useBattle(options: UseBattleOptions) {
       }
       
       // 本番侵攻の行動力消費
-      if (!areaIdOrOpponentUserId?.startsWith("npc_dummy")) {
+      if (!officialGvgAttackIdForBattle && !areaIdOrOpponentUserId?.startsWith("npc_dummy")) {
         if (vitality < 20) {
           setErrorMessage("行動力が不足しています。");
           setBattleLoading(false);
@@ -605,7 +640,11 @@ export function useBattle(options: UseBattleOptions) {
     }
 
     // 抗争 (GvG) リアル対戦相手（または演習相手）のロード
-    if (mode === "GVG" && areaIdOrOpponentUserId) {
+    if (mode === "GVG" && officialGvgDefenseDeck) {
+      initialEnemyParty = gvgDefenseSnapshotToParticipants(officialGvgDefenseDeck);
+      loadedRealEnemy = initialEnemyParty.length > 0;
+    }
+    if (mode === "GVG" && areaIdOrOpponentUserId && !officialGvgDefenseDeck) {
       try {
         const myGuildId = userGuildMember?.guild_id || "";
         const isPractice = areaIdOrOpponentUserId === myGuildId;
@@ -880,17 +919,96 @@ export function useBattle(options: UseBattleOptions) {
 
     setTimeline(timelineQueue);
     setTimelineIndex(0);
+    setBattleRound(1);
 
     const startLogs = [`出撃準備完了: VS ${targetName} (${mode}戦)`];
     setBattleLog(startLogs);
 
-    // セッションの保存
+    const abortOfficialGvgStart = async (message: string) => {
+      if (officialGvgAttackIdForBattle) {
+        const { error: cancelError } = await supabase.rpc("cancel_unresolved_gvg_attack", {
+          p_attack_id: officialGvgAttackIdForBattle,
+        });
+        if (cancelError) console.warn("Failed to cancel unresolved official GvG attack:", cancelError.message);
+      }
+      setOfficialGvgAttackId(null);
+      setOfficialGvgReplayId(null);
+      setOfficialGvgWinner(null);
+      setBattleLoading(false);
+      setErrorMessage(message);
+    };
+
+    // 新規リプレイの入力を開始時点で固定する。結果・イベントはサーバー解決だけが書き込む。
+    try {
+      const playerSnapshot = participantsToBattleUnits(initialPlayerParty);
+      const enemySnapshot = participantsToBattleUnits(initialEnemyParty);
+      const replayMode = mode === "PATROL" ? "QUEST" : mode;
+      const { data: replaySessionId, error } = await supabase.rpc("create_battle_replay_pending", {
+        p_battle_mode: replayMode,
+        p_tactic_id: toDeterministicTactic(tactic),
+        p_random_seed: Math.floor(Math.random() * 2_000_000_000),
+        p_player_snapshot: playerSnapshot,
+        p_enemy_snapshot: enemySnapshot,
+        p_source_reference_id: officialGvgAttackIdForBattle,
+      });
+      if (error) console.warn("Failed to create replay snapshot:", error.message);
+      if (officialGvgAttackIdForBattle && (!replaySessionId || error)) {
+        await abortOfficialGvgStart("公式GvGのサーバー確定に失敗しました。もう一度お試しください。");
+        return;
+      }
+      // 公式GvGは begin_gvg_attack が発行した攻撃IDと防衛スナップショットに
+      // 必ず紐付けてから解決する。旧拠点制の導線から孤立したGvG結果を作らない。
+      if (replaySessionId && replayMode === "GVG" && officialGvgAttackIdForBattle) {
+        let { data: resolvedReplay, error: resolveError } = await supabase.functions.invoke("resolve-battle", {
+          body: { replaySessionId },
+        });
+        if (resolveError) {
+          // The function may have persisted the result before a transient
+          // response failure. Its idempotent read path returns that result.
+          const retry = await supabase.functions.invoke("resolve-battle", {
+            body: { replaySessionId },
+          });
+          resolvedReplay = retry.data;
+          resolveError = retry.error;
+        }
+        if (resolveError) {
+          console.warn("Failed to resolve replay on the server:", resolveError.message);
+          await abortOfficialGvgStart("公式GvGのサーバー解決に失敗しました。もう一度お試しください。");
+          return;
+        }
+        else if (officialGvgAttackIdForBattle) {
+          if (resolvedReplay?.winner !== "PLAYER" && resolvedReplay?.winner !== "ENEMY") {
+            console.warn("Server returned an invalid official GvG replay result");
+            await abortOfficialGvgStart("公式GvGのサーバー確定に失敗しました。もう一度お試しください。");
+            return;
+          }
+          officialGvgReplayIdForBattle = replaySessionId;
+          setOfficialGvgReplayId(replaySessionId);
+          officialGvgWinnerForBattle = resolvedReplay.winner;
+          setOfficialGvgWinner(officialGvgWinnerForBattle);
+        }
+      }
+    } catch (err) {
+      console.warn("Failed to create replay snapshot:", err);
+      if (officialGvgAttackIdForBattle) {
+        await abortOfficialGvgStart("公式GvGのサーバー確定に失敗しました。もう一度お試しください。");
+        return;
+      }
+    }
+
+    // 旧セッションは中断再開の互換用。再生UI移行後に廃止する。
     try {
       const { data: sessionData } = await supabase.from("battle_sessions").insert({
         user_id: session.user.id,
         battle_type: mode,
         target_id: targetName,
-        player_state: { playerStates: initialPlayerParty, ap: 3, maxAp: calculatedMaxAp, tactic: "OFFENSIVE", log: startLogs, timelineIndex: 0, gvgAreaId: (mode === "GVG" ? areaIdOrOpponentUserId : null) },
+        player_state: {
+          playerStates: initialPlayerParty, ap: 3, maxAp: calculatedMaxAp, tactic: "OFFENSIVE", log: startLogs, timelineIndex: 0,
+          gvgAreaId: (mode === "GVG" ? areaIdOrOpponentUserId : null),
+          officialGvgAttackId: officialGvgAttackIdForBattle,
+          officialGvgReplayId: officialGvgReplayIdForBattle,
+          officialGvgWinner: officialGvgWinnerForBattle,
+        },
         enemy_state: { enemyStates: initialEnemyParty },
         status: "ACTIVE"
       }).select().single();
@@ -912,18 +1030,18 @@ export function useBattle(options: UseBattleOptions) {
     hasRaidBonus: boolean = false
   ): { damage: number; isCritical: boolean } => {
     // 基礎火力 = ATK * (1 + power / 100)
-    const basePower = attacker.stats.atk * (1 + (skillPower / 100));
+    const basePower = attacker.stats.atk * (skillPower / 100);
     
     // 割合防御カット率 = DEF / (DEF + 2000)
-    const cutRate = defender.stats.def / (defender.stats.def + 2000);
+    const cutRate = defender.stats.def / (defender.stats.def + 27000);
     const basicDmg = basePower * (1 - cutRate);
 
     // アライメント（属性）相性補正: JUSTICE > EVIL > CHAOS > ORDER > JUSTICE
     const alignMap: Record<string, string> = {
       JUSTICE: "EVIL",
-      EVIL: "CHAOS",
-      CHAOS: "ORDER",
-      ORDER: "JUSTICE"
+      EVIL: "ORDER",
+      CHAOS: "JUSTICE",
+      ORDER: "CHAOS"
     };
     let alignMultiplier = 1.0;
     if (attacker.alignment && defender.alignment) {
@@ -935,17 +1053,16 @@ export function useBattle(options: UseBattleOptions) {
     }
 
     // 乱数揺らぎ (0.95 〜 1.05: ±5%)
+    alignMultiplier = alignMap[attacker.alignment || "ORDER"] === defender.alignment ? 1.2 : 1;
     const variance = 0.95 + (Math.random() * 0.10);
 
     // LUK連動クリティカル判定
-    const critChance = attacker.stats.luk / (attacker.stats.luk + 500);
+    const critChance = Math.min(0.35, 0.05 + attacker.stats.luk * 0.002);
     const isCritical = Math.random() < critChance;
     const critMultiplier = isCritical ? 1.5 : 1.0;
 
     // レイド支配ボーナス (+20%)
-    const raidMultiplier = hasRaidBonus ? 1.2 : 1.0;
-
-    const finalDmg = Math.max(Math.floor(basicDmg * alignMultiplier * variance * critMultiplier * raidMultiplier), 10);
+    const finalDmg = Math.max(Math.floor(basicDmg * alignMultiplier * variance * critMultiplier), 1);
     return { damage: finalDmg, isCritical };
   };
 
@@ -955,7 +1072,7 @@ export function useBattle(options: UseBattleOptions) {
     setBattleState("PLAYING");
 
     // バトル開始時発動スキル (START_OF_BATTLE) の評価
-    let nextLogs = [...battleLog, "戦闘開始！初期バフ適用。"];
+    const nextLogs = [...battleLog, "戦闘開始！初期バフ適用。"];
     const updatedPlayers = playerPartyStates.map(p => {
       // 例: ストリートシールドなどの開始時アビリティ持ちのシミュレート
       if (p.characterId === "11111111-1111-1111-1111-111111111111") {
@@ -970,7 +1087,16 @@ export function useBattle(options: UseBattleOptions) {
   };
 
   const handleEndTurn = (overrideIndex?: number) => {
+    if (timeline.length === 0) return;
     const nextIndex = overrideIndex !== undefined ? overrideIndex : (timelineIndex + 1) % timeline.length;
+    if (nextIndex === 0) {
+      const roundLimit = battleMode === "RAID" ? 30 : battleMode === "PVP" || battleMode === "GVG" ? 20 : 15;
+      if (battleRound >= roundLimit) {
+        void endBattleSession("DEFEAT");
+        return;
+      }
+      setBattleRound((previous) => previous + 1);
+    }
     setTimelineIndex(nextIndex);
   };
 
@@ -1180,13 +1306,11 @@ export function useBattle(options: UseBattleOptions) {
     }
 
     // 1. スキル候補の選定
-    const aiResult = selectCharacterSkillByTactic(actor, ap, tactic, playerPartyStates, enemyPartyStates);
+    const aiResult = selectCharacterSkillByTactic(actor, tactic, playerPartyStates, enemyPartyStates);
     if (!aiResult) return;
     const { chosenSkill, target } = aiResult;
 
-    // AP消費
-    const nextAp = Math.max(ap - (chosenSkill.actualCost || 0), 0);
-    setAp(nextAp);
+    const nextAp = 0;
 
     // 演出設定
     setActiveSkillCutIn({ charName: actor.name, skillName: chosenSkill.name });
@@ -1294,12 +1418,7 @@ export function useBattle(options: UseBattleOptions) {
       if (activeNode.isEnemy) {
         executeEnemyTurn(activeNode.id, timelineIndex);
       } else {
-        // 味方ターン開始時にAP回復 (+3, 最大 maxAp)
-        setAp(prevAp => {
-          const nextAp = Math.min(prevAp + 3, maxAp);
-          executeAutoPlayerTurn(activeNode.id, timelineIndex);
-          return nextAp;
-        });
+        executeAutoPlayerTurn(activeNode.id, timelineIndex);
       }
     }, 1500 / battleSpeed);
 
@@ -1312,11 +1431,22 @@ export function useBattle(options: UseBattleOptions) {
     setBattleMode(null);
     const modeTemp = battleMode;
     const gvgAreaTemp = gvgTargetBaseId;
+    const gvgAttackIdTemp = officialGvgAttackId;
+    const gvgReplayIdTemp = officialGvgReplayId;
+    const gvgWinnerTemp = officialGvgWinner;
+    const hasOfficialGvgResult = modeTemp === "GVG" && gvgAttackIdTemp && gvgReplayIdTemp
+      && (gvgWinnerTemp === "PLAYER" || gvgWinnerTemp === "ENEMY");
+    const finalResult = hasOfficialGvgResult
+      ? (gvgWinnerTemp === "PLAYER" ? "VICTORY" : "DEFEAT")
+      : result;
+    setOfficialGvgAttackId(null);
+    setOfficialGvgReplayId(null);
+    setOfficialGvgWinner(null);
     setGvgTargetBaseId(null);
-    const isWin = result === "VICTORY";
+    const isWin = finalResult === "VICTORY";
 
     if (battleSessionId) {
-      await supabase.from("battle_sessions").update({ status: result }).eq("id", battleSessionId);
+      await supabase.from("battle_sessions").update({ status: finalResult }).eq("id", battleSessionId);
     }
 
     const { data: tutorialSession } = await supabase
@@ -1342,6 +1472,12 @@ export function useBattle(options: UseBattleOptions) {
           battle_result: result
         }).eq("id", patrol.id);
       }
+      if (isWin) {
+        await supabase.rpc("advance_tutorial_progress", {
+          p_expected_step: "TUTORIAL_BATTLE",
+          p_next_step: "RULE_GUIDE"
+        });
+      }
       await syncBootstrapData(session.user.id);
       if (setConfirmDialogConfig) {
         setConfirmDialogConfig({
@@ -1356,21 +1492,18 @@ export function useBattle(options: UseBattleOptions) {
       const diff = opponentPoints - pvpRate;
       let pointsDiff = 0;
       let rewardCash = 0;
-      let xpAmount = 0;
-      let levelUpMessage = "";
 
       try {
         const { data: matchReward } = await supabase
           .from("pvp_match_rewards_master")
-          .select("reward_xp, reward_cash_base")
-          .eq("status", isWin ? "VICTORY" : "DEFEAT")
+          .select("cash_reward")
+          .eq("result", isWin ? "VICTORY" : "DEFEAT")
           .single();
         
         if (matchReward) {
-          xpAmount = matchReward.reward_xp;
           if (isWin) {
             pointsDiff = Math.min(30, Math.max(5, 15 + Math.floor(diff / 50)));
-            rewardCash = Math.min(1000, Math.max(100, matchReward.reward_cash_base + Math.floor(diff * 1.5)));
+            rewardCash = Math.min(1000, Math.max(100, matchReward.cash_reward + Math.floor(diff * 1.5)));
           } else {
             pointsDiff = Math.min(-2, Math.max(-15, -5 + Math.floor(diff / 50)));
             rewardCash = 0;
@@ -1378,11 +1511,9 @@ export function useBattle(options: UseBattleOptions) {
         } else {
           // フォールバック
           if (isWin) {
-            xpAmount = 150;
             pointsDiff = Math.min(30, Math.max(5, 15 + Math.floor(diff / 50)));
             rewardCash = Math.min(1000, Math.max(100, 400 + Math.floor(diff * 1.5)));
           } else {
-            xpAmount = 0;
             pointsDiff = Math.min(-2, Math.max(-15, -5 + Math.floor(diff / 50)));
             rewardCash = 0;
           }
@@ -1390,11 +1521,9 @@ export function useBattle(options: UseBattleOptions) {
       } catch (e) {
         console.warn("Failed to fetch pvp_match_rewards_master", e);
         if (isWin) {
-          xpAmount = 150;
           pointsDiff = Math.min(30, Math.max(5, 15 + Math.floor(diff / 50)));
           rewardCash = Math.min(1000, Math.max(100, 400 + Math.floor(diff * 1.5)));
         } else {
-          xpAmount = 0;
           pointsDiff = Math.min(-2, Math.max(-15, -5 + Math.floor(diff / 50)));
           rewardCash = 0;
         }
@@ -1420,23 +1549,13 @@ export function useBattle(options: UseBattleOptions) {
         await addGuildXpAndContributionByAction("PVP");
       }
 
-      if (xpAmount > 0) {
-        const { data: xpRes } = await supabase.rpc("add_user_xp", {
-          p_user_id: session.user.id,
-          p_xp_amount: xpAmount
-        });
-        if (xpRes && xpRes.leveled_up) {
-          levelUpMessage = "\n★プレイヤーレベルが Lv." + xpRes.level + " にアップしました！";
-        }
-      }
-
       postNpcYajiMessage(session, username, "GLOBAL", currentBaseId, "PVP_WIN");
       await syncBootstrapData(session.user.id);
       if (setConfirmDialogConfig) {
         setConfirmDialogConfig({
           isOpen: true,
           title: "PvP結果",
-          message: `PvPバトル終了: ${result === "VICTORY" ? "勝利" : "敗北"}\n獲得ポイント: ${pointsDiff >= 0 ? "+" : ""}${pointsDiff}\n獲得キャッシュ: +${rewardCash}\n獲得経験値: +${xpAmount} XP${levelUpMessage}`,
+          message: `PvPバトル終了: ${result === "VICTORY" ? "勝利" : "敗北"}\n獲得ポイント: ${pointsDiff >= 0 ? "+" : ""}${pointsDiff}\n獲得キャッシュ: +${rewardCash}`,
           onConfirm: () => setConfirmDialogConfig(null),
           onCancel: () => setConfirmDialogConfig(null)
         });
@@ -1447,16 +1566,13 @@ export function useBattle(options: UseBattleOptions) {
       const totalDmg = Math.max(raidBossHp - finalBossHp, 0);
 
       // 1. ダメージログの記録
-      await supabase.from("raid_damage_logs").insert({
-        raid_boss_id: RAID_BOSS_ID,
-        user_id: session.user.id,
-        guild_id: userGuildMember?.guild_id || null,
-        damage_dealt: totalDmg
+      const { data: raidResolution, error: raidResolutionError } = await supabase.rpc("record_raid_boss_damage_v2", {
+        p_user_id: session.user.id,
+        p_boss_id: RAID_BOSS_ID,
+        p_damage: totalDmg
       });
-
-      // 2. ボスHPの更新
-      const nextHp = Math.max(raidBossHp - totalDmg, 0);
-      const isBossDefeated = nextHp <= 0;
+      if (raidResolutionError) throw raidResolutionError;
+      const isBossDefeated = Boolean(raidResolution?.defeated);
 
       // 3. 累積ダメージ報酬の判定と配布
       try {
@@ -1491,6 +1607,7 @@ export function useBattle(options: UseBattleOptions) {
       // 4. ボス討伐判定と復活・報酬配布
       if (isBossDefeated) {
         try {
+          await supabase.rpc("grant_raid_completion_xp", { p_boss_id: RAID_BOSS_ID });
           // 討伐報酬の配布
           const { data: defeatRewards } = await supabase.from("raid_rewards_master").select("*").eq("reward_type", "DEFEAT");
           const { data: dmgLogs } = await supabase.from("raid_damage_logs").select("*").eq("raid_boss_id", RAID_BOSS_ID);
@@ -1544,11 +1661,6 @@ export function useBattle(options: UseBattleOptions) {
           console.warn("Failed to process boss defeat rewards/reset:", err);
         }
       } else {
-        await supabase.rpc("record_raid_boss_damage_v2", {
-          p_user_id: session.user.id,
-          p_boss_id: RAID_BOSS_ID,
-          p_damage: totalDmg
-        });
         if (setConfirmDialogConfig) {
           setConfirmDialogConfig({
             isOpen: true,
@@ -1566,7 +1678,34 @@ export function useBattle(options: UseBattleOptions) {
       await supabase.rpc("evaluate_mission_progress", { p_user_id: session.user.id, p_trigger_type: "RAID_CLEAR", p_progress_increment: 1 });
     } else if (modeTemp === "GVG") {
       const guildIdFilter = userGuildMember?.guild_id || "";
-      if (guildIdFilter && gvgAreaTemp) {
+      if (gvgAttackIdTemp && gvgReplayIdTemp) {
+        try {
+          const { data, error } = await supabase.rpc("resolve_gvg_attack", {
+            p_attack_id: gvgAttackIdTemp,
+            p_battle_replay_session_id: gvgReplayIdTemp,
+            // migration 00068 ignores these client values and reads the server replay result.
+            p_is_victory: false,
+            p_raw_damage: 0,
+          });
+          if (error) throw error;
+          if (setConfirmDialogConfig) {
+            setConfirmDialogConfig({
+              isOpen: true,
+              title: "公式GvG結果",
+              message: `サーバー確定結果: ${gvgWinnerTemp === "PLAYER" ? "勝利" : "敗北"}\n確定ダメージ ${Number(data?.raw_damage ?? 0).toLocaleString()}\n共通HP反映 ${Number(data?.applied_damage ?? 0).toLocaleString()}`,
+              onConfirm: () => setConfirmDialogConfig(null),
+              onCancel: () => setConfirmDialogConfig(null),
+            });
+          }
+        } catch (error: any) {
+          console.warn("Failed to resolve official GvG result:", error.message);
+          setErrorMessage("公式GvG結果を反映できませんでした。");
+        }
+      // Legacy client-side GvG scoring is retired. Official attacks always
+      // obtain an attack ID and are resolved through the server replay path.
+      } else if (!gvgAttackIdTemp && guildIdFilter && gvgAreaTemp) {
+        setErrorMessage("Official GvG attacks must be started again before their result can be resolved.");
+      } else if (false) { /*
         try {
           const isPractice = gvgAreaTemp === guildIdFilter;
 
@@ -1589,13 +1728,13 @@ export function useBattle(options: UseBattleOptions) {
                 .eq("status", "ONGOING")
                 .eq("is_finals", isFinalDay);
               
-              let myMatch = null;
+              let myMatch: any = null;
               if (matchRecs) {
-                myMatch = matchRecs.find((m: any) => m.guild_a_id === guildIdFilter || m.guild_b_id === guildIdFilter);
+                myMatch = matchRecs?.find((m: any) => m.guild_a_id === guildIdFilter || m.guild_b_id === guildIdFilter);
               }
 
               if (myMatch) {
-                const isGuildA = myMatch.guild_a_id === guildIdFilter;
+                const isGuildA = myMatch!.guild_a_id === guildIdFilter;
                 const nextGuildPts = isGuildA ? (myMatch.guild_a_points || 0) + 100 : (myMatch.guild_b_points || 0) + 100;
                 await supabase
                   .from("gvg_matches")
@@ -1605,22 +1744,22 @@ export function useBattle(options: UseBattleOptions) {
 
               await addGuildXpAndContributionByAction("GVG");
               if (setConfirmDialogConfig) {
-                setConfirmDialogConfig({
+                setConfirmDialogConfig!({
                   isOpen: true,
                   title: "防衛演習結果",
                   message: "防衛演習 勝利！ 自組織に100ポイント付与。",
-                  onConfirm: () => setConfirmDialogConfig(null),
-                  onCancel: () => setConfirmDialogConfig(null)
+                  onConfirm: () => setConfirmDialogConfig!(null),
+                  onCancel: () => setConfirmDialogConfig!(null)
                 });
               }
             } else {
               if (setConfirmDialogConfig) {
-                setConfirmDialogConfig({
+                setConfirmDialogConfig!({
                   isOpen: true,
                   title: "防衛演習結果",
                   message: "防衛演習 敗北... (ポイント変動なし)",
-                  onConfirm: () => setConfirmDialogConfig(null),
-                  onCancel: () => setConfirmDialogConfig(null)
+                  onConfirm: () => setConfirmDialogConfig!(null),
+                  onCancel: () => setConfirmDialogConfig!(null)
                 });
               }
             }
@@ -1639,24 +1778,24 @@ export function useBattle(options: UseBattleOptions) {
             if (isWin) {
               await supabase.rpc("evaluate_mission_progress", { p_user_id: session.user.id, p_trigger_type: "GVG_WIN", p_progress_increment: 1 });
               await addGuildXpAndContributionByAction("GVG");
-              postNpcYajiMessage(session, username, "BASE", gvgAreaTemp, "GVG_WIN");
+              postNpcYajiMessage(session, username, "BASE", gvgAreaTemp!, "GVG_WIN");
               if (setConfirmDialogConfig) {
-                setConfirmDialogConfig({
+                setConfirmDialogConfig!({
                   isOpen: true,
                   title: "抗争結果",
                   message: "侵攻勝利！ 自組織の抗争ポイント +250。個人抗争ポイント +250。",
-                  onConfirm: () => setConfirmDialogConfig(null),
-                  onCancel: () => setConfirmDialogConfig(null)
+                  onConfirm: () => setConfirmDialogConfig!(null),
+                  onCancel: () => setConfirmDialogConfig!(null)
                 });
               }
             } else {
               if (setConfirmDialogConfig) {
-                setConfirmDialogConfig({
+                setConfirmDialogConfig!({
                   isOpen: true,
                   title: "抗争結果",
                   message: "侵攻失敗... 自組織の抗争ポイント -100。個人抗争ポイント -100。相手ギルド防衛ポイント +100。",
-                  onConfirm: () => setConfirmDialogConfig(null),
-                  onCancel: () => setConfirmDialogConfig(null)
+                  onConfirm: () => setConfirmDialogConfig!(null),
+                  onCancel: () => setConfirmDialogConfig!(null)
                 });
               }
             }
@@ -1664,6 +1803,7 @@ export function useBattle(options: UseBattleOptions) {
         } catch (err: any) {
           console.warn("Failed to update GvG match score:", err.message);
         }
+      */
       }
     }
     await syncBootstrapData(session.user.id);
@@ -1678,12 +1818,15 @@ export function useBattle(options: UseBattleOptions) {
       setBattleMode(activeBattleSession.battle_type as any);
       setBattleOpponentName(activeBattleSession.target_id);
       setGvgTargetBaseId(pState.gvgAreaId || null);
+      setOfficialGvgAttackId(pState.officialGvgAttackId || null);
+      setOfficialGvgReplayId(pState.officialGvgReplayId || null);
+      setOfficialGvgWinner(pState.officialGvgWinner === "PLAYER" ? "PLAYER" : pState.officialGvgWinner === "ENEMY" ? "ENEMY" : null);
 
       setPlayerPartyStates(pState.playerStates || []);
       setEnemyPartyStates(eState.enemyStates || []);
       setAp(pState.ap || 3);
       setMaxAp(pState.maxAp || 10);
-      setTactic(pState.tactic || "OFFENSIVE");
+      setTactic(pState.tactic || "ATTACK_PRIORITY");
       setBattleLog(pState.log || ["戦闘セッションを安全に復元しました。"]);
 
       // タイムラインの再ソート
@@ -1695,6 +1838,7 @@ export function useBattle(options: UseBattleOptions) {
 
       setTimeline(timelineQueue);
       setTimelineIndex(pState.timelineIndex || 0);
+      setBattleRound(1);
 
       setBattleState("PLAYING");
     }
@@ -1716,6 +1860,7 @@ export function useBattle(options: UseBattleOptions) {
     enemyPartyStates, setEnemyPartyStates,
     timeline, setTimeline,
     timelineIndex, setTimelineIndex,
+    battleRound, setBattleRound,
     activeSkillCutIn,
     targetLine,
     activeShakingCharId,

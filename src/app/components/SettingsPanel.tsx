@@ -14,7 +14,11 @@ export default function SettingsPanel() {
     setBio,
     titleEquipped,
     setTitleEquipped,
+    ownedTitles,
+    bgmEnabled,
+    seEnabled,
     handleUpdateProfile,
+    handleToggleSound,
     profileLoading,
     errorMessage,
     setErrorMessage,
@@ -47,7 +51,7 @@ export default function SettingsPanel() {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               placeholder="プレイヤー名を入力"
-              maxLength={20}
+              maxLength={8}
               className="settings-input"
             />
           </div>
@@ -58,7 +62,7 @@ export default function SettingsPanel() {
               value={bio}
               onChange={(e) => setBio(e.target.value)}
               placeholder="自己紹介を入力"
-              maxLength={100}
+              maxLength={200}
               className="settings-textarea"
               rows={3}
             />
@@ -71,10 +75,15 @@ export default function SettingsPanel() {
               onChange={(e) => setTitleEquipped(e.target.value)}
               className="settings-select"
             >
+              {ownedTitles.map((title: { id: string; name: string }) => (
+                <option key={title.id} value={title.id}>{title.name}</option>
+              ))}
+              <optgroup label="未獲得称号" disabled>
               <option value="ルーキー">ルーキー</option>
               <option value="半グレの首領">半グレの首領</option>
               <option value="新宿の狂犬">新宿の狂犬</option>
               <option value="伝説の始まり">伝説の始まり</option>
+              </optgroup>
             </select>
           </div>
         </div>
@@ -82,17 +91,45 @@ export default function SettingsPanel() {
         <div className="settings-section">
           <h4 className="settings-section-title">システム設定</h4>
           <div className="settings-field">
-            <label>サウンド (開発中)</label>
+            <label>BGM</label>
             <div className="settings-toggle-group">
-              <button className="settings-toggle-btn active">ON</button>
-              <button className="settings-toggle-btn">OFF</button>
+              <button
+                type="button"
+                className={`settings-toggle-btn ${bgmEnabled ? "active" : ""}`}
+                onClick={() => { if (!bgmEnabled) void handleToggleSound("bgm"); }}
+                aria-pressed={bgmEnabled}
+              >
+                ON
+              </button>
+              <button
+                type="button"
+                className={`settings-toggle-btn ${!bgmEnabled ? "active" : ""}`}
+                onClick={() => { if (bgmEnabled) void handleToggleSound("bgm"); }}
+                aria-pressed={!bgmEnabled}
+              >
+                OFF
+              </button>
             </div>
           </div>
           <div className="settings-field">
-            <label>プッシュ通知 (開発中)</label>
+            <label>SE</label>
             <div className="settings-toggle-group">
-              <button className="settings-toggle-btn active">ON</button>
-              <button className="settings-toggle-btn">OFF</button>
+              <button
+                type="button"
+                className={`settings-toggle-btn ${seEnabled ? "active" : ""}`}
+                onClick={() => { if (!seEnabled) void handleToggleSound("se"); }}
+                aria-pressed={seEnabled}
+              >
+                ON
+              </button>
+              <button
+                type="button"
+                className={`settings-toggle-btn ${!seEnabled ? "active" : ""}`}
+                onClick={() => { if (seEnabled) void handleToggleSound("se"); }}
+                aria-pressed={!seEnabled}
+              >
+                OFF
+              </button>
             </div>
           </div>
         </div>

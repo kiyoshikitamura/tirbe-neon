@@ -96,7 +96,7 @@ export function useInventory(
 
       const res = await supabase.rpc("claim_present", {
         p_user_id: session.user.id,
-        p_present_id: Number(id)
+        p_present_id: id
       });
       if (res.error) throw res.error;
       if (res.data?.error) throw new Error(res.data.error);

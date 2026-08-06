@@ -1,6 +1,9 @@
 ﻿"use client";
 
 import { executeMockRpc } from "./mockRpc";
+import { resolveBattle, type Tactic } from "../../../supabase/functions/resolve-battle/engine";
+
+const isTactic = (value: unknown): value is Tactic => value === "ATTACK_PRIORITY" || value === "HEAL_PRIORITY" || value === "SKILL_PRIORITY" || value === "BALANCED" || value === "WEAKNESS_FOCUS";
 
 export class MockSupabaseClient {
   public getStorage(key: string, defaultVal: any = []) {
@@ -67,6 +70,18 @@ export class MockSupabaseClient {
       }
       return { error: null };
     },
+    signInAnonymously: async () => {
+      if (typeof window === "undefined") return { data: { session: null }, error: null };
+      let demoId = localStorage.getItem("tribe_demo_uuid");
+      if (!demoId) {
+        demoId = "00000000-0000-4000-8000-" + Math.floor(100000000000 + Math.random() * 900000000000).toString();
+        localStorage.setItem("tribe_demo_uuid", demoId);
+      }
+      return {
+        data: { session: { user: { id: demoId, email: null, is_anonymous: true } } },
+        error: null
+      };
+    },
     signInWithPassword: async ({ email }: any) => {
       if (typeof window !== "undefined") {
         let demoId = localStorage.getItem("tribe_demo_uuid");
@@ -79,6 +94,40 @@ export class MockSupabaseClient {
     },
     signUp: async () => {
       return { data: { user: {} }, error: null };
+    },
+    updateUser: async ({ email }: any) => {
+      return { data: { user: { email, is_anonymous: false } }, error: null };
+    },
+    linkIdentity: async () => {
+      return { data: { provider: "google" }, error: null };
+    }
+  };
+
+  // Edge Function はローカル画面確認では外部呼び出しを行わない。
+  // 本番相当の結果確定は Supabase Functions 側で実行する。
+  functions = {
+    invoke: async (functionName: string, options?: { body?: { replaySessionId?: string } }) => {
+      if (functionName !== "resolve-battle" || !options?.body?.replaySessionId) return { data: null, error: null };
+      const userId = typeof window === "undefined" ? null : localStorage.getItem("tribe_demo_uuid");
+      const sessions = this.getStorage("battle_replay_sessions") || [];
+      const session = sessions.find((entry: any) => entry.id === options.body?.replaySessionId);
+      if (!session) return { data: null, error: { message: "Replay session was not found" } };
+      if (!userId || session.requester_user_id !== userId) return { data: null, error: { message: "Replay session was not found" } };
+      if (session.status === "RESOLVED") return { data: session.result, error: null };
+      if (session.battle_mode !== "GVG" || !session.source_reference_id || session.status !== "PENDING") {
+        return { data: null, error: { message: "Only a pending official GvG replay can be resolved" } };
+      }
+      const attacks = this.getStorage("gvg_attack_logs") || [];
+      const attack = attacks.find((entry: any) => entry.id === session.source_reference_id && entry.attacker_user_id === userId && entry.battle_result === "PENDING");
+      if (!attack) return { data: null, error: { message: "The official GvG attack is not resolvable" } };
+      if (!isTactic(session.tactic_id) || !Array.isArray(session.player_snapshot) || !Array.isArray(session.enemy_snapshot)) {
+        return { data: null, error: { message: "Replay session is not resolvable" } };
+      }
+      const result = resolveBattle(Number(session.random_seed) || 1, session.tactic_id, 20, session.player_snapshot, session.enemy_snapshot);
+      session.status = "RESOLVED";
+      session.result = result;
+      this.setStorage("battle_replay_sessions", sessions);
+      return { data: result, error: null };
     }
   };
 
@@ -87,7 +136,8 @@ export class MockSupabaseClient {
   }
 
   from(tableName: string) {
-    const context = this;
+    const getStorage = this.getStorage.bind(this);
+    const setStorage = this.setStorage.bind(this);
 
     class QueryBuilder {
       private filters: any[] = [];
@@ -100,6 +150,7 @@ export class MockSupabaseClient {
       private limitVal: number | null = null;
       private orderField: string | null = null;
       private orderAsc: boolean = true;
+      private orFilters: string[] = [];
 
       select(fields: string = "*") {
         this.selects = fields;
@@ -123,6 +174,11 @@ export class MockSupabaseClient {
 
       in(field: string, vals: any[]) {
         this.filters.push({ type: "in", field, vals });
+        return this;
+      }
+
+      or(expression: string) {
+        this.orFilters.push(expression);
         return this;
       }
 
@@ -168,7 +224,7 @@ export class MockSupabaseClient {
       }
 
       async then(resolve: any) {
-        let table = context.getStorage(tableName);
+        const table = getStorage(tableName);
 
         if (this.insertData) {
           const items = Array.isArray(this.insertData) ? this.insertData : [this.insertData];
@@ -179,7 +235,7 @@ export class MockSupabaseClient {
           }));
 
           const updatedTable = [...table, ...created];
-          context.setStorage(tableName, updatedTable);
+          setStorage(tableName, updatedTable);
 
           if (this.singleMode) {
             return resolve({ data: created[0], error: null });
@@ -203,7 +259,7 @@ export class MockSupabaseClient {
             return row;
           });
 
-          context.setStorage(tableName, updatedTable);
+          setStorage(tableName, updatedTable);
           return resolve({ data: updatedCount, error: null });
         }
 
@@ -217,7 +273,7 @@ export class MockSupabaseClient {
             return true;
           });
 
-          context.setStorage(tableName, updatedTable);
+          setStorage(tableName, updatedTable);
           return resolve({ data: null, error: null });
         }
 
@@ -227,6 +283,15 @@ export class MockSupabaseClient {
             if (f.type === "neq" && row[f.field] === f.val) return false;
             if (f.type === "gte" && row[f.field] < f.val) return false;
             if (f.type === "in" && !f.vals.includes(row[f.field])) return false;
+          }
+          for (const expression of this.orFilters) {
+            const groups = [...expression.matchAll(/and\(([^)]+)\)/g)];
+            const matchesAnyGroup = groups.some((group) => group[1].split(",").every((condition) => {
+              const [field, operator, ...valueParts] = condition.split(".");
+              const value = valueParts.join(".");
+              return operator === "eq" && String(row[field]) === value;
+            }));
+            if (!matchesAnyGroup) return false;
           }
           return true;
         });

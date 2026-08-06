@@ -534,7 +534,7 @@ export function useCharacterProgression(
     }
 
     if (useWildcard) {
-      let wildcardQty = isExclusive ? exclusiveContracts : skillLbBooks;
+      const wildcardQty = isExclusive ? exclusiveContracts : skillLbBooks;
       if (wildcardQty < 1) {
         setErrorMessage(`代用素材「${isExclusive ? "限界突破の書 [専用スキル]" : "限界突破の書 [スキル]"}」が不足しています。`);
         return;

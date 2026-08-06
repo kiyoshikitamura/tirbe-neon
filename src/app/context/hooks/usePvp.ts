@@ -63,7 +63,7 @@ export function usePvp(
     }
   };
 
-  const savePvpDefenseDeck = async (members: string[], tactic: string = "OFFENSIVE") => {
+  const savePvpDefenseDeck = async (members: string[], tactic: string = "ATTACK_PRIORITY") => {
     if (!session?.user?.id) return { success: false, message: "ログインが必要です。" };
     setUpgradeLoading(true);
     playCyberSe("click");

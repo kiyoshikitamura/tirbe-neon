@@ -40,9 +40,11 @@ export default function CharacterTab() {
     handleUnequipSkill,
     handleEquipSkillBulkRecommended,
     handleUnequipSkillBulk,
+    handleAutoFormation,
     playCyberSe,
     equippedBackground,
-    setEquippedBackground
+    setEquippedBackground,
+    setSelectedBgMode
   } = useGame();
 
   // ボトムシートモーダル状態: null (閉じ) | "STATUS" | "SKILL" | "GEAR"
@@ -75,6 +77,7 @@ export default function CharacterTab() {
 
   const alignInfo = getAlignmentShortJp(activeCharMaster?.alignment || "");
   const awakeningLevel = activeCharRecord?.awakening_level || 0;
+  const characterRarity = (activeCharMaster?.rarity || "N").toLowerCase();
   const isCurrentLeader = selectedLeader === activeCharMaster.id;
 
   // 上部カルーセル スライド操作
@@ -161,6 +164,11 @@ export default function CharacterTab() {
 
   return (
     <div className="char-tab-container">
+      <div className="flex justify-end mb-2">
+        <button className="sub-btn border-cyan-subtle font-size-8 height-26 px-3 active-scale-effect" onClick={() => void handleAutoFormation()}>
+          AUTO FORMATION
+        </button>
+      </div>
       {/* 1. 上部: 所持キャラクター丸型スライダー */}
       <div className="char-slider-header">
         <button className="char-slider-arrow" onClick={handlePrevChar}>◀</button>
@@ -200,7 +208,7 @@ export default function CharacterTab() {
       </div>
 
       {/* 2. 中央: 大画面5層レイヤーキャンバス (高さ360px絶対固定) */}
-      <div className="char-main-stage">
+      <div className={`char-main-stage char-rarity-${characterRarity}`}>
         {/* Z-10: 背景 */}
         <div className="char-layer-bg" style={{ backgroundImage: `url(${bgImgUrl})` }}>
           <div className="char-layer-bg-overlay" />
@@ -416,6 +424,7 @@ export default function CharacterTab() {
                         )
                       : null;
                     const skillMaster = equippedSkillRecord ? SKILLS_MASTER_DATA.find((m: any) => m.id === equippedSkillRecord.skill_id) : null;
+                    const skillRarity = (skillMaster?.rarity || "N").toLowerCase();
                     
                     const isSynergy = skillMaster && (skillMaster as any).exclusive_character_id === activeCharMaster.id;
                     const limitBreakPlus = equippedSkillRecord?.plus_val || 0;
@@ -428,7 +437,7 @@ export default function CharacterTab() {
                     return (
                       <div
                         key={slotIdx}
-                        className={`char-skill-card ${isSynergy ? "synergy-ap-reduced" : ""} ${tierClass} ${!isUnlocked ? "char-skill-locked" : ""} active-scale-effect`}
+                        className={`char-skill-card skill-rarity-${skillRarity} ${isSynergy ? "synergy-ap-reduced" : ""} ${tierClass} ${!isUnlocked ? "char-skill-locked" : ""} active-scale-effect`}
                         onClick={() => {
                           if (isUnlocked) {
                             setSelectedSkillSlotIdx(slotIdx);
@@ -622,6 +631,7 @@ export default function CharacterTab() {
                       style={{ backgroundImage: `url(${bg.img})` }}
                       onClick={() => {
                         setEquippedBackground(bg.id);
+                        setSelectedBgMode(bg.id);
                         playCyberSe("click");
                       }}
                     >

@@ -30,38 +30,38 @@ export const RAID_COST_TABLE = [
 export const DISPATCH_COURSES = [
   // 新宿
   { id: "q_shinjuku_short", townId: "shinjuku", name: "新宿: 見回り (短期)", duration: 30, stamina: 10, rewardCash: 800, rewardItem: "CHAR_EXP_S", chance: 0.8, xpReward: 120 },
-  { id: "q_shinjuku_medium", townId: "shinjuku", name: "新宿: 任務 (中期)", duration: 120, stamina: 25, rewardCash: 3000, rewardItem: "EQUIP_EXP_S", chance: 0.6, xpReward: 350 },
-  { id: "q_shinjuku_long", townId: "shinjuku", name: "新宿: 抗争 (長期)", duration: 360, stamina: 40, rewardCash: 8000, rewardItem: "CHAR_EXP_M", chance: 0.5, xpReward: 600 },
+  { id: "q_shinjuku_medium", townId: "shinjuku", name: "新宿: 任務 (中期)", duration: 120, stamina: 30, rewardCash: 3000, rewardItem: "EQUIP_EXP_S", chance: 0.6, xpReward: 350 },
+  { id: "q_shinjuku_long", townId: "shinjuku", name: "新宿: 抗争 (長期)", duration: 360, stamina: 50, rewardCash: 8000, rewardItem: "CHAR_EXP_M", chance: 0.5, xpReward: 600 },
   { id: "q_shinjuku_idle", townId: "shinjuku", name: "新宿: 制圧 (放置)", duration: 480, stamina: 50, rewardCash: 12000, rewardItem: "LAW_OF_STRIFE", chance: 0.4, xpReward: 800 },
   // 渋谷
   { id: "q_shibuya_short", townId: "shibuya", name: "渋谷: 見回り (短期)", duration: 30, stamina: 10, rewardCash: 800, rewardItem: "CHAR_EXP_S", chance: 0.8, xpReward: 120 },
-  { id: "q_shibuya_medium", townId: "shibuya", name: "渋谷: 任務 (中期)", duration: 120, stamina: 25, rewardCash: 3000, rewardItem: "EQUIP_EXP_S", chance: 0.6, xpReward: 350 },
-  { id: "q_shibuya_long", townId: "shibuya", name: "渋谷: 抗争 (長期)", duration: 360, stamina: 40, rewardCash: 8000, rewardItem: "CHAR_EXP_M", chance: 0.5, xpReward: 600 },
+  { id: "q_shibuya_medium", townId: "shibuya", name: "渋谷: 任務 (中期)", duration: 120, stamina: 30, rewardCash: 3000, rewardItem: "EQUIP_EXP_S", chance: 0.6, xpReward: 350 },
+  { id: "q_shibuya_long", townId: "shibuya", name: "渋谷: 抗争 (長期)", duration: 360, stamina: 50, rewardCash: 8000, rewardItem: "CHAR_EXP_M", chance: 0.5, xpReward: 600 },
   { id: "q_shibuya_idle", townId: "shibuya", name: "渋谷: 制圧 (放置)", duration: 480, stamina: 50, rewardCash: 12000, rewardItem: "LAW_OF_STRIFE", chance: 0.4, xpReward: 800 },
   // 池袋
   { id: "q_ikebukuro_short", townId: "ikebukuro", name: "池袋: 見回り (短期)", duration: 30, stamina: 10, rewardCash: 800, rewardItem: "CHAR_EXP_S", chance: 0.8, xpReward: 120 },
-  { id: "q_ikebukuro_medium", townId: "ikebukuro", name: "池袋: 任務 (中期)", duration: 120, stamina: 25, rewardCash: 3000, rewardItem: "EQUIP_EXP_S", chance: 0.6, xpReward: 350 },
-  { id: "q_ikebukuro_long", townId: "ikebukuro", name: "池袋: 抗争 (長期)", duration: 360, stamina: 40, rewardCash: 8000, rewardItem: "CHAR_EXP_M", chance: 0.5, xpReward: 600 },
+  { id: "q_ikebukuro_medium", townId: "ikebukuro", name: "池袋: 任務 (中期)", duration: 120, stamina: 30, rewardCash: 3000, rewardItem: "EQUIP_EXP_S", chance: 0.6, xpReward: 350 },
+  { id: "q_ikebukuro_long", townId: "ikebukuro", name: "池袋: 抗争 (長期)", duration: 360, stamina: 50, rewardCash: 8000, rewardItem: "CHAR_EXP_M", chance: 0.5, xpReward: 600 },
   { id: "q_ikebukuro_idle", townId: "ikebukuro", name: "池袋: 制圧 (放置)", duration: 480, stamina: 50, rewardCash: 12000, rewardItem: "LAW_OF_STRIFE", chance: 0.4, xpReward: 800 },
   // 六本木
   { id: "q_roppongi_short", townId: "roppongi", name: "六本木: 見回り (短期)", duration: 30, stamina: 10, rewardCash: 800, rewardItem: "CHAR_EXP_S", chance: 0.8, xpReward: 120 },
-  { id: "q_roppongi_medium", townId: "roppongi", name: "六本木: 任務 (中期)", duration: 120, stamina: 25, rewardCash: 3000, rewardItem: "EQUIP_EXP_S", chance: 0.6, xpReward: 350 },
-  { id: "q_roppongi_long", townId: "roppongi", name: "六本木: 抗争 (長期)", duration: 360, stamina: 40, rewardCash: 8000, rewardItem: "CHAR_EXP_M", chance: 0.5, xpReward: 600 },
+  { id: "q_roppongi_medium", townId: "roppongi", name: "六本木: 任務 (中期)", duration: 120, stamina: 30, rewardCash: 3000, rewardItem: "EQUIP_EXP_S", chance: 0.6, xpReward: 350 },
+  { id: "q_roppongi_long", townId: "roppongi", name: "六本木: 抗争 (長期)", duration: 360, stamina: 50, rewardCash: 8000, rewardItem: "CHAR_EXP_M", chance: 0.5, xpReward: 600 },
   { id: "q_roppongi_idle", townId: "roppongi", name: "六本木: 制圧 (放置)", duration: 480, stamina: 50, rewardCash: 12000, rewardItem: "LAW_OF_STRIFE", chance: 0.4, xpReward: 800 },
   // 秋葉原
   { id: "q_akihabara_short", townId: "akihabara", name: "秋葉原: 見回り (短期)", duration: 30, stamina: 10, rewardCash: 800, rewardItem: "CHAR_EXP_S", chance: 0.8, xpReward: 120 },
-  { id: "q_akihabara_medium", townId: "akihabara", name: "秋葉原: 任務 (中期)", duration: 120, stamina: 25, rewardCash: 3000, rewardItem: "EQUIP_EXP_S", chance: 0.6, xpReward: 350 },
-  { id: "q_akihabara_long", townId: "akihabara", name: "秋葉原: 抗争 (長期)", duration: 360, stamina: 40, rewardCash: 8000, rewardItem: "CHAR_EXP_M", chance: 0.5, xpReward: 600 },
+  { id: "q_akihabara_medium", townId: "akihabara", name: "秋葉原: 任務 (中期)", duration: 120, stamina: 30, rewardCash: 3000, rewardItem: "EQUIP_EXP_S", chance: 0.6, xpReward: 350 },
+  { id: "q_akihabara_long", townId: "akihabara", name: "秋葉原: 抗争 (長期)", duration: 360, stamina: 50, rewardCash: 8000, rewardItem: "CHAR_EXP_M", chance: 0.5, xpReward: 600 },
   { id: "q_akihabara_idle", townId: "akihabara", name: "秋葉原: 制圧 (放置)", duration: 480, stamina: 50, rewardCash: 12000, rewardItem: "LAW_OF_STRIFE", chance: 0.4, xpReward: 800 },
   // 川崎
   { id: "q_kawasaki_short", townId: "kawasaki", name: "川崎: 見回り (短期)", duration: 30, stamina: 10, rewardCash: 800, rewardItem: "CHAR_EXP_S", chance: 0.8, xpReward: 120 },
-  { id: "q_kawasaki_medium", townId: "kawasaki", name: "川崎: 任務 (中期)", duration: 120, stamina: 25, rewardCash: 3000, rewardItem: "EQUIP_EXP_S", chance: 0.6, xpReward: 350 },
-  { id: "q_kawasaki_long", townId: "kawasaki", name: "川崎: 抗争 (長期)", duration: 360, stamina: 40, rewardCash: 8000, rewardItem: "CHAR_EXP_M", chance: 0.5, xpReward: 600 },
+  { id: "q_kawasaki_medium", townId: "kawasaki", name: "川崎: 任務 (中期)", duration: 120, stamina: 30, rewardCash: 3000, rewardItem: "EQUIP_EXP_S", chance: 0.6, xpReward: 350 },
+  { id: "q_kawasaki_long", townId: "kawasaki", name: "川崎: 抗争 (長期)", duration: 360, stamina: 50, rewardCash: 8000, rewardItem: "CHAR_EXP_M", chance: 0.5, xpReward: 600 },
   { id: "q_kawasaki_idle", townId: "kawasaki", name: "川崎: 制圧 (放置)", duration: 480, stamina: 50, rewardCash: 12000, rewardItem: "LAW_OF_STRIFE", chance: 0.4, xpReward: 800 },
   // 横浜
   { id: "q_yokohama_short", townId: "yokohama", name: "横浜: 見回り (短期)", duration: 30, stamina: 10, rewardCash: 800, rewardItem: "CHAR_EXP_S", chance: 0.8, xpReward: 120 },
-  { id: "q_yokohama_medium", townId: "yokohama", name: "横浜: 任務 (中期)", duration: 120, stamina: 25, rewardCash: 3000, rewardItem: "EQUIP_EXP_S", chance: 0.6, xpReward: 350 },
-  { id: "q_yokohama_long", townId: "yokohama", name: "横浜: 抗争 (長期)", duration: 360, stamina: 40, rewardCash: 8000, rewardItem: "CHAR_EXP_M", chance: 0.5, xpReward: 600 },
+  { id: "q_yokohama_medium", townId: "yokohama", name: "横浜: 任務 (中期)", duration: 120, stamina: 30, rewardCash: 3000, rewardItem: "EQUIP_EXP_S", chance: 0.6, xpReward: 350 },
+  { id: "q_yokohama_long", townId: "yokohama", name: "横浜: 抗争 (長期)", duration: 360, stamina: 50, rewardCash: 8000, rewardItem: "CHAR_EXP_M", chance: 0.5, xpReward: 600 },
   { id: "q_yokohama_idle", townId: "yokohama", name: "横浜: 制圧 (放置)", duration: 480, stamina: 50, rewardCash: 12000, rewardItem: "LAW_OF_STRIFE", chance: 0.4, xpReward: 800 }
 ];
 

@@ -1,16 +1,16 @@
 -- 12. Battle & Events RPCs
-CREATE OR REPLACE FUNCTION public.consume_pvp_ticket(p_user_id UUID) RETURNS JSONB AS $$
+CREATE OR REPLACE FUNCTION public.consume_pvp_point(p_user_id UUID) RETURNS JSONB AS $$
 DECLARE
-    v_tickets INTEGER;
+    v_points INTEGER;
 BEGIN
-    SELECT pvp_tickets INTO v_tickets FROM public.users WHERE id = p_user_id;
-    IF v_tickets < 1 THEN
-        RETURN jsonb_build_object('error', 'PvP入場券が不足しています。');
+    SELECT pvp_points INTO v_points FROM public.users WHERE id = p_user_id FOR UPDATE;
+    IF v_points < 1 THEN
+        RETURN jsonb_build_object('error', 'PvPポイントが不足しています。');
     END IF;
 
     UPDATE public.users 
-    SET pvp_tickets = pvp_tickets - 1,
-        pvp_tickets_last_recovered_at = CASE WHEN pvp_tickets = 5 THEN now() ELSE pvp_tickets_last_recovered_at END
+    SET pvp_points = pvp_points - 1,
+        pvp_points_last_recovered_at = CASE WHEN pvp_points = 5 THEN now() ELSE pvp_points_last_recovered_at END
     WHERE id = p_user_id;
 
     RETURN jsonb_build_object('status', 'success');

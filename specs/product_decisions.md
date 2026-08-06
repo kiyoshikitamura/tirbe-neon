@@ -59,6 +59,34 @@ PvP・GvG・レイドをゲーム継続の中心コンテンツとする。
 ## 2026-08-03 priority correction
 
 The final content hierarchy is: **GvG as the main content**, with **raid, PvP, and quests as sub-content**. This supersedes the earlier wording that listed PvP/GvG/raid at the same priority.
+
+## 2026-08-05 social-profile-guild decision
+
+`spec_social_profile_guild_communication.md` is the authoritative specification for user profiles, guild capacity and guild-page decorations, chat, BBS, and DM flows. It supersedes prior conflicting details, including a guild-capacity maximum of 30 and PvP user-XP rewards.
+
+## 2026-08-05 shop-home-performance decision
+
+`spec_shop_home_performance.md` is the authoritative specification for limited and normal shops, the 72-hour beginner pack, the VIP pass route, my-page navigation/background behavior, and cross-content loading optimization. It supersedes prior conflicting details, including a 24-hour beginner-pack limit and direct VIP-pass purchasing from the my page.
+
+## 2026-08-05 character-page decision
+
+`spec_character_page.md` is the authoritative specification for the character-page layout, character-rarity backgrounds, rarity-enhanced equipment and skill icons, and the equipped-skill status display. The supplied reference is a layout benchmark only; its assets and distinctive UI are not reused.
+
+## 2026-08-05 tutorial decision
+
+`spec_tutorial.md` is the authoritative specification for the new-user tutorial. It defines name-only setup, persistent navigation-character guidance, free daily gacha, auto formation, a free dispatch shortcut with a guaranteed tutorial battle, the four-slide rule guide, and mission-led completion.
+
+## 2026-08-05 settings decision
+
+`spec_settings.md` is the authoritative specification for settings. It includes profile and title editing plus separate BGM/SE controls, and excludes browser push-notification settings.
+
+## 2026-08-05 authentication decision
+
+`spec_authentication.md` is the authoritative specification for Google OAuth and email/password authentication. First-time users enter a username and complete the tutorial as a provisional user, then link exactly one unused authentication identity before entering normal gameplay.
+
+## 2026-08-05 battle-system decision
+
+`spec_battle_system.md` is the authoritative specification for quest, PvP, raid, and GvG battles. GvG uses common guild HP as its win condition and actual individual damage as contribution points for rankings and rewards; fixed win/loss points no longer determine GvG outcomes.
 ## GvG確定仕様（2026-08-05）
 
 - 開催は毎日3回（12:00開始、20:00開始、23:00開始）。各回30分。
@@ -85,7 +113,7 @@ The final content hierarchy is: **GvG as the main content**, with **raid, PvP, a
 ### 原資の分離
 
 - クエストとGvGは共通原資の行動力（AP）を消費する。
-- PvPはPvP専用チケット／行動力を消費する。
+- PvPはPvPポイントを消費する。PvPポイントは初期・上限5点、1時間ごとに1点回復し、チケット制は採用しない。
 - レイドはレイド専用の挑戦回数・コストを消費する。
 - PvP・レイドの参加状況が、クエスト／GvG用APを直接奪わないようにする。
 

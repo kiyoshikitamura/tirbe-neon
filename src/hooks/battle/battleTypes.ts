@@ -46,6 +46,16 @@ export interface UseBattleOptions {
   selectedBattleHelper?: string | null;
 }
 
+/** 確定仕様の5作戦。LegacyTactic は保存済みの旧デッキを読むためだけに残す。 */
+export type BattleTacticId =
+  | "ATTACK_PRIORITY"
+  | "HEAL_PRIORITY"
+  | "SKILL_PRIORITY"
+  | "BALANCED"
+  | "WEAKNESS_FOCUS";
+export type LegacyBattleTacticId = "OFFENSIVE" | "DEFENSIVE" | "HEALING" | "AP_CONSERVING" | "TACTICAL";
+export type CompatibleBattleTacticId = BattleTacticId | LegacyBattleTacticId;
+
 export interface ParticipantState {
   id: string; // "char_xxx" or "ENEMY_xxx" or "ENEMY"
   name: string;
