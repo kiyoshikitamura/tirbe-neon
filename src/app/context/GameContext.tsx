@@ -1375,13 +1375,17 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
           .maybeSingle();
 
         if (deckData) {
-          const members = [
+          const storedMembers = [
             deckData.character_1_id, 
             deckData.character_2_id, 
             deckData.character_3_id,
             deckData.character_4_id,
             deckData.character_5_id
           ].filter(Boolean);
+          const members = storedMembers.map((storedId: string) => {
+            const ownedCharacter = charsData.find((character: any) => character.id === storedId);
+            return ownedCharacter?.character_id || storedId;
+          });
           setSelectedMembers(members);
           localDeck = members;
         } else {
@@ -3271,12 +3275,18 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
   const persistPartyFormation = async (party: string[]) => {
     if (!session?.user?.id) return null;
+    const storageParty = party.map((characterId) => {
+      const ownedCharacter = userCharactersDbList.find((character: any) =>
+        character.id === characterId || character.character_id === characterId
+      );
+      return ownedCharacter?.id || characterId;
+    });
     const formation = {
-      character_1_id: party[0] || null,
-      character_2_id: party[1] || null,
-      character_3_id: party[2] || null,
-      character_4_id: party[3] || null,
-      character_5_id: party[4] || null,
+      character_1_id: storageParty[0] || null,
+      character_2_id: storageParty[1] || null,
+      character_3_id: storageParty[2] || null,
+      character_4_id: storageParty[3] || null,
+      character_5_id: storageParty[4] || null,
       updated_at: new Date().toISOString()
     };
 

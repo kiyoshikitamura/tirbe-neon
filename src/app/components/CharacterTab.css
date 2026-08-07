@@ -558,7 +558,7 @@
 /* Z-30: メインキャラクター透過立ち絵 (縮小＆余白確保) */
 .char-layer-character {
   position: absolute;
-  bottom: 32px;
+  bottom: 22px;
   left: 50%;
   transform: translateX(-50%);
   height: 280px;
