@@ -119,28 +119,47 @@ export default function GuildTab() {
   };
 
   if (!userGuild) {
+    const joinUnlocked = userLevel >= 3 && !penalty.isPenalty;
+    const createUnlocked = userLevel >= 8 && cash >= 5000 && !penalty.isPenalty;
     return (
-      <div className="view-container">
+      <div className="view-container guild-lobby-view">
         <SectionHeader title="ギルド" />
-        <div className="scroll-container flex-1 flex-col-gap-3">
-          
-          {/* ペナルティ警告 */}
-          {userLevel < 3 && (
-            <OutlawCard className="border-danger text-color-danger font-size-8 p-3 text-center mb-3">
-              ギルド機能への参加にはプレイヤーレベル3以上が必要です。(現在のレベル: Lv.{userLevel})
-            </OutlawCard>
-          )}
+        <div className="scroll-container flex-1 guild-lobby-scroll">
+          <section className="guild-lobby-hero">
+            <img src="/menu/menu_allies.png" alt="連合" className="guild-lobby-hero-emblem" />
+            <div>
+              <p className="guild-lobby-kicker">ALLY NETWORK</p>
+              <h2>一人では獲れない街がある。</h2>
+              <p>仲間と連合を組み、GvGで拠点を奪え。日々の成長は、次の抗争の武器になる。</p>
+            </div>
+          </section>
+
+          <section className={`guild-lobby-unlock ${joinUnlocked ? "is-ready" : ""}`}>
+            <div><span>連合への加入</span><strong>{joinUnlocked ? "参加可能" : `Lv.${userLevel} / Lv.3`}</strong></div>
+            <div className="guild-lobby-progress"><span style={{ width: `${Math.min((userLevel / 3) * 100, 100)}%` }} /></div>
+            <p>{joinUnlocked ? "加入先を選んで、仲間と活動を始めよう。" : "プレイヤーLv.3で加入先を選べるようになります。"}</p>
+          </section>
 
           {penalty.isPenalty && (
-            <OutlawCard className="border-danger text-color-danger font-size-8 p-3 text-center">
-              ギルド脱退後のペナルティ制限期間中です。残り時間: {Math.ceil(penalty.secondsLeft / 3600)}時間 ({penalty.secondsLeft.toLocaleString()}秒)
-            </OutlawCard>
+            <div className="guild-lobby-notice">脱退後の参加制限中です。残り {Math.ceil(penalty.secondsLeft / 3600)} 時間</div>
           )}
 
-          {/* 新規創設 */}
-          <OutlawCard glowLine="left">
-            <div className="font-bold text-neon-cyan mb-1">新規ギルドの創設</div>
-            <p className="font-size-8 text-secondary mt-1 mb-3">創設コスト: 5,000キャッシュ ｜ ペナルティ期間中は不可</p>
+          <section className="guild-lobby-section">
+            <div className="guild-lobby-section-heading"><span>募集中の連合</span><small>Lv.3から加入</small></div>
+            <div className="guild-lobby-list">
+              {allGuildsDbList.map((g: any) => (
+                <div key={g.id} className="guild-lobby-guild-card">
+                  <div className="guild-lobby-guild-mark">連</div>
+                  <div className="guild-lobby-guild-info"><strong>{g.name}</strong><span>Lv.{g.level} ・ メンバーを募集中</span></div>
+                  <OutlawButton variant={joinUnlocked ? "primary" : "secondary"} className="font-size-8 px-3" disabled={!joinUnlocked || gvgResetLoading} onClick={() => handleDemoJoinGuild(g.id, g.name)}>{joinUnlocked ? "加入する" : "Lv.3で解放"}</OutlawButton>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className={`guild-lobby-create ${createUnlocked ? "is-ready" : ""}`}>
+            <div className="guild-lobby-section-heading"><span>新しい連合を立ち上げる</span><small>Lv.8 / 5,000 Cash</small></div>
+            <p>あなたの看板を掲げ、仲間を集めて街を取りに行く。</p>
             <div className="flex gap-2">
               <input 
                 type="text" 
@@ -152,38 +171,14 @@ export default function GuildTab() {
                 className="flex-1 bg-black-60 border-subtle text-white font-size-9 p-2 rounded outline-none"
               />
               <OutlawButton 
-                variant="primary"
+                variant={createUnlocked ? "primary" : "secondary"}
                 onClick={handleCreateGuild}
                 disabled={gvgResetLoading || penalty.isPenalty || cash < 5000 || !newGuildName.trim() || userLevel < 8}
               >
-                {gvgResetLoading ? <div className="spinner" /> : userLevel < 8 ? "Lv8が必要" : "創設"}
+                {gvgResetLoading ? <div className="spinner" /> : userLevel < 8 ? "Lv.8で解放" : cash < 5000 ? "資金不足" : "創設する"}
               </OutlawButton>
             </div>
-          </OutlawCard>
-
-          {/* ギルド一覧 */}
-          <OutlawCard glowLine="bottom" className="mt-2">
-            <div className="font-bold mb-2">ギルド一覧 (デモ所属可能)</div>
-            <div className="list-container mt-2">
-              {allGuildsDbList.map((g: any) => (
-                <div key={g.id} className="list-item">
-                  <div className="item-left">
-                    <span className="item-title">{g.name}</span>
-                    <span className="item-desc">Lv.{g.level}</span>
-                  </div>
-                  <OutlawButton 
-                    variant="secondary"
-                    className="font-size-8 px-3"
-                    disabled={gvgResetLoading || penalty.isPenalty || userLevel < 3}
-                    onClick={() => handleDemoJoinGuild(g.id, g.name)}
-                  >
-                    {userLevel < 3 ? "Lv3制限" : "所属"}
-                  </OutlawButton>
-                </div>
-              ))}
-            </div>
-          </OutlawCard>
-
+          </section>
         </div>
       </div>
     );

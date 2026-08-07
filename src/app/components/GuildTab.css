@@ -6,6 +6,30 @@
   overflow: hidden;
 }
 
+.guild-lobby-view { background: #080d17; }
+.guild-lobby-scroll { display: grid; gap: 14px; padding: 14px; }
+.guild-lobby-hero { display: flex; gap: 13px; align-items: center; padding: 16px 14px; border: 1px solid rgba(0, 240, 255, .32); background: linear-gradient(120deg, rgba(0, 191, 255, .1), rgba(18, 15, 33, .88)); box-shadow: inset 3px 0 #00f0ff; }
+.guild-lobby-hero-emblem { width: 70px; height: 70px; object-fit: contain; filter: drop-shadow(0 0 10px rgba(0, 240, 255, .35)); }
+.guild-lobby-kicker { margin: 0 0 4px; color: #00f0ff; font-size: 9px; font-weight: 800; letter-spacing: 1px; }
+.guild-lobby-hero h2 { margin: 0; color: #fff; font-size: 18px; }
+.guild-lobby-hero p:not(.guild-lobby-kicker) { margin: 7px 0 0; color: #bac6d6; font-size: 11px; line-height: 1.5; }
+.guild-lobby-unlock, .guild-lobby-create { padding: 13px; border: 1px solid rgba(110, 135, 165, .34); background: rgba(17, 24, 39, .78); }
+.guild-lobby-unlock.is-ready, .guild-lobby-create.is-ready { border-color: rgba(0, 240, 255, .55); }
+.guild-lobby-unlock > div:first-child, .guild-lobby-section-heading { display: flex; justify-content: space-between; gap: 8px; color: #f4f8ff; font-size: 13px; font-weight: 800; }
+.guild-lobby-unlock strong { color: #00f0ff; font-size: 12px; }
+.guild-lobby-unlock p, .guild-lobby-create p { margin: 7px 0 0; color: #9faec2; font-size: 11px; }
+.guild-lobby-progress { height: 5px; margin-top: 9px; overflow: hidden; background: #050912; }
+.guild-lobby-progress span { display: block; height: 100%; background: linear-gradient(90deg, #00d8e9, #4d8cff); }
+.guild-lobby-notice { padding: 9px 11px; border: 1px solid rgba(255, 80, 96, .5); color: #ffc0c8; background: rgba(100, 16, 27, .22); font-size: 11px; }
+.guild-lobby-section { display: grid; gap: 8px; }
+.guild-lobby-section-heading small { color: #8493aa; font-size: 10px; font-weight: 700; }
+.guild-lobby-list { display: grid; gap: 7px; }
+.guild-lobby-guild-card { display: flex; align-items: center; gap: 9px; padding: 10px; border: 1px solid rgba(86, 110, 143, .28); background: rgba(13, 20, 33, .86); }
+.guild-lobby-guild-mark { display: grid; width: 30px; height: 30px; place-items: center; border: 1px solid rgba(0, 240, 255, .5); border-radius: 50%; color: #00f0ff; font-size: 13px; font-weight: 900; }
+.guild-lobby-guild-info { display: grid; flex: 1; gap: 3px; min-width: 0; }
+.guild-lobby-guild-info strong { overflow: hidden; color: #fff; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.guild-lobby-guild-info span { color: #91a1b8; font-size: 10px; }
+
 .guild-decoration-neon-kabukicho {
   background:
     radial-gradient(circle at 16% 12%, rgba(255, 0, 170, 0.2), transparent 30%),
