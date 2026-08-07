@@ -310,15 +310,18 @@
 
 /* 2. 丸型漢字メニューボタン (連合 / 喧嘩 / 制圧) */
 .mypage-circle-menu-area {
-  position: relative;
+  position: absolute;
+  top: calc(clamp(280px, 45vh, 520px) - 40px);
+  left: 0;
+  right: 0;
+  height: 80px;
   display: flex;
   justify-content: center;
   align-items: flex-end;
   gap: 8px;
-  /* The transform keeps the buttons visually attached to the scene, while
-     the negative bottom margin removes their original flow space. */
-  margin: 0 0 -48px;
-  transform: translateY(-48px);
+  /* This is intentionally out of normal flow: the primary routes bridge the
+     personal scene and the information area without reserving blank space. */
+  margin: 0;
   z-index: 15;
   padding: 0 10px;
 }
@@ -329,7 +332,7 @@
 .mypage-lower-content {
   display: block;
   width: 100%;
-  padding: 0 12px 12px;
+  padding: 52px 12px 12px;
 }
 
 .circle-menu-btn {
