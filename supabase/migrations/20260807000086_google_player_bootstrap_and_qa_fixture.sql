@@ -38,6 +38,9 @@ AS $$
 DECLARE
   v_user_id uuid;
   v_email_hash text := encode(extensions.digest(lower(coalesce(auth.jwt() ->> 'email', '')), 'sha256'), 'hex');
+  v_skill_table regclass;
+  v_skill_column text;
+  v_skill_id text;
 BEGIN
   IF v_email_hash <> 'ec4caf39b8c3a960f9287ac282badc8fe2ab3f03326455d4274e8bfd2de53f42' THEN
     RAISE EXCEPTION 'QA fixture is not available for this account';
@@ -62,10 +65,25 @@ BEGIN
     SELECT 'WEAPON_001'::text equipment_id, 30 level, 3 plus_val, id character_id, 0 slot_index FROM public.user_characters WHERE user_id = v_user_id ORDER BY level DESC LIMIT 1
   ) seed;
 
-  INSERT INTO public.user_skills (user_id, skill_card_id, plus_val, equipped_character_id, slot_index)
-  SELECT v_user_id, skill_card_id, plus_val, id, slot_index
-  FROM public.user_characters, LATERAL (VALUES ('SKILL_001'::text, 2, 0), ('SKILL_002'::text, 1, 1)) AS skill(skill_card_id, plus_val, slot_index)
-  WHERE user_id = v_user_id;
+  -- Resolve the actual referenced skill master from the live schema instead
+  -- of assuming a frontend/master-data identifier.
+  SELECT constraint_ref.confrelid, attribute_ref.attname
+    INTO v_skill_table, v_skill_column
+  FROM pg_constraint AS constraint_ref
+  JOIN LATERAL unnest(constraint_ref.confkey) AS key_ref(attnum) ON true
+  JOIN pg_attribute AS attribute_ref
+    ON attribute_ref.attrelid = constraint_ref.confrelid
+   AND attribute_ref.attnum = key_ref.attnum
+  WHERE constraint_ref.conname = 'user_skills_skill_card_id_fkey'
+  LIMIT 1;
+  IF v_skill_table IS NOT NULL THEN
+    EXECUTE format('SELECT %I::text FROM %s LIMIT 1', v_skill_column, v_skill_table) INTO v_skill_id;
+  END IF;
+  IF v_skill_id IS NOT NULL THEN
+    INSERT INTO public.user_skills (user_id, skill_card_id, plus_val, equipped_character_id, slot_index)
+    SELECT v_user_id, v_skill_id, 2, id, 0
+    FROM public.user_characters WHERE user_id = v_user_id;
+  END IF;
 
   INSERT INTO public.user_items (user_id, item_id, quantity)
   VALUES
