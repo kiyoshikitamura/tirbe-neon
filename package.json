@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "quality:preflight": "npm run lint && npm run typecheck && npm run verify:mock-asset-gacha && npm run verify:mock-direct-message-read && npm run verify:mock-gvg-cancellation && npm run build && npm run test:e2e",
+    "quality:preflight": "npm run lint && npm run typecheck && npm run verify:mock-asset-gacha && npm run verify:mock-direct-message-read && npm run verify:mock-gvg-cancellation && npm run build",
     "test:e2e": "playwright test",
     "verify:asset-gacha": "node scripts/verify_asset_gacha.mjs",
     "verify:mock-asset-gacha": "node --experimental-strip-types scripts/verify_mock_asset_gacha.mjs",

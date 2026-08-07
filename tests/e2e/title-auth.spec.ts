@@ -12,9 +12,9 @@ test("title screen opens the authentication menu", async ({ page }) => {
 
 test("authentication menu opens the email login form", async ({ page }) => {
   await page.goto("/");
-  await page.getByText("TAP TO START").click();
-
-  await page.locator(".auth-btn-cyan").click();
+  const tapToStart = page.getByText("TAP TO START");
+  await expect(tapToStart).toBeVisible();
+  await tapToStart.click();
 
   await expect(page.locator('input[type="email"]')).toBeVisible();
   await expect(page.locator('input[type="password"]')).toBeVisible();
