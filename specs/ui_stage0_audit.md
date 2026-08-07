@@ -27,6 +27,7 @@ Stage 0では製品コード、DB、画面表示を変更しない。本書を�
 | PvP | `PvpTab` | 一部共通部品、一覧とローダーは固有 | `CompetitionHub` + `OpponentList` | 2 |
 | GvG | `GvgTab`、`GvgMatchStatusPanel` | ほぼ固有UI | `CompetitionHub` + `MatchStatus` | 2 |
 | レイド | `RaidTab` | 固有カード・状態・処理中テキスト | `EventHub` + `BossStatus` | 2 |
+| ランキング | `RankingTab` | 5カテゴリ×2期間を612行の単一コンポーネントでクライアント集計 | `RankingHub` + `RankingList` + `MyRankStatus` | 2 |
 | ギルド | `GuildTab` | 共通部品と固有部品が混在 | `CommunityHub` + `MemberList` | 3 |
 | チャット | `TribeChatModal` | 共通全画面パネルを一部使用 | `SocialPanel` + `MessageList` | 3 |
 | BBS | `BbsTab` | 独自タブ・カード・入力・CSS | `SocialPanel` + `ThreadList` | 3 |
@@ -73,6 +74,7 @@ Stage 0では製品コード、DB、画面表示を変更しない。本書を�
 - `ShopTab`の画面全体を操作中ローダーで置き換える実装
 - `RaidTab`、`SettingsPanel`の「処理中...」等の文字だけのローディング
 - `CommonModals`に追加され続ける用途固有分岐
+- `RankingTab`の独自タブ、順位バッジ、一覧行、ローダー、管理者コンソール
 
 ## 4. 画面状態マトリクス
 
@@ -84,6 +86,7 @@ Stage 0では製品コード、DB、画面表示を変更しない。本書を�
 | PvP | △ | ○ | △ | △ | ○ | △ | - | シーズン状態、統一失敗表示 |
 | GvG | △ | ○ | △ | ○ | ○ | △ | △ | 権限、参加不可、再取得 |
 | レイド | ― | △ | ○ | ○ | △ | ― | △ | 初期読込、失敗、画像不在 |
+| ランキング | △ | ○ | ― | △ | △ | ― | △ | 全体読込、取得失敗、期間確定、管理者UI分離 |
 | ギルド | △ | ○ | ○ | △ | ○ | △ | △ | 全体読込、操作別エラー |
 | チャット | △ | ○ | △ | - | ○ | △ | △ | 初期取得、再接続、送信失敗 |
 | BBS | ○ | ○ | △ | - | ○ | △ | △ | 共通エラー、投稿権限 |
@@ -110,6 +113,8 @@ Stage 0では製品コード、DB、画面表示を変更しない。本書を�
 - 動的importのフォールバックと画面内ローダーが別管理で、同じ遷移に複数ローダーが存在する。
 - `FullScreenPanel`とアプリシェルがそれぞれ安全領域を持ち、二重余白の可能性がある。
 - `view-container`、`scroll-container`、全画面パネル等にスクロール所有が分散している。
+- `RankingTab`は大半のデータをアプリ起動時の`syncBootstrapData`へ依存し、GvGシーズンだけタブ選択時に別取得するため、読込完了の定義が一致していない。
+- ランキングの総合力、ギルド総合力、PvP、GvG、レイド集計をクライアントでソート・再集計しており、取得件数、日付境界、同順位、ページングのサーバー契約がない。
 
 ### 5.2 移行先
 
@@ -119,6 +124,16 @@ Stage 0では製品コード、DB、画面表示を変更しない。本書を�
 4. 静的画像はURL単位の共有Promise、APIは同一query key単位で重複取得を抑止する。
 5. 再訪時はキャッシュを利用し、更新後は影響するquery keyだけを再検証する。
 6. 安全領域、ヘッダー、本文スクロール、下部ナビを`PageShell`だけが所有する。
+7. ランキングはカテゴリ・期間・カーソルを指定する読取専用RPCへ統合し、画面表示中の対象queryだけ取得・再検証する。
+
+### 5.3 ランキング固有の仕様不整合
+
+- 現行UIはGvGの日次拠点支配ポイントランキングを表示するが、`spec_ranking.md`と`spec_battle_system.md`では廃止されている。
+- 日次境界が、現行UIの「現在時刻から24時間」、PvP仕様の「4:00 JST」、`spec_ranking.md`高度化仕様の「0:00 JST」で不一致になっている。
+- デイリー／シーズンの確定値、開催中の暫定値、終了後の最終値を同じ配列からクライアントで算出している。
+- 1〜3位の表現はCSS生成のみで、既存の`public/rank/badge_rank1.png`等を画面アセットとして利用していない。
+
+UI-1着手前に、日次境界、GvGカテゴリ、同順位規則、ページサイズ、確定後の表示期間をサーバー集計契約として一度だけ確定する。画面ごとに集計規則を持たせない。
 
 ## 6. 直接更新・セキュリティ移行一覧
 
@@ -128,10 +143,12 @@ Stage 0では製品コード、DB、画面表示を変更しない。本書を�
 | P0 | `GameContext.tsx` パーティ保存 | `pvp_defense_decks`へ直接insert/update | PvP編成保存RPCへ統合 | 1〜2 |
 | P0 | `GameContext.tsx` GvG防衛 | `gvg_defense_decks`を直接delete/upsert | ギルド所属、権限、ロック時刻を検証するRPC | 1〜2 |
 | P0 | PvP/GvG初期RLS | permissiveな`Allow all access`系policyが残る可能性 | migrationで明示的にdropし、select/write policyを分離 | 1〜2 |
+| P0 | `pvp_ranks`、`user_gvg_ranks` | 初期の`FOR ALL USING (true)` policyが残り、ランキング画面も`user_gvg_ranks`を直接select | 直接書込を拒否し、必要列だけ返すランキング読取RPCへ統合 | 1〜2 |
 | P1 | `GameContext.tsx` 拠点移動 | `users.current_base_id`を直接update | 解放条件と拠点IDを検証するRPC | 1〜5 |
 | P1 | `useInventory.ts` 管理用日次処理 | プレゼントを直接insert | 管理者RPC/運営ツールへ隔離 | 1〜4 |
 | P1 | `GameContext.tsx` GvG管理リセット | 複数テーブルをクライアントから直接更新 | 管理者RPC/Edge Functionへ隔離 | 1〜2 |
 | P1 | QA投入・リセット | クライアントのメール判定でボタン制御 | RPC内で管理者/許可アカウントを検証 | 1 |
+| P1 | `RankingTab`管理者コンソール | 一般画面に常時表示され、呼出先は認可のないno-opスタブ | 一般画面から削除し、管理者ロール必須の運営経路へ移動 | 1〜2 |
 | P2 | `GameContext.tsx` Stripe模擬処理 | 決済履歴を直接insert | 開発専用経路へ隔離。本番決済確定は別工程 | 1〜4 |
 | P2 | `GameContext.tsx` 旧ガチャ・天井コード | 到達不能だが`Math.random()`と直接書込を保持 | 削除し、現行抽選RPCだけを利用 | 1〜4 |
 | P2 | `GameContext.tsx` 旧BBS/NPC投稿 | 直接insertの旧経路が残る | 現行RPCへ統合または削除 | 1〜3 |
@@ -148,6 +165,7 @@ Stage 0では製品コード、DB、画面表示を変更しない。本書を�
 | `pvp-hub` | 自キャラ、対戦相手フォールバック、ランク | シーズン装飾 | 対戦相手画像をデータ取得後に個別読込 |
 | `gvg-hub` | ギルド紋章、参加キャラフォールバック | 対戦カード背景 | 動的キャラ画像の失敗契約がない |
 | `raid-hub` | ボスの共通フォールバック、報酬 | 本番ボス、背景 | 現在ボス/背景画像がない |
+| `ranking` | 1〜3位バッジ、ユーザー／ギルドフォールバック、カテゴリ | シーズン装飾、上位入賞演出 | 既存順位画像を未使用。動的プロフィール画像の失敗契約がない |
 | `guild` | ギルド紋章、メンバーフォールバック | ギルド装飾 | 動的アバターをmanifestへ取り込む |
 | `social` | ユーザーフォールバック、投稿種別 | BBS添付 | 旧ルート直下キャラパスが混在 |
 | `reward` | 通貨、アイテム、受取済み状態 | 本番報酬画像 | 現在テキスト中心。DATA/ASSET工程で追加 |
@@ -167,7 +185,7 @@ Stage 0では製品コード、DB、画面表示を変更しない。本書を�
 | Stage | 主な既存ファイル | 主な新設先 |
 | --- | --- | --- |
 | 1 共通基盤 | `page.tsx`、`Header*`、`Footer*`、`CommonModals*`、`components/ui/*`、`useImagePreloader.ts`、`GameContext.tsx`、`usePvp.ts`、`useInventory.ts`、関連migration | `components/ui/PageShell*`、状態部品、readiness/cache、secure mutation、RLS/RPC migration |
-| 2 戦闘ハブ | `PatrolTab*`、`PvpTab*`、`GvgTab*`、`GvgMatchStatusPanel.tsx`、`RaidTab*` | ハブテンプレート、fixture、画面manifest |
+| 2 戦闘・ランキングハブ | `PatrolTab*`、`PvpTab*`、`GvgTab*`、`GvgMatchStatusPanel.tsx`、`RaidTab*`、`RankingTab*`、`GameContext.tsx`、`spec_ranking.md`、関連migration | ハブテンプレート、ランキング読取RPC、fixture、画面manifest |
 | 3 コミュニティ | `GuildTab*`、`BbsTab*`、`TribeChatModal*`、`FriendPanel*` | ソーシャルテンプレート、共通ユーザー/投稿一覧、manifest |
 | 4 報酬・収集・経済 | `MissionPanel*`、`InboxPanel*`、`LoginBonusModal*`、`GachaTab*`、`ShopTab*`、`BagTab*` | 報酬/コレクションテンプレート、共通取得結果、manifest |
 | 5 補助 | `InboxPanel*`、`SettingsPanel*`、`MoveBaseModal*` | お知らせ一覧、設定フォーム、選択パネル、manifest |
@@ -184,4 +202,4 @@ Stage 0では製品コード、DB、画面表示を変更しない。本書を�
 - [x] Stageごとの主な変更対象ファイルを確定した。
 - [x] 既存機能を維持する箇所と再構成する箇所を区別した。
 
-次の着手点はStage 1（UI-0B）である。共通基盤をクエスト、PvP、GvG、レイドへ適用できる状態にしてから、4画面をまとめて実機確認へ出す。
+次の着手点はStage 1（UI-0B）である。共通基盤をクエスト、PvP、GvG、レイド、ランキングへ適用できる状態にしてから、5画面をまとめて実機確認へ出す。

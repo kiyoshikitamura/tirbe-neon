@@ -35,8 +35,8 @@ Stage 0監査台帳: [ui_stage0_audit.md](ui_stage0_audit.md)
 | ホーム | HomeTab、Header、Footer | UIは約90%。全画面との統一監査・必要な再設計・演出改修の対象 | 中 |
 | キャラクター | CharacterTab、CommonModals | UIは約70〜80%。全画面との統一監査・必要な再設計・演出改修の対象 | 中 |
 | 主ゲームループ | PatrolTab、MoveBaseModal、CardBattleView | PatrolTab／MoveBaseModalはコード監査完了。CardBattleViewはBATTLE工程 | 最優先 |
-| 抗争・協力 | PvpTab、GvgTab、GvgMatchStatusPanel、RaidTab、GuildTab | コード監査完了。UI-1〜2で実装 | 最優先 |
-| 成長・収集・経済 | GachaTab、ShopTab、BagTab、MissionPanel、InboxPanel、RankingTab | Stage 0対象はコード監査完了。RankingTabは現行Stage対象外 | 高 |
+| 抗争・協力・ランキング | PvpTab、GvgTab、GvgMatchStatusPanel、RaidTab、RankingTab、GuildTab | コード監査完了。UI-1〜2で実装 | 最優先 |
+| 成長・収集・経済 | GachaTab、ShopTab、BagTab、MissionPanel、InboxPanel | Stage 0対象はコード監査完了。UI-3で実装 | 高 |
 | ソーシャル・補助 | BbsTab、TribeChatModal、FriendPanel、SettingsPanel、MenuTab、LegalPanel | Stage 0対象はコード監査完了。MenuTab／LegalPanelは現行Stage対象外 | 高 |
 | 初回体験 | TitleView、AuthView、SetupView、Tutorial* | 他画面完成後に監査 | 最後 |
 
@@ -58,14 +58,15 @@ Stage 0監査台帳: [ui_stage0_audit.md](ui_stage0_audit.md)
 
 確認重点: 目的の明確さ、AP／報酬／再挑戦、編成、再開・失敗導線。バトル中画面はこの段階に含めない。
 
-### 3. 抗争・協力
+### 3. 抗争・協力・ランキング
 
 - PvpTab
 - GvgTab / GvgMatchStatusPanel
 - RaidTab
+- RankingTab
 - GuildTab
 
-確認重点: 開催前・開催中・結果・非参加、個人貢献、組織貢献、次の行動、権限状態。
+確認重点: 開催前・開催中・結果・非参加、個人貢献、組織貢献、次の行動、集計期間、確定時刻、権限状態。
 
 ### 4. 成長・収集・経済
 
@@ -74,7 +75,6 @@ Stage 0監査台帳: [ui_stage0_audit.md](ui_stage0_audit.md)
 - BagTab
 - MissionPanel
 - InboxPanel
-- RankingTab
 
 確認重点: 受取、獲得、成長、上限、残高不足、空状態、高レア演出。Stripe決済確定処理は対象外とする。
 
