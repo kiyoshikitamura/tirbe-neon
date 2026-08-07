@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useGame } from "../context/GameContext";
 
-import { PROFILE_BACKGROUNDS, CHARACTERS_MASTER } from "@/utils/game_constants";
+import { PROFILE_BACKGROUNDS, CHARACTERS_MASTER, PROFILE_INTERIORS } from "@/utils/game_constants";
 import "./HomeTab.css";
 
 /**
@@ -33,7 +33,8 @@ function MainMyPage() {
     equippedFrontEffect,
     totalPower,
     totalPowerLoading,
-    monthlyPassActive
+    monthlyPassActive,
+    isRaidActive
   } = useGame();
 
   const equippedTitleName = ownedTitles.find((title: { id: string }) => title.id === titleEquipped)?.name || titleEquipped;
@@ -154,12 +155,24 @@ function MainMyPage() {
   // header only while active. Keep the home rails focused on six direct
   // personal, social, inbox, and system actions.
   const visibleLeftSubIcons = leftSubIcons.filter((item) => item.id !== "ranking");
-  const visibleRightSubIcons = rightSubIcons.filter((item) => item.id !== "bag" && item.id !== "raid");
+  const visibleRightSubIcons = rightSubIcons.filter((item) => item.id !== "raid");
+
+  const latestTicker = isRaidActive
+    ? { icon: "⚠", text: "レイド開催中。仲間と迎撃に参加しよう", onClick: () => navigateTab("raid") }
+    : latestMessage
+      ? { icon: "💬", text: `${latestMessage.author_name}: ${latestMessage.content}`, onClick: () => navigateTab("bbs") }
+      : unclaimedPresentsCount > 0
+        ? { icon: "🎁", text: `受け取り待ちのプレゼントが ${unclaimedPresentsCount} 件あります`, onClick: () => { setShowInboxPanel(true); setInboxPanelTab("presents"); } }
+        : unreadMissionsCount > 0
+          ? { icon: "✓", text: `達成済みミッションが ${unreadMissionsCount} 件あります`, onClick: () => setShowMissionPanel(true) }
+          : { icon: "◆", text: "今夜のネオン街に、新たな抗争の気配", onClick: () => navigateTab("gvg") };
+
+  const interiorName = PROFILE_INTERIORS.find((item) => item.id === interiorItem)?.name;
 
   return (
     <div className="mypage-view">
       {/* 1. ビジュアルエリア (50vh 固定) */}
-      <div className="mypage-visual-area" style={{ backgroundImage: `url(${bgUrl})` }}>
+      <div key={bgUrl} className="mypage-visual-area mypage-background-enter" style={{ backgroundImage: `url(${bgUrl})` }}>
         {/* 背景グラデーションオーバーレイ */}
         <div className="mypage-visual-overlay" />
 
@@ -237,8 +250,8 @@ function MainMyPage() {
 
         {/* 層構造装飾: z-2 置物インテリア */}
         {interiorItem && interiorItem !== "none" && (
-          <div className="mypage-interior-layer">
-            <span className="mypage-interior-badge">{interiorItem}</span>
+          <div className={`mypage-interior-layer ${interiorItem}`} aria-label={interiorName}>
+            <span className="mypage-interior-name">{interiorName}</span>
           </div>
         )}
 
@@ -294,6 +307,11 @@ function MainMyPage() {
       </div>
 
       <div className="mypage-lower-content">
+        <button className="mypage-live-ticker active-scale-effect" onClick={() => { latestTicker.onClick(); playCyberSe("click"); }}>
+          <span className="mypage-live-ticker-icon" aria-hidden="true">{latestTicker.icon}</span>
+          <span className="mypage-live-ticker-text">{latestTicker.text}</span>
+          <span className="mypage-live-ticker-arrow" aria-hidden="true">›</span>
+        </button>
         {/* 月額VIPパスバナー */}
         {/* 3. イベントバナーエリア (大ボタン直下) */}
         <div className="mypage-event-banner-area">

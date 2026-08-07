@@ -28,6 +28,15 @@
   flex-shrink: 0;
 }
 
+.mypage-background-enter {
+  animation: mypage-background-enter 180ms ease-out both;
+}
+
+@keyframes mypage-background-enter {
+  from { opacity: 0.6; }
+  to { opacity: 1; }
+}
+
 .mypage-visual-overlay {
   position: absolute;
   inset: 0;
@@ -246,19 +255,42 @@
 /* 置物インテリア・称号プレート・エフェクト レイヤー装飾 (z-index) */
 .mypage-interior-layer {
   position: absolute;
-  bottom: 20px;
-  right: 20px;
+  bottom: 16px;
+  right: 14px;
+  width: 78px;
+  height: 54px;
+  border-radius: 6px 6px 2px 2px;
+  opacity: 0.88;
   z-index: 2;
   pointer-events: none;
 }
 
-.mypage-interior-badge {
-  font-size: 9px;
-  color: #00f0ff;
-  background: rgba(0, 0, 0, 0.7);
-  border: 1px solid rgba(0, 240, 255, 0.4);
-  padding: 2px 6px;
-  border-radius: 4px;
+.mypage-interior-layer.interior_neon_sign {
+  background: linear-gradient(145deg, rgba(255, 0, 140, 0.16), rgba(0, 240, 255, 0.38));
+  border: 1px solid rgba(0, 240, 255, 0.82);
+  box-shadow: 0 0 18px rgba(0, 240, 255, 0.56), inset 0 0 18px rgba(255, 0, 140, 0.34);
+}
+
+.mypage-interior-layer.interior_trophy_case {
+  background: linear-gradient(145deg, rgba(47, 35, 12, 0.82), rgba(7, 12, 18, 0.92));
+  border: 1px solid rgba(212, 175, 55, 0.78);
+  box-shadow: inset 0 0 18px rgba(212, 175, 55, 0.28), 0 4px 12px rgba(0, 0, 0, 0.58);
+}
+
+.mypage-interior-layer.interior_speaker_stack {
+  background: repeating-linear-gradient(0deg, rgba(5, 8, 14, 0.96) 0 10px, rgba(70, 83, 100, 0.72) 11px 12px);
+  border: 1px solid rgba(196, 210, 228, 0.52);
+  box-shadow: 0 0 16px rgba(149, 88, 255, 0.38);
+}
+
+.mypage-interior-name {
+  position: absolute;
+  left: 5px;
+  bottom: 4px;
+  color: #ffffff;
+  font-size: 8px;
+  font-weight: 800;
+  text-shadow: 0 1px 3px #000;
 }
 
 .mypage-leader-layer {
@@ -308,6 +340,34 @@
   pointer-events: none;
 }
 
+.front-effect-particle { position: absolute; inset: 0; overflow: hidden; }
+
+.front-effect-particle.effect_lightning::before {
+  content: "";
+  position: absolute;
+  inset: -10% 40% -10% auto;
+  width: 3px;
+  background: #d9faff;
+  box-shadow: 0 0 10px #00f0ff, 18px 72px 18px -7px #8d68ff;
+  transform: rotate(21deg);
+  animation: mypage-lightning 4.6s steps(2, end) infinite;
+}
+
+.front-effect-particle.effect_sparks {
+  background-image: radial-gradient(circle, rgba(255, 184, 71, 0.9) 0 1px, transparent 2px), radial-gradient(circle, rgba(255, 80, 80, 0.75) 0 1px, transparent 2px);
+  background-size: 43px 52px, 61px 47px;
+  animation: mypage-sparks 4s linear infinite;
+}
+
+.front-effect-particle.effect_smoke {
+  background: radial-gradient(ellipse at 18% 88%, rgba(173, 187, 206, 0.25), transparent 38%), radial-gradient(ellipse at 84% 74%, rgba(125, 145, 168, 0.2), transparent 42%);
+  animation: mypage-smoke 7s ease-in-out infinite alternate;
+}
+
+@keyframes mypage-lightning { 0%, 88%, 100% { opacity: 0; } 89%, 91% { opacity: 0.9; } 92% { opacity: 0.18; } }
+@keyframes mypage-sparks { from { background-position: 0 0, 20px -10px; } to { background-position: -38px 110px, 42px 90px; } }
+@keyframes mypage-smoke { from { transform: translateX(-4%) scale(1); opacity: 0.62; } to { transform: translateX(5%) scale(1.12); opacity: 1; } }
+
 /* 2. 丸型漢字メニューボタン (連合 / 喧嘩 / 制圧) */
 .mypage-circle-menu-area {
   position: relative;
@@ -330,6 +390,26 @@
   width: 100%;
   padding: 0 12px 12px;
 }
+
+.mypage-live-ticker {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 7px;
+  min-height: 30px;
+  margin: 4px 0 2px;
+  padding: 5px 8px;
+  color: #e4edf6;
+  background: linear-gradient(90deg, rgba(0, 240, 255, 0.11), rgba(12, 18, 29, 0.88) 20%, rgba(12, 18, 29, 0.88));
+  border: 1px solid rgba(0, 240, 255, 0.28);
+  border-radius: 5px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.mypage-live-ticker-icon { color: #00f0ff; font-size: 11px; flex: 0 0 auto; }
+.mypage-live-ticker-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; font-size: 10px; font-weight: 700; }
+.mypage-live-ticker-arrow { color: #00f0ff; font-size: 17px; line-height: 1; }
 
 .circle-menu-btn {
   background: transparent;

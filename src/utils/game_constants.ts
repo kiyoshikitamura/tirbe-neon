@@ -132,6 +132,13 @@ export const PROFILE_FRONT_EFFECTS = [
   { id: "effect_smoke", name: "硝煙黙示録 (煙)", desc: "3名以上のキャラ解放で解放" }
 ];
 
+export const PROFILE_INTERIORS = [
+  { id: "none", name: "なし", desc: "装飾なし" },
+  { id: "interior_neon_sign", name: "ネオン看板", desc: "ネオン街の灯り" },
+  { id: "interior_trophy_case", name: "戦績ケース", desc: "戦いの記録を飾る" },
+  { id: "interior_speaker_stack", name: "スピーカー", desc: "夜を鳴らすサウンドシステム" }
+];
+
 export const PROFILE_TITLES = [
   { id: "title_none", name: "称号なし", desc: "初期解放" },
   { id: "title_kabukicho_emperor", name: "歌舞伎町の覇王", desc: "Lv.15以上で解放" },

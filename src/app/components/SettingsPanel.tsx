@@ -2,6 +2,7 @@ import React from "react";
 import { useGame } from "../context/GameContext";
 import FullScreenPanel from "./ui/FullScreenPanel";
 import OutlawButton from "./ui/OutlawButton";
+import { PROFILE_BACKGROUNDS, PROFILE_FRONT_EFFECTS, PROFILE_INTERIORS } from "@/utils/game_constants";
 import "./SettingsPanel.css";
 
 export default function SettingsPanel() {
@@ -15,6 +16,14 @@ export default function SettingsPanel() {
     titleEquipped,
     setTitleEquipped,
     ownedTitles,
+    equippedBackground,
+    setEquippedBackground,
+    selectedBgMode,
+    setSelectedBgMode,
+    equippedFrontEffect,
+    setEquippedFrontEffect,
+    interiorItem,
+    setInteriorItem,
     bgmEnabled,
     seEnabled,
     handleUpdateProfile,
@@ -84,6 +93,29 @@ export default function SettingsPanel() {
               <option value="新宿の狂犬">新宿の狂犬</option>
               <option value="伝説の始まり">伝説の始まり</option>
               </optgroup>
+            </select>
+          </div>
+        </div>
+
+        <div className="settings-section">
+          <h4 className="settings-section-title">ホーム演出</h4>
+          <div className="settings-field">
+            <label>背景</label>
+            <select value={selectedBgMode} onChange={(e) => { setSelectedBgMode(e.target.value); setEquippedBackground(e.target.value); }} className="settings-select">
+              <option value="auto">現在地に合わせる</option>
+              {PROFILE_BACKGROUNDS.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+            </select>
+          </div>
+          <div className="settings-field">
+            <label>前景エフェクト</label>
+            <select value={equippedFrontEffect} onChange={(e) => setEquippedFrontEffect(e.target.value)} className="settings-select">
+              {PROFILE_FRONT_EFFECTS.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+            </select>
+          </div>
+          <div className="settings-field">
+            <label>内装オブジェクト</label>
+            <select value={interiorItem} onChange={(e) => setInteriorItem(e.target.value)} className="settings-select">
+              {PROFILE_INTERIORS.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
             </select>
           </div>
         </div>
