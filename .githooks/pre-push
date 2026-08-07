@@ -1,0 +1,4 @@
+#!/usr/bin/env sh
+
+# Keep local pushes aligned with the required GitHub Actions quality gate.
+npm run quality:preflight

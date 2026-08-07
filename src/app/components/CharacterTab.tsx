@@ -84,30 +84,31 @@ export default function CharacterTab() {
   const characterRarity = (activeCharMaster?.rarity || "N").toLowerCase();
   const isCurrentLeader = selectedLeader === activeCharMaster.id;
   const maxSkillSlots = Math.min(6, 3 + awakeningLevel);
+  const activeCharacterDbId = activeCharRecord?.id;
 
   // 見た目の豪華さは、テストアカウントではなく実際に装着されている編成から判定する。
   // 本番アセット確定後に色を調整しても、この到達度判定とレイヤー構成は共通で使える。
   const equippedGearBySlot = useMemo(() => {
     const equipped = new Map<number, any>();
-    if (!activeCharRecord?.id) return equipped;
+    if (!activeCharacterDbId) return equipped;
     (userEquipmentsList || []).forEach((item: any) => {
-      if (item.equipped_character_id === activeCharRecord.id && typeof item.slot_index === "number") {
+      if (item.equipped_character_id === activeCharacterDbId && typeof item.slot_index === "number") {
         equipped.set(item.slot_index, item);
       }
     });
     return equipped;
-  }, [activeCharRecord?.id, userEquipmentsList]);
+  }, [activeCharacterDbId, userEquipmentsList]);
 
   const equippedSkillsBySlot = useMemo(() => {
     const equipped = new Map<number, any>();
-    if (!activeCharRecord?.id) return equipped;
+    if (!activeCharacterDbId) return equipped;
     (userSkillsList || []).forEach((item: any) => {
-      if (item.equipped_character_id === activeCharRecord.id && typeof item.slot_index === "number") {
+      if (item.equipped_character_id === activeCharacterDbId && typeof item.slot_index === "number") {
         equipped.set(item.slot_index, item);
       }
     });
     return equipped;
-  }, [activeCharRecord?.id, userSkillsList]);
+  }, [activeCharacterDbId, userSkillsList]);
 
   const loadoutState = useMemo(() => {
     const gear = Array.from(equippedGearBySlot.values());
