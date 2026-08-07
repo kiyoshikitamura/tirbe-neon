@@ -6,7 +6,6 @@ import { supabase } from "@/utils/supabase";
 import {
   CHARACTERS_MASTER,
   GEAR_SLOTS_MASTER,
-  PROFILE_BACKGROUNDS,
   getCharacterTransparentImg,
   getAlignmentShortJp
 } from "@/utils/game_constants";
@@ -45,9 +44,7 @@ export default function CharacterTab() {
     handleUnequipSkillBulk,
     handleAutoFormation,
     playCyberSe,
-    equippedBackground,
-    setEquippedBackground,
-    setSelectedBgMode,
+    currentBaseId,
     session
   } = useGame();
 
@@ -152,9 +149,18 @@ export default function CharacterTab() {
     playCyberSe("click");
   };
 
-  // 背景画像URL (実在確認済みのデフォルト背景を自動フォールバック)
-  const bgData = PROFILE_BACKGROUNDS.find(bg => bg.id === equippedBackground);
-  const bgImgUrl = bgData?.img || "/bg/bg_base_neontower.png";
+  // キャラ画面は個人ホーム装飾ではなく、現在地に対応する既存ステージ背景を使う。
+  const stageBackgroundByBase: Record<string, string> = {
+    shinjuku: "/bg/bg_base_neontower.png",
+    neontower: "/bg/bg_base_neontower.png",
+    shibuya: "/bg/bg_base_deepdock.png",
+    deepdock: "/bg/bg_base_deepdock.png",
+    ikebukuro: "/bg/bg_base_junkbazaar.png",
+    junkbazaar: "/bg/bg_base_junkbazaar.png",
+    roppongi: "/bg/bg_base_kitakuragate.png",
+    kitakuragate: "/bg/bg_base_kitakuragate.png"
+  };
+  const bgImgUrl = stageBackgroundByBase[currentBaseId] || "/bg/bg_base_neontower.png";
 
   // --------------------------------------------------------------------------
   // 装備スロット レンダリング補助 (左右 7スロット)

@@ -152,8 +152,10 @@
 }
 .char-loadout-max .char-hud-header-single { border-color: rgba(255, 215, 72, .86); background: linear-gradient(90deg, rgba(77, 47, 7, .9), rgba(14, 15, 28, .94), rgba(73, 15, 68, .88)); }
 .char-loadout-max .char-character-img { filter: drop-shadow(0 8px 23px rgba(255, 203, 61, .3)) drop-shadow(0 0 20px rgba(237, 64, 182, .18)); }
-.char-max-loadout-effect { position: absolute; inset: 0; z-index: 24; pointer-events: none; background: radial-gradient(ellipse at 50% 91%, rgba(255, 196, 45, .38), transparent 34%), linear-gradient(125deg, transparent 42%, rgba(255, 225, 141, .15) 49%, transparent 56%), linear-gradient(55deg, transparent 40%, rgba(255, 65, 175, .12) 49%, transparent 57%); animation: char-max-loadout-shine 5s ease-in-out infinite; }
-@keyframes char-max-loadout-shine { 0%,100% { opacity: .45; } 50% { opacity: .9; } }
+.char-loadout-max .char-layer-bg { animation: char-stage-light-drift 9s ease-in-out infinite alternate; }
+.char-max-loadout-effect { position: absolute; inset: 0; z-index: 24; pointer-events: none; background: radial-gradient(ellipse at 50% 91%, rgba(255, 196, 45, .5), transparent 34%), linear-gradient(125deg, transparent 42%, rgba(255, 225, 141, .22) 49%, transparent 56%), linear-gradient(55deg, transparent 40%, rgba(255, 65, 175, .18) 49%, transparent 57%); animation: char-max-loadout-shine 4.8s ease-in-out infinite; }
+@keyframes char-max-loadout-shine { 0%,100% { opacity: .38; transform: scale(.98); } 50% { opacity: .95; transform: scale(1.04); } }
+@keyframes char-stage-light-drift { from { background-position: 48% center; filter: brightness(.82) contrast(1.1) saturate(1.05); } to { background-position: 54% center; filter: brightness(1.02) contrast(1.15) saturate(1.22); } }
 
 .char-style-char_frame_chrome {
   box-shadow: inset 0 0 0 2px rgba(95, 227, 255, .78), inset 0 0 30px rgba(0, 227, 255, .18);
@@ -483,11 +485,19 @@
   border: 1.5px solid var(--neon-gold) !important;
   background: linear-gradient(135deg, rgba(255, 215, 0, 0.15), rgba(15, 20, 30, 0.9)) !important;
   animation: ssr-slot-glow 2.5s infinite ease-in-out;
+  overflow: hidden;
 }
+.slot-ssr::after { content: ""; position: absolute; inset: -35% auto -35% -70%; width: 42%; transform: rotate(18deg); background: linear-gradient(90deg, transparent, rgba(255,255,255,.05), rgba(255,239,168,.92), rgba(255,255,255,.05), transparent); animation: ssr-slot-sheen 3.8s ease-in-out infinite; pointer-events: none; }
 
 @keyframes ssr-slot-glow {
   0%, 100% { box-shadow: 0 0 6px rgba(255, 215, 0, 0.3), inset 0 2px 6px rgba(0, 0, 0, 0.5); }
   50% { box-shadow: 0 0 14px rgba(255, 215, 0, 0.65), inset 0 2px 6px rgba(0, 0, 0, 0.5); }
+}
+@keyframes ssr-slot-sheen { 0%, 45% { left: -70%; opacity: 0; } 49% { opacity: 1; } 64% { left: 130%; opacity: .9; } 68%, 100% { left: 130%; opacity: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .char-loadout-max .char-layer-bg, .char-max-loadout-effect, .slot-ssr { animation: none; }
+  .slot-ssr::after { animation: none; opacity: 0; }
 }
 
 .slot-sr {
