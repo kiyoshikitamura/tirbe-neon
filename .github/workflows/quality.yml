@@ -29,7 +29,16 @@ jobs:
       - uses: denoland/setup-deno@v2
         with:
           deno-version: v2.x
-      - run: deno check supabase/functions/resolve-battle/index.ts
+      - name: Check Edge Function with dependency retry
+        run: |
+          for attempt in 1 2 3; do
+            deno check supabase/functions/resolve-battle/index.ts && exit 0
+            if [ "$attempt" -lt 3 ]; then
+              echo "Deno dependency check failed; retrying ($attempt/3)..."
+              sleep 5
+            fi
+          done
+          exit 1
       - run: deno test supabase/functions/resolve-battle/engine_test.ts
 
   browser-e2e:
