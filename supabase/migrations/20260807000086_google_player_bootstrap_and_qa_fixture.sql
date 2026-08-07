@@ -17,7 +17,7 @@ BEGIN
 
   SELECT username INTO v_name FROM public.users WHERE id = v_user_id;
   IF v_name IS NULL THEN
-    v_name := 'user_' || substring(replace(v_user_id::text, '-', '') from 1 for 4);
+    v_name := 'u' || substring(replace(v_user_id::text, '-', '') from 1 for 7);
     INSERT INTO public.users (id, username, current_base_id, favorite_character_id)
     VALUES (v_user_id, v_name, 'neon_tower', '11111111-1111-1111-1111-111111111111')
     ON CONFLICT (id) DO NOTHING;
