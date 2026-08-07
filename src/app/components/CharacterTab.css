@@ -196,7 +196,7 @@
   text-shadow: 0 0 8px rgba(255, 197, 44, .65);
 }
 
-.char-plate-style-char_plate_champion .char-hud-header-single {
+.char-hud-header-single.char-plate-style-char_plate_champion {
   border-bottom-color: rgba(255, 210, 68, .75);
 }
 
@@ -329,13 +329,14 @@
   bottom: 8px;
   right: 8px;
   z-index: 50;
-  width: 32px;
+  min-width: 38px;
   height: 32px;
   border-radius: 50%;
   background: rgba(11, 15, 25, 0.8);
   border: 1px solid rgba(160, 160, 170, 0.4);
   color: #a0a0ab;
-  font-size: 11px;
+  font-size: 9px;
+  font-weight: 800;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -621,6 +622,34 @@
   font-family: var(--font-outfit);
   font-size: 10px;
   font-weight: 800;
+  color: var(--neon-gold);
+}
+
+/* 実装済み編成の状態を短く伝える。アセットや最終配色に依存しない情報レイヤー。 */
+.char-loadout-progress {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  min-height: 22px;
+  margin: 0 8px 6px;
+  padding: 3px 8px;
+  box-sizing: border-box;
+  border: 1px solid rgba(120, 150, 184, .22);
+  border-radius: 5px;
+  color: #aeb8c9;
+  background: rgba(9, 13, 21, .72);
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.char-loadout-progress strong {
+  color: #e6edf7;
+  font-size: 9px;
+  letter-spacing: .04em;
+}
+
+.char-loadout-max + .char-summary-bar + .char-loadout-progress strong {
   color: var(--neon-gold);
 }
 

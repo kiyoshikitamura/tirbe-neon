@@ -15,8 +15,6 @@ import { getCharacterTotalStats } from "@/utils/stats_calculator";
 import { useImagePreloader } from "../hooks/useImagePreloader";
 import "./CharacterTab.css";
 
-const QA_EMAIL = "izasama39@gmail.com";
-
 export default function CharacterTab() {
   // アセット事前自動メモリプリロード
   useImagePreloader();
@@ -83,9 +81,49 @@ export default function CharacterTab() {
   const awakeningLevel = activeCharRecord?.awakening_level || 0;
   const characterRarity = (activeCharMaster?.rarity || "N").toLowerCase();
   const isCurrentLeader = selectedLeader === activeCharMaster.id;
-  const isMaxLoadoutPreview = session?.user?.email === QA_EMAIL;
-  const qaEquipment = EQUIPMENTS_MASTER_DATA.filter((item) => item.rarity === "SSR");
-  const qaSkills = SKILLS_MASTER_DATA.filter((item) => item.rarity === "SSR");
+  const maxSkillSlots = Math.min(6, 3 + awakeningLevel);
+
+  // 見た目の豪華さは、テストアカウントではなく実際に装着されている編成から判定する。
+  // 本番アセット確定後に色を調整しても、この到達度判定とレイヤー構成は共通で使える。
+  const equippedGearBySlot = useMemo(() => {
+    const equipped = new Map<number, any>();
+    if (!activeCharRecord?.id) return equipped;
+    (userEquipmentsList || []).forEach((item: any) => {
+      if (item.equipped_character_id === activeCharRecord.id && typeof item.slot_index === "number") {
+        equipped.set(item.slot_index, item);
+      }
+    });
+    return equipped;
+  }, [activeCharRecord?.id, userEquipmentsList]);
+
+  const equippedSkillsBySlot = useMemo(() => {
+    const equipped = new Map<number, any>();
+    if (!activeCharRecord?.id) return equipped;
+    (userSkillsList || []).forEach((item: any) => {
+      if (item.equipped_character_id === activeCharRecord.id && typeof item.slot_index === "number") {
+        equipped.set(item.slot_index, item);
+      }
+    });
+    return equipped;
+  }, [activeCharRecord?.id, userSkillsList]);
+
+  const loadoutState = useMemo(() => {
+    const gear = Array.from(equippedGearBySlot.values());
+    const skills = Array.from(equippedSkillsBySlot.entries())
+      .filter(([slot]) => slot < maxSkillSlots)
+      .map(([, item]) => item);
+    const isSsrGear = gear.length === GEAR_SLOTS_MASTER.length && gear.every((item) =>
+      EQUIPMENTS_MASTER_DATA.find((master: any) => master.id === item.equipment_id)?.rarity === "SSR"
+    );
+    const isSsrSkills = skills.length === maxSkillSlots && skills.every((item) =>
+      SKILLS_MASTER_DATA.find((master: any) => master.id === item.skill_id)?.rarity === "SSR"
+    );
+    const averagePlus = [...gear, ...skills].reduce((total, item) => total + (item.plus_val || 0), 0) / Math.max(1, gear.length + skills.length);
+    const isMax = isSsrGear && isSsrSkills && awakeningLevel >= 3 && averagePlus >= 8;
+    const isComplete = gear.length === GEAR_SLOTS_MASTER.length && skills.length === maxSkillSlots;
+    const tier = isMax ? "MAX" : isComplete ? "COMPLETE" : gear.length + skills.length >= 5 ? "GROWING" : "BASE";
+    return { gearCount: gear.length, skillCount: skills.length, tier, isMax };
+  }, [awakeningLevel, equippedGearBySlot, equippedSkillsBySlot, maxSkillSlots]);
 
   useEffect(() => {
     const characterId = activeCharRecord?.id;
@@ -167,15 +205,7 @@ export default function CharacterTab() {
   // --------------------------------------------------------------------------
   const renderEquipSlot = (slotDef: any) => {
     // 比較には DBレコードの UUID (activeCharRecord.id) を使用
-    const activeDbUuid = activeCharRecord?.id;
-
-    const equippedGear = activeDbUuid
-      ? (userEquipmentsList || []).find(
-          (e: any) => e.equipped_character_id === activeDbUuid && e.slot_index === slotDef.index
-        )
-      : null;
-
-    const previewGear = equippedGear || (isMaxLoadoutPreview ? { equipment_id: qaEquipment[slotDef.index % qaEquipment.length]?.id, level: 99, plus_val: 15 } : null);
+    const previewGear = equippedGearBySlot.get(slotDef.index) || null;
     const gearMaster = previewGear ? EQUIPMENTS_MASTER_DATA.find((m: any) => m.id === previewGear.equipment_id) : null;
     const rarity = (gearMaster?.rarity || "N").toUpperCase();
 
@@ -205,7 +235,7 @@ export default function CharacterTab() {
 
         {previewGear ? (
           <>
-            <div className="slot-gear-name">{gearMaster?.name || equippedGear.equipment_id}</div>
+            <div className="slot-gear-name">{gearMaster?.name || previewGear.equipment_id}</div>
             <div className="slot-footer-row">
               <span className="slot-gear-lv">Lv.{previewGear.level}</span>
               {previewGear.plus_val > 0 && (
@@ -222,8 +252,6 @@ export default function CharacterTab() {
 
   const leftSlots = GEAR_SLOTS_MASTER.slice(0, 3);
   const rightSlots = GEAR_SLOTS_MASTER.slice(3, 7);
-  const maxSkillSlots = Math.min(6, 3 + awakeningLevel);
-
   return (
     <div className="char-tab-container">
       <div className="flex justify-end mb-2">
@@ -270,7 +298,7 @@ export default function CharacterTab() {
       </div>
 
       {/* 2. 中央: 大画面5層レイヤーキャンバス (高さ360px絶対固定) */}
-      <div className={`char-main-stage char-rarity-${characterRarity} ${isMaxLoadoutPreview ? "char-loadout-max" : ""} char-style-${getEquippedCharacterCosmetic("CHARACTER_FRAME", "char_frame_none")} char-aura-style-${getEquippedCharacterCosmetic("CHARACTER_AURA", "char_aura_none")}`}>
+      <div className={`char-main-stage char-rarity-${characterRarity} char-loadout-${loadoutState.tier.toLowerCase()} ${loadoutState.isMax ? "char-loadout-max" : ""} char-style-${getEquippedCharacterCosmetic("CHARACTER_FRAME", "char_frame_none")} char-aura-style-${getEquippedCharacterCosmetic("CHARACTER_AURA", "char_aura_none")} `}>
         {/* Z-10: 背景 */}
         <div className="char-layer-bg" style={{ backgroundImage: `url(${bgImgUrl})` }}>
           <div className="char-layer-bg-overlay" />
@@ -293,7 +321,7 @@ export default function CharacterTab() {
 
         {/* Z-40: 前面エフェクト */}
         <div className="char-layer-front-effect" />
-        {isMaxLoadoutPreview && <div className="char-max-loadout-effect" aria-hidden="true" />}
+        {loadoutState.isMax && <div className="char-max-loadout-effect" aria-hidden="true" />}
         <div className="char-cosmetic-aura" aria-hidden="true" />
 
         {/* Z-50: 最前面1行コンパクトHUD (被り100%排除) */}
@@ -330,16 +358,16 @@ export default function CharacterTab() {
           {rightSlots.map(slot => renderEquipSlot(slot))}
         </div>
 
-        {/* 背景変更ボタン (ステージ右下) */}
+        {/* 装備導線: 個人ホーム背景とは切り分け、キャラ画面では装備変更を開く。 */}
         <button
           className="char-bg-change-btn active-scale-effect"
           onClick={() => {
             setBottomModalTab("GEAR");
             playCyberSe("click");
           }}
-          title="背景変更"
+          title="装備変更"
         >
-          BG
+          装備
         </button>
       </div>
 
@@ -361,6 +389,12 @@ export default function CharacterTab() {
           <span className="char-summary-label">SPD</span>
           <span className="char-summary-val">{charStats.spd.toLocaleString()}</span>
         </div>
+      </div>
+
+      <div className="char-loadout-progress" aria-label="現在の編成到達度">
+        <span>装備 {loadoutState.gearCount}/{GEAR_SLOTS_MASTER.length}</span>
+        <span>スキル {loadoutState.skillCount}/{maxSkillSlots}</span>
+        <strong>{loadoutState.tier === "MAX" ? "MAX LOADOUT" : loadoutState.tier === "COMPLETE" ? "編成完成" : "編成中"}</strong>
       </div>
 
       {/* 4. メイン画面最下部: 3アクションボタン (タップでボトムシートモーダル起動) */}
@@ -508,13 +542,7 @@ export default function CharacterTab() {
                 <div className="char-skills-grid">
                   {Array.from({ length: 6 }).map((_, slotIdx) => {
                     const isUnlocked = slotIdx < maxSkillSlots;
-                    const activeDbUuid = activeCharRecord?.id;
-                    const equippedSkillRecord = activeDbUuid
-                      ? (userSkillsList || []).find(
-                          (s: any) => s.equipped_character_id === activeDbUuid && s.slot_index === slotIdx
-                        )
-                      : null;
-                    const previewSkillRecord = equippedSkillRecord || (isMaxLoadoutPreview ? { skill_id: qaSkills[slotIdx % qaSkills.length]?.id, plus_val: 10 } : null);
+                    const previewSkillRecord = equippedSkillsBySlot.get(slotIdx) || null;
                     const skillMaster = previewSkillRecord ? SKILLS_MASTER_DATA.find((m: any) => m.id === previewSkillRecord.skill_id) : null;
                     const skillRarity = (skillMaster?.rarity || "N").toLowerCase();
                     
