@@ -1,8 +1,11 @@
-import React from "react";
+import React, { useState } from "react";
 import { useGame } from "../context/GameContext";
+import { supabase } from "@/utils/supabase";
 import FullScreenPanel from "./ui/FullScreenPanel";
 import OutlawButton from "./ui/OutlawButton";
-import { PROFILE_BACKGROUNDS, PROFILE_FRONT_EFFECTS, PROFILE_INTERIORS } from "@/utils/game_constants";
+import { CHARACTERS_MASTER, PROFILE_BACKGROUNDS, PROFILE_FRONT_EFFECTS, PROFILE_INTERIORS } from "@/utils/game_constants";
+import { EQUIPMENTS_MASTER_DATA } from "@/utils/equipments_master_data";
+import { SKILLS_MASTER_DATA } from "@/utils/skills_master_data";
 import "./SettingsPanel.css";
 
 export default function SettingsPanel() {
@@ -32,7 +35,11 @@ export default function SettingsPanel() {
     errorMessage,
     setErrorMessage,
     playCyberSe
+    ,session
+    ,syncBootstrapData
   } = useGame();
+  const [qaLoading, setQaLoading] = useState(false);
+  const canProvisionQa = session?.user?.email === "izasama39@gmail.com";
 
   if (!showSettingsPanel) return null;
 
@@ -43,6 +50,53 @@ export default function SettingsPanel() {
 
   const handleSave = async () => {
     await handleUpdateProfile();
+  };
+
+  const handleProvisionQa = async () => {
+    if (!canProvisionQa || !session?.user?.id) return;
+    setQaLoading(true);
+    try {
+      const userId = session.user.id;
+      const roster = CHARACTERS_MASTER.slice(0, 5).map((character, index) => ({
+        user_id: userId, character_id: character.id, level: 35 - index * 3, awakening_level: Math.max(0, 3 - index)
+      }));
+      const { data: characters, error: characterError } = await supabase
+        .from("user_characters")
+        .upsert(roster, { onConflict: "user_id,character_id" })
+        .select("id, character_id");
+      if (characterError || !characters?.length) throw characterError || new Error("character provisioning failed");
+
+      await Promise.all([
+        supabase.from("user_equipments").delete().eq("user_id", userId),
+        supabase.from("user_skills").delete().eq("user_id", userId)
+      ]);
+      const gear = EQUIPMENTS_MASTER_DATA.filter((item) => item.rarity === "SSR" || item.rarity === "SR").slice(0, 15).map((item, index) => ({
+        user_id: userId, equipment_id: item.id, level: 20 + (index % 5) * 5, plus_val: index % 4,
+        equipped_character_id: characters[index % characters.length].id, slot_index: index % 5, random_options: []
+      }));
+      const skills = SKILLS_MASTER_DATA.filter((item) => item.is_obtainable).slice(0, 20).map((item, index) => ({
+        user_id: userId, skill_card_id: item.id, plus_val: index % 3,
+        equipped_character_id: characters[index % characters.length].id, slot_index: index % 4
+      }));
+      const [{ error: gearError }, { error: skillError }, { error: itemError }] = await Promise.all([
+        supabase.from("user_equipments").insert(gear),
+        supabase.from("user_skills").insert(skills),
+        supabase.from("user_items").upsert([
+          { user_id: userId, item_id: "TRAINING_MANUAL", quantity: 50 },
+          { user_id: userId, item_id: "EQUIP_EXP_M", quantity: 80 },
+          { user_id: userId, item_id: "LAW_OF_STRIFE", quantity: 20 }
+        ], { onConflict: "user_id,item_id" })
+      ]);
+      if (gearError || skillError || itemError) throw gearError || skillError || itemError;
+      await supabase.from("users").update({ cash: 500000, neon_diamonds: 3000, favorite_character_id: characters[0].character_id }).eq("id", userId);
+      await syncBootstrapData(userId);
+      playCyberSe("click");
+    } catch (error) {
+      console.warn("QA fixture provisioning failed", error);
+      setErrorMessage("テストデータの投入に失敗しました。");
+    } finally {
+      setQaLoading(false);
+    }
   };
 
   return (
@@ -165,6 +219,16 @@ export default function SettingsPanel() {
             </div>
           </div>
         </div>
+
+        {canProvisionQa && (
+          <div className="settings-section">
+            <h4 className="settings-section-title">QAテストデータ</h4>
+            <p className="settings-help-text">複数キャラ、装備、スキル、育成素材をこのアカウントへ再投入します。</p>
+            <OutlawButton variant="secondary" onClick={() => void handleProvisionQa()} disabled={qaLoading} fullWidth>
+              {qaLoading ? "投入中..." : "テストデータを投入"}
+            </OutlawButton>
+          </div>
+        )}
 
         <div className="settings-panel-footer">
           <OutlawButton
