@@ -121,7 +121,7 @@ export function useGuild(
       });
 
       if (error) throw error;
-      
+
       await syncBootstrapData(session.user.id);
       setConfirmDialogConfig({ isOpen: true, title: "属性変更", message: "組織属性を更新しました。", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
     } catch (e: any) {
@@ -389,6 +389,17 @@ export function useGuild(
       });
 
       if (error) throw error;
+
+      if (itemId !== null) {
+        const { error: syncError } = await supabase.rpc("sync_legacy_guild_cosmetics", { p_guild_id: userGuild.id });
+        if (syncError && syncError.code !== "PGRST202") throw syncError;
+        const { error: cosmeticError } = await supabase.rpc("equip_guild_cosmetic", {
+          p_guild_id: userGuild.id,
+          p_slot: type === "DECORATION" ? "GUILD_BASE_BACKGROUND" : "GUILD_BANNER",
+          p_cosmetic_id: itemId
+        });
+        if (cosmeticError && cosmeticError.code !== "PGRST202") throw cosmeticError;
+      }
 
       await syncBootstrapData(session.user.id);
       setConfirmDialogConfig({ isOpen: true, title: "装飾適用", message: "ギルド装飾を適用しました。", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
