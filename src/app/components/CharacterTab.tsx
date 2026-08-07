@@ -263,46 +263,24 @@ export default function CharacterTab() {
   const rightSlots = GEAR_SLOTS_MASTER.slice(3, 7);
   return (
     <div className="char-tab-container">
-      <div className="flex justify-end mb-2">
-        <button className="sub-btn border-cyan-subtle font-size-8 height-26 px-3 active-scale-effect" onClick={() => void handleAutoFormation({ navigateAfter: false })}>
-          おまかせ編成
+      <div className="char-overview-toolbar">
+        <button className="char-party-summary active-scale-effect" onClick={() => { setFormationEditMode(true); playCyberSe("click"); }}>
+          <span className="char-party-summary-label">PARTY</span>
+          <strong>出撃編成 {partyMembers.length}/5</strong>
+          <span className="char-party-summary-faces" aria-hidden="true">
+            {Array.from({ length: 5 }).map((_, index) => {
+              const member = partyMembers[index];
+              return member?.master
+                ? <img key={`${member.characterId}-${index}`} src={getCharacterTransparentImg(member.master.name)} alt="" />
+                : <i key={`empty-${index}`} />;
+            })}
+          </span>
+          <span className="char-party-summary-arrow">›</span>
+        </button>
+        <button className="char-auto-formation-btn active-scale-effect" onClick={() => void handleAutoFormation({ navigateAfter: false })}>
+          おまかせ
         </button>
       </div>
-      <section className={`char-party-panel ${formationEditMode ? "is-editing" : ""}`} aria-label="出撃パーティ編成">
-        <div className="char-party-header">
-          <div>
-            <span className="char-party-eyebrow">PARTY</span>
-            <strong>出撃編成 <em>{partyMembers.length}/5</em></strong>
-          </div>
-          <button
-            className="char-party-edit-btn active-scale-effect"
-            onClick={() => { setFormationEditMode((current) => !current); playCyberSe("click"); }}
-          >
-            {formationEditMode ? "完了" : "編成編集"}
-          </button>
-        </div>
-        <div className="char-party-slots">
-          {Array.from({ length: 5 }).map((_, index) => {
-            const member = partyMembers[index];
-            return member?.master ? (
-              <button
-                key={`${member.characterId}-${index}`}
-                className={`char-party-slot ${member.characterId === activeCharMaster.id ? "is-active" : ""} active-scale-effect`}
-                onClick={() => {
-                  setUpgradeSelectedCharId(member.characterId);
-                  if (formationEditMode) void handleTogglePartyMember(member.characterId);
-                  else playCyberSe("click");
-                }}
-                title={formationEditMode ? `${member.master.jpName}を編成から外す` : member.master.jpName}
-              >
-                <img src={getCharacterTransparentImg(member.master.name)} alt="" />
-                <span>{index + 1}</span>
-              </button>
-            ) : <div className="char-party-slot is-empty" key={`empty-${index}`}><span>{index + 1}</span><b>＋</b></div>;
-          })}
-        </div>
-        {formationEditMode && <p className="char-party-edit-help">所持キャラをタップして、出撃メンバーに追加／解除します。</p>}
-      </section>
       {/* 1. 上部: 所持キャラクター丸型スライダー */}
       <div className="char-slider-header">
         <button className="char-slider-arrow" onClick={handlePrevChar}>◀</button>
@@ -322,12 +300,8 @@ export default function CharacterTab() {
                 key={uc.id || uc.character_id}
                 className={`char-slider-item ${isInDeck ? "in-deck" : ""} ${isSelected ? "active" : ""}`}
                 onClick={() => {
-                  if (formationEditMode) {
-                    void handleTogglePartyMember(uc.character_id);
-                  } else {
-                    setUpgradeSelectedCharId(uc.character_id);
-                    playCyberSe("click");
-                  }
+                  setUpgradeSelectedCharId(uc.character_id);
+                  playCyberSe("click");
                 }}
               >
                 <img
@@ -345,31 +319,8 @@ export default function CharacterTab() {
         <button className="char-slider-arrow" onClick={handleNextChar}>▶</button>
       </div>
 
-      <div className="char-firstview-skills" aria-label="装着スキル">
-        {Array.from({ length: 6 }).map((_, slotIdx) => {
-          const skillRecord = equippedSkillsBySlot.get(slotIdx);
-          const skillMaster = skillRecord ? SKILLS_MASTER_DATA.find((item: any) => item.id === skillRecord.skill_id) : null;
-          const unlocked = slotIdx < maxSkillSlots;
-          return (
-            <button
-              key={slotIdx}
-              className={`char-firstview-skill ${skillMaster ? `is-${(skillMaster.rarity || "N").toLowerCase()}` : ""} ${!unlocked ? "is-locked" : ""} active-scale-effect`}
-              onClick={() => {
-                if (!unlocked) return;
-                setSelectedSkillSlotIdx(slotIdx);
-                setBottomModalTab("SKILL");
-                playCyberSe("click");
-              }}
-            >
-              <span>SK{slotIdx + 1}</span>
-              <strong>{unlocked ? (skillMaster?.name || "未装着") : "LOCK"}</strong>
-            </button>
-          );
-        })}
-      </div>
-
       {/* 2. 中央: 大画面5層レイヤーキャンバス (高さ360px絶対固定) */}
-      <div className={`char-main-stage char-rarity-${characterRarity} char-loadout-${loadoutState.tier.toLowerCase()} ${loadoutState.isMax ? "char-loadout-max" : ""} char-style-${getEquippedCharacterCosmetic("CHARACTER_FRAME", "char_frame_none")} char-aura-style-${getEquippedCharacterCosmetic("CHARACTER_AURA", "char_aura_none")} `}>
+      <div key={activeCharRecord?.id || activeCharMaster.id} className={`char-main-stage char-rarity-${characterRarity} char-loadout-${loadoutState.tier.toLowerCase()} ${loadoutState.isMax ? "char-loadout-max" : ""} char-style-${getEquippedCharacterCosmetic("CHARACTER_FRAME", "char_frame_none")} char-aura-style-${getEquippedCharacterCosmetic("CHARACTER_AURA", "char_aura_none")} `}>
         {/* Z-10: 背景 */}
         <div className="char-layer-bg" style={{ backgroundImage: `url(${bgImgUrl})` }}>
           <div className="char-layer-bg-overlay" />
@@ -429,17 +380,28 @@ export default function CharacterTab() {
           {rightSlots.map(slot => renderEquipSlot(slot))}
         </div>
 
-        {/* 装備導線: 個人ホーム背景とは切り分け、キャラ画面では装備変更を開く。 */}
-        <button
-          className="char-bg-change-btn active-scale-effect"
-          onClick={() => {
-            setBottomModalTab("GEAR");
-            playCyberSe("click");
-          }}
-          title="装備変更"
-        >
-          装備
-        </button>
+        <div className="char-firstview-skills" aria-label="装着スキル">
+          {Array.from({ length: 6 }).map((_, slotIdx) => {
+            const skillRecord = equippedSkillsBySlot.get(slotIdx);
+            const skillMaster = skillRecord ? SKILLS_MASTER_DATA.find((item: any) => item.id === skillRecord.skill_id) : null;
+            const unlocked = slotIdx < maxSkillSlots;
+            return (
+              <button
+                key={slotIdx}
+                className={`char-firstview-skill ${skillMaster ? `is-${(skillMaster.rarity || "N").toLowerCase()}` : ""} ${!unlocked ? "is-locked" : ""} active-scale-effect`}
+                onClick={() => {
+                  if (!unlocked) return;
+                  setSelectedSkillSlotIdx(slotIdx);
+                  setBottomModalTab("SKILL");
+                  playCyberSe("click");
+                }}
+              >
+                <span>SK{slotIdx + 1}</span>
+                <strong>{unlocked ? (skillMaster?.name || "未装着") : "LOCK"}</strong>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* 3. メイン画面直下: 1行コンパクトステータスサマリー */}
@@ -460,12 +422,6 @@ export default function CharacterTab() {
           <span className="char-summary-label">SPD</span>
           <span className="char-summary-val">{charStats.spd.toLocaleString()}</span>
         </div>
-      </div>
-
-      <div className="char-loadout-progress" aria-label="現在の編成到達度">
-        <span>装備 {loadoutState.gearCount}/{GEAR_SLOTS_MASTER.length}</span>
-        <span>スキル {loadoutState.skillCount}/{maxSkillSlots}</span>
-        <strong>{loadoutState.tier === "MAX" ? "MAX LOADOUT" : loadoutState.tier === "COMPLETE" ? "編成完成" : "編成中"}</strong>
       </div>
 
       {/* 4. メイン画面最下部: 3アクションボタン (タップでボトムシートモーダル起動) */}
@@ -504,6 +460,48 @@ export default function CharacterTab() {
           演出
         </button>
       </div>
+
+      {formationEditMode && (
+        <div className="char-party-modal-backdrop" onClick={() => setFormationEditMode(false)}>
+          <section className="char-party-modal" onClick={(event) => event.stopPropagation()} aria-label="出撃パーティ編集">
+            <header className="char-party-modal-header">
+              <div><span>PARTY</span><strong>出撃編成 {partyMembers.length}/5</strong></div>
+              <button onClick={() => setFormationEditMode(false)}>完了 ✕</button>
+            </header>
+            <div className="char-party-modal-slots">
+              {Array.from({ length: 5 }).map((_, index) => {
+                const member = partyMembers[index];
+                return member?.master ? (
+                  <button key={`${member.characterId}-${index}`} onClick={() => void handleTogglePartyMember(member.characterId)}>
+                    <span>{index + 1}</span>
+                    <img src={getCharacterTransparentImg(member.master.name)} alt={member.master.jpName} />
+                    <b>{member.master.jpName}</b>
+                  </button>
+                ) : <div className="is-empty" key={`party-empty-${index}`}><span>{index + 1}</span><i>＋</i><b>未編成</b></div>;
+              })}
+            </div>
+            <p className="char-party-modal-help">所持キャラをタップして、出撃メンバーに追加／解除します。</p>
+            <div className="char-party-candidates">
+              {(userCharactersDbList || []).map((character: any) => {
+                const master = CHARACTERS_MASTER.find((item: any) => item.id === character.character_id) || CHARACTERS_MASTER[0];
+                const partyIndex = selectedMembers.indexOf(character.character_id);
+                return (
+                  <button
+                    key={character.id || character.character_id}
+                    className={`${partyIndex >= 0 ? "is-selected" : ""} active-scale-effect`}
+                    onClick={() => void handleTogglePartyMember(character.character_id)}
+                  >
+                    <img src={getCharacterTransparentImg(master.name)} alt="" />
+                    <span>{master.jpName}</span>
+                    {partyIndex >= 0 && <b>{partyIndex + 1}</b>}
+                  </button>
+                );
+              })}
+            </div>
+            <button className="char-party-auto-btn active-scale-effect" onClick={() => void handleAutoFormation({ navigateAfter: false })}>戦力順でおまかせ編成</button>
+          </section>
+        </div>
+      )}
 
       {/* 5. ボトムシートモーダル (画面見切れ100%防止 ＆ モーダル内インライン4列グリッド) */}
       {bottomModalTab !== null && (
