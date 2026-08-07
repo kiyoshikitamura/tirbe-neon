@@ -78,6 +78,7 @@ export default function CharacterTab() {
     if (!activeCharRecord) return { hp: 0, atk: 0, def: 0, spd: 0, luk: 0 };
     return getCharacterTotalStats(activeCharRecord, userEquipmentsList);
   }, [activeCharRecord, userEquipmentsList]);
+  const characterPower = charStats.hp + charStats.atk + charStats.def + charStats.spd + charStats.luk;
 
   const alignInfo = getAlignmentShortJp(activeCharMaster?.alignment || "");
   const awakeningLevel = activeCharRecord?.awakening_level || 0;
@@ -263,24 +264,6 @@ export default function CharacterTab() {
   const rightSlots = GEAR_SLOTS_MASTER.slice(3, 7);
   return (
     <div className="char-tab-container">
-      <div className="char-overview-toolbar">
-        <button className="char-party-summary active-scale-effect" onClick={() => { setFormationEditMode(true); playCyberSe("click"); }}>
-          <span className="char-party-summary-label">PARTY</span>
-          <strong>出撃編成 {partyMembers.length}/5</strong>
-          <span className="char-party-summary-faces" aria-hidden="true">
-            {Array.from({ length: 5 }).map((_, index) => {
-              const member = partyMembers[index];
-              return member?.master
-                ? <img key={`${member.characterId}-${index}`} src={getCharacterTransparentImg(member.master.name)} alt="" />
-                : <i key={`empty-${index}`} />;
-            })}
-          </span>
-          <span className="char-party-summary-arrow">›</span>
-        </button>
-        <button className="char-auto-formation-btn active-scale-effect" onClick={() => void handleAutoFormation({ navigateAfter: false })}>
-          おまかせ
-        </button>
-      </div>
       {/* 1. 上部: 所持キャラクター丸型スライダー */}
       <div className="char-slider-header">
         <button className="char-slider-arrow" onClick={handlePrevChar}>◀</button>
@@ -317,6 +300,24 @@ export default function CharacterTab() {
           })}
         </div>
         <button className="char-slider-arrow" onClick={handleNextChar}>▶</button>
+        <button className="char-party-entry active-scale-effect" onClick={() => { setFormationEditMode(true); playCyberSe("click"); }}>
+          <span>編成</span><strong>{partyMembers.length}/5</strong><i>›</i>
+        </button>
+      </div>
+
+      <div className={`char-character-info-bar char-plate-style-${getEquippedCharacterCosmetic("CHARACTER_NAMEPLATE", "char_plate_none")}`}>
+        <div className="char-hud-left-group">
+          <span className={`char-hud-align-badge char-hud-align-${alignInfo.colorClass}`}>{alignInfo.label}</span>
+          <span className="char-hud-name">{activeCharMaster.jpName}</span>
+          {awakeningLevel > 0 && <span className="char-hud-awaken">+{awakeningLevel}</span>}
+          <span className="char-hud-level">Lv.{activeCharRecord?.level || 1}</span>
+        </div>
+        <button
+          className={`char-leader-set-btn-small ${isCurrentLeader ? "is-active" : ""} active-scale-effect`}
+          onClick={() => { setSelectedLeader(activeCharMaster.id); playCyberSe("click"); }}
+        >
+          {isCurrentLeader ? "★ リーダー" : "☆ リーダーにする"}
+        </button>
       </div>
 
       {/* 2. 中央: 大画面5層レイヤーキャンバス (高さ360px絶対固定) */}
@@ -345,30 +346,6 @@ export default function CharacterTab() {
         <div className="char-layer-front-effect" />
         {loadoutState.isMax && <div className="char-max-loadout-effect" aria-hidden="true" />}
         <div className="char-cosmetic-aura" aria-hidden="true" />
-
-        {/* Z-50: 最前面1行コンパクトHUD (被り100%排除) */}
-        <div className={`char-hud-header-single char-plate-style-${getEquippedCharacterCosmetic("CHARACTER_NAMEPLATE", "char_plate_none")} `}>
-          <div className="char-hud-left-group">
-            <span className={`char-hud-align-badge char-hud-align-${alignInfo.colorClass}`}>
-              {alignInfo.label}
-            </span>
-            <span className="char-hud-name">{activeCharMaster.jpName}</span>
-            {awakeningLevel > 0 && (
-              <span className="char-hud-awaken">+{awakeningLevel}</span>
-            )}
-            <span className="char-hud-level">Lv.{activeCharRecord?.level || 1}</span>
-          </div>
-
-          <button
-            className={`char-leader-set-btn-small ${isCurrentLeader ? "is-active" : ""} active-scale-effect`}
-            onClick={() => {
-              setSelectedLeader(activeCharMaster.id);
-              playCyberSe("click");
-            }}
-          >
-            {isCurrentLeader ? "★ リーダー設定中" : "リーダー設定"}
-          </button>
-        </div>
 
         {/* 左側 装備スロット 3枠 */}
         <div className="char-equip-column char-equip-column-left">
@@ -404,27 +381,11 @@ export default function CharacterTab() {
         </div>
       </div>
 
-      {/* 3. メイン画面直下: 1行コンパクトステータスサマリー */}
-      <div className="char-summary-bar">
-        <div className="char-summary-item">
-          <span className="char-summary-label">HP</span>
-          <span className="char-summary-val">{charStats.hp.toLocaleString()}</span>
-        </div>
-        <div className="char-summary-item">
-          <span className="char-summary-label">ATK</span>
-          <span className="char-summary-val">{charStats.atk.toLocaleString()}</span>
-        </div>
-        <div className="char-summary-item">
-          <span className="char-summary-label">DEF</span>
-          <span className="char-summary-val">{charStats.def.toLocaleString()}</span>
-        </div>
-        <div className="char-summary-item">
-          <span className="char-summary-label">SPD</span>
-          <span className="char-summary-val">{charStats.spd.toLocaleString()}</span>
-        </div>
+      <div className="char-power-summary">
+        <div><span>戦力</span><strong>{characterPower.toLocaleString()}</strong></div>
+        <button className="active-scale-effect" onClick={() => { setBottomModalTab("STATUS"); playCyberSe("click"); }}>詳細 ›</button>
       </div>
 
-      {/* 4. メイン画面最下部: 3アクションボタン (タップでボトムシートモーダル起動) */}
       <div className="char-main-actions">
         <button
           className={`char-main-action-btn ${bottomModalTab === "STATUS" ? "active" : ""} active-scale-effect`}
@@ -434,30 +395,6 @@ export default function CharacterTab() {
           }}
         >
           育成・強化
-        </button>
-        <button
-          className={`char-main-action-btn ${bottomModalTab === "SKILL" ? "active" : ""} active-scale-effect`}
-          onClick={() => {
-            setBottomModalTab("SKILL");
-            playCyberSe("click");
-          }}
-        >
-          スキル編成
-        </button>
-        <button
-          className={`char-main-action-btn ${bottomModalTab === "GEAR" ? "active" : ""} active-scale-effect`}
-          onClick={() => {
-            setBottomModalTab("GEAR");
-            playCyberSe("click");
-          }}
-        >
-          装備変更
-        </button>
-        <button
-          className={`char-main-action-btn ${bottomModalTab === "STYLE" ? "active" : ""} active-scale-effect`}
-          onClick={() => { setBottomModalTab("STYLE"); playCyberSe("click"); }}
-        >
-          演出
         </button>
       </div>
 
@@ -562,6 +499,10 @@ export default function CharacterTab() {
                   <div className="char-status-card">
                     <span className="char-status-label">素早さ (SPD)</span>
                     <span className="char-status-val">{charStats.spd.toLocaleString()}</span>
+                  </div>
+                  <div className="char-status-card">
+                    <span className="char-status-label">運 (LUK)</span>
+                    <span className="char-status-val">{charStats.luk.toLocaleString()}</span>
                   </div>
                 </div>
 

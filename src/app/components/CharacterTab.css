@@ -108,6 +108,47 @@
   box-sizing: border-box;
 }
 
+.char-party-entry {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-width: 58px;
+  height: 36px;
+  padding: 0 6px;
+  border: 1px solid rgba(0, 240, 255, .45);
+  border-radius: 5px;
+  color: #e8f6ff;
+  background: linear-gradient(135deg, rgba(0, 107, 137, .24), rgba(12, 18, 29, .96));
+  cursor: pointer;
+}
+
+.char-party-entry span { color: var(--neon-cyan); font-size: 8px; font-weight: 900; }
+.char-party-entry strong { color: var(--neon-gold); font-size: 9px; }
+.char-party-entry i { color: var(--neon-cyan); font-size: 15px; font-style: normal; line-height: 1; }
+
+.char-character-info-bar {
+  position: relative;
+  z-index: 55;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  width: 100%;
+  min-height: 32px;
+  padding: 4px 10px;
+  box-sizing: border-box;
+  background: linear-gradient(90deg, rgba(15, 26, 39, .98), rgba(11, 15, 25, .98));
+  border-top: 1px solid rgba(0, 240, 255, .18);
+  border-bottom: 1px solid rgba(0, 240, 255, .28);
+}
+
+.char-character-info-bar.char-plate-style-char_plate_champion {
+  border-color: rgba(255, 210, 68, .72);
+  background: linear-gradient(90deg, rgba(72, 46, 9, .96), rgba(15, 17, 29, .98), rgba(65, 16, 61, .94));
+}
+
 .char-slider-arrow {
   background: rgba(20, 26, 38, 0.8);
   border: 1px solid rgba(160, 160, 170, 0.3);
@@ -558,10 +599,10 @@
 /* Z-30: メインキャラクター透過立ち絵 (縮小＆余白確保) */
 .char-layer-character {
   position: absolute;
-  bottom: 22px;
+  bottom: 30px;
   left: 50%;
   transform: translateX(-50%);
-  height: 280px;
+  height: 290px;
   z-index: 30;
   pointer-events: none;
   display: flex;
@@ -571,7 +612,7 @@
 
 .char-character-img {
   height: 100%;
-  max-height: 274px;
+  max-height: 284px;
   object-fit: contain;
   object-position: bottom center;
   filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.85));
@@ -712,7 +753,7 @@
   flex-direction: column;
   gap: 6px;
   z-index: 50;
-  padding: 42px 4px 8px 4px;
+  padding: 10px 4px 42px;
   width: 68px;
   box-sizing: border-box;
 }
@@ -917,6 +958,34 @@
   width: 100%;
   box-sizing: border-box;
   z-index: 20;
+}
+
+.char-power-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 30px;
+  margin: 0 8px 4px;
+  padding: 4px 10px;
+  box-sizing: border-box;
+  border: 1px solid rgba(0, 240, 255, .32);
+  border-radius: 5px;
+  background: rgba(8, 14, 23, .94);
+}
+
+.char-power-summary > div { display: flex; align-items: baseline; gap: 8px; }
+.char-power-summary span { color: #a8b7c8; font-size: 9px; font-weight: 800; letter-spacing: .08em; }
+.char-power-summary strong { color: var(--neon-gold); font-size: 16px; line-height: 1; text-shadow: 0 0 8px rgba(255, 215, 0, .35); }
+.char-power-summary button {
+  min-height: 24px;
+  padding: 0 9px;
+  border: 1px solid rgba(117, 153, 184, .38);
+  border-radius: 4px;
+  color: #d9e5ef;
+  background: rgba(25, 35, 50, .82);
+  font-size: 9px;
+  font-weight: 800;
+  cursor: pointer;
 }
 
 /* パーティ編成はキャラ閲覧面を押し下げず、専用ボトムシートで行う。 */

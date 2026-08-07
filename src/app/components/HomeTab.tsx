@@ -37,8 +37,6 @@ function MainMyPage() {
     monthlyPassActive,
     isRaidActive,
     session,
-    userGuild,
-    pvpPoints,
     activePatrols
   } = useGame();
 
@@ -203,6 +201,7 @@ function MainMyPage() {
 
   const interiorName = PROFILE_INTERIORS.find((item) => item.id === interiorItem)?.name;
   const homeEventState = isRaidActive ? "raid" : latestGvgAttack?.battle_result === "PENDING" ? "gvg" : "calm";
+  const completedPatrolsCount = activePatrols?.filter((patrol: { secondsLeft?: number }) => (patrol.secondsLeft || 0) <= 0).length || 0;
   const handleLeaderTap = () => {
     const lines = ["今夜も、ここを守る。", "行くぞ。街は俺たちのものだ。", "仲間の準備はできてるか？"];
     setLeaderLine(lines[Math.floor(Math.random() * lines.length)]);
@@ -330,7 +329,6 @@ function MainMyPage() {
       <div className="mypage-circle-menu-area">
         <button
           className="circle-menu-btn allies active-scale-effect"
-          data-status={userGuild ? "連合新着" : "加入募集中"}
           onClick={() => { navigateTab("guild"); playCyberSe("click"); }}
         >
           <img src="/menu/menu_allies.png" alt="連合" className="circle-menu-img" />
@@ -338,7 +336,6 @@ function MainMyPage() {
 
         <button
           className="circle-menu-btn fight active-scale-effect"
-          data-status={`挑戦 ${pvpPoints ?? 0}`}
           onClick={() => { navigateTab("pvp"); playCyberSe("click"); }}
         >
           <img src="/menu/menu_fight.png" alt="喧嘩" className="circle-menu-img" />
@@ -346,18 +343,18 @@ function MainMyPage() {
 
         <button
           className="circle-menu-btn conquest active-scale-effect"
-          data-status={activePatrols?.length ? "進行中" : "派遣可能"}
           onClick={() => { navigateTab("patrol"); playCyberSe("click"); }}
         >
           <img src="/menu/menu_conquest.png" alt="制圧" className="circle-menu-img" />
+          {completedPatrolsCount > 0 && <span className="circle-menu-alert-badge">{completedPatrolsCount}</span>}
         </button>
 
         <button
           className="circle-menu-btn war active-scale-effect"
-          data-status={latestGvgAttack?.battle_result === "PENDING" ? "結果待ち" : "状況確認"}
           onClick={() => { navigateTab("gvg"); playCyberSe("click"); }}
         >
           <img src="/menu/menu_war.png" alt="抗争" className="circle-menu-img" />
+          {latestGvgAttack?.battle_result === "PENDING" && <span className="circle-menu-alert-badge">!</span>}
         </button>
       </div>
 
