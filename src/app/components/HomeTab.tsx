@@ -293,7 +293,7 @@ function MainMyPage() {
         </button>
       </div>
 
-      <div className="px-3 pb-3 flex-col-gap-2">
+      <div className="mypage-lower-content">
         {/* 月額VIPパスバナー */}
         {/* 3. イベントバナーエリア (大ボタン直下) */}
         <div className="mypage-event-banner-area">

@@ -315,9 +315,19 @@
   justify-content: center;
   align-items: flex-end;
   gap: 8px;
-  margin-top: -48px;
+  /* Keep the four primary routes attached to the personal scene. */
+  margin: -48px 0 0;
   z-index: 15;
   padding: 0 10px;
+}
+
+/* Do not let generic layout utility classes distribute the banner over the
+   remaining viewport height.  This area must follow the four primary routes
+   at a stable distance on iPhone Safari as well as desktop. */
+.mypage-lower-content {
+  display: block;
+  width: 100%;
+  padding: 0 12px 12px;
 }
 
 .circle-menu-btn {
@@ -343,7 +353,7 @@
   flex-direction: column;
   align-items: center;
   gap: 6px;
-  padding: 12px 14px 6px;
+  padding: 12px 2px 6px;
 }
 
 .banner-slide-wrapper {
