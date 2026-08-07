@@ -6,6 +6,16 @@
 
 段階実装計画: [ui_implementation_plan.md](ui_implementation_plan.md)
 
+Stage 0監査台帳: [ui_stage0_audit.md](ui_stage0_audit.md)
+
+## 段階進捗
+
+| Stage | 状態 | 結果 |
+| --- | --- | --- |
+| UI-0A 現状監査・移行設計 | 完了 | 画面対応、共通部品、状態、ロード、セキュリティ、アセット、変更ファイルを確定 |
+| UI-0B 共通基盤 | 未着手 | UI-0Aの台帳に従って実装する |
+| UI-1以降 | 未着手 | 各画面群の品質ゲート単位で進行する |
+
 ## 管理方法
 
 各画面は、機能・情報設計・デザイン・演出・状態・操作・性能の7観点を確認するまで完了にしない。
@@ -24,10 +34,10 @@
 | --- | --- | --- | --- |
 | ホーム | HomeTab、Header、Footer | UIは約90%。全画面との統一監査・必要な再設計・演出改修の対象 | 中 |
 | キャラクター | CharacterTab、CommonModals | UIは約70〜80%。全画面との統一監査・必要な再設計・演出改修の対象 | 中 |
-| 主ゲームループ | PatrolTab、MoveBaseModal、CardBattleView | 未監査 | 最優先 |
-| 抗争・協力 | PvpTab、GvgTab、GvgMatchStatusPanel、RaidTab、GuildTab | 未監査 | 最優先 |
-| 成長・収集・経済 | GachaTab、ShopTab、BagTab、MissionPanel、InboxPanel、RankingTab | 未監査 | 高 |
-| ソーシャル・補助 | BbsTab、TribeChatModal、FriendPanel、SettingsPanel、MenuTab、LegalPanel | 未監査 | 高 |
+| 主ゲームループ | PatrolTab、MoveBaseModal、CardBattleView | PatrolTab／MoveBaseModalはコード監査完了。CardBattleViewはBATTLE工程 | 最優先 |
+| 抗争・協力 | PvpTab、GvgTab、GvgMatchStatusPanel、RaidTab、GuildTab | コード監査完了。UI-1〜2で実装 | 最優先 |
+| 成長・収集・経済 | GachaTab、ShopTab、BagTab、MissionPanel、InboxPanel、RankingTab | Stage 0対象はコード監査完了。RankingTabは現行Stage対象外 | 高 |
+| ソーシャル・補助 | BbsTab、TribeChatModal、FriendPanel、SettingsPanel、MenuTab、LegalPanel | Stage 0対象はコード監査完了。MenuTab／LegalPanelは現行Stage対象外 | 高 |
 | 初回体験 | TitleView、AuthView、SetupView、Tutorial* | 他画面完成後に監査 | 最後 |
 
 ## 監査順序
