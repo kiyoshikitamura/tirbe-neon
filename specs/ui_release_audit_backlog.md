@@ -4,6 +4,8 @@
 
 共通UIの受入基準: [ui_design_system.md](ui_design_system.md)
 
+段階実装計画: [ui_implementation_plan.md](ui_implementation_plan.md)
+
 ## 管理方法
 
 各画面は、機能・情報設計・デザイン・演出・状態・操作・性能の7観点を確認するまで完了にしない。
