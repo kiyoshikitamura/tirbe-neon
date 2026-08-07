@@ -297,9 +297,10 @@ function MainMyPage() {
         )}
 
         {/* 層構造装飾: z-3 リーダー立ち絵キャラクター */}
-        <button className="mypage-leader-layer" onClick={handleLeaderTap} aria-label="リーダーに話しかける">
+        <div className="mypage-leader-layer">
           <img src={leaderImgUrl} alt={leaderMaster.name} className="mypage-leader-img" />
-        </button>
+        </div>
+        <button className="mypage-leader-tap-target" onClick={handleLeaderTap} aria-label="リーダーに話しかける" />
         {leaderLine && <div className="mypage-leader-line">{leaderLine}</div>}
 
         {/* 層構造装飾: z-4 称号プレートバナー */}
