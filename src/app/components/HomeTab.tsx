@@ -48,12 +48,20 @@ function MainMyPage() {
   // イベントバナースライドインジケーター
   const [bannerIndex, setBannerIndex] = useState(0);
   const [latestGvgAttack, setLatestGvgAttack] = useState<{ battle_result?: string; accepted_at?: string } | null>(null);
-  const banners: Array<{ id: string; title: string; img: string; onClick?: () => void }> = [
-    { id: "vip", title: monthlyPassActive ? "VIP PASS｜本日の特典を確認" : "VIP PASS｜毎日ログインでダイヤを獲得", img: "/gacha/bg_gacha_ssr.png", onClick: () => navigateTab("shop", "LIMITED") },
-    { id: "b1", title: "【GvG抗争】第2シーズン 覇権争奪戦 開幕", img: "/gacha/bg_gacha_ssr.png" },
-    { id: "b2", title: "【ピックアップガチャ】SSR「剛」新登場！", img: "/gacha/bg_gacha_sr.png" },
-    { id: "b3", title: "【レイドイベント】強敵「雷神」襲来中！", img: "/gacha/bg_gacha_normal.png" }
+  const [leaderLine, setLeaderLine] = useState<string | null>(null);
+  const fallbackBanners: Array<{ id: string; title: string; img: string; destination: string }> = [
+    { id: "vip_pass", title: monthlyPassActive ? "VIP PASS｜本日の特典を確認" : "VIP PASS｜毎日ログインでダイヤを獲得", img: "/gacha/bg_gacha_ssr.png", destination: "shop:LIMITED" },
+    { id: "gvg_season_02", title: "【GvG抗争】第2シーズン 覇権争奪戦 開幕", img: "/gacha/bg_gacha_ssr.png", destination: "gvg" },
+    { id: "pickup_ssr_go", title: "【ピックアップガチャ】SSR「剛」新登場！", img: "/gacha/bg_gacha_sr.png", destination: "gacha" },
+    { id: "raid_raijin", title: "【レイドイベント】強敵「雷神」襲来中！", img: "/gacha/bg_gacha_normal.png", destination: "raid" }
   ];
+  const [banners, setBanners] = useState(fallbackBanners);
+
+  const openBanner = (destination: string) => {
+    const [tab, subTab] = destination.split(":");
+    navigateTab(tab, subTab);
+    playCyberSe("click");
+  };
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -61,6 +69,12 @@ function MainMyPage() {
     }, 4000);
     return () => clearInterval(timer);
   }, [banners.length]);
+
+  useEffect(() => {
+    void supabase.from("home_banner_master").select("id, title, image_url, destination_value").order("priority", { ascending: false }).then(({ data, error }) => {
+      if (!error && data?.length) setBanners(data.map((item) => ({ id: item.id, title: item.title, img: item.image_url, destination: item.destination_value || "home" })));
+    });
+  }, []);
 
   useEffect(() => {
     if (!session?.user?.id) return;
@@ -188,11 +202,18 @@ function MainMyPage() {
           : { icon: "◆", text: "今夜のネオン街に、新たな抗争の気配", onClick: () => navigateTab("gvg") };
 
   const interiorName = PROFILE_INTERIORS.find((item) => item.id === interiorItem)?.name;
+  const homeEventState = isRaidActive ? "raid" : latestGvgAttack?.battle_result === "PENDING" ? "gvg" : "calm";
+  const handleLeaderTap = () => {
+    const lines = ["今夜も、ここを守る。", "行くぞ。街は俺たちのものだ。", "仲間の準備はできてるか？"];
+    setLeaderLine(lines[Math.floor(Math.random() * lines.length)]);
+    window.setTimeout(() => setLeaderLine(null), 2600);
+    playCyberSe("click");
+  };
 
   return (
     <div className="mypage-view">
       {/* 1. ビジュアルエリア (50vh 固定) */}
-      <div key={bgUrl} className="mypage-visual-area mypage-background-enter" style={{ backgroundImage: `url(${bgUrl})` }}>
+      <div key={bgUrl} className={`mypage-visual-area mypage-background-enter mypage-event-${homeEventState}`} style={{ backgroundImage: `url(${bgUrl})` }}>
         {/* 背景グラデーションオーバーレイ */}
         <div className="mypage-visual-overlay" />
 
@@ -276,9 +297,10 @@ function MainMyPage() {
         )}
 
         {/* 層構造装飾: z-3 リーダー立ち絵キャラクター */}
-        <div className="mypage-leader-layer">
+        <button className="mypage-leader-layer" onClick={handleLeaderTap} aria-label="リーダーに話しかける">
           <img src={leaderImgUrl} alt={leaderMaster.name} className="mypage-leader-img" />
-        </div>
+        </button>
+        {leaderLine && <div className="mypage-leader-line">{leaderLine}</div>}
 
         {/* 層構造装飾: z-4 称号プレートバナー */}
         {titleEquipped && titleEquipped !== "title_none" && (
@@ -347,8 +369,8 @@ function MainMyPage() {
               ‹
             </button>
             <button
-              className={`banner-card${banners[bannerIndex].id === "vip" ? " vip" : ""}`}
-              onClick={banners[bannerIndex].onClick}
+              className={`banner-card${banners[bannerIndex].id === "vip_pass" ? " vip" : ""}`}
+              onClick={() => openBanner(banners[bannerIndex].destination)}
             >
               <img src={banners[bannerIndex].img} alt="Banner" className="banner-bg-img" />
               <div className="banner-info-overlay">
