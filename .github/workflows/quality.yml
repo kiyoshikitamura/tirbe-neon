@@ -24,18 +24,28 @@ jobs:
 
   edge-function-check:
     runs-on: ubuntu-latest
+    env:
+      DENO_DIR: .deno
     steps:
       - uses: actions/checkout@v4
       - uses: denoland/setup-deno@v2
         with:
           deno-version: v2.x
+      - name: Cache Deno dependencies
+        uses: actions/cache@v4
+        with:
+          path: .deno
+          key: deno-${{ runner.os }}-${{ hashFiles('supabase/functions/**/*.ts', 'deno.lock') }}
+          restore-keys: |
+            deno-${{ runner.os }}-
       - name: Check Edge Function with dependency retry
         run: |
-          for attempt in 1 2 3; do
+          for attempt in 1 2 3 4 5; do
             deno check supabase/functions/resolve-battle/index.ts && exit 0
-            if [ "$attempt" -lt 3 ]; then
-              echo "Deno dependency check failed; retrying ($attempt/3)..."
-              sleep 5
+            if [ "$attempt" -lt 5 ]; then
+              delay=$((attempt * 10))
+              echo "Deno dependency check failed; retrying in ${delay}s ($attempt/5)..."
+              sleep "$delay"
             fi
           done
           exit 1
