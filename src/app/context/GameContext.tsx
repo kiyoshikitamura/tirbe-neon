@@ -3269,6 +3269,32 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const persistPartyFormation = async (party: string[]) => {
+    if (!session?.user?.id) return null;
+    const formation = {
+      character_1_id: party[0] || null,
+      character_2_id: party[1] || null,
+      character_3_id: party[2] || null,
+      character_4_id: party[3] || null,
+      character_5_id: party[4] || null,
+      updated_at: new Date().toISOString()
+    };
+
+    // Productionの旧スキーマでも動くよう、ON CONFLICT制約に依存しない。
+    const { count, error: updateError } = await supabase
+      .from("pvp_defense_decks")
+      .update(formation, { count: "exact" })
+      .eq("user_id", session.user.id);
+    if (updateError) return updateError;
+    if ((count || 0) > 0) return null;
+
+    const { error: insertError } = await supabase.from("pvp_defense_decks").insert({
+      user_id: session.user.id,
+      ...formation
+    });
+    return insertError;
+  };
+
   const handleTogglePartyMember = async (charId: string) => {
     playCyberSe("click");
     let nextParty = [...selectedMembers];
@@ -3282,25 +3308,14 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       nextParty.push(charId);
     }
     
-    if (session) {
-      try {
-        const row = {
-          user_id: session.user.id,
-          character_1_id: nextParty[0] || null,
-          character_2_id: nextParty[1] || null,
-          character_3_id: nextParty[2] || null,
-          character_4_id: nextParty[3] || null,
-          character_5_id: nextParty[4] || null,
-          updated_at: new Date().toISOString()
-        };
-        await supabase.from("pvp_defense_decks").upsert(row, { onConflict: "user_id" });
-        setSelectedMembers(nextParty);
-      } catch (err) {
-        console.warn("Failed to update party deck:", err);
-      }
-    } else {
-      setSelectedMembers(nextParty);
+    const saveError = await persistPartyFormation(nextParty);
+    if (saveError) {
+      console.warn("Failed to update party deck:", saveError);
+      setErrorMessage(`編成の保存に失敗しました。（${saveError.code || "unknown"}）`);
+      return false;
     }
+    setSelectedMembers(nextParty);
+    return true;
   };
 
   const handleAutoFormation = async ({ navigateAfter = true }: { navigateAfter?: boolean } = {}) => {
@@ -3322,17 +3337,10 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
     playCyberSe("click");
     if (session?.user?.id) {
-      const { error } = await supabase.from("pvp_defense_decks").upsert({
-        user_id: session.user.id,
-        character_1_id: nextParty[0] || null,
-        character_2_id: nextParty[1] || null,
-        character_3_id: nextParty[2] || null,
-        character_4_id: nextParty[3] || null,
-        character_5_id: nextParty[4] || null,
-        updated_at: new Date().toISOString()
-      }, { onConflict: "user_id" });
-      if (error) {
-        setErrorMessage("Failed to save the formation.");
+      const saveError = await persistPartyFormation(nextParty);
+      if (saveError) {
+        console.warn("Failed to save auto formation:", saveError);
+        setErrorMessage(`編成の保存に失敗しました。（${saveError.code || "unknown"}）`);
         return false;
       }
       await supabase.rpc("advance_tutorial_progress", {

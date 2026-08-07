@@ -561,7 +561,7 @@
   bottom: 32px;
   left: 50%;
   transform: translateX(-50%);
-  height: 292px;
+  height: 280px;
   z-index: 30;
   pointer-events: none;
   display: flex;
@@ -571,7 +571,7 @@
 
 .char-character-img {
   height: 100%;
-  max-height: 286px;
+  max-height: 274px;
   object-fit: contain;
   object-position: bottom center;
   filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.85));
