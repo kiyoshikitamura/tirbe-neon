@@ -16,6 +16,8 @@ import { getCharacterTotalStats } from "@/utils/stats_calculator";
 import { useImagePreloader } from "../hooks/useImagePreloader";
 import "./CharacterTab.css";
 
+const QA_EMAIL = "izasama39@gmail.com";
+
 export default function CharacterTab() {
   // アセット事前自動メモリプリロード
   useImagePreloader();
@@ -84,6 +86,9 @@ export default function CharacterTab() {
   const awakeningLevel = activeCharRecord?.awakening_level || 0;
   const characterRarity = (activeCharMaster?.rarity || "N").toLowerCase();
   const isCurrentLeader = selectedLeader === activeCharMaster.id;
+  const isMaxLoadoutPreview = session?.user?.email === QA_EMAIL;
+  const qaEquipment = EQUIPMENTS_MASTER_DATA.filter((item) => item.rarity === "SSR");
+  const qaSkills = SKILLS_MASTER_DATA.filter((item) => item.rarity === "SSR");
 
   useEffect(() => {
     const characterId = activeCharRecord?.id;
@@ -164,7 +169,8 @@ export default function CharacterTab() {
         )
       : null;
 
-    const gearMaster = equippedGear ? EQUIPMENTS_MASTER_DATA.find((m: any) => m.id === equippedGear.equipment_id) : null;
+    const previewGear = equippedGear || (isMaxLoadoutPreview ? { equipment_id: qaEquipment[slotDef.index % qaEquipment.length]?.id, level: 99, plus_val: 15 } : null);
+    const gearMaster = previewGear ? EQUIPMENTS_MASTER_DATA.find((m: any) => m.id === previewGear.equipment_id) : null;
     const rarity = (gearMaster?.rarity || "N").toUpperCase();
 
     let rarityClass = "slot-n";
@@ -177,7 +183,7 @@ export default function CharacterTab() {
     return (
       <div
         key={slotDef.index}
-        className={`char-equip-slot ${equippedGear ? rarityClass : "slot-empty"} active-scale-effect`}
+        className={`char-equip-slot ${previewGear ? rarityClass : "slot-empty"} active-scale-effect`}
         onClick={() => {
           setSelectedEquipSlotIdx(slotDef.index);
           setBottomModalTab("GEAR");
@@ -186,18 +192,18 @@ export default function CharacterTab() {
       >
         <div className="slot-header-row">
           <span className="slot-label">{slotDef.label}</span>
-          {equippedGear && (
+          {previewGear && (
             <span className={`slot-rarity-ribbon ${ribbonClass}`}>{rarity}</span>
           )}
         </div>
 
-        {equippedGear ? (
+        {previewGear ? (
           <>
             <div className="slot-gear-name">{gearMaster?.name || equippedGear.equipment_id}</div>
             <div className="slot-footer-row">
-              <span className="slot-gear-lv">Lv.{equippedGear.level}</span>
-              {equippedGear.plus_val > 0 && (
-                <span className="slot-plus-badge">+{equippedGear.plus_val}</span>
+              <span className="slot-gear-lv">Lv.{previewGear.level}</span>
+              {previewGear.plus_val > 0 && (
+                <span className="slot-plus-badge">+{previewGear.plus_val}</span>
               )}
             </div>
           </>
@@ -258,7 +264,7 @@ export default function CharacterTab() {
       </div>
 
       {/* 2. 中央: 大画面5層レイヤーキャンバス (高さ360px絶対固定) */}
-      <div className={`char-main-stage char-rarity-${characterRarity} char-style-${getEquippedCharacterCosmetic("CHARACTER_FRAME", "char_frame_none")} char-aura-style-${getEquippedCharacterCosmetic("CHARACTER_AURA", "char_aura_none")}`}>
+      <div className={`char-main-stage char-rarity-${characterRarity} ${isMaxLoadoutPreview ? "char-loadout-max" : ""} char-style-${getEquippedCharacterCosmetic("CHARACTER_FRAME", "char_frame_none")} char-aura-style-${getEquippedCharacterCosmetic("CHARACTER_AURA", "char_aura_none")}`}>
         {/* Z-10: 背景 */}
         <div className="char-layer-bg" style={{ backgroundImage: `url(${bgImgUrl})` }}>
           <div className="char-layer-bg-overlay" />
@@ -281,6 +287,7 @@ export default function CharacterTab() {
 
         {/* Z-40: 前面エフェクト */}
         <div className="char-layer-front-effect" />
+        {isMaxLoadoutPreview && <div className="char-max-loadout-effect" aria-hidden="true" />}
         <div className="char-cosmetic-aura" aria-hidden="true" />
 
         {/* Z-50: 最前面1行コンパクトHUD (被り100%排除) */}
@@ -501,11 +508,12 @@ export default function CharacterTab() {
                           (s: any) => s.equipped_character_id === activeDbUuid && s.slot_index === slotIdx
                         )
                       : null;
-                    const skillMaster = equippedSkillRecord ? SKILLS_MASTER_DATA.find((m: any) => m.id === equippedSkillRecord.skill_id) : null;
+                    const previewSkillRecord = equippedSkillRecord || (isMaxLoadoutPreview ? { skill_id: qaSkills[slotIdx % qaSkills.length]?.id, plus_val: 10 } : null);
+                    const skillMaster = previewSkillRecord ? SKILLS_MASTER_DATA.find((m: any) => m.id === previewSkillRecord.skill_id) : null;
                     const skillRarity = (skillMaster?.rarity || "N").toLowerCase();
                     
                     const isSynergy = skillMaster && (skillMaster as any).exclusive_character_id === activeCharMaster.id;
-                    const limitBreakPlus = equippedSkillRecord?.plus_val || 0;
+                    const limitBreakPlus = previewSkillRecord?.plus_val || 0;
 
                     let tierClass = "";
                     if (limitBreakPlus >= 10) tierClass = "skill-tier-max";
@@ -525,7 +533,7 @@ export default function CharacterTab() {
                       >
                         {isSynergy && <span className="char-synergy-badge">AP-1</span>}
                         {isUnlocked ? (
-                          equippedSkillRecord && skillMaster ? (
+                          previewSkillRecord && skillMaster ? (
                             <>
                               <div className="char-skill-name">{skillMaster.name}</div>
                               <div className="char-skill-cost">AP: {Math.max(1, (skillMaster.ap_cost || 2) - (isSynergy ? 1 : 0))}</div>
