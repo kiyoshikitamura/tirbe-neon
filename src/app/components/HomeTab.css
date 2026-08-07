@@ -315,8 +315,10 @@
   justify-content: center;
   align-items: flex-end;
   gap: 8px;
-  /* Keep the four primary routes attached to the personal scene. */
-  margin: -48px 0 0;
+  /* The transform keeps the buttons visually attached to the scene, while
+     the negative bottom margin removes their original flow space. */
+  margin: 0 0 -48px;
+  transform: translateY(-48px);
   z-index: 15;
   padding: 0 10px;
 }
