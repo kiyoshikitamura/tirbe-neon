@@ -37,7 +37,7 @@ SET search_path = public
 AS $$
 DECLARE
   v_user_id uuid;
-  v_email_hash text := encode(digest(lower(coalesce(auth.jwt() ->> 'email', '')), 'sha256'), 'hex');
+  v_email_hash text := encode(extensions.digest(lower(coalesce(auth.jwt() ->> 'email', '')), 'sha256'), 'hex');
 BEGIN
   IF v_email_hash <> 'ec4caf39b8c3a960f9287ac282badc8fe2ab3f03326455d4274e8bfd2de53f42' THEN
     RAISE EXCEPTION 'QA fixture is not available for this account';
