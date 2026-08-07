@@ -8,6 +8,18 @@ import "./SettingsPanel.css";
 
 const QA_EMAIL = "izasama39@gmail.com";
 
+function getSupabaseErrorMessage(error: unknown): string {
+  if (error instanceof Error && error.message) return error.message;
+  if (typeof error === "object" && error !== null) {
+    const candidate = error as { message?: unknown; details?: unknown; code?: unknown };
+    const message = typeof candidate.message === "string" ? candidate.message : "";
+    const details = typeof candidate.details === "string" ? candidate.details : "";
+    const code = typeof candidate.code === "string" ? candidate.code : "";
+    return [message, details, code].filter(Boolean).join(" / ") || "詳細不明のデータベースエラー";
+  }
+  return "詳細不明のデータベースエラー";
+}
+
 export default function SettingsPanel() {
   const game = useGame();
   const [qaLoading, setQaLoading] = useState(false);
@@ -36,7 +48,7 @@ export default function SettingsPanel() {
       await game.syncBootstrapData(game.session.user.id);
       game.playCyberSe("click");
     } catch (error) {
-      const message = error instanceof Error ? error.message : "テストデータの投入に失敗しました。";
+      const message = getSupabaseErrorMessage(error);
       game.setErrorMessage(`テストデータ投入エラー（${message}）`);
     } finally {
       setQaLoading(false);
