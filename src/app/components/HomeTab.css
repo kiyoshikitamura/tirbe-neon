@@ -162,11 +162,11 @@
   transform: translateX(-50%);
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   background: rgba(15, 20, 30, 0.7);
   border: 1px solid rgba(212, 175, 55, 0.35);
   border-radius: 20px;
-  padding: 4px 14px;
+  padding: 4px 11px;
   backdrop-filter: blur(6px);
   z-index: 12;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.6);
@@ -174,15 +174,16 @@
 }
 
 .mypage-power-label {
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 800;
   color: #d4af37;
   letter-spacing: 0.5px;
+  white-space: nowrap;
 }
 
 .mypage-power-val {
   font-family: "Outfit", "Inter", sans-serif;
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 800;
   color: #ffd700;
   letter-spacing: 0.5px;
@@ -196,10 +197,10 @@
 }
 
 .mypage-power-rank-link {
-  padding-left: 6px;
+  padding-left: 5px;
   border-left: 1px solid rgba(255, 215, 0, 0.3);
   color: rgba(255, 215, 0, 0.72);
-  font-size: 8px;
+  font-size: 7px;
   font-weight: 800;
   letter-spacing: 0.8px;
 }
