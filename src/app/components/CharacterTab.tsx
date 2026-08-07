@@ -712,25 +712,6 @@ export default function CharacterTab() {
                     一括解除
                   </button>
                 </div>
-
-                {/* 背景選択グリッド */}
-                <div className="char-bg-section-title">背景変更</div>
-                <div className="char-bg-grid">
-                  {PROFILE_BACKGROUNDS.map((bg: any) => (
-                    <div
-                      key={bg.id}
-                      className={`char-bg-tile ${equippedBackground === bg.id ? "selected" : ""} active-scale-effect`}
-                      style={{ backgroundImage: `url(${bg.img})` }}
-                      onClick={() => {
-                        setEquippedBackground(bg.id);
-                        setSelectedBgMode(bg.id);
-                        playCyberSe("click");
-                      }}
-                    >
-                      <span className="char-bg-tile-label">{bg.name}</span>
-                    </div>
-                  ))}
-                </div>
               </div>
             )}
           </div>
