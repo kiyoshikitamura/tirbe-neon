@@ -59,11 +59,11 @@ BEGIN
   INSERT INTO public.user_equipments (user_id, equipment_id, level, plus_val, equipped_character_id, slot_index, random_options)
   SELECT v_user_id, equipment_id, level, plus_val, character_id, slot_index, '[]'::jsonb
   FROM (
-    SELECT 'WEAPON_001'::text equipment_id, 30 level, 3 plus_val, id::text character_id, 0 slot_index FROM public.user_characters WHERE user_id = v_user_id ORDER BY level DESC LIMIT 1
+    SELECT 'WEAPON_001'::text equipment_id, 30 level, 3 plus_val, id character_id, 0 slot_index FROM public.user_characters WHERE user_id = v_user_id ORDER BY level DESC LIMIT 1
   ) seed;
 
   INSERT INTO public.user_skills (user_id, skill_card_id, plus_val, equipped_character_id, slot_index)
-  SELECT v_user_id, skill_card_id, plus_val, id::text, slot_index
+  SELECT v_user_id, skill_card_id, plus_val, id, slot_index
   FROM public.user_characters, LATERAL (VALUES ('SKILL_001'::text, 2, 0), ('SKILL_002'::text, 1, 1)) AS skill(skill_card_id, plus_val, slot_index)
   WHERE user_id = v_user_id;
 
