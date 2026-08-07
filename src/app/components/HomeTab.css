@@ -416,10 +416,32 @@
   border: none;
   cursor: pointer;
   padding: 0;
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
 }
+
+.circle-menu-btn::after {
+  content: attr(data-status);
+  position: absolute;
+  left: 50%;
+  bottom: -6px;
+  transform: translateX(-50%);
+  min-width: 46px;
+  padding: 1px 4px;
+  color: rgba(233, 243, 250, 0.9);
+  background: rgba(4, 8, 14, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 8px;
+  font-size: 7px;
+  font-weight: 700;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.circle-menu-btn.war::after { border-color: rgba(179, 98, 255, 0.6); color: #d4b3ff; }
+.circle-menu-btn.conquest::after { border-color: rgba(80, 224, 127, 0.55); color: #a9f7bc; }
 
 .circle-menu-img {
   width: 80px;

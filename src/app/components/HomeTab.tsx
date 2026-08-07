@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useGame } from "../context/GameContext";
+import { supabase } from "@/utils/supabase";
 
 import { PROFILE_BACKGROUNDS, CHARACTERS_MASTER, PROFILE_INTERIORS } from "@/utils/game_constants";
 import "./HomeTab.css";
@@ -34,7 +35,11 @@ function MainMyPage() {
     totalPower,
     totalPowerLoading,
     monthlyPassActive,
-    isRaidActive
+    isRaidActive,
+    session,
+    userGuild,
+    pvpPoints,
+    activePatrols
   } = useGame();
 
   const equippedTitleName = ownedTitles.find((title: { id: string }) => title.id === titleEquipped)?.name || titleEquipped;
@@ -42,6 +47,7 @@ function MainMyPage() {
 
   // イベントバナースライドインジケーター
   const [bannerIndex, setBannerIndex] = useState(0);
+  const [latestGvgAttack, setLatestGvgAttack] = useState<{ battle_result?: string; accepted_at?: string } | null>(null);
   const banners: Array<{ id: string; title: string; img: string; onClick?: () => void }> = [
     { id: "vip", title: monthlyPassActive ? "VIP PASS｜本日の特典を確認" : "VIP PASS｜毎日ログインでダイヤを獲得", img: "/gacha/bg_gacha_ssr.png", onClick: () => navigateTab("shop", "LIMITED") },
     { id: "b1", title: "【GvG抗争】第2シーズン 覇権争奪戦 開幕", img: "/gacha/bg_gacha_ssr.png" },
@@ -55,6 +61,18 @@ function MainMyPage() {
     }, 4000);
     return () => clearInterval(timer);
   }, [banners.length]);
+
+  useEffect(() => {
+    if (!session?.user?.id) return;
+    void supabase
+      .from("gvg_attack_logs")
+      .select("battle_result, accepted_at")
+      .eq("attacker_user_id", session.user.id)
+      .order("accepted_at", { ascending: false })
+      .limit(1)
+      .maybeSingle()
+      .then(({ data }) => setLatestGvgAttack(data));
+  }, [session?.user?.id]);
 
   // 拠点支配ギルド名
   const currentControl = gvgBaseControls?.find((b: any) => b.base_id === currentBaseId);
@@ -159,6 +177,8 @@ function MainMyPage() {
 
   const latestTicker = isRaidActive
     ? { icon: "⚠", text: "レイド開催中。仲間と迎撃に参加しよう", onClick: () => navigateTab("raid") }
+    : latestGvgAttack?.battle_result === "PENDING"
+      ? { icon: "⚔", text: "抗争の攻撃結果を確認できます", onClick: () => navigateTab("gvg") }
     : latestMessage
       ? { icon: "💬", text: `${latestMessage.author_name}: ${latestMessage.content}`, onClick: () => navigateTab("bbs") }
       : unclaimedPresentsCount > 0
@@ -279,6 +299,7 @@ function MainMyPage() {
       <div className="mypage-circle-menu-area">
         <button
           className="circle-menu-btn allies active-scale-effect"
+          data-status={userGuild ? "連合新着" : "加入募集中"}
           onClick={() => { navigateTab("guild"); playCyberSe("click"); }}
         >
           <img src="/menu/menu_allies.png" alt="連合" className="circle-menu-img" />
@@ -286,6 +307,7 @@ function MainMyPage() {
 
         <button
           className="circle-menu-btn fight active-scale-effect"
+          data-status={`挑戦 ${pvpPoints ?? 0}`}
           onClick={() => { navigateTab("pvp"); playCyberSe("click"); }}
         >
           <img src="/menu/menu_fight.png" alt="喧嘩" className="circle-menu-img" />
@@ -293,6 +315,7 @@ function MainMyPage() {
 
         <button
           className="circle-menu-btn conquest active-scale-effect"
+          data-status={activePatrols?.length ? "進行中" : "派遣可能"}
           onClick={() => { navigateTab("patrol"); playCyberSe("click"); }}
         >
           <img src="/menu/menu_conquest.png" alt="制圧" className="circle-menu-img" />
@@ -300,6 +323,7 @@ function MainMyPage() {
 
         <button
           className="circle-menu-btn war active-scale-effect"
+          data-status={latestGvgAttack?.battle_result === "PENDING" ? "結果待ち" : "状況確認"}
           onClick={() => { navigateTab("gvg"); playCyberSe("click"); }}
         >
           <img src="/menu/menu_war.png" alt="抗争" className="circle-menu-img" />
