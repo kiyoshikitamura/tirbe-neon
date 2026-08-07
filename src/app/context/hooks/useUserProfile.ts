@@ -34,6 +34,52 @@ export function useUserProfile(
   const [equippedFrontEffect, setEquippedFrontEffect] = useState<string>("effect_none");
   const [titleEquipped, setTitleEquipped] = useState<string>("title_none");
   const [interiorItem, setInteriorItem] = useState<string>("none");
+  // null means the shared cosmetics migration is not available yet. This keeps
+  // existing production profiles usable during the staged database rollout.
+  const [ownedHomeCosmeticIds, setOwnedHomeCosmeticIds] = useState<string[] | null>(null);
+
+  const syncSharedHomeCosmetics = async (
+    selection?: { background: string; foreground: string; interior: string }
+  ) => {
+    const { error: unlockError } = await supabase.rpc("unlock_eligible_user_cosmetics");
+    if (unlockError) {
+      // The deployed client can safely run before the matching migration is
+      // installed on a production project. All other database errors remain
+      // visible instead of silently losing a cosmetic selection.
+      if (unlockError.code === "PGRST202" || unlockError.code === "42P01") {
+        setOwnedHomeCosmeticIds(null);
+        return false;
+      }
+      throw unlockError;
+    }
+
+    const { error: syncError } = await supabase.rpc("sync_legacy_user_cosmetics");
+    if (syncError) throw syncError;
+
+    if (selection) {
+      const cosmeticSelections = [
+        ["HOME_BACKGROUND", selection.background === "auto" ? "bg_default" : selection.background],
+        ["HOME_FOREGROUND", selection.foreground],
+        ["HOME_INTERIOR", selection.interior === "none" ? "interior_none" : selection.interior]
+      ] as const;
+
+      for (const [slot, cosmeticId] of cosmeticSelections) {
+        const { error } = await supabase.rpc("equip_user_cosmetic", {
+          p_slot: slot,
+          p_cosmetic_id: cosmeticId
+        });
+        if (error) throw error;
+      }
+    }
+
+    const { data, error: ownedError } = await supabase
+      .from("user_cosmetics")
+      .select("cosmetic_id")
+      .eq("user_id", session?.user?.id);
+    if (ownedError) throw ownedError;
+    setOwnedHomeCosmeticIds((data || []).map((row: { cosmetic_id: string }) => row.cosmetic_id));
+    return true;
+  };
 
   useEffect(() => {
     if (!session?.user?.id) {
@@ -52,6 +98,16 @@ export function useUserProfile(
       setOwnedTitles((data || []).map((row: any) => ({ id: row.title_id, name: row.title_master?.name || row.title_id })));
     };
     void loadOwnedTitles();
+  }, [session?.user?.id]);
+
+  useEffect(() => {
+    if (!session?.user?.id) {
+      setOwnedHomeCosmeticIds(null);
+      return;
+    }
+    void syncSharedHomeCosmetics().catch((error) => {
+      console.warn("Shared cosmetics are unavailable:", error.message);
+    });
   }, [session?.user?.id]);
 
   const [selectedLeader, setSelectedLeader] = useState<string>("11111111-1111-1111-1111-111111111111");
@@ -109,6 +165,12 @@ export function useUserProfile(
         }
         throw error;
       }
+
+      await syncSharedHomeCosmetics({
+        background: safeBg,
+        foreground: equippedFrontEffect,
+        interior: safeInterior
+      });
 
       await syncBootstrapData(session.user.id);
       setShowSettingsPanel(false);
@@ -202,6 +264,7 @@ export function useUserProfile(
     equippedFrontEffect, setEquippedFrontEffect,
     titleEquipped, setTitleEquipped,
     ownedTitles,
+    ownedHomeCosmeticIds,
     interiorItem, setInteriorItem,
     selectedLeader, setSelectedLeader,
     upgradeSelectedCharId, setUpgradeSelectedCharId,

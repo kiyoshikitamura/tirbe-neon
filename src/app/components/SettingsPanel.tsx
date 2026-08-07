@@ -13,6 +13,10 @@ export default function SettingsPanel() {
   const [qaLoading, setQaLoading] = useState(false);
   const isOpen = game.showSettingsPanel;
   const canProvisionQa = game.session?.user?.email === QA_EMAIL;
+  const hasSharedCosmetic = (id: string) => game.ownedHomeCosmeticIds === null || game.ownedHomeCosmeticIds.includes(id);
+  const availableBackgrounds = PROFILE_BACKGROUNDS.filter((item) => hasSharedCosmetic(item.id));
+  const availableFrontEffects = PROFILE_FRONT_EFFECTS.filter((item) => hasSharedCosmetic(item.id));
+  const availableInteriors = PROFILE_INTERIORS.filter((item) => hasSharedCosmetic(item.id === "none" ? "interior_none" : item.id));
 
   if (!isOpen) return null;
 
@@ -27,6 +31,8 @@ export default function SettingsPanel() {
     try {
       const { error } = await supabase.rpc("provision_qa_fixture");
       if (error) throw error;
+      const { error: cosmeticError } = await supabase.rpc("provision_qa_cosmetic_fixture");
+      if (cosmeticError && cosmeticError.code !== "PGRST202") throw cosmeticError;
       await game.syncBootstrapData(game.session.user.id);
       game.playCyberSe("click");
     } catch (error) {
@@ -51,9 +57,10 @@ export default function SettingsPanel() {
 
         <section className="settings-section">
           <h4 className="settings-section-title">ホーム演出</h4>
-          <div className="settings-field"><label>背景</label><select className="settings-select" value={game.selectedBgMode} onChange={(event) => { game.setSelectedBgMode(event.target.value); game.setEquippedBackground(event.target.value); }}><option value="auto">現在地に合わせる</option>{PROFILE_BACKGROUNDS.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></div>
-          <div className="settings-field"><label>前景エフェクト</label><select className="settings-select" value={game.equippedFrontEffect} onChange={(event) => game.setEquippedFrontEffect(event.target.value)}>{PROFILE_FRONT_EFFECTS.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></div>
-          <div className="settings-field"><label>内装オブジェクト</label><select className="settings-select" value={game.interiorItem} onChange={(event) => game.setInteriorItem(event.target.value)}>{PROFILE_INTERIORS.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></div>
+          <p className="settings-help-text">所持中の装飾のみ選択できます。未所持品はイベント・ランキング・ギルド報酬などで追加されます。</p>
+          <div className="settings-field"><label>背景</label><select className="settings-select" value={game.selectedBgMode} onChange={(event) => { game.setSelectedBgMode(event.target.value); game.setEquippedBackground(event.target.value); }}><option value="auto">現在地に合わせる</option>{availableBackgrounds.map((item) => <option key={item.id} value={item.id}>{item.name} — {item.desc}</option>)}</select></div>
+          <div className="settings-field"><label>前景エフェクト</label><select className="settings-select" value={game.equippedFrontEffect} onChange={(event) => game.setEquippedFrontEffect(event.target.value)}>{availableFrontEffects.map((item) => <option key={item.id} value={item.id}>{item.name} — {item.desc}</option>)}</select></div>
+          <div className="settings-field"><label>内装オブジェクト</label><select className="settings-select" value={game.interiorItem} onChange={(event) => game.setInteriorItem(event.target.value)}>{availableInteriors.map((item) => <option key={item.id} value={item.id}>{item.name} — {item.desc}</option>)}</select></div>
         </section>
 
         {canProvisionQa && <section className="settings-section"><h4 className="settings-section-title">QAテストデータ</h4><p className="settings-help-text">このアカウントのテスト用所持データを再投入します。</p><OutlawButton variant="secondary" fullWidth disabled={qaLoading} onClick={() => void provisionQa()}>{qaLoading ? "投入中..." : "テストデータを投入"}</OutlawButton></section>}
