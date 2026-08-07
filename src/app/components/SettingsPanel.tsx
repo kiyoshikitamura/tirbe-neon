@@ -57,9 +57,12 @@ export default function SettingsPanel() {
     setQaLoading(true);
     try {
       const userId = session.user.id;
-      const roster = CHARACTERS_MASTER.slice(0, 5).map((character, index) => ({
+      const roster = CHARACTERS_MASTER
+        .filter((character) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(character.id))
+        .slice(0, 5)
+        .map((character, index) => ({
         user_id: userId, character_id: character.id, level: 35 - index * 3, awakening_level: Math.max(0, 3 - index)
-      }));
+        }));
       const { data: characters, error: characterError } = await supabase
         .from("user_characters")
         .upsert(roster, { onConflict: "user_id,character_id" })
