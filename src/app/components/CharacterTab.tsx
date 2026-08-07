@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useGame } from "../context/GameContext";
+import { supabase } from "@/utils/supabase";
 import {
   CHARACTERS_MASTER,
   GEAR_SLOTS_MASTER,
@@ -44,11 +45,15 @@ export default function CharacterTab() {
     playCyberSe,
     equippedBackground,
     setEquippedBackground,
-    setSelectedBgMode
+    setSelectedBgMode,
+    session
   } = useGame();
 
   // ボトムシートモーダル状態: null (閉じ) | "STATUS" | "SKILL" | "GEAR"
-  const [bottomModalTab, setBottomModalTab] = useState<"STATUS" | "SKILL" | "GEAR" | null>(null);
+  const [bottomModalTab, setBottomModalTab] = useState<"STATUS" | "SKILL" | "GEAR" | "STYLE" | null>(null);
+  const [characterCosmetics, setCharacterCosmetics] = useState<Array<{ cosmetic_id: string; cosmetic_master: { slot: string; display_name: string; rarity: string } | null }>>([]);
+  const [equippedCharacterCosmetics, setEquippedCharacterCosmetics] = useState<Record<string, string>>({});
+  const [characterCosmeticLoading, setCharacterCosmeticLoading] = useState(false);
 
   // モーダル内部でのインライン選択中スロット枠 index (0~6: 装備, 0~5: スキル)
   const [selectedEquipSlotIdx, setSelectedEquipSlotIdx] = useState<number | null>(null);
@@ -79,6 +84,51 @@ export default function CharacterTab() {
   const awakeningLevel = activeCharRecord?.awakening_level || 0;
   const characterRarity = (activeCharMaster?.rarity || "N").toLowerCase();
   const isCurrentLeader = selectedLeader === activeCharMaster.id;
+
+  useEffect(() => {
+    const characterId = activeCharRecord?.id;
+    if (!session?.user?.id || !characterId) {
+      return;
+    }
+    const loadCharacterCosmetics = async () => {
+      const slotPrefix = `CHARACTER:${characterId}:`;
+      const [{ data: owned, error: ownedError }, { data: equipped, error: equippedError }] = await Promise.all([
+        supabase.from("character_cosmetics").select("cosmetic_id, cosmetic_master(slot, display_name, rarity)").eq("user_character_id", characterId),
+        supabase.from("equipped_cosmetics").select("slot, cosmetic_id").eq("user_id", session.user.id).like("slot", `${slotPrefix}%`)
+      ]);
+      if (ownedError || equippedError) {
+        console.warn("Character cosmetics are unavailable:", ownedError?.message || equippedError?.message);
+        return;
+      }
+      setCharacterCosmetics((owned || []).map((item) => ({
+        cosmetic_id: item.cosmetic_id,
+        cosmetic_master: Array.isArray(item.cosmetic_master) ? (item.cosmetic_master[0] || null) : item.cosmetic_master
+      })) as Array<{ cosmetic_id: string; cosmetic_master: { slot: string; display_name: string; rarity: string } | null }>);
+      setEquippedCharacterCosmetics(Object.fromEntries((equipped || []).map((item) => [item.slot.replace(slotPrefix, ""), item.cosmetic_id])));
+    };
+    void loadCharacterCosmetics();
+  }, [activeCharRecord?.id, session?.user?.id]);
+
+  const getCharacterCosmeticsForSlot = (slot: string) => characterCosmetics.filter((item) => item.cosmetic_master?.slot === slot);
+  const getEquippedCharacterCosmetic = (slot: string, fallback: string) => equippedCharacterCosmetics[slot] || fallback;
+  const equipCharacterCosmetic = async (slot: string, cosmeticId: string) => {
+    if (!activeCharRecord?.id) return;
+    setCharacterCosmeticLoading(true);
+    try {
+      const { error } = await supabase.rpc("equip_character_cosmetic", {
+        p_user_character_id: activeCharRecord.id,
+        p_slot: slot,
+        p_cosmetic_id: cosmeticId
+      });
+      if (error) throw error;
+      setEquippedCharacterCosmetics((current) => ({ ...current, [slot]: cosmeticId }));
+      playCyberSe("click");
+    } catch (error) {
+      console.warn("Character cosmetic equip failed:", error);
+    } finally {
+      setCharacterCosmeticLoading(false);
+    }
+  };
 
   // 上部カルーセル スライド操作
   const activeCharIndex = ownedCharIds.indexOf(upgradeSelectedCharId);
@@ -208,7 +258,7 @@ export default function CharacterTab() {
       </div>
 
       {/* 2. 中央: 大画面5層レイヤーキャンバス (高さ360px絶対固定) */}
-      <div className={`char-main-stage char-rarity-${characterRarity}`}>
+      <div className={`char-main-stage char-rarity-${characterRarity} char-style-${getEquippedCharacterCosmetic("CHARACTER_FRAME", "char_frame_none")} char-aura-style-${getEquippedCharacterCosmetic("CHARACTER_AURA", "char_aura_none")}`}>
         {/* Z-10: 背景 */}
         <div className="char-layer-bg" style={{ backgroundImage: `url(${bgImgUrl})` }}>
           <div className="char-layer-bg-overlay" />
@@ -231,9 +281,10 @@ export default function CharacterTab() {
 
         {/* Z-40: 前面エフェクト */}
         <div className="char-layer-front-effect" />
+        <div className="char-cosmetic-aura" aria-hidden="true" />
 
         {/* Z-50: 最前面1行コンパクトHUD (被り100%排除) */}
-        <div className="char-hud-header-single">
+        <div className={`char-hud-header-single char-plate-style-${getEquippedCharacterCosmetic("CHARACTER_NAMEPLATE", "char_plate_none")} `}>
           <div className="char-hud-left-group">
             <span className={`char-hud-align-badge char-hud-align-${alignInfo.colorClass}`}>
               {alignInfo.label}
@@ -328,6 +379,12 @@ export default function CharacterTab() {
         >
           装備変更
         </button>
+        <button
+          className={`char-main-action-btn ${bottomModalTab === "STYLE" ? "active" : ""} active-scale-effect`}
+          onClick={() => { setBottomModalTab("STYLE"); playCyberSe("click"); }}
+        >
+          演出
+        </button>
       </div>
 
       {/* 5. ボトムシートモーダル (画面見切れ100%防止 ＆ モーダル内インライン4列グリッド) */}
@@ -353,6 +410,12 @@ export default function CharacterTab() {
                   onClick={() => { setBottomModalTab("GEAR"); playCyberSe("click"); }}
                 >
                   装備
+                </button>
+                <button
+                  className={`char-modal-tab-btn ${bottomModalTab === "STYLE" ? "active" : ""}`}
+                  onClick={() => { setBottomModalTab("STYLE"); playCyberSe("click"); }}
+                >
+                  演出
                 </button>
               </div>
 
@@ -408,6 +471,21 @@ export default function CharacterTab() {
                     <span className="char-upgrade-sub">掟消費 (+{awakeningLevel} → +{Math.min(5, awakeningLevel + 1)})</span>
                   </button>
                 </div>
+              </div>
+            )}
+
+            {bottomModalTab === "STYLE" && (
+              <div className="char-style-panel">
+                <p className="char-style-help">このキャラだけに適用する見た目の装飾です。能力値・戦力には影響しません。</p>
+                {[
+                  ["CHARACTER_AURA", "オーラ", "char_aura_none"],
+                  ["CHARACTER_FRAME", "ステージ枠", "char_frame_none"],
+                  ["CHARACTER_NAMEPLATE", "ネームプレート", "char_plate_none"]
+                ].map(([slot, label, fallback]) => {
+                  const options = getCharacterCosmeticsForSlot(slot);
+                  const value = getEquippedCharacterCosmetic(slot, fallback);
+                  return <label className="char-style-field" key={slot}>{label}<select value={value} disabled={characterCosmeticLoading || options.length === 0} onChange={(event) => void equipCharacterCosmetic(slot, event.target.value)}>{options.map((item) => <option key={item.cosmetic_id} value={item.cosmetic_id}>{item.cosmetic_master?.display_name || item.cosmetic_id} [{item.cosmetic_master?.rarity || "COMMON"}]</option>)}</select></label>;
+                })}
               </div>
             )}
 
