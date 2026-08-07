@@ -233,6 +233,14 @@ function MainMyPage() {
             拠点移動
           </button>
         </div>
+        {homeEventState !== "calm" && (
+          <button
+            className={`mypage-event-chip ${homeEventState} active-scale-effect`}
+            onClick={() => { navigateTab(homeEventState === "raid" ? "raid" : "gvg"); playCyberSe("click"); }}
+          >
+            {homeEventState === "raid" ? "⚠ レイド開催中" : "⚔ 抗争結果待ち"}
+          </button>
+        )}
 
         {/* 総合力 表示パネル (最上段下中央・透過グレー) */}
         <div
@@ -354,7 +362,7 @@ function MainMyPage() {
       </div>
 
       <div className="mypage-lower-content">
-        <button className="mypage-live-ticker active-scale-effect" onClick={() => { latestTicker.onClick(); playCyberSe("click"); }}>
+        <button className={`mypage-live-ticker ${homeEventState} active-scale-effect`} onClick={() => { latestTicker.onClick(); playCyberSe("click"); }}>
           <span className="mypage-live-ticker-icon" aria-hidden="true">{latestTicker.icon}</span>
           <span className="mypage-live-ticker-text">{latestTicker.text}</span>
           <span className="mypage-live-ticker-arrow" aria-hidden="true">›</span>

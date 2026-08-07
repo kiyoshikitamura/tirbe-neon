@@ -132,6 +132,22 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
 }
 
+.mypage-event-chip {
+  position: absolute;
+  top: 40px;
+  right: 12px;
+  z-index: 13;
+  border-radius: 12px;
+  padding: 4px 8px;
+  color: #fff;
+  background: rgba(10, 12, 20, .9);
+  font-size: 9px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.mypage-event-chip.raid { border: 1px solid rgba(255, 90, 62, .9); color: #ffb1a2; box-shadow: 0 0 12px rgba(255, 73, 47, .34); }
+.mypage-event-chip.gvg { border: 1px solid rgba(210, 100, 255, .9); color: #e4b9ff; box-shadow: 0 0 12px rgba(183, 66, 255, .32); }
+
 .overlay-map-icon {
   width: 14px;
   height: 14px;
@@ -454,6 +470,8 @@
   text-align: left;
   cursor: pointer;
 }
+.mypage-live-ticker.raid { border-color: rgba(255, 91, 66, .72); background: linear-gradient(90deg, rgba(255, 72, 48, .17), rgba(28, 15, 19, .9)); }
+.mypage-live-ticker.gvg { border-color: rgba(200, 92, 255, .72); background: linear-gradient(90deg, rgba(180, 57, 255, .17), rgba(25, 14, 31, .9)); }
 
 .mypage-live-ticker-icon { color: #00f0ff; font-size: 11px; flex: 0 0 auto; }
 .mypage-live-ticker-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; font-size: 10px; font-weight: 700; }
