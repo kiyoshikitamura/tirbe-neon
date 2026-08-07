@@ -152,10 +152,16 @@
 }
 .char-loadout-max .char-hud-header-single { border-color: rgba(255, 215, 72, .86); background: linear-gradient(90deg, rgba(77, 47, 7, .9), rgba(14, 15, 28, .94), rgba(73, 15, 68, .88)); }
 .char-loadout-max .char-character-img { filter: drop-shadow(0 8px 23px rgba(255, 203, 61, .3)) drop-shadow(0 0 20px rgba(237, 64, 182, .18)); }
-.char-loadout-max .char-layer-bg { animation: char-stage-light-drift 9s ease-in-out infinite alternate; }
-.char-max-loadout-effect { position: absolute; inset: 0; z-index: 24; pointer-events: none; background: radial-gradient(ellipse at 50% 91%, rgba(255, 196, 45, .5), transparent 34%), linear-gradient(125deg, transparent 42%, rgba(255, 225, 141, .22) 49%, transparent 56%), linear-gradient(55deg, transparent 40%, rgba(255, 65, 175, .18) 49%, transparent 57%); animation: char-max-loadout-shine 4.8s ease-in-out infinite; }
-@keyframes char-max-loadout-shine { 0%,100% { opacity: .38; transform: scale(.98); } 50% { opacity: .95; transform: scale(1.04); } }
-@keyframes char-stage-light-drift { from { background-position: 48% center; filter: brightness(.82) contrast(1.1) saturate(1.05); } to { background-position: 54% center; filter: brightness(1.02) contrast(1.15) saturate(1.22); } }
+.char-loadout-max .char-layer-bg { animation: char-stage-light-drift 6s ease-in-out infinite alternate; }
+.char-loadout-max .char-layer-bg::after { content: ""; position: absolute; inset: -20%; background: radial-gradient(circle at 18% 30%, rgba(255, 49, 164, .28), transparent 22%), radial-gradient(circle at 82% 72%, rgba(255, 210, 70, .3), transparent 24%); mix-blend-mode: screen; animation: char-stage-neon-drift 7s ease-in-out infinite alternate; }
+.char-max-loadout-effect { position: absolute; inset: 0; z-index: 24; pointer-events: none; overflow: hidden; background: radial-gradient(ellipse at 50% 91%, rgba(255, 196, 45, .52), transparent 34%); animation: char-max-loadout-shine 2.8s ease-in-out infinite; }
+.char-max-loadout-effect::before { content: ""; position: absolute; bottom: 7%; left: 50%; width: 126px; height: 34px; border: 2px solid rgba(255, 222, 113, .85); border-radius: 50%; transform: translateX(-50%); box-shadow: 0 0 18px rgba(255, 197, 41, .65), inset 0 0 13px rgba(255, 58, 182, .42); animation: char-max-aura-ring 2.2s ease-out infinite; }
+.char-max-loadout-effect::after { content: ""; position: absolute; top: -28%; left: -45%; width: 24%; height: 160%; transform: rotate(24deg); background: linear-gradient(90deg, transparent, rgba(255, 238, 177, .08), rgba(255,255,255,.78), rgba(255, 89, 191, .25), transparent); filter: blur(1px); animation: char-max-light-sweep 4.2s ease-in-out infinite; }
+@keyframes char-max-loadout-shine { 0%,100% { opacity: .58; } 50% { opacity: 1; } }
+@keyframes char-max-aura-ring { 0% { opacity: .92; transform: translateX(-50%) scale(.78); } 68% { opacity: .12; transform: translateX(-50%) scale(1.46); } 100% { opacity: 0; transform: translateX(-50%) scale(1.6); } }
+@keyframes char-max-light-sweep { 0%, 35% { left: -45%; opacity: 0; } 42% { opacity: 1; } 63% { left: 122%; opacity: .9; } 70%,100% { left: 122%; opacity: 0; } }
+@keyframes char-stage-light-drift { from { background-position: 46% center; filter: brightness(.8) contrast(1.1) saturate(1.05); } to { background-position: 56% center; filter: brightness(1.08) contrast(1.18) saturate(1.28); } }
+@keyframes char-stage-neon-drift { from { transform: translate(-6%, -3%) scale(.98); opacity: .45; } to { transform: translate(7%, 5%) scale(1.1); opacity: 1; } }
 
 .char-style-char_frame_chrome {
   box-shadow: inset 0 0 0 2px rgba(95, 227, 255, .78), inset 0 0 30px rgba(0, 227, 255, .18);
@@ -496,7 +502,7 @@
 @keyframes ssr-slot-sheen { 0%, 45% { left: -70%; opacity: 0; } 49% { opacity: 1; } 64% { left: 130%; opacity: .9; } 68%, 100% { left: 130%; opacity: 0; } }
 
 @media (prefers-reduced-motion: reduce) {
-  .char-loadout-max .char-layer-bg, .char-max-loadout-effect, .slot-ssr { animation: none; }
+  .char-loadout-max .char-layer-bg, .char-loadout-max .char-layer-bg::after, .char-max-loadout-effect, .char-max-loadout-effect::before, .char-max-loadout-effect::after, .slot-ssr { animation: none; }
   .slot-ssr::after { animation: none; opacity: 0; }
 }
 
