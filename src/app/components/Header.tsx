@@ -13,15 +13,12 @@ export default function Header() {
     diamonds,
     vitality,
     userGuild,
-    userTitle,
-    isRaidActive,
-    navigateTab,
-    playCyberSe
+    userTitle
   } = useGame();
 
   return (
     <header className="header-mobile">
-      {/* 1行目: 通り名(称号) + 名前 + Lv + 所属ギルド + (レイドアラート) */}
+      {/* 1行目: 通り名(称号) + 名前 + Lv + 所属ギルド */}
       <div className="header-mobile-row1">
         <div className="header-mobile-user">
           <span className="header-mobile-title">{userTitle || "半グレの首領"}</span>
@@ -30,19 +27,6 @@ export default function Header() {
           <span className="header-mobile-guild-name">
             {userGuild?.name ? userGuild.name : "未所属"}
           </span>
-
-          {isRaidActive && (
-            <button
-              className="header-mobile-raid-alert active-scale-effect"
-              onClick={() => {
-                navigateTab("raid");
-                playCyberSe("click");
-              }}
-            >
-              <span className="header-raid-dot" />
-              レイド中!
-            </button>
-          )}
         </div>
       </div>
 
