@@ -3303,7 +3303,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const handleAutoFormation = async () => {
+  const handleAutoFormation = async ({ navigateAfter = true }: { navigateAfter?: boolean } = {}) => {
     const nextParty = [...userCharactersDbList]
       .sort((left: any, right: any) => {
         const leftStats = getCharacterTotalStats(left, userEquipmentsList);
@@ -3342,7 +3342,9 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     }
     setSelectedMembers(nextParty);
     setUpgradeSelectedCharId(nextParty[0]);
-    navigateTab("patrol");
+    if (navigateAfter) {
+      navigateTab("patrol");
+    }
     return true;
   };
 

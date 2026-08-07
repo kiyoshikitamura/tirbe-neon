@@ -41,6 +41,7 @@ export default function CharacterTab() {
     handleEquipSkillBulkRecommended,
     handleUnequipSkillBulk,
     handleAutoFormation,
+    handleTogglePartyMember,
     playCyberSe,
     currentBaseId,
     session
@@ -55,6 +56,7 @@ export default function CharacterTab() {
   // モーダル内部でのインライン選択中スロット枠 index (0~6: 装備, 0~5: スキル)
   const [selectedEquipSlotIdx, setSelectedEquipSlotIdx] = useState<number | null>(null);
   const [selectedSkillSlotIdx, setSelectedSkillSlotIdx] = useState<number | null>(null);
+  const [formationEditMode, setFormationEditMode] = useState(false);
 
   // 選択中キャラクター情報の取得
   const ownedCharIds = useMemo(() => {
@@ -124,6 +126,12 @@ export default function CharacterTab() {
     const tier = isMax ? "MAX" : isComplete ? "COMPLETE" : gear.length + skills.length >= 5 ? "GROWING" : "BASE";
     return { gearCount: gear.length, skillCount: skills.length, tier, isMax };
   }, [awakeningLevel, equippedGearBySlot, equippedSkillsBySlot, maxSkillSlots]);
+
+  const partyMembers = useMemo(() => selectedMembers.slice(0, 5).map((characterId: string) => {
+    const record = (userCharactersDbList || []).find((item: any) => item.character_id === characterId);
+    const master = CHARACTERS_MASTER.find((item: any) => item.id === characterId);
+    return { characterId, record, master };
+  }), [selectedMembers, userCharactersDbList]);
 
   useEffect(() => {
     const characterId = activeCharRecord?.id;
@@ -255,10 +263,45 @@ export default function CharacterTab() {
   return (
     <div className="char-tab-container">
       <div className="flex justify-end mb-2">
-        <button className="sub-btn border-cyan-subtle font-size-8 height-26 px-3 active-scale-effect" onClick={() => void handleAutoFormation()}>
-          AUTO FORMATION
+        <button className="sub-btn border-cyan-subtle font-size-8 height-26 px-3 active-scale-effect" onClick={() => void handleAutoFormation({ navigateAfter: false })}>
+          おまかせ編成
         </button>
       </div>
+      <section className={`char-party-panel ${formationEditMode ? "is-editing" : ""}`} aria-label="出撃パーティ編成">
+        <div className="char-party-header">
+          <div>
+            <span className="char-party-eyebrow">PARTY</span>
+            <strong>出撃編成 <em>{partyMembers.length}/5</em></strong>
+          </div>
+          <button
+            className="char-party-edit-btn active-scale-effect"
+            onClick={() => { setFormationEditMode((current) => !current); playCyberSe("click"); }}
+          >
+            {formationEditMode ? "完了" : "編成編集"}
+          </button>
+        </div>
+        <div className="char-party-slots">
+          {Array.from({ length: 5 }).map((_, index) => {
+            const member = partyMembers[index];
+            return member?.master ? (
+              <button
+                key={`${member.characterId}-${index}`}
+                className={`char-party-slot ${member.characterId === activeCharMaster.id ? "is-active" : ""} active-scale-effect`}
+                onClick={() => {
+                  setUpgradeSelectedCharId(member.characterId);
+                  if (formationEditMode) void handleTogglePartyMember(member.characterId);
+                  else playCyberSe("click");
+                }}
+                title={formationEditMode ? `${member.master.jpName}を編成から外す` : member.master.jpName}
+              >
+                <img src={getCharacterTransparentImg(member.master.name)} alt="" />
+                <span>{index + 1}</span>
+              </button>
+            ) : <div className="char-party-slot is-empty" key={`empty-${index}`}><span>{index + 1}</span><b>＋</b></div>;
+          })}
+        </div>
+        {formationEditMode && <p className="char-party-edit-help">所持キャラをタップして、出撃メンバーに追加／解除します。</p>}
+      </section>
       {/* 1. 上部: 所持キャラクター丸型スライダー */}
       <div className="char-slider-header">
         <button className="char-slider-arrow" onClick={handlePrevChar}>◀</button>
@@ -278,8 +321,12 @@ export default function CharacterTab() {
                 key={uc.id || uc.character_id}
                 className={`char-slider-item ${isInDeck ? "in-deck" : ""} ${isSelected ? "active" : ""}`}
                 onClick={() => {
-                  setUpgradeSelectedCharId(uc.character_id);
-                  playCyberSe("click");
+                  if (formationEditMode) {
+                    void handleTogglePartyMember(uc.character_id);
+                  } else {
+                    setUpgradeSelectedCharId(uc.character_id);
+                    playCyberSe("click");
+                  }
                 }}
               >
                 <img
@@ -295,6 +342,29 @@ export default function CharacterTab() {
           })}
         </div>
         <button className="char-slider-arrow" onClick={handleNextChar}>▶</button>
+      </div>
+
+      <div className="char-firstview-skills" aria-label="装着スキル">
+        {Array.from({ length: 6 }).map((_, slotIdx) => {
+          const skillRecord = equippedSkillsBySlot.get(slotIdx);
+          const skillMaster = skillRecord ? SKILLS_MASTER_DATA.find((item: any) => item.id === skillRecord.skill_id) : null;
+          const unlocked = slotIdx < maxSkillSlots;
+          return (
+            <button
+              key={slotIdx}
+              className={`char-firstview-skill ${skillMaster ? `is-${(skillMaster.rarity || "N").toLowerCase()}` : ""} ${!unlocked ? "is-locked" : ""} active-scale-effect`}
+              onClick={() => {
+                if (!unlocked) return;
+                setSelectedSkillSlotIdx(slotIdx);
+                setBottomModalTab("SKILL");
+                playCyberSe("click");
+              }}
+            >
+              <span>SK{slotIdx + 1}</span>
+              <strong>{unlocked ? (skillMaster?.name || "未装着") : "LOCK"}</strong>
+            </button>
+          );
+        })}
       </div>
 
       {/* 2. 中央: 大画面5層レイヤーキャンバス (高さ360px絶対固定) */}
