@@ -64,7 +64,7 @@ export default function SettingsPanel() {
         .from("user_characters")
         .upsert(roster, { onConflict: "user_id,character_id" })
         .select("id, character_id");
-      if (characterError || !characters?.length) throw characterError || new Error("character provisioning failed");
+      if (characterError || !characters?.length) throw new Error(`キャラ: ${characterError?.message || "投入結果が取得できません"}`);
 
       await Promise.all([
         supabase.from("user_equipments").delete().eq("user_id", userId),
@@ -87,13 +87,16 @@ export default function SettingsPanel() {
           { user_id: userId, item_id: "LAW_OF_STRIFE", quantity: 20 }
         ], { onConflict: "user_id,item_id" })
       ]);
-      if (gearError || skillError || itemError) throw gearError || skillError || itemError;
-      await supabase.from("users").update({ cash: 500000, neon_diamonds: 3000, favorite_character_id: characters[0].character_id }).eq("id", userId);
+      if (gearError) throw new Error(`装備: ${gearError.message}`);
+      if (skillError) throw new Error(`スキル: ${skillError.message}`);
+      if (itemError) throw new Error(`所持品: ${itemError.message}`);
+      const { error: userError } = await supabase.from("users").update({ cash: 500000, neon_diamonds: 3000, favorite_character_id: characters[0].character_id }).eq("id", userId);
+      if (userError) throw new Error(`通貨: ${userError.message}`);
       await syncBootstrapData(userId);
       playCyberSe("click");
     } catch (error) {
       console.warn("QA fixture provisioning failed", error);
-      setErrorMessage("テストデータの投入に失敗しました。");
+      setErrorMessage(error instanceof Error ? `テストデータ投入エラー（${error.message}）` : "テストデータの投入に失敗しました。");
     } finally {
       setQaLoading(false);
     }
