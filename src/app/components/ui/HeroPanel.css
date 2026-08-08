@@ -1,0 +1,4 @@
+.ui-hero-panel { position: relative; min-height: 180px; border: 1px solid var(--ui-border-default); border-radius: var(--ui-radius-md); background-color: var(--ui-surface-deep); background-position: center; background-size: cover; overflow: hidden; }
+.ui-hero-panel-shade { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(6, 9, 18, 0.18), rgba(6, 9, 18, 0.78)); pointer-events: none; }
+.ui-hero-panel-content { position: relative; z-index: 1; min-height: inherit; padding: 16px; }
+.ui-hero-panel-overlay { position: absolute; inset: 0; z-index: 2; pointer-events: none; }

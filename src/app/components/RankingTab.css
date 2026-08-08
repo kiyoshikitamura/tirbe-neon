@@ -185,9 +185,3 @@
 .max-height-90::-webkit-scrollbar-thumb:hover {
   background: rgba(160, 160, 170, 0.5);
 }
-
-/* 管理者コンソール */
-.admin-console-panel {
-  margin-top: auto;
-  background: rgba(20, 20, 20, 0.8) !important;
-}

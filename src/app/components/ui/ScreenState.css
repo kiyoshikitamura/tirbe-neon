@@ -1,0 +1,56 @@
+.screen-state {
+  display: flex;
+  flex: 1;
+  min-height: 180px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 24px 18px;
+  text-align: center;
+  color: var(--ui-text-primary);
+}
+
+.screen-state-compact {
+  min-height: 96px;
+  padding: 14px;
+}
+
+.screen-state-mark {
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--ui-border-strong);
+  transform: rotate(45deg);
+}
+
+.screen-state-error .screen-state-mark,
+.screen-state-forbidden .screen-state-mark {
+  border-color: var(--color-danger);
+}
+
+.screen-state-locked .screen-state-mark {
+  border-color: var(--color-warning);
+}
+
+.screen-state-success .screen-state-mark {
+  border-color: var(--color-success);
+}
+
+.screen-state-title {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.4;
+  letter-spacing: 0.04em;
+}
+
+.screen-state-message {
+  max-width: 320px;
+  margin: 0 0 4px;
+  color: var(--ui-text-secondary);
+  font-size: 11px;
+  line-height: 1.65;
+}
+
+.screen-state-spinner {
+  margin-bottom: 2px;
+}

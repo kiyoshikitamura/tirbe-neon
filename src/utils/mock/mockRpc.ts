@@ -6,6 +6,67 @@
 export async function executeMockRpc(client: any, funcName: string, params: any): Promise<any> {
   console.log(`[Mock DB RPC] Calling ${funcName} with:`, params);
 
+  if (funcName === "save_pvp_defense_deck" || funcName === "save_gvg_defense_deck") {
+    const userId = typeof window === "undefined" ? null : localStorage.getItem("tribe_demo_uuid");
+    if (!userId) return { data: null, error: { message: "authentication required", code: "42501" } };
+    const requestedIds = Array.isArray(params.p_character_ids) ? params.p_character_ids.filter(Boolean) : [];
+    if (requestedIds.length > 5) return { data: null, error: { message: "party supports at most five characters", code: "22023" } };
+    const ownedCharacters = client.getStorage("user_characters") || [];
+    const canonicalIds = requestedIds.map((requestedId: string) => {
+      const owned = ownedCharacters.find((character: any) =>
+        character.user_id === userId && (character.id === requestedId || character.character_id === requestedId)
+      );
+      return owned?.id || null;
+    });
+    if (canonicalIds.some((id: string | null) => !id)) {
+      return { data: null, error: { message: "party contains a character that is not owned", code: "23503" } };
+    }
+    if (new Set(canonicalIds).size !== canonicalIds.length) {
+      return { data: null, error: { message: "party contains duplicate characters", code: "23505" } };
+    }
+
+    if (funcName === "save_gvg_defense_deck") {
+      const memberships = client.getStorage("guild_members") || [];
+      const membership = memberships.find((member: any) => member.user_id === userId);
+      if (!membership) return { data: null, error: { message: "guild membership required", code: "42501" } };
+      const decks = client.getStorage("gvg_defense_decks") || [];
+      const remaining = decks.filter((deck: any) => deck.user_id !== userId);
+      if (canonicalIds.length > 0) {
+        remaining.push({
+          id: `gvg_defense_${userId}`,
+          user_id: userId,
+          guild_id: membership.guild_id,
+          character_1_id: canonicalIds[0] || null,
+          character_2_id: canonicalIds[1] || null,
+          character_3_id: canonicalIds[2] || null,
+          character_4_id: canonicalIds[3] || null,
+          character_5_id: canonicalIds[4] || null,
+          updated_at: new Date().toISOString(),
+        });
+      }
+      client.setStorage("gvg_defense_decks", remaining);
+      return { data: { status: "success", removed: canonicalIds.length === 0, character_ids: canonicalIds }, error: null };
+    }
+
+    const tactic = params.p_tactic || "ATTACK_PRIORITY";
+    const validTactics = ["ATTACK_PRIORITY", "HEAL_PRIORITY", "SKILL_PRIORITY", "BALANCED", "WEAKNESS_FOCUS"];
+    if (!validTactics.includes(tactic)) return { data: null, error: { message: "invalid tactic", code: "22023" } };
+    const decks = client.getStorage("pvp_defense_decks") || [];
+    const existing = decks.find((deck: any) => deck.user_id === userId);
+    const nextDeck = {
+      ...(existing || { id: `pvp_defense_${userId}`, user_id: userId }),
+      character_1_id: canonicalIds[0] || null,
+      character_2_id: canonicalIds[1] || null,
+      character_3_id: canonicalIds[2] || null,
+      character_4_id: canonicalIds[3] || null,
+      character_5_id: canonicalIds[4] || null,
+      tactic,
+      updated_at: new Date().toISOString(),
+    };
+    client.setStorage("pvp_defense_decks", existing ? decks.map((deck: any) => deck.user_id === userId ? nextDeck : deck) : [...decks, nextDeck]);
+    return { data: { status: "success", character_ids: canonicalIds, tactic }, error: null };
+  }
+
   if (funcName === "begin_gvg_attack") {
     const userId = typeof window === "undefined" ? null : localStorage.getItem("tribe_demo_uuid");
     const users = client.getStorage("users") || [];

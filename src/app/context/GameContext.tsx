@@ -2160,8 +2160,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
   const handleDeployGvgDefense = async (charIds: string[]) => {
     if (!session) return;
-    const guildIdFilter = userGuildMember?.guild_id || "";
-    if (!guildIdFilter) {
+    if (!userGuildMember?.guild_id) {
       setConfirmDialogConfig({ isOpen: true, title: "GvG防衛", message: "ギルドに所属していないため、守備デッキの登録はできません。", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
       return;
     }
@@ -2169,21 +2168,11 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     setGvgResetLoading(true);
 
     try {
+      const { error } = await supabase.rpc("save_gvg_defense_deck", { p_character_ids: charIds });
+      if (error) throw error;
       if (charIds.length === 0) {
-        // 解除
-        await supabase.from("gvg_defense_decks").delete().eq("user_id", session.user.id);
         setConfirmDialogConfig({ isOpen: true, title: "GvG防衛", message: "守備デッキの登録を解除しました。", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
       } else {
-        // 登録・更新
-        await supabase.from("gvg_defense_decks").upsert({
-          user_id: session.user.id,
-          guild_id: guildIdFilter,
-          character_1_id: charIds[0] || null,
-          character_2_id: charIds[1] || null,
-          character_3_id: charIds[2] || null,
-          character_4_id: charIds[3] || null,
-          character_5_id: charIds[4] || null
-        });
         setConfirmDialogConfig({ isOpen: true, title: "GvG防衛", message: "守備デッキを登録しました。", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
       }
       await syncBootstrapData(session.user.id);
@@ -3281,28 +3270,11 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       );
       return ownedCharacter?.id || characterId;
     });
-    const formation = {
-      character_1_id: storageParty[0] || null,
-      character_2_id: storageParty[1] || null,
-      character_3_id: storageParty[2] || null,
-      character_4_id: storageParty[3] || null,
-      character_5_id: storageParty[4] || null,
-      updated_at: new Date().toISOString()
-    };
-
-    // Productionの旧スキーマでも動くよう、ON CONFLICT制約に依存しない。
-    const { count, error: updateError } = await supabase
-      .from("pvp_defense_decks")
-      .update(formation, { count: "exact" })
-      .eq("user_id", session.user.id);
-    if (updateError) return updateError;
-    if ((count || 0) > 0) return null;
-
-    const { error: insertError } = await supabase.from("pvp_defense_decks").insert({
-      user_id: session.user.id,
-      ...formation
+    const { error } = await supabase.rpc("save_pvp_defense_deck", {
+      p_character_ids: storageParty,
+      p_tactic: myPvpDefenseDeck?.tactic || "ATTACK_PRIORITY",
     });
-    return insertError;
+    return error;
   };
 
   const handleTogglePartyMember = async (charId: string) => {

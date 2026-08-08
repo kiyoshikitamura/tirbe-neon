@@ -4,7 +4,7 @@
   align-items: center;
   justify-content: space-around;
   min-height: 56px;
-  padding: 6px 4px calc(6px + env(safe-area-inset-bottom, 0px)) 4px;
+  padding: 6px 4px;
   background: rgba(11, 15, 25, 0.98);
   border-top: 1px solid rgba(0, 240, 255, 0.2);
   z-index: 100;

@@ -1,0 +1,22 @@
+.ui-badge {
+  display: inline-flex;
+  min-height: 20px;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 7px;
+  border: 1px solid var(--ui-border-default);
+  border-radius: 999px;
+  background: var(--ui-surface-raised);
+  color: var(--ui-text-secondary);
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.ui-badge-cyan { border-color: rgba(0, 240, 255, 0.45); color: var(--neon-cyan); }
+.ui-badge-magenta { border-color: rgba(255, 0, 127, 0.45); color: var(--neon-magenta); }
+.ui-badge-gold { border-color: rgba(255, 215, 0, 0.45); color: var(--neon-gold); }
+.ui-badge-success { border-color: rgba(0, 255, 102, 0.45); color: var(--color-success); }
+.ui-badge-warning { border-color: rgba(255, 170, 0, 0.45); color: var(--color-warning); }
+.ui-badge-danger { border-color: rgba(255, 51, 51, 0.45); color: var(--color-danger); }

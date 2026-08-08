@@ -1,82 +1,20 @@
-/* FullScreenPanel.css */
-
 .outlaw-fullscreen-panel {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  background: var(--bg-color);
-  z-index: 1000; /* フッターより上に出る必要がある */
-  animation: slideUp 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-  overflow: hidden; /* コンテンツ領域だけスクロールさせる */
+  z-index: 1000;
+  animation: fullscreen-panel-enter 0.24s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
-/* 登場アニメーション（下からスライドイン） */
-@keyframes slideUp {
-  from {
-    transform: translateY(100%);
-  }
-  to {
-    transform: translateY(0);
-  }
-}
-
-.fullscreen-panel-header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 16px 20px;
-  background: rgba(14, 18, 28, 0.95);
-  border-bottom: 1px solid rgba(160, 160, 170, 0.2);
-  /* セーフエリア対応（ヘッダーがある場合） */
-  padding-top: max(44px, calc(16px + env(safe-area-inset-top, 0px)));
-}
-
-.fullscreen-header-accent {
-  width: 4px;
-  height: 24px;
-  background: var(--neon-cyan);
-  box-shadow: var(--neon-glow-cyan);
-  border-radius: 2px;
-}
-
-.fullscreen-header-title {
-  font-family: var(--font-inter);
-  font-weight: 700;
-  font-size: 1.2rem;
-  color: #ffffff;
-  letter-spacing: 0.1em;
-  margin: 0;
-}
-
-.fullscreen-panel-content {
-  flex: 1;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-  padding: 16px;
-  /* 下部の閉じるボタンと被らないように余白を持たせる */
-  padding-bottom: 80px;
-}
-
-.fullscreen-panel-footer {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  padding: 16px;
-  padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
-  background: linear-gradient(0deg, rgba(11, 15, 25, 1) 0%, rgba(11, 15, 25, 0.9) 60%, rgba(11, 15, 25, 0) 100%);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  pointer-events: none; /* 背景のグラデーション部分はクリック無効 */
+@keyframes fullscreen-panel-enter {
+  from { transform: translateY(24px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
 }
 
 .fullscreen-close-btn {
-  pointer-events: auto; /* ボタン本体はクリック有効 */
+  display: flex;
+  min-height: 46px;
   max-width: 320px;
-  height: 52px;
-  border-radius: 26px; /* 丸みを持たせて押しやすく */
-  font-size: 1.1rem;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  margin: 0 auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .outlaw-fullscreen-panel { animation: none; }
 }

@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { preloadAssetManifest } from "../lib/screenAssets";
 
 const PRELOAD_FRAME_PATHS = [
   "/frames/sq_n.png",
@@ -12,34 +13,21 @@ const PRELOAD_FRAME_PATHS = [
 ];
 
 export function useImagePreloader(customPaths: string[] = []) {
-  const [isPreloaded, setIsPreloaded] = useState(false);
+  const [loadedKey, setLoadedKey] = useState<string | null>(null);
+  const pathsKey = [...PRELOAD_FRAME_PATHS, ...customPaths].filter(Boolean).sort().join("|");
+  const allPaths = useMemo(
+    () => Array.from(new Set(pathsKey ? pathsKey.split("|") : [])),
+    [pathsKey]
+  );
 
   useEffect(() => {
-    const allPaths = Array.from(new Set([...PRELOAD_FRAME_PATHS, ...customPaths]));
-    let loadedCount = 0;
-
-    if (allPaths.length === 0) {
-      setIsPreloaded(true);
-      return;
-    }
-
-    allPaths.forEach((path) => {
-      const img = new Image();
-      img.src = path;
-      img.onload = () => {
-        loadedCount++;
-        if (loadedCount >= allPaths.length) {
-          setIsPreloaded(true);
-        }
-      };
-      img.onerror = () => {
-        loadedCount++;
-        if (loadedCount >= allPaths.length) {
-          setIsPreloaded(true);
-        }
-      };
+    if (allPaths.length === 0) return;
+    let cancelled = false;
+    void preloadAssetManifest(allPaths.map((src) => ({ src, required: false }))).then(() => {
+      if (!cancelled) setLoadedKey(pathsKey);
     });
-  }, [customPaths]);
+    return () => { cancelled = true; };
+  }, [allPaths, pathsKey]);
 
-  return isPreloaded;
+  return allPaths.length === 0 || loadedKey === pathsKey;
 }

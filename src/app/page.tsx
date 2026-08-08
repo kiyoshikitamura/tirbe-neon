@@ -3,6 +3,7 @@
 import React from "react";
 import dynamic from "next/dynamic";
 import { useImagePreloader } from "./hooks/useImagePreloader";
+import { HOME_BOOT_ASSETS } from "./lib/screenManifests";
 import { GameProvider, useGame } from "./context/GameContext";
 import AuthView from "./components/AuthView";
 import SetupView from "./components/SetupView";
@@ -34,6 +35,7 @@ import SettingsPanel from "./components/SettingsPanel";
 import LegalPanel from "./components/LegalPanel";
 import ConfirmDialog from "./components/ui/ConfirmDialog";
 import GlobalInteractionBlocker from "./components/ui/GlobalInteractionBlocker";
+import PageShell from "./components/ui/PageShell";
 import TitleView from "./components/TitleView";
 import MoveBaseModal from "./components/MoveBaseModal";
 import TutorialWorldIntro from "./components/TutorialWorldIntro";
@@ -41,19 +43,6 @@ import TutorialFreeInstant from "./components/TutorialFreeInstant";
 import TutorialRuleGuide from "./components/TutorialRuleGuide";
 import TutorialBattlePrompt from "./components/TutorialBattlePrompt";
 import TutorialAuthentication from "./components/TutorialAuthentication";
-
-// Assets required to render the first complete Home frame. They are loaded
-// before Header/Home/Footer are revealed, preventing the staged pop-in that
-// is especially noticeable on mobile Safari.
-const HOME_BOOT_ASSETS = [
-  "/bg/bg_base_neontower.png", "/bg/bg_base_deepdock.png", "/bg/bg_base_junkbazaar.png", "/bg/bg_base_kitakuragate.png",
-  "/characters/reiji_transparent_asset.png", "/characters/rui_transparent_asset.png", "/characters/chang_transparent_asset.png",
-  "/menu/menu_allies.png", "/menu/menu_fight.png", "/menu/menu_conquest.png", "/menu/menu_war.png",
-  "/gacha/bg_gacha_ssr.png", "/gacha/bg_gacha_sr.png", "/gacha/bg_gacha_normal.png",
-  "/ui/icon_bag.png", "/ui/icon_cash.png", "/ui/icon_community.png", "/ui/icon_dia.png", "/ui/icon_friends.png", "/ui/icon_map.png",
-  "/ui/icon_mission.png", "/ui/icon_news.png", "/ui/icon_present.png", "/ui/icon_raid.png", "/ui/icon_ranking.png", "/ui/icon_settings.png",
-  "/ui/icon_footer_character.png", "/ui/icon_footer_gacha.png", "/ui/icon_footer_guild.png", "/ui/icon_footer_mypage.png", "/ui/icon_footer_shop.png",
-];
 
 function AppContent() {
   const { session, authLoading, isSetupRequired, activeTab, showTitleView,
@@ -113,11 +102,38 @@ function AppContent() {
   // 4. メインゲーム画面 (全13タブ共通フレーム)
   return (
     <div className="app-container">
-      {/* 全タブ共通 2行構成モバイルヘッダー */}
-      <Header />
+      <PageShell
+        header={<Header />}
+        footer={<Footer />}
+        overlays={(
+          <>
+            {/* Layer 3: コンパクトモーダル */}
+            <CommonModals />
+            <MoveBaseModal />
 
-      {/* メインビューポートコンテンツ */}
-      <main className="main-content">
+            {/* Layer 4: フルスクリーンパネル */}
+            <TribeChatModal />
+            <InboxPanel />
+            <MissionPanel />
+            <FriendPanel />
+            <SettingsPanel />
+            <LegalPanel />
+
+            {/* Layer 5: システムオーバーレイ */}
+            <AdvView />
+            <CardBattleView />
+            <TutorialWorldIntro />
+            <TutorialFreeInstant />
+            <TutorialRuleGuide />
+            <TutorialBattlePrompt />
+            <TutorialAuthentication />
+
+            {/* Layer 6: 最上位の共通ダイアログとブロッカー */}
+            <ConfirmDialog {...confirmDialogConfig} />
+            <GlobalInteractionBlocker isBlocking={globalInteractionBlocking} />
+          </>
+        )}
+      >
         {activeTab === "home" && <HomeTab />}
         {(activeTab === "patrol" || activeTab === "quest") && <PatrolTab />}
         {activeTab === "pvp" && <PvpTab />}
@@ -133,35 +149,7 @@ function AppContent() {
         {activeTab === "ranking" && <RankingTab />}
         {activeTab === "avatar" && <AvatarTab />}
         {activeTab === "bbs" && <BbsTab />}
-      </main>
-
-      {/* 全タブ共通 モバイルフッター */}
-      <Footer />
-
-      {/* Layer 3: コンパクトモーダル */}
-      <CommonModals />
-      <MoveBaseModal />
-
-      {/* Layer 4: フルスクリーンパネル */}
-      <TribeChatModal />
-      <InboxPanel />
-      <MissionPanel />
-      <FriendPanel />
-      <SettingsPanel />
-      <LegalPanel />
-
-      {/* Layer 5: システムオーバーレイ */}
-      <AdvView />
-      <CardBattleView />
-      <TutorialWorldIntro />
-      <TutorialFreeInstant />
-      <TutorialRuleGuide />
-      <TutorialBattlePrompt />
-      <TutorialAuthentication />
-      
-      {/* Layer 6: 最上位の共通ダイアログとブロッカー */}
-      <ConfirmDialog {...confirmDialogConfig} />
-      <GlobalInteractionBlocker isBlocking={globalInteractionBlocking} />
+      </PageShell>
     </div>
   );
 }

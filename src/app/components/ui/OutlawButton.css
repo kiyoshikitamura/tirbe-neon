@@ -50,6 +50,19 @@
   border-color: rgba(200, 200, 210, 0.6);
 }
 
+.outlaw-button.variant-ghost {
+  background: transparent;
+  border-color: rgba(160, 160, 170, 0.22);
+  box-shadow: none;
+  color: var(--ui-text-secondary);
+}
+
+.outlaw-button.variant-ghost:not(:disabled):hover {
+  border-color: rgba(160, 160, 170, 0.45);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--ui-text-primary);
+}
+
 /* プライマリー (青系アクセント) */
 .outlaw-button.variant-primary {
   background: linear-gradient(180deg, rgba(0, 160, 255, 0.8) 0%, rgba(0, 80, 180, 0.9) 100%);
@@ -88,4 +101,12 @@
 /* 押し込みエフェクト (.active-scale-effectは既にglobals.cssにあるが、念のためここでも安全設計) */
 .outlaw-button:active:not(:disabled) {
   transform: scale(0.95);
+}
+
+.outlaw-button-spinner.spinner {
+  width: 14px !important;
+  height: 14px !important;
+  min-width: 14px !important;
+  min-height: 14px !important;
+  border-width: 2px;
 }

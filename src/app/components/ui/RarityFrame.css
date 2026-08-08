@@ -1,0 +1,5 @@
+.rarity-frame { position: relative; border: 1px solid #777; border-radius: var(--ui-radius-sm); background: var(--ui-surface-deep); overflow: hidden; }
+.rarity-frame-r { border-color: #1fb6ff; }
+.rarity-frame-sr { border-color: #d000ff; box-shadow: inset 0 0 12px rgba(208, 0, 255, 0.12); }
+.rarity-frame-ssr { border-color: #ffaa00; box-shadow: inset 0 0 16px rgba(255, 170, 0, 0.16), 0 0 8px rgba(255, 170, 0, 0.18); }
+.rarity-frame-label { position: absolute; top: 3px; right: 3px; z-index: 2; padding: 1px 4px; border-radius: 2px; background: rgba(0, 0, 0, 0.75); color: inherit; font-size: 7px; font-weight: 900; }

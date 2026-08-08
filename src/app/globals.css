@@ -24,6 +24,25 @@
 
   --font-inter: Arial, "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
   --font-outfit: Arial, "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+
+  /* UI Stage 1 semantic tokens */
+  --ui-surface-base: #0b0f19;
+  --ui-surface-deep: #060912;
+  --ui-surface-raised: rgba(20, 26, 43, 0.78);
+  --ui-surface-hover: rgba(30, 38, 60, 0.9);
+  --ui-border-default: rgba(160, 160, 170, 0.2);
+  --ui-border-strong: rgba(160, 160, 170, 0.45);
+  --ui-text-primary: #ffffff;
+  --ui-text-secondary: #a0aec0;
+  --ui-text-muted: #6f788b;
+  --ui-radius-sm: 4px;
+  --ui-radius-md: 8px;
+  --ui-radius-lg: 12px;
+  --ui-space-1: 4px;
+  --ui-space-2: 8px;
+  --ui-space-3: 12px;
+  --ui-space-4: 16px;
+  --ui-space-5: 24px;
 }
 
 * {

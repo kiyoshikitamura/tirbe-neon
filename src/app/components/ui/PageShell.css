@@ -1,0 +1,38 @@
+.page-shell {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  padding-top: max(36px, env(safe-area-inset-top, 0px));
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  background: rgba(11, 15, 25, 0.98);
+  overflow: hidden;
+}
+
+.page-shell-safe-frame {
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: #000;
+  overflow: hidden;
+}
+
+.page-shell-header,
+.page-shell-footer {
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+.page-shell-content {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+@media (display-mode: standalone) {
+  .page-shell {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+}

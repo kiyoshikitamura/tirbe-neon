@@ -69,18 +69,10 @@ export function usePvp(
     playCyberSe("click");
 
     try {
-      const { error } = await supabase
-        .from("pvp_defense_decks")
-        .upsert({
-          user_id: session.user.id,
-          character_1_id: members[0] || null,
-          character_2_id: members[1] || null,
-          character_3_id: members[2] || null,
-          character_4_id: members[3] || null,
-          character_5_id: members[4] || null,
-          tactic: tactic,
-          updated_at: new Date().toISOString()
-        }, { onConflict: "user_id" });
+      const { error } = await supabase.rpc("save_pvp_defense_deck", {
+        p_character_ids: members,
+        p_tactic: tactic,
+      });
 
       if (error) throw error;
       

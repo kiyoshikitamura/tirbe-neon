@@ -18,9 +18,6 @@ export default function RankingTab() {
     gvgBaseControls,
     raidDamageLogs,
     raidSeasonRankings,
-    handlePowerDailyReset,
-    handlePowerSeasonReset,
-    gvgResetLoading,
     playCyberSe,
     fetchPlayerDetail,
     fetchGuildDetail,
@@ -587,26 +584,6 @@ export default function RankingTab() {
         )}
       </div>
 
-      {/* 管理者デバッグコンソール (最下部) */}
-      <div className="battle-card border-warning p-3 mt-3 admin-console-panel">
-        <div className="upgrade-card-title text-color-warning mb-2 font-size-8">管理者デバッグツール</div>
-        <div className="flex-row-gap-3" style={{ display: "flex", gap: "8px" }}>
-          <button
-            onClick={handlePowerDailyReset}
-            disabled={gvgResetLoading}
-            className="sub-btn border-cyan-subtle flex-1 font-size-7 height-26 active-scale-effect"
-          >
-            総合力デイリーリセット
-          </button>
-          <button
-            onClick={handlePowerSeasonReset}
-            disabled={gvgResetLoading}
-            className="sub-btn border-magenta-subtle flex-1 font-size-7 height-26 active-scale-effect text-color-magenta"
-          >
-            総合力シーズンリセット
-          </button>
-        </div>
-      </div>
     </div>
   );
 }

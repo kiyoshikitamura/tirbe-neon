@@ -1,0 +1,8 @@
+.resource-display { display: inline-flex; align-items: center; gap: 5px; color: var(--ui-text-primary); }
+.resource-display-copy { display: inline-flex; flex-direction: column; line-height: 1.05; }
+.resource-display-label { color: var(--ui-text-muted); font-size: 7px; font-weight: 800; }
+.resource-display-value { font-size: 12px; font-weight: 900; font-variant-numeric: tabular-nums; }
+.resource-display-compact .resource-display-label { display: none; }
+.resource-display-cash .resource-display-value { color: var(--color-success); }
+.resource-display-diamond .resource-display-value { color: var(--neon-cyan); }
+.resource-display-energy .resource-display-value, .resource-display-gold .resource-display-value { color: var(--neon-gold); }

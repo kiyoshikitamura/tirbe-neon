@@ -1,0 +1,22 @@
+.ui-list-row {
+  display: flex;
+  min-height: 54px;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--ui-border-default);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-surface-raised);
+}
+
+.ui-list-row-interactive {
+  cursor: pointer;
+  transition: border-color 160ms ease, background-color 160ms ease, transform 80ms ease;
+}
+
+.ui-list-row-interactive:active { transform: scale(0.985); }
+.ui-list-row-interactive:hover { border-color: var(--ui-border-strong); background: var(--ui-surface-hover); }
+.ui-list-row-leading, .ui-list-row-trailing { flex: 0 0 auto; }
+.ui-list-row-copy { min-width: 0; flex: 1; }
+.ui-list-row-title { color: var(--ui-text-primary); font-size: 12px; font-weight: 800; }
+.ui-list-row-description { margin-top: 3px; color: var(--ui-text-secondary); font-size: 9px; line-height: 1.45; }
