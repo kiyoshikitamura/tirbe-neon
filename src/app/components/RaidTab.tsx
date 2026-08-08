@@ -4,6 +4,13 @@ import React from "react";
 import { useGame } from "../context/GameContext";
 import { BASE_MAP_MASTER, RAID_COST_TABLE, RAID_MAX_DAILY } from "@/utils/game_constants";
 import "./RaidTab.css";
+import Badge from "./ui/Badge";
+import HeroPanel from "./ui/HeroPanel";
+import HubPage from "./ui/HubPage";
+import OutlawButton from "./ui/OutlawButton";
+import OutlawCard from "./ui/OutlawCard";
+import { useScreenReadiness } from "../hooks/useScreenReadiness";
+import { SCREEN_ASSET_MANIFESTS } from "../lib/screenManifests";
 
 export default function RaidTab() {
   const {
@@ -11,9 +18,6 @@ export default function RaidTab() {
     raidBossMaxHp,
     raidBossSecondsLeft,
     raidTotalDamage,
-    handleRaidBossDefeat,
-    handleRaidSeasonReset,
-    raidDefeatLoading,
     startCardBattle,
     playCyberSe,
     raidBossBaseId,
@@ -23,9 +27,8 @@ export default function RaidTab() {
     userLevel,
     raidAttemptsToday,
     setConfirmDialogConfig,
-    cash,
-    diamonds
   } = useGame();
+  const readiness = useScreenReadiness({ assets: SCREEN_ASSET_MANIFESTS.raid });
 
   // 残り時間のフォーマット
   const formatTime = (seconds: number) => {
@@ -42,15 +45,19 @@ export default function RaidTab() {
   const baseName = BASE_MAP_MASTER.find(b => b.id === raidBossBaseId)?.name || "夜の街";
 
   return (
-    <div className="view-container">
-      <h2 className="view-title text-color-magenta">レイド</h2>
-      
-      <div className="scroll-container flex-1 flex-col-gap-3">
+    <HubPage
+      className="raid-view"
+      eyebrow="RAID / SHARED BOSS"
+      title="レイド"
+      description="仲間と累積ダメージを重ね、出現中の強敵を撃破する。"
+      status={readiness.status}
+      onRetry={readiness.retry}
+    >
         {/* レイドボスステータスカード */}
-        <div className="battle-card border-danger p-3">
+        <HeroPanel className={`raid-boss-hero ${raidBossHp <= 0 || raidBossSecondsLeft <= 0 ? "raid-boss-ended" : ""}`}>
           <div className="flex-row-space-between align-center mb-2" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <span className="font-size-10 font-weight-bold text-color-magenta">【強敵】{raidBossName}</span>
-            <span className="font-size-8 text-secondary">制限時間: <span className="text-color-danger font-weight-bold">{formatTime(raidBossSecondsLeft)}</span></span>
+            <Badge tone={raidBossSecondsLeft > 0 ? "danger" : "neutral"}>{formatTime(raidBossSecondsLeft)}</Badge>
           </div>
 
           {/* 出現場所と支配ボーナスステータス */}
@@ -74,7 +81,9 @@ export default function RaidTab() {
           </div>
 
             <div className="flex-col-gap-2 width-100">
-              <button 
+              <OutlawButton
+                variant="danger"
+                fullWidth
                 onClick={() => {
                   playCyberSe("click");
                   const nextAttempt = raidAttemptsToday + 1;
@@ -95,11 +104,9 @@ export default function RaidTab() {
                   }
                 }}
                 disabled={raidBossHp <= 0 || raidBossSecondsLeft <= 0 || userLevel < 5 || raidAttemptsToday >= RAID_MAX_DAILY}
-                className="action-btn claim font-weight-bold py-2 px-6 active-scale-effect width-100 flex-row-center-spinner justify-center"
-                style={{ background: "var(--neon-magenta)", border: "none", color: "#fff", width: "100%" }}
               >
                 {userLevel < 5 ? "プレイヤーLv5以上で解放" : raidAttemptsToday >= RAID_MAX_DAILY ? "本日の挑戦回数上限" : "強敵に挑む (バトル開始)"}
-              </button>
+              </OutlawButton>
               {userLevel >= 5 && (
                 <div className="text-center font-size-8 text-secondary">
                   本日挑戦: {raidAttemptsToday}/{RAID_MAX_DAILY} 回
@@ -107,51 +114,29 @@ export default function RaidTab() {
                 </div>
               )}
             </div>
-        </div>
+        </HeroPanel>
 
         {/* 自組織の累積与ダメージ状況 */}
-        <div className="battle-card p-3">
+        <OutlawCard>
           <div className="upgrade-card-title flex items-center justify-between" style={{ display: "flex", justifyContent: "space-between" }}>
             <span>自身の累計与ダメージ</span>
             <span className="text-color-cyan font-weight-bold">{raidTotalDamage.toLocaleString()} Dmg</span>
           </div>
           <p className="font-size-7 text-secondary mt-1">報酬獲得ライン: 100,000 Dmg (現在 {raidTotalDamage >= 100000 ? "達成済み" : "未達成"})</p>
-        </div>
+        </OutlawCard>
 
         {/* ランキング画面への遷移 */}
-        <div className="battle-card p-3 text-center">
+        <OutlawCard className="text-center">
           <div className="upgrade-card-title mb-2">ダメージランキング</div>
           <p className="font-size-8 text-secondary mb-3">全プレイヤー名の与ダメージランキングは、ランキング画面で確認できます。</p>
-          <button 
+          <OutlawButton
+            variant="secondary"
+            fullWidth
             onClick={() => { navigateTab("ranking", "raid"); playCyberSe("click"); }}
-            className="action-btn sub-btn font-weight-bold py-2 px-6 active-scale-effect width-100"
-            style={{ width: "100%" }}
           >
             ランキングで確認
-          </button>
-        </div>
-
-        {/* 開発・デバッグ用管理コンソール */}
-        <div className="battle-card border-warning p-3 mt-2">
-          <div className="upgrade-card-title text-color-warning mb-2">管理者デバッグツール</div>
-          <div className="flex-row-gap-3" style={{ display: "flex", gap: "8px" }}>
-            <button 
-              onClick={handleRaidBossDefeat} 
-              disabled={raidDefeatLoading || raidBossHp <= 0}
-              className="sub-btn border-cyan-subtle flex-1 font-size-8 height-28 active-scale-effect"
-            >
-              {raidDefeatLoading ? "処理中..." : "ボス強制撃破 (報酬配布)"}
-            </button>
-            <button 
-              onClick={handleRaidSeasonReset} 
-              disabled={raidDefeatLoading}
-              className="sub-btn border-magenta-subtle flex-1 font-size-8 height-28 active-scale-effect text-color-magenta"
-            >
-              {raidDefeatLoading ? "処理中..." : "レイドシーズンリセット"}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+          </OutlawButton>
+        </OutlawCard>
+    </HubPage>
   );
 }

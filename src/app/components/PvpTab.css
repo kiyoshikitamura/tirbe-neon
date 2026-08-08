@@ -7,6 +7,16 @@
   color: #e2e8f0;
 }
 
+.pvp-status-hero {
+  min-height: 154px;
+  background-image: radial-gradient(circle at 76% 32%, rgba(0, 240, 255, 0.18), transparent 36%), linear-gradient(135deg, #111827, #070a12);
+}
+
+.pvp-status-heading { color: var(--ui-text-secondary); font-size: 10px; font-weight: 800; letter-spacing: 0.08em; }
+.pvp-status-rate { margin-top: 8px; color: var(--neon-cyan); font-size: 34px; font-weight: 900; font-variant-numeric: tabular-nums; text-shadow: 0 0 14px rgba(0, 240, 255, 0.22); }
+.pvp-status-rate small { font-size: 12px; }
+.pvp-status-meta { display: flex; align-items: center; gap: 8px; margin-top: 12px; color: var(--ui-text-secondary); font-size: 9px; }
+
 .loading-container {
   display: flex;
   justify-content: center;

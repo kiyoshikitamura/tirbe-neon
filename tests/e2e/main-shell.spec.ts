@@ -38,3 +38,25 @@ test("shared shell preserves footer navigation", async ({ page }) => {
   await page.getByRole("button", { name: /キャラ/ }).click();
   await expect(page.locator(".footer-item.active")).toContainText("キャラ");
 });
+
+test("stage two hubs share a mobile-safe page frame", async ({ page }) => {
+  await enterGame(page);
+
+  const cases = [
+    { selector: ".circle-menu-btn.fight", title: "喧嘩" },
+    { selector: ".circle-menu-btn.conquest", title: "クエスト" },
+    { selector: ".circle-menu-btn.war", title: "抗争" },
+    { selector: ".mypage-power-panel", title: "ランキング" },
+  ];
+
+  for (const target of cases) {
+    await page.locator(target.selector).click();
+    const hub = page.locator(".ui-hub-page");
+    await expect(hub.getByRole("heading", { name: target.title, exact: true })).toBeVisible();
+    await expect(hub.locator(".ui-hero-panel").first()).toBeVisible();
+    const pageMetrics = await hub.evaluate((node) => ({ scrollWidth: node.scrollWidth, clientWidth: node.clientWidth }));
+    expect(pageMetrics.scrollWidth).toBeLessThanOrEqual(pageMetrics.clientWidth + 1);
+    await page.locator(".footer-item").first().click();
+    await expect(page.locator(target.selector)).toBeVisible();
+  }
+});

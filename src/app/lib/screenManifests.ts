@@ -26,6 +26,11 @@ function optionalAssets(paths: string[]): AssetRequest[] {
 export const SCREEN_ASSET_MANIFESTS = {
   commonShell: optionalAssets([...FRAME_ASSETS, ...COMMON_SHELL_ASSETS]),
   home: optionalAssets([...FRAME_ASSETS, ...COMMON_SHELL_ASSETS, ...HOME_ASSETS]),
+  quest: optionalAssets([...FRAME_ASSETS, ...COMMON_SHELL_ASSETS]),
+  pvp: optionalAssets([...FRAME_ASSETS, ...COMMON_SHELL_ASSETS]),
+  gvg: optionalAssets([...FRAME_ASSETS, ...COMMON_SHELL_ASSETS]),
+  raid: optionalAssets([...FRAME_ASSETS, ...COMMON_SHELL_ASSETS]),
+  ranking: optionalAssets([...FRAME_ASSETS, ...COMMON_SHELL_ASSETS, "/rank/badge_rank1.png", "/rank/badge_rank2.png", "/rank/badge_rank3.png"]),
 } as const;
 
 export const HOME_BOOT_ASSETS = SCREEN_ASSET_MANIFESTS.home.map((asset) => asset.src);

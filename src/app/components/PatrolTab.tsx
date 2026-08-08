@@ -11,6 +11,11 @@ import OutlawCard from "./ui/OutlawCard";
 import OutlawButton from "./ui/OutlawButton";
 import SubTabNav from "./ui/SubTabNav";
 import SectionHeader from "./ui/SectionHeader";
+import HubPage from "./ui/HubPage";
+import HeroPanel from "./ui/HeroPanel";
+import Badge from "./ui/Badge";
+import { useScreenReadiness } from "../hooks/useScreenReadiness";
+import { SCREEN_ASSET_MANIFESTS } from "../lib/screenManifests";
 import "./PatrolTab.css";
 
 export default function PatrolTab() {
@@ -95,17 +100,27 @@ export default function PatrolTab() {
 
   // 背景画像の取得
   const bgImage = `/bg/bg_street_${selectedTown}.png`;
+  const readiness = useScreenReadiness({
+    assets: [...SCREEN_ASSET_MANIFESTS.quest, { src: bgImage, required: false }],
+  });
 
   return (
-    <div className="view-container patrol-container">
-      {/* Background layer */}
-      <div 
-        className="patrol-background" 
-        style={{ backgroundImage: `url(${bgImage})` }}
-      />
-      <div className="patrol-background-overlay" />
-
-      <div className="patrol-content scroll-container flex-1">
+    <HubPage
+      className="patrol-container"
+      eyebrow="QUEST / DISPATCH"
+      title="クエスト"
+      description="仲間を街へ派遣し、育成素材と報酬を獲得します。"
+      status={readiness.status}
+      onRetry={readiness.retry}
+    >
+      <div className="patrol-content">
+        <HeroPanel className="patrol-hero" backgroundImage={bgImage}>
+          <div className="patrol-hero-status">
+            <Badge tone="success">DISPATCH</Badge>
+            <strong>{activePatrols.length}<small>/5</small></strong>
+          </div>
+          <p>派遣先と所要時間を選び、空き枠へ仲間を送り出してください。</p>
+        </HeroPanel>
         
         <SectionHeader title={`新規クエスト派遣 (${activePatrols.length}/5 出撃中)`} />
         
@@ -358,6 +373,6 @@ export default function PatrolTab() {
           </OutlawCard>
         </div>
       )}
-    </div>
+    </HubPage>
   );
 }

@@ -3,10 +3,15 @@
 import React from "react";
 import { useGame } from "../context/GameContext";
 import "./PvpTab.css";
-import SectionHeader from "./ui/SectionHeader";
 import SubTabNav from "./ui/SubTabNav";
 import OutlawCard from "./ui/OutlawCard";
 import OutlawButton from "./ui/OutlawButton";
+import Badge from "./ui/Badge";
+import HeroPanel from "./ui/HeroPanel";
+import HubPage from "./ui/HubPage";
+import ScreenState from "./ui/ScreenState";
+import { useScreenReadiness } from "../hooks/useScreenReadiness";
+import { SCREEN_ASSET_MANIFESTS } from "../lib/screenManifests";
 
 const tacticNames: { [key: string]: string } = {
   ATTACK_PRIORITY: "攻撃優先",
@@ -35,8 +40,6 @@ export default function PvpTab() {
     userCharactersDbList,
     startCardBattle,
     pvpRankings,
-    handlePvpSeasonReset,
-    pvpSeasonLoading,
     triggerNpcDefenseSimulation,
     simulatingDefense,
     pvpDefenseLogs,
@@ -50,6 +53,11 @@ export default function PvpTab() {
 
   const [selectedDefense, setSelectedDefense] = React.useState<string[]>([]);
   const [selectedTactic, setSelectedTactic] = React.useState<string>("ATTACK_PRIORITY");
+  const isInitialOpponentLoad = pvpSubView === "opponents" && opponentsLoading && pvpOpponents.length === 0;
+  const readiness = useScreenReadiness({
+    assets: SCREEN_ASSET_MANIFESTS.pvp,
+    dataReady: !battleLoading && !isInitialOpponentLoad,
+  });
 
   React.useEffect(() => {
     if (myPvpDefenseDeck) {
@@ -114,15 +122,22 @@ export default function PvpTab() {
   };
 
   return (
-    <div className="view-container pvp-view">
-      <SectionHeader title="PvP" />
-      
-      <div className="scroll-container flex-1">
-        <OutlawCard className="mb-4 text-center">
-          <div className="text-xl font-bold mb-1 text-white text-shadow-glow">現在のレート</div>
-          <div className="text-3xl font-black text-neon-cyan text-shadow-cyan">{pvpRate} pt</div>
-          <div className="text-xs text-gray-400 mt-2">PvPポイント: {pvpPoints}/5（1時間ごとに1回復）</div>
-        </OutlawCard>
+    <HubPage
+      className="pvp-view"
+      eyebrow="FIGHT / SOLO COMPETITION"
+      title="喧嘩"
+      description="相手を選び、出撃編成と残り挑戦回数を確認して対戦する。"
+      status={readiness.status}
+      onRetry={readiness.retry}
+    >
+        <HeroPanel className="pvp-status-hero">
+          <div className="pvp-status-heading">現在のレート</div>
+          <div className="pvp-status-rate">{pvpRate.toLocaleString()} <small>pt</small></div>
+          <div className="pvp-status-meta">
+            <Badge tone={pvpPoints > 0 ? "cyan" : "warning"}>挑戦 {pvpPoints}/5</Badge>
+            <span>1時間ごとに1回復</span>
+          </div>
+        </HeroPanel>
 
         <SubTabNav
           tabs={[
@@ -135,33 +150,25 @@ export default function PvpTab() {
           onSelect={setPvpSubView}
         />
 
-        {battleLoading ? (
-          <div className="loading-container">
-            <div className="spinner" />
-          </div>
-        ) : (
+        {battleLoading ? <ScreenState kind="loading" compact /> : (
           <div className="pvp-content-area">
             {pvpSubView === "opponents" && (
               <div className="opponents-subtab">
                 <div className="flex gap-2 mb-4">
-                  <OutlawButton variant="secondary" className="flex-1" onClick={handleRefreshOpponents} disabled={opponentsLoading}>
-                    🔄 対戦相手更新
+                  <OutlawButton variant="secondary" className="flex-1" onClick={handleRefreshOpponents} isLoading={opponentsLoading}>
+                    対戦相手更新
                   </OutlawButton>
                   <OutlawButton variant="secondary" className="flex-1 text-neon-gold" onClick={handleNavigateToRanking}>
-                    🏆 PvPランキング
+                    PvPランキング
                   </OutlawButton>
                 </div>
 
                 {opponentsLoading && pvpOpponents.length === 0 ? (
-                  <div className="loading-container py-8">
-                    <div className="spinner" />
-                  </div>
+                  <ScreenState kind="loading" compact />
                 ) : (
                   <div className="list-container">
                     {pvpOpponents.length === 0 && (
-                      <div className="empty-message py-4 text-center text-color-gray font-size-9">
-                        対戦相手が見つかりません。
-                      </div>
+                      <ScreenState kind="empty" compact title="対戦相手が見つかりません" message="時間を置いて更新してください。" />
                     )}
                     {pvpOpponents.map((op: any) => (
                       <OutlawCard key={op.opponent_user_id} className="mb-3 flex items-center justify-between">
@@ -209,9 +216,6 @@ export default function PvpTab() {
 
             {pvpSubView === "season" && (
               <div className="flex flex-col gap-3">
-                <OutlawButton variant="danger" fullWidth onClick={handlePvpSeasonReset} disabled={pvpSeasonLoading}>
-                  シーズンリセット実行
-                </OutlawButton>
                 <div className="list-container flex flex-col gap-2">
                   {[...pvpRankings].sort((a,b) => b.rank_points - a.rank_points).map((item, idx) => (
                     <OutlawCard key={item.user_id} className="flex justify-between items-center py-2 px-3">
@@ -228,7 +232,7 @@ export default function PvpTab() {
                 {/* 防衛デッキ・作戦設定パネル */}
                 <OutlawCard glowLine="left">
                   <h3 className="font-bold text-white mb-3 flex items-center gap-2">
-                    🛡️ 防衛デッキ・作戦設定
+                    防衛デッキ・作戦設定
                   </h3>
                   
                   <div className="mb-4">
@@ -271,7 +275,7 @@ export default function PvpTab() {
                     fullWidth 
                     onClick={handleSaveDeck} 
                   >
-                    💾 防衛設定を保存
+                    防衛設定を保存
                   </OutlawButton>
                 </OutlawCard>
 
@@ -307,7 +311,6 @@ export default function PvpTab() {
             )}
           </div>
         )}
-      </div>
-    </div>
+    </HubPage>
   );
 }

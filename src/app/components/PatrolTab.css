@@ -44,6 +44,32 @@
   padding-bottom: 24px;
 }
 
+.patrol-hero {
+  min-height: 126px;
+  margin-bottom: 12px;
+}
+
+.patrol-hero-status {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+
+.patrol-hero-status strong {
+  color: var(--color-yellow, #ffd83d);
+  font-size: 34px;
+  line-height: 1;
+}
+
+.patrol-hero-status small { font-size: 12px; color: var(--text-secondary); }
+.patrol-hero p { margin: 12px 0 0; color: var(--text-secondary); font-size: 11px; }
+
+.ui-hub-page .patrol-content {
+  position: relative;
+  z-index: auto;
+  padding-bottom: 0;
+}
+
 /* ----------------------------------------------------
    コース選択グリッド
    ---------------------------------------------------- */

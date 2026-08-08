@@ -7,6 +7,12 @@ import { BASE_MAP_MASTER } from "../../utils/game_constants";
 import { CHARACTERS_MASTER } from "../../utils/game_constants";
 import { getCurrentSession, getGvgPhase } from "../../utils/gvg_utils";
 import GvgMatchStatusPanel from "./GvgMatchStatusPanel";
+import HubPage from "./ui/HubPage";
+import HeroPanel from "./ui/HeroPanel";
+import Badge from "./ui/Badge";
+import OutlawButton from "./ui/OutlawButton";
+import { useScreenReadiness } from "../hooks/useScreenReadiness";
+import { SCREEN_ASSET_MANIFESTS } from "../lib/screenManifests";
 import "./GvgTab.css";
 
 type GvgBaseView = { id: string; rank: string; name: string; controlledBy: string; description: string; topPoints: number };
@@ -37,6 +43,7 @@ export default function GvgTab() {
   const [showDefenseModal, setShowDefenseModal] = useState<boolean>(false);
   const [tempSelectedChars, setTempSelectedChars] = useState<string[]>([]);
   const [now, setNow] = useState<Date>(new Date());
+  const readiness = useScreenReadiness({ assets: SCREEN_ASSET_MANIFESTS.gvg });
   
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 1000);
@@ -171,18 +178,34 @@ export default function GvgTab() {
     : "対戦相手なし (NPC)";
 
   return (
-    <div className="view-container">
-      <div className="flex-row-space-between align-center mb-3">
-        <h2 className="view-title">抗争</h2>
-        <button
+    <HubPage
+      className="gvg-view"
+      eyebrow="GUILD VS GUILD"
+      title="抗争"
+      description="連合の仲間と役割を分担し、決められた時間に敵対連合と競います。"
+      status={readiness.status}
+      onRetry={readiness.retry}
+      headerAction={(
+        <OutlawButton
           onClick={() => navigateTab("ranking", "season")}
-          className="sub-btn border-cyan-subtle font-size-8 height-26 px-3 active-scale-effect"
+          variant="ghost"
         >
-          個人シーズン順位
-        </button>
-      </div>
+          順位
+        </OutlawButton>
+      )}
+    >
 
-      <div className="scroll-container flex-1">
+      <HeroPanel className={`gvg-hero gvg-phase-${phase.toLowerCase()}`}>
+        <div className="gvg-hero-status">
+          <Badge tone={currentSession?.isActive ? "danger" : "magenta"}>
+            {currentSession?.isActive ? "BATTLE LIVE" : "PREPARATION"}
+          </Badge>
+          <strong>{currentSession?.isActive ? formatTimeLeft(currentSession.endsAt) : currentSession?.nextStartsAt ? formatTimeLeft(currentSession.nextStartsAt) : "--:--:--"}</strong>
+        </div>
+        <p>{userGuild ? `${userGuild.name}の抗争状況` : "抗争への参加には連合への所属が必要です。"}</p>
+      </HeroPanel>
+
+      <div className="gvg-content">
         {userGuild ? (
           <div className="flex-col-gap-3">
             <GvgMatchStatusPanel
@@ -500,6 +523,6 @@ export default function GvgTab() {
           </div>
         </div>
       )}
-    </div>
+    </HubPage>
   );
 }

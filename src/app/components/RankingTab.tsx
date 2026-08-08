@@ -3,6 +3,11 @@
 import React, { useState, useMemo } from "react";
 import { useGame } from "../context/GameContext";
 import { supabase } from "../../utils/supabase";
+import HubPage from "./ui/HubPage";
+import HeroPanel from "./ui/HeroPanel";
+import Badge from "./ui/Badge";
+import { useScreenReadiness } from "../hooks/useScreenReadiness";
+import { SCREEN_ASSET_MANIFESTS } from "../lib/screenManifests";
 import "./RankingTab.css";
 
 type TabType = "power" | "guild_power" | "pvp" | "gvg" | "raid";
@@ -29,6 +34,10 @@ export default function RankingTab() {
   const [activeSubTab, setActiveSubTab] = useState<SubTabType>("season");
   const [gvgSeasonPersonalRanks, setGvgSeasonPersonalRanks] = useState<any[]>([]);
   const [gvgSeasonLoading, setGvgSeasonLoading] = useState<boolean>(false);
+  const readiness = useScreenReadiness({
+    assets: SCREEN_ASSET_MANIFESTS.ranking,
+    dataReady: !(activeTab === "gvg" && activeSubTab === "season" && gvgSeasonLoading),
+  });
 
   // GameContextのタブ状態を同期
   React.useEffect(() => {
@@ -310,8 +319,22 @@ export default function RankingTab() {
   };
 
   return (
-    <div className="view-container ranking-tab-view">
-      <h2 className="view-title">ランキング</h2>
+    <HubPage
+      className="ranking-tab-view"
+      eyebrow="RANKING / SEASON"
+      title="ランキング"
+      description="街で競う者たちの現在地。報酬と更新期間を確認できます。"
+      status={readiness.status}
+      onRetry={readiness.retry}
+    >
+      <HeroPanel className="ranking-hero">
+        <div className="ranking-hero-copy">
+          <Badge tone="gold">MY STATUS</Badge>
+          <strong>{myRankInfo.rank}</strong>
+          <span>{myRankInfo.score}</span>
+        </div>
+        <p>選択中の部門における、あなたの順位とスコアです。</p>
+      </HeroPanel>
 
       {/* メインカテゴリタブ */}
       <div className="tab-menu ranking-main-tabs">
@@ -365,21 +388,8 @@ export default function RankingTab() {
         </div>
       </div>
 
-      {/* 自分の順位・スコアを示す固定HUD (Sticky HUD) */}
-      <div className="my-rank-sticky-bar font-size-8">
-        <div className="my-rank-label">あなたの現在ステータス</div>
-        <div className="my-rank-details flex items-center justify-between">
-          <div className="my-rank-value">
-            順位: <span className="text-color-cyan font-weight-bold">{myRankInfo.rank}</span>
-          </div>
-          <div className="my-rank-score">
-            スコア: <span className="text-color-cyan font-weight-bold">{myRankInfo.score}</span>
-          </div>
-        </div>
-      </div>
-
       {/* ランキングリスト表示 */}
-      <div className="scroll-container flex-1 ranking-content-area">
+      <div className="ranking-content-area">
         {/* -------------------- 1. 総合力 -------------------- */}
         {activeTab === "power" && (
           <div className="list-container">
@@ -584,6 +594,6 @@ export default function RankingTab() {
         )}
       </div>
 
-    </div>
+    </HubPage>
   );
 }

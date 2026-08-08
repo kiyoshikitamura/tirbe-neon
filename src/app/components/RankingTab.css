@@ -4,6 +4,36 @@
   height: 100%;
 }
 
+.ranking-hero {
+  min-height: 118px;
+  background:
+    radial-gradient(circle at 82% 20%, rgba(255, 204, 0, 0.18), transparent 34%),
+    linear-gradient(135deg, rgba(12, 23, 40, 0.98), rgba(18, 13, 29, 0.98));
+}
+
+.ranking-hero-copy {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: end;
+  gap: 4px 10px;
+}
+
+.ranking-hero-copy strong {
+  grid-row: span 2;
+  font-size: clamp(28px, 8vw, 42px);
+  line-height: 1;
+  color: var(--color-yellow, #ffd83d);
+  text-align: right;
+}
+
+.ranking-hero-copy span,
+.ranking-hero p {
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+
+.ranking-hero p { margin: 12px 0 0; }
+
 /* メインカテゴリタブ */
 .ranking-main-tabs {
   display: flex;

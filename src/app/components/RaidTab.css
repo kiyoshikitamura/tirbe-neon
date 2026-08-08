@@ -35,4 +35,11 @@
   border-radius: 3px;
 }
 
+.raid-boss-hero {
+  min-height: 270px;
+  border-color: rgba(255, 51, 51, 0.42);
+  background-image: radial-gradient(circle at 82% 18%, rgba(255, 0, 127, 0.24), transparent 36%), linear-gradient(155deg, #24101a, #090b12 72%);
+}
+
+.raid-boss-ended { filter: saturate(0.55); }
 
