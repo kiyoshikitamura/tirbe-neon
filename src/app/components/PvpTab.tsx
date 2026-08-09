@@ -125,7 +125,7 @@ export default function PvpTab() {
     <HubPage
       className="pvp-view"
       eyebrow="FIGHT / SOLO COMPETITION"
-      title="喧嘩"
+      title="喧嘩（PvP）"
       description="相手を選び、出撃編成と残り挑戦回数を確認して対戦する。"
       status={readiness.status}
       onRetry={readiness.retry}

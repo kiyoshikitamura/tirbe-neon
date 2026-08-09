@@ -1994,6 +1994,51 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
   }
 
 
+  if (funcName === "start_patrol") {
+    const { p_course_id, p_character_id } = params;
+    const currentUserId = typeof window === "undefined" ? null : localStorage.getItem("tribe_demo_uuid");
+    const users = client.getStorage("users") || [];
+    const user = users.find((entry: any) => entry.id === currentUserId);
+    const ownedCharacters = client.getStorage("user_characters") || [];
+    const owned = ownedCharacters.find((entry: any) => entry.user_id === currentUserId && (entry.id === p_character_id || entry.character_id === p_character_id));
+    if (!user || !owned) return { data: null, error: { message: "所持していないキャラクターです。", code: "23503" } };
+
+    const quests = client.getStorage("quests") || [];
+    const quest = quests.find((entry: any) => entry.id === p_course_id);
+    const level = String(p_course_id).match(/_(\d)$/)?.[1];
+    const durationSeconds = Number(quest?.duration_seconds ?? (level === "1" ? 60 : level === "2" ? 180 : 300));
+    const costVitality = Number(quest?.cost_vitality ?? (level === "1" ? 5 : level === "2" ? 10 : 15));
+    if (user.vitality < costVitality) return { data: null, error: { message: "スタミナが不足しています。", code: "23514" } };
+
+    const patrols = client.getStorage("user_patrols") || [];
+    if (patrols.filter((entry: any) => entry.user_id === currentUserId && entry.status !== "COMPLETED").length >= 5) {
+      return { data: null, error: { message: "派遣枠が埋まっています。", code: "23514" } };
+    }
+    const characterMasterId = owned.character_id;
+    if (patrols.some((entry: any) => entry.user_id === currentUserId && entry.character_id === characterMasterId && entry.status !== "COMPLETED")) {
+      return { data: null, error: { message: "このキャラクターは出撃中です。", code: "23505" } };
+    }
+
+    const tutorialProgress = (client.getStorage("tutorial_progress") || []).find((entry: any) => entry.user_id === currentUserId);
+    const hasBattle = tutorialProgress?.step_id === "DISPATCH" || Math.random() <= 0.2;
+    const newId = `patrol_${Date.now()}`;
+    patrols.push({
+      id: newId,
+      user_id: currentUserId,
+      course_id: p_course_id,
+      character_id: characterMasterId,
+      started_at: new Date().toISOString(),
+      expires_at: new Date(Date.now() + durationSeconds * 1000).toISOString(),
+      status: "ONGOING",
+      has_battle_event: hasBattle,
+      battle_resolved: false,
+    });
+    user.vitality -= costVitality;
+    client.setStorage("users", users);
+    client.setStorage("user_patrols", patrols);
+    return { data: { status: "success", patrol_id: newId, has_battle: hasBattle, duration_seconds: durationSeconds, cost_vitality: costVitality }, error: null };
+  }
+
   if (funcName === "start_patrol_v2") {
     const { p_user_id, p_course_id, p_character_id, p_duration_seconds, p_cost_vitality, p_battle_chance } = params;
     const users = client.getStorage("users") || [];

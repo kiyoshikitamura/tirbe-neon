@@ -7,6 +7,8 @@
 
 .gvg-phase-finals { box-shadow: inset 0 0 28px rgba(255, 45, 80, 0.16); }
 .gvg-hero-status { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.gvg-countdown-label { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; min-width: 0; }
+.gvg-countdown-label span { color: var(--text-secondary); font-size: 10px; white-space: nowrap; }
 .gvg-hero-status strong { color: var(--color-yellow, #ffd83d); font-size: 22px; font-variant-numeric: tabular-nums; }
 .gvg-hero p { margin: 14px 0 0; color: var(--text-secondary); font-size: 11px; }
 .gvg-content { display: flex; flex-direction: column; min-height: 0; }

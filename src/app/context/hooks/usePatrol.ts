@@ -86,13 +86,9 @@ export function usePatrol(
 
       const hasBattle = Math.random() <= (Number(course.battle_trigger_chance) || 0.2);
 
-      const res = await supabase.rpc("start_patrol_v2", {
-        p_user_id: session.user.id,
+      const res = await supabase.rpc("start_patrol", {
         p_course_id: course.id,
         p_character_id: selectedPatrolMember,
-        p_duration_seconds: course.duration_seconds,
-        p_cost_vitality: course.cost_vitality,
-        p_battle_chance: course.battle_trigger_chance
       });
 
       if (res.error) throw res.error;
@@ -104,8 +100,8 @@ export function usePatrol(
         id: res.data.patrol_id,
         courseId: course.id,
         characterId: selectedPatrolMember,
-        secondsTotal: course.duration_seconds,
-        secondsLeft: course.duration_seconds,
+        secondsTotal: Number(res.data.duration_seconds ?? course.duration_seconds),
+        secondsLeft: Number(res.data.duration_seconds ?? course.duration_seconds),
         status: "ONGOING" as const,
         has_battle_event: res.data.has_battle,
         battle_resolved: false,
@@ -122,6 +118,7 @@ export function usePatrol(
       });
     } catch (err: any) {
       console.warn(err.message);
+      setErrorMessage(`クエストを開始できませんでした。${err.message ? `（${err.message}）` : ""}`);
     } finally {
       setDispatchLoading(false);
     }

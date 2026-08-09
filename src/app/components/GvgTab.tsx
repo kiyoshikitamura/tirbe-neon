@@ -181,7 +181,7 @@ export default function GvgTab() {
     <HubPage
       className="gvg-view"
       eyebrow="GUILD VS GUILD"
-      title="抗争"
+      title="抗争（GvG）"
       description="連合の仲間と役割を分担し、決められた時間に敵対連合と競います。"
       status={readiness.status}
       onRetry={readiness.retry}
@@ -197,9 +197,12 @@ export default function GvgTab() {
 
       <HeroPanel className={`gvg-hero gvg-phase-${phase.toLowerCase()}`}>
         <div className="gvg-hero-status">
-          <Badge tone={currentSession?.isActive ? "danger" : "magenta"}>
-            {currentSession?.isActive ? "BATTLE LIVE" : "PREPARATION"}
-          </Badge>
+          <div className="gvg-countdown-label">
+            <Badge tone={currentSession?.isActive ? "danger" : "magenta"}>
+              {currentSession?.isActive ? "BATTLE LIVE" : "PREPARATION"}
+            </Badge>
+            <span>{currentSession?.isActive ? "抗争終了まで" : "次の抗争開始まで"}</span>
+          </div>
           <strong>{currentSession?.isActive ? formatTimeLeft(currentSession.endsAt) : currentSession?.nextStartsAt ? formatTimeLeft(currentSession.nextStartsAt) : "--:--:--"}</strong>
         </div>
         <p>{userGuild ? `${userGuild.name}の抗争状況` : "抗争への参加には連合への所属が必要です。"}</p>

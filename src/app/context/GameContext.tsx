@@ -1128,7 +1128,16 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
       // 見回り関連データとマスタデータの同期
       const { data: questsData } = await supabase.from("quests").select("*");
-      if (questsData) setPatrolCourses(questsData);
+      if (questsData) {
+        setPatrolCourses(questsData.map((quest: any) => ({
+          ...quest,
+          reward_cash: quest.cash_reward ?? quest.reward_cash ?? 0,
+          reward_xp: quest.exp_reward ?? quest.reward_xp ?? 0,
+          reward_item_id: quest.item_rewards?.[0]?.item_id ?? null,
+          reward_item_chance: quest.item_rewards?.[0]?.chance ?? 0,
+          battle_trigger_chance: quest.battle_trigger_chance ?? 0.2,
+        })));
+      }
 
       const { data: npcsData } = await supabase.from("patrol_npcs").select("*");
       if (npcsData) setPatrolNpcs(npcsData);
@@ -2223,6 +2232,20 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       const user = profiles?.[0];
       if (!user) return;
 
+      // プロフィール本体は先に開き、編成詳細の追加取得失敗で
+      // ポップアップ全体が表示されなくなることを防ぐ。
+      setActivePlayerDetail({
+        id: user.id,
+        username: user.username,
+        avatarUrl: user.avatar_url || "/characters/reiji_transparent_asset.png",
+        bio: user.bio || "自己紹介が未設定です。",
+        level: user.level,
+        xp: user.xp || 0,
+        titleName: user.title_name || user.title_equipped || "称号なし",
+        guildName: user.guild_name || null,
+        party: []
+      });
+
       const { data: deck, error: deckErr } = await supabase
         .from("pvp_defense_decks")
         .select("character_1_id, character_2_id, character_3_id, character_4_id, character_5_id")
@@ -2283,7 +2306,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       setActivePlayerDetail({
         id: user.id,
         username: user.username,
-        avatarUrl: user.avatar_url || "/reiji_transparent_asset.png",
+        avatarUrl: user.avatar_url || "/characters/reiji_transparent_asset.png",
         bio: user.bio || "自己紹介が未設定です。",
         level: user.level,
         xp: user.xp || 0,

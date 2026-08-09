@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Image from "next/image";
 import { useGame } from "../context/GameContext";
 import { supabase } from "@/utils/supabase";
 import {
@@ -100,6 +101,10 @@ export default function PatrolTab() {
 
   // 背景画像の取得
   const bgImage = `/bg/bg_street_${selectedTown}.png`;
+  const characterImage = (src?: string) => {
+    if (!src) return "/characters/reiji_transparent_asset.png";
+    return src.startsWith("/characters/") ? src : `/characters/${src.replace(/^\//, "")}`;
+  };
   const readiness = useScreenReadiness({
     assets: [...SCREEN_ASSET_MANIFESTS.quest, { src: bgImage, required: false }],
   });
@@ -181,6 +186,9 @@ export default function PatrolTab() {
                       }
                     }}
                   >
+                    <div className="patrol-char-portrait">
+                      <Image src={characterImage(c.img)} alt="" fill sizes="72px" />
+                    </div>
                     <div className="char-name">{c.jpName}</div>
                     {isHome && <div className="char-bonus-badge">地元一致(LUK{baseLuk})</div>}
                     {isAlreadyDeployed && <div className="char-deployed-badge">出撃中</div>}

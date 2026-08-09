@@ -42,10 +42,17 @@
   border-radius: 4px;
   padding: 2px;
   margin-bottom: 8px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  touch-action: pan-x;
+  scrollbar-width: none;
 }
 
+.ranking-main-tabs::-webkit-scrollbar { display: none; }
+
 .ranking-main-tabs .tab-btn {
-  flex: 1;
+  flex: 1 0 76px;
   text-align: center;
   padding: 8px 4px;
   background: transparent;
@@ -55,7 +62,10 @@
   font-family: var(--font-outfit);
   cursor: pointer;
   transition: all 0.2s ease;
+  white-space: nowrap;
 }
+
+.ranking-main-tabs .tab-btn:nth-child(2) { min-width: 92px; }
 
 .ranking-main-tabs .tab-btn.active {
   background: rgba(255, 255, 255, 0.08);
@@ -93,6 +103,27 @@
   cursor: pointer;
   transition: all 0.2s ease;
   text-align: center;
+  white-space: nowrap;
+}
+
+.ranking-period-panel {
+  display: grid;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  background: rgba(9, 14, 24, 0.84);
+}
+
+.ranking-period-panel > div:first-child { display: flex; justify-content: space-between; align-items: center; gap: 10px; min-width: 0; }
+.ranking-period-label { color: var(--text-secondary); font-size: 9px; white-space: nowrap; }
+.ranking-period-panel strong { color: var(--text-primary); font-size: 10px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ranking-period-meta { display: flex; flex-wrap: wrap; gap: 6px 12px; color: var(--text-secondary); font-size: 9px; }
+.ranking-period-meta span { white-space: nowrap; }
+
+@media (max-width: 390px) {
+  .ranking-period-panel > div:first-child { align-items: flex-start; flex-direction: column; gap: 4px; }
+  .ranking-period-panel strong { font-size: 9px; }
 }
 
 .toggle-switch-btn.active {
@@ -143,7 +174,22 @@
 /* クリッカブルアイテムのインタラクション */
 .clickable-item {
   cursor: pointer;
+  position: relative;
+  padding-right: 24px !important;
 }
+
+.clickable-item::after {
+  content: "›";
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  color: var(--neon-cyan);
+  font-size: 16px;
+  line-height: 1;
+  transform: translateY(-50%);
+}
+
+.clickable-item > span:last-child { white-space: nowrap; }
 
 .clickable-item:hover {
   border-color: rgba(255, 255, 255, 0.15) !important;

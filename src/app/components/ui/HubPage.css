@@ -5,3 +5,10 @@
 @media (max-width: 380px) {
   .ui-hub-page-content { padding-inline: 10px; }
 }
+
+.ui-hub-page .list-item,
+.ui-hub-page .item-left,
+.ui-hub-page .flex-column { min-width: 0; }
+.ui-hub-page .item-title { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ui-hub-page .ui-badge,
+.ui-hub-page .course-badge { white-space: nowrap; }

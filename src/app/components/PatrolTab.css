@@ -127,7 +127,7 @@
    ---------------------------------------------------- */
 .patrol-char-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
   gap: 8px;
   max-height: 160px;
   overflow-y: auto;
@@ -144,12 +144,24 @@
   background: rgba(30, 30, 35, 0.8);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 6px;
-  padding: 8px;
+  padding: 5px;
   text-align: center;
   cursor: pointer;
   transition: all 0.2s ease;
   position: relative;
 }
+
+.patrol-char-portrait {
+  position: relative;
+  width: 100%;
+  height: 72px;
+  margin-bottom: 4px;
+  overflow: hidden;
+  border-radius: 4px;
+  background: radial-gradient(circle at 50% 75%, rgba(0, 220, 255, 0.16), rgba(5, 8, 15, 0.92) 68%);
+}
+
+.patrol-char-portrait img { object-fit: contain; object-position: center bottom; }
 
 .patrol-char-item:hover:not(.locked):not(.deployed) {
   background: rgba(40, 40, 45, 0.9);

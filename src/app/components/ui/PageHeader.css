@@ -1,6 +1,13 @@
 .ui-page-header { display: flex; flex: 0 0 auto; align-items: flex-end; justify-content: space-between; gap: 12px; padding: 14px 16px 12px; border-bottom: 1px solid var(--ui-border-default); background: linear-gradient(135deg, rgba(20, 26, 43, 0.92), rgba(11, 15, 25, 0.96)); }
 .ui-page-header-copy { min-width: 0; }
 .ui-page-header-eyebrow { margin-bottom: 3px; color: var(--neon-cyan); font-size: 8px; font-weight: 900; letter-spacing: 0.12em; text-transform: uppercase; }
-.ui-page-header h1 { margin: 0; color: var(--ui-text-primary); font-size: 18px; line-height: 1.25; letter-spacing: 0.06em; }
+.ui-page-header h1 { margin: 0; color: var(--ui-text-primary); font-size: 18px; line-height: 1.25; letter-spacing: 0.04em; white-space: nowrap; }
 .ui-page-header p { margin: 5px 0 0; color: var(--ui-text-secondary); font-size: 10px; line-height: 1.5; }
 .ui-page-header-action { flex: 0 0 auto; }
+
+@media (max-width: 390px) {
+  .ui-page-header { gap: 8px; padding-inline: 12px; }
+  .ui-page-header h1 { font-size: clamp(15px, 4.5vw, 18px); }
+  .ui-page-header p { font-size: 9px; }
+  .ui-page-header-action .outlaw-button { min-width: auto; padding-inline: 10px; white-space: nowrap; }
+}

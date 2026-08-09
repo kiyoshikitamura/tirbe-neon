@@ -1,11 +1,21 @@
 /* SubTabNav.css */
 
+.outlaw-sub-tab-shell {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) 28px;
+  align-items: stretch;
+  background: rgba(14, 18, 28, 0.9);
+  border: 1px solid rgba(40, 48, 65, 0.72);
+}
+
 .outlaw-sub-tab-nav {
   display: flex;
-  background: rgba(14, 18, 28, 0.9);
-  border-bottom: 2px solid rgba(40, 48, 65, 0.5);
   overflow-x: auto;
+  overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x proximity;
+  touch-action: pan-x;
 }
 
 /* スクロールバー非表示 (ナビゲーションタブ用) */
@@ -33,7 +43,23 @@
   transition: color 0.2s ease;
   user-select: none;
   -webkit-tap-highlight-color: transparent;
+  scroll-snap-align: start;
 }
+
+.sub-tab-scroll-button {
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  background: rgba(5, 9, 17, 0.92);
+  color: var(--neon-cyan);
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.sub-tab-scroll-button:disabled { color: rgba(160, 170, 185, 0.25); cursor: default; }
+.sub-tab-scroll-button.prev { border-right: 1px solid rgba(255, 255, 255, 0.08); }
+.sub-tab-scroll-button.next { border-left: 1px solid rgba(255, 255, 255, 0.08); }
 
 .sub-tab-item:hover {
   color: #ffffff;

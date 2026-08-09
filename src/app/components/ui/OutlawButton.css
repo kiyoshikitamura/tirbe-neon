@@ -39,6 +39,11 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
+  white-space: nowrap;
+}
+
+@media (max-width: 390px) {
+  .outlaw-button { padding-inline: 14px; font-size: 0.82rem; letter-spacing: 0.02em; }
 }
 
 /* つや消しシルバー (Secondary) - デフォルト */

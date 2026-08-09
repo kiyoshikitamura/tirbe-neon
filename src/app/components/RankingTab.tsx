@@ -13,6 +13,34 @@ import "./RankingTab.css";
 type TabType = "power" | "guild_power" | "pvp" | "gvg" | "raid";
 type SubTabType = "daily" | "season";
 
+const JST_OFFSET_MS = 9 * 60 * 60 * 1000;
+
+function getRankingPeriod(now: Date, subTab: SubTabType, category: TabType) {
+  const shifted = new Date(now.getTime() + JST_OFFSET_MS);
+  const year = shifted.getUTCFullYear();
+  const month = shifted.getUTCMonth();
+  const day = shifted.getUTCDate();
+  if (subTab === "season") {
+    return {
+      start: new Date(Date.UTC(year, month, 1) - JST_OFFSET_MS),
+      end: new Date(Date.UTC(year, month + 1, 1) - JST_OFFSET_MS),
+    };
+  }
+  const resetHour = category === "pvp" ? 4 : 0;
+  let end = new Date(Date.UTC(year, month, day, resetHour) - JST_OFFSET_MS);
+  if (end.getTime() <= now.getTime()) end = new Date(end.getTime() + 24 * 60 * 60 * 1000);
+  return { start: new Date(end.getTime() - 24 * 60 * 60 * 1000), end };
+}
+
+function formatRemaining(milliseconds: number) {
+  const seconds = Math.max(0, Math.floor(milliseconds / 1000));
+  const days = Math.floor(seconds / 86400);
+  const hours = Math.floor((seconds % 86400) / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const secs = seconds % 60;
+  return `${days > 0 ? `${days}日 ` : ""}${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+}
+
 export default function RankingTab() {
   const {
     session,
@@ -34,6 +62,7 @@ export default function RankingTab() {
   const [activeSubTab, setActiveSubTab] = useState<SubTabType>("season");
   const [gvgSeasonPersonalRanks, setGvgSeasonPersonalRanks] = useState<any[]>([]);
   const [gvgSeasonLoading, setGvgSeasonLoading] = useState<boolean>(false);
+  const [clock, setClock] = useState(() => new Date());
   const readiness = useScreenReadiness({
     assets: SCREEN_ASSET_MANIFESTS.ranking,
     dataReady: !(activeTab === "gvg" && activeSubTab === "season" && gvgSeasonLoading),
@@ -69,6 +98,11 @@ export default function RankingTab() {
       loadRanks();
     }
   }, [activeTab, activeSubTab]);
+
+  React.useEffect(() => {
+    const timer = window.setInterval(() => setClock(new Date()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   // 24時間以内のアクティブ基準 (デイリー)
   const oneDayAgo = useMemo(() => new Date(Date.now() - 24 * 60 * 60 * 1000), []);
@@ -318,6 +352,26 @@ export default function RankingTab() {
     setActiveSubTab(sub);
   };
 
+  const rankingPeriod = getRankingPeriod(clock, activeSubTab, activeTab);
+  const periodFormatter = new Intl.DateTimeFormat("ja-JP", {
+    timeZone: "Asia/Tokyo",
+    month: "numeric",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  const rankingUpdateSources = activeTab === "power" ? powerRankings
+    : activeTab === "guild_power" ? guildPowerRankings
+      : activeTab === "pvp" ? pvpRankings
+        : activeTab === "gvg" ? (activeSubTab === "season" ? gvgSeasonPersonalRanks : gvgBaseControls)
+          : activeSubTab === "season" ? raidSeasonRankings : raidDamageLogs;
+  const updateTimestamps = rankingUpdateSources
+    .map((entry: any) => new Date(entry.updated_at || entry.created_at || "").getTime())
+    .filter((value: number) => Number.isFinite(value));
+  const latestUpdate = updateTimestamps.length > 0
+    ? new Date(Math.max(...updateTimestamps))
+    : null;
+
   return (
     <HubPage
       className="ranking-tab-view"
@@ -387,6 +441,18 @@ export default function RankingTab() {
           </button>
         </div>
       </div>
+
+      <section className="ranking-period-panel" aria-live="polite">
+        <div>
+          <span className="ranking-period-label">{activeSubTab === "daily" ? "デイリー集計" : "シーズン対象期間"}</span>
+          <strong>{periodFormatter.format(rankingPeriod.start)} 〜 {periodFormatter.format(rankingPeriod.end)}</strong>
+        </div>
+        <div className="ranking-period-meta">
+          <span>残り {formatRemaining(rankingPeriod.end.getTime() - clock.getTime())}</span>
+          <span>15分ごとに更新</span>
+          <span>最終更新 {latestUpdate ? periodFormatter.format(latestUpdate) : "取得待ち"}</span>
+        </div>
+      </section>
 
       {/* ランキングリスト表示 */}
       <div className="ranking-content-area">
