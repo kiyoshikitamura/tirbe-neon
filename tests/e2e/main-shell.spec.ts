@@ -56,6 +56,11 @@ test("stage two hubs share a mobile-safe page frame", async ({ page }) => {
     await expect(hub.locator(".ui-hero-panel").first()).toBeVisible();
     const pageMetrics = await hub.evaluate((node) => ({ scrollWidth: node.scrollWidth, clientWidth: node.clientWidth }));
     expect(pageMetrics.scrollWidth).toBeLessThanOrEqual(pageMetrics.clientWidth + 1);
+    if (target.title === "ランキング") {
+      await expect(hub.locator(".ranking-category-nav")).toBeVisible();
+      await expect(hub.locator(".ranking-category-nav .sub-tab-scroll-button.next")).toBeVisible();
+      await expect(hub.locator(".ranking-hero-copy")).not.toContainText("--");
+    }
     await page.locator(".footer-item").first().click();
     await expect(page.locator(target.selector)).toBeVisible();
   }

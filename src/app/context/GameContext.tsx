@@ -2226,16 +2226,30 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   };
 
   const fetchPlayerDetail = async (userId: string) => {
+    // タップへの反応を通信完了に依存させない。公開情報を取得後に同じモーダルを更新する。
+    setActivePlayerDetail({
+      id: userId,
+      username: "プレイヤー情報を取得中",
+      avatarUrl: "/characters/reiji_transparent_asset.png",
+      bio: "公開プロフィールを取得しています。",
+      level: 1,
+      xp: 0,
+      titleName: "称号なし",
+      guildName: null,
+      party: []
+    });
     try {
       const { data: profiles, error: userErr } = await supabase.rpc("get_public_profiles", { p_user_ids: [userId] });
       if (userErr) throw userErr;
-      const user = profiles?.[0];
-      if (!user) return;
+      const profileRows = Array.isArray(profiles) ? profiles : profiles ? [profiles] : [];
+      const user = profileRows[0];
+      if (!user) throw new Error("Public profile was not found");
+      const profileUserId = user.user_id || user.id || userId;
 
       // プロフィール本体は先に開き、編成詳細の追加取得失敗で
       // ポップアップ全体が表示されなくなることを防ぐ。
       setActivePlayerDetail({
-        id: user.id,
+        id: profileUserId,
         username: user.username,
         avatarUrl: user.avatar_url || "/characters/reiji_transparent_asset.png",
         bio: user.bio || "自己紹介が未設定です。",
@@ -2304,7 +2318,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       }
 
       setActivePlayerDetail({
-        id: user.id,
+        id: profileUserId,
         username: user.username,
         avatarUrl: user.avatar_url || "/characters/reiji_transparent_asset.png",
         bio: user.bio || "自己紹介が未設定です。",
@@ -2320,6 +2334,20 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   };
 
   const fetchGuildDetail = async (guildId: string) => {
+    // 追加情報の取得に失敗しても、タップ直後に詳細モーダル自体は表示する。
+    setActiveGuildDetail({
+      id: guildId,
+      name: "ギルド情報を取得中",
+      level: 1,
+      xp: 0,
+      member_limit: 0,
+      member_count: 0,
+      main_alignment: "未設定",
+      sub_alignment: null,
+      emblem_url: null,
+      leaderName: "取得中",
+      controlledBases: []
+    });
     try {
       const { data: guild, error: guildErr } = await supabase
         .from("guilds")

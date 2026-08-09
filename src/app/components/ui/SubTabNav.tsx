@@ -38,6 +38,21 @@ export default function SubTabNav({ tabs, activeTabId, onSelect, className = "" 
     return () => observer.disconnect();
   }, [tabs.length, updateScrollState]);
 
+  React.useEffect(() => {
+    const node = scrollRef.current;
+    if (!node) return;
+    const activeItem = Array.from(node.querySelectorAll<HTMLButtonElement>("[data-sub-tab-id]"))
+      .find((item) => item.dataset.subTabId === activeTabId);
+    if (!activeItem) return;
+    const itemLeft = activeItem.offsetLeft;
+    const itemRight = itemLeft + activeItem.offsetWidth;
+    if (itemLeft < node.scrollLeft) {
+      node.scrollTo({ left: itemLeft, behavior: "smooth" });
+    } else if (itemRight > node.scrollLeft + node.clientWidth) {
+      node.scrollTo({ left: itemRight - node.clientWidth, behavior: "smooth" });
+    }
+  }, [activeTabId]);
+
   const handleSelect = (id: string) => {
     if (id !== activeTabId) {
       playCyberSe("click");
@@ -60,6 +75,7 @@ export default function SubTabNav({ tabs, activeTabId, onSelect, className = "" 
             <button
               type="button"
               key={tab.id}
+              data-sub-tab-id={tab.id}
               className={`sub-tab-item ${isActive ? "active" : ""} ${tab.disabled ? "disabled" : ""} active-scale-effect`}
               onClick={() => !tab.disabled && handleSelect(tab.id)}
               disabled={tab.disabled}

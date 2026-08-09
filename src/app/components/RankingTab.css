@@ -34,46 +34,9 @@
 
 .ranking-hero p { margin: 12px 0 0; }
 
-/* メインカテゴリタブ */
-.ranking-main-tabs {
-  display: flex;
-  background: rgba(15, 23, 42, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 4px;
-  padding: 2px;
-  margin-bottom: 8px;
-  overflow-x: auto;
-  overflow-y: hidden;
-  overscroll-behavior-x: contain;
-  touch-action: pan-x;
-  scrollbar-width: none;
-}
-
-.ranking-main-tabs::-webkit-scrollbar { display: none; }
-
-.ranking-main-tabs .tab-btn {
-  flex: 1 0 76px;
-  text-align: center;
-  padding: 8px 4px;
-  background: transparent;
-  border: none;
-  border-radius: 3px;
-  color: var(--text-secondary);
-  font-family: var(--font-outfit);
-  cursor: pointer;
-  transition: all 0.2s ease;
-  white-space: nowrap;
-}
-
-.ranking-main-tabs .tab-btn:nth-child(2) { min-width: 92px; }
-
-.ranking-main-tabs .tab-btn.active {
-  background: rgba(255, 255, 255, 0.08);
-  color: var(--text-primary);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5);
-  text-shadow: 0 0 4px rgba(255, 255, 255, 0.5);
-}
+.ranking-category-nav { margin-bottom: 8px; }
+.ranking-category-nav .sub-tab-item { flex: 0 0 80px; min-width: 80px; padding-inline: 8px; }
+.ranking-category-nav .sub-tab-item:nth-child(2) { flex-basis: 104px; min-width: 104px; }
 
 /* サブトグル（デイリー / シーズン） */
 .ranking-sub-tabs {

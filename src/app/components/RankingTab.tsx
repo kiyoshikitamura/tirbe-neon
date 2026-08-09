@@ -6,12 +6,21 @@ import { supabase } from "../../utils/supabase";
 import HubPage from "./ui/HubPage";
 import HeroPanel from "./ui/HeroPanel";
 import Badge from "./ui/Badge";
+import SubTabNav from "./ui/SubTabNav";
 import { useScreenReadiness } from "../hooks/useScreenReadiness";
 import { SCREEN_ASSET_MANIFESTS } from "../lib/screenManifests";
 import "./RankingTab.css";
 
 type TabType = "power" | "guild_power" | "pvp" | "gvg" | "raid";
 type SubTabType = "daily" | "season";
+
+const RANKING_TABS = [
+  { id: "power", label: "総合力" },
+  { id: "guild_power", label: "ギルド総合力" },
+  { id: "pvp", label: "PvP" },
+  { id: "gvg", label: "GvG" },
+  { id: "raid", label: "レイド" },
+] as const;
 
 const JST_OFFSET_MS = 9 * 60 * 60 * 1000;
 
@@ -45,6 +54,9 @@ export default function RankingTab() {
   const {
     session,
     currentUser,
+    userGuild,
+    userGuildMember,
+    totalPower,
     powerRankings,
     guildPowerRankings,
     pvpRankings,
@@ -58,7 +70,9 @@ export default function RankingTab() {
     setRankingActiveTab
   } = useGame();
 
-  const [activeTab, setActiveTab] = useState<TabType>("power");
+  const activeTab: TabType = RANKING_TABS.some((tab) => tab.id === rankingActiveTab)
+    ? rankingActiveTab as TabType
+    : "power";
   const [activeSubTab, setActiveSubTab] = useState<SubTabType>("season");
   const [gvgSeasonPersonalRanks, setGvgSeasonPersonalRanks] = useState<any[]>([]);
   const [gvgSeasonLoading, setGvgSeasonLoading] = useState<boolean>(false);
@@ -67,13 +81,6 @@ export default function RankingTab() {
     assets: SCREEN_ASSET_MANIFESTS.ranking,
     dataReady: !(activeTab === "gvg" && activeSubTab === "season" && gvgSeasonLoading),
   });
-
-  // GameContextのタブ状態を同期
-  React.useEffect(() => {
-    if (rankingActiveTab) {
-      setActiveTab(rankingActiveTab as TabType);
-    }
-  }, [rankingActiveTab]);
 
   React.useEffect(() => {
     if (activeTab === "gvg" && activeSubTab === "season") {
@@ -271,9 +278,9 @@ export default function RankingTab() {
   // 6. 自分の順位とスコアの動的計算 (Sticky HUD用)
   // -----------------------------------------
   const myRankInfo = useMemo(() => {
-    if (!session?.user?.id) return { rank: "--", score: "--" };
+    if (!session?.user?.id) return { rank: "集計待ち", score: "未集計" };
     const myId = session.user.id;
-    const myGuildId = currentUser?.guild_members?.[0]?.guild_id;
+    const myGuildId = userGuildMember?.guild_id || userGuild?.id || currentUser?.guild_members?.[0]?.guild_id;
 
     if (activeTab === "power") {
       const idx = sortedPowerRankings.findIndex((r: any) => r.user_id === myId);
@@ -283,8 +290,9 @@ export default function RankingTab() {
           score: `${sortedPowerRankings[idx].current_power.toLocaleString()}`
         };
       }
+      return { rank: "圏外", score: Number(totalPower || 0).toLocaleString() };
     } else if (activeTab === "guild_power") {
-      if (!myGuildId) return { rank: "無所属", score: "--" };
+      if (!myGuildId) return { rank: "無所属", score: "対象外" };
       const idx = sortedGuildPowerRankings.findIndex((g: any) => g.guild_id === myGuildId);
       if (idx !== -1) {
         const val = activeSubTab === "daily" ? sortedGuildPowerRankings[idx].daily_power : sortedGuildPowerRankings[idx].current_power;
@@ -304,7 +312,7 @@ export default function RankingTab() {
       }
     } else if (activeTab === "gvg") {
       if (activeSubTab === "daily") {
-        if (!myGuildId) return { rank: "無所属", score: "--" };
+        if (!myGuildId) return { rank: "無所属", score: "対象外" };
         let maxPt = 0;
         let baseName = "";
         (gvgRankingsData as any[]).forEach((baseGroup: any) => {
@@ -315,8 +323,8 @@ export default function RankingTab() {
           }
         });
         return {
-          rank: baseName ? `${baseName}` : "--",
-          score: maxPt > 0 ? `${maxPt.toLocaleString()} P` : "--"
+          rank: baseName ? `${baseName}` : "圏外",
+          score: maxPt > 0 ? `${maxPt.toLocaleString()} P` : "未集計"
         };
       } else {
         const idx = gvgSeasonPersonalRanks.findIndex((item: any) => item.user_id === myId);
@@ -338,12 +346,10 @@ export default function RankingTab() {
       }
     }
 
-    return { rank: "圏外", score: "--" };
-  }, [activeTab, activeSubTab, sortedPowerRankings, sortedGuildPowerRankings, sortedPvpRankings, gvgRankingsData, raidRankingsData, session, currentUser]);
+    return { rank: "圏外", score: "未集計" };
+  }, [activeTab, activeSubTab, sortedPowerRankings, sortedGuildPowerRankings, sortedPvpRankings, gvgRankingsData, raidRankingsData, session, currentUser, userGuild, userGuildMember, totalPower]);
 
   const handleTabChange = (tab: TabType) => {
-    playCyberSe("click");
-    setActiveTab(tab);
     setRankingActiveTab(tab);
   };
 
@@ -390,39 +396,12 @@ export default function RankingTab() {
         <p>選択中の部門における、あなたの順位とスコアです。</p>
       </HeroPanel>
 
-      {/* メインカテゴリタブ */}
-      <div className="tab-menu ranking-main-tabs">
-        <button
-          className={`tab-btn font-size-8 ${activeTab === "power" ? "active" : ""}`}
-          onClick={() => handleTabChange("power")}
-        >
-          総合力
-        </button>
-        <button
-          className={`tab-btn font-size-8 ${activeTab === "guild_power" ? "active" : ""}`}
-          onClick={() => handleTabChange("guild_power")}
-        >
-          ギルド総合力
-        </button>
-        <button
-          className={`tab-btn font-size-8 ${activeTab === "pvp" ? "active" : ""}`}
-          onClick={() => handleTabChange("pvp")}
-        >
-          PvP
-        </button>
-        <button
-          className={`tab-btn font-size-8 ${activeTab === "gvg" ? "active" : ""}`}
-          onClick={() => handleTabChange("gvg")}
-        >
-          GvG
-        </button>
-        <button
-          className={`tab-btn font-size-8 ${activeTab === "raid" ? "active" : ""}`}
-          onClick={() => handleTabChange("raid")}
-        >
-          レイド
-        </button>
-      </div>
+      <SubTabNav
+        className="ranking-category-nav"
+        tabs={[...RANKING_TABS]}
+        activeTabId={activeTab}
+        onSelect={(tabId) => handleTabChange(tabId as TabType)}
+      />
 
       {/* サブトグル（デイリー / シーズン） */}
       <div className="ranking-sub-tabs flex justify-center py-2">

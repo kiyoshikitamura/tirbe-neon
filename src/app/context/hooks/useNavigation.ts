@@ -14,7 +14,7 @@ export function useNavigation(playCyberSe: (type: string) => void, handleFirstUs
   const [showLegalPage, setShowLegalPage] = useState<string | null>(null);
   const [showTitleView, setShowTitleView] = useState<boolean>(true);
   const [inboxPanelTab, setInboxPanelTab] = useState<"presents" | "news">("presents");
-  const [rankingActiveTab, setRankingActiveTab] = useState<string>("overall");
+  const [rankingActiveTab, setRankingActiveTab] = useState<string>("power");
   const [confirmDialogConfig, setConfirmDialogConfig] = useState<ConfirmDialogConfig | null>(null);
   const [globalInteractionBlocking, setGlobalInteractionBlocking] = useState<boolean>(false);
 
