@@ -16,6 +16,7 @@
     "verify:mock-gvg-cancellation": "node --experimental-strip-types scripts/verify_mock_gvg_cancellation.mjs",
     "verify:mock-secure-decks": "node --experimental-strip-types scripts/verify_mock_secure_decks.mjs",
     "verify:mock-secure-patrol": "node --experimental-strip-types scripts/verify_mock_secure_patrol.mjs",
+    "verify:supabase-target": "node scripts/verify_supabase_target.mjs",
     "verify:owner-rls": "node scripts/verify_owner_rls.mjs"
   },
   "dependencies": {

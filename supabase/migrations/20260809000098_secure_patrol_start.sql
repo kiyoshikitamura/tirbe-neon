@@ -111,6 +111,14 @@ revoke all on function public.start_patrol(text, text) from public;
 grant execute on function public.start_patrol(text, text) to authenticated;
 
 -- The legacy signature trusted duration, cost and encounter chance from the browser.
-revoke all on function public.start_patrol_v2(uuid, text, text, integer, integer, numeric) from public;
-revoke all on function public.start_patrol_v2(uuid, text, text, integer, integer, numeric) from authenticated;
-grant execute on function public.start_patrol_v2(uuid, text, text, integer, integer, numeric) to service_role;
+-- Some environments were provisioned without this compatibility RPC, so only
+-- change its privileges when the signature is actually present.
+do $$
+begin
+  if to_regprocedure('public.start_patrol_v2(uuid,text,text,integer,integer,numeric)') is not null then
+    execute 'revoke all on function public.start_patrol_v2(uuid, text, text, integer, integer, numeric) from public';
+    execute 'revoke all on function public.start_patrol_v2(uuid, text, text, integer, integer, numeric) from authenticated';
+    execute 'grant execute on function public.start_patrol_v2(uuid, text, text, integer, integer, numeric) to service_role';
+  end if;
+end;
+$$;

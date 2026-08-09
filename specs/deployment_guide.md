@@ -2,7 +2,13 @@
 
 本ドキュメントは、本作『TRIBE: NEON REIGN』を開発環境（Local/Staging）および本番環境（Production）で分離し、**Supabase** と **Vercel** へ安全かつ正確に構築・デプロイするための設定手順書です。
 
-> 現在は既存開発環境からの移行と不足機能の実装段階であり、本番リリースは行わない。開発用SupabaseとVercel Previewだけを使用し、本番環境の作成・公開・データ移行は別途承認されたリリース計画で実施する。
+## Supabase本番反映前の必須確認
+
+本番DB操作の直前に`npm run verify:supabase-target`を実行し、`.env.production`のプロジェクトとCLIのリンク先が一致することを確認する。不一致またはリンク情報不在の場合、DB操作を続行しない。
+
+本番DBは既存SQLを手動適用して構築され、マイグレーション履歴の基準点が未確定である。履歴を整理するまでは`supabase db push`で全差分を適用せず、レビュー済みSQLだけを`supabase db query --linked --file <file>`で実行する。
+
+> 現在は不足機能の実装・実機検証段階であり、Vercel Production URLと本番Supabaseを検証環境として使用している。一般ユーザー向けの正式リリースと本番データ移行は、別途承認されたリリース計画で実施する。
 
 ---
 
@@ -19,7 +25,7 @@
 
 ## 2. Supabase の設定手順 (Development & Production)
 
-開発用Supabaseを対象にDBスキーマを適用します。本番用プロジェクトはリリース計画が承認されるまで作成・適用しません。
+開発用Supabaseへの通常適用と、本番Supabaseへの実機検証用適用を明確に分離します。本番への変更は対象SQLと接続先を確認したうえで個別に適用します。
 
 ### Step 1: プロジェクトの作成
 1. [Supabase Dashboard](https://supabase.com/dashboard) にログインし、既存の開発用プロジェクトを確認します。
@@ -34,7 +40,7 @@
 3. 適用後にテーブル、RLSポリシー、RPC、初期マスタデータを確認する。
 4. 開発環境で主要導線と認可テストを実施し、migration historyと結果を記録する。
 
-> 注意: 現行スキーマにはRLSおよびRPCの是正課題があります。開発環境で機能実装と並行して修正し、本番環境への適用・公開は行わないでください。
+> 注意: 現行スキーマにはRLSおよびRPCの継続監査項目があります。本番へ適用するSQLは、対象を限定して事前検証と適用後確認を行ってください。
 
 ### Step 3: Auth (認証) の Redirect URL 設定
 Supabase Dashboard -> **Authentication** -> **URL Configuration** にて設定します。

@@ -2227,6 +2227,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
   const fetchPlayerDetail = async (userId: string) => {
     // タップへの反応を通信完了に依存させない。公開情報を取得後に同じモーダルを更新する。
+    setActiveGuildDetail(null);
     setActivePlayerDetail({
       id: userId,
       username: "プレイヤー情報を取得中",
@@ -2335,6 +2336,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
   const fetchGuildDetail = async (guildId: string) => {
     // 追加情報の取得に失敗しても、タップ直後に詳細モーダル自体は表示する。
+    setActivePlayerDetail(null);
     setActiveGuildDetail({
       id: guildId,
       name: "ギルド情報を取得中",
