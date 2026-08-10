@@ -271,22 +271,27 @@ export default function PvpTab() {
                   </div>
 
                   <div className="mb-4">
-                    <label className="text-xs text-gray-400 block mb-1">防衛メンバー選択 (最大5名):</label>
-                    <div className="grid grid-cols-4 gap-2">
+                    <label className="text-xs text-gray-400 block mb-1">防衛メンバー選択　{selectedDefense.length}/5名</label>
+                    <div className="pvp-defense-grid">
                       {userCharactersDbList.map((char: any) => {
                         const isSelected = selectedDefense.includes(char.id);
                         return (
-                          <div 
+                          <button
+                            type="button"
                             key={char.id} 
                             onClick={() => handleToggleDefenseMember(char.id)}
-                            className={`p-2 border rounded cursor-pointer text-center transition-colors
-                              ${isSelected ? 'bg-neon-cyan/20 border-neon-cyan' : 'bg-gray-800 border-gray-700'}`}
+                            className={`pvp-defense-member ${isSelected ? "selected" : ""}`}
+                            aria-pressed={isSelected}
                           >
-                            <span className="text-xs block text-white truncate">{char.name || "構成員"}</span>
-                            <span className="text-[10px] text-gray-400">Lv.{char.level}</span>
-                          </div>
+                            <span className="pvp-defense-check">{isSelected ? "✓" : "+"}</span>
+                            <span className="pvp-defense-name">{char.name || "構成員"}</span>
+                            <span className="pvp-defense-level">Lv.{char.level}</span>
+                          </button>
                         );
                       })}
+                      {userCharactersDbList.length === 0 && (
+                        <div className="pvp-defense-empty">防衛に登録できる構成員がいません。</div>
+                      )}
                     </div>
                   </div>
 

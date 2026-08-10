@@ -332,7 +332,7 @@ export default function GvgTab() {
             </div>
 
             {/* 本日の戦況HUD */}
-            <div className="hud-panel p-3 flex-col-gap-2">
+            <div className="hud-panel p-3 flex-col-gap-2" hidden>
               <div className="flex-row-space-between align-center">
                 <span className="font-size-9 font-weight-bold text-white">
                   {isFinalDay ? "【頂上決戦】決戦日・水曜日" : `抗争 シーズン経過: ${gvgSeasonDay}日目`}

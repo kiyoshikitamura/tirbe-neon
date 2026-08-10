@@ -389,6 +389,12 @@ export default function RankingTab() {
   const latestUpdate = updateTimestamps.length > 0
     ? new Date(Math.max(...updateTimestamps))
     : null;
+  const activeCategoryLabel = RANKING_TABS.find((tab) => tab.id === activeTab)?.label || "総合力";
+  const scoreLabel = activeTab === "power" ? "総合力"
+    : activeTab === "guild_power" ? "ギルド総合力"
+      : activeTab === "pvp" ? (activeSubTab === "daily" ? "勝利数" : "PvPポイント")
+        : activeTab === "gvg" ? "シーズンポイント"
+          : "累計ダメージ";
 
   return (
     <HubPage
@@ -399,15 +405,6 @@ export default function RankingTab() {
       status={readiness.status}
       onRetry={readiness.retry}
     >
-      <HeroPanel className="ranking-hero">
-        <div className="ranking-hero-copy">
-          <Badge tone="gold">MY STATUS</Badge>
-          <strong>{myRankInfo.rank}</strong>
-          <span>{myRankInfo.score}</span>
-        </div>
-        <p>選択中の部門における、あなたの順位とスコアです。</p>
-      </HeroPanel>
-
       <SubTabNav
         className="ranking-category-nav"
         tabs={[...RANKING_TABS]}
@@ -435,6 +432,16 @@ export default function RankingTab() {
         </div>
       </div>
 
+      <HeroPanel className="ranking-hero">
+        <div className="ranking-hero-category">{activeCategoryLabel}</div>
+        <div className="ranking-hero-copy">
+          <Badge tone="gold">あなたの現在地</Badge>
+          <strong>{myRankInfo.rank}</strong>
+          <span>{scoreLabel}　<b>{myRankInfo.score}</b></span>
+        </div>
+        <p>上位者との差と、次回集計までの残り時間を確認できます。</p>
+      </HeroPanel>
+
       <PeriodStatus
         label={activeSubTab === "daily" ? "デイリー集計" : activeTab === "pvp" || activeTab === "raid" ? "週間集計" : "シーズン対象期間"}
         range={`${periodFormatter.format(rankingPeriod.start)} 〜 ${periodFormatter.format(rankingPeriod.end)}`}
@@ -445,6 +452,13 @@ export default function RankingTab() {
       />
 
       {/* ランキングリスト表示 */}
+      <div className="ranking-section-heading">
+        <div>
+          <span>LEADERBOARD</span>
+          <strong>{activeCategoryLabel}ランキング</strong>
+        </div>
+        <small>{activeSubTab === "daily" ? "デイリー" : activeTab === "pvp" || activeTab === "raid" ? "週間" : "シーズン"}</small>
+      </div>
       <div className="ranking-content-area">
         {/* -------------------- 1. 総合力 -------------------- */}
         {activeTab === "power" && (

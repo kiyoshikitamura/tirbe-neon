@@ -64,7 +64,7 @@ export default function GvgMatchStatusPanel({ guildId, onStartAttack }: { guildI
   if (!guildId) return null;
   if (!match) {
     return (
-      <section className="hud-panel p-3 mb-3 flex-col-gap-1">
+      <section className="hud-panel gvg-match-card p-3 flex-col-gap-1">
         <span className="font-size-9 font-weight-bold text-color-cyan">公式GvGマッチ</span>
         <span className="font-size-8 text-secondary">現在参加できる公式マッチはありません。マッチングの開始をお待ちください。</span>
       </section>
@@ -80,16 +80,17 @@ export default function GvgMatchStatusPanel({ guildId, onStartAttack }: { guildI
   const enemyLabel = match.guild_b_id ? "対戦ギルド" : (match.npc_guild_name || "NPCギルド");
 
   return (
-    <section className="hud-panel p-3 mb-3 flex-col-gap-2">
-      <div className="flex-row-space-between align-center">
+    <section className="hud-panel gvg-match-card p-3 flex-col-gap-2">
+      <div className="gvg-match-header">
         <span className="font-size-9 font-weight-bold text-color-cyan">公式GvGマッチ</span>
-        <span className="font-size-7 text-secondary">{match.status === "ACTIVE" ? `残り ${formatRemaining(match.scheduled_end_at, now ?? new Date(match.scheduled_end_at).getTime())}` : match.status}</span>
+        <span className="gvg-match-remaining">{match.status === "ACTIVE" ? `残り ${formatRemaining(match.scheduled_end_at, now ?? new Date(match.scheduled_end_at).getTime())}` : match.status}</span>
       </div>
-      <div className="font-size-8 text-white">相手: {enemyLabel}</div>
-      <div className="font-size-7 text-secondary">自軍陥落 {myCollapses}/2　相手陥落 {enemyCollapses}/2</div>
-      <div className="font-size-7 text-secondary">あなたの貢献ダメージ {personalRawDamage.toLocaleString()}</div>
-      <div className="font-size-7 text-secondary">自軍HP {myHp.toLocaleString()} / {myMax.toLocaleString()}</div>
-      <div className="font-size-7 text-color-magenta">相手HP {enemyHp.toLocaleString()} / {enemyMax.toLocaleString()}</div>
+      <div className="gvg-match-opponent"><small>対戦相手</small><strong>{enemyLabel}</strong></div>
+      <div className="gvg-army-grid">
+        <div><small>自軍HP</small><strong>{myHp.toLocaleString()}<i> / {myMax.toLocaleString()}</i></strong><span>陥落 {myCollapses}/2</span></div>
+        <div className="enemy"><small>相手HP</small><strong>{enemyHp.toLocaleString()}<i> / {enemyMax.toLocaleString()}</i></strong><span>陥落 {enemyCollapses}/2</span></div>
+      </div>
+      <div className="gvg-contribution">あなたの貢献ダメージ <strong>{personalRawDamage.toLocaleString()}</strong></div>
       {match.status === "ACTIVE" && onStartAttack && (
         <button
           type="button"

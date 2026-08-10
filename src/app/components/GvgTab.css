@@ -13,6 +13,63 @@
 .gvg-hero p { margin: 14px 0 0; color: var(--text-secondary); font-size: 11px; }
 .gvg-content { display: flex; flex-direction: column; min-height: 0; }
 
+/* Utility display declarations used by legacy GvG panels otherwise override
+   the browser's [hidden] rule. Legacy controls must never enter the review UI. */
+.gvg-view [hidden] { display: none !important; }
+
+.gvg-content > .flex-col-gap-3 {
+  display: grid;
+  gap: 12px;
+}
+
+.gvg-base-card.my-home-base {
+  padding: 12px;
+}
+
+.gvg-match-card { margin: 0; }
+.gvg-match-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.gvg-match-remaining { color: #ffb1c2; font-size: 10px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.gvg-match-opponent { display: grid; gap: 2px; padding: 9px 10px; background: rgba(0, 0, 0, .28); border-left: 2px solid var(--neon-cyan); }
+.gvg-match-opponent small { color: var(--text-secondary); font-size: 8px; }
+.gvg-match-opponent strong { color: #fff; font-size: 13px; overflow-wrap: anywhere; }
+.gvg-army-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.gvg-army-grid > div { min-width: 0; display: grid; gap: 3px; padding: 9px; border: 1px solid rgba(0, 240, 255, .22); border-radius: 5px; background: rgba(0, 240, 255, .05); }
+.gvg-army-grid > div.enemy { border-color: rgba(255, 46, 133, .3); background: rgba(255, 46, 133, .05); }
+.gvg-army-grid small, .gvg-army-grid span { color: var(--text-secondary); font-size: 8px; }
+.gvg-army-grid strong { color: var(--neon-cyan); font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.gvg-army-grid .enemy strong { color: var(--neon-magenta); }
+.gvg-army-grid i { color: var(--text-secondary); font-size: 8px; font-style: normal; }
+.gvg-contribution { display: flex; justify-content: space-between; gap: 8px; color: var(--text-secondary); font-size: 9px; }
+.gvg-contribution strong { color: #fff; font-size: 11px; }
+
+.gvg-base-card.my-home-base > .flex-row-space-between {
+  gap: 12px;
+}
+
+@media (max-width: 520px) {
+  .gvg-hero-status {
+    align-items: flex-start;
+  }
+
+  .gvg-hero-status strong {
+    font-size: clamp(18px, 6vw, 22px);
+    white-space: nowrap;
+  }
+
+  .gvg-base-card.my-home-base > .flex-row-space-between {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .gvg-base-card.my-home-base .sub-btn {
+    width: 100%;
+  }
+
+  .gvg-base-card.my-home-base .bg-black-40 {
+    overflow-wrap: anywhere;
+  }
+}
+
 .gvg-console-layout {
   display: flex;
   justify-content: space-between;

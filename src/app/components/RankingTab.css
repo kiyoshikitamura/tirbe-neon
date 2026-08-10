@@ -5,10 +5,19 @@
 }
 
 .ranking-hero {
-  min-height: 118px;
+  min-height: 104px;
+  margin-bottom: 10px;
   background:
     radial-gradient(circle at 82% 20%, rgba(255, 204, 0, 0.18), transparent 34%),
     linear-gradient(135deg, rgba(12, 23, 40, 0.98), rgba(18, 13, 29, 0.98));
+}
+
+.ranking-hero-category {
+  color: var(--neon-cyan);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  margin-bottom: 8px;
 }
 
 .ranking-hero-copy {
@@ -32,9 +41,14 @@
   font-size: 11px;
 }
 
+.ranking-hero-copy span b {
+  color: var(--text-primary);
+  font-size: 13px;
+}
+
 .ranking-hero p { margin: 12px 0 0; }
 
-.ranking-category-nav { margin-bottom: 8px; }
+.ranking-category-nav { margin-bottom: 4px; }
 .ranking-category-nav .sub-tab-item { flex: 0 0 80px; min-width: 80px; padding-inline: 8px; }
 .ranking-category-nav .sub-tab-item:nth-child(2) { flex-basis: 104px; min-width: 104px; }
 
@@ -42,7 +56,27 @@
 .ranking-sub-tabs {
   display: flex;
   justify-content: center;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
+}
+
+.ranking-section-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 14px 0 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(0, 240, 255, .24);
+}
+
+.ranking-section-heading > div { display: grid; gap: 2px; }
+.ranking-section-heading span { color: var(--neon-cyan); font-size: 7px; font-weight: 800; letter-spacing: .12em; }
+.ranking-section-heading strong { color: var(--text-primary); font-size: 13px; }
+.ranking-section-heading small { color: var(--text-secondary); font-size: 9px; white-space: nowrap; }
+
+.ranking-content-area .list-container {
+  display: grid;
+  gap: 6px;
 }
 
 .toggle-switch-container {
