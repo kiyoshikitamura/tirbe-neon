@@ -1,8 +1,8 @@
-# 技術・コード調査レポート：TRIBE: NEON REIGN 開発に向けて
+# 技術・コード調査レポート：TRIBE NEON 開発に向けて
 
 > **履歴資料**：本書は調査時点の記録であり、現在の機能仕様を定義しない。GvGの拠点支配ポイント制などの記述は、`spec_battle_system.md`および`specification_reconciliation.md`により置き換えられている。
 
-既存プロジェクト `code:wirth-dawn` の技術スタック、データベース（Supabase）、および各種サービスロジックの調査結果と、新タイトル `TRIBE: NEON REIGN` の仕様に基づく設計ギャップ・質問事項をまとめました。
+既存プロジェクト `code:wirth-dawn` の技術スタック、データベース（Supabase）、および各種サービスロジックの調査結果と、新タイトル `TRIBE NEON` の仕様に基づく設計ギャップ・質問事項をまとめました。
 
 ---
 

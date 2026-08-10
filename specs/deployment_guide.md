@@ -1,6 +1,6 @@
-# 【TRIBE: NEON REIGN】本番環境 / 開発環境 構築 ＆ デプロイガイド (Supabase & Vercel Setup Guide)
+# 【TRIBE NEON】本番環境 / 開発環境 構築 ＆ デプロイガイド (Supabase & Vercel Setup Guide)
 
-本ドキュメントは、本作『TRIBE: NEON REIGN』を開発環境（Local/Staging）および本番環境（Production）で分離し、**Supabase** と **Vercel** へ安全かつ正確に構築・デプロイするための設定手順書です。
+本ドキュメントは、本作『TRIBE NEON』を開発環境（Local/Staging）および本番環境（Production）で分離し、**Supabase** と **Vercel** へ安全かつ正確に構築・デプロイするための設定手順書です。
 
 ## Supabase本番反映前の必須確認
 

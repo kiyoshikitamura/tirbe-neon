@@ -1,4 +1,4 @@
-# 【TRIBE: NEON REIGN】全60キャラクター一元管理マスタ仕様書（最新確定版）
+# 【TRIBE NEON】全60キャラクター一元管理マスタ仕様書（最新確定版）
 
 本ドキュメントは、実物アセット画像（`reiji_transparent_asset.png`, `rui_transparent_asset.png`）を絶対的基準とし、過去の古いテキスト残骸を完全に削除・一元化した公式キャラクター仕様書です。
 
