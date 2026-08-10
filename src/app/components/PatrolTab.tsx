@@ -221,8 +221,9 @@ export default function PatrolTab() {
             activePatrols.map((p: any) => {
               const pCourse = patrolCourses.find((c: any) => c.id === p.courseId);
               const pChar = CHARACTERS_MASTER.find((c: any) => c.id === p.characterId);
+              const battleNpc = patrolNpcs.find((npc: any) => npc.quest_id === p.courseId);
               const isComplete = p.secondsLeft <= 0;
-              const hasUnresolvedBattle = p.has_battle_event && !p.battle_resolved;
+              const hasUnresolvedBattle = p.has_battle_event && !p.battle_resolved && Boolean(battleNpc);
 
               return (
                 <OutlawCard key={p.id} className="active-patrol-card">
@@ -244,10 +245,7 @@ export default function PatrolTab() {
                           <div className="font-size-7 mb-2">エリア内でNPCとの戦闘が発生しました。</div>
                           <OutlawButton 
                             onClick={() => {
-                              if (pCourse && pCourse.battle_npc_id) {
-                                const npc = patrolNpcs.find((n: any) => n.id === pCourse.battle_npc_id);
-                                startCardBattle("PATROL", npc?.npc_name || "敵NPC", pCourse.battle_npc_id);
-                              }
+                              if (battleNpc) startCardBattle("PATROL", battleNpc.npc_name || "敵NPC", battleNpc.id);
                             }}
                             variant="danger"
                             disabled={dispatchLoading}
@@ -300,7 +298,7 @@ export default function PatrolTab() {
 
             <div className="reward-section flex-col-gap-2">
               <div className="flex-between">
-                <span className="text-color-gray">獲得基本キャッシュ:</span>
+                <span className="text-color-gray">プレゼントBOXへ送付:</span>
                 <span className="text-color-green font-bold">+{lastPatrolRewards.baseCash} CASH</span>
               </div>
               
@@ -311,10 +309,12 @@ export default function PatrolTab() {
                 </div>
               )}
 
-              <div className="flex-between font-size-7 pl-2">
-                <span className="text-color-cyan">└ Lvボーナス ({lastPatrolRewards.levelBonusPercent}%):</span>
-                <span className="text-color-cyan">+{lastPatrolRewards.levelBonusCash} CASH</span>
-              </div>
+              {lastPatrolRewards.levelBonusPercent > 0 && (
+                <div className="flex-between font-size-7 pl-2">
+                  <span className="text-color-cyan">└ Lvボーナス ({lastPatrolRewards.levelBonusPercent}%):</span>
+                  <span className="text-color-cyan">+{lastPatrolRewards.levelBonusCash} CASH</span>
+                </div>
+              )}
 
               <div className="flex-between border-top pt-2 mt-1">
                 <span className="text-color-gray">獲得経験値:</span>
@@ -357,7 +357,7 @@ export default function PatrolTab() {
 
             <div className="border-top pt-3 mt-3 flex-col-gap-2">
               <div className="flex-between font-size-9">
-                <span className="font-bold">合計獲得キャッシュ:</span>
+                <span className="font-bold">BOX送付キャッシュ:</span>
                 <span className="text-color-green font-bold text-shadow-neon">{lastPatrolRewards.totalCash} CASH</span>
               </div>
               <div className="flex-between font-size-9">

@@ -89,12 +89,14 @@ begin
       using v_user_id;
   end if;
 
-  select coalesce(max(npc.encounter_rate), 0.2)
+  select max(npc.encounter_rate)
   into v_battle_chance
   from public.patrol_npcs npc
   where npc.quest_id = p_course_id;
 
-  v_has_battle := coalesce(v_is_tutorial_dispatch, false) or random() <= coalesce(v_battle_chance, 0.2);
+  -- Do not create an encounter until an NPC master is linked to the quest.
+  v_has_battle := v_battle_chance is not null
+    and (coalesce(v_is_tutorial_dispatch, false) or random() <= v_battle_chance);
 
   insert into public.user_patrols (
     user_id, course_id, character_id, started_at, expires_at,

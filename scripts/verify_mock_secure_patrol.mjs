@@ -16,9 +16,9 @@ const client = {
   setStorage: (key, value) => storage.set(key, JSON.stringify(value)),
 };
 
-client.setStorage("users", [{ id: userId, vitality: 20, cash: 5000, neon_diamonds: 200 }]);
+client.setStorage("users", [{ id: userId, vitality: 20, cash: 5000, neon_diamonds: 200, level: 1, xp: 0 }]);
 client.setStorage("user_characters", [{ id: "owned-1", user_id: userId, character_id: "character-1" }]);
-client.setStorage("quests", [{ id: "quest-1", duration_seconds: 120, cost_vitality: 7 }]);
+client.setStorage("quests", [{ id: "quest-1", name: "Mock patrol", duration_seconds: 120, cost_vitality: 7, cash_reward: 250, exp_reward: 40, item_rewards: [] }]);
 
 const unowned = await executeMockRpc(client, "start_patrol", { p_course_id: "quest-1", p_character_id: "not-owned" });
 if (unowned.error?.code !== "23503") throw new Error("Unowned patrol character was not rejected");
@@ -51,6 +51,19 @@ const repeatedInstant = await executeMockRpc(client, "complete_patrol_instantly"
 });
 if (!repeatedInstant.error || client.getStorage("users")[0].cash !== 4000) {
   throw new Error("Repeated patrol instant completion was not rejected before charging");
+}
+
+const claimed = await executeMockRpc(client, "claim_patrol_rewards", { p_patrol_id: patrol.id });
+const claimedPatrol = client.getStorage("user_patrols")[0];
+const rewardPresent = client.getStorage("presents")[0];
+const rewardedUser = client.getStorage("users")[0];
+if (claimed.error || claimedPatrol.status !== "COMPLETED" || rewardPresent.quantity !== 250 || rewardedUser.xp !== 40) {
+  throw new Error("Patrol reward claim did not use authoritative quest rewards");
+}
+
+const repeatedClaim = await executeMockRpc(client, "claim_patrol_rewards", { p_patrol_id: patrol.id });
+if (!repeatedClaim.error || client.getStorage("presents").length !== 1 || client.getStorage("users")[0].xp !== 40) {
+  throw new Error("Repeated patrol reward claim was not rejected before granting rewards");
 }
 
 console.log("Mock secure patrol verification passed.");

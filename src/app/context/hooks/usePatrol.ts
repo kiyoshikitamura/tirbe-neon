@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/utils/supabase";
-import { DISPATCH_COURSES, CHARACTERS_MASTER, CHARACTER_GROWTH_PATTERNS } from "@/utils/game_constants";
+import { DISPATCH_COURSES } from "@/utils/game_constants";
 
 export function usePatrol(
   session: any,
@@ -163,138 +163,49 @@ export function usePatrol(
   const handleClaimRewards = async (patrolId: string) => {
     const targetPatrol = activePatrols.find(p => p.id === patrolId);
     if (!session || !targetPatrol) return;
-    const course = patrolCourses.find(c => c.id === targetPatrol.courseId);
-    if (!course) return;
 
     setDispatchLoading(true);
     playCyberSe("gacha");
     try {
-      const memberId = targetPatrol.characterId;
-      const uChar = getUserCharactersDbList().find((uc: any) => uc.id === memberId);
-      let charLevel = 1;
-      let isHomeMatch = false;
-      let baseLuk = 10;
-
-      if (uChar) {
-        charLevel = uChar.level || 1;
-        const charMaster = CHARACTERS_MASTER.find((c: any) => c.id === uChar.character_id);
-        if (charMaster) {
-          if (charMaster.homeTown === course.town_id) {
-            isHomeMatch = true;
-            const pattern = CHARACTER_GROWTH_PATTERNS.find((p: any) => p.pattern_id === charMaster.growthPatternId) || CHARACTER_GROWTH_PATTERNS[0];
-            baseLuk = pattern.base_luk;
-          }
-        }
-      }
-
-      const chanceBonus = isHomeMatch ? baseLuk * 0.001 : 0;
-      const cashBonus = isHomeMatch ? baseLuk * 10 : 0;
-
-      const lvlBonusMultiplier = 1.0 + (charLevel - 1) * 0.01;
-
-      const finalCash = Math.floor((course.reward_cash + cashBonus) * lvlBonusMultiplier);
-      const finalXp = Math.floor(course.reward_xp * lvlBonusMultiplier);
-
-      let rewardItemId = "";
-      let rewardQuantity = 0;
-
-      const rand = Math.random();
-      const finalChance = Number(course.reward_item_chance) + chanceBonus;
-      if (course.reward_item_id && rand <= finalChance) {
-        rewardItemId = course.reward_item_id;
-        rewardQuantity = 1;
-      }
-
-      let gearDropped = false;
-      const isHardPatrol = course.id.endsWith("_hard") || course.reward_cash >= 6000;
-      if (isHardPatrol && Math.random() <= 0.3) {
-        gearDropped = true;
-      }
-
-      let battleCashBonus = 0;
-      let battleXpBonus = 0;
-      let battleRewardItemId = "";
-      let battleRewardItemQty = 0;
-      const isBattleVictory = targetPatrol.battle_result === "VICTORY";
-
-      if (targetPatrol.has_battle_event && isBattleVictory && course.battle_npc_id) {
-        const npcMaster = patrolNpcs.find(n => n.id === course.battle_npc_id);
-        if (npcMaster) {
-          battleCashBonus = npcMaster.win_reward_cash_bonus || 0;
-          battleXpBonus = npcMaster.win_reward_xp_bonus || 0;
-          if (npcMaster.win_reward_item_id && npcMaster.win_reward_item_qty > 0) {
-            battleRewardItemId = npcMaster.win_reward_item_id;
-            battleRewardItemQty = npcMaster.win_reward_item_qty;
-          }
-        }
-      }
-
-      const totalCash = finalCash + battleCashBonus;
-      const totalXp = finalXp + battleXpBonus;
-
-      const res = await supabase.rpc("complete_patrol_v2", {
-        p_user_id: session.user.id,
-        p_patrol_id: patrolId,
-        p_cash: totalCash,
-        p_xp: totalXp,
-        p_course_name: course.name,
-        p_reward_item_id: rewardItemId || null,
-        p_reward_qty: rewardQuantity || 0,
-        p_gear_dropped: gearDropped,
-        p_is_victory: isBattleVictory,
-        p_battle_reward_item_id: battleRewardItemId || null,
-        p_battle_reward_qty: battleRewardItemQty || 0
-      });
+      const res = await supabase.rpc("claim_patrol_rewards", { p_patrol_id: patrolId });
 
       if (res.error) throw res.error;
       if (res.data?.error) throw new Error(res.data.error);
-
-      await supabase.rpc("evaluate_mission_progress", {
-        p_user_id: session.user.id,
-        p_trigger_type: "PATROL_CLEAR",
-        p_progress_increment: 1
-      });
-
-      const { data: xpRes } = await supabase.rpc("add_user_xp", {
-        p_user_id: session.user.id,
-        p_xp_amount: totalXp
-      });
-
-      let levelUpMessage = "";
-      if (xpRes && xpRes.leveled_up) {
-        levelUpMessage = `\n★プレイヤーレベルが Lv.${xpRes.level} にアップしました！`;
-      }
-
-      await addGuildXpAndContributionByAction("QUEST");
-      postNpcYajiMessage("GLOBAL", currentBaseId, "PATROL_CLEAR");
-      await syncBootstrapData(session.user.id);
-
+      const awardedItems = Array.isArray(res.data?.items) ? res.data.items : [];
       const rewardSummary = {
-        courseName: course.name,
-        baseCash: finalCash,
-        baseXp: finalXp,
-        levelBonusPercent: Math.round((lvlBonusMultiplier - 1) * 100),
-        levelBonusCash: Math.floor(finalCash - (course.reward_cash + cashBonus)),
-        matchBonusApplied: isHomeMatch,
-        matchBonusCash: cashBonus,
-        dropItemName: rewardItemId ? (rewardItemId === 'TRAINING_MANUAL' ? '育成読本' : rewardItemId === 'POLISHING_STONE' ? '研磨石' : rewardItemId === 'LAW_OF_STRIFE' ? '闘争の掟' : rewardItemId) : '',
-        dropItemQty: rewardQuantity,
-        gearDropped,
-        hasBattle: targetPatrol.has_battle_event,
-        battleVictory: isBattleVictory,
-        battleCashBonus,
-        battleXpBonus,
-        battleRewardItemName: battleRewardItemId ? (battleRewardItemId === 'TRAINING_MANUAL' ? '育成読本' : battleRewardItemId === 'POLISHING_STONE' ? '研磨石' : battleRewardItemId === 'LAW_OF_STRIFE' ? '闘争の掟' : battleRewardItemId) : '',
-        battleRewardItemQty,
-        totalCash,
-        totalXp,
-        levelUpMessage
+        courseName: res.data?.course_name || "クエスト",
+        baseCash: Number(res.data?.cash || 0),
+        baseXp: Number(res.data?.xp || 0),
+        levelBonusPercent: 0,
+        levelBonusCash: 0,
+        matchBonusApplied: false,
+        matchBonusCash: 0,
+        dropItemName: awardedItems[0]?.item_id || "",
+        dropItemQty: Number(awardedItems[0]?.quantity || 0),
+        gearDropped: false,
+        hasBattle: false,
+        battleVictory: false,
+        battleCashBonus: 0,
+        battleXpBonus: 0,
+        battleRewardItemName: "",
+        battleRewardItemQty: 0,
+        totalCash: Number(res.data?.cash || 0),
+        totalXp: Number(res.data?.xp || 0),
+        levelUpMessage: res.data?.leveled_up ? `\n★プレイヤーレベルが Lv.${res.data.level} にアップしました！` : ""
       };
 
       setLastPatrolRewards(rewardSummary);
       setShowPatrolRewardModal(true);
+      await syncBootstrapData(session.user.id);
+      try {
+        await addGuildXpAndContributionByAction("QUEST");
+        postNpcYajiMessage("GLOBAL", currentBaseId, "PATROL_CLEAR");
+      } catch (sideEffectError) {
+        console.warn("Patrol side effect failed after reward claim:", sideEffectError);
+      }
     } catch (err: any) {
       console.warn(err.message);
+      setErrorMessage(`報酬を獲得できませんでした。${err.message ? `（${err.message}）` : ""}`);
     } finally {
       setDispatchLoading(false);
     }

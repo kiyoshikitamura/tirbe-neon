@@ -1335,6 +1335,61 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     return { data: { status: "success", currency: p_use_currency }, error: null };
   }
 
+  if (funcName === "claim_patrol_rewards") {
+    const { p_patrol_id } = params;
+    const userId = typeof window === "undefined" ? null : localStorage.getItem("tribe_demo_uuid");
+    const patrols = client.getStorage("user_patrols") || [];
+    const patrol = patrols.find((entry: any) => entry.id === p_patrol_id && entry.user_id === userId);
+    if (!patrol) return { data: null, error: { message: "Patrol not found" } };
+    if (patrol.status === "COMPLETED") return { data: null, error: { message: "Patrol rewards already claimed" } };
+    if (patrol.status !== "CLAIMABLE" && new Date(patrol.expires_at).getTime() > Date.now()) {
+      return { data: null, error: { message: "Patrol is not complete" } };
+    }
+    const quests = client.getStorage("quests") || [];
+    const quest = quests.find((entry: any) => entry.id === (patrol.course_id || patrol.quest_id));
+    if (!quest) return { data: null, error: { message: "Quest master not found" } };
+
+    const users = client.getStorage("users") || [];
+    const user = users.find((entry: any) => entry.id === userId);
+    if (!user) return { data: null, error: { message: "User not found" } };
+    const rewardXp = Math.max(0, Number(quest.exp_reward || 0));
+    user.level = user.level || 1;
+    user.xp = Math.max(0, Number(user.xp || 0)) + rewardXp;
+
+    const presents = client.getStorage("presents") || [];
+    presents.push({
+      id: `patrol_reward_${p_patrol_id}`,
+      user_id: userId,
+      item_id: "CASH",
+      quantity: Math.max(0, Number(quest.cash_reward || 0)),
+      message: `クエスト報酬: ${quest.name}`,
+      status: "UNCLAIMED",
+      sent_at: new Date().toISOString(),
+      expire_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+    });
+    patrol.status = "COMPLETED";
+    patrol.has_battle_event = false;
+    patrol.battle_resolved = true;
+    patrol.rewards_accrued = { course_name: quest.name, cash: quest.cash_reward, xp: rewardXp, items: [] };
+    client.setStorage("users", users);
+    client.setStorage("presents", presents);
+    client.setStorage("user_patrols", patrols);
+    return {
+      data: {
+        status: "success",
+        patrol_id: p_patrol_id,
+        course_name: quest.name,
+        cash: Math.max(0, Number(quest.cash_reward || 0)),
+        xp: rewardXp,
+        items: [],
+        level: user.level,
+        current_xp: user.xp,
+        leveled_up: false,
+      },
+      error: null,
+    };
+  }
+
   if (funcName === "complete_patrol_instant") {
     const { p_user_id, p_patrol_id, p_diamond_cost } = params;
     const users = client.getStorage("users");

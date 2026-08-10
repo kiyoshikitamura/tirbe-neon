@@ -1140,7 +1140,16 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       }
 
       const { data: npcsData } = await supabase.from("patrol_npcs").select("*");
-      if (npcsData) setPatrolNpcs(npcsData);
+      if (npcsData) setPatrolNpcs(npcsData.map((npc: any) => ({
+        ...npc,
+        level: npc.npc_level ?? 1,
+        hp: npc.enemy_data?.hp ?? 1000,
+        atk: npc.enemy_data?.atk ?? 100,
+        def: npc.enemy_data?.def ?? 100,
+        spd: npc.enemy_data?.spd ?? 100,
+        luk: npc.enemy_data?.luk ?? 10,
+        skills: npc.enemy_data?.skills ?? [{ id: "npc_attack", name: "攻撃", ap_cost: 1, power: 50, effect_type: "ATTACK" }],
+      })));
 
       const { data: userPatrols } = await supabase.from("user_patrols").select("*").eq("user_id", userId);
       
