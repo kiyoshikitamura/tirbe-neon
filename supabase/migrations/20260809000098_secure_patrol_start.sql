@@ -72,10 +72,22 @@ begin
     raise exception 'insufficient vitality' using errcode = '23514';
   end if;
 
-  select progress.step_id = 'DISPATCH'
-  into v_is_tutorial_dispatch
-  from public.tutorial_progress progress
-  where progress.user_id = v_user_id;
+  -- Tutorial tables are intentionally absent from some production snapshots.
+  -- Dispatch must remain available there; only force the encounter when the
+  -- optional progress table and its required columns exist.
+  if to_regclass('public.tutorial_progress') is not null
+    and exists (
+      select 1 from information_schema.columns
+      where table_schema = 'public' and table_name = 'tutorial_progress' and column_name = 'user_id'
+    )
+    and exists (
+      select 1 from information_schema.columns
+      where table_schema = 'public' and table_name = 'tutorial_progress' and column_name = 'step_id'
+    ) then
+    execute 'select progress.step_id = ''DISPATCH'' from public.tutorial_progress progress where progress.user_id = $1'
+      into v_is_tutorial_dispatch
+      using v_user_id;
+  end if;
 
   select coalesce(max(npc.encounter_rate), 0.2)
   into v_battle_chance
