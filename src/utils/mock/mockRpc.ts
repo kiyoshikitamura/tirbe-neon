@@ -1312,14 +1312,27 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     const patrols = client.getStorage("user_patrols") || [];
     const patrol = patrols.find((entry: any) => entry.id === p_patrol_id && entry.user_id === p_user_id);
     if (!patrol) return { data: null, error: { message: "Patrol not found" } };
+    if (patrol.status !== "ONGOING") return { data: null, error: { message: "Patrol is not eligible for instant completion" } };
+    const users = client.getStorage("users") || [];
+    const user = users.find((entry: any) => entry.id === p_user_id);
+    if (!user) return { data: null, error: { message: "User not found" } };
     if (p_use_currency === "FREE_TUTORIAL") {
       const progress = (client.getStorage("tutorial_progress") || []).find((entry: any) => entry.user_id === p_user_id);
       if (progress?.step_id !== "FREE_INSTANT") return { data: null, error: { message: "Free completion is unavailable" } };
+    } else if (p_use_currency === "CASH") {
+      if ((user.cash || 0) < 1000) return { data: null, error: { message: "Cash insufficient" } };
+      user.cash -= 1000;
+    } else if (p_use_currency === "DIAMOND") {
+      if ((user.neon_diamonds || 0) < 50) return { data: null, error: { message: "Diamond insufficient" } };
+      user.neon_diamonds -= 50;
+    } else {
+      return { data: null, error: { message: "Invalid patrol instant completion currency" } };
     }
     patrol.status = "CLAIMABLE";
     patrol.expires_at = new Date().toISOString();
     client.setStorage("user_patrols", patrols);
-    return { data: { status: "success" }, error: null };
+    client.setStorage("users", users);
+    return { data: { status: "success", currency: p_use_currency }, error: null };
   }
 
   if (funcName === "complete_patrol_instant") {
