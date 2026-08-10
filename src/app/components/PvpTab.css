@@ -17,6 +17,19 @@
 .pvp-status-rate small { font-size: 12px; }
 .pvp-status-meta { display: flex; align-items: center; gap: 8px; margin-top: 12px; color: var(--ui-text-secondary); font-size: 9px; }
 
+.pvp-opponent-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.pvp-opponent-copy { min-width: 0; }
+.pvp-opponent-name { overflow: hidden; color: #fff; font-size: 13px; font-weight: 900; text-overflow: ellipsis; white-space: nowrap; }
+.pvp-opponent-guild { overflow: hidden; margin-top: 3px; color: var(--ui-text-secondary); font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+.pvp-opponent-meta { display: flex; align-items: center; gap: 7px; margin-top: 8px; color: var(--ui-text-secondary); font-size: 9px; }
+
 .loading-container {
   display: flex;
   justify-content: center;

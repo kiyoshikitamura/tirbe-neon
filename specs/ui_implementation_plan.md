@@ -1,8 +1,10 @@
 # UI段階実装計画
 
-最終更新: 2026-08-07
+最終更新: 2026-08-10
 
-進捗: UI-0A（Stage 0）完了。監査結果と移行台帳は[ui_stage0_audit.md](ui_stage0_audit.md)を参照する。
+進捗: UI-0A（Stage 0）完了。UI-0Bの共通基盤を適用し、UI-1（クエスト、PvP、GvG、レイド、ランキング）を実機確認用fixture込みで確認中。監査結果と移行台帳は[ui_stage0_audit.md](ui_stage0_audit.md)を参照する。
+
+UI-1の確認データはQAアカウントに限定し、PvP対戦相手、防衛デッキ、ギルド所属、公式GvGマッチ、開催中レイド、各ランキングのMY STATUSを同一fixtureで準備する。fixtureはリロードでは実行せず、初回migration適用時または設定画面の「テストデータを投入」を明示的に操作した時だけ再適用する。バトル開始後の画面はBATTLE Stageまで無効表示とする。
 
 ## 1. 目的
 

@@ -1,0 +1,55 @@
+.period-status {
+  display: grid;
+  gap: 7px;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-left: 2px solid var(--neon-cyan);
+  border-radius: 6px;
+  background: rgba(9, 14, 24, 0.86);
+}
+
+.period-status--magenta { border-left-color: var(--neon-magenta); }
+.period-status--danger { border-left-color: #ff4d5f; }
+
+.period-status-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.period-status-heading span,
+.period-status-meta {
+  color: var(--text-secondary);
+  font-size: 9px;
+}
+
+.period-status-heading span,
+.period-status-heading strong,
+.period-status-meta span { white-space: nowrap; }
+
+.period-status-heading strong {
+  overflow: hidden;
+  color: var(--text-primary);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+}
+
+.period-status-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px 12px;
+}
+
+.period-status-remaining {
+  color: var(--text-primary);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 390px) {
+  .period-status-heading { align-items: flex-start; flex-direction: column; gap: 3px; }
+  .period-status-heading strong { width: 100%; font-size: 9px; }
+}

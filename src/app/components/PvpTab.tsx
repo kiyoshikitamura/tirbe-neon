@@ -10,6 +10,7 @@ import Badge from "./ui/Badge";
 import HeroPanel from "./ui/HeroPanel";
 import HubPage from "./ui/HubPage";
 import ScreenState from "./ui/ScreenState";
+import PeriodStatus from "./ui/PeriodStatus";
 import { useScreenReadiness } from "../hooks/useScreenReadiness";
 import { SCREEN_ASSET_MANIFESTS } from "../lib/screenManifests";
 
@@ -24,6 +25,11 @@ const tacticNames: { [key: string]: string } = {
   HEALING: "回復優先",
   TACTICAL: "弱点集中"
 };
+
+function formatRemaining(milliseconds: number) {
+  const seconds = Math.max(0, Math.floor(milliseconds / 1000));
+  return `${String(Math.floor(seconds / 3600)).padStart(2, "0")}:${String(Math.floor((seconds % 3600) / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
+}
 
 export default function PvpTab() {
   const {
@@ -53,6 +59,7 @@ export default function PvpTab() {
 
   const [selectedDefense, setSelectedDefense] = React.useState<string[]>([]);
   const [selectedTactic, setSelectedTactic] = React.useState<string>("ATTACK_PRIORITY");
+  const [clock, setClock] = React.useState(() => new Date());
   const isInitialOpponentLoad = pvpSubView === "opponents" && opponentsLoading && pvpOpponents.length === 0;
   const readiness = useScreenReadiness({
     assets: SCREEN_ASSET_MANIFESTS.pvp,
@@ -72,6 +79,15 @@ export default function PvpTab() {
       setSelectedTactic(myPvpDefenseDeck.tactic || "ATTACK_PRIORITY");
     }
   }, [myPvpDefenseDeck]);
+
+  React.useEffect(() => {
+    const timer = window.setInterval(() => setClock(new Date()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const jstNow = new Date(clock.getTime() + 9 * 60 * 60 * 1000);
+  const dailyReset = new Date(Date.UTC(jstNow.getUTCFullYear(), jstNow.getUTCMonth(), jstNow.getUTCDate(), 4) - 9 * 60 * 60 * 1000);
+  if (dailyReset.getTime() <= clock.getTime()) dailyReset.setUTCDate(dailyReset.getUTCDate() + 1);
 
   const handleToggleDefenseMember = (charId: string) => {
     setSelectedDefense(prev => {
@@ -139,12 +155,17 @@ export default function PvpTab() {
           </div>
         </HeroPanel>
 
+        <PeriodStatus
+          label="デイリー挑戦"
+          range="毎日 04:00 更新"
+          remaining={formatRemaining(dailyReset.getTime() - clock.getTime())}
+          cadence="対戦相手は更新ボタンで再抽選"
+        />
+
         <SubTabNav
           tabs={[
             { id: "opponents", label: "対戦相手" },
-            { id: "daily", label: "勝利数" },
-            { id: "season", label: "シーズン" },
-            { id: "defense", label: "防衛設定" },
+            { id: "defense", label: "防衛・履歴" },
           ]}
           activeTabId={pvpSubView}
           onSelect={setPvpSubView}
@@ -171,14 +192,13 @@ export default function PvpTab() {
                       <ScreenState kind="empty" compact title="対戦相手が見つかりません" message="時間を置いて更新してください。" />
                     )}
                     {pvpOpponents.map((op: any) => (
-                      <OutlawCard key={op.opponent_user_id} className="mb-3 flex items-center justify-between">
-                        <div className="flex-1 pr-2">
-                          <div className="font-bold text-white mb-1">{op.opponent_username}</div>
-                          <div className="text-xs text-gray-400">
-                            <span>ギルド: {op.opponent_guild_name}</span><br />
-                            <span className="text-neon-cyan">{op.opponent_points} pt</span>
-                            <span className="mx-1">｜</span>
-                            <span className="text-neon-magenta">作戦: {tacticNames[op.tactic] || "攻撃優先"}</span>
+                      <OutlawCard key={op.opponent_user_id} className="pvp-opponent-card">
+                        <div className="pvp-opponent-copy">
+                          <div className="pvp-opponent-name">{op.opponent_username}</div>
+                          <div className="pvp-opponent-guild">{op.opponent_guild_name}</div>
+                          <div className="pvp-opponent-meta">
+                            <Badge tone="cyan">{op.opponent_points} pt</Badge>
+                            <span>作戦 {tacticNames[op.tactic] || "攻撃優先"}</span>
                           </div>
                         </div>
                         <OutlawButton 

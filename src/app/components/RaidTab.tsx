@@ -9,6 +9,7 @@ import HeroPanel from "./ui/HeroPanel";
 import HubPage from "./ui/HubPage";
 import OutlawButton from "./ui/OutlawButton";
 import OutlawCard from "./ui/OutlawCard";
+import PeriodStatus from "./ui/PeriodStatus";
 import { useScreenReadiness } from "../hooks/useScreenReadiness";
 import { SCREEN_ASSET_MANIFESTS } from "../lib/screenManifests";
 
@@ -115,6 +116,14 @@ export default function RaidTab() {
               )}
             </div>
         </HeroPanel>
+
+        <PeriodStatus
+          label="レイド開催期間"
+          range="出現から24時間"
+          remaining={formatTime(raidBossSecondsLeft)}
+          cadence="ボスHP・個人ダメージは随時更新"
+          tone="danger"
+        />
 
         {/* 自組織の累積与ダメージ状況 */}
         <OutlawCard>

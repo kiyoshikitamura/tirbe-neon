@@ -43,10 +43,10 @@ test("stage two hubs share a mobile-safe page frame", async ({ page }) => {
   await enterGame(page);
 
   const cases = [
-    { selector: ".circle-menu-btn.fight", title: "喧嘩（PvP）" },
-    { selector: ".circle-menu-btn.conquest", title: "クエスト" },
-    { selector: ".circle-menu-btn.war", title: "抗争（GvG）" },
-    { selector: ".mypage-power-panel", title: "ランキング" },
+    { selector: ".circle-menu-btn.fight", title: "喧嘩（PvP）", period: true },
+    { selector: ".circle-menu-btn.conquest", title: "クエスト", period: false },
+    { selector: ".circle-menu-btn.war", title: "抗争（GvG）", period: true },
+    { selector: ".mypage-power-panel", title: "ランキング", period: true },
   ];
 
   for (const target of cases) {
@@ -56,6 +56,7 @@ test("stage two hubs share a mobile-safe page frame", async ({ page }) => {
     await expect(hub.locator(".ui-hero-panel").first()).toBeVisible();
     const pageMetrics = await hub.evaluate((node) => ({ scrollWidth: node.scrollWidth, clientWidth: node.clientWidth }));
     expect(pageMetrics.scrollWidth).toBeLessThanOrEqual(pageMetrics.clientWidth + 1);
+    if (target.period) await expect(hub.locator(".period-status")).toBeVisible();
     if (target.title === "ランキング") {
       await expect(hub.locator(".ranking-category-nav")).toBeVisible();
       await expect(hub.locator(".ranking-category-nav .sub-tab-scroll-button.next")).toBeVisible();

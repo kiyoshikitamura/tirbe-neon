@@ -58,6 +58,7 @@ export function usePvp(
       }
     } catch (err: any) {
       console.warn("Failed to fetch PvP opponents:", err.message);
+      setErrorMessage(`対戦相手を取得できませんでした。${err.message ? `（${err.message}）` : ""}`);
     } finally {
       setOpponentsLoading(false);
     }

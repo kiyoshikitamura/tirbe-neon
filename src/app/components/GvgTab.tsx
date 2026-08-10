@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import { useGame } from "../context/GameContext";
+import { supabase } from "@/utils/supabase";
 import { BASE_MAP_MASTER } from "../../utils/game_constants";
 import { CHARACTERS_MASTER } from "../../utils/game_constants";
 import { getCurrentSession, getGvgPhase } from "../../utils/gvg_utils";
@@ -11,6 +12,7 @@ import HubPage from "./ui/HubPage";
 import HeroPanel from "./ui/HeroPanel";
 import Badge from "./ui/Badge";
 import OutlawButton from "./ui/OutlawButton";
+import PeriodStatus from "./ui/PeriodStatus";
 import { useScreenReadiness } from "../hooks/useScreenReadiness";
 import { SCREEN_ASSET_MANIFESTS } from "../lib/screenManifests";
 import "./GvgTab.css";
@@ -43,12 +45,30 @@ export default function GvgTab() {
   const [showDefenseModal, setShowDefenseModal] = useState<boolean>(false);
   const [tempSelectedChars, setTempSelectedChars] = useState<string[]>([]);
   const [now, setNow] = useState<Date>(new Date());
+  const [officialMatch, setOfficialMatch] = useState<any | null>(null);
   const readiness = useScreenReadiness({ assets: SCREEN_ASSET_MANIFESTS.gvg });
   
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    if (!userGuild?.id) {
+      setOfficialMatch(null);
+      return;
+    }
+    const loadOfficialMatch = async () => {
+      const { data } = await supabase.from("gvg_match_sessions").select("id,status,scheduled_start_at,scheduled_end_at")
+        .or(`guild_a_id.eq.${userGuild.id},guild_b_id.eq.${userGuild.id}`)
+        .in("status", ["MATCHING", "CONFIRMED", "ACTIVE"])
+        .order("scheduled_start_at", { ascending: true }).limit(1).maybeSingle();
+      setOfficialMatch(data || null);
+    };
+    void loadOfficialMatch();
+    const timer = window.setInterval(() => void loadOfficialMatch(), 5000);
+    return () => window.clearInterval(timer);
+  }, [userGuild?.id]);
   
   const currentSession = getCurrentSession(now);
   const phase = getGvgPhase(now);
@@ -160,6 +180,7 @@ export default function GvgTab() {
   };
 
   const isFinalDay = phase === "FINALS";
+  const isOfficialActive = officialMatch?.status === "ACTIVE";
 
   // 自ギルドのアライメントと一致する守備（ホーム）拠点を動的マッピング
   const myGuildAlignment = userGuild?.main_alignment || "";
@@ -198,22 +219,37 @@ export default function GvgTab() {
       <HeroPanel className={`gvg-hero gvg-phase-${phase.toLowerCase()}`}>
         <div className="gvg-hero-status">
           <div className="gvg-countdown-label">
-            <Badge tone={currentSession?.isActive ? "danger" : "magenta"}>
-              {currentSession?.isActive ? "BATTLE LIVE" : "PREPARATION"}
+            <Badge tone={isOfficialActive ? "danger" : "magenta"}>
+              {isOfficialActive ? "BATTLE LIVE" : "PREPARATION"}
             </Badge>
-            <span>{currentSession?.isActive ? "抗争終了まで" : "次の抗争開始まで"}</span>
+            <span>{isOfficialActive ? "公式マッチ終了まで" : "次の抗争開始まで"}</span>
           </div>
-          <strong>{currentSession?.isActive ? formatTimeLeft(currentSession.endsAt) : currentSession?.nextStartsAt ? formatTimeLeft(currentSession.nextStartsAt) : "--:--:--"}</strong>
+          <strong>{isOfficialActive
+            ? formatTimeLeft(new Date(officialMatch.scheduled_end_at))
+            : currentSession?.nextStartsAt
+              ? formatTimeLeft(currentSession.nextStartsAt)
+              : "--:--:--"}</strong>
         </div>
         <p>{userGuild ? `${userGuild.name}の抗争状況` : "抗争への参加には連合への所属が必要です。"}</p>
       </HeroPanel>
+
+      <PeriodStatus
+        label="月次GvGシーズン"
+        range={isFinalDay ? "月末特別戦期間" : "通常戦期間"}
+        remaining={isOfficialActive
+          ? formatTimeLeft(new Date(officialMatch.scheduled_end_at))
+          : currentSession?.nextStartsAt
+            ? formatTimeLeft(currentSession.nextStartsAt)
+            : "--:--:--"}
+        cadence="公式マッチの状態は下段に表示"
+        tone="magenta"
+      />
 
       <div className="gvg-content">
         {userGuild ? (
           <div className="flex-col-gap-3">
             <GvgMatchStatusPanel
               guildId={userGuild.id}
-              onStartAttack={(matchId) => startCardBattle("GVG", "公式GvG防衛チーム", `gvg_match:${matchId}`)}
             />
             {/* 旧拠点制の移行中表示。公式マッチ以外では侵攻できない。 */}
             <div className="gvg-console-layout p-3 flex-col-gap-2" hidden>

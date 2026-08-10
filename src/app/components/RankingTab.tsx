@@ -7,6 +7,7 @@ import HubPage from "./ui/HubPage";
 import HeroPanel from "./ui/HeroPanel";
 import Badge from "./ui/Badge";
 import SubTabNav from "./ui/SubTabNav";
+import PeriodStatus from "./ui/PeriodStatus";
 import { useScreenReadiness } from "../hooks/useScreenReadiness";
 import { SCREEN_ASSET_MANIFESTS } from "../lib/screenManifests";
 import "./RankingTab.css";
@@ -30,6 +31,13 @@ function getRankingPeriod(now: Date, subTab: SubTabType, category: TabType) {
   const month = shifted.getUTCMonth();
   const day = shifted.getUTCDate();
   if (subTab === "season") {
+    if (category === "pvp" || category === "raid") {
+      const dayOfWeek = shifted.getUTCDay();
+      const daysSinceMonday = (dayOfWeek + 6) % 7;
+      const start = new Date(Date.UTC(year, month, day - daysSinceMonday, 4) - JST_OFFSET_MS);
+      if (start.getTime() > now.getTime()) start.setUTCDate(start.getUTCDate() - 7);
+      return { start, end: new Date(start.getTime() + 7 * 24 * 60 * 60 * 1000) };
+    }
     return {
       start: new Date(Date.UTC(year, month, 1) - JST_OFFSET_MS),
       end: new Date(Date.UTC(year, month + 1, 1) - JST_OFFSET_MS),
@@ -104,6 +112,10 @@ export default function RankingTab() {
       };
       loadRanks();
     }
+  }, [activeTab, activeSubTab]);
+
+  React.useEffect(() => {
+    if (activeTab === "gvg" && activeSubTab === "daily") setActiveSubTab("season");
   }, [activeTab, activeSubTab]);
 
   React.useEffect(() => {
@@ -406,32 +418,31 @@ export default function RankingTab() {
       {/* サブトグル（デイリー / シーズン） */}
       <div className="ranking-sub-tabs flex justify-center py-2">
         <div className="toggle-switch-container">
-          <button
-            className={`toggle-switch-btn ${activeSubTab === "daily" ? "active" : ""}`}
-            onClick={() => handleSubTabChange("daily")}
-          >
-            デイリー
-          </button>
+          {activeTab !== "gvg" && (
+            <button
+              className={`toggle-switch-btn ${activeSubTab === "daily" ? "active" : ""}`}
+              onClick={() => handleSubTabChange("daily")}
+            >
+              デイリー
+            </button>
+          )}
           <button
             className={`toggle-switch-btn ${activeSubTab === "season" ? "active" : ""}`}
             onClick={() => handleSubTabChange("season")}
           >
-            シーズン
+            {activeTab === "pvp" || activeTab === "raid" ? "週間" : "シーズン"}
           </button>
         </div>
       </div>
 
-      <section className="ranking-period-panel" aria-live="polite">
-        <div>
-          <span className="ranking-period-label">{activeSubTab === "daily" ? "デイリー集計" : "シーズン対象期間"}</span>
-          <strong>{periodFormatter.format(rankingPeriod.start)} 〜 {periodFormatter.format(rankingPeriod.end)}</strong>
-        </div>
-        <div className="ranking-period-meta">
-          <span>残り {formatRemaining(rankingPeriod.end.getTime() - clock.getTime())}</span>
-          <span>15分ごとに更新</span>
-          <span>最終更新 {latestUpdate ? periodFormatter.format(latestUpdate) : "取得待ち"}</span>
-        </div>
-      </section>
+      <PeriodStatus
+        label={activeSubTab === "daily" ? "デイリー集計" : activeTab === "pvp" || activeTab === "raid" ? "週間集計" : "シーズン対象期間"}
+        range={`${periodFormatter.format(rankingPeriod.start)} 〜 ${periodFormatter.format(rankingPeriod.end)}`}
+        remaining={formatRemaining(rankingPeriod.end.getTime() - clock.getTime())}
+        cadence="15分ごとに更新"
+        updatedAt={latestUpdate ? periodFormatter.format(latestUpdate) : "取得待ち"}
+        tone={activeTab === "raid" ? "danger" : activeTab === "gvg" ? "magenta" : "cyan"}
+      />
 
       {/* ランキングリスト表示 */}
       <div className="ranking-content-area">

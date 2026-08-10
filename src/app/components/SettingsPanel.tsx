@@ -47,6 +47,8 @@ export default function SettingsPanel() {
       if (cosmeticError && cosmeticError.code !== "PGRST202") throw cosmeticError;
       const { error: characterCosmeticError } = await supabase.rpc("provision_qa_character_cosmetic_fixture");
       if (characterCosmeticError && characterCosmeticError.code !== "PGRST202") throw characterCosmeticError;
+      const { error: uiReviewError } = await supabase.rpc("provision_qa_ui1_fixture");
+      if (uiReviewError && uiReviewError.code !== "PGRST202") throw uiReviewError;
       await game.syncBootstrapData(game.session.user.id);
       game.playCyberSe("click");
     } catch (error) {
