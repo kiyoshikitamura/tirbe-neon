@@ -320,6 +320,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     setErrorMessage,
     (type: string) => playCyberSe(type as any),
     (userId: string) => syncBootstrapData(userId),
+    setUserLevel,
+    setUserXp,
     (actionType: string) => addGuildXpAndContributionByAction(actionType),
     (channel: string, baseId: string, trigger: string) => postNpcYajiMessage(channel as any, baseId, trigger as any)
   );

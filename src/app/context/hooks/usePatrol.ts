@@ -13,6 +13,8 @@ export function usePatrol(
   setErrorMessage: (msg: string | null) => void,
   playCyberSe: (type: string) => void,
   syncBootstrapData: (userId: string) => Promise<void>,
+  setUserLevel: React.Dispatch<React.SetStateAction<number>>,
+  setUserXp: React.Dispatch<React.SetStateAction<number>>,
   addGuildXpAndContributionByAction: (actionType: string) => Promise<void>,
   postNpcYajiMessage: (channel: string, baseId: string, trigger: string) => void
 ) {
@@ -83,8 +85,6 @@ export function usePatrol(
     try {
       const startedAt = new Date();
       const expiresAt = new Date(startedAt.getTime() + course.duration_seconds * 1000);
-
-      const hasBattle = Math.random() <= (Number(course.battle_trigger_chance) || 0.2);
 
       const res = await supabase.rpc("start_patrol", {
         p_course_id: course.id,
@@ -172,6 +172,16 @@ export function usePatrol(
       if (res.error) throw res.error;
       if (res.data?.error) throw new Error(res.data.error);
       const awardedItems = Array.isArray(res.data?.items) ? res.data.items : [];
+      const nextLevel = Number(res.data?.level);
+      const nextXp = Number(res.data?.current_xp);
+      const leveledUp = res.data?.leveled_up === true;
+
+      // The reward RPC has already committed these values. Reflect them in the
+      // HUD before opening the result modal instead of waiting for the much
+      // broader bootstrap refresh to finish.
+      if (Number.isFinite(nextLevel) && nextLevel >= 1) setUserLevel(nextLevel);
+      if (Number.isFinite(nextXp) && nextXp >= 0) setUserXp(nextXp);
+
       const rewardSummary = {
         courseName: res.data?.course_name || "クエスト",
         baseCash: Number(res.data?.cash || 0),
@@ -191,7 +201,7 @@ export function usePatrol(
         battleRewardItemQty: 0,
         totalCash: Number(res.data?.cash || 0),
         totalXp: Number(res.data?.xp || 0),
-        levelUpMessage: res.data?.leveled_up ? `\n★プレイヤーレベルが Lv.${res.data.level} にアップしました！` : ""
+        levelUpMessage: leveledUp ? `\n★プレイヤーレベルが Lv.${nextLevel} にアップしました！` : ""
       };
 
       setLastPatrolRewards(rewardSummary);
