@@ -33,11 +33,6 @@ export default function TitleView() {
         {/* 背景画像 (CSSで指定) */}
         
         <div className="title-view-content">
-          <div className="title-logo-area">
-            <h1 className="title-logo-text">TRIBE<br />NEON REIGN</h1>
-            <p className="title-subtitle">歌舞伎町 アウトローサバイバル</p>
-          </div>
-
           <div className="title-tap-area">
             {authLoading || setupLoading ? (
               <div className="title-loading">

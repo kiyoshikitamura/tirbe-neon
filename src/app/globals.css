@@ -49,7 +49,10 @@
 
 @supports (-webkit-touch-callout: none) {
   :root {
-    --app-safe-top: max(20px, env(safe-area-inset-top, 0px));
+    /* Some iOS in-app/browser transitions temporarily report a zero env()
+       inset even with viewport-fit=cover. Keep the fallback at a modern
+       notched-iPhone status-bar height; a real larger inset still wins. */
+    --app-safe-top: max(47px, env(safe-area-inset-top, 0px));
   }
 }
 
@@ -108,12 +111,49 @@ body {
 }
 
 .gacha-result-character {
-  width: 38px;
-  height: 46px;
+  width: 72px;
+  height: 84px;
   flex: 0 0 auto;
-  object-fit: contain;
-  object-position: bottom;
+  align-self: flex-start;
+  object-fit: cover;
+  object-position: 50% 18%;
+  border-radius: 8px;
+  border: 1px solid rgba(0, 240, 255, .28);
+  background: rgba(0, 0, 0, .45);
 }
+
+.tutorial-navigator {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding: 10px;
+  overflow: hidden;
+  border: 1px solid rgba(0, 240, 255, .3);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, .42);
+}
+
+.tutorial-navigator-portrait {
+  width: 112px;
+  height: 136px;
+  overflow: hidden;
+  border-radius: 8px;
+  background: #07110d;
+}
+
+.tutorial-navigator-portrait img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 18%;
+  transform: scale(1.08);
+}
+
+.tutorial-navigator-copy { min-width: 0; }
+.tutorial-navigator-name { margin-bottom: 6px; }
+.tutorial-navigator-message { font-size: 13px; line-height: 1.65; }
 
 @keyframes tutorial-target-pulse {
   0%, 100% { box-shadow: 0 0 8px rgba(0, 240, 255, .18); }

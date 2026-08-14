@@ -14,10 +14,11 @@
   width: 100%;
   height: 100%;
   max-width: 430px;
-  background-color: #0d0d12;
-  background-image: url('/bg/bg_base_neontower.png'); /* デフォルト背景 */
-  background-size: cover;
-  background-position: center;
+  background-color: #02030a;
+  background-image: url('/branding/title-key-visual.png');
+  background-size: 100% auto;
+  background-repeat: no-repeat;
+  background-position: center top;
   position: relative;
   display: flex;
   flex-direction: column;
@@ -28,7 +29,7 @@
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.8) 100%);
+  background: linear-gradient(180deg, rgba(0,0,0,0) 48%, rgba(2,3,10,.35) 67%, rgba(2,3,10,.96) 88%, #02030a 100%);
   z-index: 1;
 }
 
@@ -38,49 +39,29 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
+  justify-content: flex-end;
   align-items: center;
-  padding: 100px 20px 80px 20px;
-}
-
-.title-logo-area {
-  text-align: center;
-}
-
-.title-logo-text {
-  font-size: 42px;
-  font-weight: 900;
-  color: #fff;
-  line-height: 1.1;
-  text-shadow: 0 0 20px rgba(221, 51, 51, 0.8), 0 0 10px rgba(221, 51, 51, 0.5);
-  margin: 0 0 12px 0;
-  letter-spacing: 2px;
-}
-
-.title-subtitle {
-  font-size: 14px;
-  color: #aaa;
-  margin: 0;
-  letter-spacing: 4px;
+  padding: 20px 24px 22px;
 }
 
 .title-tap-area {
-  min-height: 60px;
+  width: 100%;
+  min-height: 72px;
   display: flex;
   justify-content: center;
   align-items: center;
 }
 
 .title-entry-actions {
-  width: min(100%, 300px);
+  width: min(100%, 320px);
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
 
 .title-entry-actions button {
-  min-height: 44px;
-  border-radius: 4px;
+  min-height: 50px;
+  border-radius: 8px;
   font-weight: 800;
   letter-spacing: 0.08em;
   cursor: pointer;
@@ -107,11 +88,21 @@
 }
 
 .title-tap-text {
-  font-size: 20px;
-  font-weight: bold;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 220px;
+  min-height: 50px;
+  padding: 10px 28px;
+  border: 1px solid rgba(255,255,255,.72);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, .55);
+  box-shadow: 0 0 22px rgba(0, 240, 255, .24), inset 0 0 16px rgba(255,255,255,.06);
+  font-size: 18px;
+  font-weight: 900;
   color: #fff;
   letter-spacing: 2px;
-  text-shadow: 0 0 10px rgba(255,255,255,0.5);
+  text-shadow: 0 0 10px rgba(255,255,255,.72);
 }
 
 .title-loading {
@@ -131,9 +122,9 @@
 }
 
 @keyframes tapBlink {
-  0% { opacity: 0.3; }
+  0% { opacity: 0.65; }
   50% { opacity: 1; }
-  100% { opacity: 0.3; }
+  100% { opacity: 0.65; }
 }
 
 .title-footer {
@@ -142,8 +133,8 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
-  padding: 16px 20px;
-  padding-bottom: 16px;
+  padding: 12px 20px 14px;
+  background: #02030a;
   font-size: 11px;
   color: #666;
 }
@@ -159,8 +150,11 @@
 }
 
 .title-legal-links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
   color: #c3c6ce;
-  font-size: 10px;
+  font-size: 11px;
   text-decoration: underline;
   text-underline-offset: 3px;
 }

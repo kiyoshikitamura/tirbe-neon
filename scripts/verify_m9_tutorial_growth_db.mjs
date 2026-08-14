@@ -21,9 +21,27 @@ try {
 
   const { error: initializeError } = await player.rpc("initialize_current_player", { p_username: username, p_invite_code: null });
   if (initializeError) throw initializeError;
-  for (const [expected, next] of [["WORLD_INTRO", "FREE_GACHA"], ["FREE_GACHA", "AUTO_FORMATION"]]) {
-    const { error } = await player.rpc("advance_tutorial_progress", { p_expected_step: expected, p_next_step: next });
-    if (error) throw error;
+  const { error: introAdvanceError } = await player.rpc("advance_tutorial_progress", {
+    p_expected_step: "WORLD_INTRO",
+    p_next_step: "FREE_GACHA",
+  });
+  if (introAdvanceError) throw introAdvanceError;
+
+  const { data: draw, error: drawError } = await player.rpc("execute_character_gacha", {
+    p_user_id: userId,
+    p_gacha_id: "CHAR_NORMAL",
+    p_pull_count: 10,
+    p_currency_type: "free",
+  });
+  if (drawError || draw?.status !== "success" || draw.results?.length !== 10) {
+    throw drawError || new Error(`Unexpected tutorial draw: ${JSON.stringify(draw)}`);
+  }
+  const { data: formationStep, error: formationAdvanceError } = await player.rpc("advance_tutorial_progress", {
+    p_expected_step: "FREE_GACHA",
+    p_next_step: "AUTO_FORMATION",
+  });
+  if (formationAdvanceError || formationStep !== "AUTO_FORMATION") {
+    throw formationAdvanceError || new Error(`Tutorial did not reach formation: ${formationStep}`);
   }
 
   const { data: characters, error: charactersError } = await player.from("user_characters").select("id,character_id,level").eq("user_id", userId);
@@ -67,6 +85,7 @@ try {
     projectRef: actualProjectRef,
     checks: [
       "formation required",
+      "free character gacha to AUTO_FORMATION",
       "CHAR_EXP_S floor-to-one grant",
       "preparation retry idempotency",
       "server first_growth milestone",

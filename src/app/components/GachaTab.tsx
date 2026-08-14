@@ -1,10 +1,12 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useGame } from "../context/GameContext";
 import { CHARACTERS_MASTER } from "../../utils/game_constants";
 import { SKILLS_MASTER_DATA } from "../../utils/skills_master_data";
 import { EQUIPMENTS_MASTER_DATA } from "../../utils/equipments_master_data";
+import TutorialNavigator from "./TutorialNavigator";
+import { useImmediateActionLock } from "@/hooks/useImmediateActionLock";
 import "./GachaTab.css";
 
 export default function GachaTab() {
@@ -14,26 +16,54 @@ export default function GachaTab() {
     dailyFreeGachaFlags,
     specialPityPoints,
     handleExchangePityReward,
-    cash,
-    diamonds,
     userItems,
-    activeBanners
+    activeBanners,
+    upgradeLoading,
+    onboardingState
   } = useGame();
+  const isTutorialScout = onboardingState?.tutorial_step === "FREE_GACHA";
 
   // 現在のカテゴリタブ ('CHARACTER' | 'SKILL' | 'EQUIPMENT')
   const [activeCategory, setActiveCategory] = useState<"CHARACTER" | "SKILL" | "EQUIPMENT">("CHARACTER");
   // 天井SSR任意選択モーダルの開閉状態
   const [showPityModal, setShowPityModal] = useState<boolean>(false);
   const [selectedPityRewardId, setSelectedPityRewardId] = useState<string>("");
+  const { isLocked: isGachaActionLocked, beginAction, endAction } = useImmediateActionLock();
+
+  const runScout = async (
+    gachaId: string,
+    count: number,
+    currency: "CASH" | "DIAMOND" | "FREE" | "TICKET"
+  ) => {
+    if (!beginAction()) return;
+    try {
+      await handleScout(gachaId, count, currency);
+    } finally {
+      endAction();
+    }
+  };
 
   const gachaTickets = userItems?.find((i: any) => i.item_id === "GACHA_TICKET")?.quantity || 0;
 
-  // 期間限定ガチャの有無判定
-  const limitCharGacha = gachaMasters?.find((g: any) => g.id === "CHAR_LIMIT");
-  const limitSkillGacha = gachaMasters?.find((g: any) => g.id === "LIMIT_SKILL");
-  const limitEquipGacha = gachaMasters?.find((g: any) => g.id === "LIMIT_EQUIP");
+  const categoryAvailability = {
+    CHARACTER: Boolean(gachaMasters?.some((g: any) => g.id === "CHAR_NORMAL")),
+    SKILL: Boolean(gachaMasters?.some((g: any) => g.id === "SKILL_NORMAL")),
+    EQUIPMENT: Boolean(gachaMasters?.some((g: any) => g.id === "EQUIP_NORMAL"))
+  };
+
+  // Character masters are not yet finalized for Open Beta. Keep the screen
+  // usable by selecting the first category backed by a real server-side pool.
+  useEffect(() => {
+    if (!gachaMasters?.length || categoryAvailability[activeCategory]) return;
+    if (categoryAvailability.SKILL) setActiveCategory("SKILL");
+    else if (categoryAvailability.EQUIPMENT) setActiveCategory("EQUIPMENT");
+  }, [activeCategory, categoryAvailability.EQUIPMENT, categoryAvailability.SKILL, categoryAvailability.CHARACTER, gachaMasters?.length]);
 
   const hasDailyFree = dailyFreeGachaFlags[activeCategory];
+  const gachaPrefix = activeCategory === "CHARACTER" ? "CHAR" : activeCategory === "EQUIPMENT" ? "EQUIP" : "SKILL";
+  const normalGachaId = `${gachaPrefix}_NORMAL`;
+  const normalGacha = gachaMasters?.find((g: any) => g.id === normalGachaId);
+  const formatCost = (value: unknown, pulls = 1) => (Number(value) * pulls).toLocaleString("ja-JP");
 
   // 天井選択肢リスト（SSRのみ）
   const ssrCharacters = CHARACTERS_MASTER.filter((c: any) => c.rarity === "SSR");
@@ -54,18 +84,20 @@ export default function GachaTab() {
   };
 
   return (
-    <div className="view-container relative gacha-view-root">
-      <h2 className="view-title">スカウト (ガチャ)</h2>
+    <fieldset className="view-container relative gacha-view-root gacha-action-fieldset" disabled={upgradeLoading || isGachaActionLocked} aria-busy={upgradeLoading || isGachaActionLocked}>
+      <h2 className="view-title">ガチャ</h2>
 
       {/* 🎰 カテゴリ切替タブ (キャラ / スキル / 装備) */}
-      <div className="gacha-category-tabs flex gap-2 mb-3">
+      {!isTutorialScout && <div className="gacha-category-tabs flex gap-2 mb-3">
         <button
           className={`gacha-tab-btn flex-1 py-2 font-weight-bold font-size-8 active-scale-effect relative ${
             activeCategory === "CHARACTER" ? "active-tab-char" : ""
           }`}
           onClick={() => setActiveCategory("CHARACTER")}
+          disabled={!categoryAvailability.CHARACTER}
+          title={!categoryAvailability.CHARACTER ? "キャラクターガチャは準備中です" : undefined}
         >
-          キャラクター
+          キャラクター{!categoryAvailability.CHARACTER && "（準備中）"}
           {dailyFreeGachaFlags.CHARACTER && <span className="free-badge-dot">FREE</span>}
         </button>
 
@@ -88,39 +120,30 @@ export default function GachaTab() {
           装備品
           {dailyFreeGachaFlags.EQUIPMENT && <span className="free-badge-dot">FREE</span>}
         </button>
-      </div>
+      </div>}
 
-      {/* 🎰 天井Ptプログレスバー ＆ 交換所ボタン */}
-      <div className="pity-status-card background-black-80 border-metal p-3 mb-3 flex items-center justify-between">
-        <div className="flex-1 mr-3">
-          <div className="flex justify-between items-center mb-1">
-            <span className="font-size-8 text-secondary">スペシャルガチャ天井Pt</span>
-            <span className="font-size-8 font-weight-bold text-color-cyan">
-              {specialPityPoints} / 200 Pt
-            </span>
-          </div>
-          <div className="pity-progress-track">
-            <div
-              className="pity-progress-bar"
-              style={{ width: `${Math.min(100, (specialPityPoints / 200) * 100)}%` }}
-            />
-          </div>
+      {!isTutorialScout && <div className="gacha-coming-soon mb-3" aria-disabled="true">
+        <strong>スペシャルガチャ</strong>
+        <span>準備中</span>
+      </div>}
+
+      {isTutorialScout && (
+        <div className="tutorial-step-panel" role="status">
+          <TutorialNavigator message="最初の仲間を迎えよう。光っている「無料10連を引く」を押してね。" />
+          <strong>STEP 1 / ノーマルガチャ</strong>
+          <span>この10連ではCASH・ダイヤ・チケットを消費しません。</span>
         </div>
-        <button
-          className={`pity-exchange-btn py-2 px-3 active-scale-effect font-size-8 font-weight-bold ${
-            specialPityPoints >= 200 ? "btn-pity-ready" : "btn-pity-disabled"
-          }`}
-          onClick={() => setShowPityModal(true)}
-        >
-          SSR任意選択
-        </button>
-      </div>
+      )}
 
       {/* 🎰 メインガチャリスト (縦並び: 限定 ➔ スペシャル ➔ ノーマル) */}
       <div className="scroll-container flex-1 flex-col-gap-3 pb-6">
 
         {/* 1. 期間限定/ピックアップガチャ (マスタ連動) */}
-        {activeBanners?.filter((b: any) => b.gacha_category === activeCategory).map((banner: any) => (
+        {!isTutorialScout && activeBanners?.filter((b: any) =>
+          b.gacha_category === activeCategory && gachaMasters?.some((g: any) => g.id === b.id)
+        ).map((banner: any) => {
+          const bannerGacha = gachaMasters?.find((g: any) => g.id === banner.id);
+          return (
           <div key={banner.id} className="upgrade-card gacha-limit-card border-warning">
             <div className="upgrade-card-title flex items-center justify-between gacha-title-row">
               <span className="text-color-warning">{banner.description || "【期間限定】特別ピックアップ"}</span>
@@ -138,73 +161,38 @@ export default function GachaTab() {
               <button
                 className="upgrade-btn flex-1 active-scale-effect font-size-8 py-2 gacha-warning-outline"
                 onClick={() => handleScout(banner.id, 1, "DIAMOND")}
+                disabled={!bannerGacha}
               >
-                1回 (ダイヤ 40)
+                {bannerGacha ? `1回 (ダイヤ ${formatCost(bannerGacha.cost_diamond)})` : "準備中"}
               </button>
               <button
                 className="upgrade-btn flex-1 active-scale-effect font-size-8 py-2 gacha-warning-outline"
                 onClick={() => handleScout(banner.id, 10, "DIAMOND")}
+                disabled={!bannerGacha}
               >
-                10回 (ダイヤ 400)
+                {bannerGacha ? `10回 (ダイヤ ${formatCost(bannerGacha.cost_diamond, 10)})` : "準備中"}
               </button>
             </div>
           </div>
-        ))}
+          );
+        })}
 
         {/* 2. スペシャルガチャ (常設・R以上確定・200Pt天井) */}
-        <div className="upgrade-card border-magenta gacha-card-special">
+        {!isTutorialScout && <div className="upgrade-card border-magenta gacha-card-special gacha-special-disabled" aria-disabled="true">
           <div className="upgrade-card-title flex items-center justify-between gacha-title-row">
-            <span className="text-color-magenta font-weight-bold">
-              {activeCategory === "CHARACTER" && "スペシャルスカウト"}
-              {activeCategory === "SKILL" && "スペシャルスキルガチャ"}
-              {activeCategory === "EQUIPMENT" && "スペシャル装備ガチャ"}
-            </span>
-            <span className="font-size-8 text-color-magenta font-weight-bold">
-              R以上確定 ｜ SSR 5%
-            </span>
+            <span className="text-color-magenta font-weight-bold">スペシャルガチャ</span>
+            <span className="font-size-8 text-secondary font-weight-bold">準備中</span>
           </div>
           <div className="font-size-8 text-gray-400 mt-1">
-            N出現なし。R 60% / SR 35% / SSR 5%。200Pt蓄積でSSRを任意選択可能！
+            Open Betaでは利用できません。
           </div>
-
-          {/* キャッシュ実行ボタン */}
-          <div className="flex gap-2 mt-3 gacha-btn-layout">
-            <button
-              className="upgrade-btn flex-1 active-scale-effect font-size-8 py-2 gacha-magenta-outline"
-              onClick={() => handleScout(`${activeCategory === "CHARACTER" ? "CHAR" : activeCategory}_SPECIAL`, 1, "CASH")}
-            >
-              1回 (金 3,000)
-            </button>
-            <button
-              className="upgrade-btn flex-1 active-scale-effect font-size-8 py-2 gacha-magenta-outline"
-              onClick={() => handleScout(`${activeCategory === "CHARACTER" ? "CHAR" : activeCategory}_SPECIAL`, 10, "CASH")}
-            >
-              10回 (金 30,000)
-            </button>
-          </div>
-
-          {/* ダイヤ実行ボタン */}
-          <div className="flex gap-2 mt-2 gacha-btn-layout">
-            <button
-              className="upgrade-btn flex-1 active-scale-effect font-size-8 py-2 border-magenta-subtle"
-              onClick={() => handleScout(`${activeCategory === "CHARACTER" ? "CHAR" : activeCategory}_SPECIAL`, 1, "DIAMOND")}
-            >
-              1回 (ダイヤ 300)
-            </button>
-            <button
-              className="upgrade-btn flex-1 active-scale-effect font-size-8 py-2 border-magenta-subtle"
-              onClick={() => handleScout(`${activeCategory === "CHARACTER" ? "CHAR" : activeCategory}_SPECIAL`, 10, "DIAMOND")}
-            >
-              10回 (ダイヤ 3,000)
-            </button>
-          </div>
-        </div>
+        </div>}
 
         {/* 3. ノーマルガチャ (毎日10連無料 / N 50%, R 40%, SR 10%) */}
-        <div className="upgrade-card border-cyan gacha-card-normal">
+        <div className={`upgrade-card border-cyan gacha-card-normal ${isTutorialScout ? "tutorial-primary-target" : ""}`}>
           <div className="upgrade-card-title flex items-center justify-between gacha-title-row">
             <span className="text-color-cyan font-weight-bold">
-              {activeCategory === "CHARACTER" && "ノーマルスカウト"}
+              {activeCategory === "CHARACTER" && "ノーマルガチャ"}
               {activeCategory === "SKILL" && "ノーマルスキルガチャ"}
               {activeCategory === "EQUIPMENT" && "ノーマル装備ガチャ"}
             </span>
@@ -213,7 +201,7 @@ export default function GachaTab() {
             </span>
           </div>
           <div className="font-size-8 text-gray-400 mt-1">
-            毎日1回10連が無料！基本構成員・スキル・装備品を獲得します。
+            毎日1回10連が無料！キャラクター・スキル・装備品を獲得します。
           </div>
 
           {/* 無料10連ボタン (未消化時のみ優先表示) */}
@@ -221,9 +209,10 @@ export default function GachaTab() {
             <div className="mt-3">
               <button
                 className="claim-reward-btn active-scale-effect width-100 py-3 font-weight-bold font-size-9 gacha-free-btn"
-                onClick={() => handleScout(`${activeCategory === "CHARACTER" ? "CHAR" : activeCategory}_NORMAL`, 10, "FREE")}
+                onClick={() => void runScout(normalGachaId, 10, "FREE")}
+                disabled={!normalGacha}
               >
-                毎日10連無料を引く
+                {isGachaActionLocked ? "ガチャ準備中..." : "無料10連を引く"}
               </button>
             </div>
           ) : (
@@ -233,54 +222,58 @@ export default function GachaTab() {
           )}
 
           {/* 有料実行ボタン (キャッシュ) */}
-          <div className="flex gap-2 mt-3 gacha-btn-layout">
+          {!isTutorialScout && <div className="flex gap-2 mt-3 gacha-btn-layout">
             <button
               className="upgrade-btn flex-1 active-scale-effect font-size-8 py-2"
-              onClick={() => handleScout(`${activeCategory === "CHARACTER" ? "CHAR" : activeCategory}_NORMAL`, 1, "CASH")}
+              onClick={() => handleScout(normalGachaId, 1, "CASH")}
+              disabled={!normalGacha}
             >
-              1回 (金 1,000)
+              {normalGacha ? `1回 (金 ${formatCost(normalGacha.cost_cash)})` : "準備中"}
             </button>
             <button
               className="upgrade-btn flex-1 active-scale-effect font-size-8 py-2"
-              onClick={() => handleScout(`${activeCategory === "CHARACTER" ? "CHAR" : activeCategory}_NORMAL`, 10, "CASH")}
+              onClick={() => handleScout(normalGachaId, 10, "CASH")}
+              disabled={!normalGacha}
             >
-              10回 (金 10,000)
+              {normalGacha ? `10回 (金 ${formatCost(normalGacha.cost_cash, 10)})` : "準備中"}
             </button>
-          </div>
+          </div>}
 
           {/* 有料実行ボタン (ダイヤ) */}
-          <div className="flex gap-2 mt-2 gacha-btn-layout">
+          {!isTutorialScout && <div className="flex gap-2 mt-2 gacha-btn-layout">
             <button
               className="upgrade-btn flex-1 active-scale-effect font-size-8 py-2 border-cyan-subtle"
-              onClick={() => handleScout(`${activeCategory === "CHARACTER" ? "CHAR" : activeCategory}_NORMAL`, 1, "DIAMOND")}
+              onClick={() => handleScout(normalGachaId, 1, "DIAMOND")}
+              disabled={!normalGacha}
             >
-              1回 (ダイヤ 100)
+              {normalGacha ? `1回 (ダイヤ ${formatCost(normalGacha.cost_diamond)})` : "準備中"}
             </button>
             <button
               className="upgrade-btn flex-1 active-scale-effect font-size-8 py-2 border-cyan-subtle"
-              onClick={() => handleScout(`${activeCategory === "CHARACTER" ? "CHAR" : activeCategory}_NORMAL`, 10, "DIAMOND")}
+              onClick={() => handleScout(normalGachaId, 10, "DIAMOND")}
+              disabled={!normalGacha}
             >
-              10回 (ダイヤ 1,000)
+              {normalGacha ? `10回 (ダイヤ ${formatCost(normalGacha.cost_diamond, 10)})` : "準備中"}
             </button>
-          </div>
+          </div>}
 
           {/* チケット実行ボタン */}
-          <div className="flex gap-2 mt-2 gacha-btn-layout">
+          {!isTutorialScout && <div className="flex gap-2 mt-2 gacha-btn-layout">
             <button
               className="upgrade-btn flex-1 active-scale-effect font-size-8 py-2 border-cyan-subtle"
-              onClick={() => handleScout(`${activeCategory === "CHARACTER" ? "CHAR" : activeCategory}_NORMAL`, 1, "TICKET")}
-              disabled={gachaTickets < 1}
+              onClick={() => handleScout(normalGachaId, 1, "TICKET")}
+              disabled={!normalGacha || gachaTickets < 1}
             >
               1回 (チケット 1枚)
             </button>
             <button
               className="upgrade-btn flex-1 active-scale-effect font-size-8 py-2 border-cyan-subtle"
-              onClick={() => handleScout(`${activeCategory === "CHARACTER" ? "CHAR" : activeCategory}_NORMAL`, 10, "TICKET")}
-              disabled={gachaTickets < 10}
+              onClick={() => handleScout(normalGachaId, 10, "TICKET")}
+              disabled={!normalGacha || gachaTickets < 10}
             >
               10回 (チケット 10枚)
             </button>
-          </div>
+          </div>}
         </div>
 
       </div>
@@ -340,6 +333,6 @@ export default function GachaTab() {
           </div>
         </div>
       )}
-    </div>
+    </fieldset>
   );
 }
