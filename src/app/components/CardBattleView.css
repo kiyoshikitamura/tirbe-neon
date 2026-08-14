@@ -191,6 +191,21 @@
   margin-bottom: 16px;
 }
 
+/* The first-battle CTA stays visible without asking a new player to discover
+   that the briefing itself scrolls. The details remain scrollable above it. */
+.tutorial-battle-setup {
+  overflow: hidden;
+}
+
+.tutorial-battle-setup .setup-scroll-area {
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.tutorial-battle-setup > .start-battle-btn {
+  flex: 0 0 auto;
+}
+
 /* 上段：エネミー情報 */
 .setup-enemy-wrapper {
   background: rgba(20, 20, 25, 0.6);

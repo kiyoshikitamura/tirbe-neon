@@ -5,6 +5,7 @@ import { useGame } from "../context/GameContext";
 import { CHARACTERS_MASTER, getCharacterTransparentImg } from "@/utils/game_constants";
 import { EQUIPMENTS_MASTER_DATA } from "@/utils/equipments_master_data";
 import CardIcon from "./CardIcon";
+import TutorialNavigator from "./TutorialNavigator";
 import "./CardBattleView.css";
 
 export default function CardBattleView() {
@@ -37,8 +38,10 @@ export default function CardBattleView() {
     userSkillsList,
     playCyberSe,
     handleFirstUserInteraction,
-    setShowFriendPanel
+    setShowFriendPanel,
+    onboardingState
   } = useGame();
+  const isTutorialBattle = battleMode === "PATROL" && onboardingState?.tutorial_step === "TUTORIAL_BATTLE";
 
   // SETUP画面でカードタップ時に開く閲覧専用詳細ポップアップ
   const [selectedCharDetail, setSelectedCharDetail] = useState<any | null>(null);
@@ -46,6 +49,27 @@ export default function CardBattleView() {
   // レーザー座標
   const [laserCoords, setLaserCoords] = useState<{ x1: number; y1: number; x2: number; y2: number } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const tutorialLaunchRef = useRef(false);
+
+  useEffect(() => {
+    if (battleState === "SETUP") {
+      tutorialLaunchRef.current = false;
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          const setup = document.querySelector<HTMLElement>(".tutorial-battle-setup");
+          setup?.scrollTo({ top: 0 });
+          setup?.querySelector<HTMLElement>(".setup-scroll-area")?.scrollTo({ top: 0 });
+          if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+        });
+      });
+    }
+  }, [battleState]);
+
+  const launchBattleOnce = () => {
+    if (tutorialLaunchRef.current) return;
+    tutorialLaunchRef.current = true;
+    launchBattlePlaying();
+  };
 
   useEffect(() => {
     if (targetLine && containerRef.current) {
@@ -81,10 +105,14 @@ export default function CardBattleView() {
 
     return (
       <div className="battle-screen" onClick={handleFirstUserInteraction}>
-        <div className="setup-container scroll-container">
+        <div className={`setup-container scroll-container ${isTutorialBattle ? "tutorial-battle-setup" : ""}`}>
           <div className="setup-title-bar">
-            抗争準備フェーズ (SETUP)
+            {isTutorialBattle ? "初回バトル準備" : "抗争準備フェーズ (SETUP)"}
           </div>
+
+          {isTutorialBattle && (
+            <TutorialNavigator message="編成と敵を確認したら、「バトル開始」を押してね。戦闘は自動で進むよ。" />
+          )}
 
           <div className="setup-match-heading" aria-label="battle briefing">
             <span className="setup-mode-stamp">
@@ -176,7 +204,7 @@ export default function CardBattleView() {
                     </div>
                   );
                 })}
-                {!isPvP && playerPartyStates.length < 6 && (
+                {!isPvP && !isTutorialBattle && playerPartyStates.length < 6 && (
                   <div 
                     className="setup-char-card flex-col items-center justify-center cursor-pointer active-scale-effect border-subtle bg-black-60"
                     onClick={() => { playCyberSe("click"); setShowFriendPanel(true); }}
@@ -205,21 +233,25 @@ export default function CardBattleView() {
                   <button
                     key={t.id}
                     className={`tactic-btn active-scale-effect ${tactic === t.id ? "active" : ""}`}
+                    disabled={battleMode === "PATROL"}
                     onClick={() => { setTactic(t.id as any); playCyberSe("click"); }}
                   >
                     {t.label}
                   </button>
                 ))}
               </div>
+              {battleMode === "PATROL" && (
+                <div className="font-size-6 text-secondary mt-1">派遣開始時に確定した作戦でサーバー記録を再生します。</div>
+              )}
             </div>
           </div>
 
           {/* 出撃開始ボタン */}
           <button 
-            className="start-battle-btn active-scale-effect"
-            onClick={launchBattlePlaying}
+            className={`start-battle-btn active-scale-effect ${isTutorialBattle ? "tutorial-primary-target" : ""}`}
+            onClick={isTutorialBattle ? launchBattleOnce : launchBattlePlaying}
           >
-            抗争開始
+            {isTutorialBattle ? "バトル開始" : "抗争開始"}
           </button>
         </div>
 
@@ -328,7 +360,7 @@ export default function CardBattleView() {
             </div>
           ) : (
             // NPCレイド戦巨大ボス表示
-            <div className="single-enemy-boss-container" id="ENEMY">
+            <div className="single-enemy-boss-container" id={enemyPartyStates[0]?.id || "ENEMY"}>
               <div className="flex justify-between items-center mb-1">
                 <span className="font-size-9 font-weight-bold text-color-magenta">{battleOpponentName}</span>
                 <span className="font-size-8 font-weight-bold text-white">HP: {enemyPartyStates[0]?.hp.toLocaleString()} / {enemyPartyStates[0]?.maxHp.toLocaleString()}</span>
@@ -341,7 +373,7 @@ export default function CardBattleView() {
               </div>
 
               {/* ダメージポップアップ */}
-              {damagePopup && damagePopup.charId === "ENEMY" && (
+              {damagePopup && damagePopup.charId === enemyPartyStates[0]?.id && (
                 <div className="damage-popup-container" style={{ top: "10px" }}>
                   {damagePopup.isCritical && (
                     <div className="critical-badge-overlay pop-in">CRITICAL!</div>
@@ -503,7 +535,7 @@ export default function CardBattleView() {
           </div>
 
           {/* 撤退（強制敗北） */}
-          <button 
+          {!isTutorialBattle && <button
             className="sub-btn border-red text-color-red font-size-8 py-2 rounded active-scale-effect text-center"
             onClick={() => {
               setConfirmDialogConfig({
@@ -519,7 +551,7 @@ export default function CardBattleView() {
             }}
           >
             撤退する
-          </button>
+          </button>}
         </div>
 
       </div>

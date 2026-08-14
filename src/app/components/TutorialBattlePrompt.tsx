@@ -1,48 +1,87 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useRef, useState } from "react";
 import { useGame } from "../context/GameContext";
 import { supabase } from "@/utils/supabase";
 import TutorialNavigator from "./TutorialNavigator";
 
 export default function TutorialBattlePrompt() {
-  const { session, activePatrols, patrolCourses, patrolNpcs, startCardBattle, playCyberSe } = useGame();
-  const [step, setStep] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!session?.user?.id) return;
-    const load = async () => {
-      const { data } = await supabase
-        .from("tutorial_progress")
-        .select("step_id")
-        .eq("user_id", session.user.id)
-        .maybeSingle();
-      setStep(data?.step_id ?? null);
-    };
-    void load();
-  }, [session?.user?.id]);
+  const {
+    onboardingState,
+    activePatrols,
+    patrolCourses,
+    patrolNpcs,
+    startCardBattle,
+    playCyberSe,
+    battleState,
+    battleLoading,
+    setErrorMessage
+  } = useGame();
+  const [starting, setStarting] = useState(false);
+  const [localError, setLocalError] = useState<string | null>(null);
+  const startingRef = useRef(false);
 
   const patrol = activePatrols.find((entry: any) => entry.has_battle_event && !entry.battle_resolved);
-  if (step !== "TUTORIAL_BATTLE" || !patrol) return null;
+  if (battleState || onboardingState?.tutorial_step !== "TUTORIAL_BATTLE" || !patrol) return null;
 
-  const beginBattle = () => {
-    const course = patrolCourses.find((entry: any) => entry.id === patrol.courseId);
-    const npc = patrolNpcs.find((entry: any) => entry.id === course?.battle_npc_id);
+  const beginBattle = async () => {
+    if (startingRef.current || battleLoading) return;
+    startingRef.current = true;
+    setStarting(true);
     playCyberSe("click");
-    setStep(null);
-    void startCardBattle("PATROL", npc?.npc_name || "Tutorial Encounter", course?.battle_npc_id);
+    const course = patrolCourses.find((entry: any) => entry.id === patrol.courseId);
+    try {
+      let npc = patrolNpcs.find((entry: any) => entry.quest_id === patrol.courseId);
+      if (!npc) {
+        const { data, error } = await supabase.rpc("get_patrol_battle_enemy", { p_patrol_id: patrol.id });
+        if (!error && data) npc = data;
+      }
+      if (!npc) {
+        const message = "派遣先の敵情報を取得できません。通信状態を確認して、もう一度お試しください。";
+        setLocalError(message);
+        setErrorMessage(message);
+        return;
+      }
+      setLocalError(null);
+      await startCardBattle(
+        "PATROL",
+        npc.npc_name || "チュートリアルの敵",
+        npc.id || course?.battle_npc_id,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        npc,
+        patrol.id
+      );
+    } catch (error) {
+      console.warn("Tutorial battle initialization failed:", error);
+      setErrorMessage("チュートリアルバトルを開始できませんでした。もう一度お試しください。");
+    } finally {
+      startingRef.current = false;
+      setStarting(false);
+    }
   };
 
   return (
     <div className="modal-overlay background-black-95" style={{ zIndex: 20000 }}>
       <div className="modal-card border-cyan-glow" style={{ maxWidth: 420 }}>
-        <div className="font-size-8 text-color-cyan font-weight-bold mb-2">NAVIGATOR // ENCOUNTER</div>
-        <TutorialNavigator message="Your crew will act automatically according to the selected tactic." />
+        <div className="font-size-8 text-color-cyan font-weight-bold mb-2">初回バトル</div>
+        <TutorialNavigator message="派遣先で敵と遭遇しました。編成した仲間でチュートリアルバトルを開始してください。" />
         <div className="modal-desc text-left">
-          An enemy has intercepted your dispatch. Start the battle and watch your configured tactic resolve the encounter automatically.
+          バトルは選択した作戦に従って自動進行します。勝利するまで、消費なしで再挑戦できます。
         </div>
-        <button className="claim-reward-btn mt-4 font-weight-bold py-2 width-100" onClick={beginBattle}>
-          START TUTORIAL BATTLE
+        {localError && (
+          <div className="font-size-7 text-color-red mt-3" role="alert">{localError}</div>
+        )}
+        <button
+          className="claim-reward-btn mt-4 font-weight-bold py-2 width-100"
+          onClick={() => void beginBattle()}
+          disabled={starting || battleLoading}
+        >
+          {starting || battleLoading ? "バトル準備中..." : "チュートリアルバトル開始"}
         </button>
       </div>
     </div>
