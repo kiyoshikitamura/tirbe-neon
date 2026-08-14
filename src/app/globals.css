@@ -43,6 +43,14 @@
   --ui-space-3: 12px;
   --ui-space-4: 16px;
   --ui-space-5: 24px;
+  --app-safe-top: env(safe-area-inset-top, 0px);
+  --app-safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+@supports (-webkit-touch-callout: none) {
+  :root {
+    --app-safe-top: max(20px, env(safe-area-inset-top, 0px));
+  }
 }
 
 * {
@@ -81,7 +89,7 @@ body {
   height: 100%;
   height: 100dvh;
   margin: 0 auto;
-  padding: 0;
+  padding: var(--app-safe-top) 0 var(--app-safe-bottom);
   background: #000000;
   position: relative;
   overflow-x: hidden;
@@ -91,12 +99,32 @@ body {
   border-right: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-/*
- * Safari can place a viewport-fit=cover document below the status indicators.
- * Reserve the top inset once at the application shell so every normal screen
- * starts below the dynamic island / status bar. Individual headers must not
- * add a second safe-area offset.
- */
+/* Shared tutorial highlight. It is intentionally owned by the common shell
+   stylesheet so tutorial routes do not acquire screen-specific safe-area or
+   positioning rules. */
+.tutorial-primary-target {
+  position: relative;
+  animation: tutorial-target-pulse 1.8s ease-in-out infinite;
+}
+
+.gacha-result-character {
+  width: 38px;
+  height: 46px;
+  flex: 0 0 auto;
+  object-fit: contain;
+  object-position: bottom;
+}
+
+@keyframes tutorial-target-pulse {
+  0%, 100% { box-shadow: 0 0 8px rgba(0, 240, 255, .18); }
+  50% { box-shadow: 0 0 24px rgba(0, 240, 255, .48); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tutorial-primary-target { animation: none; box-shadow: 0 0 18px rgba(0, 240, 255, .32); }
+}
+
+/* Safe Area is owned here once for Title/Auth/Setup/game routes alike. */
 /* SpinContainer Architecture: 完全独立サイズ保護ローディングスクリーン */
 .app-loading-screen {
   position: absolute;
@@ -755,6 +783,7 @@ button:disabled {
 
 .claim-reward-btn {
   width: 100%;
+  min-height: 44px;
   background: var(--color-success);
   color: #0b0f19;
   font-size: 12px;

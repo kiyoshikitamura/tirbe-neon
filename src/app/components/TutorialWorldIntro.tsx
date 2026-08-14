@@ -1,29 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useGame } from "../context/GameContext";
 import { supabase } from "@/utils/supabase";
 import TutorialNavigator from "./TutorialNavigator";
 
 export default function TutorialWorldIntro() {
-  const { session, navigateTab, playCyberSe } = useGame();
-  const [step, setStep] = useState<string | null>(null);
+  const { onboardingState, setOnboardingState, navigateTab, playCyberSe } = useGame();
   const [advancing, setAdvancing] = useState(false);
 
-  useEffect(() => {
-    if (!session?.user?.id) return;
-    const load = async () => {
-      const { data } = await supabase
-        .from("tutorial_progress")
-        .select("step_id")
-        .eq("user_id", session.user.id)
-        .maybeSingle();
-      setStep(data?.step_id ?? null);
-    };
-    void load();
-  }, [session?.user?.id]);
-
-  if (step !== "WORLD_INTRO") return null;
+  if (onboardingState?.tutorial_step !== "WORLD_INTRO") return null;
 
   const continueTutorial = async () => {
     setAdvancing(true);
@@ -33,7 +19,7 @@ export default function TutorialWorldIntro() {
       p_next_step: "FREE_GACHA",
     });
     if (!error) {
-      setStep("FREE_GACHA");
+      setOnboardingState((current: any) => current ? { ...current, tutorial_step: "FREE_GACHA" } : current);
       navigateTab("gacha");
     }
     setAdvancing(false);
@@ -42,19 +28,17 @@ export default function TutorialWorldIntro() {
   return (
     <div className="modal-overlay background-black-95" style={{ zIndex: 20000 }}>
       <div className="modal-card border-cyan-glow" style={{ maxWidth: 420 }}>
-        <div className="font-size-8 text-color-cyan font-weight-bold mb-2">NAVIGATOR // WORLD BRIEFING</div>
-        <TutorialNavigator message="I will guide you through your first operation." />
+        <div className="font-size-8 text-color-cyan font-weight-bold mb-2">最初の案内</div>
+        <TutorialNavigator message="準備はできたね。まずは新しい仲間をスカウトしよう。" />
         <div className="modal-desc text-left">
-          Neon City is divided by rival factions. Build your crew, master skills and equipment, and take control of the streets.
-          <br /><br />
-          First, claim the daily free gacha and assemble your team.
+          ノーマルガチャの無料10連で、最初の仲間を迎えよう。
         </div>
         <button
           className="claim-reward-btn mt-4 font-weight-bold py-2 width-100"
           onClick={() => void continueTutorial()}
           disabled={advancing}
         >
-          {advancing ? "LOADING..." : "CONTINUE"}
+          {advancing ? "準備中..." : "無料10連へ"}
         </button>
       </div>
     </div>

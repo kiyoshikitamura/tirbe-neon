@@ -1,15 +1,28 @@
-import React from "react";
+import React, { useState } from "react";
 import Link from "next/link";
 import { useGame } from "../context/GameContext";
 import "./TitleView.css";
 
 export default function TitleView() {
-  const { showTitleView, setShowTitleView, authLoading, playCyberSe } = useGame();
+  const { showTitleView, setShowTitleView, authLoading, setupLoading, session, errorMessage, playCyberSe, handleStartNewGame } = useGame();
+  const [showEntryActions, setShowEntryActions] = useState(false);
 
   if (!showTitleView) return null;
 
   const handleStart = () => {
     if (authLoading) return;
+    playCyberSe("click");
+    if (session) setShowTitleView(false);
+    else setShowEntryActions(true);
+  };
+
+  const beginNewGame = async (event: React.MouseEvent) => {
+    event.stopPropagation();
+    if (await handleStartNewGame()) setShowTitleView(false);
+  };
+
+  const openExistingLogin = (event: React.MouseEvent) => {
+    event.stopPropagation();
     playCyberSe("click");
     setShowTitleView(false);
   };
@@ -26,9 +39,15 @@ export default function TitleView() {
           </div>
 
           <div className="title-tap-area">
-            {authLoading ? (
+            {authLoading || setupLoading ? (
               <div className="title-loading">
                 <div className="spinner"></div>
+              </div>
+            ) : showEntryActions && !session ? (
+              <div className="title-entry-actions" onClick={(event) => event.stopPropagation()}>
+                <button className="title-entry-primary" onClick={(event) => void beginNewGame(event)}>はじめから</button>
+                <button className="title-entry-secondary" onClick={openExistingLogin}>既存アカウントでログイン</button>
+                {errorMessage && <div className="title-entry-error" role="alert">{errorMessage}</div>}
               </div>
             ) : (
               <span className="title-tap-text blink-animation">TAP TO START</span>

@@ -1,6 +1,7 @@
 .title-view-overlay {
-  position: absolute;
-  inset: 0;
+  position: relative;
+  width: 100%;
+  height: 100%;
   z-index: 600; /* 最前面 (Authより上) */
   background-color: #000;
   display: flex;
@@ -64,10 +65,45 @@
 }
 
 .title-tap-area {
-  height: 60px;
+  min-height: 60px;
   display: flex;
   justify-content: center;
   align-items: center;
+}
+
+.title-entry-actions {
+  width: min(100%, 300px);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.title-entry-actions button {
+  min-height: 44px;
+  border-radius: 4px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+}
+
+.title-entry-primary {
+  color: #05070a;
+  border: 1px solid #5ffcff;
+  background: #5ffcff;
+  box-shadow: 0 0 16px rgba(95, 252, 255, 0.35);
+}
+
+.title-entry-secondary {
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  background: rgba(0, 0, 0, 0.72);
+}
+
+.title-entry-error {
+  color: #ff7d86;
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: center;
 }
 
 .title-tap-text {
@@ -107,7 +143,7 @@
   flex-direction: column;
   gap: 10px;
   padding: 16px 20px;
-  padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: 16px;
   font-size: 11px;
   color: #666;
 }

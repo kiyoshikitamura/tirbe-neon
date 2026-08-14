@@ -39,3 +39,16 @@
   height: 32px;
   object-fit: cover;
 }
+
+.setup-confirm-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr);
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.setup-confirm-actions button {
+  min-height: 48px;
+  font-size: 13px;
+  font-weight: 800;
+}
