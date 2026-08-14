@@ -8,6 +8,9 @@ on:
 jobs:
   typecheck-and-build:
     runs-on: ubuntu-latest
+    env:
+      NEXT_PUBLIC_APP_ENV: test
+      NEXT_PUBLIC_USE_MOCK_DB: "true"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -53,6 +56,9 @@ jobs:
 
   browser-e2e:
     runs-on: ubuntu-latest
+    env:
+      NEXT_PUBLIC_APP_ENV: test
+      NEXT_PUBLIC_USE_MOCK_DB: "true"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

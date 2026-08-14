@@ -7,6 +7,8 @@ import OutlawButton from "./ui/OutlawButton";
 import "./SettingsPanel.css";
 
 const QA_EMAIL = "izasama39@gmail.com";
+const QA_TOOLS_ENABLED = process.env.NEXT_PUBLIC_APP_ENV === "development"
+  && process.env.NEXT_PUBLIC_ENABLE_QA_TOOLS === "true";
 
 function getSupabaseErrorMessage(error: unknown): string {
   if (error instanceof Error && error.message) return error.message;
@@ -24,7 +26,7 @@ export default function SettingsPanel() {
   const game = useGame();
   const [qaLoading, setQaLoading] = useState(false);
   const isOpen = game.showSettingsPanel;
-  const canProvisionQa = game.session?.user?.email === QA_EMAIL;
+  const canProvisionQa = QA_TOOLS_ENABLED && game.session?.user?.email === QA_EMAIL;
   const hasSharedCosmetic = (id: string) => game.ownedHomeCosmeticIds === null || game.ownedHomeCosmeticIds.includes(id);
   const availableBackgrounds = PROFILE_BACKGROUNDS.filter((item) => hasSharedCosmetic(item.id));
   const availableFrontEffects = PROFILE_FRONT_EFFECTS.filter((item) => hasSharedCosmetic(item.id));
@@ -81,7 +83,20 @@ export default function SettingsPanel() {
 
         {canProvisionQa && <section className="settings-section"><h4 className="settings-section-title">QAテストデータ</h4><p className="settings-help-text">このアカウントのテスト用所持データを再投入します。</p><OutlawButton variant="secondary" fullWidth disabled={qaLoading} onClick={() => void provisionQa()}>{qaLoading ? "投入中..." : "テストデータを投入"}</OutlawButton></section>}
         <section className="settings-section"><h4 className="settings-section-title">システム設定</h4><div className="settings-field"><label>BGM</label><div className="settings-toggle-group"><button className={`settings-toggle-btn ${game.bgmEnabled ? "active" : ""}`} onClick={() => !game.bgmEnabled && void game.handleToggleSound("bgm")}>ON</button><button className={`settings-toggle-btn ${!game.bgmEnabled ? "active" : ""}`} onClick={() => game.bgmEnabled && void game.handleToggleSound("bgm")}>OFF</button></div></div><div className="settings-field"><label>SE</label><div className="settings-toggle-group"><button className={`settings-toggle-btn ${game.seEnabled ? "active" : ""}`} onClick={() => !game.seEnabled && void game.handleToggleSound("se")}>ON</button><button className={`settings-toggle-btn ${!game.seEnabled ? "active" : ""}`} onClick={() => game.seEnabled && void game.handleToggleSound("se")}>OFF</button></div></div></section>
-        <div className="settings-panel-footer"><OutlawButton variant="primary" fullWidth disabled={game.profileLoading} onClick={() => void game.handleUpdateProfile()}>{game.profileLoading ? "保存中..." : "保存する"}</OutlawButton></div>
+        <div className="settings-panel-footer">
+          <OutlawButton variant="primary" fullWidth disabled={game.profileLoading} onClick={() => void game.handleUpdateProfile()}>{game.profileLoading ? "保存中..." : "保存する"}</OutlawButton>
+          <OutlawButton
+            variant="danger"
+            fullWidth
+            className="mt-3"
+            onClick={() => {
+              game.setShowSettingsPanel(false);
+              void game.handleLogout();
+            }}
+          >
+            ログアウト
+          </OutlawButton>
+        </div>
       </div>
     </FullScreenPanel>
   );
