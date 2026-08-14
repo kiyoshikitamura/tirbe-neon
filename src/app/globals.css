@@ -125,6 +125,7 @@ body {
 .tutorial-navigator {
   display: grid;
   grid-template-columns: 112px minmax(0, 1fr);
+  flex: 0 0 auto;
   align-items: center;
   gap: 12px;
   margin-bottom: 12px;
@@ -143,17 +144,11 @@ body {
   background: #07110d;
 }
 
-.tutorial-navigator-portrait img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: 50% 18%;
-  transform: scale(1.08);
-}
+.tutorial-navigator-character { width: 100%; height: 100%; border: 0; border-radius: 8px; }
 
 .tutorial-navigator-copy { min-width: 0; }
 .tutorial-navigator-name { margin-bottom: 6px; }
-.tutorial-navigator-message { font-size: 13px; line-height: 1.65; }
+.tutorial-navigator-message { overflow-wrap: anywhere; font-size: 13px; line-height: 1.65; }
 
 @keyframes tutorial-target-pulse {
   0%, 100% { box-shadow: 0 0 8px rgba(0, 240, 255, .18); }

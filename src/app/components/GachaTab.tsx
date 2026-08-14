@@ -63,7 +63,10 @@ export default function GachaTab() {
   const gachaPrefix = activeCategory === "CHARACTER" ? "CHAR" : activeCategory === "EQUIPMENT" ? "EQUIP" : "SKILL";
   const normalGachaId = `${gachaPrefix}_NORMAL`;
   const normalGacha = gachaMasters?.find((g: any) => g.id === normalGachaId);
-  const formatCost = (value: unknown, pulls = 1) => (Number(value) * pulls).toLocaleString("ja-JP");
+  const formatCost = (value: unknown, pulls = 1) => {
+    const numeric = Number(value);
+    return Number.isFinite(numeric) ? (numeric * pulls).toLocaleString("ja-JP") : "--";
+  };
 
   // 天井選択肢リスト（SSRのみ）
   const ssrCharacters = CHARACTERS_MASTER.filter((c: any) => c.rarity === "SSR");
@@ -85,7 +88,14 @@ export default function GachaTab() {
 
   return (
     <fieldset className="view-container relative gacha-view-root gacha-action-fieldset" disabled={upgradeLoading || isGachaActionLocked} aria-busy={upgradeLoading || isGachaActionLocked}>
-      <h2 className="view-title">ガチャ</h2>
+      <header className="gacha-v0-header">
+        <div>
+          <span className="gacha-v0-eyebrow">NEON DRAW</span>
+          <h2>ガチャ</h2>
+          <p>新しい仲間と力を手に入れろ。</p>
+        </div>
+        <span className="gacha-v0-pulse" aria-hidden="true" />
+      </header>
 
       {/* 🎰 カテゴリ切替タブ (キャラ / スキル / 装備) */}
       {!isTutorialScout && <div className="gacha-category-tabs flex gap-2 mb-3">
@@ -190,6 +200,11 @@ export default function GachaTab() {
 
         {/* 3. ノーマルガチャ (毎日10連無料 / N 50%, R 40%, SR 10%) */}
         <div className={`upgrade-card border-cyan gacha-card-normal ${isTutorialScout ? "tutorial-primary-target" : ""}`}>
+          <div className="gacha-normal-visual" aria-hidden="true">
+            <span>DAILY FREE</span>
+            <strong>10</strong>
+            <i>連</i>
+          </div>
           <div className="upgrade-card-title flex items-center justify-between gacha-title-row">
             <span className="text-color-cyan font-weight-bold">
               {activeCategory === "CHARACTER" && "ノーマルガチャ"}
@@ -200,8 +215,8 @@ export default function GachaTab() {
               N 50% ｜ R 40% ｜ SR 10%
             </span>
           </div>
-          <div className="font-size-8 text-gray-400 mt-1">
-            毎日1回10連が無料！キャラクター・スキル・装備品を獲得します。
+          <div className="gacha-normal-copy mt-1">
+            毎日1回、10連無料。最初の仲間を迎えよう。
           </div>
 
           {/* 無料10連ボタン (未消化時のみ優先表示) */}
@@ -209,10 +224,12 @@ export default function GachaTab() {
             <div className="mt-3">
               <button
                 className="claim-reward-btn active-scale-effect width-100 py-3 font-weight-bold font-size-9 gacha-free-btn"
+                aria-label="無料10連を引く"
                 onClick={() => void runScout(normalGachaId, 10, "FREE")}
                 disabled={!normalGacha}
               >
-                {isGachaActionLocked ? "ガチャ準備中..." : "無料10連を引く"}
+                <span>{isGachaActionLocked ? "ガチャを準備しています" : "無料10連を引く"}</span>
+                {!isGachaActionLocked && <small>消費なし</small>}
               </button>
             </div>
           ) : (
