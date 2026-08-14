@@ -147,7 +147,12 @@ begin
 end;
 $$;
 
-create or replace function public.get_public_power_rankings()
+-- PostgreSQL cannot change an existing function from jsonb to TABLE through
+-- CREATE OR REPLACE. Drop the zero-argument legacy signature explicitly so a
+-- clean migration replay has the same final contract as Development.
+drop function if exists public.get_public_power_rankings();
+
+create function public.get_public_power_rankings()
 returns table (
   user_id uuid,
   username text,
@@ -163,13 +168,13 @@ security definer
 set search_path = public
 as $$
   select ranking.user_id, player.username, player.avatar_url,
-         ranking.current_power, ranking.updated_at,
+         ranking.total_power as current_power, ranking.updated_at,
          member.guild_id, guild.name
   from public.user_power_rankings ranking
   join public.users player on player.id = ranking.user_id
   left join public.guild_members member on member.user_id = ranking.user_id
   left join public.guilds guild on guild.id = member.guild_id
-  order by ranking.current_power desc, ranking.updated_at asc
+  order by ranking.total_power desc, ranking.updated_at asc
   limit 100;
 $$;
 
