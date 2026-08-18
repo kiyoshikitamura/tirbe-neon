@@ -1,10 +1,16 @@
 # 個別企画仕様書(C)：ギルド抗争(GvG) ＆ 協力レイド ＆ PvP
 
+## M9-X Guild Human Response
+
+Guild HomeのWelcomeは設定可能なSystem/Welcome Cardとする。挨拶presetは明示送信前に自動投稿しない。Replyは1階層の`reply_to_message_id`で、Threadは追加しない。Human Response集計はSystem messageと自己返信を除外する。
+
 共通UIデザイン、ロード方式、信頼境界は`ui_design_system.md`を正本とする。GvG・レイドの背景、カットイン、勝敗・報酬演出のArt DirectionとAsset QAは`art_bible.md`を正本とする。本書はギルド、GvG、レイド、PvPの固有ルール、状態、必要表示項目を定義する。
 
 本作のマルチプレイ要素である「ギルド（裏社会同盟）システム」「エリア抗争（GvG）」「非同期拠点レイド（ボスの討伐）」および「PvP（個人ランク戦）」の企画仕様です。
 
 > **GvG優先仕様（2026-08-05）**：GvGは拠点支配ポイント制ではなく、共通ギルドHPと個人貢献ポイントを用いるハイブリッド方式とする。開催時刻、事前マッチング、NPC戦、ランク、報酬は`spec_battle_system.md`を優先する。本書第2章の旧トーナメント・拠点支配・固定ポイント加減算・支配報酬の記述は新規実装の根拠に使用しない。
+
+> **Ranking / Power Production Contract（2026-08-17）**：GvGギルド順位は明示的な月次`season_id`単位のrate、個人順位はServer確定したactual damage累積を正本とする。旧`daily_points` / `season_points` / 勝利+250 / 敗北-100はProductionの更新・表示経路で使用しない。C〜Sのrate閾値とRanking Reward値は未確定であり、本書の旧履歴値を流用しない。Raid Daily Rankingはboss masterではなく`raid_instance_id`単位、Season Rankingは明示的なSeason期間内の正規instanceを横断集計する。
 
 ---
 

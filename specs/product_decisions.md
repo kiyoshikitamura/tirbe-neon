@@ -1,6 +1,51 @@
 # 企画方針・リリーススコープ決定事項
 
+## M9-X Cold Start / Social（2026-08-18）
+
+- Tutorial必須工程は`GACHA -> FORMATION -> QUEST -> SPEED_UP -> NPC_BATTLE`。GrowthはTutorial外のMission Hub POWERへ移す。
+- Tutorial 10連はDaily Normalと別契約。1〜9枠は通常枠、10枠目は正規SSR 10体からServerが選択する。
+- PvP結果はRank Point表記。RateはGvGのみ。
+- PRE_OPENかつLv8未満のQuest時短はServer判定で無料。
+- 偽Activity/BOTは禁止。Guild WelcomeはSystem Card、挨拶presetは自動送信しない。Chat Replyは1階層のみ。
+
 決定日: 2026-08-03
+
+## Production Specification Reconciliation（2026-08-17）
+
+本節は本書内の2026-08-05以前の記述と矛盾する場合に優先する。詳細なStatusとMismatchは`specification_reconciliation.md`を参照する。
+
+### CONFIRMED + IMPLEMENTED
+
+- Player代表編成は独立Main Formation 1〜5体。PvP Defense等とは分離する。
+- Total PowerはMain Formationの`Σ(final HP + final ATK + final DEF)`をServer側で確定する。SPD、LUK、Friend Helper、Skill、Passiveは含めない。
+- Daily境界は00:00 JST。04:00およびrolling 24hは廃止する。
+- 通常Ranking Seasonは月次とし、初回のみ任意期間を許容する。期間と状態はServer dataを正本とする。
+- RankingはPower、Guild Power、PvP、GvG、Raidの5カテゴリとする。
+- Character Awakeningは最大+5、Skill Slotは`3/4/5/6/6/6`。同Character重複は+4までCASHなしで即時+1する。
+- +5後の重複変換先は汎用素材「覚醒の書」とする。`LAW_OF_STRIFE`はinternal互換IDとして維持できるが、「抗争の掟」はユーザー向け名称として廃止する。
+- Daily Free GachaはCharacter、Skill、EquipmentのNormal各10連を毎日1回、正式運営後も恒常提供する。
+- Normal TicketとSpecial Ticketは分離する。
+- GvGは12:00、20:00、23:00開始、各30分。Guild RankingはSeason rate、Individual RankingはSeason actual damageを使用する。
+- Pre-OpenではGvG、Payment、Special Gachaを停止し、Production開放はServer-side operating stateを正本とする。
+
+### PROVISIONAL
+
+- GvG rate式、端数、試合内容・格差補正、C〜S閾値、同率、Ranking Reward、初回Season日時、Season lifecycle運用。
+- 60体の`SSR10/SR20/R20/N10`総数構成と個別Rarity割当。60体Roster自体は確定する。
+- Character Identity、D0〜D3、専用Skill/Equipmentの割当・内容・Launch数。
+- 覚醒の書の変換量、必要冊数、段階Cost、CASH併用。
+- Skill duplicate point curve、スキル指南書のID統合・交換率・供給量。
+- 装備汎用限界突破素材の正式名称、必要量、供給量。
+- Ticket供給量、カテゴリ分割、Pity接続、各Ranking/Economy Rewardの具体値。
+- D7/D30/D45〜60/D90の5人編成完成目標と数値KPI。
+
+### DEPRECATED
+
+- PvPの週次タームを固定Production Seasonとして扱う記述。
+- GvGの`daily_points` / `season_points`、勝利+250 / 敗北-100、旧拠点支配Point Ranking。
+- 具体値が未確定のGvG rate / C〜S閾値 / Rewardを確定値として扱う記述。
+- Client計算Total Power、SPD/LUK込みPower、PvP Defenseを代表編成として扱う記述。
+- 単一`GACHA_TICKET`をNormal/Special共通契約として扱う設計。
 
 ## 1. コアゲームサイクル
 

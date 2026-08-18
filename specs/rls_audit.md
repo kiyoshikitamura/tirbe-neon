@@ -63,3 +63,12 @@
 The latest read-only audit found 48 broad `USING/WITH CHECK (true)` policies. Master-table public SELECT policies are intentional; the remaining ALL policies cover social, payment, PvP/GvG/raid, and user progression tables. These should be hardened feature-by-feature after replacing client writes with ownership- or RPC-based controls. No policy changes were made in this audit.
 The ownership scan found `user_id` columns on `user_avatar_parts`, `user_avatars`, `user_login_bonuses`, `user_missions`, `user_patrols`, and `user_power_rankings`. The first five are candidates for `auth.uid() = user_id` policies after Preview regression; `user_power_rankings` requires a public ranking read path and should remain behind its RPC before tightening.
 After applying `20260805000020_owner_rls_user_progress.sql` in the development project, the broad-policy count decreased from 48 to 43. The five owner-scoped tables are `user_avatar_parts`, `user_avatars`, `user_login_bonuses`, `user_missions`, and `user_patrols`; `user_power_rankings` remains intentionally deferred until all public reads use the ranking RPC.
+
+## Open Beta M8 final audit (2026-08-13)
+
+- Development final gate: 21/21 Critical tables have RLS enabled; zero Critical tables retain authenticated table-level mutation privileges.
+- `users` exposes UPDATE only for approved profile/presentation columns. Currency, AP, account progression, membership and reward state are RPC-only.
+- No authenticated `SECURITY DEFINER` function has an unfixed search path. No unexpected caller-user-id function remains outside the reviewed allowlist.
+- The only broad Critical-table read policies are authenticated BBS thread/post reads required by the confirmed BBS specification.
+- Development adverse E2E passed 12/12 cases, including direct currency/inventory/payment mutations, test currency and arbitrary XP RPCs, client-authored battle results, cross-user gacha/gift-code access and duplicate equipment sale.
+- Legacy client-authoritative PvP/GvG/Raid/Friend mutations are consumer-blocked until their server-authoritative follow-up work. Development QA helpers remain environment-only and must be excluded or service-gated again at the Production candidate gate.

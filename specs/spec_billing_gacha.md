@@ -1,8 +1,12 @@
 # 個別企画仕様書(E)：ガチャ ＆ ショップ ＆ Stripe課金
 
+## Tutorial 10連
+
+Tutorial 10連はDaily Normal無料回数と別のServer-authoritative契約とする。1〜9枠は有効なNormal pool、10枠目は有効な正規SSR poolから解決し、request idempotency・execution history・retry result restoreを必須とする。
+
 共通UIデザイン、ロード方式、信頼境界は`ui_design_system.md`を正本とする。ガチャ画像、バナー、獲得演出のArt DirectionとAsset QAは`art_bible.md`を正本とする。本書はガチャ・課金の固有ルール、商品、状態、必要表示項目を定義する。
 
-本作の収益モデルである「有償ダイヤ購入（Stripe決済）」、「パック商材」、「スカウトガチャ（キャラ/スキル/装備）」、「構成員アンロック」などの経済システムの確定仕様です。
+本作の収益モデルである「有償ダイヤ購入（Stripe決済）」、「パック商材」、「ガチャ（キャラクター/スキル/装備）」等の仕様です。2026-08-17時点のStatusは本書末尾および`specification_reconciliation.md`を優先します。
 
 ---
 
@@ -45,7 +49,7 @@
 ### ③ 重複時の救済・覚醒・素材変換処理
 - **構成員（キャラクター）**:
   - キャラクターを重複獲得した際、自動的に「覚醒レベル（`awakening_level`）」が +1（最大★5まで）。
-  - すでに覚醒レベルが最大（★5）の状態で重複した場合は、覚醒素材**「抗争の掟 x1」**に自動変換。
+  - すでに覚醒レベルが最大（★5）の状態で重複した場合は、覚醒素材**「覚醒の書」**に自動変換。現行実装の変換量は1ですが、Production Economy上の変換量はPROVISIONALです。
 - **スキルカード**:
   - 重複したスキルカードは「限界突破値（`plus_val`）」が +1（最大+10まで）。
   - 最大値（+10）達成済みのカードが重複した場合は、スキル強化素材**「指南書 x2」**へ変換。
@@ -78,3 +82,12 @@
 - スペシャルはキャッシュ3,000／ダイヤ300／スペシャルチケット1枚、10連は10倍消費、天井あり。
 - 確率・排出内容・重複処理・ピティはマスタ定義とする。
 - 期間限定ガチャを追加可能な構成とし、初期ローンチでは投入しない。
+
+## 2026-08-17 Production Status
+
+- **CONFIRMED**: Character / Skill / EquipmentのNormal各10連を毎日1回無料とし、Pre-Open限定ではなく正式運営後も恒常提供します。
+- **CONFIRMED**: 公称rarity bucketはNormal `N50/R40/SR10`、Special `R60/SR35/SSR5`です。Character poolは現行暫定60体masterで集約率が一致します。
+- **MISMATCH**: Skill / Equipmentはrowごとのweight合算により実効率が公称bucket率と一致しません。Equipmentはcanonical rarityとseed分類にも差があります。本Phaseではweightを変更しません。
+- **CONFIRMED / NOT IMPLEMENTED**: Normal TicketとSpecial Ticketを分離します。現行の単一`GACHA_TICKET`を双方で使う経路はProduction方針とのMismatchです。供給量、カテゴリ別分割、Pity接続はPROVISIONALです。
+- **CONFIRMED / NOT IMPLEMENTED**: Pre-OpenではSpecial Gachaを停止し、Production開放はServer-side operating stateで制御します。UI非表示・disabledだけを停止契約としません。
+- 200Pt、供給量、Reward値等の具体的Economy値は、Product DecisionまたはBalance承認がない限りPROVISIONALとして扱います。

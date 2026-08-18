@@ -1,6 +1,103 @@
 # 仕様整合台帳
 
-最終更新: 2026-08-05
+## M9-X整合（2026-08-18）
+
+| 契約 | 正本 | 状態 |
+| --- | --- | --- |
+| Tutorial | Gacha、Auto Formation、固定Quest、無料時短、NPC Battle | CONFIRMED + IMPLEMENTED |
+| Growth | Tutorial必須外、Mission Hub POWER | CONFIRMED + IMPLEMENTED |
+| Tutorial SSR | Daily claim非消費、10枠目を正規SSR 10体からServer選択 | CONFIRMED + IMPLEMENTED |
+| PvP表記 | PvP Rank Point。RateはGvGのみ | CONFIRMED + IMPLEMENTED |
+| Social | 実SSR獲得・Guild設立・総戦力1位交代のみ | CONFIRMED + IMPLEMENTED |
+
+最終更新: 2026-08-17
+
+## 2026-08-17 Production Specification Reconciliation
+
+この節は本書の旧監査表および個別仕様書の旧記述に優先する。仕様の優先順位は、`明示的な最新Product Decision` → `Production契約として成立済みの最新実装` → `現行仕様書` → `旧実装・Mock・historical migration` とする。実装が最新Product Decisionと矛盾する場合は、実装へ合わせて仕様を変更せずMismatchとして扱う。
+
+### Status
+
+- **CONFIRMED**: Product Decisionとして確定済み。
+- **IMPLEMENTED**: CONFIRMEDかつProduction contractとして実装済み。
+- **PROVISIONAL**: 方向性または候補値。Production masterへ確定値として投入禁止。
+- **DEPRECATED**: 新規実装・Balance・設計の参照元として使用禁止。
+
+### Production正本マトリクス
+
+| Domain | Contract | Status | Production source / disposition |
+| --- | --- | --- | --- |
+| Main Formation | 独立した1〜5体の代表編成。PvP Defense等とは分離 | CONFIRMED + IMPLEMENTED | `ranking_power_p0_foundation.md`、migration `00154`〜`00158` |
+| Total Power | Main Formationの`Σ(final HP + final ATK + final DEF)`。SPD/LUK/Friend/Skill/Passiveを除外 | CONFIRMED + IMPLEMENTED | Server-authoritative projection。Client計算は禁止 |
+| Daily boundary | 全日次集計は00:00 JST境界 | CONFIRMED + IMPLEMENTED | 04:00、rolling 24hはDEPRECATED |
+| Guild Power | Seasonは全Member、Dailyは当日Active Memberの現在Total Power合計。人数平均なし | CONFIRMED + IMPLEMENTED | Ranking/Power contract |
+| Ranking Season | 通常月次。初回のみ任意期間可。`season_id/starts_at/ends_at/status`をServer正本とする | CONFIRMED + IMPLEMENTED | Clientの暦推測は禁止 |
+| Ranking categories | Power / Guild Power / PvP / GvG / Raid | CONFIRMED + IMPLEMENTED | PvP Daily=勝利数、Season=Rank Point。GvG Guild=rate、Individual=actual damage。Raid Daily=instance damage、Season=正規instance累積 |
+| GvG schedule | 12:00 / 20:00 / 23:00、各30分 | CONFIRMED | 開催契約。GvG rate式・閾値・報酬とは分離 |
+| GvG rate/reward | rate変動式、端数、試合内容・格差補正、C〜S閾値、同率、報酬、初回日時、lifecycle運用 | PROVISIONAL | `spec_battle_system.md`の具体値は設計候補でありProduction固定値ではない |
+| Character roster | 60体 | CONFIRMED + IMPLEMENTED | migration `00126`は暫定release masterとして実装 |
+| Character rarity | SSR10/SR20/R20/N10の総数構成は候補。個別割当は未確定 | PROVISIONAL | Creative上のHero/Culture/KV分類とRarityを混同しない |
+| Character identity | Primary Culture / Tags / Archetype / Culture Anchor / Hero Anchor / KV Cast | PROVISIONAL / MISSING | 60体の正式正本がない。新規Character Production Master MDが必要 |
+| Awakening | 最大+5、Slot数は3/4/5/6/6/6 | CONFIRMED + IMPLEMENTED | Rarity別初期Slot差なし |
+| Character duplicate | +0〜+4はCASHなしで即時+1。+5後は汎用素材へ変換 | CONFIRMED + IMPLEMENTED | 汎用素材の表示名は「覚醒の書」 |
+| 覚醒の書 economy | 変換量、必要冊数、段階Cost、CASH併用 | PROVISIONAL | internal ID `LAW_OF_STRIFE`は互換目的で維持可。「抗争の掟」は表示名としてDEPRECATED |
+| Character depth | D0〜D3、人数、Launch時専用品数 | PROVISIONAL | 専用品がBuild Depthを作る方向のみ維持 |
+| Exclusive skills | 20行はplaceholder。通常3〜6枠共有が候補 | PROVISIONAL | Character binding / 効果未確定。確定Skillとして使用禁止 |
+| Exclusive equipment | Production Ready / Asset / binding / battle effectを個別判定 | PROVISIONAL | 既存候補を一括で確定品扱いしない |
+| Skill growth | +10骨格 | CONFIRMED + IMPLEMENTED | Duplicate point curve、段階必要量、MAX変換はPROVISIONAL |
+| Skill generic resource | 「スキル指南書」は正式名称候補 | PROVISIONAL | `TRAINING_MANUAL` / `SKILL_LB_BOOK`統合、交換率、供給量は未確定 |
+| Equipment growth | Level / +10 LB / 7 Slot | CONFIRMED + IMPLEMENTED | 同一Duplicateだけを完成経路にしない方向 |
+| Equipment generic LB | 装備汎用限界突破素材（仮） | PROVISIONAL | `EQUIP_LB_HAMMER`はinternal ID。正式商品名・必要量未確定 |
+| Daily free gacha | Character / Skill / EquipmentのNormal各10連を毎日1回 | CONFIRMED + IMPLEMENTED | 正式運営後も恒常。Pre-Open限定ではない |
+| Gacha rates | Normal N50/R40/SR10、Special R60/SR35/SSR5 | CONFIRMED | Characterはbucket整合。Skill/Equipment実効row weightはMismatch |
+| Ticket split | Normal Ticket / Special Ticketを分離 | CONFIRMED / NOT IMPLEMENTED | 現行`GACHA_TICKET`が双方で使える契約はMismatch。供給・カテゴリ・Pity接続はPROVISIONAL |
+| Special Gacha | Pre-Open停止、Production開放はServer-side operating state | CONFIRMED / NOT IMPLEMENTED | UI非表示だけでは停止契約を満たさない |
+| Five-person completion | D7/D30/D45〜60/D90目標 | PROVISIONAL | Economy simulationで調整。固定KPIではない |
+| Daily progression | 大型Awakening／中期Skill／日次Equipment・Levelという体感設計 | CONFIRMED direction | Active Day等の数値KPIはPROVISIONAL |
+| Launch control | Pre-OpenはGvG/Payment/Special Gacha停止。Production開放はServer-side state | CONFIRMED / PARTIAL | Paymentの旧consumer RPCはM8で拒否済み。Special Gachaはclient-callable、GvGはACTIVE match依存で、統一operating stateは未成立 |
+
+### Production mismatch backlog（本監査では未修正）
+
+| Priority | Mismatch | Risk / required next action |
+| --- | --- | --- |
+| P0 | Special Gacha RPCがServer-side operating stateを強制せず、UI停止に依存 | Pre-Open中の直接RPC実行リスク。Production Master実装前にserver guardが必要 |
+| P0 | GvGに明示的なProduction operating stateがなく、ACTIVE matchだけで開始可否を判定 | Pre-Openではmatch生成を止める運用が必要。Production開放前にserver guardを明文化・実装する |
+| P1 | PaymentはM8によりauthenticatedからの旧purchase RPCを拒否済みだが、Production開放用のoperating state契約はない | Pre-Open停止は成立。Production決済実装時にservice-role処理とserver-side stateを設計する |
+| P0 | Skill / Equipment gachaがrarity bucket抽選ではなくrow weight合算 | 公称率と実効率が不一致。canonical rarityの誤分類も含めmaster再構築が必要 |
+| P0 | 1種類の`GACHA_TICKET`がNormal/Special双方で利用可能 | 希少性とPity経済を分離できない。ticket contract/migration設計が必要 |
+| P1 | 覚醒素材のinternal ID・一部UI/文書が旧名称 | IDは維持可。ユーザー表示を「覚醒の書」へ統一し、量・CostはBalance確定後に反映 |
+| P1 | `TRAINING_MANUAL`と`SKILL_LB_BOOK`が併存 | 一本化方針・移行率・供給量のProduct Decisionが必要 |
+| P1 | 60体Identity/Rarity/専用品のProduction master正本が未完成 | Creative identity、rarity、exclusive readinessを分離した新規MDが必要 |
+| P1 | GvG rate/rewardの旧具体値が確定仕様のように残存 | 本監査でPROVISIONAL注記。Balance simulation後に正式masterを確定 |
+
+### Gacha effective-rate audit
+
+- Character poolは現行60体暫定master上で、Normal `N500/R400/SR100`、Special `R1200/SR700/SSR100`の集約weightとなり、公称bucket率と一致する。
+- Skill seedは行数×row weightとなるため、概算でNormal `N47.62%/R38.10%/SR14.29%`、Special `R50.00%/SR43.75%/SSR6.25%`となり、公称率と一致しない。
+- Equipment seedも行数×row weightとなり、概算でNormal `N12.79%/R71.61%/SR15.60%`、Special `R64.98%/SR33.02%/SSR2.01%`となる。canonical equipment masterとの行数・rarity対応にも差がある。
+- 上記は監査値であり、新しいProduction rateではない。本Phaseではweight/masterを変更しない。
+
+### Deprecated search inventory
+
+| Pattern | Current disposition |
+| --- | --- |
+| PvP / Mission 04:00 reset | DEPRECATED。00:00 JSTへ統一。旧計画・監査文書はhistorical evidence |
+| rolling 24h Daily Power | DEPRECATED。JST calendar dayのServer activity判定 |
+| Client-calculated Total Power / SPD・LUK込み | DEPRECATED。Main FormationのServer projectionのみ |
+| PvP Defense = 代表Party | DEPRECATED。Main FormationとPvP Defenseは独立 |
+| GvG `daily_points` / `season_points` | DEPRECATED。Guild rate / individual actual damageへ置換 |
+| GvG win +250 / loss -100 | DEPRECATED。旧履歴節にのみ残置可 |
+| 「抗争の掟」表示名 | DEPRECATED。ユーザー向けは「覚醒の書」。`LAW_OF_STRIFE`はinternal互換ID |
+| Daily Free GachaがPre-Open限定 | DEPRECATED。Normal 3カテゴリ各10連/日を恒常運用 |
+| 単一`GACHA_TICKET` | Production方針とMismatch。Normal/Special分離がCONFIRMED |
+
+### Document authority
+
+- `product_decisions.md`の2026-08-17追補、本節、`ranking_power_p0_foundation.md`、各機能の最新確定追補をProduction判断に使用する。
+- `game_spec.md`、`game_proposal.md`、`development_rules.md`、旧migration、Mock、実装完了メモはhistorical/referenceであり、上記正本を上書きしない。
+- 以降の旧表は2026-08-05時点の監査履歴である。「統合済み」「実装改修対象」という表現だけをProduction完成判定に使用しない。
+
+## 2026-08-05 Historical Reconciliation
 
 本書は、過去仕様と2026-08-05以降に確定した優先仕様の差分を管理する。各機能の実装・改修時は、下表の「現行優先仕様」を使用し、旧記述を新規実装の根拠にしない。
 

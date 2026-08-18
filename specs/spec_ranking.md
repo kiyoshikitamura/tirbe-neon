@@ -16,9 +16,9 @@
 ## 2. ランキング定義と集計判定基準
 
 ### ① 総合力ランキング
-プレイヤーが編成している「パーティデッキ」のパラメータ（HP, ATK, DEF, SPD, LUK）の合算値を競います。
-- **シーズン（絶対値）**: 全ユーザーの現在のパーティデッキ総合力を競います。総合力は、友達リーダーを除く所持キャラクター1〜5体の最終HP・ATK・DEF合計とし、SPD・LUKは含めません。
-- **デイリー（絶対値）**: 本日アクティブ（過去24時間以内にログイン・更新があった）ユーザーの現在のパーティデッキ総合力を競います。
+プレイヤーが設定した独立した「Main Formation」1〜5体の最終HP・ATK・DEF合算値を競います。PvP Defense、Raid、GvG、Quest、Tutorial編成とは分離します。
+- **シーズン（絶対値）**: 全ユーザーの現在のMain Formation総合力を競います。SPD・LUK・Friend Leader・Skill/Passive効果は含めません。
+- **デイリー（絶対値）**: 当日00:00 JST以降にServer側でactivityが記録されたユーザーの現在のMain Formation総合力を競います。rolling 24hは使用しません。
 
 ### ② ギルド総合力ランキング
 所属ギルドメンバーの総合力の合計値を競います。
@@ -28,11 +28,11 @@
 ### ③ PvPランキング
 PvPでの戦績を競います。
 - **シーズン（ランクポイント）**: PvPシーズン終了時の「PvPランクポイント」を競います。
-- **デイリー（勝利数）**: 毎日午前4:00〜翌午前4:00までの「PvP勝利数」を競います。
+- **デイリー（勝利数）**: 毎日00:00 JST〜翌00:00 JSTまでの「PvP勝利数」を競います。
 
 ### ④ 抗争ランキング
 GvGのギルドランクおよび個人貢献を競います。
-- **シーズン（ギルドランク）**: 月次シーズン終了時のGvGレートによるギルド順位を競います。C〜Sのランク帯報酬に加え、最終順位ごとの固定追加報酬を設定できます。
+- **シーズン（ギルドランク）**: 月次シーズン終了時のGvGレートによるギルド順位を競います。C〜S閾値、rate変動式、同率処理、ランク帯・最終順位RewardはPROVISIONALです。
 - **シーズン（個人貢献）**: シーズン中にGvGで記録した実与ダメージを個人貢献ポイントとして集計し、ギルド内表示および報酬配分に使用します。
 - 日次の拠点支配ポイントおよび「勝利+250／敗北-100」によるランキングは廃止します。GvGの詳細は`spec_battle_system.md`を優先します。
 
@@ -48,7 +48,7 @@ GvGのギルドランクおよび個人貢献を競います。
 ランキングデータは、Supabase (PostgreSQL) の以下のテーブル構造で管理されます。
 
 ### A. `user_power_rankings` (新規追加)
-ユーザーのパーティデッキ総合力および最終更新日時を記録します。
+ユーザーのMain Formation総合力を保持するServer-authoritative projectionです。ClientからのINSERT / UPDATE / UPSERTは禁止します。
 ```sql
 CREATE TABLE user_power_rankings (
     user_id UUID REFERENCES users(id) ON DELETE CASCADE PRIMARY KEY,
@@ -57,9 +57,9 @@ CREATE TABLE user_power_rankings (
 );
 ```
 
-### B. 各種リセット機能
-- **デイリーリセット**: 本日アクティブな判定を初期化するため、全ユーザーの `updated_at` を過去（`NOW() - INTERVAL '1 day'`）に更新し、本日ログインしたユーザーから順次アクティブとして追加集計されるようにします。
-- **シーズンリセット**: シーズン初期化に伴い、全ユーザーの `updated_at` を初期日付（`1970-01-01`）へ更新します。
+### B. Daily / Season Contract
+- **Daily**: `users.last_active_at`等のServer-side activity markerをJST calendar dayで判定します。Power projectionの`updated_at`を書き換えてactivityを表現しません。
+- **Season**: `ranking_seasons`の明示的な`season_id / ranking_type / starts_at / ends_at / status`を正本とします。Clientは暦月からSeasonを推測しません。
 
 ---
 
@@ -77,14 +77,14 @@ CREATE TABLE user_power_rankings (
 
 ---
 
-## 5. 高度化仕様（15分動的ポーリング、マイステータスHUD、詳細ポップアップ）
+## 5. 更新・表示仕様（画面Open時Refresh、マイステータスHUD、公開詳細）
 
-### ① 動的ランキング変動 (15分周期ポーリング)
-- アプリケーション起動中、`GameContext.tsx` 内のバックグラウンドタイマーにより 15分 (`900,000` ms) ごとに `syncBootstrapData` を自動実行し、他ユーザーの最新のパラメータやポイント変動をクライアントへ動的に反映します。
+### ① Ranking Refresh
+- Ranking画面を開いた時点で対象Ranking RPCを取得します。15分の全Bootstrap再実行には依存しません。
 
 ### ② 確定タイミングの明確化
-- **デイリー**: 毎日0:00 (JST) に確定し、デイリーリセット関数（`reset_daily_power_rankings` 等）のRPC呼び出しをトリガーとして、本日アクティブ判定を初期化します。
-- **シーズン**: 各種対戦コンテンツ（PvP戦、エリア支配戦）のシーズン終了日時に確定し、シーズンリセット関数を実行します。
+- **デイリー**: 毎日00:00 JSTを境界とし、Server queryがJST calendar dayで対象を判定します。Client起点のreset RPCには依存しません。
+- **シーズン**: `ranking_seasons`で明示された終了日時とstatus遷移を正本とします。
 
 ### ③ マイステータスの常時表示 (Sticky HUD)
 - 各ランキングリストの最上部に、現在の自分の順位とスコア（総合力、勝利数、ポイント、ダメージなど）を固定表示する `my-rank-sticky-bar`（つや消しスチール調、つや消しシルバーベゼル境界線）を配置し、スクロールに影響されず常時確認可能です。
@@ -92,15 +92,15 @@ CREATE TABLE user_power_rankings (
 ### ④ 詳細ポップアップ（プレイヤー自己紹介ポップアップ ＆ ギルド紹介ポップアップ）
 - ランキングの行をタップすると、それぞれの詳細ポップアップがすりガラス風のエフェクトを伴ってフェードインします。
 - **他プレイヤー**:
-  - プレイヤー名、レベル、ユーザー任意設定の自己紹介文 (`users.bio`)
-  - 出撃パーティ（所持キャラクター最大5体＋友達リーダー最大1体）の個別カードと、それぞれの全パラメータの表示。総合力には友達リーダーを算入しない。
+  - Player Name、Level、Guild公開情報、Main Formation Total Power
+  - Main Formation 1〜5体のCharacter public master ID、表示名、Level、Rarity、Awakening、Character Power
+  - owner row ID、Currency、Inventory、Skill/Equipment Build、取引情報は公開しない。
 - **他ギルド**:
   - ギルド名、レベル、将来用ギルドアイコン（エンブレム）、将来用ギルド称号プレースホルダー（新宿の覇者など）
   - 代表者（ギルドマスター）名、所属アライメント属性（ORDER: 青/金、CHAOS: 赤）
   - ギルド紹介文、メンバー数（所属数 / 上限）
   - 現在支配しているエリア一覧（「支配エリア: 新宿」等と表記）
 
-## 2026-08-04 実装完了 (Phase 6)
-- distribute_ranking_rewards SQLマイグレーション追加
-- mockRpc.ts へ報酬配布スタブ追加
-- GameContext.tsx へシーズンリセット検知と報酬配布実行ロジック追加
+## 2026-08-17 Production Contract
+- Ranking Reward値と自動配布は本工程の対象外です。旧`distribute_ranking_rewards`のClient実行経路をProduction契約として使用しません。
+- 実装正本は`ranking_power_p0_foundation.md`およびmigration `00154`〜`00158`を参照します。

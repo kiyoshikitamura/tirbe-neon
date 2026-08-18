@@ -22,8 +22,11 @@ clean-replay targets.
 ## Environment separation
 
 Canonical non-secret project refs are recorded in
-`config/supabase-targets.json`. Preview must be a third, disposable project and
-is supplied through `SUPABASE_PREVIEW_PROJECT_REF`.
+`config/supabase-targets.json`. Preview is a distinct release-candidate project;
+`SUPABASE_PREVIEW_PROJECT_REF` must match its canonical configured ref.
+
+The canonical three-environment workflow and retired Development project are
+documented in `specs/supabase_environment_runbook.md`.
 
 Every repository-managed DB mutation requires all three of the following:
 

@@ -2,6 +2,89 @@
 
 更新日: 2026-08-03
 
+## Open Beta M1進捗（2026-08-12）
+
+- M1-2 `IMPLEMENTED / DB VERIFIED`: 新規開始と既存ログインの入口を分離し、匿名セッションは「はじめから」の明示操作後にだけ作成するよう変更した。
+- `get_current_onboarding_state()` を追加し、匿名状態、プロフィール、チュートリアル、単一認証方式、既存認証ユーザー互換を1つのサーバー応答で判定する。
+- `COMPLETE` で認証連携中のユーザーは既存互換扱いにせず、`complete_tutorial_authentication` 成功まで通常プレイ許可にしない。
+- モックE2Eに加え、開発Supabaseで匿名状態RPCと未認証拒否を確認済み。
+- M1-3 `IMPLEMENTED / DB VERIFIED`: 名前だけを受け取る原子的な初期化RPCへ移行し、任意ユーザーID・初期キャラクター・拠点・報酬のクライアント指定を廃止した。正規化ユーザー名の重複拒否、同一匿名ユーザーの再送冪等性、スターター重複なし、他者RLSを開発Supabaseで確認済み。
+- M1-4 `IMPLEMENTED / MOCK VERIFIED`: 匿名UUIDを維持したメール・パスワード連携、確認メール待ちの再読み込み復帰、既存メール衝突時の自動マージ拒否を実装した。実メール往復は追加QAとして未確認。
+- M1-5 `IMPLEMENTED / DB VERIFIED / UI RECHECK PENDING`: Manual Linking、Google Provider、Redirect URLを設定し、匿名UUIDを維持したGoogle identity連携、衝突拒否、ログアウト後の実Google再ログインをDevelopment DBで確認した。OAuth後の直接マイページ復帰は補正済みで再確認待ち。
+- M1-6 `IMPLEMENTED / RPC DB VERIFIED`: 認証完了RPCの初回・再送とオンボーディング状態RPCの双方で、非匿名、対応identityが厳密に1方式、記録方式との一致を継続検査するよう強化した。不整合アカウントは再訪時にゲーム画面をブロックし、ログアウト導線を表示する。RPC定義・権限は実DB確認済み、provider異常系はモックE2E確認済み。
+- M1-7／M1-8 `DB VERIFIED / UI RECHECK PENDING`: Development DBでpreflight／postflight、未認証拒否、匿名初期化、冪等性、正規化名重複、他者RLS、実Google provider往復と再ログインを確認した。直接マイページ復帰の再確認、実メール往復、ゲーム独自監査ログは追加QAとして継続する。
+
+## Open Beta M2進捗（2026-08-12）
+
+- M2-1 `IMPLEMENTED / DB NOT VERIFIED`: 固定だった通常派遣の時短料金を、確定仕様どおりCASHは残り1分100・JST日次3回、ダイヤは残り1時間10・無制限としてRPC側で計算するよう修正した。クライアントは料金とCASH残回数を表示し、モックで料金、二重実行拒否、日次上限、上限後のダイヤ利用を確認済み。
+- M2-1のDevelopment DB構造・関数権限postflightは全PASS。実画面の料金・消費確認待ち。
+- M2-2 `IMPLEMENTED / DB VERIFIED / UI RECHECK PENDING`: クエスト開始時にサーバー側でAP回復確定とマスタ由来AP消費を同一トランザクション化し、確定残APをクライアントへ返す。Development DB postflightは全PASS、モックでマスタ由来消費と返却値を確認済み。
+- M2-3 `IMPLEMENTED / DB VERIFIED / AUTOMATED E2E PASS / MANUAL UI PASS`: 通常派遣のNPC戦をOpen Beta MUSTとし、全21公開クエストを100%遭遇へ変更。ブラウザが `user_patrols.battle_result` を直接更新する経路を除去し、所有済み編成とNPCマスタから生成したサーバースナップショットをEdge Functionで決着させる。Development実DBでチュートリアル勝利と通常派遣敗北の両経路、未決着報酬拒否、決着後報酬受取を確認し、実画面の挙動も確認済み。既存バトルUI・演出は確定結果の表示層として継続利用する。装備・装着スキルを含む完全な正規化、およびサーバーイベント列と画面演出の完全同期はM2-4として残る。
+- M2-4a `IMPLEMENTED / DB VERIFIED`: 装備172件をクライアント定数から再生成可能なDB戦闘マスタへ移し、派遣リプレイの装備ステータスをサーバー正規値化した。装着スキル参照と+41%曲線も記録するが、現スキルマスタに個別対象・クールダウンがなく、専用スキル20件が正式設定前なので実行効果は未確定ブロッカーとして分離した。Development postflightは9/9 PASS。
+- M2-4b `IMPLEMENTED / AUTOMATED E2E PASS / MANUAL UI RECHECK PENDING`: QUESTでは旧クライアントAI計算を止め、サーバーの正規編成と確定イベント列だけを既存バトル演出へ反映する。再生カーソルをクライアント保持し、サーバー結果と画面ログのダメージ一致、勝利後のチュートリアル遷移をDevelopmentブラウザで確認済み。残る確認は実端末での演出テンポ・視認性。
+- 共通UX `IMPLEMENTED / UI RECHECK PENDING`: ダイアログ表示待ち・閉じる待ちをフリーズと誤認させないため、共通ボタンのsingle-flight化、即時spinner、確認ダイアログの先行dismiss、全画面処理中spinner、ガチャ操作群の一括disableを追加した。
+- 共通連打防止 `IMPLEMENTED / LOCAL VERIFIED / UI RECHECK PENDING`: Reactのloading再描画前に入る同一フレームの連打を同期refで遮断する共通action lockを追加。育成系14操作とミッション／プレゼント受取へ適用し、結果ダイアログの描画タスク後まで解除しない。ミッションボタンはPromiseを共通ボタンへ返して処理中状態を維持する。
+- 認証復帰UX `IMPLEMENTED / LOCAL VERIFIED / UI RECHECK PENDING`: Supabase Authがタブのhidden→visible復帰時に同一セッションへ`SIGNED_IN`を再通知する挙動を、新規ログインとして処理して全画面spinner・オンボーディングRPC・bootstrapを再実行していた。認証イベントを分岐し、同一ユーザーの`SIGNED_IN`と`TOKEN_REFRESHED`はセッション値だけ更新、初回・別ユーザー・`USER_UPDATED`だけ再検証するよう修正した。分岐テストと型検査はPASS。
+- M3-1 `AUDITED`: 装備装着の非原子的な直接更新、旧一括RPCの任意ユーザーID、7枠部位マッピング不一致を最優先ギャップとして確認した。育成RPCの呼出側料金/user ID信用と、アカウント単位スキルを複数キャラへ装着できない現データモデルは後続へ分離する。
+- M3-2a `IMPLEMENTED / LOCAL VERIFIED / DB APPLY PENDING`: 装備loadoutを所有者・部位・専用条件検証付きの原子的RPCへ移し、authenticatedの直接UPDATEと危険な旧RPCを閉じた。UIの武器2/アクセ2配置、部位候補、単体装着時の非同期state競合も修正した。
+- M3-2a `DB VERIFIED`: Development postflight 7/7 PASS。
+- M3-2b1 `DB VERIFIED`: 覚醒費用・上限・素材をDBマスタで確定し、他者IDとクライアント料金指定を排除した。Development postflight 6/6 PASS。
+- M3-2b2 `DB VERIFIED / UI RECHECK PENDING`: Open Beta暫定値として、キャラLvは1素材/100 CASH、装備Lvは1素材/50 CASH、装備/スキル突破は次の+値×1,000 CASH・素材1個をマスタ投入した。4処理を`auth.uid()`・所有権・DB料金/上限・原子的消費のRPCへ統一し、旧caller-authority RPCを拒否した。Development postflight 8/8 PASS。暫定値はOpen Betaリリース判断時に最終ジャッジする。
+- M3-2b3: キャラLv操作の誤引数を修正し、装備・スキル強化の対象選択とLv/突破操作UIを追加。Development実画面の再確認待ち。
+- M3-2c `IMPLEMENTED / DB VERIFIED / REAL DB E2E PASS / UI RECHECK PENDING`: スキル個別装備のReact state競合と、一括推奨が存在しない引数契約の旧RPCを呼んでエラーを捨てる不具合を修正。所有者・覚醒解放枠・有効スキル・専用条件をDBで検証する原子的な個別/解除/一括RPCへ置換し、直接UPDATEとcaller-supplied user IDの旧RPCを閉じる。UIへ操作説明、選択中枠、装備中枠、処理中表示を追加した。Development postflight 6/6 PASS。直接UPDATE拒否、新RPCでの装備、QUESTスナップショット、1ラウンド目のスキルACTIONを実DB E2Eで確認した。
+- 育成結果UX `IMPLEMENTED / LOCAL VERIFIED / UI RECHECK PENDING`: キャラクターと装備のLv強化成功後に、強化前Lv→強化後Lvを示す結果ダイアログを表示する。実行前の確認ダイアログは追加しない。
+- M3-3a `DB VERIFIED`: 装備Lvの確定成長曲線（Lv1=10%、Lv50=60%、Lv100=100%）をクライアント・モック・QUESTサーバースナップショットへ実装。Development postflight 5/5 PASS。装備突破の固定ボーナスマスタは未確定のため現補正を維持する。
+- `EQUIP_LB_HAMMER`の表示名「限界突破ハンマー」は暫定。Open Betaリリース判定時の用語差し替え対象。
+- M3-3b `IMPLEMENTED / DB VERIFIED / EDGE DEPLOYED / REAL DB E2E PASS`: 差替可能な`skill_battle_master`、通常50件の暫定実行定義、専用20件の無効化、装着枠・専用条件・+値を検証するQUESTスナップショット結合を追加。Edgeとモックで攻撃・回復・BUFF/DEBUFF・状態異常を決定論的に処理する。正式値は同一`skill_id`のUPSERTで差し替え可能。Development postflightは9/9 PASS。DevelopmentへEdge Functionを再デプロイし、正規の無料ガチャで取得・装着した`SKILL_028`がサーバースナップショット（ATTACK / ENEMY_SINGLE / CD4）と1ラウンド目のACTIONイベントへ反映される実DB E2Eを確認した。
+
+## Open Beta M4進捗（2026-08-12）
+
+- M4 `IMPLEMENTED / DB VERIFIED / REAL DB E2E PASS`: ガチャ価格と無料10連の日次判定をDB正規値へ統一し、無料枠をノーマル限定にした。Development postflightは7/7 PASS。
+- キャラクターガチャは差し替え可能な暫定60体（SSR 10／SR 20／R 20／N 10）と、ノーマル・スペシャルの正規プールをDBマスタ化した。Development postflightは7/7 PASS、実DBの無料キャラクターガチャE2EもPASS。
+- 暫定キャラクター構成と排出重みは、正式マスタ決定時に同一IDのマスタ置換で差し替える。
+
+## Open Beta M5進捗（2026-08-12）
+
+- M5 `IMPLEMENTED / DB VERIFIED / MULTI-USER E2E PASS / MANUAL UI RECHECK PENDING`: ギルド作成・検索・加入申請・取消・承認／拒否・脱退・解散を所有権検証付きRPCへ統一し、直接書込みと危険な旧RPCを閉じた。Development postflightは10/10 PASS。
+- 役職を`MASTER`／`SUB_MASTER`／`MEMBER`へ正規化し、権限移譲・役職変更・追放を原子的RPCへ統一した。Development postflightは7/7 PASS。
+- 2ユーザーのDevelopment実DB E2Eで、作成、検索、申請、非権限者の承認拒否、承認、SUB_MASTER昇格、直接役職更新拒否、脱退、解散を確認した。
+- UIへMASTER譲渡導線と脱退確認ダイアログを追加。最終の実画面再確認のみ継続する。ギルドチャットはM6で扱う。
+
+## Open Beta M6進捗（2026-08-12）
+
+- M6-1 ギルドチャット `IMPLEMENTED / DB VERIFIED / MULTI-USER REALTIME E2E PASS / MANUAL UI RECHECK PENDING`: 既存`board_posts`とチャットUIを維持し、ギルド3秒／全体10秒のサーバー側クールダウン、DB既読位置、未読件数、タブ復帰・Realtime再接続時の再取得を追加した。
+- `board_posts`をauthenticatedのスコープ済みSELECT専用とし、anonアクセス、直接INSERT／UPDATE／DELETE、未使用の旧`user_chats`経路を閉じた。Development postflightは9/9 PASS。
+- Developmentの2ユーザー実DB E2Eで、非メンバー閲覧拒否、加入後取得、未読加算、既読化、クールダウン、Realtime即時受信、直接INSERT拒否、ギルド解散を確認した。
+- コミュニティ入口と全体／ギルドタブに最低限の未読件数を表示する。高度な通知UIはOpen Beta後回しとする。
+- M6-2 BBS `IMPLEMENTED / DB VERIFIED / MULTI-USER REALTIME E2E PASS / MANUAL UI RECHECK PENDING`: スレッド単位のDB既読位置と未読件数、カードのNEW表示、コミュニティ未読合算、タブ復帰・Realtime再接続時の一覧／返信再取得を追加した。RPC応答とRealtimeの順序による返信二重表示も防止した。
+- BBSテーブルをauthenticatedのSELECT専用とし、anon閲覧と直接INSERT／UPDATE／DELETEを閉じた。Development postflightは9/9 PASS。
+- Developmentの2ユーザー実DB E2Eで、スレッド作成・取得、未読加算、既読化、Realtime返信、切断中返信の再取得、直接書込み拒否、未認証閲覧拒否を確認した。
+- M6-3 DM `IMPLEMENTED / DB VERIFIED / MULTI-USER REALTIME E2E PASS / MANUAL UI RECHECK PENDING`: 送信者別未読件数、DMタブとコミュニティ入口の未読合算、選択外の未読相手導線、タブ復帰・Realtime再接続時の会話再取得を追加した。閉じた会話の自動既読と、RPC応答／Realtime順序による二重表示を防止した。
+- `direct_messages`を参加者だけが読めるauthenticated SELECT専用とし、旧ポリシーに残っていた直接INSERT経路、anonアクセス、直接UPDATE／DELETEを閉じた。Development postflightは9/9 PASS。
+- Developmentの3ユーザー実DB E2Eで、参加者取得、第三者閲覧拒否、送信者別未読、受信者限定既読化、Realtime即時受信、切断中DMの再取得、直接INSERT拒否、未認証閲覧拒否を確認した。
+- M6 Social Minimumはギルドチャット、BBS、DMの全3系統で送信・取得・Realtime・再接続・最低限の未読を実DB確認済み。高度な通知UIのみ後回しとする。
+
+## Open Beta M7進捗（2026-08-12）
+
+- M7-1 ログインボーナス `COMPLETE / DB VERIFIED / REAL DB E2E PASS / MANUAL UI PASS`: 30回シート、JST日次判定、累計ログイン数、30→1ループ、プレゼントBOX格納を原子的RPCへ統一した。UIが期待する返却形式へ揃え、初回同時実行をユーザー単位で直列化した。
+- `user_login_bonuses`と`presents`を所有者SELECT専用とし、クライアントからの状態・報酬捏造を閉じた。Development postflightは10/10 PASS。
+- Development実DB E2Eで、初回取得、同日並行再送、プレゼント重複なし、他者RLS、直接改ざん拒否、30回目後の新シート1回目、累計31回、ループ後再送冪等性を確認した。
+- M7-2a ミッション基盤 `IMPLEMENTED / DB VERIFIED`: デイリー／通常の正規区分、04:00 JST更新、デイリー未受取の24時間プレゼント救済、通常ミッションの受取後段階解放、所有者限定取得、原子的な個別／一括受取を実装した。Development postflightは9/9 PASS、内部進捗dispatch補正は5/5 PASS。
+- クライアントが任意のユーザー・トリガー・進捗量を指定できた旧RPC、直接マスタ／進捗更新、クライアント側の日次救済生成を閉じた。サーバー結果確定RPCだけが内部イベント評価を呼ぶ構成へ移行する。
+- M7-2b 暫定ミッション `COMPLETE / DB VERIFIED / REAL DB E2E PASS / MANUAL UI PASS`: レビュー承認済みのデイリー4件・通常14件を安定IDで投入し、旧暫定行を無効化した。Development postflightは12/12 PASS。
+- 実DB E2Eで初期ルート10件、ログイン自動達成、直接進捗改ざん拒否、他者RLS、原子的受取と二重受取拒否、経験の書が装備ではなく所持アイテムへ格納されることを確認した。
+- M7 `COMPLETE`: ログインボーナス、ミッション、報酬受取、04:00 JST更新、二重取得防止、30回ループ、暫定マスタ、実DB E2E、手動UI確認を完了。共通連打防止により結果ダイアログ表示前の重複操作も遮断した。
+
+## Open Beta M8進捗（2026-08-13）
+
+- M8 `COMPLETE / DB VERIFIED / REAL DB ADVERSE E2E PASS`: users、inventory、gacha、reward、growth、guild、chat、missionを横断監査し、Critical 21テーブルすべてでRLS有効、authenticatedのテーブル単位直接書込み0件、許可外の広範RLS 0件、固定`search_path`なしの公開`SECURITY DEFINER` 0件をDevelopment DBで確認した。
+- 一般ユーザーから、テスト通貨付与、未検証課金／月額パス、旧ガチャ決済、運営リセット、クライアント指定XP・報酬・勝敗・消費量を信用する旧RPCを遮断した。26本の旧mutation RPCはanon/authenticated実行不可、24本の開発／運営／課金RPCはservice_role限定となった。
+- `users`は承認済みプロフィール列だけをUPDATE可能とし、通貨、AP、Lv/XP、ギルド所属、ログイン／報酬状態をRPC専用にした。`user_items`、`user_skills`、ガチャ無料回数／ピティ、課金履歴、月額パス状態も所有者SELECT専用とした。
+- 装備売却を`auth.uid()`、所有、装備中、重複、最大100件、サーバー固定売価500 CASHで検証する`sell_owned_equipment(uuid[])`へ置換した。旧`sell_gear_bulk(uuid,jsonb)`は一般ユーザーから遮断した。
+- 最終Security Gateは7/7 PASS。linked Developmentユーザーによる実DB異常系E2Eは、直接通貨更新、所持品／スキル／課金状態捏造、テスト通貨、任意XP、旧PvP勝敗、他者ガチャ、他者ギフトコード、装備売却重複を含む12/12 PASS。各試行は例外サブトランザクションで巻き戻し、テスト変更は残していない。
+- BBSスレッド／投稿のauthenticated全体SELECTは確定BBS仕様に必要な公開範囲として許可する。caller-supplied IDを持つ現行13関数は、`auth.uid()`一致検査済みまたは公開バトル情報の対象指定としてallowlist化した。
+- 旧クライアント権威のPvP／GvG／Raid／Friend mutationは安全側で停止した。これらSHOULD／POST-BETA機能を再開する場合は、サーバー確定リプレイ／報酬と所有権検証を備えた正規RPCへ置換する。Development QA fixtureは内部allowlistを維持して`search_path`を固定し、Production候補へ持ち込まない。
+
 仕様書に記載された機能を、現行の`src/`・Supabase migration・Preview確認結果と照合した結果です。
 
 ## 優先度A（機能追加前に仕様確定が必要）

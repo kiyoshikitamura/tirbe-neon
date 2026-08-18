@@ -1,5 +1,7 @@
 # 【TRIBE NEON】主要キャラクター公式マスター仕様書（実物逆算 ＆ 公式設定完全統合版）
 
+> **Production Status（2026-08-17）**: 本書は顔・髪・衣装等のCreative正本です。見出し中の「SSR」は制作当時の暫定配置であり、個別Character RarityのProduction確定根拠ではありません。Hero Anchor / Culture Anchor / KV CastとRarityは別軸です。
+
 個別キャラクターの顔、髪、衣装、傷、タトゥー、アクセサリー、ポーズは本書を正本とする。作品共通の画風、追加アセット制作、AI生成およびAsset QAは`art_bible.md`を正本とする。
 
 本ドキュメントは、実物アセット画像（`reiji_transparent_asset.png`, `rui_transparent_asset.png`）より逆算した完璧な仕様と、過去保存公式設定（`world_underground_settings.md`）を統合した最新の決定版仕様書です。

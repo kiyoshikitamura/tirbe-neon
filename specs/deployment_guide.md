@@ -111,3 +111,6 @@ Vercel Dashboard の **Settings** -> **Environment Variables** にて、環境�
 - [ ] Vercel の Production 環境変数に本番用 Supabase URL / Anon Key が登録されているか
 - [ ] Supabase Auth の Redirect URL に本番ドメインが追加されているか
 - [ ] `npm run lint`、自動テスト、`npm run build` がCI・ローカルで成功するか
+> **Environment notice (2026-08-13):** Supabase environment instructions in
+> this legacy guide are superseded by `specs/supabase_environment_runbook.md`.
+> Do not create, link, or configure `tribe-neon-dev`; it is RETIRED.
