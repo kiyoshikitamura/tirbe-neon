@@ -15,4 +15,3 @@ if (error) throw error;
 if (!data?.length) throw new Error("Authenticated patrol NPC master read returned no rows.");
 if (data.some((npc) => !npc.id || !npc.quest_id || !npc.npc_name)) throw new Error("Patrol NPC master has incomplete identity fields.");
 console.log(JSON.stringify({ projectRef: actualProjectRef, patrolNpcCount: data.length, questIds: [...new Set(data.map((npc) => npc.quest_id))] }, null, 2));
-
