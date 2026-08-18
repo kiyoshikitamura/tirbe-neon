@@ -22,6 +22,7 @@ import ModeBattleResultCard from "@/app/components/battle/ModeBattleResultCard";
 export type { UseBattleOptions, ParticipantState, CardState, SkillLogItem };
 
 const patrolReplayCursorKey = (replayId: string) => `tribe_neon_patrol_replay_cursor_${replayId}`;
+type BattleMode = "PVP" | "PVP_PRACTICE" | "RAID" | "GVG" | "PATROL";
 
 function savedPatrolReplayCursor(replayId: unknown, fallback: unknown): number {
   const fallbackIndex = Math.max(0, Number(fallback || 0));
@@ -77,7 +78,7 @@ export function useBattle(options: UseBattleOptions) {
   } = options;
 
   const [battleSessionId, setBattleSessionId] = useState<string | null>(null);
-  const [battleMode, setBattleMode] = useState<"PVP" | "RAID" | "GVG" | "PATROL" | null>(null);
+  const [battleMode, setBattleMode] = useState<BattleMode | null>(null);
   const [hasRaidControlBonus, setHasRaidControlBonus] = useState<boolean>(false);
   const [battleOpponentName, setBattleOpponentName] = useState<string>("");
   const [battleState, setBattleState] = useState<"SETUP" | "PLAYING" | "OUTRO" | null>(null);
@@ -187,7 +188,7 @@ export function useBattle(options: UseBattleOptions) {
 
   // バトルの初期設定フェーズへ移行
   const startCardBattleInternal = async (
-    mode: "PVP" | "RAID" | "GVG" | "PATROL",
+    mode: BattleMode,
     targetName: string,
     areaIdOrOpponentUserId?: string,
     oppPoints?: number,
@@ -318,7 +319,7 @@ export function useBattle(options: UseBattleOptions) {
       setHasRaidControlBonus(isControlledByUs);
     }
 
-    if (mode === "PVP") {
+    if (mode === "PVP" || mode === "PVP_PRACTICE") {
       // Cost consumption, canonical rosters and the random seed are committed
       // together by start_pvp_battle below.
       setOpponentPoints(oppPoints || 1000);
@@ -863,7 +864,7 @@ export function useBattle(options: UseBattleOptions) {
     }
 
     if (!loadedRealEnemy) {
-      if (mode === "PVP" || mode === "GVG") {
+      if (mode === "PVP" || mode === "PVP_PRACTICE" || mode === "GVG") {
         const baseHp = mode === "GVG" ? 1400 : 1200;
         const myGuildId = userGuildMember?.guild_id || "";
         const isPractice = areaIdOrOpponentUserId === myGuildId;
@@ -983,8 +984,10 @@ export function useBattle(options: UseBattleOptions) {
       setErrorMessage(message);
     };
 
-    // 新規リプレイの入力を開始時点で固定する。結果・イベントはサーバー解決だけが書き込む。
-    try {
+    // Practice is deliberately client-local: it reuses the viewer and turn
+    // presentation without creating an official replay, consuming PvP Point,
+    // or entering any result/reward/ranking contract.
+    if (mode !== "PVP_PRACTICE") try {
       const playerSnapshot = participantsToBattleUnits(initialPlayerParty);
       const enemySnapshot = participantsToBattleUnits(initialEnemyParty);
       const replayMode = mode === "PATROL" ? "QUEST" : mode;
@@ -1186,7 +1189,7 @@ export function useBattle(options: UseBattleOptions) {
     }
 
     // 旧セッションは中断再開の互換用。再生UI移行後に廃止する。
-    try {
+    if (mode !== "PVP_PRACTICE") try {
       const { data: sessionData } = await supabase.from("battle_sessions").insert({
         user_id: session.user.id,
         battle_type: mode,
@@ -1310,7 +1313,7 @@ export function useBattle(options: UseBattleOptions) {
     if (timeline.length === 0) return;
     const nextIndex = overrideIndex !== undefined ? overrideIndex : (timelineIndex + 1) % timeline.length;
     if (nextIndex === 0) {
-      const roundLimit = battleMode === "RAID" ? 30 : battleMode === "PVP" || battleMode === "GVG" ? 20 : 15;
+      const roundLimit = battleMode === "RAID" ? 30 : battleMode === "PVP" || battleMode === "PVP_PRACTICE" || battleMode === "GVG" ? 20 : 15;
       if (battleRound >= roundLimit) {
         void endBattleSession("DEFEAT");
         return;
@@ -1816,6 +1819,32 @@ export function useBattle(options: UseBattleOptions) {
     }
     setGvgTargetBaseId(null);
     const isWin = finalResult === "VICTORY";
+
+    if (modeTemp === "PVP_PRACTICE") {
+      setBattleSessionId(null);
+      if (setConfirmDialogConfig) {
+        setConfirmDialogConfig({
+          isOpen: true,
+          title: "NPC模擬戦結果",
+          message: createElement(ModeBattleResultCard, {
+            mode: "PVP",
+            victory: isWin,
+            opponent: opponentNameTemp,
+            stats: [
+              { label: "MODE", value: "PRACTICE" },
+              { label: "PVP POINT", value: "消費なし" },
+              { label: "RANK", value: "変動なし" },
+            ],
+            reward: "報酬なし",
+            note: "模擬戦は戦績・ランキング・報酬へ反映されません。",
+          }),
+          confirmText: "防衛設定へ戻る",
+          onConfirm: () => { setConfirmDialogConfig(null); navigateTab?.("pvp"); },
+          onCancel: () => { setConfirmDialogConfig(null); navigateTab?.("pvp"); },
+        });
+      }
+      return;
+    }
 
     if (battleSessionId) {
       await supabase.from("battle_sessions").update({ status: finalResult }).eq("id", battleSessionId);

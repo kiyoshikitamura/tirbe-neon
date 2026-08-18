@@ -4,6 +4,19 @@
   height: 100%;
 }
 
+/* Chat can be opened after horizontally scrollable tabs/details. Anchor the
+   modal to the viewport instead of inheriting a shifted containing block. */
+.modal-shell.tribe-chat-panel {
+  position: fixed;
+  top: var(--app-safe-top, 0px);
+  right: auto;
+  bottom: var(--app-safe-bottom, 0px);
+  left: 50%;
+  width: min(100vw, 430px);
+  transform: translateX(-50%);
+  animation: none;
+}
+
 .tribe-dm-recipient-selector {
   display: flex;
   align-items: center;

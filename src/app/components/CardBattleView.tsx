@@ -95,7 +95,7 @@ export default function CardBattleView() {
 
   // 1. SETUP 出撃準備画面
   if (battleState === "SETUP") {
-    const isPvP = battleMode === "PVP" || battleMode === "GVG";
+    const isPvP = battleMode === "PVP" || battleMode === "PVP_PRACTICE" || battleMode === "GVG";
     const enemyPower = enemyPartyStates.reduce((total: number, enemy: any) => {
       const stats = enemy.stats || {};
       return total + Number(enemy.maxHp || 0) + Number(stats.atk || 0) + Number(stats.def || 0);
@@ -115,7 +115,7 @@ export default function CardBattleView() {
 
           <div className="setup-match-heading" aria-label="battle briefing">
             <span className="setup-mode-stamp">
-              {battleMode === "GVG" ? "抗争" : battleMode === "PVP" ? "対決" : battleMode === "RAID" ? "討伐" : "出撃"}
+              {battleMode === "GVG" ? "抗争" : battleMode === "PVP_PRACTICE" ? "模擬戦" : battleMode === "PVP" ? "対決" : battleMode === "RAID" ? "討伐" : "出撃"}
             </span>
             <span className="setup-match-copy">対戦情報</span>
           </div>
@@ -240,7 +240,7 @@ export default function CardBattleView() {
             disabled={setupLaunching}
             aria-busy={setupLaunching}
           >
-            {setupLaunching ? "バトル準備中..." : isTutorialBattle ? "バトル開始" : "抗争開始"}
+            {setupLaunching ? "バトル準備中..." : battleMode === "PVP_PRACTICE" ? "模擬戦開始" : isTutorialBattle ? "バトル開始" : "抗争開始"}
           </button>
         </div>
 

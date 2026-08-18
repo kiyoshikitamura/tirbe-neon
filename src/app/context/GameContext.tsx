@@ -2027,19 +2027,15 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   // ==========================================
   const triggerNpcDefenseSimulation = async () => {
     if (!session) return;
+    if (simulatingDefense || battle.battleLoading) return;
     setSimulatingDefense(true);
     playCyberSe("click");
 
     try {
-      setConfirmDialogConfig({
-        isOpen: true,
-        title: "NPC模擬戦",
-        message: "現在の防衛編成をNPC相手に確認する練習モードです。模擬戦は戦績・PvP Rank Point・報酬に影響しません。",
-        onConfirm: () => setConfirmDialogConfig(null),
-        onCancel: () => setConfirmDialogConfig(null)
-      });
+      await battle.startCardBattle("PVP_PRACTICE", "NPC防衛訓練部隊", "npc_dummy_practice");
     } catch (err: any) {
       console.warn("Defense simulation failed:", err.message);
+      setErrorMessage("NPC模擬戦を開始できませんでした。");
     } finally {
       setSimulatingDefense(false);
     }

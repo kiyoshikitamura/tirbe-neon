@@ -326,7 +326,7 @@ export default function PvpTab() {
                   <div className="flex justify-between items-center mb-2">
                     <h3 className="font-bold text-white m-0">防衛戦闘ログ</h3>
                     <OutlawButton variant="secondary" onClick={triggerNpcDefenseSimulation} disabled={simulatingDefense} className="text-xs px-2 py-1">
-                      防衛襲撃シミュレート
+                      {simulatingDefense ? "模擬戦準備中…" : "NPC模擬戦"}
                     </OutlawButton>
                   </div>
                   

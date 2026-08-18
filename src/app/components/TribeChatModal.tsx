@@ -98,7 +98,7 @@ export default function TribeChatModal() {
   };
 
   return (
-    <FullScreenPanel title="暗号メッセージ『トライブ』" onClose={handleClose}>
+    <FullScreenPanel title="暗号メッセージ『トライブ』" onClose={handleClose} className="tribe-chat-panel">
       <div className="tribe-modal-container-inner flex-col" style={{ height: '100%' }}>
         {/* チャンネルタブ (全体 / ギルド / DM) */}
         <SubTabNav

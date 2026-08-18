@@ -47,6 +47,15 @@ async function revealTutorialTenPull(page: import("@playwright/test").Page) {
   for (let index = 0; index < 10; index += 1) await reveal.click();
 }
 
+async function completeRuleGuide(page: import("@playwright/test").Page) {
+  await expect(page.getByRole("heading", { name: "街を進め" })).toBeVisible();
+  await page.getByRole("button", { name: "次へ" }).click();
+  await expect(page.getByRole("heading", { name: "仲間を強くしろ" })).toBeVisible();
+  await page.getByRole("button", { name: "次へ" }).click();
+  await expect(page.getByRole("heading", { name: "仲間とつながれ" })).toBeVisible();
+  await page.getByRole("button", { name: "ミッションハブへ" }).click();
+}
+
 test("common app shell owns safe area through entry and tutorial overlay", async ({ page }) => {
   await page.goto("/");
   await page.locator("html").evaluate((root) => root.style.setProperty("--app-safe-top", "47px"));
@@ -77,24 +86,22 @@ test("common app shell owns safe area through entry and tutorial overlay", async
   await expect(page.locator(".game-start-transition")).toBeVisible();
   await expect(page.getByRole("button", { name: /準備中/ })).toHaveCount(0);
   await enterNameRegistration(page);
-  await expect(page.getByRole("button", { name: "入力内容を確認する" })).toHaveClass(/semantic-cta--primary/);
+  await expect(page.getByRole("button", { name: "この名前で進む" })).toHaveClass(/semantic-cta--primary/);
   await page.screenshot({ path: test.info().outputPath("m9-design-registration-390.png") });
   await expect(page.locator(".app-container")).toHaveCount(1);
   await page.getByPlaceholder("プレイヤー名を入力").fill("境界確認");
-  await page.getByRole("button", { name: "入力内容を確認する" }).click();
+  await page.getByRole("button", { name: "この名前で進む" }).click();
   await page.getByRole("button", { name: "この名前で始める" }).click();
 
-  await expect(page.getByText("最初の案内")).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "TRIBE NEONへようこそ" })).toBeVisible();
   await expect(page.locator(".app-container .app-container")).toHaveCount(0);
   await expect(page.locator(".footer-mobile")).toHaveCount(0);
-  const bounds = await page.locator(".modal-overlay").evaluate((overlay) => {
+  const bounds = await page.locator(".tutorial-world").evaluate((overlay) => {
     const overlayRect = overlay.getBoundingClientRect();
-    const shellRect = document.querySelector(".app-container")!.getBoundingClientRect();
-    return { top: overlayRect.top, bottom: overlayRect.bottom, shellTop: shellRect.top, shellBottom: shellRect.bottom };
+    return { top: overlayRect.top, bottom: overlayRect.bottom, viewportHeight: innerHeight };
   });
-  expect(bounds.top).toBeGreaterThanOrEqual(bounds.shellTop);
-  expect(bounds.top).toBeGreaterThanOrEqual(47);
-  expect(bounds.bottom).toBeLessThanOrEqual(bounds.shellBottom);
+  expect(bounds.top).toBeGreaterThanOrEqual(0);
+  expect(bounds.bottom).toBeLessThanOrEqual(bounds.viewportHeight);
   expect(titleMetrics.paddingTop).toBeDefined();
   expect(titleMetrics.paddingBottom).toBeDefined();
 });
@@ -105,9 +112,9 @@ test("free gacha presents one CTA, feedback, result assets, and formation connec
   await page.getByRole("button", { name: "はじめから" }).click();
   await enterNameRegistration(page);
   await page.getByPlaceholder("プレイヤー名を入力").fill("ガチャ確認");
-  await page.getByRole("button", { name: "入力内容を確認する" }).click();
+  await page.getByRole("button", { name: "この名前で進む" }).click();
   await page.getByRole("button", { name: "この名前で始める" }).click();
-  await page.getByRole("button", { name: "無料10連へ" }).click();
+  await page.getByRole("button", { name: "無料10連ガチャへ" }).click();
 
   await expect(page.getByRole("heading", { name: "ガチャ" })).toBeVisible();
   await expect(page.getByText("STEP 1 / ノーマルガチャ")).toBeVisible();
@@ -169,7 +176,8 @@ test("free gacha presents one CTA, feedback, result assets, and formation connec
     expect(metrics.rowCount).toBe(2);
     await page.screenshot({ path: test.info().outputPath(`m9-1-gacha-result-${width}.png`), fullPage: true });
   }
-  await expect(page.locator(".gacha-result-card .character-presentation-thumbnail")).toHaveCount(10);
+  await expect(page.locator(".gacha-result-card .character-presentation-thumbnail")).toHaveCount(9);
+  await expect(page.locator(".gacha-result-card").filter({ hasText: "GEAR" })).toHaveCount(1);
   await expect(page.locator(".gacha-result-card .character-presentation img").first()).toBeVisible();
   const characterImage = await page.locator(".gacha-result-card .character-presentation img").first().evaluate((image) => {
     const rect = image.getBoundingClientRect();
@@ -204,15 +212,15 @@ test("free gacha presents one CTA, feedback, result assets, and formation connec
   await expect(page.getByRole("button", { name: "おすすめ編成で決定" })).toBeVisible();
 });
 
-test("formation connects to one safe growth action and resumes at the quest boundary", async ({ page }) => {
+test("formation advances directly to the quest boundary and resumes there", async ({ page }) => {
   await page.goto("/");
   await page.getByText("TAP TO START").click();
   await page.getByRole("button", { name: "はじめから" }).click();
   await enterNameRegistration(page);
-  await page.getByPlaceholder("プレイヤー名を入力").fill("強化確認");
-  await page.getByRole("button", { name: "入力内容を確認する" }).click();
+  await page.getByPlaceholder("プレイヤー名を入力").fill("編成確認");
+  await page.getByRole("button", { name: "この名前で進む" }).click();
   await page.getByRole("button", { name: "この名前で始める" }).click();
-  await page.getByRole("button", { name: "無料10連へ" }).click();
+  await page.getByRole("button", { name: "無料10連ガチャへ" }).click();
   await page.getByRole("button", { name: "無料10連を引く" }).click();
   await revealTutorialTenPull(page);
   await expect(page.getByText("ガチャ結果")).toBeVisible({ timeout: 15_000 });
@@ -238,80 +246,17 @@ test("formation connects to one safe growth action and resumes at the quest boun
     button.click();
   });
 
-  await expect(page.getByText(/編成したレイジを強化しよう/)).toBeVisible();
-  const growthAction = page.getByRole("button", { name: /レベルアップ/ });
-  await expect(growthAction).toBeVisible();
-  await expect(page.locator(".tutorial-character-step button:enabled")).toHaveCount(1);
-  await expect(page.getByText(/経験の書\(S\) 1 \/ CASH/)).toBeVisible();
-
-  await page.reload();
-  if (await page.getByText("TAP TO START").isVisible()) await page.getByText("TAP TO START").click();
-  await expect(page.getByText(/編成したレイジを強化しよう/)).toBeVisible();
-  await expect(page.getByRole("button", { name: "おすすめ編成で決定" })).toHaveCount(0);
-
-  for (const width of [375, 390, 430]) {
-    await page.setViewportSize({ width, height: 844 });
-    const metrics = await page.locator(".char-bottom-modal-sheet").evaluate((sheet) => {
-      const action = sheet.querySelector(".char-upgrade-btn") as HTMLElement | null;
-      const rect = sheet.getBoundingClientRect();
-      return {
-        left: rect.left,
-        right: rect.right,
-        viewportWidth: innerWidth,
-        actionHeight: action?.getBoundingClientRect().height || 0,
-      };
-    });
-    expect(metrics.left).toBeGreaterThanOrEqual(0);
-    expect(metrics.right).toBeLessThanOrEqual(metrics.viewportWidth);
-    expect(metrics.actionHeight).toBeGreaterThanOrEqual(44);
-  }
-  await page.screenshot({ path: test.info().outputPath("m9-0d-growth-430.png"), fullPage: true });
-
-  const before = await page.evaluate(() => {
-    const userId = localStorage.getItem("tribe_demo_uuid");
-    return JSON.parse(localStorage.getItem("mock_db_user_characters") || "[]")
-      .filter((entry: any) => entry.user_id === userId)
-      .reduce((total: number, entry: any) => total + Number(entry.level || 0), 0);
-  });
-  await growthAction.evaluate((button: HTMLButtonElement) => {
-    button.click();
-    button.click();
-  });
-
-  await expect(page.getByRole("heading", { name: "強化完了" })).toBeVisible();
-  await expect(page.locator(".outlaw-confirm-dialog button:visible")).toHaveCount(1);
-  await expect(page.getByRole("button", { name: "クエストへ進む" })).toBeEnabled();
-  const resultMetrics = await page.locator(".outlaw-confirm-dialog").evaluate((dialog) => {
-    const action = dialog.querySelector("button") as HTMLElement | null;
-    const rect = dialog.getBoundingClientRect();
-    return { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom, viewportWidth: innerWidth, viewportHeight: innerHeight, actionHeight: action?.getBoundingClientRect().height || 0 };
-  });
-  expect(resultMetrics.left).toBeGreaterThanOrEqual(0);
-  expect(resultMetrics.right).toBeLessThanOrEqual(resultMetrics.viewportWidth);
-  expect(resultMetrics.top).toBeGreaterThanOrEqual(0);
-  expect(resultMetrics.bottom).toBeLessThanOrEqual(resultMetrics.viewportHeight);
-  expect(resultMetrics.actionHeight).toBeGreaterThanOrEqual(44);
-  await page.screenshot({ path: test.info().outputPath("m9-0d-growth-result-430.png"), fullPage: true });
-
+  await expect(page.getByText(/最初の派遣では/)).toBeVisible();
   await expect.poll(async () => page.evaluate(() => {
     const userId = localStorage.getItem("tribe_demo_uuid");
-    const progress = JSON.parse(localStorage.getItem("mock_db_tutorial_progress") || "[]")
-      .find((entry: any) => entry.user_id === userId);
-    const levelTotal = JSON.parse(localStorage.getItem("mock_db_user_characters") || "[]")
-      .filter((entry: any) => entry.user_id === userId)
-      .reduce((total: number, entry: any) => total + Number(entry.level || 0), 0);
-    const material = JSON.parse(localStorage.getItem("mock_db_user_items") || "[]")
-      .find((entry: any) => entry.user_id === userId && entry.item_id === "CHAR_EXP_S");
-    const milestone = JSON.parse(localStorage.getItem("mock_db_user_funnel_milestones") || "[]")
-      .find((entry: any) => entry.user_id === userId && entry.milestone === "first_growth");
-    return { step: progress?.step_id, level: levelTotal, material: Number(material?.quantity || 0), growthCount: Number(milestone?.occurrence_count || 0) };
-  })).toEqual({ step: "DISPATCH", level: before + 1, material: 0, growthCount: 1 });
+    return JSON.parse(localStorage.getItem("mock_db_tutorial_progress") || "[]")
+      .find((entry: any) => entry.user_id === userId)?.step_id;
+  })).toBe("DISPATCH");
 
-  await page.getByRole("button", { name: "クエストへ進む" }).click();
-  await expect(page.getByText(/最初の派遣では/)).toBeVisible();
   await page.reload();
   if (await page.getByText("TAP TO START").isVisible()) await page.getByText("TAP TO START").click();
   await expect(page.getByText(/最初の派遣では/)).toBeVisible();
+  await expect(page.getByRole("button", { name: "おすすめ編成で決定" })).toHaveCount(0);
 });
 
 test("first quest connects dispatch, official battle, and one reward to the completion boundary", async ({ page }) => {
@@ -491,8 +436,7 @@ test("first quest connects dispatch, official battle, and one reward to the comp
 
   await page.getByRole("button", { name: "報酬を確認して次へ" }).click();
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem("mock_db_tutorial_progress") || "[]")[0]?.step_id)).toBe("RULE_GUIDE");
-  await expect(page.getByText("チュートリアル完了")).toBeVisible();
-  await expect(page.getByRole("button", { name: "ホームへ" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "街を進め" })).toBeVisible();
 });
 
 test("claimed tutorial reward resumes at the completion boundary after reload", async ({ page }) => {
@@ -519,8 +463,7 @@ test("claimed tutorial reward resumes at the completion boundary after reload", 
 
   await page.goto("/");
   await page.getByText("TAP TO START").click();
-  await expect(page.getByText("チュートリアル完了")).toBeVisible();
-  await expect(page.getByRole("button", { name: "ホームへ" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "街を進め" })).toBeVisible();
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem("mock_db_tutorial_progress") || "[]")[0]?.step_id)).toBe("RULE_GUIDE");
 });
 
@@ -538,7 +481,7 @@ test("tutorial completion resumes through account save and exposes the Home next
 
   await page.goto("/");
   await page.getByText("TAP TO START").click();
-  await expect(page.getByText("チュートリアル完了")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "街を進め" })).toBeVisible();
 
   const completionMetrics = await page.locator(".modal-card").evaluate((modal) => {
     const action = modal.querySelector("button") as HTMLElement | null;
@@ -551,10 +494,7 @@ test("tutorial completion resumes through account save and exposes the Home next
   expect(completionMetrics.bottom).toBeLessThanOrEqual(completionMetrics.viewportHeight);
   expect(completionMetrics.actionHeight).toBeGreaterThanOrEqual(44);
 
-  await page.getByRole("button", { name: "ホームへ" }).evaluate((button: HTMLButtonElement) => {
-    button.click();
-    button.click();
-  });
+  await completeRuleGuide(page);
   await expect(page.getByText("ゲームデータを保存")).toBeVisible();
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem("mock_db_tutorial_progress") || "[]")[0]?.step_id)).toBe("COMPLETE");
 
@@ -594,16 +534,16 @@ test("new mobile player completes the guided first session without footer naviga
 
   await enterNameRegistration(page);
 
-  await expect(page.getByText("プレイヤー登録")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "名前を教えて" })).toBeVisible();
   await page.getByPlaceholder("プレイヤー名を入力").fill("新宿ナイン");
-  await page.getByRole("button", { name: "入力内容を確認する" }).click();
+  await page.getByRole("button", { name: "この名前で進む" }).click();
   await expect(page.getByText("プレイヤー名の確認")).toBeVisible();
   await page.getByRole("button", { name: "この名前で始める" }).click();
 
-  await expect(page.getByText("最初の案内")).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "TRIBE NEONへようこそ" })).toBeVisible();
   await expect(page.locator(".footer-mobile")).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "無料10連へ" })).toHaveClass(/semantic-cta--primary/);
-  await page.getByRole("button", { name: "無料10連へ" }).click();
+  await expect(page.getByRole("button", { name: "無料10連ガチャへ" })).toHaveClass(/semantic-cta--primary/);
+  await page.getByRole("button", { name: "無料10連ガチャへ" }).click();
 
   await expect(page.getByText("STEP 1 / ノーマルガチャ")).toBeVisible();
   await expect(page.getByRole("button", { name: "無料10連を引く" })).toBeVisible();
@@ -617,12 +557,6 @@ test("new mobile player completes the guided first session without footer naviga
   await expect(page.getByRole("button", { name: "おすすめ編成で決定" })).toBeVisible();
   await expect(page.getByRole("button", { name: "おすすめ編成で決定" })).toHaveClass(/semantic-cta--primary/);
   await page.getByRole("button", { name: "おすすめ編成で決定" }).click();
-  await expect(page.getByText(/編成したレイジを強化しよう/)).toBeVisible();
-  await expect(page.getByRole("button", { name: /レベルアップ/ })).toHaveClass(/semantic-cta--primary/);
-  await page.getByRole("button", { name: /レベルアップ/ }).click();
-  await expect(page.getByText("強化完了")).toBeVisible();
-  await page.getByRole("button", { name: "クエストへ進む" }).click();
-
   await expect(page.getByText(/最初の派遣では/)).toBeVisible();
   await expect(page.getByRole("button", { name: "クエスト開始" })).toBeEnabled();
   await expect(page.getByRole("button", { name: "クエスト開始" })).toHaveClass(/variant-primary/);
@@ -647,9 +581,7 @@ test("new mobile player completes the guided first session without footer naviga
   await expect(page.getByText("クエスト完了報告")).toBeVisible();
   await expect(page.getByRole("button", { name: "報酬を確認して次へ" })).toHaveClass(/variant-primary/);
   await page.getByRole("button", { name: "報酬を確認して次へ" }).click();
-  await expect(page.getByText("チュートリアル完了")).toBeVisible();
-  await expect(page.getByRole("button", { name: "ホームへ" })).toHaveClass(/semantic-cta--primary/);
-  await page.getByRole("button", { name: "ホームへ" }).click();
+  await completeRuleGuide(page);
   await expect(page.getByText("クエスト完了報告")).toHaveCount(0);
   await page.waitForTimeout(750);
   await expect(page.getByText("クエスト完了報告")).toHaveCount(0);

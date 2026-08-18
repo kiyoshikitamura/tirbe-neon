@@ -69,6 +69,21 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     }), error: null };
   }
 
+  if (funcName === "set_current_guild_welcome_message") {
+    const userId = typeof window === "undefined" ? null : localStorage.getItem("tribe_demo_uuid");
+    const membership = (client.getStorage("guild_members") || [])
+      .find((entry: any) => entry.user_id === userId && entry.role === "MASTER");
+    const clean = String(params?.p_message || "").trim();
+    if (!membership) return { data: null, error: { message: "guild master required", code: "42501" } };
+    if (clean.length > 120) return { data: null, error: { message: "welcome message is too long", code: "22023" } };
+    const guilds = client.getStorage("guilds") || [];
+    const guild = guilds.find((entry: any) => entry.id === membership.guild_id);
+    if (!guild) return { data: null, error: { message: "guild not found", code: "P0002" } };
+    guild.welcome_message = clean || null;
+    client.setStorage("guilds", guilds);
+    return { data: { status: "success", welcome_message: clean || "加入ありがとう。まずは挨拶して、仲間とレイドへ挑もう。" }, error: null };
+  }
+
   if (funcName === "get_public_guild_detail") {
     const userId = typeof window === "undefined" ? null : localStorage.getItem("tribe_demo_uuid");
     if (!userId) return { data: null, error: { message: "authentication required", code: "42501" } };

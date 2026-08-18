@@ -2,7 +2,7 @@
 
 ## M9-X Guild Human Response
 
-Guild HomeのWelcomeは設定可能なSystem/Welcome Cardとする。挨拶presetは明示送信前に自動投稿しない。Replyは1階層の`reply_to_message_id`で、Threadは追加しない。Human Response集計はSystem messageと自己返信を除外する。
+Guild HomeのWelcomeは設定可能なSystem/Welcome Cardとする。120文字以内の編集はMASTERのみが既存の認証済みRPCから行い、一般メンバーは読み取り表示のみとする。挨拶presetは明示送信前に自動投稿しない。Replyは1階層の`reply_to_message_id`で、Threadは追加しない。Human Response集計はSystem messageと自己返信を除外する。
 
 共通UIデザイン、ロード方式、信頼境界は`ui_design_system.md`を正本とする。GvG・レイドの背景、カットイン、勝敗・報酬演出のArt DirectionとAsset QAは`art_bible.md`を正本とする。本書はギルド、GvG、レイド、PvPの固有ルール、状態、必要表示項目を定義する。
 

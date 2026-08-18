@@ -2,7 +2,7 @@
 
 ## M9-X Presentation境界
 
-PvPはRank Point変化を表示し、RateはGvG専用とする。NPC PvP模擬戦は明示された練習画面であり、Player match finalize、戦績、Ranking、Reward、Economyを変更しない。Battle Engine / Replay authorityは変更しない。
+PvPはRank Point変化を表示し、RateはGvG専用とする。NPC PvP模擬戦は明示された練習画面であり、既存Battle Viewerの編成確認・Timeline・Action表示を再利用するが、公式Replay作成、Player match finalize、戦績、Ranking、Reward、PvP Point、Economyを変更しない。Battle Engine / Replay authorityは変更しない。
 
 最終更新: 2026-08-05
 

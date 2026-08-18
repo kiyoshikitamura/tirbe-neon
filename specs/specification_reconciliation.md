@@ -9,6 +9,9 @@
 | Tutorial SSR | Daily claim非消費、10枠目を正規SSR 10体からServer選択 | CONFIRMED + IMPLEMENTED |
 | PvP表記 | PvP Rank Point。RateはGvGのみ | CONFIRMED + IMPLEMENTED |
 | Social | 実SSR獲得・Guild設立・総戦力1位交代のみ | CONFIRMED + IMPLEMENTED |
+| NPC PvP Practice | Viewer再利用、公式Replay/消費/戦績/報酬/Ranking更新なし | CONFIRMED + IMPLEMENTED |
+| Guild Welcome | MASTERのみ120文字以内で編集、Memberは表示のみ | CONFIRMED + IMPLEMENTED |
+| Human Response Journey | Title→Guild加入→明示挨拶→再訪未読→他Member返信 | CONFIRMED + E2E PASS |
 
 最終更新: 2026-08-17
 

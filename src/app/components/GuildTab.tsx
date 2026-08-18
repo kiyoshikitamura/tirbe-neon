@@ -22,6 +22,7 @@ export default function GuildTab() {
   const {
     userLevel,
     userGuild,
+    setUserGuild,
     userGuildMember,
     cash,
     newGuildName,
@@ -63,6 +64,9 @@ export default function GuildTab() {
   const [guildSearchQuery, setGuildSearchQuery] = useState("");
   const [guildDescriptionDraft, setGuildDescriptionDraft] = useState(userGuild?.description || "");
   const [approvalRequiredDraft, setApprovalRequiredDraft] = useState(Boolean(userGuild?.approval_required));
+  const [welcomeDraft, setWelcomeDraft] = useState(userGuild?.welcome_message || "");
+  const [editingWelcome, setEditingWelcome] = useState(false);
+  const [savingWelcome, setSavingWelcome] = useState(false);
   const [recommendedGuilds, setRecommendedGuilds] = useState<any[]>([]);
   useEffect(() => {
     if (userGuild) return;
@@ -74,12 +78,34 @@ export default function GuildTab() {
     setGuildDescriptionDraft(userGuild?.description || "");
     setApprovalRequiredDraft(Boolean(userGuild?.approval_required));
   }, [userGuild?.id, userGuild?.description, userGuild?.approval_required]);
+  useEffect(() => {
+    setWelcomeDraft(userGuild?.welcome_message || "");
+  }, [userGuild?.id, userGuild?.welcome_message]);
   const penalty = getGuildPenaltyState();
 
   const isMaster = userGuildMember?.role === "MASTER";
   const isSubMaster = userGuildMember?.role === "SUBMASTER" || userGuildMember?.role === "SUB_MASTER";
   const canPurchaseDecorations = isMaster || isSubMaster;
   const canChangeDecorations = isMaster;
+  const saveWelcomeMessage = async () => {
+    if (!isMaster || savingWelcome) return;
+    setSavingWelcome(true);
+    try {
+      const { data, error } = await supabase.rpc("set_current_guild_welcome_message", {
+        p_message: welcomeDraft,
+      });
+      if (error) throw error;
+      const welcomeMessage = data?.welcome_message || "加入ありがとう。まずは挨拶して、仲間とレイドへ挑もう。";
+      setUserGuild((current: any) => current ? { ...current, welcome_message: welcomeMessage } : current);
+      setWelcomeDraft(welcomeMessage);
+      setEditingWelcome(false);
+      playCyberSe("click");
+    } catch (error) {
+      console.warn("Failed to update guild welcome message:", error);
+    } finally {
+      setSavingWelcome(false);
+    }
+  };
 
   // 支配中拠点の動的取得
   const getControlledBases = () => {
@@ -309,8 +335,32 @@ export default function GuildTab() {
       </div>
 
       <section className="guild-welcome-card" aria-label="TRIBEへようこそ">
-        <div><small>SYSTEM / WELCOME</small><strong>{userGuild.name}へようこそ</strong></div>
-        <p>{userGuild.welcome_message || "加入ありがとう。まずは挨拶して、仲間とレイドへ挑もう。"}</p>
+        <div className="guild-welcome-heading">
+          <div><small>SYSTEM / WELCOME</small><strong>{userGuild.name}へようこそ</strong></div>
+          {isMaster && !editingWelcome && (
+            <OutlawButton variant="secondary" onClick={() => setEditingWelcome(true)}>編集</OutlawButton>
+          )}
+        </div>
+        {isMaster && editingWelcome ? (
+          <div className="guild-welcome-editor">
+            <label htmlFor="guild-welcome-message">新メンバーへの歓迎メッセージ</label>
+            <textarea
+              id="guild-welcome-message"
+              value={welcomeDraft}
+              onChange={(event) => setWelcomeDraft(event.target.value)}
+              maxLength={120}
+              rows={3}
+              disabled={savingWelcome}
+            />
+            <div className="guild-welcome-editor-meta"><span>{welcomeDraft.length}/120</span><span>加入後の最初の案内として表示されます。</span></div>
+            <div className="guild-welcome-editor-actions">
+              <OutlawButton variant="secondary" disabled={savingWelcome} onClick={() => { setWelcomeDraft(userGuild.welcome_message || ""); setEditingWelcome(false); }}>キャンセル</OutlawButton>
+              <OutlawButton variant="primary" disabled={savingWelcome} onClick={() => void saveWelcomeMessage()}>{savingWelcome ? "保存中…" : "歓迎文を保存"}</OutlawButton>
+            </div>
+          </div>
+        ) : (
+          <p>{userGuild.welcome_message || "加入ありがとう。まずは挨拶して、仲間とレイドへ挑もう。"}</p>
+        )}
         <OutlawButton variant="primary" onClick={() => {
           setChatChannel("GUILD");
           setChatInput("はじめまして！よろしくお願いします！");

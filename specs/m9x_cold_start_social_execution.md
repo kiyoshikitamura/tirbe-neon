@@ -40,6 +40,23 @@ Development to Preview.
 - NPC PvP simulation is practice-only and does not write match history, ranking,
   rewards, or PvP Rank Point.
 
+## Remaining P0 completion (2026-08-18)
+
+- NPC PvP Practice reuses the existing party setup, timeline, action presentation,
+  and result viewer. It deliberately does not create an official replay or legacy
+  battle session and does not call the official PvP start/finalize contracts.
+- Guild masters can edit the 120-character Welcome copy through the existing
+  `set_current_guild_welcome_message(text)` contract. Members receive read-only
+  Welcome presentation and an explicit, editable greeting preset.
+- The canonical Tutorial E2E follows `WORLD_INTRO -> GACHA -> AUTO_FORMATION ->
+  DISPATCH -> FREE_INSTANT -> TUTORIAL_BATTLE -> RULE_GUIDE`; removed Growth and
+  legacy entry labels are no longer asserted.
+- The Title-to-human-response journey covers discovery, immediate join, explicit
+  greeting, reload/unread recognition, and another member's reply. Visual gates
+  run at 375, 390, and 430 px for Title, Home, Guild discovery, Practice setup and
+  viewer, Welcome, and the human-response chat state.
+- Production deployment is outside this completion scope.
+
 ## Database artifacts
 
 - `20260818000161_m9x_cold_start_social_foundation.sql`
