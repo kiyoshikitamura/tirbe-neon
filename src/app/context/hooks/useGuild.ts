@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/utils/supabase";
 
 export function useGuild(
@@ -12,8 +12,10 @@ export function useGuild(
   setErrorMessage: (msg: string | null) => void,
   playCyberSe: (type: string) => void,
   syncBootstrapData: (userId: string) => Promise<void>,
-  addGuildXpAndContributionByAction: (actionType: string) => Promise<void>,
-  setConfirmDialogConfig: React.Dispatch<React.SetStateAction<import("@/app/components/ui/ConfirmDialog").ConfirmDialogConfig | null>>
+  addGuildXpAndContributionByAction: (actionType: string, sourceId?: string) => Promise<void>,
+  setConfirmDialogConfig: React.Dispatch<React.SetStateAction<import("@/app/components/ui/ConfirmDialog").ConfirmDialogConfig | null>>,
+  openGuildChat?: () => void,
+  navigateToRaid?: () => void
 ) {
   const [userGuild, setUserGuild] = useState<any | null>(null);
   const [userGuildMember, setUserGuildMember] = useState<any | null>(null);
@@ -24,6 +26,65 @@ export function useGuild(
   const [guildLevelMaster, setGuildLevelMaster] = useState<any[]>([]);
   const [guildXpActionMaster, setGuildXpActionMaster] = useState<any[]>([]);
   const [updatingAlignment, setUpdatingAlignment] = useState<boolean>(false);
+  const [pendingGuildJoinRequests, setPendingGuildJoinRequests] = useState<any[]>([]);
+  const [guildJoinRequests, setGuildJoinRequests] = useState<any[]>([]);
+
+  const openGuildWelcomeLegacy = (guildId: string, guildName: string) => {
+    setConfirmDialogConfig({
+      isOpen: true,
+      title: "TRIBEへようこそ",
+      message: `「${guildName}」への加入が完了しました。まずはTRIBE Chatで仲間へ挨拶し、そのままレイドへ参加しましょう。`,
+      confirmText: "Chatを開く",
+      cancelText: "あとで",
+      onConfirm: () => {
+        void supabase.rpc("record_client_funnel_event", {
+          p_event_name: "guild_welcome_chat_click", p_source_screen: "guild_welcome",
+          p_source_cta: "open_chat", p_object_id: guildId, p_metadata: {}
+        });
+        setConfirmDialogConfig(null);
+        openGuildChat?.();
+      },
+      onCancel: () => setConfirmDialogConfig(null)
+    });
+  };
+
+  const openGuildWelcome = (guildId: string, guildName: string) => {
+    setConfirmDialogConfig({
+      isOpen: true,
+      title: "TRIBEへようこそ",
+      message: `「${guildName}」への加入が完了しました。まずはTRIBE Chatで仲間へ挨拶するか、レイドへ戻りましょう。`,
+      confirmText: "TRIBE Chatを見る",
+      cancelText: "レイドへ",
+      onConfirm: () => {
+        void supabase.rpc("record_client_funnel_event", {
+          p_event_name: "guild_welcome_chat_click", p_source_screen: "guild_welcome",
+          p_source_cta: "open_chat", p_object_id: guildId, p_metadata: {},
+        });
+        setConfirmDialogConfig(null);
+        openGuildChat?.();
+      },
+      onCancel: () => {
+        setConfirmDialogConfig(null);
+        navigateToRaid?.();
+      },
+    });
+  };
+
+  useEffect(() => {
+    if (!session?.user?.id || !userGuildMember?.guild_id || !userGuild?.id || typeof window === "undefined") return;
+    const sessionKey = `tribe-neon:guild-welcome-shown:${session.user.id}:${userGuild.id}`;
+    if (window.sessionStorage.getItem(sessionKey)) return;
+    void supabase.from("user_funnel_milestones").select("milestone")
+      .eq("user_id", session.user.id).eq("milestone", "guild_activation").maybeSingle()
+      .then(({ data }) => {
+        const pendingGuildId = window.localStorage.getItem("tribe-neon:pending-guild-welcome");
+        if (data) return;
+        if (pendingGuildId && pendingGuildId !== userGuild.id) window.localStorage.removeItem("tribe-neon:pending-guild-welcome");
+        window.sessionStorage.setItem(sessionKey, "1");
+        window.localStorage.removeItem("tribe-neon:pending-guild-welcome");
+        openGuildWelcome(userGuild.id, userGuild.name || "TRIBE");
+      });
+  }, [session?.user?.id, userGuildMember?.guild_id, userGuild?.id]);
 
   const getGuildPenaltyState = () => {
     if (!session || !userGuildMember) return { isPenalty: false, secondsLeft: 0 };
@@ -132,7 +193,7 @@ export function useGuild(
     }
   };
 
-  const handleLeaveGuild = async () => {
+  const executeLeaveGuild = async () => {
     if (!session || !userGuildMember || !userGuild) return;
     setGvgResetLoading(true);
     playCyberSe("click");
@@ -169,7 +230,7 @@ export function useGuild(
     }
   };
 
-  const handleDemoJoinGuild = async (targetGuildId: string, guildName: string) => {
+  const handleDemoJoinGuild = async (targetGuildId: string, guildName: string, approvalRequiredOverride?: boolean) => {
     if (!session) return;
     if (userLevel < 3) {
       setErrorMessage("ギルド加入にはプレイヤーレベル3以上が必要です。");
@@ -184,27 +245,141 @@ export function useGuild(
     setGvgResetLoading(true);
     playCyberSe("click");
     try {
-      const { data: mCount, error: mCountErr } = await supabase
-        .from("guild_members")
-        .select("user_id")
-        .eq("guild_id", targetGuildId);
-
       const targetGuild = allGuildsDbList.find((guild: any) => guild.id === targetGuildId);
       const targetGuildCap = Number(targetGuild?.member_limit
         ?? (targetGuild?.level >= 5 ? 20 : targetGuild?.level === 4 ? 18 : targetGuild?.level === 3 ? 15 : targetGuild?.level === 2 ? 12 : 10));
-      if (mCount && mCount.length >= targetGuildCap) {
-        setConfirmDialogConfig({ isOpen: true, title: "加入失敗", message: "対象ギルドは上限人数（10名）に達しています。", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
+      if (Number(targetGuild?.member_count || 0) >= targetGuildCap) {
+        setConfirmDialogConfig({ isOpen: true, title: "加入失敗", message: `対象ギルドは上限人数（${targetGuildCap}名）に達しています。`, onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
         setGvgResetLoading(false);
         return;
       }
 
-      const { error } = await supabase.rpc("join_guild", { p_guild_id: targetGuildId });
+      const requiresApproval = approvalRequiredOverride ?? Boolean(targetGuild?.approval_required);
+      const { error } = requiresApproval
+        ? await supabase.rpc("request_guild_join", { p_guild_id: targetGuildId })
+        : await supabase.rpc("join_guild", { p_guild_id: targetGuildId });
       if (error) throw error;
 
-      setConfirmDialogConfig({ isOpen: true, title: "ギルド加入", message: `ギルド『${guildName}』にデモ所属しました！`, onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
+      if (requiresApproval && typeof window !== "undefined") {
+        window.localStorage.setItem("tribe-neon:pending-guild-welcome", targetGuildId);
+      }
+      if (!requiresApproval) playCyberSe("GUILD_JOIN");
+
+      setConfirmDialogConfig({
+        isOpen: true,
+        title: requiresApproval ? "加入申請" : "ギルド加入",
+        message: requiresApproval
+          ? `ギルド『${guildName}』へ加入申請を送りました。`
+          : `ギルド『${guildName}』に加入しました！`,
+        onConfirm: () => {
+          setConfirmDialogConfig(null);
+          if (!requiresApproval) openGuildWelcome(targetGuildId, guildName);
+        },
+        onCancel: () => setConfirmDialogConfig(null)
+      });
       await syncBootstrapData(session.user.id);
     } catch (err: any) {
       console.warn(err.message);
+      setErrorMessage(err.message || "ギルドへの加入処理に失敗しました。");
+    } finally {
+      setGvgResetLoading(false);
+    }
+  };
+
+  const handleLeaveGuild = () => {
+    if (!session || !userGuildMember || !userGuild) return;
+    const isMaster = userGuildMember.role === "MASTER";
+    const otherMembers = guildMembersList.filter(member => member.user_id !== session.user.id);
+    if (isMaster && otherMembers.length > 0) {
+      setErrorMessage("脱退する前に、マスター権限を譲渡してください。");
+      return;
+    }
+    setConfirmDialogConfig({
+      isOpen: true,
+      title: isMaster ? "ギルド解散確認" : "ギルド脱退確認",
+      message: isMaster
+        ? "ギルドを解散します。この操作は取り消せません。"
+        : "ギルドから脱退します。脱退後24時間は加入・作成できません。",
+      onConfirm: () => {
+        setConfirmDialogConfig(null);
+        void executeLeaveGuild();
+      },
+      onCancel: () => setConfirmDialogConfig(null),
+      confirmText: isMaster ? "解散する" : "脱退する",
+      cancelText: "キャンセル",
+      isDanger: true,
+    });
+  };
+
+  const handleUpdateGuildSettings = async (description: string, approvalRequired: boolean) => {
+    if (!session || !userGuild || userGuildMember?.role !== "MASTER") return;
+    setGvgResetLoading(true);
+    try {
+      const { error } = await supabase.rpc("update_guild_settings", {
+        p_guild_id: userGuild.id,
+        p_desc: description.trim(),
+        p_approval: approvalRequired,
+        p_kick_days: Number(userGuild.auto_kick_days ?? 7),
+      });
+      if (error) throw error;
+      await syncBootstrapData(session.user.id);
+      setConfirmDialogConfig({
+        isOpen: true,
+        title: "ギルド設定",
+        message: "ギルド設定を更新しました。",
+        onConfirm: () => setConfirmDialogConfig(null),
+        onCancel: () => setConfirmDialogConfig(null),
+      });
+    } catch (err: any) {
+      setErrorMessage(err.message || "ギルド設定の更新に失敗しました。");
+    } finally {
+      setGvgResetLoading(false);
+    }
+  };
+
+  const handleSearchGuilds = async (query = "") => {
+    if (!session) return;
+    const { data, error } = await supabase.rpc("search_guilds", { p_query: query.trim() });
+    if (error) {
+      setErrorMessage("ギルド検索に失敗しました。");
+      return;
+    }
+    setAllGuildsDbList(data || []);
+  };
+
+  const handleCancelGuildJoinRequest = async (requestId: string) => {
+    if (!session) return;
+    setGvgResetLoading(true);
+    try {
+      const { error } = await supabase.rpc("cancel_guild_join_request", { p_request_id: requestId });
+      if (error) throw error;
+      await syncBootstrapData(session.user.id);
+    } catch (err: any) {
+      setErrorMessage(err.message || "加入申請の取消に失敗しました。");
+    } finally {
+      setGvgResetLoading(false);
+    }
+  };
+
+  const handleReviewGuildJoinRequest = async (requestId: string, approve: boolean) => {
+    if (!session || userGuildMember?.role !== "MASTER") return;
+    setGvgResetLoading(true);
+    try {
+      const { error } = await supabase.rpc("review_guild_join_request", {
+        p_request_id: requestId,
+        p_approve: approve,
+      });
+      if (error) throw error;
+      setConfirmDialogConfig({
+        isOpen: true,
+        title: approve ? "加入承認" : "加入却下",
+        message: approve ? "加入申請を承認しました。" : "加入申請を却下しました。",
+        onConfirm: () => setConfirmDialogConfig(null),
+        onCancel: () => setConfirmDialogConfig(null),
+      });
+      await syncBootstrapData(session.user.id);
+    } catch (err: any) {
+      setErrorMessage(err.message || "加入申請の処理に失敗しました。");
     } finally {
       setGvgResetLoading(false);
     }
@@ -242,14 +417,14 @@ export function useGuild(
   };
 
   const handleKickMember = async (targetUserId: string, targetName: string) => {
-    if (!session || !userGuildMember || (userGuildMember.role !== "MASTER" && userGuildMember.role !== "SUBMASTER")) return;
+    if (!session || !userGuildMember || !["MASTER", "SUB_MASTER", "SUBMASTER"].includes(userGuildMember.role)) return;
 
     const targetMember = guildMembersList.find(m => m.user_id === targetUserId);
     if (!targetMember) return;
 
-    const rolePower = (role: string) => role === "MASTER" ? 3 : role === "SUBMASTER" ? 2 : 1;
+    const rolePower = (role: string) => role === "MASTER" ? 3 : ["SUB_MASTER", "SUBMASTER"].includes(role) ? 2 : 1;
     if (rolePower(userGuildMember.role) <= rolePower(targetMember.role)) {
-      setConfirmDialogConfig({ isOpen: true, title: "追放不可", message: "自分と同等以上の階級の構成員を追放することはできません。", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
+      setConfirmDialogConfig({ isOpen: true, title: "追放不可", message: "自分と同等以上の階級のメンバーを追放することはできません。", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
       return;
     }
 
@@ -320,7 +495,7 @@ export function useGuild(
 
   const handleBuyGuildDecoration = async (itemId: string, cost: number, type: "DECORATION" | "BANNER") => {
     if (!session || !userGuild || !userGuildMember) return;
-    if (userGuildMember.role !== "MASTER" && userGuildMember.role !== "SUBMASTER") {
+    if (!["MASTER", "SUB_MASTER", "SUBMASTER"].includes(userGuildMember.role)) {
       setConfirmDialogConfig({ isOpen: true, title: "権限エラー", message: "装飾アイテムの購入はマスターまたはサブマスターのみ可能です。", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
       return;
     }
@@ -421,11 +596,17 @@ export function useGuild(
     guildLevelMaster, setGuildLevelMaster,
     guildXpActionMaster, setGuildXpActionMaster,
     updatingAlignment, setUpdatingAlignment,
+    pendingGuildJoinRequests, setPendingGuildJoinRequests,
+    guildJoinRequests, setGuildJoinRequests,
     getGuildPenaltyState,
     handleCreateGuild,
     handleUpdateGuildAlignment,
+    handleUpdateGuildSettings,
     handleLeaveGuild,
     handleDemoJoinGuild,
+    handleSearchGuilds,
+    handleCancelGuildJoinRequest,
+    handleReviewGuildJoinRequest,
     handleUpdateMemberRole,
     handleKickMember,
     handleDonateToGuild,

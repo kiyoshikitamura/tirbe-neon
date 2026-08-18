@@ -197,7 +197,7 @@ export default function AvatarTab() {
   };
 
   return (
-    <div className="avatar-tab-container app-container scroll-container">
+    <div className="avatar-tab-container scroll-container">
       {/* ヘッダー */}
       <div className="view-header-row">
         <h2 className="view-title">アバター着せ替え</h2>

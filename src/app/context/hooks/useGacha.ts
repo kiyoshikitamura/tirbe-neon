@@ -3,6 +3,11 @@
 import { useState } from "react";
 
 export function useGacha() {
+  const [featureOperatingStates, setFeatureOperatingStates] = useState<Record<"SPECIAL_GACHA" | "GVG" | "PAYMENT", "CLOSED" | "OPEN">>({
+    SPECIAL_GACHA: "CLOSED",
+    GVG: "CLOSED",
+    PAYMENT: "CLOSED"
+  });
   const [gachaMasters, setGachaMasters] = useState<any[]>([]);
   const [gachaItemsMaster, setGachaItemsMaster] = useState<any[]>([]);
   const [dailyFreeGachaFlags, setDailyFreeGachaFlags] = useState<{ CHARACTER: boolean; SKILL: boolean; EQUIPMENT: boolean }>({
@@ -17,6 +22,7 @@ export function useGacha() {
   const [scoutResults, setScoutResults] = useState<any[]>([]);
 
   return {
+    featureOperatingStates, setFeatureOperatingStates,
     gachaMasters, setGachaMasters,
     gachaItemsMaster, setGachaItemsMaster,
     dailyFreeGachaFlags, setDailyFreeGachaFlags,

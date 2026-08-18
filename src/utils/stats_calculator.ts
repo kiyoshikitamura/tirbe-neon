@@ -1,5 +1,6 @@
 import { EQUIPMENTS_MASTER_DATA } from "./equipments_master_data";
 import { CHARACTERS_MASTER, CHARACTER_GROWTH_PATTERNS, CHARACTER_AWAKENING_MASTER } from "./game_constants";
+import { getEquipmentLevelScale } from "./equipment_progression";
 
 export function getCharacterBaseStats(characterId: string, level: number, awaken: number) {
   const charMaster = CHARACTERS_MASTER.find(c => c.id === characterId);
@@ -41,12 +42,13 @@ export function getCharacterTotalStats(charRecord: any, equipsList: any[]) {
   charEquips.forEach(eq => {
     const master = EQUIPMENTS_MASTER_DATA.find(m => m.id === eq.equipment_id);
     if (master) {
-      const scale = 1 + (eq.level - 1) * 0.05 + eq.plus_val * 0.10;
+      const scale = getEquipmentLevelScale(eq.level) + (eq.plus_val || 0) * 0.10;
       extraHp += Math.floor(master.hp * scale);
       extraAtk += Math.floor(master.atk * scale);
       extraDef += Math.floor(master.def * scale);
-      extraSpd += Math.floor(master.spd * scale);
-      extraLuk += Math.floor(master.luk * scale);
+      // SPD/LUK are utility stats and remain flat across equipment level/+ value.
+      extraSpd += master.spd;
+      extraLuk += master.luk;
     }
   });
 
@@ -83,4 +85,3 @@ export function getCharacterApBonus(charRecordId: string, equipsList: any[]) {
   });
   return apBonus;
 }
-

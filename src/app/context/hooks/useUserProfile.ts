@@ -10,10 +10,10 @@ export function useUserProfile(
   cash: number,
   userGuild: any,
   playCyberSe: (type: string) => void,
-  startCyberBgm: () => void,
-  stopCyberBgm: () => void,
-  initAudio: () => void,
-  getAudioCtx: () => AudioContext | null,
+  bgmEnabled: boolean,
+  setBgmEnabled: (enabled: boolean) => void,
+  seEnabled: boolean,
+  setSeEnabled: (enabled: boolean) => void,
   syncBootstrapData: (userId: string) => Promise<void>,
   setShowSettingsPanel: (show: boolean) => void,
   setErrorMessage: (msg: string | null) => void,
@@ -25,8 +25,6 @@ export function useUserProfile(
   const [avatarUrl, setAvatarUrl] = useState<string>("/reiji_transparent_asset.png");
   const [currentBaseId, setCurrentBaseId] = useState<string>("shinjuku");
   const [lastGuildLeftAt, setLastGuildLeftAt] = useState<string | null>(null);
-  const [bgmEnabled, setBgmEnabled] = useState<boolean>(true);
-  const [seEnabled, setSeEnabled] = useState<boolean>(true);
   const [profileLoading, setProfileLoading] = useState<boolean>(false);
 
   const [equippedBackground, setEquippedBackground] = useState<string>("bg_default");
@@ -190,64 +188,11 @@ export function useUserProfile(
   };
 
   const handleToggleSound = async (type: "bgm" | "se") => {
-    if (!session) return;
-    initAudio();
-
-    const prevBgm = bgmEnabled;
-    const prevSe = seEnabled;
-
     const nextBgm = type === "bgm" ? !bgmEnabled : bgmEnabled;
     const nextSe = type === "se" ? !seEnabled : seEnabled;
-
-    if (type === "bgm") {
-      setBgmEnabled(nextBgm);
-      if (nextBgm) {
-        setTimeout(() => startCyberBgm(), 50);
-      } else {
-        stopCyberBgm();
-      }
-    } else {
-      setSeEnabled(nextSe);
-    }
-
-    if (type === "se" && nextSe) {
-      setTimeout(() => {
-        const audioCtx = getAudioCtx();
-        if (audioCtx) {
-          const now = audioCtx.currentTime;
-          const o = audioCtx.createOscillator();
-          const g = audioCtx.createGain();
-          o.connect(g); g.connect(audioCtx.destination);
-          o.frequency.setValueAtTime(1000, now);
-          g.gain.setValueAtTime(0.04, now);
-          g.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
-          o.start(now); o.stop(now + 0.09);
-        }
-      }, 50);
-    } else if (type === "bgm" && nextSe) {
-      playCyberSe("click");
-    }
-
-    try {
-      const { error } = await supabase
-        .from("users")
-        .update({
-          sound_settings: { bgm: nextBgm, se: nextSe }
-        })
-        .eq("id", session.user.id);
-
-      if (error) throw error;
-    } catch (err) {
-      console.warn("Sound setting sync failed, rolling back:", err);
-      if (type === "bgm") {
-        setBgmEnabled(prevBgm);
-        if (prevBgm) startCyberBgm();
-        else stopCyberBgm();
-      } else {
-        setSeEnabled(prevSe);
-      }
-      setErrorMessage("音響設定の同期に失敗したため、元の設定に戻しました。");
-    }
+    if (type === "bgm") setBgmEnabled(nextBgm);
+    else setSeEnabled(nextSe);
+    if (nextSe) playCyberSe("click");
   };
 
   return {

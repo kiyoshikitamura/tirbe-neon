@@ -84,6 +84,42 @@
   color: var(--neon-cyan);
 }
 
+.settings-audio-row {
+  display: grid;
+  grid-template-columns: minmax(62px, 0.65fr) minmax(132px, 1fr);
+  gap: 10px 12px;
+  align-items: center;
+  padding: 12px 0;
+}
+
+.settings-audio-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.settings-audio-heading label {
+  margin: 0;
+}
+
+.settings-audio-heading output {
+  color: var(--neon-cyan);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.settings-volume {
+  grid-column: 1 / -1;
+  width: 100%;
+  min-height: 32px;
+  accent-color: var(--neon-cyan);
+}
+
+.settings-volume:disabled {
+  opacity: 0.35;
+}
+
 .settings-panel-footer {
   margin-top: auto;
   padding-top: 16px;

@@ -41,5 +41,24 @@
   background-image: radial-gradient(circle at 82% 18%, rgba(255, 0, 127, 0.24), transparent 36%), linear-gradient(155deg, #24101a, #090b12 72%);
 }
 
-.raid-boss-ended { filter: saturate(0.55); }
+.raid-boss-stage { display: grid; grid-template-columns: 104px minmax(0, 1fr); align-items: center; gap: 12px; min-height: 118px; margin: -5px 0 10px; overflow: hidden; }
+.raid-boss-emblem { display: grid; width: 104px; height: 104px; place-items: center; border: 1px solid rgba(255, 48, 111, .5); border-radius: 50%; background: radial-gradient(circle, rgba(255, 0, 88, .34), rgba(8, 10, 17, .94) 68%); box-shadow: 0 0 28px rgba(255, 0, 88, .25); }
+.raid-boss-emblem img { width: 82px; height: 82px; object-fit: contain; filter: drop-shadow(0 0 12px rgba(255, 72, 130, .5)); }
+.raid-boss-stage > div:last-child { display: grid; gap: 4px; min-width: 0; }
+.raid-boss-stage span { color: var(--ui-danger); font-size: 9px; font-weight: 900; letter-spacing: .14em; }
+.raid-boss-stage strong { overflow: hidden; color: #fff; font-size: 18px; text-overflow: ellipsis; }
+.raid-boss-stage small { color: var(--ui-text-secondary); font-size: 10px; }
+.raid-contribution-progress { height: 7px; margin-top: 8px; overflow: hidden; border-radius: 999px; background: rgba(255,255,255,.08); }
+.raid-contribution-progress span { display: block; height: 100%; background: linear-gradient(90deg, var(--neon-cyan), var(--neon-gold)); }
+.raid-contribution-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 7px; margin-top: 10px; }
+.raid-contribution-grid span { display: grid; gap: 2px; padding: 8px; border: 1px solid rgba(90, 119, 150, .25); background: rgba(5, 10, 18, .72); }
+.raid-contribution-grid small { color: var(--ui-text-secondary); font-size: 8px; }
+.raid-contribution-grid strong { color: #fff; font-size: 10px; }
 
+@media (max-width: 375px) {
+  .raid-boss-stage { grid-template-columns: 86px minmax(0, 1fr); }
+  .raid-boss-emblem { width: 86px; height: 86px; }
+  .raid-boss-emblem img { width: 68px; height: 68px; }
+}
+
+.raid-boss-ended { filter: saturate(0.55); }

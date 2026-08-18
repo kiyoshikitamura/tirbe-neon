@@ -10,6 +10,7 @@ import OutlawCard from "./ui/OutlawCard";
 import OutlawButton from "./ui/OutlawButton";
 
 export default function ShopTab() {
+  const monetizationAvailable = false;
   const {
     shopSubTab,
     setShopSubTab,
@@ -27,6 +28,10 @@ export default function ShopTab() {
   } = useGame();
 
   const [timeLeftStr, setTimeLeftStr] = useState<string>("");
+
+  useEffect(() => {
+    if (!monetizationAvailable && shopSubTab === "LIMITED") setShopSubTab("NORMAL");
+  }, [shopSubTab, setShopSubTab]);
 
   // 初心者パックの24時間カウントダウン計算
   useEffect(() => {
@@ -153,7 +158,7 @@ export default function ShopTab() {
       {/* サブタブ切替 */}
       <SubTabNav
         tabs={[
-          { id: "LIMITED", label: "限定ショップ" },
+          { id: "LIMITED", label: "有償商品（準備中）", disabled: !monetizationAvailable },
           { id: "NORMAL", label: "通常ショップ" },
         ]}
         activeTabId={shopSubTab}

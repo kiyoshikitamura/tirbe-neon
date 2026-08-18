@@ -1,5 +1,10 @@
 "use client";
 
+import {
+  OPEN_BETA_PROVISIONAL_CHARACTERS,
+  OPEN_BETA_PROVISIONAL_RARITIES,
+} from "./open_beta_provisional_characters";
+
 export const CHARACTER_GROWTH_PATTERNS = [
   { pattern_id: "BALANCED", base_hp: 1500, base_atk: 100, base_def: 80, base_spd: 100, base_luk: 10, hp_gain: 50, atk_gain: 5, def_gain: 4, spd_gain: 0.2, luk_gain: 0.1 },
   { pattern_id: "HP_TANK", base_hp: 2000, base_atk: 80, base_def: 100, base_spd: 90, base_luk: 8, hp_gain: 70, atk_gain: 4, def_gain: 5, spd_gain: 0.15, luk_gain: 0.08 },
@@ -10,14 +15,14 @@ export const CHARACTER_GROWTH_PATTERNS = [
 ];
 
 export const CHARACTER_AWAKENING_MASTER = [
-  { awakening_level: 1, required_cash: 3000, hp_bonus: 200, atk_bonus: 20, def_bonus: 15, spd_bonus: 2, luk_bonus: 1 },
-  { awakening_level: 2, required_cash: 6000, hp_bonus: 400, atk_bonus: 40, def_bonus: 30, spd_bonus: 4, luk_bonus: 2 },
-  { awakening_level: 3, required_cash: 9000, hp_bonus: 600, atk_bonus: 60, def_bonus: 45, spd_bonus: 6, luk_bonus: 3 },
-  { awakening_level: 4, required_cash: 12000, hp_bonus: 800, atk_bonus: 80, def_bonus: 60, spd_bonus: 8, luk_bonus: 4 },
-  { awakening_level: 5, required_cash: 15000, hp_bonus: 1000, atk_bonus: 100, def_bonus: 75, spd_bonus: 10, luk_bonus: 5 }
-];
+    { awakening_level: 1, required_cash: 5000, hp_bonus: 100, atk_bonus: 10, def_bonus: 10, spd_bonus: 2, luk_bonus: 2 },
+    { awakening_level: 2, required_cash: 15000, hp_bonus: 250, atk_bonus: 25, def_bonus: 25, spd_bonus: 5, luk_bonus: 5 },
+    { awakening_level: 3, required_cash: 35000, hp_bonus: 500, atk_bonus: 50, def_bonus: 50, spd_bonus: 10, luk_bonus: 10 },
+    { awakening_level: 4, required_cash: 75000, hp_bonus: 850, atk_bonus: 85, def_bonus: 85, spd_bonus: 15, luk_bonus: 15 },
+    { awakening_level: 5, required_cash: 150000, hp_bonus: 1300, atk_bonus: 130, def_bonus: 130, spd_bonus: 25, luk_bonus: 25 }
+  ];
 
-export const CHARACTERS_MASTER = [
+const CORE_CHARACTERS_MASTER = [
   {
     "id": "11111111-1111-1111-1111-111111111111",
     "name": "reiji",
@@ -162,4 +167,13 @@ export const CHARACTERS_MASTER = [
     "img": "/characters/yuji_transparent_asset.png",
     "visualPrompt": "streetpunk young male, dyed hair, denim vest"
   }
+];
+
+export const CHARACTERS_MASTER = [
+  ...CORE_CHARACTERS_MASTER.map(character => ({
+    ...character,
+    rarity: OPEN_BETA_PROVISIONAL_RARITIES[character.name] || character.rarity,
+    img: `/characters/${character.name === "yuji" ? "yuuji" : character.name}_transparent_asset.png`,
+  })),
+  ...OPEN_BETA_PROVISIONAL_CHARACTERS,
 ];

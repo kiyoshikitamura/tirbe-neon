@@ -20,7 +20,7 @@ export async function postNpcYajiMessage(
   } else if (triggerReason === "GVG_WIN") {
     text = `拠点 ${baseId.toUpperCase()} で激しい縄張り争いが発生！ポイントが更新された！`;
   } else if (triggerReason === "RAID_DAMAGE") {
-    text = `新宿カイザーのHPが削られたぞ！全構成員、攻撃を緩めるな！`;
+    text = `新宿カイザーのHPが削られたぞ！全員、攻撃を緩めるな！`;
   } else {
     text = `今夜の歓楽街、なんだかネオンが怪しく発光しているな。`;
   }

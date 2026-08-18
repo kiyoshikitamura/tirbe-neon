@@ -5,6 +5,27 @@ import SubTabNav from "./ui/SubTabNav";
 import OutlawButton from "./ui/OutlawButton";
 import "./MissionPanel.css";
 
+const MISSION_STATUS_LABELS: Record<string, string> = {
+  CLEAR: "受取可能",
+  CLAIMED: "受取済",
+  IN_PROGRESS: "進行中",
+  LOCKED: "未達成",
+};
+
+const REWARD_LABELS: Record<string, string> = {
+  CASH: "CASH",
+  キャッシュ: "CASH",
+  DIAMOND: "ダイヤ",
+  CHAR_EXP_S: "経験の書（小）",
+  EQUIP_EXP_S: "装備強化素材（小）",
+  SKILL_LB_BOOK: "スキル強化素材",
+};
+
+function rewardLabel(value: unknown) {
+  const key = String(value || "");
+  return REWARD_LABELS[key] || (key.startsWith("ITEM_") ? "育成アイテム" : "報酬アイテム");
+}
+
 export default function MissionPanel() {
   const {
     showMissionPanel,
@@ -15,7 +36,9 @@ export default function MissionPanel() {
     handleClaimMission,
     handleClaimAllMissions,
     missionClaimLoading,
-    playCyberSe
+    playCyberSe,
+    navigateTab,
+    setShowTribeChatPanel
   } = useGame();
 
   if (!showMissionPanel) return null;
@@ -26,6 +49,20 @@ export default function MissionPanel() {
 
   const currentMissions = (missions || []).filter((m: any) => m.category === missionTab);
   const clearMissionsCount = currentMissions.filter((m: any) => m.status === "CLEAR").length;
+
+  const handleMissionCta = (mission: any) => {
+    playCyberSe("click");
+    void import("../../utils/supabase").then(({ supabase }) => supabase.rpc("record_client_funnel_event", {
+      p_event_name: "mission_cta_click",
+      p_source_screen: "mission",
+      p_source_cta: mission.id,
+      p_object_id: null,
+      p_metadata: { cta_tab: mission.ctaTab, cta_action: mission.ctaAction }
+    }));
+    setShowMissionPanel(false);
+    if (mission.ctaAction === "guild_chat") setShowTribeChatPanel(true);
+    else if (mission.ctaTab) navigateTab(mission.ctaTab);
+  };
 
   return (
     <FullScreenPanel title="ミッション" onClose={handleClose}>
@@ -41,13 +78,13 @@ export default function MissionPanel() {
         />
 
         <div className="mission-actions">
-          <span className="mission-clear-count">達成済み: {clearMissionsCount}件</span>
+          <span className="mission-clear-count">受取可能 <strong>{clearMissionsCount}</strong>件</span>
           <OutlawButton
             variant="primary"
             disabled={clearMissionsCount === 0 || missionClaimLoading}
-            onClick={() => { handleClaimAllMissions(); }}
+            onClick={() => handleClaimAllMissions()}
           >
-            {missionClaimLoading ? <div className="spinner" /> : "一括受け取り"}
+            {missionClaimLoading ? "受取処理中..." : "一括受け取り"}
           </OutlawButton>
         </div>
 
@@ -59,14 +96,18 @@ export default function MissionPanel() {
               const targetValue = m.target_value || 1;
               const currentProgress = m.current_progress || 0;
               const progressPercent = Math.min(100, Math.floor((currentProgress / targetValue) * 100));
+              const statusLabel = MISSION_STATUS_LABELS[m.status] || "進行中";
 
               return (
                 <div key={m.id} className={`mission-item ${m.status}`}>
                   <div className="mission-info">
-                    <div className="mission-title">{m.title}</div>
+                    <div className="mission-heading">
+                      <div className="mission-title">{m.title}</div>
+                      <span className="mission-status">{statusLabel}</span>
+                    </div>
                     <div className="mission-desc">{m.description}</div>
                     <div className="mission-reward">
-                      報酬: {m.reward_item} x{m.reward_amount}
+                      <span>REWARD</span><strong>{rewardLabel(m.reward_item)} × {Number(m.reward_amount || 0).toLocaleString()}</strong>
                     </div>
                     
                     <div className="mission-progress-bar-container">
@@ -79,12 +120,16 @@ export default function MissionPanel() {
                       <OutlawButton
                         variant="primary"
                         disabled={missionClaimLoading || m.loading}
-                        onClick={() => { handleClaimMission(m.id); }}
+                        onClick={() => handleClaimMission(m.id)}
                       >
-                        {m.loading ? <div className="spinner" /> : "受取"}
+                        {m.loading ? "受取中..." : "受け取る"}
                       </OutlawButton>
                     ) : m.status === "CLAIMED" ? (
                       <OutlawButton variant="secondary" disabled>受取済</OutlawButton>
+                    ) : m.ctaTab || m.ctaAction ? (
+                      <OutlawButton variant="primary" onClick={() => handleMissionCta(m)}>
+                        {m.ctaLabel || "挑戦する"}
+                      </OutlawButton>
                     ) : (
                       <OutlawButton variant="secondary" disabled>進行中</OutlawButton>
                     )}

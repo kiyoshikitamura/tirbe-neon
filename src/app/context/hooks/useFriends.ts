@@ -14,28 +14,25 @@ export const useFriends = () => {
         .from("user_friends")
         .select(`
           id,
-          user_id_1,
-          user_id_2,
+          user_id,
+          friend_id,
+          status,
           created_at
         `)
-        .or(`user_id_1.eq.${userId},user_id_2.eq.${userId}`);
+        .eq("user_id", userId)
+        .eq("status", "ACCEPTED");
 
       if (error) throw error;
       
       if (data && data.length > 0) {
-        const friendIds = data.map(f => f.user_id_1 === userId ? f.user_id_2 : f.user_id_1);
+        const friendIds = data.map(f => f.friend_id);
         const { data: usersData, error: usersError } = await supabase.rpc("get_public_profiles", { p_user_ids: friendIds });
         if (usersError) throw usersError;
         
-        const { data: powerData } = await supabase
-          .from("user_power_rankings")
-          .select("user_id, total_power")
-          .in("user_id", friendIds);
-
         const mergedFriends = (usersData || []).map((u: any) => ({
           ...u,
-          friendshipId: data.find(f => (f.user_id_1 === userId && f.user_id_2 === u.id) || (f.user_id_2 === userId && f.user_id_1 === u.id))?.id,
-          power: powerData?.find(p => p.user_id === u.id)?.total_power || 0
+          friendshipId: data.find(f => f.friend_id === (u.user_id || u.id))?.id,
+          power: Number(u.total_power || 0)
         }));
         
         setUserFriends(mergedFriends);
@@ -92,11 +89,10 @@ export const useFriends = () => {
     }
   };
 
-  const sendFriendRequest = async (senderId: string, receiverId: string) => {
+  const sendFriendRequest = async (_senderId: string, receiverId: string) => {
     setIsFriendsLoading(true);
     try {
       const { error } = await supabase.rpc("send_friend_request", {
-        p_sender_id: senderId,
         p_receiver_id: receiverId
       });
       if (error) throw error;
@@ -150,7 +146,6 @@ export const useFriends = () => {
     setIsFriendsLoading(true);
     try {
       const { error } = await supabase.rpc("remove_friend", {
-        p_user_id: userId,
         p_friend_id: friendUserId
       });
       if (error) throw error;

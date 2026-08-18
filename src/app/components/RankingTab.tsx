@@ -8,6 +8,7 @@ import HeroPanel from "./ui/HeroPanel";
 import Badge from "./ui/Badge";
 import SubTabNav from "./ui/SubTabNav";
 import PeriodStatus from "./ui/PeriodStatus";
+import OutlawButton from "./ui/OutlawButton";
 import { useScreenReadiness } from "../hooks/useScreenReadiness";
 import { SCREEN_ASSET_MANIFESTS } from "../lib/screenManifests";
 import "./RankingTab.css";
@@ -17,7 +18,7 @@ type SubTabType = "daily" | "season";
 
 const RANKING_TABS = [
   { id: "power", label: "総合力" },
-  { id: "guild_power", label: "ギルド総合力" },
+  { id: "guild_power", label: "TRIBE総合力" },
   { id: "pvp", label: "PvP" },
   { id: "gvg", label: "GvG" },
   { id: "raid", label: "レイド" },
@@ -25,25 +26,19 @@ const RANKING_TABS = [
 
 const JST_OFFSET_MS = 9 * 60 * 60 * 1000;
 
-function getRankingPeriod(now: Date, subTab: SubTabType, category: TabType) {
+function getRankingPeriod(now: Date, subTab: SubTabType, category: TabType, season?: { starts_at: string; ends_at: string }) {
   const shifted = new Date(now.getTime() + JST_OFFSET_MS);
   const year = shifted.getUTCFullYear();
   const month = shifted.getUTCMonth();
   const day = shifted.getUTCDate();
   if (subTab === "season") {
-    if (category === "pvp" || category === "raid") {
-      const dayOfWeek = shifted.getUTCDay();
-      const daysSinceMonday = (dayOfWeek + 6) % 7;
-      const start = new Date(Date.UTC(year, month, day - daysSinceMonday, 4) - JST_OFFSET_MS);
-      if (start.getTime() > now.getTime()) start.setUTCDate(start.getUTCDate() - 7);
-      return { start, end: new Date(start.getTime() + 7 * 24 * 60 * 60 * 1000) };
-    }
+    if (season) return { start: new Date(season.starts_at), end: new Date(season.ends_at) };
     return {
       start: new Date(Date.UTC(year, month, 1) - JST_OFFSET_MS),
       end: new Date(Date.UTC(year, month + 1, 1) - JST_OFFSET_MS),
     };
   }
-  const resetHour = category === "pvp" ? 4 : 0;
+  const resetHour = 0;
   let end = new Date(Date.UTC(year, month, day, resetHour) - JST_OFFSET_MS);
   if (end.getTime() <= now.getTime()) end = new Date(end.getTime() + 24 * 60 * 60 * 1000);
   return { start: new Date(end.getTime() - 24 * 60 * 60 * 1000), end };
@@ -69,13 +64,12 @@ export default function RankingTab() {
     guildPowerRankings,
     pvpRankings,
     gvgBaseControls,
-    raidDamageLogs,
-    raidSeasonRankings,
     playCyberSe,
     fetchPlayerDetail,
     fetchGuildDetail,
     rankingActiveTab,
-    setRankingActiveTab
+    setRankingActiveTab,
+    setActiveTab
   } = useGame();
 
   const activeTab: TabType = RANKING_TABS.some((tab) => tab.id === rankingActiveTab)
@@ -85,34 +79,90 @@ export default function RankingTab() {
   const [gvgSeasonPersonalRanks, setGvgSeasonPersonalRanks] = useState<any[]>([]);
   const [gvgSeasonLoading, setGvgSeasonLoading] = useState<boolean>(false);
   const [clock, setClock] = useState(() => new Date());
+  const [activationMilestones, setActivationMilestones] = useState<Set<string>>(new Set());
+  const [freshPowerRankings, setFreshPowerRankings] = useState<any[] | null>(null);
+  const [freshGuildPowerRankings, setFreshGuildPowerRankings] = useState<any[] | null>(null);
+  const [freshPvpRankings, setFreshPvpRankings] = useState<any[] | null>(null);
+  const [officialRaidRankings, setOfficialRaidRankings] = useState<any>({ personal: [], guild: [] });
+  const [activeRaidInstances, setActiveRaidInstances] = useState<any[]>([]);
+  const [selectedRaidInstanceId, setSelectedRaidInstanceId] = useState<string | null>(null);
+  const [officialGvgRankings, setOfficialGvgRankings] = useState<any>({ guild: [], individual: [] });
+  const [activeSeasons, setActiveSeasons] = useState<Record<string, any>>({});
+  const rankingMilestoneStarted = React.useRef(false);
   const readiness = useScreenReadiness({
     assets: SCREEN_ASSET_MANIFESTS.ranking,
     dataReady: !(activeTab === "gvg" && activeSubTab === "season" && gvgSeasonLoading),
   });
 
+  const effectivePowerRankings = freshPowerRankings ?? powerRankings;
+  const effectiveGuildPowerRankings = freshGuildPowerRankings ?? guildPowerRankings;
+  const effectivePvpRankings = freshPvpRankings ?? pvpRankings;
+
   React.useEffect(() => {
-    if (activeTab === "gvg" && activeSubTab === "season") {
-      const loadRanks = async () => {
-        setGvgSeasonLoading(true);
-        try {
-          const { data: ranks } = await supabase
-            .from("user_gvg_ranks")
-            .select("*")
-            .order("season_points", { ascending: false });
-          if (ranks) {
-            const { data: profiles } = await supabase.rpc("get_public_profiles", { p_user_ids: ranks.map((r: any) => r.user_id) });
-            const profileById = new Map((profiles || []).map((p: any) => [p.user_id, p]));
-            setGvgSeasonPersonalRanks(ranks.map((r: any) => ({ ...r, users: profileById.get(r.user_id) || null })));
+    let cancelled = false;
+    void supabase.rpc("get_active_ranking_seasons").then(({ data }) => {
+      if (cancelled || !Array.isArray(data)) return;
+      setActiveSeasons(Object.fromEntries(data.map((season: any) => [season.ranking_type, season])));
+    });
+    return () => { cancelled = true; };
+  }, []);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    const refresh = async () => {
+      if (activeTab === "power") {
+        const { data } = await supabase.rpc("get_public_power_rankings", { p_daily: activeSubTab === "daily", p_limit: 100, p_offset: 0 });
+        if (!cancelled && data) setFreshPowerRankings(data.map((row: any) => ({
+          user_id: row.user_id, current_power: Number(row.current_power || 0), updated_at: row.updated_at,
+          is_daily_active: Boolean(row.is_daily_active), rank_position: row.rank_position,
+          users: { username: row.username, avatar_url: row.avatar_url, guild_members: row.guild_id ? [{ guild_id: row.guild_id, guilds: row.guild_name ? { name: row.guild_name } : null }] : [] },
+        })));
+      } else if (activeTab === "guild_power") {
+        const { data } = await supabase.rpc("get_public_guild_power_rankings", { p_daily: activeSubTab === "daily", p_limit: 100, p_offset: 0 });
+        if (!cancelled && data) setFreshGuildPowerRankings(data.map((row: any) => ({ ...row, current_power: Number(row.current_power || 0), daily_power: Number(row.daily_power || 0) })));
+      } else if (activeTab === "pvp") {
+        const { data } = await supabase.rpc("get_public_pvp_rankings", { p_daily: activeSubTab === "daily", p_limit: 100, p_offset: 0 });
+        if (!cancelled && data) setFreshPvpRankings(data.map((row: any) => ({
+          ...row,
+          users: { username: row.username, avatar_url: row.avatar_url, guild_members: row.guild_id ? [{ guild_id: row.guild_id, guilds: row.guild_name ? { name: row.guild_name } : null }] : [] },
+        })));
+      } else if (activeTab === "gvg") {
+        const { data } = await supabase.rpc("get_public_gvg_rankings", { p_limit: 100, p_offset: 0 });
+        if (!cancelled && data) setOfficialGvgRankings(data);
+      } else if (activeTab === "raid") {
+        if (activeSubTab === "season") {
+          const { data } = await supabase.rpc("get_raid_season_rankings", { p_limit: 100, p_offset: 0 });
+          if (!cancelled && data) setOfficialRaidRankings(data);
+        } else {
+          const { data: raids } = await supabase.rpc("get_active_raids");
+          const instances = Array.isArray(raids) ? raids : [];
+          if (cancelled) return;
+          setActiveRaidInstances(instances);
+          const instanceId = selectedRaidInstanceId && instances.some((raid: any) => raid.id === selectedRaidInstanceId)
+            ? selectedRaidInstanceId
+            : instances[0]?.id || null;
+          setSelectedRaidInstanceId(instanceId);
+          if (instanceId) {
+            const { data } = await supabase.rpc("get_raid_rankings", { p_instance_id: instanceId });
+            if (!cancelled && data) setOfficialRaidRankings(data);
+          } else {
+            setOfficialRaidRankings({ personal: [], guild: [] });
           }
-        } catch (err: any) {
-          console.warn("Failed to load GvG rankings:", err.message);
-        } finally {
-          setGvgSeasonLoading(false);
         }
-      };
-      loadRanks();
-    }
-  }, [activeTab, activeSubTab]);
+      }
+    };
+    void refresh();
+    return () => { cancelled = true; };
+  }, [activeTab, activeSubTab, selectedRaidInstanceId]);
+
+  React.useEffect(() => {
+    setGvgSeasonPersonalRanks((officialGvgRankings.individual || []).map((row: any) => ({
+      ...row,
+      season_points: Number(row.actual_damage || 0),
+      users: { username: row.username, guild_members: row.guild_id ? [{ guild_id: row.guild_id, guilds: row.guild_name ? { name: row.guild_name } : null }] : [] },
+    })));
+    setGvgSeasonLoading(false);
+  }, [officialGvgRankings]);
 
   React.useEffect(() => {
     if (activeTab === "gvg" && activeSubTab === "daily") setActiveSubTab("season");
@@ -123,50 +173,64 @@ export default function RankingTab() {
     return () => window.clearInterval(timer);
   }, []);
 
-  // 24時間以内のアクティブ基準 (デイリー)
-  const oneDayAgo = useMemo(() => new Date(Date.now() - 24 * 60 * 60 * 1000), []);
+  React.useEffect(() => {
+    if (!session?.user?.id || rankingMilestoneStarted.current) return;
+    rankingMilestoneStarted.current = true;
+    void supabase.from("user_funnel_milestones").select("milestone").eq("user_id", session.user.id)
+      .then(async ({ data }) => {
+        const milestones = new Set<string>((data || []).map((row: any) => row.milestone));
+        if (!milestones.has("ranking_viewed")) {
+          const { error } = await supabase.rpc("record_client_funnel_event", {
+            p_event_name: "ranking_viewed", p_source_screen: "ranking", p_source_cta: "screen_view",
+            p_object_id: null, p_metadata: {},
+          });
+          if (!error) milestones.add("ranking_viewed");
+        }
+        setActivationMilestones(milestones);
+      });
+  }, [session?.user?.id]);
 
   // -----------------------------------------
   // 1. 総合力ランキングの集計・ソート
   // -----------------------------------------
   const sortedPowerRankings = useMemo(() => {
-    if (!powerRankings || powerRankings.length === 0) return [];
+    if (!effectivePowerRankings || effectivePowerRankings.length === 0) return [];
     
-    let list = [...powerRankings];
+    let list = [...effectivePowerRankings];
     if (activeSubTab === "daily") {
       // デイリー：24時間以内に更新されたアクティブユーザーのみ
-      list = list.filter((r: any) => new Date(r.updated_at) >= oneDayAgo);
+      list = list.filter((r: any) => r.is_daily_active !== false);
     }
     return list.sort((a: any, b: any) => b.current_power - a.current_power);
-  }, [powerRankings, activeSubTab, oneDayAgo]);
+  }, [effectivePowerRankings, activeSubTab]);
 
   // -----------------------------------------
   // 2. ギルド総合力ランキングのソート
   // -----------------------------------------
   const sortedGuildPowerRankings = useMemo(() => {
-    if (!guildPowerRankings || guildPowerRankings.length === 0) return [];
+    if (!effectiveGuildPowerRankings || effectiveGuildPowerRankings.length === 0) return [];
     
-    const list = [...guildPowerRankings];
+    const list = [...effectiveGuildPowerRankings];
     if (activeSubTab === "daily") {
       return list
         .filter((g: any) => g.daily_power > 0)
         .sort((a: any, b: any) => b.daily_power - a.daily_power);
     }
     return list.sort((a: any, b: any) => b.current_power - a.current_power);
-  }, [guildPowerRankings, activeSubTab]);
+  }, [effectiveGuildPowerRankings, activeSubTab]);
 
   // -----------------------------------------
   // 3. PvPランキングのソート
   // -----------------------------------------
   const sortedPvpRankings = useMemo(() => {
-    if (!pvpRankings || pvpRankings.length === 0) return [];
+    if (!effectivePvpRankings || effectivePvpRankings.length === 0) return [];
     
-    const list = [...pvpRankings];
+    const list = [...effectivePvpRankings];
     if (activeSubTab === "daily") {
       return list.sort((a: any, b: any) => b.daily_wins - a.daily_wins);
     }
     return list.sort((a: any, b: any) => b.rank_points - a.rank_points);
-  }, [pvpRankings, activeSubTab]);
+  }, [effectivePvpRankings, activeSubTab]);
 
   // -----------------------------------------
   // 4. GvGランキングの集計・ソート
@@ -222,69 +286,15 @@ export default function RankingTab() {
   // 5. レイドランキングの集計・ソート
   // -----------------------------------------
   const raidRankingsData = useMemo(() => {
-    if (activeSubTab === "daily") {
-      // デイリー：現在のボスの与ダメージ
-      if (!raidDamageLogs || raidDamageLogs.length === 0) return { personal: [], guild: [] };
-      
-      // 個人ダメージ
-      const personal = [...raidDamageLogs].sort((a: any, b: any) => Number(b.damage_dealt) - Number(a.damage_dealt));
-
-      // ギルド別合算
-      const guildMap: { [key: string]: { name: string, dmg: number } } = {};
-      raidDamageLogs.forEach((log: any) => {
-        const guildId = log.guild_id;
-        const guildName = log.guilds?.name;
-        if (guildId && guildName) {
-          if (!guildMap[guildId]) {
-            guildMap[guildId] = { name: guildName, dmg: 0 };
-          }
-          guildMap[guildId].dmg += Number(log.damage_dealt);
-        }
-      });
-      const guildRank = Object.entries(guildMap)
-        .map(([id, val]: [string, any]) => ({ guild_id: id, name: val.name, damage_dealt: val.dmg }))
-        .sort((a: any, b: any) => b.damage_dealt - a.damage_dealt);
-
-      return { personal, guild: guildRank };
-    } else {
-      // シーズン：全ボス累計
-      if (!raidSeasonRankings || raidSeasonRankings.length === 0) return { personal: [], guild: [] };
-
-      // 個人累計
-      const userMap: { [key: string]: { username: string, dmg: number } } = {};
-      raidSeasonRankings.forEach((log: any) => {
-        const userId = log.user_id;
-        const username = log.users?.username || "名無しの極道";
-        if (userId) {
-          if (!userMap[userId]) {
-            userMap[userId] = { username, dmg: 0 };
-          }
-          userMap[userId].dmg += Number(log.damage_dealt);
-        }
-      });
-      const personal = Object.entries(userMap)
-        .map(([id, val]) => ({ user_id: id, username: val.username, damage_dealt: val.dmg }))
-        .sort((a: any, b: any) => b.damage_dealt - a.damage_dealt);
-
-      // ギルド累計
-      const guildMap: { [key: string]: { name: string, dmg: number } } = {};
-      raidSeasonRankings.forEach((log: any) => {
-        const guildId = log.guild_id;
-        const guildName = log.guilds?.name;
-        if (guildId && guildName) {
-          if (!guildMap[guildId]) {
-            guildMap[guildId] = { name: guildName, dmg: 0 };
-          }
-          guildMap[guildId].dmg += Number(log.damage_dealt);
-        }
-      });
-      const guildRank = Object.entries(guildMap)
-        .map(([id, val]) => ({ guild_id: id, name: val.name, damage_dealt: val.dmg }))
-        .sort((a: any, b: any) => b.damage_dealt - a.damage_dealt);
-
-      return { personal, guild: guildRank };
-    }
-  }, [raidDamageLogs, raidSeasonRankings, activeSubTab]);
+    return {
+      personal: (officialRaidRankings.personal || []).map((row: any) => ({
+        ...row, damage_dealt: Number(row.contribution || row.damage_dealt || 0),
+      })),
+      guild: (officialRaidRankings.guild || []).map((row: any) => ({
+        ...row, name: row.guild_name || row.name, damage_dealt: Number(row.contribution || row.damage_dealt || 0),
+      })),
+    };
+  }, [officialRaidRankings]);
 
   // -----------------------------------------
   // 6. 自分の順位とスコアの動的計算 (Sticky HUD用)
@@ -361,6 +371,16 @@ export default function RankingTab() {
     return { rank: "圏外", score: "未集計" };
   }, [activeTab, activeSubTab, sortedPowerRankings, sortedGuildPowerRankings, sortedPvpRankings, gvgRankingsData, raidRankingsData, session, currentUser, userGuild, userGuildMember, totalPower]);
 
+  const rankingUserId = session?.user?.id;
+  const rankGap = useMemo(() => {
+    if (!rankingUserId) return null;
+    const list = activeTab === "power" ? sortedPowerRankings : activeTab === "pvp" ? sortedPvpRankings : [];
+    const index = list.findIndex((entry: any) => entry.user_id === rankingUserId);
+    if (index <= 0) return index === 0 ? "現在トップ" : null;
+    const score = (entry: any) => activeTab === "power" ? Number(entry.current_power || 0) : activeSubTab === "daily" ? Number(entry.daily_wins || 0) : Number(entry.rank_points || 0);
+    return `上位まであと ${(score(list[index - 1]) - score(list[index]) + 1).toLocaleString()}`;
+  }, [activeTab, activeSubTab, rankingUserId, sortedPowerRankings, sortedPvpRankings]);
+
   const handleTabChange = (tab: TabType) => {
     setRankingActiveTab(tab);
   };
@@ -370,7 +390,28 @@ export default function RankingTab() {
     setActiveSubTab(sub);
   };
 
-  const rankingPeriod = getRankingPeriod(clock, activeSubTab, activeTab);
+  const openPlayerFromRanking = (userId: string, source: string) => {
+    if (!userId) return;
+    playCyberSe("click");
+    void supabase.rpc("record_client_funnel_event", {
+      p_event_name: "ranking_player_detail", p_source_screen: "ranking", p_source_cta: source,
+      p_object_id: userId, p_metadata: { category: activeTab }
+    });
+    fetchPlayerDetail(userId);
+  };
+
+  const openGuildFromRanking = (guildId: string, source: string) => {
+    if (!guildId) return;
+    playCyberSe("click");
+    void supabase.rpc("record_client_funnel_event", {
+      p_event_name: "ranking_guild_detail", p_source_screen: "ranking", p_source_cta: source,
+      p_object_id: guildId, p_metadata: { category: activeTab }
+    });
+    fetchGuildDetail(guildId);
+  };
+
+  const rankingType = activeTab === "guild_power" ? "GUILD_POWER" : activeTab.toUpperCase();
+  const rankingPeriod = getRankingPeriod(clock, activeSubTab, activeTab, activeSeasons[rankingType]);
   const periodFormatter = new Intl.DateTimeFormat("ja-JP", {
     timeZone: "Asia/Tokyo",
     month: "numeric",
@@ -378,11 +419,11 @@ export default function RankingTab() {
     hour: "2-digit",
     minute: "2-digit",
   });
-  const rankingUpdateSources = activeTab === "power" ? powerRankings
-    : activeTab === "guild_power" ? guildPowerRankings
-      : activeTab === "pvp" ? pvpRankings
+  const rankingUpdateSources = activeTab === "power" ? effectivePowerRankings
+    : activeTab === "guild_power" ? effectiveGuildPowerRankings
+      : activeTab === "pvp" ? effectivePvpRankings
         : activeTab === "gvg" ? (activeSubTab === "season" ? gvgSeasonPersonalRanks : gvgBaseControls)
-          : activeSubTab === "season" ? raidSeasonRankings : raidDamageLogs;
+          : [...(officialRaidRankings.personal || []), ...(officialRaidRankings.guild || [])];
   const updateTimestamps = rankingUpdateSources
     .map((entry: any) => new Date(entry.updated_at || entry.created_at || "").getTime())
     .filter((value: number) => Number.isFinite(value));
@@ -427,7 +468,7 @@ export default function RankingTab() {
             className={`toggle-switch-btn ${activeSubTab === "season" ? "active" : ""}`}
             onClick={() => handleSubTabChange("season")}
           >
-            {activeTab === "pvp" || activeTab === "raid" ? "週間" : "シーズン"}
+            シーズン
           </button>
         </div>
       </div>
@@ -439,7 +480,7 @@ export default function RankingTab() {
           <strong>{myRankInfo.rank}</strong>
           <span>{scoreLabel}　<b>{myRankInfo.score}</b></span>
         </div>
-        <p>上位者との差と、次回集計までの残り時間を確認できます。</p>
+        <p>{rankGap || "上位者との差と、次回集計までの残り時間を確認できます。"}</p>
       </HeroPanel>
 
       <PeriodStatus
@@ -470,7 +511,7 @@ export default function RankingTab() {
                   <div
                     key={item.user_id}
                     className="list-item steel-row clickable-item active-scale-effect"
-                    onClick={() => { playCyberSe("click"); fetchPlayerDetail(item.user_id); }}
+                    onClick={() => openPlayerFromRanking(item.user_id, "power_player")}
                   >
                     <div className="item-left flex items-center gap-3">
                       <span className={`rank-badge rank-${idx + 1}`}>{idx + 1}</span>
@@ -497,7 +538,7 @@ export default function RankingTab() {
                 <div
                   key={item.guild_id}
                   className="list-item steel-row clickable-item active-scale-effect"
-                  onClick={() => { playCyberSe("click"); fetchGuildDetail(item.guild_id); }}
+                  onClick={() => openGuildFromRanking(item.guild_id, "guild_power")}
                 >
                   <div className="item-left flex items-center gap-3">
                     <span className={`rank-badge rank-${idx + 1}`}>{idx + 1}</span>
@@ -518,26 +559,35 @@ export default function RankingTab() {
         {activeTab === "pvp" && (
           <div className="list-container">
             {sortedPvpRankings.length > 0 ? (
-              sortedPvpRankings.map((item: any, idx: number) => (
+              sortedPvpRankings.map((item: any, idx: number) => {
+                const guildName = item.users?.guild_members?.[0]?.guilds?.name || "無所属";
+                const power = effectivePowerRankings.find((entry: any) => entry.user_id === item.user_id)?.current_power;
+                return (
                 <div
                   key={item.user_id}
                   className="list-item steel-row clickable-item active-scale-effect"
-                  onClick={() => { playCyberSe("click"); fetchPlayerDetail(item.user_id); }}
+                  onClick={() => openPlayerFromRanking(item.user_id, "pvp_player")}
                 >
                   <div className="item-left flex items-center gap-3">
                     <span className={`rank-badge rank-${idx + 1}`}>{idx + 1}</span>
-                    <span className="item-title font-weight-bold">{item.users?.username || "名無しの極道"}</span>
+                    <div className="flex-column"><span className="item-title font-weight-bold">{item.users?.username || "名無しの極道"}</span><span className="item-desc font-size-7 text-secondary">{guildName} ・ 戦力 {Number(power || 0).toLocaleString()}</span></div>
                   </div>
                   <span className="font-weight-bold text-color-cyan font-size-9">
                     {activeSubTab === "daily" ? `${item.daily_wins} 勝` : `${item.rank_points} pt`}
                   </span>
                 </div>
-              ))
+              );})
             ) : (
               <div className="text-center py-5 text-secondary">データがありません</div>
             )}
           </div>
         )}
+
+        {activationMilestones.has("first_pvp") && !activationMilestones.has("first_raid") ? (
+          <OutlawButton variant="primary" fullWidth className="ranking-return-cta" onClick={() => { playCyberSe("click"); setActiveTab("raid"); }}>次はレイドへ挑戦</OutlawButton>
+        ) : activeTab === "pvp" ? (
+          <OutlawButton variant="secondary" fullWidth className="ranking-return-cta" onClick={() => { playCyberSe("click"); setActiveTab("pvp"); }}>PvPへ戻る</OutlawButton>
+        ) : null}
 
         {/* -------------------- 4. GvG -------------------- */}
         {activeTab === "gvg" && (
@@ -569,7 +619,19 @@ export default function RankingTab() {
               </div>
             ) : (
               // シーズン：個人シーズン累計ポイント
-              <div className="list-container">
+              <div className="flex-col-gap-3">
+                <div className="battle-card border-cyan p-3">
+                  <span className="battle-card-title block mb-2">TRIBE GvGレート</span>
+                  <div className="list-container max-height-90">
+                    {(officialGvgRankings.guild || []).map((item: any, idx: number) => (
+                      <div key={item.guild_id} className="list-item py-1 clickable-item" onClick={() => openGuildFromRanking(item.guild_id, "gvg_guild")}>
+                        <span>{idx + 1}位. {item.guild_name}</span>
+                        <span>{Number(item.rate || 0).toLocaleString()} Rate</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="list-container">
                 {gvgSeasonLoading ? (
                   <div className="text-center py-5">
                     <span className="simple-spinner" />
@@ -591,7 +653,7 @@ export default function RankingTab() {
                           </div>
                         </div>
                         <span className="font-weight-bold text-color-cyan font-size-9">
-                          {item.season_points.toLocaleString()} pt
+                          {item.season_points.toLocaleString()} Dmg
                         </span>
                       </div>
                     );
@@ -599,6 +661,7 @@ export default function RankingTab() {
                 ) : (
                   <div className="text-center py-5 text-secondary">データがありません</div>
                 )}
+                </div>
               </div>
             )}
           </div>
@@ -607,6 +670,13 @@ export default function RankingTab() {
         {/* -------------------- 5. レイド -------------------- */}
         {activeTab === "raid" && (
           <div className="flex-col-gap-3">
+            {activeSubTab === "daily" && activeRaidInstances.length > 1 && (
+              <SubTabNav
+                tabs={activeRaidInstances.map((raid: any) => ({ id: raid.id, label: raid.base_name || raid.boss_name || "レイド" }))}
+                activeTabId={selectedRaidInstanceId || activeRaidInstances[0]?.id}
+                onSelect={setSelectedRaidInstanceId}
+              />
+            )}
             <div className="battle-card border-magenta p-3">
               <span className="battle-card-title block mb-2">個人ダメージランキング</span>
               <div className="list-container max-height-90">
@@ -617,8 +687,7 @@ export default function RankingTab() {
                       className="list-item py-1 clickable-item active-scale-effect"
                       onClick={() => {
                         if (item.user_id) {
-                          playCyberSe("click");
-                          fetchPlayerDetail(item.user_id);
+                          openPlayerFromRanking(item.user_id, "raid_player");
                         }
                       }}
                     >
@@ -644,8 +713,7 @@ export default function RankingTab() {
                       className="list-item py-1 clickable-item active-scale-effect"
                       onClick={() => {
                         if (item.guild_id) {
-                          playCyberSe("click");
-                          fetchGuildDetail(item.guild_id);
+                          openGuildFromRanking(item.guild_id, "raid_guild");
                         }
                       }}
                     >

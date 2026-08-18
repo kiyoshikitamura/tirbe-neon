@@ -41,10 +41,20 @@ export class MockSupabaseClient {
       if (typeof window === "undefined") return { data: { session: null } };
       const demoId = localStorage.getItem("tribe_demo_uuid");
       if (demoId) {
+        const authMode = localStorage.getItem("mock_auth_mode") || "ANONYMOUS";
+        const pendingEmail = localStorage.getItem("mock_pending_email");
+        const overriddenProviders = JSON.parse(localStorage.getItem("mock_session_identity_providers") || "null") as string[] | null;
+        const identityProviders = overriddenProviders || (authMode === "ANONYMOUS" ? [] : [authMode.toLowerCase()]);
         return {
           data: {
             session: {
-              user: { id: demoId, email: `demo-${demoId.substring(0, 8)}@example.com` }
+              user: {
+                id: demoId,
+                email: `demo-${demoId.substring(0, 8)}@example.com`,
+                is_anonymous: authMode === "ANONYMOUS",
+                identities: identityProviders.map((provider) => ({ provider })),
+                new_email: pendingEmail || undefined,
+              }
             }
           }
         };
@@ -71,12 +81,16 @@ export class MockSupabaseClient {
       return { error: null };
     },
     signInAnonymously: async () => {
-      // A fresh QA browser should reach the authentication screen. A demo
-      // identity is created only after the reviewer explicitly selects the
-      // Google-demo action; persisted identities are restored by getSession.
+      if (typeof window === "undefined") return { data: { session: null }, error: { message: "Browser storage is unavailable" } };
+      let demoId = localStorage.getItem("tribe_demo_uuid");
+      if (!demoId) {
+        demoId = "00000000-0000-4000-8000-" + Math.floor(100000000000 + Math.random() * 900000000000).toString();
+        localStorage.setItem("tribe_demo_uuid", demoId);
+      }
+      localStorage.setItem("mock_auth_mode", "ANONYMOUS");
       return {
-        data: { session: null },
-        error: { message: "No persisted demo session" }
+        data: { session: { user: { id: demoId, is_anonymous: true, identities: [] } } },
+        error: null
       };
     },
     signInWithPassword: async ({ email }: any) => {
@@ -86,17 +100,64 @@ export class MockSupabaseClient {
           demoId = "00000000-0000-4000-8000-" + Math.floor(100000000000 + Math.random() * 900000000000).toString();
           localStorage.setItem("tribe_demo_uuid", demoId);
         }
+        localStorage.setItem("mock_auth_mode", "EMAIL");
       }
       return { data: { user: {} }, error: null };
+    },
+    signInWithOAuth: async () => {
+      if (typeof window !== "undefined") localStorage.setItem("mock_auth_mode", "GOOGLE");
+      return { data: { provider: "google" }, error: null };
     },
     signUp: async () => {
       return { data: { user: {} }, error: null };
     },
-    updateUser: async ({ email }: any) => {
-      return { data: { user: { email, is_anonymous: false } }, error: null };
+    updateUser: async ({ email, password }: any) => {
+      if (typeof window === "undefined") return { data: { user: null }, error: { message: "Browser storage is unavailable" } };
+      const userId = localStorage.getItem("tribe_demo_uuid");
+      if (!email && password) {
+        if ((localStorage.getItem("mock_auth_mode") || "ANONYMOUS") !== "EMAIL") {
+          return { data: { user: null }, error: { message: "A verified email identity is required" } };
+        }
+        localStorage.setItem("mock_email_password_set", "true");
+        const { data } = await this.auth.getSession();
+        return { data: { user: data.session?.user || null }, error: null };
+      }
+      const identities = this.getStorage("auth_identities") || [];
+      if (identities.some((identity: any) => identity.email?.toLowerCase() === email.toLowerCase() && identity.user_id !== userId)) {
+        return { data: { user: null }, error: { message: "A user with this email address has already been registered", code: "email_exists" } };
+      }
+      if (localStorage.getItem("mock_email_confirmation_required") === "true") {
+        localStorage.setItem("mock_pending_email", email);
+        return { data: { user: { id: userId, email: null, new_email: email, is_anonymous: true, identities: [] } }, error: null };
+      }
+      localStorage.setItem("mock_auth_mode", "EMAIL");
+      localStorage.removeItem("mock_pending_email");
+      if (!identities.some((identity: any) => identity.user_id === userId && identity.provider === "email")) {
+        identities.push({ user_id: userId, provider: "email", email });
+        this.setStorage("auth_identities", identities);
+      }
+      return { data: { user: { id: userId, email, is_anonymous: false, identities: [{ provider: "email", email }] } }, error: null };
     },
+    refreshSession: async () => this.auth.getSession(),
     linkIdentity: async () => {
-      return { data: { provider: "google" }, error: null };
+      if (typeof window === "undefined") return { data: { provider: "google", url: null }, error: { message: "Browser storage is unavailable" } };
+      if (localStorage.getItem("mock_manual_linking_disabled") === "true") {
+        return { data: { provider: "google", url: null }, error: { message: "Manual linking is disabled", code: "manual_linking_disabled" } };
+      }
+      const userId = localStorage.getItem("tribe_demo_uuid");
+      const identities = this.getStorage("auth_identities") || [];
+      if (localStorage.getItem("mock_google_identity_collision") === "true" || identities.some((identity: any) => identity.provider === "google" && identity.user_id !== userId)) {
+        return { data: { provider: "google", url: null }, error: { message: "Identity is already linked to another user", code: "identity_already_exists" } };
+      }
+      if (localStorage.getItem("mock_google_redirect_required") === "true") {
+        return { data: { provider: "google", url: "https://accounts.google.test/oauth" }, error: null };
+      }
+      localStorage.setItem("mock_auth_mode", "GOOGLE");
+      if (!identities.some((identity: any) => identity.user_id === userId && identity.provider === "google")) {
+        identities.push({ user_id: userId, provider: "google" });
+        this.setStorage("auth_identities", identities);
+      }
+      return { data: { provider: "google", url: null }, error: null };
     }
   };
 
@@ -110,20 +171,39 @@ export class MockSupabaseClient {
       const session = sessions.find((entry: any) => entry.id === options.body?.replaySessionId);
       if (!session) return { data: null, error: { message: "Replay session was not found" } };
       if (!userId || session.requester_user_id !== userId) return { data: null, error: { message: "Replay session was not found" } };
-      if (session.status === "RESOLVED") return { data: session.result, error: null };
-      if (session.battle_mode !== "GVG" || !session.source_reference_id || session.status !== "PENDING") {
-        return { data: null, error: { message: "Only a pending official GvG replay can be resolved" } };
+      const finalizeMockPatrol = (winner: "PLAYER" | "ENEMY") => {
+        if (session.battle_mode !== "QUEST" || !session.source_reference_id) return;
+        const patrols = this.getStorage("user_patrols") || [];
+        const patrol = patrols.find((entry: any) => entry.id === session.source_reference_id && entry.user_id === userId);
+        if (!patrol) return;
+        const progress = (this.getStorage("tutorial_progress") || []).find((entry: any) => entry.user_id === userId);
+        if (winner === "ENEMY" && patrol.course_id === "q_shinjuku_1" && progress?.step_id === "TUTORIAL_BATTLE") return;
+        patrol.battle_resolved = true;
+        patrol.battle_result = winner === "PLAYER" ? "VICTORY" : "DEFEAT";
+        this.setStorage("user_patrols", patrols);
+      };
+      if (session.status === "RESOLVED") {
+        if (session.result?.winner === "PLAYER" || session.result?.winner === "ENEMY") finalizeMockPatrol(session.result.winner);
+        return { data: session.result, error: null };
       }
-      const attacks = this.getStorage("gvg_attack_logs") || [];
-      const attack = attacks.find((entry: any) => entry.id === session.source_reference_id && entry.attacker_user_id === userId && entry.battle_result === "PENDING");
-      if (!attack) return { data: null, error: { message: "The official GvG attack is not resolvable" } };
+      const isOfficialGvg = session.battle_mode === "GVG" && Boolean(session.source_reference_id);
+      const isOfficialPatrol = session.battle_mode === "QUEST" && session.resolution_authority === "PATROL_SERVER" && Boolean(session.source_reference_id);
+      if ((!isOfficialGvg && !isOfficialPatrol) || session.status !== "PENDING") {
+        return { data: null, error: { message: "Only a pending official GvG or patrol replay can be resolved" } };
+      }
+      if (isOfficialGvg) {
+        const attacks = this.getStorage("gvg_attack_logs") || [];
+        const attack = attacks.find((entry: any) => entry.id === session.source_reference_id && entry.attacker_user_id === userId && entry.battle_result === "PENDING");
+        if (!attack) return { data: null, error: { message: "The official GvG attack is not resolvable" } };
+      }
       if (!isTactic(session.tactic_id) || !Array.isArray(session.player_snapshot) || !Array.isArray(session.enemy_snapshot)) {
         return { data: null, error: { message: "Replay session is not resolvable" } };
       }
-      const result = resolveBattle(Number(session.random_seed) || 1, session.tactic_id, 20, session.player_snapshot, session.enemy_snapshot);
+      const result = resolveBattle(Number(session.random_seed) || 1, session.tactic_id, isOfficialGvg ? 20 : 15, session.player_snapshot, session.enemy_snapshot);
       session.status = "RESOLVED";
       session.result = result;
       this.setStorage("battle_replay_sessions", sessions);
+      if (isOfficialPatrol) finalizeMockPatrol(result.winner);
       return { data: result, error: null };
     }
   };
@@ -171,6 +251,11 @@ export class MockSupabaseClient {
 
       in(field: string, vals: any[]) {
         this.filters.push({ type: "in", field, vals });
+        return this;
+      }
+
+      like(field: string, pattern: string) {
+        this.filters.push({ type: "like", field, pattern });
         return this;
       }
 
@@ -280,6 +365,13 @@ export class MockSupabaseClient {
             if (f.type === "neq" && row[f.field] === f.val) return false;
             if (f.type === "gte" && row[f.field] < f.val) return false;
             if (f.type === "in" && !f.vals.includes(row[f.field])) return false;
+            if (f.type === "like") {
+              const expression = String(f.pattern)
+                .replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+                .replace(/%/g, ".*")
+                .replace(/_/g, ".");
+              if (!new RegExp(`^${expression}$`).test(String(row[f.field] ?? ""))) return false;
+            }
           }
           for (const expression of this.orFilters) {
             const groups = [...expression.matchAll(/and\(([^)]+)\)/g)];

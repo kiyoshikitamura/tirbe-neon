@@ -17,6 +17,9 @@ export default function BbsTab() {
     bbsPosts,
     setBbsPosts,
     bbsLoading,
+    bbsUnreadCounts,
+    refreshBbsUnreadCounts,
+    markBbsThreadRead,
     fetchBbsThreads,
     createBbsThread,
     fetchBbsPosts,
@@ -83,14 +86,30 @@ export default function BbsTab() {
               });
             }
           }
+
+          void refreshBbsUnreadCounts();
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED") {
+          void fetchBbsThreads(activeCategory);
+          void refreshBbsUnreadCounts();
+        }
+      });
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        void fetchBbsThreads(activeCategory);
+        void refreshBbsUnreadCounts();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
 
     return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
       supabase.removeChannel(channel);
     };
-  }, [session, bbsActiveThread, activeCategory]);
+  }, [session, bbsActiveThread, activeCategory, refreshBbsUnreadCounts]);
 
   // リアルタイム購読（レス一覧用）
   useEffect(() => {
@@ -112,15 +131,31 @@ export default function BbsTab() {
               if (prev.some((p) => p.id === newPost.id)) return prev;
               return [...prev, newPost];
             });
+            void markBbsThreadRead(bbsActiveThread.id);
           }
+          void refreshBbsUnreadCounts();
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED") {
+          void fetchBbsPosts(bbsActiveThread.id);
+          void markBbsThreadRead(bbsActiveThread.id);
+        }
+      });
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        void fetchBbsPosts(bbsActiveThread.id);
+        void markBbsThreadRead(bbsActiveThread.id);
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
 
     return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
       supabase.removeChannel(channel);
     };
-  }, [session, bbsActiveThread]);
+  }, [session, bbsActiveThread, refreshBbsUnreadCounts, markBbsThreadRead]);
 
   // スレッド作成処理
   const handleCreateThread = async (e: React.FormEvent) => {
@@ -180,7 +215,7 @@ export default function BbsTab() {
         <div className="bbs-header-left">
           <span className="bbs-header-tag">BBS COMMUNICATION</span>
           <h2 className="bbs-header-title">
-            BBS <span className="bbs-header-sub">【BBSテスト環境検証用】</span>
+            BBS <span className="bbs-header-sub">【ネオン街掲示板】</span>
           </h2>
         </div>
         <button
@@ -336,10 +371,14 @@ export default function BbsTab() {
                     playCyberSe("click");
                     setBbsActiveThread(thread);
                     await fetchBbsPosts(thread.id);
+                    await markBbsThreadRead(thread.id);
                   }}
                 >
                   <div className="bbs-thread-card-header">
                     <h4 className="bbs-thread-title">{thread.title}</h4>
+                    {Number(bbsUnreadCounts?.[thread.id] || 0) > 0 && (
+                      <span className="bbs-thread-unread">NEW {bbsUnreadCounts[thread.id]}</span>
+                    )}
                     <span className="bbs-thread-date">{formatTime(thread.updated_at)}</span>
                   </div>
                   <p className="bbs-thread-preview">{thread.content}</p>

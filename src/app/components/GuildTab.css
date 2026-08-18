@@ -27,8 +27,32 @@
 .guild-lobby-guild-card { display: flex; align-items: center; gap: 9px; padding: 10px; border: 1px solid rgba(86, 110, 143, .28); background: rgba(13, 20, 33, .86); }
 .guild-lobby-guild-mark { display: grid; width: 30px; height: 30px; place-items: center; border: 1px solid rgba(0, 240, 255, .5); border-radius: 50%; color: #00f0ff; font-size: 13px; font-weight: 900; }
 .guild-lobby-guild-info { display: grid; flex: 1; gap: 3px; min-width: 0; }
+.guild-detail-trigger { appearance: none; padding: 0; border: 0; color: inherit; background: transparent; text-align: left; cursor: pointer; }
 .guild-lobby-guild-info strong { overflow: hidden; color: #fff; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
 .guild-lobby-guild-info span { color: #91a1b8; font-size: 10px; }
+.guild-lobby-guild-info .guild-activity-line { color: var(--neon-cyan); font-size: 9px; }
+.guild-lobby-guild-info small { color: var(--neon-gold); font-size: 9px; font-weight: 800; }
+
+.guild-membership-summary { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: center; gap: 10px; margin: 10px 8px 0; padding: 11px; border: 1px solid rgba(0, 240, 255, .34); background: linear-gradient(125deg, rgba(0, 208, 229, .1), rgba(9, 14, 24, .94)); }
+.guild-membership-summary > div:first-child { display: grid; gap: 2px; min-width: 0; }
+.guild-membership-summary small { color: var(--neon-cyan); font-size: 8px; font-weight: 900; letter-spacing: .12em; }
+.guild-membership-summary strong { color: #fff; font-size: 14px; }
+.guild-membership-summary span { color: var(--ui-text-secondary); font-size: 9px; }
+.guild-membership-actions { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 6px; }
+.guild-gvg-coming-soon { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1.2fr); gap: 10px; margin: 8px 8px 0; padding: 11px; border: 1px solid rgba(235, 190, 64, .34); background: linear-gradient(125deg, rgba(220, 168, 35, .09), rgba(9, 14, 24, .94)); }
+.guild-gvg-coming-soon > div { display: grid; gap: 2px; }
+.guild-gvg-coming-soon small { color: var(--neon-gold); font-size: 8px; font-weight: 900; letter-spacing: .12em; }
+.guild-gvg-coming-soon strong { color: #fff; font-size: 14px; }
+.guild-gvg-coming-soon span, .guild-gvg-coming-soon p { margin: 0; color: var(--ui-text-secondary); font-size: 9px; line-height: 1.5; }
+
+@media (max-width: 430px) {
+  .guild-lobby-guild-card { align-items: stretch; flex-wrap: wrap; }
+  .guild-lobby-guild-info { flex-basis: calc(100% - 44px); }
+  .guild-lobby-guild-card > .outlaw-button { width: 100%; min-height: 44px; }
+  .guild-membership-summary { grid-template-columns: 1fr; }
+  .guild-membership-actions .outlaw-button { min-height: 44px; }
+  .guild-gvg-coming-soon { grid-template-columns: 1fr; }
+}
 
 .guild-decoration-neon-kabukicho {
   background:
@@ -171,3 +195,4 @@
   border-radius: 4px;
   padding: 6px 2px;
 }
+.guild-welcome-card{margin:12px 0;padding:14px;border:1px solid rgba(0,244,255,.34);border-radius:14px;background:linear-gradient(135deg,rgba(0,244,255,.08),rgba(5,8,14,.96));display:grid;gap:9px}.guild-welcome-card div small,.guild-welcome-card div strong{display:block}.guild-welcome-card div small{font-size:9px;letter-spacing:.14em;color:var(--color-cyan,#00f4ff)}.guild-welcome-card div strong{margin-top:3px;font-size:18px}.guild-welcome-card p{margin:0;font-size:13px;line-height:1.6}.guild-welcome-card>small{color:rgba(255,255,255,.55);font-size:10px}

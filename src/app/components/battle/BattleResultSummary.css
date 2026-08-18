@@ -1,0 +1,8 @@
+.battle-result-summary { display: grid; justify-items: center; gap: 12px; width: min(88vw, 360px); padding: 24px 18px 18px; overflow: hidden; border: 1px solid color-mix(in srgb, var(--ui-value) 72%, transparent); border-radius: var(--ui-radius-lg); color: var(--ui-text-primary); background: radial-gradient(circle at 50% 34%, rgba(242, 201, 95, .18), transparent 42%), linear-gradient(160deg, var(--ui-bg-raised), var(--ui-bg-root)); box-shadow: 0 24px 70px rgba(0, 0, 0, .78), 0 0 32px rgba(242, 201, 95, .18); }
+.battle-result-summary small { color: #c4ac70; font-size: 8px; font-weight: 900; letter-spacing: .24em; }
+.battle-result-summary > span { color: #9b8c67; font-size: 8px; font-weight: 900; letter-spacing: .18em; }
+.battle-result-summary > strong { color: #fff1af; font-size: clamp(32px, 10vw, 48px); font-style: italic; letter-spacing: .12em; text-indent: .12em; text-shadow: 0 0 22px rgba(242, 201, 95, .45); }
+.battle-result-summary p { margin: 0; color: var(--ui-text-primary); font-size: var(--ui-font-body); line-height: 1.7; text-align: center; }
+.battle-result-summary.is-defeat { border-color: rgba(255, 72, 102, .68); background: radial-gradient(circle at 50% 34%, rgba(255, 50, 85, .15), transparent 42%), linear-gradient(160deg, rgba(24, 14, 18, .99), rgba(5, 8, 13, .99)); }
+.battle-result-summary.is-defeat > strong { color: #ff738b; text-shadow: 0 0 22px rgba(255, 60, 95, .4); }
+.battle-result-continue { width: 100%; min-height: 46px; }

@@ -3,19 +3,10 @@ import "./GlobalInteractionBlocker.css";
 
 interface GlobalInteractionBlockerProps {
   isBlocking: boolean;
-  showSpinner?: boolean;
 }
 
-export default function GlobalInteractionBlocker({ isBlocking, showSpinner = false }: GlobalInteractionBlockerProps) {
+export default function GlobalInteractionBlocker({ isBlocking }: GlobalInteractionBlockerProps) {
   if (!isBlocking) return null;
 
-  return (
-    <div className="outlaw-interaction-blocker">
-      {showSpinner && (
-        <div className="blocker-spinner">
-          <div className="spinner-ring" />
-        </div>
-      )}
-    </div>
-  );
+  return <div className="outlaw-interaction-blocker" aria-hidden="true" />;
 }

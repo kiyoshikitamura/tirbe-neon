@@ -35,13 +35,23 @@
   gap: 12px;
 }
 
+.mission-item.CLEAR { border-color: rgba(247, 196, 72, .7); box-shadow: inset 3px 0 var(--neon-gold); }
+.mission-item.IN_PROGRESS { border-color: rgba(0, 240, 255, .28); }
+.mission-item.LOCKED { filter: saturate(.55); }
+
 .mission-item.CLAIMED {
   opacity: 0.6;
 }
 
 .mission-info {
   flex: 1;
+  min-width: 0;
 }
+
+.mission-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.mission-status { flex: none; padding: 3px 6px; border: 1px solid rgba(0, 240, 255, .32); border-radius: 999px; color: var(--neon-cyan); font-size: 9px; font-weight: 800; }
+.mission-item.CLEAR .mission-status { border-color: rgba(247, 196, 72, .55); color: var(--neon-gold); }
+.mission-item.CLAIMED .mission-status { border-color: rgba(255,255,255,.18); color: var(--ui-text-secondary); }
 
 .mission-title {
   font-size: 14px;
@@ -61,6 +71,8 @@
   color: var(--neon-gold);
   margin-bottom: 8px;
 }
+.mission-reward span { margin-right: 7px; color: var(--ui-text-secondary); font-size: 9px; letter-spacing: .08em; }
+.mission-reward strong { color: var(--neon-gold); font-size: 13px; }
 
 .mission-progress-bar-container {
   height: 14px;
@@ -93,6 +105,12 @@
   flex-direction: column;
   justify-content: center;
   min-width: 70px;
+}
+
+@media (max-width: 390px) {
+  .mission-item { align-items: stretch; flex-direction: column; }
+  .mission-action { width: 100%; }
+  .mission-action .outlaw-button { width: 100%; min-height: 44px; }
 }
 
 .mission-empty {

@@ -4,12 +4,21 @@ test.use({ viewport: { width: 390, height: 844 } });
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
-    localStorage.setItem("tribe_demo_uuid", "00000000-0000-4000-8000-000000000001");
+    const userId = "00000000-0000-4000-8000-000000000001";
+    localStorage.setItem("tribe_demo_uuid", userId);
+    localStorage.setItem("mock_auth_mode", "EMAIL");
+    localStorage.setItem("mock_db_users", JSON.stringify([{
+      id: userId,
+      username: "検証ユーザー",
+      current_base_id: "shinjuku",
+      favorite_character_id: "11111111-1111-1111-1111-111111111111",
+    }]));
   });
 });
 
 async function enterGame(page: import("@playwright/test").Page) {
   await page.goto("/");
+  await page.locator("html").evaluate((root) => root.style.setProperty("--app-safe-top", "47px"));
   await page.getByText("TAP TO START").click();
   await expect(page.locator(".header-mobile")).toBeVisible();
   const welcomeAction = page.getByRole("button", { name: "抗争に参入する" });
@@ -39,13 +48,19 @@ test("shared shell preserves footer navigation", async ({ page }) => {
   await expect(page.locator(".footer-item.active")).toContainText("キャラ");
 });
 
+test("Open Beta home prioritizes the next action and keeps unreleased GvG unavailable", async ({ page }) => {
+  await enterGame(page);
+  await expect(page.locator(".mypage-primary-cta")).toBeVisible();
+  await expect(page.locator(".circle-menu-btn.war")).toBeDisabled();
+  await expect(page.locator(".circle-menu-btn.war")).toContainText("準備中");
+});
+
 test("stage two hubs share a mobile-safe page frame", async ({ page }) => {
   await enterGame(page);
 
   const cases = [
     { selector: ".circle-menu-btn.fight", title: "喧嘩（PvP）", period: true },
     { selector: ".circle-menu-btn.conquest", title: "クエスト", period: false },
-    { selector: ".circle-menu-btn.war", title: "抗争（GvG）", period: true },
     { selector: ".mypage-power-panel", title: "ランキング", period: true },
   ];
 

@@ -1,16 +1,20 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import Link from "next/link";
 import { useGame } from "../context/GameContext";
 import "./TitleView.css";
 
 export default function TitleView() {
-  const { showTitleView, setShowTitleView, authLoading, setupLoading, session, errorMessage, playCyberSe, handleStartNewGame } = useGame();
+  const { showTitleView, setShowTitleView, authLoading, setupLoading, session, errorMessage, playCyberSe, handleFirstUserInteraction, handleStartNewGame } = useGame();
   const [showEntryActions, setShowEntryActions] = useState(false);
+  const [isGameStartTransition, setIsGameStartTransition] = useState(false);
+  const gameStartRef = useRef(false);
 
   if (!showTitleView) return null;
 
-  const handleStart = () => {
+  const handleStart = (event?: React.SyntheticEvent) => {
+    event?.stopPropagation();
     if (authLoading) return;
+    handleFirstUserInteraction();
     playCyberSe("click");
     if (session) setShowTitleView(false);
     else setShowEntryActions(true);
@@ -18,7 +22,21 @@ export default function TitleView() {
 
   const beginNewGame = async (event: React.MouseEvent) => {
     event.stopPropagation();
-    if (await handleStartNewGame()) setShowTitleView(false);
+    handleFirstUserInteraction();
+    if (gameStartRef.current) return;
+    gameStartRef.current = true;
+    setIsGameStartTransition(true);
+    const startedAt = performance.now();
+    const succeeded = await handleStartNewGame();
+    const minimumTransitionMs = 650;
+    const remainingMs = Math.max(0, minimumTransitionMs - (performance.now() - startedAt));
+    if (remainingMs > 0) await new Promise((resolve) => window.setTimeout(resolve, remainingMs));
+    if (succeeded) {
+      setShowTitleView(false);
+      return;
+    }
+    gameStartRef.current = false;
+    setIsGameStartTransition(false);
   };
 
   const openExistingLogin = (event: React.MouseEvent) => {
@@ -32,23 +50,25 @@ export default function TitleView() {
       <div className="title-view-container">
         {/* 背景画像 (CSSで指定) */}
         
-        <div className="title-view-content">
+        {(authLoading || isGameStartTransition) ? (
+          <div className="game-start-transition" role="status" aria-live="polite" aria-label="ゲーム開始中">
+            <img src="/branding/tribe-neon-logo.png" alt="TRIBE NEON" />
+            <div className="game-start-signal" aria-hidden="true"><i /><i /><i /></div>
+            <strong>ENTER THE NEON</strong>
+          </div>
+        ) : <div className="title-view-content">
           <div className="title-tap-area">
-            {authLoading || setupLoading ? (
-              <div className="title-loading">
-                <div className="spinner"></div>
-              </div>
-            ) : showEntryActions && !session ? (
+            {showEntryActions && !session ? (
               <div className="title-entry-actions" onClick={(event) => event.stopPropagation()}>
-                <button className="title-entry-primary" onClick={(event) => void beginNewGame(event)}>はじめから</button>
-                <button className="title-entry-secondary" onClick={openExistingLogin}>既存アカウントでログイン</button>
+                <button className="semantic-cta semantic-cta--primary title-entry-primary" onClick={(event) => void beginNewGame(event)} disabled={setupLoading}>はじめから</button>
+                <button className="semantic-cta semantic-cta--secondary title-entry-secondary" onClick={openExistingLogin}>既存アカウントでログイン</button>
                 {errorMessage && <div className="title-entry-error" role="alert">{errorMessage}</div>}
               </div>
             ) : (
-              <span className="title-tap-text blink-animation">TAP TO START</span>
+              <button className="semantic-cta semantic-cta--primary title-tap-text blink-animation" onClick={handleStart}>TAP TO START</button>
             )}
           </div>
-        </div>
+        </div>}
 
         <div className="title-footer">
           <div className="title-legal-links" onClick={(event) => event.stopPropagation()}>

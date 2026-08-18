@@ -82,7 +82,26 @@ export default function SettingsPanel() {
         </section>
 
         {canProvisionQa && <section className="settings-section"><h4 className="settings-section-title">QAテストデータ</h4><p className="settings-help-text">このアカウントのテスト用所持データを再投入します。</p><OutlawButton variant="secondary" fullWidth disabled={qaLoading} onClick={() => void provisionQa()}>{qaLoading ? "投入中..." : "テストデータを投入"}</OutlawButton></section>}
-        <section className="settings-section"><h4 className="settings-section-title">システム設定</h4><div className="settings-field"><label>BGM</label><div className="settings-toggle-group"><button className={`settings-toggle-btn ${game.bgmEnabled ? "active" : ""}`} onClick={() => !game.bgmEnabled && void game.handleToggleSound("bgm")}>ON</button><button className={`settings-toggle-btn ${!game.bgmEnabled ? "active" : ""}`} onClick={() => game.bgmEnabled && void game.handleToggleSound("bgm")}>OFF</button></div></div><div className="settings-field"><label>SE</label><div className="settings-toggle-group"><button className={`settings-toggle-btn ${game.seEnabled ? "active" : ""}`} onClick={() => !game.seEnabled && void game.handleToggleSound("se")}>ON</button><button className={`settings-toggle-btn ${!game.seEnabled ? "active" : ""}`} onClick={() => game.seEnabled && void game.handleToggleSound("se")}>OFF</button></div></div></section>
+        <section className="settings-section">
+          <h4 className="settings-section-title">サウンド設定</h4>
+          <div className="settings-audio-row">
+            <div className="settings-audio-heading"><label htmlFor="bgm-volume">BGM</label><output>{Math.round(game.bgmVolume * 100)}%</output></div>
+            <div className="settings-toggle-group">
+              <button className={`settings-toggle-btn ${game.bgmEnabled ? "active" : ""}`} onClick={() => game.setBgmEnabled(true)}>ON</button>
+              <button className={`settings-toggle-btn ${!game.bgmEnabled ? "active" : ""}`} onClick={() => game.setBgmEnabled(false)}>OFF</button>
+            </div>
+            <input id="bgm-volume" className="settings-volume" type="range" min="0" max="1" step="0.05" value={game.bgmVolume} disabled={!game.bgmEnabled} onChange={(event) => game.setBgmVolume(Number(event.target.value))} />
+          </div>
+          <div className="settings-audio-row">
+            <div className="settings-audio-heading"><label htmlFor="se-volume">SE</label><output>{Math.round(game.seVolume * 100)}%</output></div>
+            <div className="settings-toggle-group">
+              <button className={`settings-toggle-btn ${game.seEnabled ? "active" : ""}`} onClick={() => game.setSeEnabled(true)}>ON</button>
+              <button className={`settings-toggle-btn ${!game.seEnabled ? "active" : ""}`} onClick={() => game.setSeEnabled(false)}>OFF</button>
+            </div>
+            <input id="se-volume" className="settings-volume" type="range" min="0" max="1" step="0.05" value={game.seVolume} disabled={!game.seEnabled} onChange={(event) => game.setSeVolume(Number(event.target.value))} />
+          </div>
+          <p className="settings-help-text">この端末のブラウザに保存されます。</p>
+        </section>
         <div className="settings-panel-footer">
           <OutlawButton variant="primary" fullWidth disabled={game.profileLoading} onClick={() => void game.handleUpdateProfile()}>{game.profileLoading ? "保存中..." : "保存する"}</OutlawButton>
           <OutlawButton

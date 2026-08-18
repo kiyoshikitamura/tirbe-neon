@@ -18,17 +18,23 @@
 .pvp-status-meta { display: flex; align-items: center; gap: 8px; margin-top: 12px; color: var(--ui-text-secondary); font-size: 9px; }
 
 .pvp-opponent-card {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
+  display: flex;
+  align-items: stretch;
+  flex-direction: column;
   gap: 12px;
   margin-bottom: 8px;
 }
 
 .pvp-opponent-copy { min-width: 0; }
 .pvp-opponent-name { overflow: hidden; color: #fff; font-size: 13px; font-weight: 900; text-overflow: ellipsis; white-space: nowrap; }
+.pvp-opponent-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.pvp-opponent-heading > strong { color: var(--neon-gold); font-size: 15px; }
 .pvp-opponent-guild { overflow: hidden; margin-top: 3px; color: var(--ui-text-secondary); font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
-.pvp-opponent-meta { display: flex; align-items: center; gap: 7px; margin-top: 8px; color: var(--ui-text-secondary); font-size: 9px; }
+.pvp-opponent-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; margin-top: 8px; color: var(--ui-text-secondary); font-size: 9px; }
+.pvp-opponent-power { color: #fff; font-size: 11px; font-weight: 900; }
+.pvp-opponent-deck { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; margin-top: 9px; }
+.pvp-opponent-deck .character-presentation { width: 100%; }
+.pvp-opponent-deck .character-presentation-meta { min-height: 20px; padding-top: 6px; }
 
 .pvp-defense-grid {
   display: grid;
@@ -39,7 +45,7 @@
 .pvp-defense-member {
   appearance: none;
   min-width: 0;
-  min-height: 74px;
+  min-height: 118px;
   display: grid;
   place-items: center;
   gap: 2px;
@@ -50,6 +56,8 @@
   border-radius: 6px;
   cursor: pointer;
 }
+.pvp-defense-member .character-presentation { width: 100%; max-width: 74px; }
+.pvp-defense-member .character-presentation-meta { display: none; }
 
 .pvp-defense-member.selected {
   border-color: var(--neon-cyan);
@@ -61,6 +69,11 @@
 .pvp-defense-name { width: 100%; overflow: hidden; color: #fff; font-size: 10px; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }
 .pvp-defense-level { color: var(--text-secondary); font-size: 9px; }
 .pvp-defense-empty { grid-column: 1 / -1; padding: 16px; color: var(--text-secondary); font-size: 10px; text-align: center; }
+
+@media (max-width: 390px) {
+  .pvp-defense-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .pvp-opponent-card .outlaw-button { width: 100%; min-height: 44px; }
+}
 
 .loading-container {
   display: flex;

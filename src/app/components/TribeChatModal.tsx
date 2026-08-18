@@ -3,6 +3,7 @@ import { useGame } from "../context/GameContext";
 import FullScreenPanel from "./ui/FullScreenPanel";
 import SubTabNav from "./ui/SubTabNav";
 import OutlawButton from "./ui/OutlawButton";
+import { supabase } from "../../utils/supabase";
 import "./TribeChatModal.css";
 
 export default function TribeChatModal() {
@@ -16,9 +17,12 @@ export default function TribeChatModal() {
     userFriends,
     chatChannel,
     setChatChannel,
+    chatUnreadCounts,
     guildChats,
     chatInput,
     setChatInput,
+    chatReplyTo,
+    setChatReplyTo,
     chatCooldown,
     chatSending,
     handleSendChat,
@@ -26,8 +30,11 @@ export default function TribeChatModal() {
     dmRecipientId,
     setDmRecipientId,
     directMessages,
+    dmUnreadConversations,
+    dmUnreadTotal,
     handleSendDirectMessage,
-    fetchPlayerDetail
+    fetchPlayerDetail,
+    navigateTab
   } = useGame();
 
   const [localDmText, setLocalDmText] = useState("");
@@ -36,6 +43,15 @@ export default function TribeChatModal() {
     dmRecipientId
       && !guildMembersList?.some((member: any) => member.user_id === dmRecipientId)
       && !userFriends?.some((friend: any) => friend.id === dmRecipientId)
+  );
+  const unreadOnlyRecipients = (dmUnreadConversations || []).filter((conversation: any) => (
+    conversation.sender_id !== session?.user?.id
+      && !guildMembersList?.some((member: any) => member.user_id === conversation.sender_id)
+      && !userFriends?.some((friend: any) => friend.id === conversation.sender_id)
+      && conversation.sender_id !== dmRecipientId
+  ));
+  const getDmUnreadCount = (userId: string) => Number(
+    dmUnreadConversations?.find((conversation: any) => conversation.sender_id === userId)?.unread_count || 0
   );
 
   useEffect(() => {
@@ -87,9 +103,9 @@ export default function TribeChatModal() {
         {/* チャンネルタブ (全体 / ギルド / DM) */}
         <SubTabNav
           tabs={[
-            { id: "GLOBAL", label: "全体" },
-            { id: "GUILD", label: "ギルド", disabled: !userGuild },
-            { id: "DM", label: "個人(DM)" }
+            { id: "GLOBAL", label: `全体${chatUnreadCounts?.GLOBAL ? ` (${chatUnreadCounts.GLOBAL})` : ""}` },
+            { id: "GUILD", label: `ギルド${chatUnreadCounts?.GUILD ? ` (${chatUnreadCounts.GUILD})` : ""}`, disabled: !userGuild },
+            { id: "DM", label: `個人(DM)${dmUnreadTotal ? ` (${dmUnreadTotal})` : ""}` }
           ]}
           activeTabId={chatChannel}
           onSelect={(id) => setChatChannel(id as any)}
@@ -117,13 +133,24 @@ export default function TribeChatModal() {
                   style={{ flex: 1 }}
                 >
                   {hasProfileSelectedRecipient && (
-                    <option value={dmRecipientId}>プロフィールから選択したユーザー</option>
+                    <option value={dmRecipientId}>
+                      プロフィールから選択したユーザー{getDmUnreadCount(dmRecipientId || "") ? `（未読${getDmUnreadCount(dmRecipientId || "")}）` : ""}
+                    </option>
                   )}
-                  <option value="">ギルドメンバーから選択</option>
+                  <option value="">送信相手を選択</option>
+                  {unreadOnlyRecipients.length > 0 && (
+                    <optgroup label="未読DM">
+                      {unreadOnlyRecipients.map((conversation: any) => (
+                        <option key={conversation.sender_id} value={conversation.sender_id}>
+                          {conversation.sender_name}（未読{conversation.unread_count}）
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
                   {guildMembersList?.map((m: any) => (
                     m.user_id !== session?.user?.id && (
                       <option key={m.user_id} value={m.user_id}>
-                        {m.users?.username || "プレイヤー名"} (Lv.{m.userLevel || 1})
+                        {m.users?.username || "プレイヤー名"} (Lv.{m.userLevel || 1}){getDmUnreadCount(m.user_id) ? `（未読${getDmUnreadCount(m.user_id)}）` : ""}
                       </option>
                     )
                   ))}
@@ -131,7 +158,7 @@ export default function TribeChatModal() {
                     <optgroup label="フレンド">
                       {userFriends.map((friend: any) => (
                         <option key={friend.id} value={friend.id}>
-                          {friend.username || "プレイヤー"} (Lv.{friend.level || 1})
+                          {friend.username || "プレイヤー"} (Lv.{friend.level || 1}){getDmUnreadCount(friend.id) ? `（未読${getDmUnreadCount(friend.id)}）` : ""}
                         </option>
                       ))}
                     </optgroup>
@@ -192,7 +219,13 @@ export default function TribeChatModal() {
                         {msg.author_name}
                       </button>
                     </div>
+                    {msg.reply_to_message_id && (
+                      <div className="tribe-msg-reply-source">返信先のメッセージ</div>
+                    )}
                     <div className="tribe-msg-bubble">{msg.content || ""}</div>
+                    {!msg.is_system && (
+                      <button type="button" className="tribe-msg-reply" onClick={() => setChatReplyTo(msg)}>返信</button>
+                    )}
                   </div>
                 );
               })
@@ -202,6 +235,29 @@ export default function TribeChatModal() {
 
         {/* メッセージ入力エリア */}
         <div className="tribe-modal-footer" style={{ marginTop: 'auto' }}>
+          {chatChannel !== "DM" && chatReplyTo && (
+            <div className="tribe-reply-composer">
+              <div><b>{chatReplyTo.author_name}</b><span>{chatReplyTo.content}</span></div>
+              <button type="button" onClick={() => setChatReplyTo(null)} aria-label="返信を解除">×</button>
+            </div>
+          )}
+          {chatChannel === "GUILD" && userGuild && (
+            <OutlawButton
+              variant="secondary"
+              fullWidth
+              onClick={() => {
+                void supabase.rpc("record_client_funnel_event", {
+                  p_event_name: "guild_chat_raid_click", p_source_screen: "guild_chat",
+                  p_source_cta: "open_raid", p_object_id: userGuild.id, p_metadata: {}
+                });
+                setShowTribeChatPanel(false);
+                navigateTab("raid");
+                playCyberSe("click");
+              }}
+            >
+              TRIBE Contributionを増やす（レイドへ）
+            </OutlawButton>
+          )}
           <div style={{ display: 'flex', gap: '8px' }}>
             <input
               type="text"

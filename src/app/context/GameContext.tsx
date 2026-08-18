@@ -5,7 +5,6 @@ import { supabase } from "@/utils/supabase";
 import { SKILLS_MASTER_DATA } from "@/utils/skills_master_data";
 import { EQUIPMENTS_MASTER_DATA } from "@/utils/equipments_master_data";
 import {
-  RAID_BOSS_ID,
   TEST_SKILL_ID,
   CHARACTERS_MASTER,
   DISPATCH_COURSES,
@@ -14,7 +13,8 @@ import {
   STORY_EPISODES_MASTER,
   MASTER_AVATARS,
   CHARACTER_AWAKENING_MASTER,
-  CHARACTER_GROWTH_PATTERNS
+  CHARACTER_GROWTH_PATTERNS,
+  getCharacterTransparentImg
 } from "@/utils/game_constants";
 import {
   LoginBonusMaster,
@@ -27,12 +27,45 @@ import { getCharacterTotalStats } from "@/utils/stats_calculator";
 import { SHOP_PRODUCTS_MASTER, ShopProductItem } from "@/utils/shop_master_data";
 import { ConfirmDialogConfig } from "@/app/components/ui/ConfirmDialog";
 import { useNavigation } from "./hooks/useNavigation";
-import { useAuth } from "./hooks/useAuth";
+import { EXISTING_GOOGLE_LOGIN_INTENT_KEY, useAuth } from "./hooks/useAuth";
 import { useFriends } from "./hooks/useFriends";
 import { useChat } from "./hooks/useChat";
 import { useInventory } from "./hooks/useInventory";
 import { useUserProfile } from "./hooks/useUserProfile";
 import { useGuild } from "./hooks/useGuild";
+import { beginActionPerformance } from "@/utils/actionPerformance";
+import { useAudio } from "@/audio/AudioProvider";
+import type { SeEvent } from "@/audio/audioContract";
+
+const ONBOARDING_AUTH_INTENT_KEY = "tribe_onboarding_auth_intent";
+const ONBOARDING_AUTH_INTENT_MAX_AGE_MS = 30 * 60 * 1000;
+
+function hasValidExistingGoogleLoginIntent(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    const intent = JSON.parse(window.localStorage.getItem(EXISTING_GOOGLE_LOGIN_INTENT_KEY) || "null");
+    const age = Date.now() - Number(intent?.startedAt || 0);
+    if (age >= 0 && age <= ONBOARDING_AUTH_INTENT_MAX_AGE_MS) return true;
+  } catch {
+    // Invalid browser state is handled like an expired login attempt.
+  }
+  window.localStorage.removeItem(EXISTING_GOOGLE_LOGIN_INTENT_KEY);
+  return false;
+}
+
+function isMatchingGoogleOnboardingReturn(userId: string): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    const intent = JSON.parse(window.localStorage.getItem(ONBOARDING_AUTH_INTENT_KEY) || "null");
+    const age = Date.now() - Number(intent?.startedAt || 0);
+    return intent?.method === "GOOGLE"
+      && intent?.userId === userId
+      && age >= 0
+      && age <= ONBOARDING_AUTH_INTENT_MAX_AGE_MS;
+  } catch {
+    return false;
+  }
+}
 import { usePvp } from "./hooks/usePvp";
 import { useGvg } from "./hooks/useGvg";
 import { useRaid } from "./hooks/useRaid";
@@ -41,16 +74,24 @@ import { useGacha } from "./hooks/useGacha";
 import { useShop } from "./hooks/useShop";
 import { useStory } from "./hooks/useStory";
 import { useCharacterProgression } from "./hooks/useCharacterProgression";
+import { shouldRevalidateAuthSession } from "@/utils/auth_session_events";
+import { getJstDateString } from "@/utils/jst_date";
 
 const GameContext = createContext<any>(null);
 
 export function GameProvider({ children }: { children: React.ReactNode }) {
+  const lastValidatedAuthUserIdRef = useRef<string | null>(null);
+  const audio = useAudio();
+  const playCyberSe = (type: string) => audio.playLegacySe(type);
+  const handleFirstUserInteraction = () => { void audio.unlockAudio(); };
+  const startCyberBgm = () => audio.playBgm("HOME");
+  const stopCyberBgm = () => audio.stopBgm();
   // ==========================================
   // 0. ナビゲーション ＆ UI状態管理
   // ==========================================
   const nav = useNavigation(
-    (type: string) => {}, // Placeholder for playCyberSe
-    () => {} // Placeholder for handleFirstUserInteraction
+    playCyberSe,
+    handleFirstUserInteraction
   );
 
   const {
@@ -80,13 +121,15 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     (userId: string) => syncBootstrapData(userId),
     (tab: string, subTab?: string) => navigateTab(tab, subTab),
     (userId: string) => checkIfSetupRequired(userId),
-    setConfirmDialogConfig
+    setConfirmDialogConfig,
+    () => setShowTitleView(true)
   );
 
   const {
     session, setSession,
     authLoading, setAuthLoading,
     isSetupRequired, setIsSetupRequired,
+    onboardingState, setOnboardingState,
     setupUsername, setSetupUsername,
     setupCharacterId, setSetupCharacterId,
     setupAreaId, setSetupAreaId,
@@ -99,9 +142,12 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     email, setEmail,
     password, setPassword,
     errorMessage, setErrorMessage,
+    googleExternalBrowserUrl,
+    dismissGoogleExternalBrowserPrompt,
     handleEmailSignup,
     handleEmailLogin,
     handleGoogleLogin,
+    handleStartNewGame,
     handleGoogleDemoLogin,
     handleInitializeUser,
     handleLogout
@@ -120,6 +166,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const [activeBanners, setActiveBanners] = useState<any[]>([]);
   const [userXp, setUserXp] = useState<number>(0);
   const [raidAttemptsToday, setRaidAttemptsToday] = useState<number>(0);
+  const [raidAttemptConfig, setRaidAttemptConfig] = useState<Array<{ attempt: number; type: "FREE" | "CASH" | "DIAMOND"; cost: number }>>([]);
+  const [raidMaxDaily, setRaidMaxDaily] = useState<number>(0);
   const [cash, setCash] = useState<number>(10000);
   const [diamonds, setDiamonds] = useState<number>(200);
   const [vitality, setVitality] = useState<number>(100);
@@ -165,8 +213,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     handleClaimPresent,
     handleClaimAllPresents,
     handleClaimMission,
-    handleClaimAllMissions,
-    handleDailyMissionReset
+    handleClaimAllMissions
   } = inventory;
 
 
@@ -180,8 +227,10 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     setErrorMessage,
     (type: string) => playCyberSe(type as any),
     (userId: string) => syncBootstrapData(userId),
-    (actionType: string) => addGuildXpAndContributionByAction(actionType),
-    setConfirmDialogConfig
+    (actionType: string, sourceId?: string) => addGuildXpAndContributionByAction(actionType, sourceId),
+    setConfirmDialogConfig,
+    () => { setChatChannel("GUILD"); setShowTribeChatPanel(true); },
+    () => navigateTab("raid")
   );
 
   const {
@@ -191,14 +240,20 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     newGuildName, setNewGuildName,
     allGuildsDbList, setAllGuildsDbList,
     guildSubTab, setGuildSubTab,
+    pendingGuildJoinRequests, setPendingGuildJoinRequests,
+    guildJoinRequests, setGuildJoinRequests,
     guildLevelMaster, setGuildLevelMaster,
     guildXpActionMaster, setGuildXpActionMaster,
     updatingAlignment, setUpdatingAlignment,
     getGuildPenaltyState,
     handleCreateGuild,
     handleUpdateGuildAlignment,
+    handleUpdateGuildSettings,
     handleLeaveGuild,
     handleDemoJoinGuild,
+    handleSearchGuilds,
+    handleCancelGuildJoinRequest,
+    handleReviewGuildJoinRequest,
     handleUpdateMemberRole,
     handleKickMember,
     handleDonateToGuild,
@@ -212,11 +267,11 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     diamonds,
     cash,
     userGuild,
-    (type: string) => playCyberSe(type as any),
-    () => startCyberBgm(),
-    () => stopCyberBgm(),
-    () => initAudio(),
-    () => audioCtxRef.current,
+    playCyberSe,
+    audio.bgmEnabled,
+    audio.setBgmEnabled,
+    audio.seEnabled,
+    audio.setSeEnabled,
     (userId: string) => syncBootstrapData(userId),
     setShowSettingsPanel,
     setErrorMessage,
@@ -322,8 +377,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     (userId: string) => syncBootstrapData(userId),
     setUserLevel,
     setUserXp,
-    (actionType: string) => addGuildXpAndContributionByAction(actionType),
-    (channel: string, baseId: string, trigger: string) => postNpcYajiMessage(channel as any, baseId, trigger as any)
+    (actionType: string, sourceId?: string) => addGuildXpAndContributionByAction(actionType, sourceId),
+    (step: string) => setOnboardingState(current => current ? { ...current, tutorial_step: step } : current)
   );
 
   const {
@@ -331,6 +386,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     selectedMembers, setSelectedMembers,
     selectedPatrolMember, setSelectedPatrolMember,
     dailyCashSkips, setDailyCashSkips,
+    dailyCashSkipsResetDate, setDailyCashSkipsResetDate,
     activePatrols, setActivePatrols,
     patrolLogs, setPatrolLogs,
     patrolCourses, setPatrolCourses,
@@ -347,6 +403,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const gacha = useGacha();
 
   const {
+    featureOperatingStates, setFeatureOperatingStates,
     gachaMasters, setGachaMasters,
     gachaItemsMaster, setGachaItemsMaster,
     dailyFreeGachaFlags, setDailyFreeGachaFlags,
@@ -437,6 +494,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     username,
     selectedLeader,
     userGuildMember,
+    showTribeChatPanel,
     (type: string) => playCyberSe(type as any),
     setErrorMessage
   );
@@ -450,10 +508,20 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     activeUsersCount, setActiveUsersCount,
     directMessages, setDirectMessages,
     dmRecipientId, setDmRecipientId,
+    dmUnreadConversations,
+    dmUnreadTotal,
+    refreshDirectMessageUnreadCounts,
+    chatUnreadCounts,
+    refreshChatUnreadCounts,
+    markChatChannelRead,
     bbsThreads, setBbsThreads,
     bbsActiveThread, setBbsActiveThread,
     bbsPosts, setBbsPosts,
     bbsLoading, setBbsLoading,
+    bbsUnreadCounts,
+    bbsUnreadTotal,
+    refreshBbsUnreadCounts,
+    markBbsThreadRead,
     handleSendChat,
     handleSendDirectMessage,
     fetchBbsThreads,
@@ -484,8 +552,6 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
   const [newsList, setNewsList] = useState<any[]>([]);
   const [selectedNews, setSelectedNews] = useState<any | null>(null);
-  const [showImportantModal, setShowImportantModal] = useState<boolean>(true);
-
   const [totalPower, setTotalPower] = useState<number>(0);
   // A displayed zero is valid only after the character and deck data has loaded.
   const [totalPowerLoading, setTotalPowerLoading] = useState<boolean>(true);
@@ -497,112 +563,46 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const [movingAreaLoading, setMovingAreaLoading] = useState<boolean>(false);
 
   // ==========================================
-  // 🔊 Web Audio API インスタンス参照 (useRef)
-  // ==========================================
-  const audioCtxRef = useRef<AudioContext | null>(null);
-  const bgmOsc1Ref = useRef<OscillatorNode | null>(null);
-  const bgmOsc2Ref = useRef<OscillatorNode | null>(null);
-  const bgmGainRef = useRef<GainNode | null>(null);
-
-  const initAudio = () => {
-    if (audioCtxRef.current) return;
-    try {
-      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-      audioCtxRef.current = new AudioContextClass();
-    } catch (e) {
-      console.warn("Web Audio API is not supported in this browser:", e);
-    }
-  };
-
-  const startCyberBgm = () => {
-    return; // 雑音防止のため一時的にサウンド再生機能を完全ミュート化
-  };
-
-  const stopCyberBgm = () => {
-    const ctx = audioCtxRef.current;
-    const osc1 = bgmOsc1Ref.current;
-    const osc2 = bgmOsc2Ref.current;
-    const gain = bgmGainRef.current;
-
-    if (gain && ctx) {
-      gain.gain.setValueAtTime(gain.gain.value, ctx.currentTime);
-      gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.3); // フェードアウト
-    }
-
-    setTimeout(() => {
-      try {
-        if (osc1) { osc1.stop(); osc1.disconnect(); }
-        if (osc2) { osc2.stop(); osc2.disconnect(); }
-        if (gain) { gain.disconnect(); }
-      } catch (e) {
-        // すでに解放されている場合のエラー防止
-      }
-      bgmOsc1Ref.current = null;
-      bgmOsc2Ref.current = null;
-      bgmGainRef.current = null;
-    }, 300);
-  };
-
-  const playCyberSe = (type: "click" | "attack" | "hit" | "gacha") => {
-    return; // 雑音防止のため一時的にサウンド再生機能を完全ミュート化
-  };
-
-  const handleFirstUserInteraction = () => {
-    initAudio();
-    if (bgmEnabled) {
-      startCyberBgm();
-    }
-  };
-
-  // アンマウント時の厳格なクリーンアップ
-  useEffect(() => {
-    return () => {
-      stopCyberBgm();
-      if (audioCtxRef.current) {
-        audioCtxRef.current.close();
-      }
-    };
-  }, []);
-
-  // BGM設定変更の監視
-  useEffect(() => {
-    if (bgmEnabled) {
-      startCyberBgm();
-    } else {
-      stopCyberBgm();
-    }
-  }, [bgmEnabled]);
-
-  // ==========================================
   // 3. Supabase Auth セッション監視
   // ==========================================
   // ==========================================
-  // ⚡ デバッグ優先: 自動ログインバイパス (リロード時の認証・セットアップ省略)
+  // Persisted sessions are restored automatically. A brand-new anonymous
+  // account is created only after the player explicitly starts a new game.
   // ==========================================
   useEffect(() => {
-    // 既存セッションがある場合はそれを使い、無い場合でも自動でデバッグ用ダミーセッションで即時マイページへ
-    const startAnonymousSession = async () => {
+    const restoreAuthSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
         setSession(session);
+        lastValidatedAuthUserIdRef.current = session.user.id;
+        if (isMatchingGoogleOnboardingReturn(session.user.id)) setShowTitleView(false);
         await checkIfSetupRequired(session.user.id);
         return;
       }
-      const { data, error } = await supabase.auth.signInAnonymously();
-      if (error || !data.session) {
-        console.warn("Anonymous game session could not be created", error);
+      lastValidatedAuthUserIdRef.current = null;
+      setSession(null);
+      setOnboardingState(null);
+      setIsSetupRequired(false);
+      setAuthLoading(false);
+    };
+    void restoreAuthSession();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!session) {
+        lastValidatedAuthUserIdRef.current = null;
         setSession(null);
-        setAuthLoading(false);
+        setOnboardingState(null);
+        setIsSetupRequired(false);
         return;
       }
-      setSession(data.session);
-      await checkIfSetupRequired(data.session.user.id);
-    };
-    void startAnonymousSession();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!session) return;
-      setSession(session);
+      setSession((current: typeof session) => current
+        && current.user.id === session.user.id
+        && current.access_token === session.access_token
+        ? current
+        : session);
+      if (!shouldRevalidateAuthSession(event, lastValidatedAuthUserIdRef.current, session.user.id)) return;
+      lastValidatedAuthUserIdRef.current = session.user.id;
+      if (isMatchingGoogleOnboardingReturn(session.user.id)) setShowTitleView(false);
       void checkIfSetupRequired(session.user.id);
     });
 
@@ -628,12 +628,77 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const checkIfSetupRequired = async (userId: string) => {
     setAuthLoading(true);
     try {
-      const { data, error } = await supabase.rpc("get_user_setup_status");
+      const { data, error } = await supabase.rpc("get_current_onboarding_state");
       if (error) throw error;
-      if (!data) {
-        setIsSetupRequired(true);
-      } else {
+      let nextState = data as import("./hooks/useAuth").OnboardingState;
+      if (nextState.tutorial_step === "AUTO_FORMATION") {
+        const { data: growthMilestone } = await supabase
+          .from("user_funnel_milestones")
+          .select("milestone")
+          .eq("user_id", userId)
+          .eq("milestone", "first_growth")
+          .maybeSingle();
+        if (growthMilestone) {
+          const { data: resumedGrowth, error: resumeGrowthError } = await supabase.rpc("advance_current_tutorial_after_growth");
+          if (!resumeGrowthError && resumedGrowth?.tutorial_step) {
+            nextState = { ...nextState, tutorial_step: resumedGrowth.tutorial_step };
+          }
+        }
+      }
+      if (nextState.tutorial_step === "TUTORIAL_BATTLE") {
+        // Reward claiming is authoritative and idempotent, but the tutorial
+        // step is deliberately kept on TUTORIAL_BATTLE while its result modal
+        // is visible. Recover the narrow reload/crash window after the reward
+        // commit by advancing only when no tutorial encounter remains pending.
+        const { data: tutorialPatrols } = await supabase
+          .from("user_patrols")
+          .select("status,has_battle_event,battle_resolved")
+          .eq("user_id", userId);
+        const hasPendingEncounter = (tutorialPatrols || []).some((patrol: any) =>
+          patrol.status !== "COMPLETED" && patrol.has_battle_event
+        );
+        const hasClaimedEncounter = (tutorialPatrols || []).some((patrol: any) =>
+          patrol.status === "COMPLETED" && patrol.battle_resolved
+        );
+        if (!hasPendingEncounter && hasClaimedEncounter) {
+          const { data: resumedBattle, error: resumeBattleError } = await supabase.rpc("advance_tutorial_progress", {
+            p_expected_step: "TUTORIAL_BATTLE",
+            p_next_step: "RULE_GUIDE",
+          });
+          if (!resumeBattleError) {
+            nextState = { ...nextState, tutorial_step: resumedBattle || "RULE_GUIDE" };
+          }
+        }
+      }
+      if (!nextState.has_profile && !nextState.is_anonymous) {
+        // Existing-account login is not a player-registration route. Keeping
+        // this session would expose SetupView, whose RPC correctly rejects it.
+        await supabase.auth.signOut();
+        setSession(null);
+        setOnboardingState(null);
         setIsSetupRequired(false);
+        setErrorMessage("このGoogleアカウントにはゲームデータがありません。「はじめから」で匿名チュートリアルを開始し、完了後にGoogleアカウントを連携してください。");
+        window.localStorage.removeItem(EXISTING_GOOGLE_LOGIN_INTENT_KEY);
+        setShowTitleView(true);
+        return;
+      }
+      setOnboardingState(nextState);
+      setIsSetupRequired(nextState.is_anonymous && !nextState.has_profile);
+      const authenticationReturnPending = nextState.has_profile
+        && !nextState.is_anonymous
+        && nextState.tutorial_step === "COMPLETE"
+        && (nextState.auth_method === "GOOGLE" || nextState.auth_method === "EMAIL");
+      if (authenticationReturnPending) setShowTitleView(false);
+      if (nextState.gameplay_authorized && hasValidExistingGoogleLoginIntent()) {
+        window.localStorage.removeItem(EXISTING_GOOGLE_LOGIN_INTENT_KEY);
+        setShowTitleView(false);
+      }
+      if (nextState.has_profile) {
+        // Resume an interrupted mandatory tutorial at the screen required by
+        // the persisted server-side step instead of falling back to Home.
+        if (nextState.tutorial_step === "FREE_GACHA") setActiveTab("gacha");
+        else if (nextState.tutorial_step === "AUTO_FORMATION") setActiveTab("character");
+        else if (["DISPATCH", "FREE_INSTANT", "TUTORIAL_BATTLE"].includes(nextState.tutorial_step || "")) setActiveTab("patrol");
         await syncBootstrapData(userId);
       }
     } catch (err) {
@@ -657,44 +722,15 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   // ==========================================
   // 3.5 ギルドへのXPおよび貢献度付与の共通処理
   // ==========================================
-  const addGuildXpAndContributionByAction = async (actionType: string) => {
-    if (!session || !userGuildMember || !userGuild) return;
-
-    const actionMaster = guildXpActionMaster.find(a => a.action_type === actionType) || { xp_gain: 0, contribution_gain: 0 };
-    const xpGained = actionMaster.xp_gain;
-    const contributionGained = actionMaster.contribution_gain;
-
-    if (xpGained === 0 && contributionGained === 0) return;
-
+  const addGuildXpAndContributionByAction = async (actionType: string, sourceId?: string) => {
+    if (!session || !userGuildMember || !userGuild || !sourceId) return;
     try {
-      const nextWeeklyContrib = (userGuildMember.weekly_contribution || 0) + contributionGained;
-      const nextTotalContrib = (userGuildMember.total_contribution || 0) + contributionGained;
-      await supabase.from("guild_members")
-        .update({ 
-          weekly_contribution: nextWeeklyContrib,
-          total_contribution: nextTotalContrib
-        })
-        .eq("user_id", session.user.id);
-
-      const nextXp = userGuild.xp + xpGained;
-      const currentLevelMaster = guildLevelMaster.find(l => l.level === userGuild.level) || { next_xp: userGuild.level * 1000 };
-      const xpNeeded = currentLevelMaster.next_xp;
-
-      let nextLevel = userGuild.level;
-      let finalXp = nextXp;
-
-      if (nextXp >= xpNeeded && nextLevel < 30) {
-        nextLevel += 1;
-        finalXp = nextXp - xpNeeded;
-      }
-
-      await supabase.rpc("admin_update_guild", { p_guild_id: userGuild.id, p_funds: userGuild.funds, p_level: nextLevel, p_xp: finalXp });
-
+      const { error } = await supabase.rpc("record_guild_activity", {
+        p_action_type: actionType,
+        p_source_id: sourceId,
+      });
+      if (error) throw error;
       await syncBootstrapData(session.user.id);
-      
-      if (nextLevel > userGuild.level) {
-        setConfirmDialogConfig({ isOpen: true, title: "ギルドレベルアップ", message: `★ギルドレベルが ${nextLevel} に上昇しました！`, onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
-      }
     } catch (err) {
       console.warn("Failed to update guild xp via action:", err);
     }
@@ -746,7 +782,11 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     setDiamonds,
     setErrorMessage,
     addGuildXpAndContributionByAction,
-    setConfirmDialogConfig
+    setConfirmDialogConfig,
+    patrolNpcs,
+    patrol: activePatrols.find((entry: any) => entry.has_battle_event && !entry.battle_resolved),
+    navigateTab: (tabName: string) => setActiveTab(tabName as any),
+    setTutorialStep: (step: string) => setOnboardingState(current => current ? { ...current, tutorial_step: step } : current)
   });
 
 
@@ -796,29 +836,13 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     let localDeck: string[] = [];
     setTotalPowerLoading(true);
 
-    // The Home HUD must not wait for the complete bootstrap (rankings, chat,
-    // raids, etc.). Fetch the three inputs it needs independently so the
-    // total-power value becomes available as soon as the player data is.
+    // The Home HUD reads the canonical server projection without waiting for
+    // rankings, chat, raids, or the rest of the bootstrap.
     const primeHomePower = async () => {
       try {
-        const [charactersResult, equipmentsResult, deckResult] = await Promise.all([
-          supabase.from("user_characters").select("*").eq("user_id", userId),
-          supabase.from("user_equipments").select("*").eq("user_id", userId),
-          supabase.from("pvp_defense_decks").select("character_1_id, character_2_id, character_3_id, character_4_id, character_5_id").eq("user_id", userId).maybeSingle(),
-        ]);
-        const characters = charactersResult.data || [];
-        const equipments = equipmentsResult.data || [];
-        const deck = deckResult.data;
-        const memberIds = deck
-          ? [deck.character_1_id, deck.character_2_id, deck.character_3_id, deck.character_4_id, deck.character_5_id].filter(Boolean)
-          : characters.slice(0, 5).map((character: any) => character.character_id);
-        const power = memberIds.reduce((sum: number, memberId: string) => {
-          const character = characters.find((entry: any) => entry.id === memberId || entry.character_id === memberId);
-          if (!character) return sum;
-          const stats = getCharacterTotalStats(character, equipments);
-          return sum + stats.hp + stats.atk + stats.def + stats.spd + stats.luk;
-        }, 0);
-        setTotalPower(power);
+        const { data, error } = await supabase.rpc("get_my_power_snapshot");
+        if (error) throw error;
+        setTotalPower(Number(data?.total_power || 0));
       } catch (err) {
         console.warn("Failed to prime home power:", err);
       } finally {
@@ -836,8 +860,9 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         supabase.from("equipment_limit_break_master").select("*"),
         supabase.from("gacha_masters").select("*"),
         supabase.from("gacha_items_master").select("*"),
+        supabase.from("feature_operating_states").select("feature_key,state"),
         supabase.from("login_bonus_master").select("*").order("day_number", { ascending: true })
-      ]).then(([lvlRes, xpRes, skillLbrRes, eqLvlRes, eqLbrRes, gachaRes, gachaItemsRes, loginBonusRes]) => {
+      ]).then(([lvlRes, xpRes, skillLbrRes, eqLvlRes, eqLbrRes, gachaRes, gachaItemsRes, featureStatesRes, loginBonusRes]) => {
         if (lvlRes.data) setGuildLevelMaster(lvlRes.data);
         if (xpRes.data) setGuildXpActionMaster(xpRes.data);
         if (skillLbrRes.data) setSkillLimitBreakMaster(skillLbrRes.data);
@@ -845,6 +870,12 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         if (eqLbrRes.data) setEquipmentLimitBreakMaster(eqLbrRes.data);
         if (gachaRes.data) setGachaMasters(gachaRes.data);
         if (gachaItemsRes.data) setGachaItemsMaster(gachaItemsRes.data);
+        if (featureStatesRes.data) {
+          setFeatureOperatingStates(featureStatesRes.data.reduce((states: Record<string, "CLOSED" | "OPEN">, row: any) => {
+            if (row.feature_key in states && (row.state === "CLOSED" || row.state === "OPEN")) states[row.feature_key] = row.state;
+            return states;
+          }, { SPECIAL_GACHA: "CLOSED", GVG: "CLOSED", PAYMENT: "CLOSED" }) as typeof featureOperatingStates);
+        }
         if (loginBonusRes.data && loginBonusRes.data.length > 0) setLoginBonusMasters(loginBonusRes.data as LoginBonusMaster[]);
       }).catch(err => {
         console.warn("Failed to fetch master data:", err);
@@ -854,11 +885,11 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       await friends.fetchFriends(userId);
       await friends.fetchFriendRequests(userId);
       
-      // デイリーリセット機構 (Phase 3)
+      // 00:00 JST mission cycle sync, including unclaimed daily rescue.
       try {
-        await supabase.rpc("process_daily_reset", { p_user_id: userId });
+        await supabase.rpc("sync_current_missions");
       } catch (err) {
-        console.warn("Failed to process daily reset:", err);
+        console.warn("Failed to sync current missions:", err);
       }
 
       await checkAndClaimLoginBonus(userId);
@@ -897,7 +928,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
       const { data: userProfile } = await supabase
         .from("users")
-        .select("username, favorite_character_id, bio, avatar_url, sound_settings, current_base_id, daily_cash_skips_count, last_guild_left_at, gift_code, title_equipped, equipped_background, equipped_front_effect, selected_bg_mode, interior_item, level, xp, created_at")
+        .select("username, favorite_character_id, bio, avatar_url, sound_settings, current_base_id, daily_cash_skips_count, daily_cash_skips_reset_date, last_guild_left_at, gift_code, title_equipped, equipped_background, equipped_front_effect, selected_bg_mode, interior_item, level, xp, created_at")
         .eq("id", userId)
         .single();
       
@@ -909,6 +940,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         setBio(userProfile.bio || "歌舞伎町の覇権を握る。");
         setAvatarUrl(userProfile.avatar_url || "/reiji_transparent_asset.png");
         setDailyCashSkips(userProfile.daily_cash_skips_count);
+        setDailyCashSkipsResetDate(userProfile.daily_cash_skips_reset_date || null);
         setCurrentBaseId(userProfile.current_base_id || "shinjuku");
         setLastGuildLeftAt(userProfile.last_guild_left_at);
         setGiftCode(userProfile.gift_code || null);
@@ -921,22 +953,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         setHasShownGuildDialog((userProfile as any).has_shown_guild_dialog || false);
         setUserXp(userProfile.xp || 0);
         
-        // Reset raid attempts if the date changed
-        const today = new Date().toISOString().split("T")[0];
-        const resetAt = (userProfile as any).raid_attempts_reset_at ? new Date((userProfile as any).raid_attempts_reset_at).toISOString().split("T")[0] : null;
-        if (resetAt !== today) {
-          setRaidAttemptsToday(0);
-          // Optional: we can do an async update to DB here or let RPC handle it on first attempt
-        } else {
-          setRaidAttemptsToday((userProfile as any).raid_attempts_today || 0);
-        }
         setUserCreatedAt((userProfile as any).created_at || null);
 
-        if (userProfile.sound_settings) {
-          const sound = userProfile.sound_settings as any;
-          setBgmEnabled(sound.bgm ?? true);
-          setSeEnabled(sound.se ?? true);
-        }
       }
 
       // ショップ購入履歴の取得
@@ -959,7 +977,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
       // 無料ガチャ利用状況 ＆ 天井Ptのフェッチ
       try {
-        const todayStr = new Date().toISOString().split("T")[0];
+        const todayStr = getJstDateString();
         const { data: claimsData } = await supabase
           .from("user_daily_gacha_claims")
           .select("*")
@@ -1045,6 +1063,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
       if (guildMemberRec) {
         setUserGuildMember(guildMemberRec);
+        setPendingGuildJoinRequests([]);
 
         const { data: guildRec } = await supabase
           .from("guilds")
@@ -1074,30 +1093,18 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
           const userIds = membersWithProfiles.map((m: any) => m.user_id);
 
           Promise.all([
-            supabase.from("user_power_rankings").select("user_id, total_power").in("user_id", userIds),
             supabase.rpc("get_public_leader_characters", { p_user_ids: userIds }),
-            supabase.from("pvp_defense_decks").select("user_id, character_1_id, character_2_id, character_3_id, character_4_id, character_5_id").in("user_id", userIds)
-          ]).then(([powersRes, charsRes, decksRes]) => {
+          ]).then(([charsRes]) => {
             const mappedMembers = membersWithProfiles.map((m: any) => {
-              const userPower = powersRes.data?.find((p: any) => p.user_id === m.user_id)?.total_power ?? 0;
+              const userPower = Number(m.users?.total_power || 0);
               const favCharId = m.users?.favorite_character_id;
               const userChars = (charsRes.data || []).filter((c: any) => c.user_id === m.user_id);
               const leaderChar = userChars.find((c: any) => c.character_id === favCharId) || userChars[0];
               const userLevel = leaderChar ? leaderChar.level : 1;
 
-              const userDeck = decksRes.data?.find((d: any) => d.user_id === m.user_id);
-              const partyIds = userDeck ? [
-                userDeck.character_1_id,
-                userDeck.character_2_id,
-                userDeck.character_3_id,
-                userDeck.character_4_id,
-                userDeck.character_5_id
-              ].filter(Boolean) : [];
-
-              const partyCharIds = partyIds.map(id => {
-                const charRec = userChars.find((c: any) => c.id === id);
-                return charRec ? charRec.character_id : null;
-              }).filter(Boolean);
+              const partyCharIds = Array.isArray(m.users?.main_formation_character_ids)
+                ? m.users.main_formation_character_ids
+                : [];
 
               return {
                 ...m,
@@ -1114,18 +1121,43 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         } else {
           setGuildMembersList([]);
         }
+
+        if (guildMemberRec.role === "MASTER") {
+          const { data: requests } = await supabase
+            .from("guild_join_requests")
+            .select("id,guild_id,user_id,status,requested_at")
+            .eq("guild_id", guildMemberRec.guild_id)
+            .eq("status", "PENDING")
+            .order("requested_at", { ascending: true });
+          const requestUserIds = (requests || []).map((request: any) => request.user_id);
+          const { data: requestProfiles } = requestUserIds.length > 0
+            ? await supabase.rpc("get_public_profiles", { p_user_ids: requestUserIds })
+            : { data: [] };
+          const profileByUserId = new Map((requestProfiles || []).map((profile: any) => [profile.user_id, profile]));
+          setGuildJoinRequests((requests || []).map((request: any) => ({
+            ...request,
+            user: profileByUserId.get(request.user_id) || null,
+          })));
+        } else {
+          setGuildJoinRequests([]);
+        }
       } else {
         setUserGuild(null);
         setUserGuildMember(null);
         setGuildMembersList([]);
+        setGuildJoinRequests([]);
 
-        const { data: listAllGuilds } = await supabase
-          .from("guilds")
-          .select("*")
-          .limit(10);
+        const [{ data: listAllGuilds }, { data: pendingRequests }] = await Promise.all([
+          supabase.rpc("search_guilds", { p_query: "" }),
+          supabase.from("guild_join_requests")
+            .select("id,guild_id,user_id,status,requested_at")
+            .eq("user_id", userId)
+            .eq("status", "PENDING"),
+        ]);
         if (listAllGuilds) {
           setAllGuildsDbList(listAllGuilds);
         }
+        setPendingGuildJoinRequests(pendingRequests || []);
       }
 
       // 見回り関連データとマスタデータの同期
@@ -1139,6 +1171,13 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
           reward_item_chance: quest.item_rewards?.[0]?.chance ?? 0,
           battle_trigger_chance: quest.battle_trigger_chance ?? 0.2,
         })));
+      }
+
+      const { data: raidAttemptState, error: raidAttemptStateError } = await supabase.rpc("get_current_raid_attempt_state");
+      if (!raidAttemptStateError && raidAttemptState) {
+        setRaidAttemptsToday(Number(raidAttemptState.attemptCount || 0));
+        setRaidAttemptConfig(Array.isArray(raidAttemptState.costs) ? raidAttemptState.costs : []);
+        setRaidMaxDaily(Number(raidAttemptState.maxAttempts || 0));
       }
 
       const { data: npcsData } = await supabase.from("patrol_npcs").select("*");
@@ -1188,13 +1227,17 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         setHasActivePatrolBattle(false);
       }
 
-      const { data: pvpRanks } = await supabase
-        .from("pvp_ranks")
-        .select("*")
-        .order("rank_points", { ascending: false });
-      const { data: pvpProfiles } = await supabase.rpc("get_public_profiles", { p_user_ids: (pvpRanks || []).map((r: any) => r.user_id) });
-      const pvpProfileById = new Map((pvpProfiles || []).map((p: any) => [p.user_id, p]));
-      const pvpData = (pvpRanks || []).map((r: any) => ({ ...r, users: pvpProfileById.get(r.user_id) || null }));
+      const { data: pvpRanks } = await supabase.rpc("get_public_pvp_rankings", {
+        p_daily: false, p_limit: 100, p_offset: 0,
+      });
+      const pvpData = (pvpRanks || []).map((r: any) => ({
+        ...r,
+        users: {
+          username: r.username,
+          avatar_url: r.avatar_url,
+          guild_members: r.guild_id ? [{ guild_id: r.guild_id, guilds: r.guild_name ? { name: r.guild_name } : null }] : [],
+        },
+      }));
       if (pvpData.length > 0) {
         setPvpRankings(pvpData);
         const me = pvpData.find((r: any) => r.user_id === userId);
@@ -1252,16 +1295,18 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         setPaymentHistory(payHistory);
       }
 
-      const { data: gvgData } = await supabase
-        .from("guild_base_controls")
-        .select("*, guilds( name )")
-        .order("daily_points", { ascending: false });
+      const { data: publicBaseControls } = await supabase.rpc("get_public_guild_base_controls");
+      const gvgData = (publicBaseControls || []).map((control: any) => ({
+        ...control,
+        daily_points: 0,
+        guilds: control.guild_name ? { name: control.guild_name } : null,
+      }));
       
       if (gvgData) {
         setGvgBaseControls(gvgData);
 
         const mappedBases = BASE_MAP_MASTER.map(base => {
-          const baseRecords = gvgData.filter(g => g.base_id === base.id);
+          const baseRecords = gvgData.filter((g: any) => g.base_id === base.id);
           if (baseRecords.length > 0) {
             const topRecord = baseRecords[0];
             const isOurGuild = topRecord.guild_id === (guildMemberRec?.guild_id || "");
@@ -1269,7 +1314,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
               ...base,
               controlledBy: isOurGuild ? `${localGuildRec?.name || "自ギルド"} (自組織)` : (topRecord.guilds as any)?.name || "他組織",
               topPoints: topRecord.daily_points,
-              ourPoints: baseRecords.find(g => g.guild_id === (guildMemberRec?.guild_id || ""))?.daily_points || 0
+              ourPoints: baseRecords.find((g: any) => g.guild_id === (guildMemberRec?.guild_id || ""))?.daily_points || 0
             };
           }
           return { ...base, controlledBy: "無所属", topPoints: 0, ourPoints: 0 };
@@ -1286,8 +1331,9 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         const { data: defDeckRec } = await supabase.from("gvg_defense_decks").select("*").eq("user_id", userId).maybeSingle();
         setGvgDefenseDeck(defDeckRec || null);
 
-        const { data: personalRankRec } = await supabase.from("user_gvg_ranks").select("season_points").eq("user_id", userId).maybeSingle();
-        setPersonalGvgPoints(personalRankRec?.season_points || 0);
+        const { data: officialGvgRanking } = await supabase.rpc("get_public_gvg_rankings", { p_limit: 100, p_offset: 0 });
+        const personalRankRec = (officialGvgRanking?.individual || []).find((rank: any) => rank.user_id === userId);
+        setPersonalGvgPoints(Number(personalRankRec?.actual_damage || 0));
 
         const isFinalDay = currentDay === 7;
         const { data: matchRecs } = await supabase
@@ -1324,46 +1370,13 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         console.warn("Failed to sync GvG states:", err.message);
       }
 
-      const { data: timeoutData } = await supabase.rpc("sync_and_evaluate_raid_timeout", {
-        p_raid_boss_id: RAID_BOSS_ID
-      });
-      
-      if (timeoutData && timeoutData.length > 0) {
-        const r = timeoutData[0];
-        console.log("[RAID DEBUG] sync_and_evaluate_raid_timeout response:", { hp: Number(r.out_current_hp), maxHp: Number(r.out_max_hp), secondsLeft: r.out_seconds_left, baseId: r.out_base_id, bossName: r.out_boss_name });
-        setRaidBossHp(Number(r.out_current_hp));
-        setRaidBossMaxHp(Number(r.out_max_hp));
-        setRaidBossSecondsLeft(r.out_seconds_left);
-        if (r.out_base_id) setRaidBossBaseId(r.out_base_id);
-        if (r.out_boss_name) setRaidBossName(r.out_boss_name);
-      }
-
-      const { data: rawDmgLogsData } = await supabase
-        .from("raid_damage_logs")
-        .select("*, guilds ( name )")
-        .eq("raid_boss_id", RAID_BOSS_ID)
-        .order("damage_dealt", { ascending: false });
-      const { data: dmgProfiles } = await supabase.rpc("get_public_profiles", { p_user_ids: (rawDmgLogsData || []).map((d: any) => d.user_id) });
-      const dmgProfileById = new Map((dmgProfiles || []).map((p: any) => [p.user_id, p]));
-      const dmgLogsData = (rawDmgLogsData || []).map((d: any) => ({ ...d, users: dmgProfileById.get(d.user_id) || null }));
-      
-      if (dmgLogsData) {
-        setRaidDamageLogs(dmgLogsData);
-        const myDmg = dmgLogsData
-          .filter(d => d.user_id === userId)
-          .reduce((sum, item) => sum + Number(item.damage_dealt), 0);
-        setRaidTotalDamage(myDmg);
-      }
-
-      const { data: rawAllRaidLogs } = await supabase
-        .from("raid_damage_logs")
-        .select("*, guilds ( name )");
-      const { data: allRaidProfiles } = await supabase.rpc("get_public_profiles", { p_user_ids: (rawAllRaidLogs || []).map((d: any) => d.user_id) });
-      const allRaidProfileById = new Map((allRaidProfiles || []).map((p: any) => [p.user_id, p]));
-      const allRaidLogs = (rawAllRaidLogs || []).map((d: any) => ({ ...d, users: allRaidProfileById.get(d.user_id) || null }));
-      if (allRaidLogs) {
-        setRaidSeasonRankings(allRaidLogs);
-      }
+      const { data: raidSeasonData } = await supabase.rpc("get_raid_season_rankings", { p_limit: 100, p_offset: 0 });
+      const seasonIndividuals = (raidSeasonData?.individual || []).map((row: any) => ({
+        user_id: row.user_id, damage_dealt: row.contribution, users: { username: row.username }, guild_id: null, guilds: null,
+      }));
+      setRaidSeasonRankings(seasonIndividuals);
+      setRaidDamageLogs([]);
+      setRaidTotalDamage(Number(seasonIndividuals.find((row: any) => row.user_id === userId)?.damage_dealt || 0));
 
       const { data: charsData } = await supabase
         .from("user_characters")
@@ -1388,24 +1401,10 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         }
 
         // 🛡️ PvP防衛デッキ（＝出撃パーティ）の取得
-        const { data: deckData } = await supabase
-          .from("pvp_defense_decks")
-          .select("character_1_id, character_2_id, character_3_id, character_4_id, character_5_id")
-          .eq("user_id", userId)
-          .maybeSingle();
+        const { data: mainFormation } = await supabase.rpc("get_current_main_formation");
 
-        if (deckData) {
-          const storedMembers = [
-            deckData.character_1_id, 
-            deckData.character_2_id, 
-            deckData.character_3_id,
-            deckData.character_4_id,
-            deckData.character_5_id
-          ].filter(Boolean);
-          const members = storedMembers.map((storedId: string) => {
-            const ownedCharacter = charsData.find((character: any) => character.id === storedId);
-            return ownedCharacter?.character_id || storedId;
-          });
+        if (Array.isArray(mainFormation?.characters) && mainFormation.characters.length > 0) {
+          const members = mainFormation.characters.map((entry: any) => entry.character_id).filter(Boolean);
           setSelectedMembers(members);
           localDeck = members;
         } else {
@@ -1436,35 +1435,6 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         .eq("user_id", userId);
       
       if (itemsData) {
-        // 既存アカウントへの初期アイテム補填
-        const hasCharExpS = itemsData.some(i => i.item_id === "CHAR_EXP_S");
-        if (!hasCharExpS) {
-          const initialItems = [
-            { item_id: "ENERGY_DRINK", quantity: 5 },
-            { item_id: "CHAR_EXP_S", quantity: 15 },
-            { item_id: "CHAR_EXP_M", quantity: 5 },
-            { item_id: "CHAR_EXP_L", quantity: 2 },
-            { item_id: "EQUIP_EXP_S", quantity: 20 },
-            { item_id: "EQUIP_EXP_M", quantity: 5 },
-            { item_id: "EQUIP_EXP_L", quantity: 2 },
-            { item_id: "LAW_OF_STRIFE", quantity: 3 },
-            { item_id: "SKILL_LB_BOOK", quantity: 3 },
-            { item_id: "EXCLUSIVE_CONTRACT", quantity: 2 },
-            { item_id: "EQUIP_LB_HAMMER", quantity: 2 }
-          ];
-          for (const item of initialItems) {
-            await supabase.from("user_items").upsert({
-              user_id: userId,
-              item_id: item.item_id,
-              quantity: item.quantity
-            });
-          }
-          const { data: refetched } = await supabase.from("user_items").select("*").eq("user_id", userId);
-          if (refetched) {
-            itemsData.splice(0, itemsData.length, ...refetched);
-          }
-        }
-
         setEnergyDrinks(itemsData.find(i => i.item_id === "ENERGY_DRINK")?.quantity || 0);
         setCharExpS(itemsData.find(i => i.item_id === "CHAR_EXP_S")?.quantity || 0);
         setCharExpM(itemsData.find(i => i.item_id === "CHAR_EXP_M")?.quantity || 0);
@@ -1548,7 +1518,10 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       }
 
       // 総合力およびギルド総合力ランキングの取得・集計
-      const { data: publicPowerRankings } = await supabase.rpc("get_public_power_rankings");
+      const [{ data: publicPowerRankings }, { data: publicGuildPowerRankings }] = await Promise.all([
+        supabase.rpc("get_public_power_rankings", { p_daily: false, p_limit: 100, p_offset: 0 }),
+        supabase.rpc("get_public_guild_power_rankings", { p_daily: false, p_limit: 100, p_offset: 0 }),
+      ]);
       const rawPowerRankings = (publicPowerRankings || []).map((r: any) => ({
         user_id: r.user_id,
         current_power: r.current_power,
@@ -1564,6 +1537,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         setPowerRankings(rawPowerRankings);
 
         // ギルド別の総合力を集計
+        if (false) { // Retained only to avoid disturbing unrelated accumulated UI diffs; server aggregation is canonical below.
         const guildMap: { [key: string]: { name: string, members: any[], current_power_sum: number, daily_power_sum: number, updated_at_max: string } } = {};
         
         rawPowerRankings.forEach((r: any) => {
@@ -1606,6 +1580,13 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         }));
         
         setGuildPowerRankings(guildRankList);
+        }
+        setGuildPowerRankings((publicGuildPowerRankings || []).map((guild: any) => ({
+          ...guild,
+          current_power: Number(guild.current_power || 0),
+          daily_power: Number(guild.daily_power || 0),
+          updated_at: new Date().toISOString(),
+        })));
       }
 
       // ==========================================
@@ -1669,27 +1650,51 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
       const { data: missionsData } = await supabase
         .from("user_missions")
-        .select("*, missions(*)")
+        .select("*, missions!inner(*)")
         .eq("user_id", userId);
 
       if (missionsData) {
         setMissions(missionsData.map(um => {
           const m = (um.missions as any) || {};
-          const rewardLabel = `${m.reward_item_id === "CASH" ? "キャッシュ" : m.reward_item_id === "DIAMOND" ? "ダイヤ" : "強化素材"} +${m.reward_quantity || 0}`;
+          const missionRewardNames: Record<string, string> = {
+            CASH: "キャッシュ",
+            DIAMOND: "ダイヤ",
+            GACHA_TICKET: "ガチャチケット",
+            NORMAL_GACHA_TICKET: "ノーマルガチャチケット",
+            SPECIAL_GACHA_TICKET: "スペシャルガチャチケット",
+            CHAR_EXP_S: "経験の書 [小]",
+            CHAR_EXP_M: "経験の書 [中]",
+            CHAR_EXP_L: "経験の書 [大]",
+            EQUIP_EXP_S: "カスタムオイル [小]",
+            EQUIP_EXP_M: "カスタムオイル [中]",
+            EQUIP_EXP_L: "カスタムオイル [大]",
+            EQUIP_LB_HAMMER: "万能カスタムツール [装備]",
+            SKILL_LB_BOOK: "限界突破の書 [スキル]"
+          };
+          const rewardItemName = missionRewardNames[m.reward_item_id] || m.reward_item_id || "報酬";
+          const rewardLabel = `${rewardItemName} +${m.reward_quantity || 0}`;
           return {
             id: um.mission_id,
             title: m.title || "不明なミッション",
-            desc: m.description || "",
+            description: m.description || m.desc_text || "",
             reward: rewardLabel,
+            reward_item: rewardItemName,
+            reward_amount: m.reward_quantity || 0,
             rewardItemId: m.reward_item_id || "CASH",
             rewardQty: m.reward_quantity || 0,
-            progress: um.current_progress,
-            target: m.target_value || 1,
+            current_progress: um.current_progress,
+            target_value: m.target_value || 1,
+            display_order: m.display_order || 0,
             category: m.category || "DAILY",
+            conditionParams: m.condition_params || {},
+            ctaTab: m.condition_params?.cta_tab || null,
+            ctaAction: m.condition_params?.cta_action || null,
+            ctaLabel: m.condition_params?.cta_label || null,
+            isProvisional: Boolean(m.is_provisional || m.condition_params?.balance_status === "PROVISIONAL"),
             status: um.status,
             loading: false
           };
-        }));
+        }).sort((left, right) => left.display_order - right.display_order));
       }
 
     } catch (err: any) {
@@ -1793,51 +1798,30 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
               return [...prev, newPost];
             });
           }
+
+          void refreshChatUnreadCounts();
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED") {
+          void fetchChats();
+          void refreshChatUnreadCounts();
+        }
+      });
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        void fetchChats();
+        void refreshChatUnreadCounts();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
 
     return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
       supabase.removeChannel(channel);
     };
-  }, [chatChannel, currentBaseId, userGuildMember, session]);
-
-  const postNpcYajiMessage = async (type: "GLOBAL", baseId: string, triggerReason: string) => {
-    if (!session) return;
-    const npcs = ["リュウ", "カイ", "シン", "ハヤト", "ユキ"];
-    const npc = npcs[Math.floor(Math.random() * npcs.length)];
-
-    let text = "";
-    if (triggerReason === "PATROL_CLEAR") {
-      text = `${username} が見回りを終えて安全に帰還したぞ。`;
-    } else {
-      text = `今夜の歓楽街、なんだかネオンが怪しく発光しているな。`;
-    }
-
-    try {
-      await supabase.from("board_posts").insert({
-        user_id: "00000000-0000-0000-0000-000000000099",
-        author_name: npc,
-        content: text,
-        target_type: type,
-        target_id: null,
-        is_system: false
-      });
-    } catch (e) {
-      console.warn("NPC chat post failed:", e);
-    }
-  };
-
-  useEffect(() => {
-    if (!session) return;
-    const chatTimer = setInterval(() => {
-      if (Math.random() <= 0.4) {
-        postNpcYajiMessage("GLOBAL", currentBaseId, "RANDOM_TALK");
-      }
-    }, 15000);
-
-    return () => clearInterval(chatTimer);
-  }, [currentBaseId, session]);
+  }, [chatChannel, currentBaseId, userGuildMember, session, refreshChatUnreadCounts]);
 
   // 見回り進行タイマー
   useEffect(() => {
@@ -2019,9 +2003,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     setUpgradeLoading(true);
     playCyberSe("click");
     try {
-      const { data, error } = await supabase.rpc("generate_user_gift_code", {
-        p_user_id: session.user.id
-      });
+      const { data, error } = await supabase.rpc("generate_current_user_invite_code");
       if (error) {
         setErrorMessage(error.message);
         return;
@@ -2049,37 +2031,10 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     playCyberSe("click");
 
     try {
-      const npcs = ["リュウ", "カイ", "シン", "ハヤト", "ユキ"];
-      const bTypes = ["PVP", "GVG"];
-      const results = ["DEFENSE_SUCCESS", "DEFENSE_FAILURE"];
-
-      const npc = npcs[Math.floor(Math.random() * npcs.length)];
-      const bType = bTypes[Math.floor(Math.random() * bTypes.length)];
-      const res = results[Math.floor(Math.random() * results.length)];
-      const diff = res === "DEFENSE_SUCCESS" ? 5 : -10;
-
-      await supabase.from("pvp_defense_logs").insert({
-        user_id: session.user.id,
-        attacker_name: npc,
-        battle_type: bType,
-        result: res,
-        points_change: diff
-      });
-
-      await supabase.rpc("process_pvp_match_result", {
-        p_user_id: session.user.id,
-        p_target_user_id: session.user.id,
-        p_is_win: res === "DEFENSE_SUCCESS",
-        p_point_diff: diff,
-        p_cash_reward: 0
-      });
-
-      await syncBootstrapData(session.user.id);
-
       setConfirmDialogConfig({
         isOpen: true,
-        title: "シミュレーション完了",
-        message: `【非同期防衛抗争シミュレーション完了】\n\n・攻撃者: ${npc}\n・防衛結果: ${res === "DEFENSE_SUCCESS" ? "★防衛成功" : "❌防衛失敗"}\n・PvPランクポイント: ${diff >= 0 ? "+" : ""}${diff} pt`,
+        title: "NPC模擬戦",
+        message: "現在の防衛編成をNPC相手に確認する練習モードです。模擬戦は戦績・PvP Rank Point・報酬に影響しません。",
         onConfirm: () => setConfirmDialogConfig(null),
         onCancel: () => setConfirmDialogConfig(null)
       });
@@ -2247,10 +2202,36 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       level: 1,
       xp: 0,
       titleName: "称号なし",
+      guildId: null,
       guildName: null,
       party: []
     });
     try {
+      const { data: publicPlayer, error: publicPlayerError } = await supabase.rpc("get_public_player_detail", { p_user_id: userId });
+      if (publicPlayerError) throw publicPlayerError;
+      setActivePlayerDetail({
+        id: publicPlayer.user_id,
+        username: publicPlayer.username,
+        avatarUrl: publicPlayer.avatar_url || "/characters/reiji_transparent_asset.png",
+        bio: publicPlayer.bio || "自己紹介が未設定です。",
+        level: Number(publicPlayer.level || 1),
+        xp: 0,
+        titleName: "",
+        guildId: publicPlayer.guild_id || null,
+        guildName: publicPlayer.guild_name || null,
+        totalPower: Number(publicPlayer.total_power || 0),
+        party: (publicPlayer.main_formation || []).map((character: any) => ({
+          characterId: character.character_master_id,
+          name: character.display_name,
+          level: Number(character.level || 1),
+          plus_val: Number(character.awakening_level || 0),
+          rarity: character.rarity,
+          assetIdentifier: character.asset_identifier,
+          power: Number(character.character_power || 0),
+        })),
+      });
+      return;
+      /* Retired: public player detail is supplied exclusively by the server snapshot RPC.
       const { data: profiles, error: userErr } = await supabase.rpc("get_public_profiles", { p_user_ids: [userId] });
       if (userErr) throw userErr;
       const profileRows = Array.isArray(profiles) ? profiles : profiles ? [profiles] : [];
@@ -2268,6 +2249,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         level: user.level,
         xp: user.xp || 0,
         titleName: user.title_name || user.title_equipped || "称号なし",
+        guildId: user.guild_id || null,
         guildName: user.guild_name || null,
         party: []
       });
@@ -2337,9 +2319,11 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         level: user.level,
         xp: user.xp || 0,
         titleName: user.title_name || user.title_equipped || "称号なし",
+        guildId: user.guild_id || null,
         guildName: user.guild_name || null,
         party: partyDetails
       });
+      */
     } catch (e: any) {
       console.warn("Failed to fetch player detail:", e.message);
     }
@@ -2359,24 +2343,45 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       sub_alignment: null,
       emblem_url: null,
       leaderName: "取得中",
+      description: "公開情報を取得しています。",
+      approval_required: false,
       controlledBases: []
     });
     try {
-      const { data: guild, error: guildErr } = await supabase
-        .from("guilds")
-        .select("id, name, level, xp, member_limit, main_alignment, sub_alignment, emblem_url, leader_id")
-        .eq("id", guildId)
-        .maybeSingle();
+      const { data: publicGuild, error: publicGuildError } = await supabase.rpc("get_public_guild_detail", { p_guild_id: guildId });
+      if (publicGuildError) throw publicGuildError;
+      if (!publicGuild) throw new Error("Guild public snapshot was empty");
+      const publicBaseNames: Record<string, string> = {
+        shinjuku: "新宿", shibuya: "渋谷", ikebukuro: "池袋", roppongi: "六本木", akihabara: "秋葉原",
+      };
+      const publicControlledBases = (Array.isArray(publicGuild.controlled_base_ids) ? publicGuild.controlled_base_ids : [])
+        .map((baseId: string) => publicBaseNames[baseId] || baseId);
+      setActiveGuildDetail({
+        id: publicGuild.guild_id,
+        name: publicGuild.name,
+        level: publicGuild.level,
+        xp: publicGuild.xp,
+        member_limit: publicGuild.member_limit,
+        member_count: publicGuild.member_count,
+        main_alignment: publicGuild.main_alignment,
+        sub_alignment: publicGuild.sub_alignment,
+        emblem_url: publicGuild.emblem_url,
+        leaderName: publicGuild.leader_name,
+        description: publicGuild.description || "紹介文はまだ登録されていません。",
+        approval_required: Boolean(publicGuild.approval_required),
+        controlledBases: publicControlledBases,
+        active_members_7d: publicGuild.active_members_7d,
+        raid_contribution_7d: publicGuild.raid_contribution_7d,
+        guild_power: publicGuild.guild_power,
+      });
+      void supabase.rpc("record_client_funnel_event", {
+        p_event_name: "guild_detail_view", p_source_screen: "guild_detail", p_source_cta: "open",
+        p_object_id: guildId, p_metadata: {},
+      });
+      return;
 
-      if (guildErr) throw guildErr;
-      if (!guild) return;
-
-      const { count, error: countErr } = await supabase
-        .from("guild_members")
-        .select("*", { count: "exact", head: true })
-        .eq("guild_id", guildId);
-
-      if (countErr) throw countErr;
+      const guild: any = null;
+      const count = 0;
 
       let leaderName = "不明";
       if (guild.leader_id) {
@@ -2414,6 +2419,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         sub_alignment: guild.sub_alignment,
         emblem_url: guild.emblem_url,
         leaderName,
+        description: guild.description || "紹介文はまだ登録されていません。",
+        approval_required: Boolean(guild.approval_required),
         controlledBases
       });
     } catch (e: any) {
@@ -2682,6 +2689,23 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     useCurrency: "CASH" | "DIAMOND" | "FREE" | "TICKET"
   ) => {
     if (!session) return;
+    const actionPerformance = beginActionPerformance("gacha");
+    const requestId = crypto.randomUUID();
+
+    const scoutTimingStartedAt = typeof performance !== "undefined" ? performance.now() : Date.now();
+    const reportScoutTiming = (stage: string, metadata: Record<string, unknown> = {}) => {
+      if (process.env.NEXT_PUBLIC_APP_ENV === "production") return;
+      const current = typeof performance !== "undefined" ? performance.now() : Date.now();
+      console.info("[M9 scout timing]", {
+        stage,
+        elapsedMs: Math.round(current - scoutTimingStartedAt),
+        scoutType,
+        scoutCount,
+        useCurrency,
+        ...metadata,
+      });
+    };
+    reportScoutTiming("tap");
 
     setUpgradeLoading(true);
     playCyberSe("click");
@@ -2696,24 +2720,33 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
     try {
       if ((category as string) === "CHARACTER") {
+        actionPerformance.mark("request_start");
         const serverCurrency = useCurrency === "FREE" ? "free" : useCurrency === "DIAMOND" ? "diamonds" : useCurrency === "TICKET" ? "ticket" : "cash";
-        const drawResult = await supabase.rpc("execute_character_gacha", {
-          p_user_id: session.user.id,
-          p_gacha_id: scoutType === "CHAR_NORMAL" || scoutType === "CHAR_SPECIAL" ? scoutType : "CHAR_SPECIAL",
-          p_pull_count: scoutCount,
-          p_currency_type: serverCurrency
-        });
+        const isTutorialTenPull = onboardingState?.tutorial_step === "FREE_GACHA"
+          && scoutType === "CHAR_NORMAL" && scoutCount === 10 && useCurrency === "FREE";
+        const drawResult = isTutorialTenPull
+          ? await supabase.rpc("execute_tutorial_character_gacha", { p_request_id: requestId })
+          : await supabase.rpc("execute_character_gacha", {
+              p_user_id: session.user.id,
+              p_gacha_id: scoutType === "CHAR_NORMAL" || scoutType === "CHAR_SPECIAL" ? scoutType : "CHAR_SPECIAL",
+              p_pull_count: scoutCount,
+              p_currency_type: serverCurrency,
+              p_request_id: requestId
+            });
         if (drawResult.error || drawResult.data?.error) {
           throw drawResult.error || new Error(drawResult.data.error);
         }
+        reportScoutTiming("server_response");
+        actionPerformance.mark("response");
 
         const serverResults = drawResult.data?.results || [];
-        const results = serverResults.map((result: { character_id: string; outcome: string }) => {
+        const results = serverResults.map((result: { character_id: string; outcome: string; rarity?: string }) => {
           const character = CHARACTERS_MASTER.find(c => c.id === result.character_id);
           return {
             type: "CHARACTER",
             name: character?.jpName || result.character_id,
-            rarity: character?.rarity || "SSR",
+            rarity: result.rarity || character?.rarity || "R",
+            imageUrl: character ? getCharacterTransparentImg(character.name) : undefined,
             converted: result.outcome === "converted",
             convertReward: result.outcome === "awakening" ? "覚醒段階+1" : result.outcome === "converted" ? "抗争の掟 x1" : "新規獲得"
           };
@@ -2721,18 +2754,32 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         if (typeof drawResult.data?.cash === "number") setCash(drawResult.data.cash);
         if (typeof drawResult.data?.diamonds === "number") setDiamonds(drawResult.data.diamonds);
         if (useCurrency === "FREE") setDailyFreeGachaFlags(prev => ({ ...prev, CHARACTER: false }));
-        await syncBootstrapData(session.user.id);
+        reportScoutTiming("result_confirmed", { resultCount: results.length });
+        const bootstrapPromise = syncBootstrapData(session.user.id).then(() => reportScoutTiming("bootstrap_complete"));
         if (useCurrency === "FREE" && scoutType === "CHAR_NORMAL" && scoutCount === 10) {
-          await supabase.rpc("advance_tutorial_progress", {
+          const { data: nextTutorialStep, error: tutorialAdvanceError } = await supabase.rpc("advance_tutorial_progress", {
             p_expected_step: "FREE_GACHA",
             p_next_step: "AUTO_FORMATION"
           });
+          if (!tutorialAdvanceError) {
+            setOnboardingState(current => current ? {
+              ...current,
+              tutorial_step: nextTutorialStep || "AUTO_FORMATION"
+            } : current);
+          }
         }
         setScoutResults(results);
         setScoutFlashingColor(results.some((r: { rarity: string }) => r.rarity === "SSR") ? "GOLD" : results.some((r: { rarity: string }) => r.rarity === "SR") ? "PURPLE" : "BLUE");
+        reportScoutTiming("asset_ready", { assetWaitMs: 0, reason: "css-only tutorial animation" });
         setScoutAnimationState("FLASHING");
-        playCyberSe("gacha");
-        setTimeout(() => setScoutAnimationState("SHOW_RESULTS"), 1800);
+        actionPerformance.mark("state_update");
+        actionPerformance.markVisualReady();
+        reportScoutTiming("animation_start", { resultCount: results.length });
+        setTimeout(() => {
+          reportScoutTiming("result_display");
+          setScoutAnimationState("SHOW_RESULTS");
+        }, 1800);
+        await bootstrapPromise;
         return;
       }
 
@@ -2741,22 +2788,45 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         ? (scoutType === "SKILL_NORMAL" || scoutType === "SKILL_SPECIAL" ? scoutType : "SKILL_SPECIAL")
         : (scoutType === "EQUIP_NORMAL" || scoutType === "EQUIP_SPECIAL" ? scoutType : "EQUIP_SPECIAL");
       const serverCurrency = useCurrency === "FREE" ? "free" : useCurrency === "DIAMOND" ? "diamonds" : useCurrency === "TICKET" ? "ticket" : "cash";
-      const drawResult = await supabase.rpc("execute_asset_gacha", { p_user_id: session.user.id, p_gacha_id: assetGachaId, p_pull_count: scoutCount, p_currency_type: serverCurrency });
+      actionPerformance.mark("request_start");
+      const drawResult = await supabase.rpc("execute_asset_gacha", { p_user_id: session.user.id, p_gacha_id: assetGachaId, p_pull_count: scoutCount, p_currency_type: serverCurrency, p_request_id: requestId });
       if (drawResult.error || drawResult.data?.error) throw drawResult.error || new Error(drawResult.data.error);
+      reportScoutTiming("server_response");
+      actionPerformance.mark("response");
       const serverResults = drawResult.data?.results || [];
-      const assetResults = serverResults.map((result: { type: string; item_id: string; outcome: string }) => {
+      const assetResults = serverResults.map((result: { type: string; item_id: string; outcome: string; rarity?: string }) => {
         const master = result.type === "SKILL" ? SKILLS_MASTER_DATA.find(s => s.id === result.item_id) : EQUIPMENTS_MASTER_DATA.find(e => e.id === result.item_id);
-        return { type: result.type, name: master?.name || result.item_id, rarity: master?.rarity || "R", converted: result.outcome === "converted", convertReward: result.outcome === "converted" ? "TRAINING_MANUAL x2" : result.outcome === "limit_break" ? "限界突破 +1" : "新規獲得" };
+        return { type: result.type, name: master?.name || result.item_id, rarity: result.rarity || master?.rarity || "R", converted: result.outcome === "converted", convertReward: result.outcome === "converted" ? "育成素材へ変換" : result.outcome === "limit_break" ? "限界突破 +1" : "新規獲得" };
       });
       if (typeof drawResult.data?.cash === "number") setCash(drawResult.data.cash);
       if (typeof drawResult.data?.diamonds === "number") setDiamonds(drawResult.data.diamonds);
       if (useCurrency === "FREE") setDailyFreeGachaFlags(prev => ({ ...prev, [category]: false }));
-      await syncBootstrapData(session.user.id);
+      reportScoutTiming("result_confirmed", { resultCount: assetResults.length });
+      const bootstrapPromise = syncBootstrapData(session.user.id).then(() => reportScoutTiming("bootstrap_complete"));
+      if (useCurrency === "FREE" && scoutType === "SKILL_NORMAL" && scoutCount === 10) {
+        const { data: nextTutorialStep, error: tutorialAdvanceError } = await supabase.rpc("advance_tutorial_progress", {
+          p_expected_step: "FREE_GACHA",
+          p_next_step: "AUTO_FORMATION"
+        });
+        if (!tutorialAdvanceError) {
+          setOnboardingState(current => current ? {
+            ...current,
+            tutorial_step: nextTutorialStep || "AUTO_FORMATION"
+          } : current);
+        }
+      }
       setScoutResults(assetResults);
       setScoutFlashingColor(assetResults.some((r: { rarity: string }) => r.rarity === "SSR") ? "GOLD" : assetResults.some((r: { rarity: string }) => r.rarity === "SR") ? "PURPLE" : "BLUE");
+      reportScoutTiming("asset_ready", { assetWaitMs: 0, reason: "css-only tutorial animation" });
       setScoutAnimationState("FLASHING");
-      playCyberSe("gacha");
-      setTimeout(() => setScoutAnimationState("SHOW_RESULTS"), 1800);
+      actionPerformance.mark("state_update");
+      actionPerformance.markVisualReady();
+      reportScoutTiming("animation_start", { resultCount: assetResults.length });
+      setTimeout(() => {
+        reportScoutTiming("result_display");
+        setScoutAnimationState("SHOW_RESULTS");
+      }, 1800);
+      await bootstrapPromise;
       return;
 
       if (useCurrency === "FREE") {
@@ -3006,22 +3076,29 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       setScoutResults(results);
       setScoutFlashingColor(highestRarity);
       setScoutAnimationState("FLASHING");
-      playCyberSe("gacha");
-
       setTimeout(() => {
         setScoutAnimationState("SHOW_RESULTS");
       }, 1800);
 
     } catch (err: unknown) {
-      console.warn("Gacha execution error:", err instanceof Error ? err.message : err);
+      setScoutAnimationState(null);
+      const detail = err instanceof Error ? err.message : String(err);
+      console.warn("Gacha execution error:", detail);
+      setErrorMessage(
+        detail.includes("gacha not found")
+          ? "ガチャ設定が見つかりません。運営へお問い合わせください。"
+          : detail.includes("already claimed")
+            ? "本日の無料10連ガチャは使用済みです。"
+            : detail.includes("insufficient gacha currency")
+              ? "残高が不足しています。ショップへ移動しました。"
+              : detail.includes("insufficient gacha tickets")
+                ? "ガチャチケットが不足しています。"
+            : "ガチャの実行に失敗しました。通信状態を確認して、もう一度お試しください。"
+      );
+      if (detail.includes("insufficient gacha currency")) {
+        setActiveTab("shop");
+      }
     } finally {
-      try {
-        await supabase.rpc("evaluate_mission_progress", {
-          p_user_id: session.user.id,
-          p_trigger_type: "GACHA_PULL",
-          p_progress_increment: scoutCount
-        });
-      } catch (e) { /* mission update failure is non-critical */ }
       setUpgradeLoading(false);
     }
   };
@@ -3328,16 +3405,10 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
   const persistPartyFormation = async (party: string[]) => {
     if (!session?.user?.id) return null;
-    const storageParty = party.map((characterId) => {
-      const ownedCharacter = userCharactersDbList.find((character: any) =>
-        character.id === characterId || character.character_id === characterId
-      );
-      return ownedCharacter?.id || characterId;
+    const { data, error } = await supabase.rpc("save_main_formation", {
+      p_character_ids: party,
     });
-    const { error } = await supabase.rpc("save_pvp_defense_deck", {
-      p_character_ids: storageParty,
-      p_tactic: myPvpDefenseDeck?.tactic || "ATTACK_PRIORITY",
-    });
+    if (!error) setTotalPower(Number(data?.total_power || 0));
     return error;
   };
 
@@ -3365,6 +3436,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   };
 
   const handleAutoFormation = async ({ navigateAfter = true }: { navigateAfter?: boolean } = {}) => {
+    const actionPerformance = beginActionPerformance("formation_save");
     const nextParty = [...userCharactersDbList]
       .sort((left: any, right: any) => {
         const leftStats = getCharacterTotalStats(left, userEquipmentsList);
@@ -3377,26 +3449,40 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       .map((character: any) => character.character_id);
 
     if (nextParty.length === 0) {
-      setErrorMessage("No characters are available for formation.");
+      setErrorMessage("編成できるキャラクターがいません。");
       return false;
     }
 
     playCyberSe("click");
     if (session?.user?.id) {
+      actionPerformance.mark("request_start");
       const saveError = await persistPartyFormation(nextParty);
       if (saveError) {
         console.warn("Failed to save auto formation:", saveError);
         setErrorMessage(`編成の保存に失敗しました。（${saveError.code || "unknown"}）`);
         return false;
       }
-      await supabase.rpc("advance_tutorial_progress", {
-        p_expected_step: "AUTO_FORMATION",
-        p_next_step: "DISPATCH"
-      });
+      if (onboardingState?.tutorial_step === "AUTO_FORMATION") {
+        const { data: tutorialFormation, error: growthPreparationError } = await supabase.rpc("complete_current_tutorial_formation");
+        if (growthPreparationError) {
+          console.warn("Failed to complete tutorial formation:", growthPreparationError);
+          setErrorMessage(`強化チュートリアルの準備に失敗しました。（${growthPreparationError.message}）`);
+          return false;
+        }
+        const nextStep = tutorialFormation?.tutorial_step || "DISPATCH";
+        setOnboardingState(current => current ? { ...current, tutorial_step: nextStep } : current);
+        setActiveTab("patrol");
+        void syncBootstrapData(session.user.id).catch((bootstrapError) => {
+          console.warn("Tutorial formation bootstrap refresh failed:", bootstrapError);
+        });
+      }
+      actionPerformance.mark("response");
     }
     setSelectedMembers(nextParty);
     setUpgradeSelectedCharId(nextParty[0]);
-    if (navigateAfter) {
+    actionPerformance.mark("state_update");
+    actionPerformance.markVisualReady();
+    if (navigateAfter && onboardingState?.tutorial_step !== "AUTO_FORMATION") {
       navigateTab("patrol");
     }
     return true;
@@ -3409,6 +3495,17 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     setSelectedNews(null);
     nav.navigateTab(tabName, subTab);
   };
+
+  // Keep mandatory tutorial navigation derived from its persisted state. This
+  // also closes race windows where an RPC succeeds but a component-local
+  // navigation callback runs before the shared onboarding state is rendered.
+  useEffect(() => {
+    const step = onboardingState?.tutorial_step;
+    if (!step || battle.battleState) return;
+    if (step === "FREE_GACHA") setActiveTab("gacha");
+    else if (step === "AUTO_FORMATION") setActiveTab("character");
+    else if (["DISPATCH", "FREE_INSTANT", "TUTORIAL_BATTLE"].includes(step)) setActiveTab("patrol");
+  }, [onboardingState?.tutorial_step, battle.battleState, setActiveTab]);
 
   useEffect(() => {
     if (chatCooldown <= 0) return;
@@ -3453,6 +3550,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     session, setSession,
     authLoading, setAuthLoading,
     isSetupRequired, setIsSetupRequired,
+    onboardingState, setOnboardingState,
     setupUsername, setSetupUsername,
     setupCharacterId, setSetupCharacterId,
     setupAreaId, setSetupAreaId,
@@ -3476,6 +3574,10 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     bbsActiveThread, setBbsActiveThread,
     bbsPosts, setBbsPosts,
     bbsLoading,
+    bbsUnreadCounts,
+    bbsUnreadTotal,
+    refreshBbsUnreadCounts,
+    markBbsThreadRead,
     fetchBbsThreads,
     createBbsThread,
     fetchBbsPosts,
@@ -3487,6 +3589,14 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     lastGuildLeftAt, setLastGuildLeftAt,
     bgmEnabled, setBgmEnabled,
     seEnabled, setSeEnabled,
+    bgmVolume: audio.bgmVolume,
+    seVolume: audio.seVolume,
+    setBgmVolume: audio.setBgmVolume,
+    setSeVolume: audio.setSeVolume,
+    playBgm: audio.playBgm,
+    stopBgm: audio.stopBgm,
+    playSe: (event: SeEvent) => audio.playSe(event),
+    preloadAudio: audio.preloadAudio,
     profileLoading, setProfileLoading,
     activeUsersCount, setActiveUsersCount,
     chatCooldown, setChatCooldown,
@@ -3497,6 +3607,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     newGuildName, setNewGuildName,
     allGuildsDbList, setAllGuildsDbList,
     guildSubTab, setGuildSubTab,
+    pendingGuildJoinRequests, setPendingGuildJoinRequests,
+    guildJoinRequests, setGuildJoinRequests,
     selectedLeader, setSelectedLeader,
     upgradeSelectedCharId, setUpgradeSelectedCharId,
     characterLevel, setCharacterLevel,
@@ -3522,6 +3634,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     selectedMembers, setSelectedMembers,
     selectedPatrolMember, setSelectedPatrolMember,
     dailyCashSkips, setDailyCashSkips,
+    dailyCashSkipsResetDate, setDailyCashSkipsResetDate,
     activePatrols, setActivePatrols,
     patrolLogs, setPatrolLogs,
     patrolCourses,
@@ -3579,9 +3692,11 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
     newsList, setNewsList,
     selectedNews, setSelectedNews,
-    showImportantModal, setShowImportantModal,
     guildChats, setGuildChats,
     chatChannel, setChatChannel,
+    chatUnreadCounts,
+    refreshChatUnreadCounts,
+    markChatChannelRead,
     chatInput, setChatInput,
     chatSending, setChatSending,
     errorMessage, setErrorMessage,
@@ -3601,7 +3716,9 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     titleEquipped, setTitleEquipped,
     ownedTitles,
     ownedHomeCosmeticIds,
-    userTitle: ownedTitles.find((title) => title.id === titleEquipped)?.name || titleEquipped || "称号なし",
+    userTitle: titleEquipped === "title_none"
+      ? "称号なし"
+      : ownedTitles.find((title) => title.id === titleEquipped)?.name || titleEquipped || "称号なし",
     totalPower,
     totalPowerLoading,
     isRaidActive: raidBossHp > 0 && raidBossSecondsLeft > 0,
@@ -3670,6 +3787,9 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     handleEmailSignup,
     handleEmailLogin,
     handleGoogleLogin,
+    googleExternalBrowserUrl,
+    dismissGoogleExternalBrowserPrompt,
+    handleStartNewGame,
     handleGoogleDemoLogin,
     handleInitializeUser,
     handleGenerateGiftCode,
@@ -3684,8 +3804,12 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     triggerStripeWebhookSimulation,
     handleCreateGuild,
     handleUpdateGuildAlignment,
+    handleUpdateGuildSettings,
     handleLeaveGuild,
     handleDemoJoinGuild,
+    handleSearchGuilds,
+    handleCancelGuildJoinRequest,
+    handleReviewGuildJoinRequest,
     handleUpdateMemberRole,
     handleKickMember,
     handleDonateToGuild,
@@ -3722,6 +3846,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     skillLimitBreakMaster,
     exclusiveContracts,
     handleScout,
+    featureOperatingStates,
     dailyFreeGachaFlags,
     specialPityPoints,
     handleExchangePityReward,
@@ -3733,7 +3858,6 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     handleClaimAllPresents,
     handleClaimMission,
     handleClaimAllMissions,
-    handleDailyMissionReset,
     selectUpgradeEquipment,
     togglePatrolMemberSelection,
     handleTogglePartyMember,
@@ -3788,6 +3912,9 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     setDirectMessages,
     dmRecipientId,
     setDmRecipientId,
+    dmUnreadConversations,
+    dmUnreadTotal,
+    refreshDirectMessageUnreadCounts,
     handleSendDirectMessage,
     confirmDialogConfig,
     setConfirmDialogConfig,
@@ -3795,7 +3922,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     setGlobalInteractionBlocking,
     activeBanners, setActiveBanners,
     userItems, setUserItems,
-    raidAttemptsToday, setRaidAttemptsToday,
+    raidAttemptsToday, setRaidAttemptsToday, raidAttemptConfig, raidMaxDaily,
     monthlyPassActive, setMonthlyPassActive,
     monthlyPassClaimedToday, setMonthlyPassClaimedToday,
     handlePurchaseMonthlyPass, handleClaimDailyPassReward,

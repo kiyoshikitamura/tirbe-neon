@@ -3,7 +3,7 @@
 import React from "react";
 import "./CharacterPresentation.css";
 
-export type CharacterPresentationVariant = "portrait" | "card" | "full-body" | "battle" | "icon";
+export type CharacterPresentationVariant = "portrait" | "card" | "thumbnail" | "full-body" | "battle" | "icon";
 
 type Props = {
   src: string;

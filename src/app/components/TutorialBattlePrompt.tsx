@@ -67,8 +67,8 @@ export default function TutorialBattlePrompt() {
 
   return (
     <div className="modal-overlay background-black-95" style={{ zIndex: 20000 }}>
-      <div className="modal-card border-cyan-glow" style={{ maxWidth: 420 }}>
-        <div className="font-size-8 text-color-cyan font-weight-bold mb-2">初回バトル</div>
+      <div className="modal-card" style={{ maxWidth: 420 }}>
+        <div className="modal-title text-left">初回バトル</div>
         <TutorialNavigator message="派遣先で敵と遭遇しました。編成した仲間でチュートリアルバトルを開始してください。" />
         <div className="modal-desc text-left">
           バトルは選択した作戦に従って自動進行します。勝利するまで、消費なしで再挑戦できます。
@@ -77,7 +77,8 @@ export default function TutorialBattlePrompt() {
           <div className="font-size-7 text-color-red mt-3" role="alert">{localError}</div>
         )}
         <button
-          className="claim-reward-btn mt-4 font-weight-bold py-2 width-100"
+          className="semantic-cta semantic-cta--primary mt-4 width-100"
+          aria-busy={starting || battleLoading}
           onClick={() => void beginBattle()}
           disabled={starting || battleLoading}
         >

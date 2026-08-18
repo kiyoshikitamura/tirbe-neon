@@ -17,14 +17,14 @@
   margin: 0 0 12px;
   padding: 14px 16px;
   overflow: hidden;
-  border: 1px solid rgba(0, 240, 255, .24);
-  border-radius: 8px;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-md);
   background: linear-gradient(105deg, rgba(2, 10, 17, .98), rgba(10, 24, 36, .88)), url('/gacha/bg_gacha_normal.png') center / cover;
-  box-shadow: inset 4px 0 0 var(--neon-cyan), 0 10px 28px rgba(0, 0, 0, .34);
+  box-shadow: inset 4px 0 0 var(--ui-accent), 0 10px 28px rgba(0, 0, 0, .34);
 }
-.gacha-v0-eyebrow { color: var(--neon-cyan); font-size: 8px; font-weight: 900; letter-spacing: .24em; }
-.gacha-v0-header h2 { margin: 3px 0 0; color: #fff; font-size: 24px; line-height: 1; letter-spacing: .08em; }
-.gacha-v0-header p { margin: 7px 0 0; color: #9fb6c5; font-size: 10px; }
+.gacha-v0-eyebrow { color: var(--ui-accent); font-size: var(--ui-font-caption); font-weight: 900; letter-spacing: .18em; }
+.gacha-v0-header h2 { margin: 3px 0 0; color: var(--ui-text-primary); font-size: var(--ui-font-title); line-height: 1; letter-spacing: .06em; }
+.gacha-v0-header p { margin: 7px 0 0; color: var(--ui-text-secondary); font-size: var(--ui-font-body); }
 .gacha-v0-pulse { width: 30px; height: 30px; border: 1px solid var(--neon-cyan); border-radius: 50%; box-shadow: 0 0 22px rgba(0, 240, 255, .46), inset 0 0 14px rgba(0, 240, 255, .32); animation: gacha-v0-pulse 1.8s ease-in-out infinite; }
 
 /* 🎰 ガチャカテゴリ切り替えタブ */
@@ -151,24 +151,20 @@
 
 .gacha-free-btn {
   min-height: 48px;
-  background: linear-gradient(135deg, rgba(0, 240, 255, 0.25) 0%, rgba(0, 240, 255, 0.1) 100%);
-  border: 1px solid var(--neon-cyan);
-  color: #ffffff;
-  box-shadow: 0 0 12px rgba(0, 240, 255, 0.25);
+  border-radius: var(--ui-radius-sm);
+  color: var(--ui-text-primary);
   cursor: pointer;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 2px;
-  font-size: 15px !important;
+  font-size: var(--ui-font-button) !important;
   letter-spacing: .08em;
 }
 .gacha-free-btn small { color: #b5f9ff; font-size: 9px; letter-spacing: .12em; }
 
-.gacha-free-btn:hover {
-  background: linear-gradient(135deg, rgba(0, 240, 255, 0.4) 0%, rgba(0, 240, 255, 0.2) 100%);
-}
+.gacha-free-btn:hover { border-color: var(--ui-accent); }
 
 .gacha-limit-card {
   border: 1px solid #ffaa00 !important;

@@ -3,6 +3,7 @@
 import React from "react";
 import { useGame } from "../context/GameContext";
 import "./AuthView.css";
+import ExternalBrowserGooglePrompt from "./ExternalBrowserGooglePrompt";
 
 export default function AuthView() {
   const {
@@ -12,11 +13,12 @@ export default function AuthView() {
     setPassword,
     setupLoading,
     handleEmailLogin,
-    handleEmailSignup,
     handleGoogleLogin,
     handleFirstUserInteraction,
     errorMessage,
-    setErrorMessage
+    setErrorMessage,
+    googleExternalBrowserUrl,
+    dismissGoogleExternalBrowserPrompt
   } = useGame();
 
   return (
@@ -43,20 +45,14 @@ export default function AuthView() {
             className="auth-input"
           />
           
-          <div className="flex-row-gap-4 mt-2">
+          <div className="mt-2">
             <button 
               onClick={handleEmailLogin}
               disabled={setupLoading}
-              className="auth-btn-cyan active-scale-effect"
+              className="auth-btn-cyan semantic-cta semantic-cta--primary width-100 active-scale-effect"
+              aria-busy={setupLoading}
             >
-              {setupLoading ? <div className="spinner" /> : "ログイン"}
-            </button>
-            <button 
-              onClick={handleEmailSignup}
-              disabled={setupLoading}
-              className="auth-btn-magenta-outline active-scale-effect"
-            >
-              {setupLoading ? <div className="spinner" /> : "新規登録"}
+              {setupLoading ? "ログイン中..." : "ログイン"}
             </button>
           </div>
 
@@ -64,9 +60,10 @@ export default function AuthView() {
             <button 
               onClick={handleGoogleLogin}
               disabled={setupLoading}
-              className="auth-btn-google active-scale-effect"
+              className="auth-btn-google semantic-cta semantic-cta--secondary width-100 active-scale-effect"
+              aria-busy={setupLoading}
             >
-              Googleでログイン
+              {setupLoading ? "ログイン中..." : "Googleでログイン"}
             </button>
 
           </div>
@@ -83,13 +80,20 @@ export default function AuthView() {
             <div className="modal-title text-color-danger">エラー</div>
             <div className="modal-desc">{errorMessage}</div>
             <button 
-              className="modal-close-btn background-danger active-scale-effect" 
+              className="semantic-cta semantic-cta--danger width-100 active-scale-effect"
               onClick={() => setErrorMessage(null)}
             >
               閉じる
             </button>
           </div>
         </div>
+      )}
+
+      {googleExternalBrowserUrl && (
+        <ExternalBrowserGooglePrompt
+          url={googleExternalBrowserUrl}
+          onClose={dismissGoogleExternalBrowserPrompt}
+        />
       )}
     </div>
   );

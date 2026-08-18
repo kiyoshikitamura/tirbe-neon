@@ -16,20 +16,20 @@
 .outlaw-confirm-dialog {
   width: 90%;
   max-width: 380px;
-  background: #11131c; /* 暗い背景 */
-  border-radius: 16px;
+  background: var(--ui-bg-raised);
+  border-radius: var(--ui-radius-lg);
   overflow: hidden;
   animation: popIn 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
 /* 通常モード（例えばシアンやマゼンタ、画像に寄せるなら全体的にマゼンタ） */
 .outlaw-confirm-dialog.neon-mode {
-  border: 1px solid rgba(255, 0, 128, 0.6);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.9), 0 0 20px rgba(255, 0, 128, 0.15);
+  border: 1px solid var(--ui-border);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, .72);
 }
 .outlaw-confirm-dialog.neon-mode .confirm-title {
-  color: #ff1493;
-  text-shadow: 0 0 10px rgba(255, 20, 147, 0.8);
+  color: var(--ui-text-primary);
+  text-shadow: none;
 }
 
 /* 危険モード（赤など） */
@@ -52,7 +52,7 @@
 .confirm-title {
   font-family: var(--font-inter);
   font-weight: 800;
-  font-size: 1.2rem;
+  font-size: var(--ui-font-heading);
   letter-spacing: 0.1em;
   margin: 0;
   text-align: center;
@@ -60,8 +60,8 @@
 
 .confirm-body {
   font-family: var(--font-inter);
-  font-size: 0.9rem;
-  color: #cccccc;
+  font-size: var(--ui-font-body);
+  color: var(--ui-text-secondary);
   line-height: 1.6;
   text-align: left;
   white-space: pre-wrap;

@@ -1,9 +1,11 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import { useGame } from "../context/GameContext";
 import { EQUIPMENTS_MASTER_DATA } from "@/utils/equipments_master_data";
 import { SKILLS_MASTER_DATA } from "@/utils/skills_master_data";
+import CharacterPresentation from "./character/CharacterPresentation";
+import OutlawButton from "./ui/OutlawButton";
 import "./CommonModals.css";
 
 export default function CommonModals() {
@@ -22,8 +24,6 @@ export default function CommonModals() {
     setScoutAnimationState,
     scoutFlashingColor,
     scoutResults,
-    showImportantModal,
-    setShowImportantModal,
     errorMessage,
     setErrorMessage,
     playCyberSe,
@@ -34,8 +34,43 @@ export default function CommonModals() {
     setShowTribeChatPanel,
     setChatChannel,
     activeGuildDetail,
-    setActiveGuildDetail
+    setActiveGuildDetail,
+    onboardingState,
+    navigateTab,
+    userGuildMember,
+    handleDemoJoinGuild,
+    fetchGuildDetail,
+    playSe,
   } = useGame();
+  const announcedScoutResultRef = useRef<any[] | null>(null);
+  const [tutorialRevealIndex, setTutorialRevealIndex] = React.useState(0);
+  const isTutorialTenReveal = onboardingState?.tutorial_step === "AUTO_FORMATION" && scoutResults.length === 10;
+
+  useEffect(() => {
+    if (scoutAnimationState !== "SHOW_RESULTS" || announcedScoutResultRef.current === scoutResults) return;
+    announcedScoutResultRef.current = scoutResults;
+    playSe("GACHA_REVEAL");
+    const rarities = scoutResults.map((result: any) => String(result.rarity || "").toUpperCase());
+    if (rarities.includes("SSR")) playSe("GACHA_SSR");
+    else if (rarities.includes("SR")) playSe("GACHA_SR");
+  }, [playSe, scoutAnimationState, scoutResults]);
+
+  useEffect(() => {
+    if (scoutAnimationState === null) announcedScoutResultRef.current = null;
+  }, [scoutAnimationState]);
+
+  useEffect(() => {
+    if (scoutAnimationState === "SHOW_RESULTS") setTutorialRevealIndex(0);
+  }, [scoutAnimationState, scoutResults]);
+
+  const compactGachaOutcome = (result: any) => {
+    const outcome = String(result.convertReward || "");
+    if (outcome === "新規獲得") return "NEW";
+    if (outcome.includes("覚醒")) return outcome.replace("段階", " ");
+    if (result.converted || outcome.includes("抗争の掟")) return "重複 / 掟+1";
+    if (outcome.includes("限界突破")) return outcome;
+    return outcome || "獲得";
+  };
 
   return (
     <>
@@ -125,66 +160,71 @@ export default function CommonModals() {
 
       {/* 🎰 ガチャ演出モーダル (FLASHING / SHOW_RESULTS) */}
       {scoutAnimationState !== null && (
-        <div className="modal-overlay background-black-95">
+        <div className="modal-overlay background-black-95" style={{ zIndex: 20000 }}>
           {scoutAnimationState === "FLASHING" ? (
-            <div className="flex-col-center justify-center h-full w-full relative">
-              {/* 発光フラッシュエフェクト */}
+            <div className={`gacha-presentation-stage gacha-presentation-${scoutFlashingColor.toLowerCase()}`}>
               <div className={`gacha-flash-effect flash-${scoutFlashingColor.toLowerCase()}`} />
-              <div className="gacha-flash-text font-size-14 font-weight-bold blink">
-                SYNDICATE NETWORK SCANNING...
+              <div className="gacha-presentation-rings" aria-hidden="true"><i /><i /><i /></div>
+              <div className="gacha-presentation-copy">
+                <span>NEON SIGNAL DETECTED</span>
+                <strong>新しい仲間の気配――</strong>
+                <small>ガチャ実行中...</small>
               </div>
             </div>
+          ) : isTutorialTenReveal && tutorialRevealIndex < scoutResults.length ? (
+            <button
+              type="button"
+              className={`tutorial-gacha-reveal rarity-${String(scoutResults[tutorialRevealIndex]?.rarity || "N").toLowerCase()} ${tutorialRevealIndex === 9 ? "is-guaranteed" : ""}`}
+              onClick={() => { playCyberSe("click"); setTutorialRevealIndex(value => Math.min(scoutResults.length, value + 1)); }}
+              aria-label={`${tutorialRevealIndex + 1}人目を確認`}
+            >
+              <span className="tutorial-gacha-count">REVEAL {tutorialRevealIndex + 1} / 10</span>
+              {tutorialRevealIndex === 9 && <strong className="tutorial-gacha-guaranteed">SSR GUARANTEED</strong>}
+              {scoutResults[tutorialRevealIndex]?.imageUrl && <CharacterPresentation src={scoutResults[tutorialRevealIndex].imageUrl} alt={scoutResults[tutorialRevealIndex].name} variant="card" rarity={scoutResults[tutorialRevealIndex].rarity} />}
+              <div className="tutorial-gacha-reveal-copy"><b>{scoutResults[tutorialRevealIndex]?.rarity}</b><h3>{scoutResults[tutorialRevealIndex]?.name}</h3><small>タップして次へ</small></div>
+            </button>
           ) : (
-            <div className="modal-card border-cyan shadow-cyan-20 max-w-lg w-full p-6 text-center select-modal-layout scroll-container">
-              <h3 className="font-size-14 text-color-cyan font-weight-bold mb-4 tracking-wider">
-                スカウト獲得結果一覧
-              </h3>
-              
-              <div className="list-container max-h-240 scroll-container mb-4">
+            <div className="gacha-result-panel">
+              <header className="gacha-result-heading">
+                <span>SCOUT COMPLETE</span>
+                <h3>ガチャ結果</h3>
+                <p>{scoutResults.length}件の獲得結果</p>
+              </header>
+
+              <div className={`gacha-result-grid ${scoutResults.length >= 10 ? "is-ten-pull" : ""}`}>
                 {scoutResults.map((res: any, idx: number) => (
-                  <div key={idx} className="list-item border-bottom-subtle pb-2">
-                    <div className="item-left">
-                      <span className="item-title flex items-center gap-2">
-                        {res.name}
-                        <span className={`rarity-badge font-size-6 px-1.5 py-0.5 rounded rarity-${res.rarity.toLowerCase()}`}>
-                          {res.rarity}
-                        </span>
-                      </span>
-                      <span className="font-size-7 text-secondary mt-0.5 block">
-                        {res.type === "SKILL" ? "スキルカード" : res.type === "CHARACTER" ? "構成員" : res.type === "ITEM" ? "アイテム" : "ハクスラ装備"}
-                      </span>
-                    </div>
-                    <span className="font-size-8 text-color-cyan font-weight-bold">{res.convertReward}</span>
-                  </div>
+                  <article key={`${res.name}-${idx}`} className={`gacha-result-card rarity-${String(res.rarity).toLowerCase()}`}>
+                    {res.imageUrl ? (
+                      <CharacterPresentation
+                        src={res.imageUrl}
+                        alt={res.name}
+                        variant={scoutResults.length >= 10 ? "thumbnail" : "card"}
+                        rarity={res.rarity}
+                        name={res.name}
+                        badge={res.convertReward === "新規獲得" ? "NEW" : undefined}
+                      />
+                    ) : (
+                      <div className="gacha-result-asset-placeholder"><span>{res.type === "SKILL" ? "SKILL" : "GEAR"}</span><strong>{res.name}</strong></div>
+                    )}
+                    <div className={`gacha-result-outcome ${res.convertReward === "新規獲得" ? "is-new" : "is-duplicate"}`}>{compactGachaOutcome(res)}</div>
+                  </article>
                 ))}
               </div>
 
               <button 
-                className="claim-reward-btn font-weight-bold py-2 width-100 active-scale-effect"
-                onClick={() => { setScoutAnimationState(null); playCyberSe("click"); }}
+                className="gacha-result-next semantic-cta semantic-cta--primary active-scale-effect"
+                onClick={() => {
+                  setScoutAnimationState(null);
+                  playCyberSe("click");
+                  if (onboardingState?.tutorial_step === "AUTO_FORMATION") {
+                    navigateTab("character");
+                  }
+                }}
               >
-                閉じる
+                {onboardingState?.tutorial_step === "AUTO_FORMATION" ? "編成へ進む" : "閉じる"}
               </button>
             </div>
           )}
-        </div>
-      )}
-
-      {/* 🔔 初回起動時・重要なお知らせモーダル */}
-      {showImportantModal && (
-        <div className="modal-overlay">
-          <div className="modal-card border-magenta shadow-magenta-10 p-5 max-w-sm w-full mx-4 my-6">
-            <div className="modal-title text-color-magenta">セキュリティ認証完了</div>
-            <div className="modal-desc font-size-8 text-secondary mb-4 line-height-14">
-              東京サイバーフロントへの安全な接続を確認しました。現在、新宿南部連合との模擬戦（チュートリアル）を含む全ての抗争機能が解放されています。
-            </div>
-            <button 
-              className="modal-close-btn background-magenta active-scale-effect width-100 py-2 font-weight-bold font-size-9"
-              onClick={() => { setShowImportantModal(false); playCyberSe("click"); }}
-            >
-              抗争に参入する
-            </button>
-          </div>
         </div>
       )}
 
@@ -194,7 +234,7 @@ export default function CommonModals() {
           <div className="modal-card border-danger">
             <div className="modal-title text-color-danger">エラー</div>
             <div className="modal-desc">{errorMessage}</div>
-            <button className="modal-close-btn background-danger active-scale-effect" onClick={() => setErrorMessage(null)}>
+            <button className="semantic-cta semantic-cta--danger width-100 active-scale-effect" onClick={() => setErrorMessage(null)}>
               閉じる
             </button>
           </div>
@@ -226,7 +266,15 @@ export default function CommonModals() {
                 <div className="font-size-7 text-color-cyan mt-1">称号: {activePlayerDetail.titleName || "称号なし"}</div>
                 <div className="font-size-7 text-secondary mt-1">プレイヤーレベル: Lv.{activePlayerDetail.level}</div>
                 <div className="font-size-7 text-secondary mt-1">ユーザー経験値: {Number(activePlayerDetail.xp || 0).toLocaleString()}</div>
-                <div className="font-size-7 text-secondary mt-1">所属ギルド: {activePlayerDetail.guildName || "未所属"}</div>
+                {activePlayerDetail.guildId ? (
+                  <button className="sub-btn font-size-7 mt-1" onClick={() => {
+                    void import("../../utils/supabase").then(({ supabase }) => supabase.rpc("record_client_funnel_event", {
+                      p_event_name: "ranking_guild_detail", p_source_screen: "player_detail", p_source_cta: "player_guild",
+                      p_object_id: activePlayerDetail.guildId, p_metadata: {}
+                    }));
+                    fetchGuildDetail(activePlayerDetail.guildId);
+                  }}>所属TRIBE: {activePlayerDetail.guildName}</button>
+                ) : <div className="font-size-7 text-secondary mt-1">所属TRIBE: 未所属</div>}
               </div>
 
               <div className="bio-section steel-tray p-2.5 mb-3 font-size-8 text-white line-height-14">
@@ -267,7 +315,7 @@ export default function CommonModals() {
                       </div>
                     ))
                   ) : (
-                    <div className="font-size-7 text-secondary text-center py-2">編成された構成員がいません。</div>
+                    <div className="font-size-7 text-secondary text-center py-2">編成されたキャラクターがいません。</div>
                   )}
                 </div>
               </div>
@@ -296,11 +344,6 @@ export default function CommonModals() {
             </div>
             
             <div className="modal-body-content mt-3">
-              {/* 将来用のギルド称号プレースホルダー */}
-              <div className="guild-title-placeholder-box mb-3 p-1 text-center font-size-7 text-secondary font-weight-bold">
-                新宿の覇者 (将来用ギルド称号枠)
-              </div>
-
               <div className="guild-meta-section flex justify-between mb-3">
                 <div className="guild-info">
                   <div className="font-size-8 text-white">代表者: <span className="font-weight-bold">{activeGuildDetail.leaderName}</span></div>
@@ -319,8 +362,17 @@ export default function CommonModals() {
                 </div>
               </div>
 
+              <div className="guild-public-status-grid">
+                <span><small>RECRUITMENT</small><strong>{Number(activeGuildDetail.member_count || 0) >= Number(activeGuildDetail.member_limit || 0) ? "満員" : activeGuildDetail.approval_required ? "承認制・募集中" : "即時加入可能"}</strong></span>
+                <span><small>OPEN SLOTS</small><strong>{Math.max(0, Number(activeGuildDetail.member_limit || 0) - Number(activeGuildDetail.member_count || 0))}枠</strong></span>
+                <span><small>GvG</small><strong>{activeGuildDetail.controlledBases?.length ? `${activeGuildDetail.controlledBases.length}拠点制圧` : "参戦可能"}</strong></span>
+                <span><small>ACTIVE / 7D</small><strong>{Number(activeGuildDetail.active_members_7d || 0)}人</strong></span>
+                <span><small>RAID / 7D</small><strong>{Number(activeGuildDetail.raid_contribution_7d || 0).toLocaleString()}</strong></span>
+                <span><small>POWER</small><strong>{Number(activeGuildDetail.guild_power || 0).toLocaleString()}</strong></span>
+              </div>
+
               <div className="guild-desc-box steel-tray p-2.5 mb-3 font-size-8 text-white line-height-14">
-                新宿エリアを拠点とする同盟。新規メンバー募集中。
+                {activeGuildDetail.description}
               </div>
 
               <div className="guild-control-section">
@@ -337,6 +389,18 @@ export default function CommonModals() {
                   )}
                 </div>
               </div>
+              {!userGuildMember && (
+                <OutlawButton variant="primary" fullWidth className="mt-3" disabled={Number(activeGuildDetail.member_count || 0) >= Number(activeGuildDetail.member_limit || 0)} onClick={() => {
+                  void import("../../utils/supabase").then(({ supabase }) => supabase.rpc("record_client_funnel_event", {
+                    p_event_name: "guild_detail_join_click", p_source_screen: "guild_detail",
+                    p_source_cta: activeGuildDetail.approval_required ? "apply" : "join",
+                    p_object_id: activeGuildDetail.id, p_metadata: {}
+                  }));
+                  void handleDemoJoinGuild(activeGuildDetail.id, activeGuildDetail.name, activeGuildDetail.approval_required);
+                }}>
+                  {activeGuildDetail.approval_required ? "加入申請する" : "このTRIBEに加入する"}
+                </OutlawButton>
+              )}
             </div>
           </div>
         </div>

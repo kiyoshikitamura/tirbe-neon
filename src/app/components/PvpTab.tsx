@@ -13,6 +13,8 @@ import ScreenState from "./ui/ScreenState";
 import PeriodStatus from "./ui/PeriodStatus";
 import { useScreenReadiness } from "../hooks/useScreenReadiness";
 import { SCREEN_ASSET_MANIFESTS } from "../lib/screenManifests";
+import CharacterPresentation from "./character/CharacterPresentation";
+import { CHARACTERS_MASTER, getCharacterTransparentImg } from "@/utils/game_constants";
 
 const tacticNames: { [key: string]: string } = {
   ATTACK_PRIORITY: "攻撃優先",
@@ -38,6 +40,7 @@ export default function PvpTab() {
     pvpSubView,
     setPvpSubView,
     battleLoading,
+    upgradeLoading,
     pvpOpponents,
     opponentsLoading,
     fetchPvpOpponents,
@@ -86,7 +89,7 @@ export default function PvpTab() {
   }, []);
 
   const jstNow = new Date(clock.getTime() + 9 * 60 * 60 * 1000);
-  const dailyReset = new Date(Date.UTC(jstNow.getUTCFullYear(), jstNow.getUTCMonth(), jstNow.getUTCDate(), 4) - 9 * 60 * 60 * 1000);
+  const dailyReset = new Date(Date.UTC(jstNow.getUTCFullYear(), jstNow.getUTCMonth(), jstNow.getUTCDate(), 0) - 9 * 60 * 60 * 1000);
   if (dailyReset.getTime() <= clock.getTime()) dailyReset.setUTCDate(dailyReset.getUTCDate() + 1);
 
   const handleToggleDefenseMember = (charId: string) => {
@@ -147,7 +150,7 @@ export default function PvpTab() {
       onRetry={readiness.retry}
     >
         <HeroPanel className="pvp-status-hero">
-          <div className="pvp-status-heading">現在のレート</div>
+          <div className="pvp-status-heading">PvPランクポイント</div>
           <div className="pvp-status-rate">{pvpRate.toLocaleString()} <small>pt</small></div>
           <div className="pvp-status-meta">
             <Badge tone={pvpPoints > 0 ? "cyan" : "warning"}>挑戦 {pvpPoints}/5</Badge>
@@ -157,7 +160,7 @@ export default function PvpTab() {
 
         <PeriodStatus
           label="デイリー挑戦"
-          range="毎日 04:00 更新"
+          range="毎日 00:00 更新"
           remaining={formatRemaining(dailyReset.getTime() - clock.getTime())}
           cadence="対戦相手は更新ボタンで再抽選"
         />
@@ -194,10 +197,21 @@ export default function PvpTab() {
                     {pvpOpponents.map((op: any) => (
                       <OutlawCard key={op.opponent_user_id} className="pvp-opponent-card">
                         <div className="pvp-opponent-copy">
-                          <div className="pvp-opponent-name">{op.opponent_username}</div>
-                          <div className="pvp-opponent-guild">{op.opponent_guild_name}</div>
+                          <div className="pvp-opponent-heading"><div><div className="pvp-opponent-name">{op.opponent_username}</div><div className="pvp-opponent-guild">{op.opponent_guild_name || "無所属"}</div></div><strong>#{op.opponent_rank || "-"}</strong></div>
+                          <div className="pvp-opponent-deck" aria-label={`${op.opponent_username}の防衛メンバー`}>
+                            {(op.defense_characters || []).map((character: any) => <CharacterPresentation
+                              key={`${op.opponent_user_id}-${character.slot}`}
+                              src={character.asset_identifier || "/characters/reiji_transparent_asset.png"}
+                              alt={character.display_name || "防衛キャラクター"}
+                              variant="thumbnail"
+                              rarity={character.rarity || "N"}
+                              name={character.display_name}
+                              level={Number(character.level || 1)}
+                            />)}
+                          </div>
                           <div className="pvp-opponent-meta">
                             <Badge tone="cyan">{op.opponent_points} pt</Badge>
+                            <span className="pvp-opponent-power">戦力 {Number(op.opponent_power || 0).toLocaleString()}</span>
                             <span>作戦 {tacticNames[op.tactic] || "攻撃優先"}</span>
                           </div>
                         </div>
@@ -275,6 +289,7 @@ export default function PvpTab() {
                     <div className="pvp-defense-grid">
                       {userCharactersDbList.map((char: any) => {
                         const isSelected = selectedDefense.includes(char.id);
+                        const master: any = CHARACTERS_MASTER.find((entry: any) => entry.id === char.character_id) || CHARACTERS_MASTER[0];
                         return (
                           <button
                             type="button"
@@ -284,13 +299,14 @@ export default function PvpTab() {
                             aria-pressed={isSelected}
                           >
                             <span className="pvp-defense-check">{isSelected ? "✓" : "+"}</span>
-                            <span className="pvp-defense-name">{char.name || "構成員"}</span>
+                            <CharacterPresentation src={getCharacterTransparentImg(master.name)} alt={master.jpName} variant="thumbnail" rarity={master.rarity || "N"} />
+                            <span className="pvp-defense-name">{master.jpName || "キャラクター"}</span>
                             <span className="pvp-defense-level">Lv.{char.level}</span>
                           </button>
                         );
                       })}
                       {userCharactersDbList.length === 0 && (
-                        <div className="pvp-defense-empty">防衛に登録できる構成員がいません。</div>
+                        <div className="pvp-defense-empty">防衛に登録できるキャラクターがいません。</div>
                       )}
                     </div>
                   </div>
@@ -299,8 +315,9 @@ export default function PvpTab() {
                     variant="primary" 
                     fullWidth 
                     onClick={handleSaveDeck} 
+                    disabled={upgradeLoading}
                   >
-                    防衛設定を保存
+                    {upgradeLoading ? "保存中..." : "防衛設定を保存"}
                   </OutlawButton>
                 </OutlawCard>
 

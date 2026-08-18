@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useRef, useState } from "react";
 import "./OutlawButton.css";
 import { useGame } from "../../context/GameContext";
 
@@ -8,39 +8,64 @@ interface OutlawButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement
   variant?: ButtonVariant;
   fullWidth?: boolean;
   isLoading?: boolean;
+  loadingLabel?: string;
 }
 
 export default function OutlawButton({
   variant = "secondary",
   fullWidth = false,
   isLoading = false,
+  loadingLabel,
   className = "",
   onClick,
+  disabled,
   children,
-  ...props
+  ...restProps
 }: OutlawButtonProps) {
   const { playCyberSe } = useGame();
+  const [actionPending, setActionPending] = useState(false);
+  const actionPendingRef = useRef(false);
+  const busy = isLoading || actionPending;
 
   const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    if (actionPendingRef.current || disabled || isLoading) return;
+    actionPendingRef.current = true;
+    setActionPending(true);
     // デフォルトでクリック音を鳴らす（disabledでない場合）
-    if (!props.disabled && !isLoading) {
-      playCyberSe("click");
+    playCyberSe("click");
+
+    let result: unknown;
+    try {
+      result = onClick?.(e);
+    } catch (error) {
+      actionPendingRef.current = false;
+      setActionPending(false);
+      throw error;
     }
-    if (isLoading) return;
-    if (onClick) onClick(e);
+
+    const release = () => {
+      actionPendingRef.current = false;
+      setActionPending(false);
+    };
+    if (result && typeof (result as PromiseLike<unknown>).then === "function") {
+      void Promise.resolve(result).finally(release);
+    } else {
+      // Keep a synchronous action locked through the next paint. This closes
+      // the double-tap window before a dialog or navigation becomes visible.
+      requestAnimationFrame(release);
+    }
   };
 
   return (
     <button
-      className={`outlaw-button variant-${variant} ${fullWidth ? "full-width" : ""} active-scale-effect ${className}`}
+      className={`outlaw-button semantic-cta semantic-cta--${variant === "danger" ? "danger" : variant === "primary" ? "primary" : "secondary"} variant-${variant} ${fullWidth ? "full-width" : ""} active-scale-effect ${className}`}
       onClick={handleClick}
-      disabled={props.disabled || isLoading}
-      aria-busy={isLoading}
-      {...props}
+      {...restProps}
+      disabled={disabled || busy}
+      aria-busy={busy}
     >
       <span className="outlaw-button-inner">
-        {isLoading && <span className="spinner outlaw-button-spinner" aria-hidden="true" />}
-        {children}
+        {isLoading && loadingLabel ? loadingLabel : children}
       </span>
     </button>
   );

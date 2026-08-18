@@ -30,10 +30,19 @@
 .character-presentation-portrait img { object-fit: cover; object-position: 50% 18%; transform: scale(1.08); }
 .character-presentation-card { aspect-ratio: 3 / 4; border-radius: 7px; }
 .character-presentation-card img { object-fit: cover; object-position: 50% 20%; transform: scale(1.05); }
+.character-presentation-thumbnail { width: 100%; aspect-ratio: 1 / 1; border-radius: var(--ui-radius-sm); }
+.character-presentation-thumbnail img { object-fit: cover; object-position: 50% 8%; transform: scale(1.22); transform-origin: 50% 12%; }
+.character-presentation-thumbnail .character-presentation-light { right: 7%; left: 7%; }
+.character-presentation-thumbnail .character-presentation-meta { grid-template-columns: auto minmax(0, 1fr); gap: 2px; min-height: 23px; padding: 8px 3px 3px; font-size: 7px; }
+.character-presentation-thumbnail .character-presentation-meta strong { font-size: 8px; }
+.character-presentation-thumbnail .character-presentation-meta > span:last-child:not(.character-presentation-rarity) { display: none; }
+.character-presentation-thumbnail .character-presentation-badge { top: 3px; right: 3px; left: auto; padding: 2px 3px; font-size: 7px; }
 .character-presentation-full-body { aspect-ratio: 3 / 5; border-radius: 8px; }
 .character-presentation-full-body img { object-fit: contain; object-position: center bottom; }
 .character-presentation-battle { width: 100%; height: 100%; border-radius: 5px; }
 .character-presentation-battle img { object-fit: cover; object-position: 50% 20%; transform: scale(1.08); }
+.character-presentation-battle-party img { object-position: 50% 8%; transform: scale(1.12); }
+.character-presentation-battle-action img { object-position: 50% 18%; transform: scale(1.05); }
 .character-presentation-icon { width: 48px; height: 48px; border-radius: 50%; }
 .character-presentation-icon img { object-fit: cover; object-position: 50% 16%; transform: scale(1.12); }
 

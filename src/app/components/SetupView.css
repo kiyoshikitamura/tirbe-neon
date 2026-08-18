@@ -6,17 +6,18 @@
   width: 100%;
   height: 100%;
   min-height: 0;
-  background-color: #000;
+  background: var(--ui-bg-root) url('/bg/bg_street_shinjuku.png') center/cover no-repeat;
   padding: 16px;
 }
+.setup-world-shade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(1,4,10,.2),rgba(1,4,10,.82) 62%,#01040a)}.setup-container>*:not(.setup-world-shade){position:relative}.setup-container.is-world-entry{justify-content:flex-end;padding-bottom:calc(env(safe-area-inset-bottom) + 24px)}.setup-world-kicker{display:block;margin-bottom:7px;color:var(--color-cyan,#00f4ff);font-size:10px;font-weight:800;letter-spacing:.18em}.setup-intro-box h1{margin:0 0 16px;font-size:clamp(26px,8vw,36px);line-height:1.15}.setup-box{display:grid;gap:14px}.setup-box label{font-weight:800}
 
 .setup-box {
   width: 100%;
   max-width: 390px;
-  background: rgba(11, 15, 25, 0.85);
-  border: 1px solid var(--neon-cyan);
-  border-radius: 12px;
-  padding: 24px;
+  background: color-mix(in srgb, var(--ui-bg-surface) 88%, transparent);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-lg);
+  padding: var(--ui-space-5);
   backdrop-filter: blur(12px);
 }
 
@@ -43,11 +44,12 @@
   box-shadow: 0 0 0 2px rgba(0, 240, 255, .13);
 }
 
-.setup-box label { font-size: 13px; line-height: 1.5; }
+.setup-box label { font-size: var(--ui-font-body); line-height: 1.5; }
 
 .setup-primary-action {
+  width: 100%;
   min-height: 52px;
-  font-size: 14px;
+  font-size: var(--ui-font-button);
 }
 
 .setup-invite-status {
@@ -82,8 +84,8 @@
 }
 
 .setup-title {
-  color: var(--neon-cyan);
-  font-weight: 700;
+  color: var(--ui-text-primary);
+  font-weight: 900;
   margin-bottom: 4px;
 }
 
@@ -112,6 +114,5 @@
 
 .setup-confirm-actions button {
   min-height: 48px;
-  font-size: 13px;
-  font-weight: 800;
+  font-size: var(--ui-font-button);
 }

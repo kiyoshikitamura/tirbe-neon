@@ -1,9 +1,7 @@
 "use client";
 
 import React from "react";
-import Image from "next/image";
 import { useGame } from "../context/GameContext";
-import { supabase } from "@/utils/supabase";
 import {
   CHARACTERS_MASTER,
   CHARACTER_GROWTH_PATTERNS
@@ -15,6 +13,9 @@ import SectionHeader from "./ui/SectionHeader";
 import HubPage from "./ui/HubPage";
 import HeroPanel from "./ui/HeroPanel";
 import Badge from "./ui/Badge";
+import TutorialNavigator from "./TutorialNavigator";
+import CharacterPresentation from "./character/CharacterPresentation";
+import { supabase } from "@/utils/supabase";
 import { useScreenReadiness } from "../hooks/useScreenReadiness";
 import { SCREEN_ASSET_MANIFESTS } from "../lib/screenManifests";
 import "./PatrolTab.css";
@@ -33,30 +34,30 @@ export default function PatrolTab() {
     dispatchLoading,
     handleInstantComplete,
     handleClaimRewards,
+    dailyCashSkips,
+    dailyCashSkipsResetDate,
     playCyberSe,
     patrolCourses,
     patrolNpcs,
     startCardBattle,
     lastPatrolRewards,
+    setLastPatrolRewards,
     showPatrolRewardModal,
     setShowPatrolRewardModal,
     setGlobalInteractionBlocking,
-    session
+    onboardingState,
+    setOnboardingState,
+    userLevel,
+    featureOperatingStates
   } = useGame();
-  const [tutorialStep, setTutorialStep] = React.useState<string | null>(null);
-
-  React.useEffect(() => {
-    if (!session?.user?.id) return;
-    const loadTutorialStep = async () => {
-      const { data } = await supabase
-        .from("tutorial_progress")
-        .select("step_id")
-        .eq("user_id", session.user.id)
-        .maybeSingle();
-      setTutorialStep(data?.step_id ?? null);
-    };
-    void loadTutorialStep();
-  }, [session?.user?.id]);
+  const tutorialStep = onboardingState?.tutorial_step;
+  const isTutorialQuestStep = ["DISPATCH", "FREE_INSTANT", "TUTORIAL_BATTLE"].includes(tutorialStep || "");
+  const tutorialActiveListRef = React.useRef<HTMLDivElement>(null);
+  const questActionRef = React.useRef(false);
+  const battleStartRef = React.useRef(false);
+  const rewardTransitionRef = React.useRef(false);
+  const [rewardTransitionWorking, setRewardTransitionWorking] = React.useState(false);
+  const [battleStartingId, setBattleStartingId] = React.useState<string | null>(null);
 
   // コースが未選択のときに初期選択を設定
   React.useEffect(() => {
@@ -68,7 +69,35 @@ export default function PatrolTab() {
     }
   }, [patrolCourses, selectedTown, selectedCourse, setSelectedCourse]);
 
+  // The first quest reuses the normal dispatch UI, but removes route hunting:
+  // the canonical first course and first available member are selected for the player.
+  React.useEffect(() => {
+    if (tutorialStep !== "DISPATCH") return;
+    const tutorialCourse = patrolCourses.find((course: any) => course.town_id === selectedTown) || patrolCourses[0];
+    if (tutorialCourse && selectedCourse !== tutorialCourse.id) setSelectedCourse(tutorialCourse.id);
+    if (!selectedPatrolMember) {
+      const firstAvailable = userCharactersDbList.find((character: any) =>
+        !activePatrols.some((patrol: any) => patrol.characterId === character.character_id && patrol.status !== "COMPLETED")
+      );
+      if (firstAvailable) togglePatrolMemberSelection(firstAvailable.character_id);
+    }
+  }, [activePatrols, patrolCourses, selectedCourse, selectedPatrolMember, selectedTown, setSelectedCourse, togglePatrolMemberSelection, tutorialStep, userCharactersDbList]);
+
+  React.useEffect(() => {
+    if (tutorialStep === "FREE_INSTANT") {
+      tutorialActiveListRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [tutorialStep]);
+
   const activeCourse = patrolCourses.find((c: any) => c.id === selectedCourse);
+  const questStageIndex = tutorialStep === "DISPATCH"
+    ? 2
+    : tutorialStep === "FREE_INSTANT"
+      ? 3
+      : tutorialStep === "TUTORIAL_BATTLE"
+        ? activePatrols.some((patrol: any) => patrol.battle_resolved) ? 5 : 4
+        : -1;
+  const questStages = ["クエスト", "メンバー", "派遣", "無料時短", "バトル", "報酬"];
 
   const townTabs = [
     { id: "shinjuku", label: "新宿" },
@@ -81,22 +110,57 @@ export default function PatrolTab() {
   ];
 
   const handleStart = async () => {
+    if (questActionRef.current) return;
+    questActionRef.current = true;
     setGlobalInteractionBlocking(true);
-    await handleStartPatrol();
-    setGlobalInteractionBlocking(false);
+    try {
+      await handleStartPatrol();
+    } finally {
+      questActionRef.current = false;
+      setGlobalInteractionBlocking(false);
+    }
   };
 
-  const handleInstant = async (currency: "CASH" | "DIAMOND" | "FREE_TUTORIAL", pId: string) => {
+  const handleInstant = async (currency: "CASH" | "DIAMOND" | "FREE_TUTORIAL" | "FREE_PREOPEN", pId: string) => {
+    if (questActionRef.current) return;
+    questActionRef.current = true;
     setGlobalInteractionBlocking(true);
-    await handleInstantComplete(currency, pId);
-    if (currency === "FREE_TUTORIAL") setTutorialStep("TUTORIAL_BATTLE");
-    setGlobalInteractionBlocking(false);
+    try {
+      await handleInstantComplete(currency, pId);
+    } finally {
+      questActionRef.current = false;
+      setGlobalInteractionBlocking(false);
+    }
   };
 
   const handleClaim = async (pId: string) => {
+    if (questActionRef.current) return;
+    questActionRef.current = true;
     setGlobalInteractionBlocking(true);
-    await handleClaimRewards(pId);
-    setGlobalInteractionBlocking(false);
+    try {
+      await handleClaimRewards(pId, { isTutorialReward: tutorialStep === "TUTORIAL_BATTLE" });
+    } finally {
+      questActionRef.current = false;
+      setGlobalInteractionBlocking(false);
+    }
+  };
+
+  const handleBattleStart = async (patrol: any, battleNpc: any) => {
+    if (!battleNpc || battleStartRef.current) return;
+    battleStartRef.current = true;
+    setBattleStartingId(patrol.id);
+    setGlobalInteractionBlocking(true);
+    try {
+      await startCardBattle(
+        "PATROL", battleNpc.npc_name || "敵NPC", battleNpc.id,
+        undefined, undefined, undefined, undefined, undefined, undefined,
+        battleNpc, patrol.id
+      );
+    } finally {
+      battleStartRef.current = false;
+      setBattleStartingId(null);
+      setGlobalInteractionBlocking(false);
+    }
   };
 
   // 背景画像の取得
@@ -105,6 +169,40 @@ export default function PatrolTab() {
     if (!src) return "/characters/reiji_transparent_asset.png";
     return src.startsWith("/characters/") ? src : `/characters/${src.replace(/^\//, "")}`;
   };
+
+  const closeRewardResult = async () => {
+    if (tutorialStep !== "TUTORIAL_BATTLE") {
+      setShowPatrolRewardModal(false);
+      setLastPatrolRewards(null);
+      return;
+    }
+    if (rewardTransitionRef.current) return;
+    rewardTransitionRef.current = true;
+    setRewardTransitionWorking(true);
+    try {
+      const { error } = await supabase.rpc("advance_tutorial_progress", {
+        p_expected_step: "TUTORIAL_BATTLE",
+        p_next_step: "RULE_GUIDE",
+      });
+      if (error) return;
+      setShowPatrolRewardModal(false);
+      setLastPatrolRewards(null);
+      setOnboardingState((current: any) => current ? { ...current, tutorial_step: "RULE_GUIDE" } : current);
+    } finally {
+      rewardTransitionRef.current = false;
+      setRewardTransitionWorking(false);
+    }
+  };
+
+  React.useEffect(() => {
+    if (!lastPatrolRewards?.isTutorialReward || tutorialStep === "TUTORIAL_BATTLE") return;
+    setShowPatrolRewardModal(false);
+    setLastPatrolRewards(null);
+  }, [lastPatrolRewards, setLastPatrolRewards, setShowPatrolRewardModal, tutorialStep]);
+
+  const canRenderRewardResult = showPatrolRewardModal
+    && lastPatrolRewards
+    && (!lastPatrolRewards.isTutorialReward || tutorialStep === "TUTORIAL_BATTLE");
   const readiness = useScreenReadiness({
     assets: [...SCREEN_ASSET_MANIFESTS.quest, { src: bgImage, required: false }],
   });
@@ -126,14 +224,33 @@ export default function PatrolTab() {
           </div>
           <p>派遣先と所要時間を選び、空き枠へ仲間を送り出してください。</p>
         </HeroPanel>
+
+        {isTutorialQuestStep && (
+          <nav className="quest-stage-track" aria-label="最初のクエスト進行">
+            {questStages.map((stage, index) => (
+              <div key={stage} className={index < questStageIndex ? "is-complete" : index === questStageIndex ? "is-current" : ""}>
+                <span>{index < questStageIndex ? "✓" : index + 1}</span>
+                <b>{stage}</b>
+              </div>
+            ))}
+          </nav>
+        )}
         
         <SectionHeader title={`新規クエスト派遣 (${activePatrols.length}/5 出撃中)`} />
+
+        {tutorialStep === "DISPATCH" && (
+          <OutlawCard className="mb-3 border-cyan-glow">
+            <TutorialNavigator message="最初の仲間と派遣先は選択済みです。「クエスト開始」を押してください。" />
+            <div className="font-size-7 text-color-cyan mt-2">最初の派遣では、この後の時短を無料で体験できます。</div>
+          </OutlawCard>
+        )}
         
-        <div className="patrol-town-tabs-wrapper mb-3">
+        <div className="patrol-town-tabs-wrapper mb-3" aria-disabled={isTutorialQuestStep}>
           <SubTabNav 
             tabs={townTabs} 
             activeTabId={selectedTown} 
             onSelect={(tabId) => {
+              if (isTutorialQuestStep) return;
               setSelectedTown(tabId);
               const firstCourse = patrolCourses.find((c: any) => c.town_id === tabId);
               if (firstCourse) setSelectedCourse(firstCourse.id);
@@ -149,7 +266,7 @@ export default function PatrolTab() {
             <div 
               key={c.id} 
               className={`patrol-course-item ${selectedCourse === c.id ? "active" : ""}`}
-              onClick={() => { setSelectedCourse(c.id); playCyberSe("click"); }}
+              onClick={() => { if (!isTutorialQuestStep) { setSelectedCourse(c.id); playCyberSe("click"); } }}
             >
               <div className="course-name">{c.name}</div>
               <div className={`course-badge badge-${c.id.split('_').pop()}`}>
@@ -161,8 +278,12 @@ export default function PatrolTab() {
 
         {/* 出撃メンバー選択 */}
         {activeCourse && (
-          <OutlawCard className="mb-4">
-            <div className="font-size-8 text-color-gray mb-2">派遣メンバーの選択 (1名)</div>
+          <OutlawCard className={`mb-4 ${tutorialStep === "DISPATCH" ? "tutorial-primary-target" : ""}`}>
+            <div className="quest-v0-summary">
+              <div><span>SELECTED QUEST</span><strong>{activeCourse.name}</strong></div>
+              <dl><div><dt>所要</dt><dd>{activeCourse.duration_seconds >= 60 ? String(activeCourse.duration_seconds / 60) + "分" : String(activeCourse.duration_seconds) + "秒"}</dd></div><div><dt>報酬</dt><dd>{activeCourse.reward_cash.toLocaleString()} CASH</dd></div><div><dt>時短</dt><dd>{tutorialStep === "DISPATCH" ? "今回無料" : "利用可"}</dd></div></dl>
+            </div>
+            <div className="quest-v0-section-label">派遣する仲間 <b>1名</b></div>
             <div className="patrol-char-grid mb-3">
               {CHARACTERS_MASTER.map((c: any) => {
                 const isUnlocked = userCharactersDbList.some((uc: any) => uc.character_id === c.id);
@@ -179,6 +300,7 @@ export default function PatrolTab() {
                     key={c.id} 
                     className={`patrol-char-item ${!isUnlocked ? "locked" : ""} ${isSelected ? "selected" : ""} ${isAlreadyDeployed ? "deployed" : ""}`} 
                     onClick={() => {
+                      if (isTutorialQuestStep) return;
                       if (isUnlocked && !isAlreadyDeployed) {
                         togglePatrolMemberSelection(c.id);
                       } else if (isAlreadyDeployed) {
@@ -187,9 +309,13 @@ export default function PatrolTab() {
                     }}
                   >
                     <div className="patrol-char-portrait">
-                      <Image src={characterImage(c.img)} alt="" fill sizes="72px" />
+                      <CharacterPresentation
+                        src={characterImage(c.img)}
+                        alt={c.jpName}
+                        variant="thumbnail"
+                        name={c.jpName}
+                      />
                     </div>
-                    <div className="char-name">{c.jpName}</div>
                     {isHome && <div className="char-bonus-badge">地元一致(LUK{baseLuk})</div>}
                     {isAlreadyDeployed && <div className="char-deployed-badge">出撃中</div>}
                   </div>
@@ -203,16 +329,30 @@ export default function PatrolTab() {
             </div>
             <OutlawButton 
               onClick={handleStart}
-              disabled={dispatchLoading || !selectedCourse || !selectedPatrolMember || activePatrols.length >= 5}
+              disabled={dispatchLoading || tutorialStep !== "DISPATCH" || !selectedCourse || !selectedPatrolMember || activePatrols.length >= 5}
               fullWidth
-              variant="danger"
+              variant="primary"
             >
-              クエスト開始
+              {dispatchLoading ? "クエスト準備中..." : "クエスト開始"}
             </OutlawButton>
           </OutlawCard>
         )}
 
-        <SectionHeader title="進行中クエスト一覧" className="mt-4" />
+        <div ref={tutorialActiveListRef}>
+          <SectionHeader title="進行中クエスト一覧" className="mt-4" />
+        </div>
+
+        {tutorialStep === "FREE_INSTANT" && (
+          <OutlawCard className="mb-3 border-cyan-glow">
+            <TutorialNavigator message="派遣をCASH時短してください。チュートリアル中の今回だけ料金は0です。" />
+          </OutlawCard>
+        )}
+
+        {tutorialStep === "TUTORIAL_BATTLE" && activePatrols.some((patrol: any) => patrol.battle_resolved) && !showPatrolRewardModal && (
+          <OutlawCard className="mb-3 border-cyan-glow">
+            <TutorialNavigator message="初勝利！確定した勝利報酬を受け取って、結果を確認しよう。" />
+          </OutlawCard>
+        )}
 
         <div className="active-patrols-list flex-col-gap-3 pb-4">
           {activePatrols.length === 0 ? (
@@ -222,11 +362,20 @@ export default function PatrolTab() {
               const pCourse = patrolCourses.find((c: any) => c.id === p.courseId);
               const pChar = CHARACTERS_MASTER.find((c: any) => c.id === p.characterId);
               const battleNpc = patrolNpcs.find((npc: any) => npc.quest_id === p.courseId);
-              const isComplete = p.secondsLeft <= 0;
+              // The mandatory tutorial action must remain available even if
+              // the short quest timer reaches zero while the guide is read.
+              const isTutorialInstant = tutorialStep === "FREE_INSTANT" && !p.battle_resolved;
+              const isTutorialReward = tutorialStep === "TUTORIAL_BATTLE" && p.battle_resolved;
+              const isComplete = p.secondsLeft <= 0 && !isTutorialInstant;
               const hasUnresolvedBattle = p.has_battle_event && !p.battle_resolved && Boolean(battleNpc);
+              const cashSkipCost = Math.ceil(Math.max(p.secondsLeft, 0) / 60) * 100;
+              const diamondSkipCost = Math.ceil(Math.max(p.secondsLeft, 0) / 3600) * 10;
+              const todayJst = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
+              const cashSkipsToday = dailyCashSkipsResetDate === todayJst ? Number(dailyCashSkips || 0) : 0;
+              const remainingCashSkips = Math.max(3 - cashSkipsToday, 0);
 
               return (
-                <OutlawCard key={p.id} className="active-patrol-card">
+                <OutlawCard key={p.id} className={`active-patrol-card ${isTutorialInstant || isTutorialReward ? "tutorial-primary-target" : ""}`}>
                   <div className="patrol-card-header flex-between mb-2">
                     <div className="font-size-8 font-bold text-shadow-neon">{pCourse?.name || '不明なクエスト'}</div>
                     <div className="font-size-7 text-color-gray">{pChar?.jpName || '不明なキャラ'} 派遣中</div>
@@ -244,14 +393,12 @@ export default function PatrolTab() {
                           <div className="text-color-red font-bold font-size-8 mb-1">⚠️ 敵襲発生！</div>
                           <div className="font-size-7 mb-2">エリア内でNPCとの戦闘が発生しました。</div>
                           <OutlawButton 
-                            onClick={() => {
-                              if (battleNpc) startCardBattle("PATROL", battleNpc.npc_name || "敵NPC", battleNpc.id);
-                            }}
-                            variant="danger"
-                            disabled={dispatchLoading}
+                            onClick={() => handleBattleStart(p, battleNpc)}
+                            variant="primary"
+                            disabled={dispatchLoading || battleStartingId === p.id}
                             fullWidth
                           >
-                            戦闘開始
+                            {battleStartingId === p.id ? "バトルへ移動中..." : "戦闘開始"}
                           </OutlawButton>
                         </div>
                       ) : (
@@ -261,7 +408,7 @@ export default function PatrolTab() {
                           disabled={dispatchLoading}
                           fullWidth
                         >
-                          {p.battle_resolved && p.battle_result === "VICTORY" ? "勝利報酬を獲得" : "報酬獲得"}
+                          {dispatchLoading ? "報酬確認中..." : p.battle_resolved && p.battle_result === "VICTORY" ? "勝利報酬を獲得" : "報酬獲得"}
                         </OutlawButton>
                       )}
                     </div>
@@ -275,8 +422,24 @@ export default function PatrolTab() {
                         <span className="progress-text">残り {p.secondsLeft}秒</span>
                       </div>
                       <div className="flex-row-gap-2 mt-1">
-                        <OutlawButton onClick={() => handleInstant("CASH", p.id)} disabled={dispatchLoading} fullWidth>CASH時短</OutlawButton>
-                        <OutlawButton onClick={() => handleInstant("DIAMOND", p.id)} disabled={dispatchLoading} variant="primary" fullWidth>DIA時短</OutlawButton>
+                        {isTutorialInstant ? (
+                          <OutlawButton onClick={() => handleInstant("FREE_TUTORIAL", p.id)} disabled={dispatchLoading} variant="primary" fullWidth>
+                            {dispatchLoading ? "時短処理中..." : "CASH時短（今回無料）"}
+                          </OutlawButton>
+                        ) : (
+                          <>
+                            <OutlawButton
+                              onClick={() => handleInstant(featureOperatingStates?.PRE_OPEN === "OPEN" && userLevel < 8 ? "FREE_PREOPEN" : "CASH", p.id)}
+                              disabled={dispatchLoading || remainingCashSkips === 0}
+                              fullWidth
+                            >
+                              {featureOperatingStates?.PRE_OPEN === "OPEN" && userLevel < 8 ? "Pre-Open無料時短" : `CASH時短 (${cashSkipCost.toLocaleString()} / 残り${remainingCashSkips}回)`}
+                            </OutlawButton>
+                            <OutlawButton onClick={() => handleInstant("DIAMOND", p.id)} disabled={dispatchLoading} variant="primary" fullWidth>
+                              DIA時短 ({diamondSkipCost.toLocaleString()})
+                            </OutlawButton>
+                          </>
+                        )}
                       </div>
                     </div>
                   )}
@@ -288,18 +451,24 @@ export default function PatrolTab() {
       </div>
 
       {/* 見回り完了報酬モーダルポップアップ */}
-      {showPatrolRewardModal && lastPatrolRewards && (
+      {canRenderRewardResult && (
         <div className="modal-overlay" style={{ zIndex: 9999 }}>
-          <OutlawCard className="patrol-reward-modal scroll-container">
-            <h3 className="modal-title text-color-yellow font-size-10 mb-3 text-center text-shadow-neon">🚨 クエスト完了報告</h3>
-            <div className="modal-subtitle font-size-8 text-center text-color-gray mb-3 border-bottom pb-2">
-              {lastPatrolRewards.courseName}
-            </div>
+          <OutlawCard className={["patrol-reward-modal", "patrol-result-v0", "scroll-container", tutorialStep === "TUTORIAL_BATTLE" || lastPatrolRewards.battleVictory ? "is-victory" : ""].join(" ")}>
+            <header className="patrol-result-heading">
+              <span>クエスト完了報告</span>
+              <h3>{tutorialStep === "TUTORIAL_BATTLE" || lastPatrolRewards.battleVictory ? "勝利" : "帰還完了"}</h3>
+              <p>{lastPatrolRewards.courseName}</p>
+            </header>
 
-            <div className="reward-section flex-col-gap-2">
-              <div className="flex-between">
-                <span className="text-color-gray">プレゼントBOXへ送付:</span>
-                <span className="text-color-green font-bold">+{lastPatrolRewards.baseCash} CASH</span>
+            <div className="reward-section patrol-result-rewards flex-col-gap-2">
+              <div className="patrol-result-primary-reward">
+                <span>獲得報酬</span>
+                <strong>+{lastPatrolRewards.totalCash.toLocaleString()} CASH</strong>
+                <small>プレゼントBOXへ送付</small>
+              </div>
+              <div className="flex-between patrol-result-row">
+                <span>基本報酬</span>
+                <strong>+{lastPatrolRewards.baseCash.toLocaleString()} CASH</strong>
               </div>
               
               {lastPatrolRewards.matchBonusApplied && (
@@ -316,9 +485,9 @@ export default function PatrolTab() {
                 </div>
               )}
 
-              <div className="flex-between border-top pt-2 mt-1">
-                <span className="text-color-gray">獲得経験値:</span>
-                <span className="text-color-cyan font-bold">+{lastPatrolRewards.baseXp} XP</span>
+              <div className="flex-between border-top pt-2 mt-1 patrol-result-row">
+                <span>獲得経験値</span>
+                <strong className="text-color-cyan">+{lastPatrolRewards.totalXp.toLocaleString()} XP</strong>
               </div>
 
               {lastPatrolRewards.dropItemName && (
@@ -356,27 +525,22 @@ export default function PatrolTab() {
             </div>
 
             <div className="border-top pt-3 mt-3 flex-col-gap-2">
-              <div className="flex-between font-size-9">
-                <span className="font-bold">BOX送付キャッシュ:</span>
-                <span className="text-color-green font-bold text-shadow-neon">{lastPatrolRewards.totalCash} CASH</span>
-              </div>
-              <div className="flex-between font-size-9">
-                <span className="font-bold">合計獲得経験値:</span>
-                <span className="text-color-cyan font-bold text-shadow-neon">{lastPatrolRewards.totalXp} XP</span>
-              </div>
               {lastPatrolRewards.levelUpMessage && (
-                <div className="text-color-yellow font-bold text-center mt-3 font-size-8 p-2" style={{ background: 'rgba(255, 204, 0, 0.1)' }}>
-                  {lastPatrolRewards.levelUpMessage}
+                <div className="patrol-result-growth">
+                  <span>POWER UP</span><strong>{lastPatrolRewards.levelUpMessage}</strong>
                 </div>
               )}
             </div>
 
             <OutlawButton 
-              onClick={() => setShowPatrolRewardModal(false)}
+              onClick={() => void closeRewardResult()}
               className="mt-4"
               fullWidth
+              variant={tutorialStep === "TUTORIAL_BATTLE" ? "primary" : "secondary"}
+              isLoading={rewardTransitionWorking}
+              loadingLabel="結果を更新中..."
             >
-              閉じる
+              {tutorialStep === "TUTORIAL_BATTLE" ? "報酬を確認して次へ" : "閉じる"}
             </OutlawButton>
           </OutlawCard>
         </div>

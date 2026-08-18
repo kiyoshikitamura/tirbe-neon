@@ -1,10 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { createElement, useRef, useState, useEffect } from "react";
 import { supabase } from "@/utils/supabase";
 import { SKILLS_MASTER_DATA } from "@/utils/skills_master_data";
 import {
-  RAID_BOSS_ID,
   CHARACTERS_MASTER,
   ENEMIES_MASTER
 } from "@/utils/game_constants";
@@ -16,8 +15,20 @@ import { postNpcYajiMessage, saveBattleSessionState } from "./battle/battleUtils
 import { RAID_COST_TABLE, RAID_MAX_DAILY } from "../utils/game_constants";
 import { participantsToBattleUnits, toDeterministicTactic } from "./battle/deterministicBattleAdapter";
 import { gvgDefenseSnapshotToParticipants } from "./battle/gvgSnapshotAdapter";
+import { patrolSnapshotToParticipants, serverBattleEvents, type ServerBattleEvent } from "./battle/patrolReplayAdapter";
+import { beginActionPerformance } from "@/utils/actionPerformance";
+import ModeBattleResultCard from "@/app/components/battle/ModeBattleResultCard";
 
 export type { UseBattleOptions, ParticipantState, CardState, SkillLogItem };
+
+const patrolReplayCursorKey = (replayId: string) => `tribe_neon_patrol_replay_cursor_${replayId}`;
+
+function savedPatrolReplayCursor(replayId: unknown, fallback: unknown): number {
+  const fallbackIndex = Math.max(0, Number(fallback || 0));
+  if (typeof window === "undefined" || typeof replayId !== "string" || !replayId) return fallbackIndex;
+  const saved = Number(window.localStorage.getItem(patrolReplayCursorKey(replayId)));
+  return Number.isFinite(saved) && saved >= 0 ? saved : fallbackIndex;
+}
 
 export function useBattle(options: UseBattleOptions) {
   const {
@@ -44,6 +55,7 @@ export function useBattle(options: UseBattleOptions) {
     vitality,
     setVitality,
     pvpRate,
+    setPvpRate,
     pvpRankings,
     raidAttemptsToday,
     setRaidAttemptsToday,
@@ -59,7 +71,9 @@ export function useBattle(options: UseBattleOptions) {
     addGuildXpAndContributionByAction,
     setConfirmDialogConfig,
     patrolNpcs = [],
-    patrol
+    patrol,
+    setTutorialStep,
+    navigateTab,
   } = options;
 
   const [battleSessionId, setBattleSessionId] = useState<string | null>(null);
@@ -75,11 +89,26 @@ export function useBattle(options: UseBattleOptions) {
   const [isAutoPaused, setIsAutoPaused] = useState<boolean>(false);
   const [gvgTargetBaseId, setGvgTargetBaseId] = useState<string | null>(null);
   const [battleLoading, setBattleLoading] = useState<boolean>(false);
+  const battleStartInFlightRef = useRef(false);
   const [enemyTactic, setEnemyTactic] = useState<string>("OFFENSIVE");
   const [opponentPoints, setOpponentPoints] = useState<number>(1000);
   const [officialGvgAttackId, setOfficialGvgAttackId] = useState<string | null>(null);
   const [officialGvgReplayId, setOfficialGvgReplayId] = useState<string | null>(null);
   const [officialGvgWinner, setOfficialGvgWinner] = useState<"PLAYER" | "ENEMY" | null>(null);
+  const [officialPatrolReplayId, setOfficialPatrolReplayId] = useState<string | null>(null);
+  const [officialPatrolWinner, setOfficialPatrolWinner] = useState<"PLAYER" | "ENEMY" | null>(null);
+  const [officialPatrolEvents, setOfficialPatrolEvents] = useState<ServerBattleEvent[]>([]);
+  const [officialPatrolEventIndex, setOfficialPatrolEventIndex] = useState(0);
+  const [officialPvpReplayId, setOfficialPvpReplayId] = useState<string | null>(null);
+  const [officialPvpWinner, setOfficialPvpWinner] = useState<"PLAYER" | "ENEMY" | null>(null);
+  const [officialPvpEvents, setOfficialPvpEvents] = useState<ServerBattleEvent[]>([]);
+  const [officialPvpEventIndex, setOfficialPvpEventIndex] = useState(0);
+  const [officialPvpResult, setOfficialPvpResult] = useState<any | null>(null);
+  const [officialRaidReplayId, setOfficialRaidReplayId] = useState<string | null>(null);
+  const [officialRaidWinner, setOfficialRaidWinner] = useState<"PLAYER" | "ENEMY" | null>(null);
+  const [officialRaidEvents, setOfficialRaidEvents] = useState<ServerBattleEvent[]>([]);
+  const [officialRaidEventIndex, setOfficialRaidEventIndex] = useState(0);
+  const [officialRaidResult, setOfficialRaidResult] = useState<any | null>(null);
 
   // 5v5 状態管理
   const [playerPartyStates, setPlayerPartyStates] = useState<ParticipantState[]>([]);
@@ -132,6 +161,20 @@ export function useBattle(options: UseBattleOptions) {
         setOfficialGvgAttackId(playerStateData.officialGvgAttackId || null);
         setOfficialGvgReplayId(playerStateData.officialGvgReplayId || null);
         setOfficialGvgWinner(playerStateData.officialGvgWinner === "PLAYER" ? "PLAYER" : playerStateData.officialGvgWinner === "ENEMY" ? "ENEMY" : null);
+        setOfficialPatrolReplayId(playerStateData.officialPatrolReplayId || null);
+        setOfficialPatrolWinner(playerStateData.officialPatrolWinner === "PLAYER" ? "PLAYER" : playerStateData.officialPatrolWinner === "ENEMY" ? "ENEMY" : null);
+        setOfficialPatrolEvents(serverBattleEvents(playerStateData.officialPatrolEvents));
+        setOfficialPatrolEventIndex(savedPatrolReplayCursor(playerStateData.officialPatrolReplayId, playerStateData.officialPatrolEventIndex));
+        setOfficialPvpReplayId(playerStateData.officialPvpReplayId || null);
+        setOfficialPvpWinner(playerStateData.officialPvpWinner === "PLAYER" ? "PLAYER" : playerStateData.officialPvpWinner === "ENEMY" ? "ENEMY" : null);
+        setOfficialPvpEvents(serverBattleEvents(playerStateData.officialPvpEvents));
+        setOfficialPvpEventIndex(savedPatrolReplayCursor(playerStateData.officialPvpReplayId, playerStateData.officialPvpEventIndex));
+        setOfficialPvpResult(playerStateData.officialPvpResult || null);
+        setOfficialRaidReplayId(playerStateData.officialRaidReplayId || null);
+        setOfficialRaidWinner(playerStateData.officialRaidWinner === "PLAYER" ? "PLAYER" : playerStateData.officialRaidWinner === "ENEMY" ? "ENEMY" : null);
+        setOfficialRaidEvents(serverBattleEvents(playerStateData.officialRaidEvents));
+        setOfficialRaidEventIndex(savedPatrolReplayCursor(playerStateData.officialRaidReplayId, playerStateData.officialRaidEventIndex));
+        setOfficialRaidResult(playerStateData.officialRaidResult || null);
 
         setBattleState("PLAYING");
         return true;
@@ -143,7 +186,7 @@ export function useBattle(options: UseBattleOptions) {
   };
 
   // バトルの初期設定フェーズへ移行
-  const startCardBattle = async (
+  const startCardBattleInternal = async (
     mode: "PVP" | "RAID" | "GVG" | "PATROL",
     targetName: string,
     areaIdOrOpponentUserId?: string,
@@ -152,7 +195,9 @@ export function useBattle(options: UseBattleOptions) {
     opponentMainAlign?: string,
     opponentSubAlign?: string,
     opponentDefenseCharIds?: string[],
-    supportCharacter?: any
+    supportCharacter?: any,
+    patrolNpcOverride?: any,
+    patrolIdOverride?: string
   ) => {
     if (!session) return;
     if (mode === "GVG" && !areaIdOrOpponentUserId?.startsWith("gvg_match:")) {
@@ -168,10 +213,31 @@ export function useBattle(options: UseBattleOptions) {
     setOfficialGvgAttackId(null);
     setOfficialGvgReplayId(null);
     setOfficialGvgWinner(null);
+    setOfficialPatrolReplayId(null);
+    setOfficialPatrolWinner(null);
+    setOfficialPatrolEvents([]);
+    setOfficialPatrolEventIndex(0);
+    setOfficialPvpReplayId(null);
+    setOfficialPvpWinner(null);
+    setOfficialPvpEvents([]);
+    setOfficialPvpEventIndex(0);
+    setOfficialPvpResult(null);
+    setOfficialRaidReplayId(null); setOfficialRaidWinner(null); setOfficialRaidEvents([]); setOfficialRaidEventIndex(0); setOfficialRaidResult(null);
     let officialGvgDefenseDeck: unknown = null;
     let officialGvgAttackIdForBattle: string | null = null;
     let officialGvgReplayIdForBattle: string | null = null;
     let officialGvgWinnerForBattle: "PLAYER" | "ENEMY" | null = null;
+    let officialPatrolReplayIdForBattle: string | null = null;
+    let officialPatrolWinnerForBattle: "PLAYER" | "ENEMY" | null = null;
+    let officialPatrolEventsForBattle: ServerBattleEvent[] = [];
+    let officialPvpReplayIdForBattle: string | null = null;
+    let officialPvpWinnerForBattle: "PLAYER" | "ENEMY" | null = null;
+    let officialPvpEventsForBattle: ServerBattleEvent[] = [];
+    let officialPvpResultForBattle: any | null = null;
+    let officialRaidReplayIdForBattle: string | null = null;
+    let officialRaidWinnerForBattle: "PLAYER" | "ENEMY" | null = null;
+    let officialRaidEventsForBattle: ServerBattleEvent[] = [];
+    let officialRaidResultForBattle: any | null = null;
 
     // レイドボスマスターデータの取得
     let bossMaster = {
@@ -190,18 +256,21 @@ export function useBattle(options: UseBattleOptions) {
     };
 
     if (mode === "PATROL") {
-      const npcMaster = patrolNpcs.find(n => n.id === areaIdOrOpponentUserId);
+      const npcMaster = patrolNpcOverride || patrolNpcs.find(n => n.id === areaIdOrOpponentUserId);
       if (npcMaster) {
+        const enemyData = npcMaster.enemy_data || {};
         bossMaster = {
           id: npcMaster.id,
           boss_name: npcMaster.npc_name,
-          level: npcMaster.level || 1,
-          max_hp: npcMaster.hp || 1000,
-          atk: npcMaster.atk || 100,
-          def: npcMaster.def || 100,
-          spd: npcMaster.spd || 100,
-          luk: npcMaster.luk || 10,
-          skills: typeof npcMaster.skills === "string" ? JSON.parse(npcMaster.skills) : npcMaster.skills
+          level: npcMaster.npc_level || npcMaster.level || 1,
+          max_hp: enemyData.hp || npcMaster.hp || 1000,
+          atk: enemyData.atk || npcMaster.atk || 100,
+          def: enemyData.def || npcMaster.def || 100,
+          spd: enemyData.spd || npcMaster.spd || 100,
+          luk: enemyData.luk || npcMaster.luk || 10,
+          skills: enemyData.skills || (typeof npcMaster.skills === "string" ? JSON.parse(npcMaster.skills) : npcMaster.skills) || [
+            { id: "npc_attack", name: "攻撃", ap_cost: 1, power: 50, effect_type: "ATTACK" }
+          ]
         };
       }
     }
@@ -230,10 +299,13 @@ export function useBattle(options: UseBattleOptions) {
       let isControlledByUs = false;
       if (areaIdOrOpponentUserId) {
         try {
-          const { data: baseControls } = await supabase.from("guild_base_controls").select("*").eq("base_id", areaIdOrOpponentUserId);
+          const { data: publicBaseControls } = await supabase.rpc("get_public_guild_base_controls");
+          const baseControls = (publicBaseControls || []).filter(
+            (control: any) => control.base_id === areaIdOrOpponentUserId,
+          );
           if (baseControls && baseControls.length > 0) {
-            const sortedControls = [...baseControls].sort((a, b) => b.daily_points - a.daily_points);
-            const topGuildId = sortedControls[0].guild_id;
+            const controllingRecord = baseControls.find((control: any) => control.is_controlling);
+            const topGuildId = controllingRecord?.guild_id;
             const myGuildId = userGuildMember?.guild_id;
             if (myGuildId && topGuildId === myGuildId) {
               isControlledByUs = true;
@@ -247,59 +319,17 @@ export function useBattle(options: UseBattleOptions) {
     }
 
     if (mode === "PVP") {
-      try {
-        const res = await supabase.rpc("consume_pvp_point", { p_user_id: session.user.id });
-        if (res.error || res.data?.error) {
-          setErrorMessage("PvPポイントが不足しています。");
-          setBattleLoading(false);
-          return;
-        }
-        setPvpPoints(prev => prev - 1);
-        
-        // 対戦相手のレートと作戦を設定
-        setOpponentPoints(oppPoints || 1000);
-        setEnemyTactic(oppTactic || "OFFENSIVE");
-      } catch (err) {
-        console.warn(err);
-        setBattleLoading(false);
-        return;
-      }
+      // Cost consumption, canonical rosters and the random seed are committed
+      // together by start_pvp_battle below.
+      setOpponentPoints(oppPoints || 1000);
+      setEnemyTactic(oppTactic || "OFFENSIVE");
     }
 
     setBattleMode(mode);
     setBattleOpponentName(targetName);
     
     if (mode === "RAID") {
-      const nextAttempt = (raidAttemptsToday || 0) + 1;
-      if (nextAttempt > RAID_MAX_DAILY) {
-        setErrorMessage("本日のレイド挑戦回数の上限に達しました。");
-        setBattleLoading(false);
-        return;
-      }
-      const costEntry = RAID_COST_TABLE[Math.min(nextAttempt - 1, RAID_COST_TABLE.length - 1)];
-      if (costEntry.type !== "FREE") {
-        try {
-          const res = await supabase.rpc("consume_raid_attempt", { 
-            p_user_id: session.user.id, 
-            p_cost_type: costEntry.type, 
-            p_cost_amount: costEntry.cost 
-          });
-          if (res.error) {
-            setErrorMessage(res.error.message || "コストが不足しています。");
-            setBattleLoading(false);
-            return;
-          }
-          if (costEntry.type === "CASH" && setCash) setCash((prev: number) => prev - costEntry.cost);
-          if (costEntry.type === "DIAMOND" && setDiamonds) setDiamonds((prev: number) => prev - costEntry.cost);
-        } catch (err) {
-          console.warn(err);
-          setBattleLoading(false);
-          return;
-        }
-      }
-      if (setRaidAttemptsToday) {
-        setRaidAttemptsToday((prev: number) => prev + 1);
-      }
+      // Attempt count and currency are committed atomically by start_raid_battle.
     }
     
     if (mode === "GVG") {
@@ -364,7 +394,7 @@ export function useBattle(options: UseBattleOptions) {
     setAp(3);
 
     // 味方部隊の個別ステータス構築
-    const initialPlayerParty: ParticipantState[] = userCharRecords.map((charRecord, idx) => {
+    let initialPlayerParty: ParticipantState[] = userCharRecords.map((charRecord, idx) => {
       const stats = getCharacterTotalStats(charRecord, userEquipmentsList);
       const master = CHARACTERS_MASTER.find(c => c.id === charRecord.character_id);
 
@@ -407,6 +437,22 @@ export function useBattle(options: UseBattleOptions) {
             ownerId: skillMaster?.exclusive_character_id || null
           };
         });
+
+      // Every combatant needs a damage action. Tutorial gacha can award a
+      // support-only skill, and an empty/support-only loadout otherwise stalls
+      // until the round limit and incorrectly defeats a new player.
+      if (!charSkills.some(skill => skill.effect_type === "ATTACK")) {
+        charSkills.push({
+          id: `basic_attack_${charRecord.id}`,
+          skill_card_id: "basic_attack",
+          name: "通常攻撃",
+          ap_cost: 0,
+          power: 50,
+          effect_type: "ATTACK",
+          plus_val: 0,
+          ownerId: charRecord.character_id
+        });
+      }
 
       return {
         id: `ally_${charRecord.character_id}`,
@@ -453,7 +499,7 @@ export function useBattle(options: UseBattleOptions) {
 
     if (options.selectedBattleHelper && !supportCharacter) {
       try {
-        const { data: loadout, error: loadoutError } = await supabase.rpc("get_public_battle_loadout", { p_target_user_id: options.selectedBattleHelper });
+        const { data: loadout, error: loadoutError } = await supabase.rpc("get_friend_helper_loadout", { p_friend_user_id: options.selectedBattleHelper });
         const hUser = loadout?.username ? { username: loadout.username } : null;
         const hChar = loadout?.character;
         const hEquips = loadout?.equipments || [];
@@ -613,7 +659,7 @@ export function useBattle(options: UseBattleOptions) {
 
             return {
               id: `enemy_${charRecord.character_id}`,
-              name: (master?.jpName || "敵構成員") + bonusLabel,
+              name: (master?.jpName || "敵キャラクター") + bonusLabel,
               characterId: charRecord.character_id,
               alignment: master?.alignment || "ORDER",
               level: charRecord.level,
@@ -716,13 +762,12 @@ export function useBattle(options: UseBattleOptions) {
                 // 支配ギルド判定 (防衛バフ +10% 適用)
                 let isOpponentControlling = false;
                 if (!isPractice) {
-                  const { data: baseControls } = await supabase
-                    .from("guild_base_controls")
-                    .select("*")
-                    .eq("base_id", areaIdOrOpponentUserId)
-                    .eq("guild_id", oppGuildId)
-                    .maybeSingle();
-                  isOpponentControlling = baseControls?.is_controlling || false;
+                  const { data: publicBaseControls } = await supabase.rpc("get_public_guild_base_controls");
+                  const baseControl = (publicBaseControls || []).find(
+                    (control: any) =>
+                      control.base_id === areaIdOrOpponentUserId && control.guild_id === oppGuildId,
+                  );
+                  isOpponentControlling = Boolean(baseControl?.is_controlling);
                 }
 
                 const baseNames: { [key: string]: string } = {
@@ -774,7 +819,7 @@ export function useBattle(options: UseBattleOptions) {
 
                   return {
                     id: `enemy_${charRecord.character_id}`,
-                    name: `${master?.jpName || "敵構成員"}${buffLabel} (${teamLabel})`,
+                    name: `${master?.jpName || "敵キャラクター"}${buffLabel} (${teamLabel})`,
                     characterId: charRecord.character_id,
                     alignment: master?.alignment || "ORDER",
                     level: charRecord.level,
@@ -943,15 +988,54 @@ export function useBattle(options: UseBattleOptions) {
       const playerSnapshot = participantsToBattleUnits(initialPlayerParty);
       const enemySnapshot = participantsToBattleUnits(initialEnemyParty);
       const replayMode = mode === "PATROL" ? "QUEST" : mode;
-      const { data: replaySessionId, error } = await supabase.rpc("create_battle_replay_pending", {
-        p_battle_mode: replayMode,
-        p_tactic_id: toDeterministicTactic(tactic),
-        p_random_seed: Math.floor(Math.random() * 2_000_000_000),
-        p_player_snapshot: playerSnapshot,
-        p_enemy_snapshot: enemySnapshot,
-        p_source_reference_id: officialGvgAttackIdForBattle,
-      });
+      const patrolIdForBattle = patrolIdOverride || patrol?.id || null;
+      const replayCreation = replayMode === "QUEST"
+        ? await supabase.rpc("create_patrol_battle_replay", {
+            p_patrol_id: patrolIdForBattle,
+            p_tactic_id: toDeterministicTactic(tactic),
+          })
+        : replayMode === "PVP"
+          ? await supabase.rpc("start_pvp_battle", {
+              p_opponent_user_id: areaIdOrOpponentUserId,
+              p_character_ids: party,
+              p_tactic: toDeterministicTactic(tactic),
+            })
+        : replayMode === "RAID"
+          ? await supabase.rpc("start_raid_battle", {
+              p_instance_id: areaIdOrOpponentUserId,
+              p_character_ids: party,
+              p_tactic: toDeterministicTactic(tactic),
+            })
+        : await supabase.rpc("create_battle_replay_pending", {
+            p_battle_mode: replayMode,
+            p_tactic_id: toDeterministicTactic(tactic),
+            p_random_seed: Math.floor(Math.random() * 2_000_000_000),
+            p_player_snapshot: playerSnapshot,
+            p_enemy_snapshot: enemySnapshot,
+            p_source_reference_id: officialGvgAttackIdForBattle,
+          });
+      const error = replayCreation.error;
+      const replaySessionId = replayMode === "QUEST"
+        ? replayCreation.data?.replay_session_id
+        : replayMode === "PVP"
+          ? replayCreation.data?.replay_session_id
+          : replayMode === "RAID"
+            ? replayCreation.data?.replay_session_id
+          : replayCreation.data;
       if (error) console.warn("Failed to create replay snapshot:", error.message);
+      if (replayMode === "QUEST" && (!replaySessionId || error)) {
+        setBattleLoading(false);
+        setErrorMessage("NPCバトルの開始をサーバーで確定できませんでした。もう一度お試しください。");
+        return;
+      }
+      if (replayMode === "PVP" && (!replaySessionId || error)) {
+        setBattleLoading(false);
+        setErrorMessage(error?.message || "PvPバトルの開始をサーバーで確定できませんでした。もう一度お試しください。");
+        return;
+      }
+      if (replayMode === "RAID" && (!replaySessionId || error)) {
+        setBattleLoading(false); setErrorMessage(error?.message || "レイド開始をサーバーで確定できませんでした。"); return;
+      }
       if (officialGvgAttackIdForBattle && (!replaySessionId || error)) {
         await abortOfficialGvgStart("公式GvGのサーバー確定に失敗しました。もう一度お試しください。");
         return;
@@ -988,6 +1072,111 @@ export function useBattle(options: UseBattleOptions) {
           setOfficialGvgWinner(officialGvgWinnerForBattle);
         }
       }
+      if (replaySessionId && replayMode === "QUEST") {
+        const canonicalPlayers = patrolSnapshotToParticipants(replayCreation.data?.player_snapshot, false);
+        const canonicalEnemies = patrolSnapshotToParticipants(replayCreation.data?.enemy_snapshot, true);
+        if (canonicalPlayers.length === 0 || canonicalEnemies.length === 0) {
+          setBattleLoading(false);
+          setErrorMessage("NPCバトルの正規編成を取得できませんでした。もう一度お試しください。");
+          return;
+        }
+        initialPlayerParty = canonicalPlayers;
+        initialEnemyParty = canonicalEnemies;
+        setPlayerPartyStates(canonicalPlayers);
+        setEnemyPartyStates(canonicalEnemies);
+        const canonicalTimeline = [
+          ...canonicalPlayers.map((participant) => ({ id: participant.id, name: participant.name, isEnemy: false, spd: participant.stats.spd })),
+          ...canonicalEnemies.map((participant) => ({ id: participant.id, name: participant.name, isEnemy: true, spd: participant.stats.spd })),
+        ].sort((a, b) => b.spd - a.spd || (a.isEnemy === b.isEnemy ? a.id.localeCompare(b.id) : a.isEnemy ? 1 : -1));
+        setTimeline(canonicalTimeline);
+        setTimelineIndex(0);
+
+        let { data: resolvedReplay, error: resolveError } = await supabase.functions.invoke("resolve-battle", {
+          body: { replaySessionId },
+        });
+        if (resolveError) {
+          const retry = await supabase.functions.invoke("resolve-battle", { body: { replaySessionId } });
+          resolvedReplay = retry.data;
+          resolveError = retry.error;
+        }
+        if (resolveError || (resolvedReplay?.winner !== "PLAYER" && resolvedReplay?.winner !== "ENEMY")) {
+          console.warn("Failed to resolve patrol replay on the server:", resolveError?.message);
+          setBattleLoading(false);
+          setErrorMessage("NPCバトルの勝敗をサーバーで確定できませんでした。もう一度お試しください。");
+          return;
+        }
+        officialPatrolReplayIdForBattle = replaySessionId;
+        officialPatrolWinnerForBattle = resolvedReplay.winner;
+        officialPatrolEventsForBattle = serverBattleEvents(resolvedReplay.events);
+        if (officialPatrolEventsForBattle.length === 0) {
+          setBattleLoading(false);
+          setErrorMessage("NPCバトルの確定記録を取得できませんでした。もう一度お試しください。");
+          return;
+        }
+        setOfficialPatrolReplayId(replaySessionId);
+        setOfficialPatrolWinner(resolvedReplay.winner);
+        setOfficialPatrolEvents(officialPatrolEventsForBattle);
+        setOfficialPatrolEventIndex(0);
+      }
+      if (replaySessionId && replayMode === "PVP") {
+        const canonicalPlayers = patrolSnapshotToParticipants(replayCreation.data?.player_snapshot, false);
+        const canonicalEnemies = patrolSnapshotToParticipants(replayCreation.data?.enemy_snapshot, true);
+        if (canonicalPlayers.length === 0 || canonicalEnemies.length === 0) {
+          setBattleLoading(false);
+          setErrorMessage("PvPバトルの正規編成を取得できませんでした。もう一度お試しください。");
+          return;
+        }
+        initialPlayerParty = canonicalPlayers;
+        initialEnemyParty = canonicalEnemies;
+        setPlayerPartyStates(canonicalPlayers);
+        setEnemyPartyStates(canonicalEnemies);
+        const canonicalTimeline = [
+          ...canonicalPlayers.map((participant) => ({ id: participant.id, name: participant.name, isEnemy: false, spd: participant.stats.spd })),
+          ...canonicalEnemies.map((participant) => ({ id: participant.id, name: participant.name, isEnemy: true, spd: participant.stats.spd })),
+        ].sort((a, b) => b.spd - a.spd || (a.isEnemy === b.isEnemy ? a.id.localeCompare(b.id) : a.isEnemy ? 1 : -1));
+        setTimeline(canonicalTimeline);
+        setTimelineIndex(0);
+
+        let { data: resolvedReplay, error: resolveError } = await supabase.functions.invoke("resolve-battle", {
+          body: { replaySessionId },
+        });
+        if (resolveError) {
+          const retry = await supabase.functions.invoke("resolve-battle", { body: { replaySessionId } });
+          resolvedReplay = retry.data;
+          resolveError = retry.error;
+        }
+        const events = serverBattleEvents(resolvedReplay?.events);
+        if (resolveError || (resolvedReplay?.winner !== "PLAYER" && resolvedReplay?.winner !== "ENEMY") || events.length === 0) {
+          console.warn("Failed to resolve PvP replay on the server:", resolveError?.message);
+          setBattleLoading(false);
+          setErrorMessage("PvPバトルの勝敗をサーバーで確定できませんでした。もう一度お試しください。");
+          return;
+        }
+        officialPvpReplayIdForBattle = replaySessionId;
+        officialPvpWinnerForBattle = resolvedReplay.winner;
+        officialPvpEventsForBattle = events;
+        officialPvpResultForBattle = resolvedReplay;
+        setOfficialPvpReplayId(replaySessionId);
+        setOfficialPvpWinner(resolvedReplay.winner);
+        setOfficialPvpEvents(events);
+        setOfficialPvpEventIndex(0);
+        setOfficialPvpResult(resolvedReplay);
+        setPvpPoints(Number(resolvedReplay.remainingPvpPoints ?? replayCreation.data?.remaining_pvp_points ?? Math.max(0, pvpPoints - 1)));
+      }
+      if (replaySessionId && replayMode === "RAID") {
+        const canonicalPlayers = patrolSnapshotToParticipants(replayCreation.data?.player_snapshot, false);
+        const canonicalEnemies = patrolSnapshotToParticipants(replayCreation.data?.enemy_snapshot, true);
+        let { data: resolvedReplay, error: resolveError } = await supabase.functions.invoke("resolve-battle", { body: { replaySessionId } });
+        if (resolveError) { const retry = await supabase.functions.invoke("resolve-battle", { body: { replaySessionId } }); resolvedReplay=retry.data; resolveError=retry.error; }
+        const events=serverBattleEvents(resolvedReplay?.events);
+        if(resolveError||!resolvedReplay?.winner||!events.length){setBattleLoading(false);setErrorMessage("レイド結果をサーバーで確定できませんでした。");return;}
+        initialPlayerParty=canonicalPlayers; initialEnemyParty=canonicalEnemies;
+        setPlayerPartyStates(canonicalPlayers); setEnemyPartyStates(canonicalEnemies);
+        setTimeline([...canonicalPlayers.map(p=>({id:p.id,name:p.name,isEnemy:false,spd:p.stats.spd})),...canonicalEnemies.map(p=>({id:p.id,name:p.name,isEnemy:true,spd:p.stats.spd}))].sort((a,b)=>b.spd-a.spd));
+        officialRaidReplayIdForBattle=replaySessionId; officialRaidWinnerForBattle=resolvedReplay.winner; officialRaidEventsForBattle=events; officialRaidResultForBattle=resolvedReplay;
+        setOfficialRaidReplayId(replaySessionId);setOfficialRaidWinner(resolvedReplay.winner);setOfficialRaidEvents(events);setOfficialRaidEventIndex(0);setOfficialRaidResult(resolvedReplay);
+        setRaidAttemptsToday?.(Number(replayCreation.data?.attempt_number ?? (raidAttemptsToday ?? 0) + 1));
+      }
     } catch (err) {
       console.warn("Failed to create replay snapshot:", err);
       if (officialGvgAttackIdForBattle) {
@@ -1008,6 +1197,17 @@ export function useBattle(options: UseBattleOptions) {
           officialGvgAttackId: officialGvgAttackIdForBattle,
           officialGvgReplayId: officialGvgReplayIdForBattle,
           officialGvgWinner: officialGvgWinnerForBattle,
+          officialPatrolReplayId: officialPatrolReplayIdForBattle,
+          officialPatrolWinner: officialPatrolWinnerForBattle,
+          officialPatrolEvents: officialPatrolEventsForBattle,
+          officialPatrolEventIndex: 0,
+          officialPvpReplayId: officialPvpReplayIdForBattle,
+          officialPvpWinner: officialPvpWinnerForBattle,
+          officialPvpEvents: officialPvpEventsForBattle,
+          officialPvpEventIndex: 0,
+          officialPvpResult: officialPvpResultForBattle,
+          officialRaidReplayId: officialRaidReplayIdForBattle, officialRaidWinner: officialRaidWinnerForBattle,
+          officialRaidEvents: officialRaidEventsForBattle, officialRaidEventIndex: 0, officialRaidResult: officialRaidResultForBattle,
         },
         enemy_state: { enemyStates: initialEnemyParty },
         status: "ACTIVE"
@@ -1020,6 +1220,21 @@ export function useBattle(options: UseBattleOptions) {
 
     setBattleState("SETUP");
     setBattleLoading(false);
+  };
+
+  const startCardBattle = async (...args: Parameters<typeof startCardBattleInternal>) => {
+    if (battleStartInFlightRef.current) return;
+    battleStartInFlightRef.current = true;
+    const actionPerformance = beginActionPerformance("battle_start");
+    try {
+      actionPerformance.mark("request_start");
+      await startCardBattleInternal(...args);
+      actionPerformance.mark("response");
+      actionPerformance.mark("state_update");
+      actionPerformance.markVisualReady();
+    } finally {
+      battleStartInFlightRef.current = false;
+    }
   };
 
   // 割合防御減算モデル ＋ 乱数±5% ＋ LUK連動クリティカル ＋ アライメント相性計算
@@ -1074,6 +1289,11 @@ export function useBattle(options: UseBattleOptions) {
     // バトル開始時発動スキル (START_OF_BATTLE) の評価
     const nextLogs = [...battleLog, "戦闘開始！初期バフ適用。"];
     const updatedPlayers = playerPartyStates.map(p => {
+      // QUEST is a replay of the already-resolved server record. Client-only
+      // opening passives must not mutate its authoritative HP/shield state.
+      if ((battleMode === "PATROL" && officialPatrolEvents.length > 0)
+        || (battleMode === "PVP" && officialPvpEvents.length > 0)
+        || (battleMode === "RAID" && officialRaidEvents.length > 0)) return p;
       // 例: ストリートシールドなどの開始時アビリティ持ちのシミュレート
       if (p.characterId === "11111111-1111-1111-1111-111111111111") {
         nextLogs.push(`[${p.name}] のパッシブ: 開幕シールド展開！`);
@@ -1411,6 +1631,115 @@ export function useBattle(options: UseBattleOptions) {
   useEffect(() => {
     if (battleState !== "PLAYING" || isAutoPaused) return;
 
+    const authoritativeEvents = battleMode === "PATROL" ? officialPatrolEvents
+      : battleMode === "PVP" ? officialPvpEvents
+      : battleMode === "RAID" ? officialRaidEvents
+      : [];
+    const authoritativeEventIndex = battleMode === "PATROL" ? officialPatrolEventIndex
+      : battleMode === "PVP" ? officialPvpEventIndex
+      : battleMode === "RAID" ? officialRaidEventIndex
+      : 0;
+    const authoritativeReplayId = battleMode === "PATROL" ? officialPatrolReplayId
+      : battleMode === "PVP" ? officialPvpReplayId
+      : battleMode === "RAID" ? officialRaidReplayId
+      : null;
+    if (authoritativeEvents.length > 0) {
+      const replayEvent = authoritativeEvents[authoritativeEventIndex];
+      if (!replayEvent) return;
+      const delay = replayEvent.type === "ACTION" ? 450 : replayEvent.type === "RESULT" ? 700 : 600;
+      const timer = setTimeout(() => {
+        const payload = replayEvent.payload;
+        const actorId = String(payload.actorId ?? "");
+        const targetId = String(payload.targetId ?? "");
+        const allParticipants = [...playerPartyStates, ...enemyPartyStates];
+        const actor = allParticipants.find((participant) => participant.id === actorId);
+        const target = allParticipants.find((participant) => participant.id === targetId);
+        setBattleRound(replayEvent.round);
+
+        if (replayEvent.type === "ACTION") {
+          const skillId = String(payload.skillId ?? "BASIC_ATTACK");
+          const skill = actor?.skills.find((entry: any) => String(entry.id ?? entry.skill_card_id) === skillId);
+          const nextImpact = authoritativeEvents.slice(authoritativeEventIndex + 1)
+            .find((entry) => entry.type === "DAMAGE" || entry.type === "HEAL");
+          const nextTargetId = String(nextImpact?.payload.targetId ?? "");
+          setActiveSkillCutIn({ charName: actor?.name ?? actorId, skillName: skill?.name ?? (skillId === "BASIC_ATTACK" ? "通常攻撃" : skillId) });
+          const actorTimelineIndex = timeline.findIndex((entry) => entry.id === actorId);
+          if (actorTimelineIndex >= 0) setTimelineIndex(actorTimelineIndex);
+          if (nextTargetId) setTargetLine({ fromId: actorId, toId: nextTargetId });
+          setBattleLog((previous) => [...previous, `[ROUND ${replayEvent.round}] ${actor?.name ?? actorId}：${skill?.name ?? "通常攻撃"}`]);
+        } else if (replayEvent.type === "DAMAGE") {
+          const amount = Math.max(0, Number(payload.amount ?? 0));
+          const remainingHp = Math.max(0, Number(payload.remainingHp ?? target?.hp ?? 0));
+          const critical = payload.critical === true;
+          const missed = payload.hit === false;
+          const updateTarget = (participant: ParticipantState) => participant.id === targetId
+            ? { ...participant, hp: remainingHp, isDead: remainingHp <= 0 }
+            : participant;
+          setPlayerPartyStates((previous) => previous.map(updateTarget));
+          setEnemyPartyStates((previous) => previous.map(updateTarget));
+          setTargetLine(actorId && targetId ? { fromId: actorId, toId: targetId } : null);
+          setActiveShakingCharId(missed ? null : targetId);
+          setDamagePopup({ val: amount, type: "dmg", isCritical: critical, x: 120, y: 40, charId: targetId });
+          playCyberSe(missed ? "click" : "hit");
+          setBattleLog((previous) => [...previous, missed
+            ? `${actor?.name ?? actorId}の攻撃は外れた。`
+            : `${target?.name ?? targetId}に ${amount.toLocaleString()}${critical ? " 【CRITICAL!】" : ""} ダメージ。`]);
+        } else if (replayEvent.type === "HEAL") {
+          const amount = Math.max(0, Number(payload.amount ?? 0));
+          const remainingHp = Math.max(0, Number(payload.remainingHp ?? target?.hp ?? 0));
+          const updateTarget = (participant: ParticipantState) => participant.id === targetId
+            ? { ...participant, hp: remainingHp, isDead: false }
+            : participant;
+          setPlayerPartyStates((previous) => previous.map(updateTarget));
+          setEnemyPartyStates((previous) => previous.map(updateTarget));
+          setDamagePopup({ val: amount, type: "heal", x: 120, y: 40, charId: targetId });
+          playCyberSe("click");
+          setBattleLog((previous) => [...previous, `${target?.name ?? targetId}のHPが ${amount.toLocaleString()} 回復。`]);
+        } else if (replayEvent.type === "STATUS") {
+          const status = String(payload.status ?? "STATUS");
+          if (status === "STUN") {
+            const updateTarget = (participant: ParticipantState) => participant.id === targetId ? { ...participant, stunTurns: 1 } : participant;
+            setPlayerPartyStates((previous) => previous.map(updateTarget));
+            setEnemyPartyStates((previous) => previous.map(updateTarget));
+          }
+          setBattleLog((previous) => [...previous, `${target?.name ?? targetId}に ${status} が付与された。`]);
+        } else if (replayEvent.type === "DEFEAT") {
+          const updateTarget = (participant: ParticipantState) => participant.id === targetId
+            ? { ...participant, hp: 0, isDead: true }
+            : participant;
+          setPlayerPartyStates((previous) => previous.map(updateTarget));
+          setEnemyPartyStates((previous) => previous.map(updateTarget));
+          setBattleLog((previous) => [...previous, `${target?.name ?? targetId}は戦闘不能。`]);
+        } else if (replayEvent.type === "RESULT") {
+          setActiveSkillCutIn(null);
+          setTargetLine(null);
+          setActiveShakingCharId(null);
+          setDamagePopup(null);
+          const winner = payload.winner === "PLAYER" ? "VICTORY" : "DEFEAT";
+          void endBattleSession(winner);
+          return;
+        }
+
+        if (replayEvent.type !== "ACTION") {
+          setActiveSkillCutIn(null);
+          setTargetLine(null);
+          setActiveShakingCharId(null);
+        }
+        const advanceReplay = (previous: number) => {
+          const next = previous + 1;
+          if (authoritativeReplayId && typeof window !== "undefined") {
+            window.localStorage.setItem(patrolReplayCursorKey(authoritativeReplayId), String(next));
+          }
+          return next;
+        };
+        if (battleMode === "PATROL") setOfficialPatrolEventIndex(advanceReplay);
+        else if (battleMode === "PVP") setOfficialPvpEventIndex(advanceReplay);
+        else if (battleMode === "RAID") setOfficialRaidEventIndex(advanceReplay);
+      }, delay / battleSpeed);
+
+      return () => clearTimeout(timer);
+    }
+
     const activeNode = timeline[timelineIndex];
     if (!activeNode) return;
 
@@ -1423,25 +1752,68 @@ export function useBattle(options: UseBattleOptions) {
     }, 1500 / battleSpeed);
 
     return () => clearTimeout(timer);
-  }, [battleState, timelineIndex, isAutoPaused, battleSpeed]);
+  }, [battleState, battleMode, timelineIndex, isAutoPaused, battleSpeed, officialPatrolEvents, officialPatrolEventIndex, officialPatrolReplayId, officialPvpEvents, officialPvpEventIndex, officialPvpReplayId, officialRaidEvents, officialRaidEventIndex, officialRaidReplayId]);
 
   const endBattleSession = async (result: "VICTORY" | "DEFEAT") => {
     if (!session) return;
     setBattleState(null);
     setBattleMode(null);
     const modeTemp = battleMode;
+    const opponentNameTemp = battleOpponentName;
     const gvgAreaTemp = gvgTargetBaseId;
     const gvgAttackIdTemp = officialGvgAttackId;
     const gvgReplayIdTemp = officialGvgReplayId;
     const gvgWinnerTemp = officialGvgWinner;
     const hasOfficialGvgResult = modeTemp === "GVG" && gvgAttackIdTemp && gvgReplayIdTemp
       && (gvgWinnerTemp === "PLAYER" || gvgWinnerTemp === "ENEMY");
+    const patrolWinnerTemp = officialPatrolWinner;
+    const patrolReplayIdTemp = officialPatrolReplayId;
+    const hasOfficialPatrolResult = modeTemp === "PATROL" && officialPatrolReplayId
+      && (patrolWinnerTemp === "PLAYER" || patrolWinnerTemp === "ENEMY");
+    const pvpWinnerTemp = officialPvpWinner;
+    const pvpReplayIdTemp = officialPvpReplayId;
+    const pvpResultTemp = officialPvpResult;
+    const hasOfficialPvpResult = modeTemp === "PVP" && officialPvpReplayId
+      && (pvpWinnerTemp === "PLAYER" || pvpWinnerTemp === "ENEMY");
+    const raidWinnerTemp = officialRaidWinner;
+    const raidReplayIdTemp = officialRaidReplayId;
+    const raidResultTemp = officialRaidResult;
+    const hasOfficialRaidResult = modeTemp === "RAID" && officialRaidReplayId
+      && officialRaidResult
+      && (raidWinnerTemp === "PLAYER" || raidWinnerTemp === "ENEMY");
     const finalResult = hasOfficialGvgResult
       ? (gvgWinnerTemp === "PLAYER" ? "VICTORY" : "DEFEAT")
+      : hasOfficialPatrolResult
+        ? (patrolWinnerTemp === "PLAYER" ? "VICTORY" : "DEFEAT")
+        : hasOfficialPvpResult
+          ? (pvpWinnerTemp === "PLAYER" ? "VICTORY" : "DEFEAT")
       : result;
     setOfficialGvgAttackId(null);
     setOfficialGvgReplayId(null);
     setOfficialGvgWinner(null);
+    setOfficialPatrolReplayId(null);
+    setOfficialPatrolWinner(null);
+    setOfficialPatrolEvents([]);
+    setOfficialPatrolEventIndex(0);
+    setOfficialPvpReplayId(null);
+    setOfficialPvpWinner(null);
+    setOfficialPvpEvents([]);
+    setOfficialPvpEventIndex(0);
+    setOfficialPvpResult(null);
+    setOfficialRaidReplayId(null);
+    setOfficialRaidWinner(null);
+    setOfficialRaidEvents([]);
+    setOfficialRaidEventIndex(0);
+    setOfficialRaidResult(null);
+    if (patrolReplayIdTemp && typeof window !== "undefined") {
+      window.localStorage.removeItem(patrolReplayCursorKey(patrolReplayIdTemp));
+    }
+    if (pvpReplayIdTemp && typeof window !== "undefined") {
+      window.localStorage.removeItem(patrolReplayCursorKey(pvpReplayIdTemp));
+    }
+    if (raidReplayIdTemp && typeof window !== "undefined") {
+      window.localStorage.removeItem(patrolReplayCursorKey(raidReplayIdTemp));
+    }
     setGvgTargetBaseId(null);
     const isWin = finalResult === "VICTORY";
 
@@ -1466,216 +1838,55 @@ export function useBattle(options: UseBattleOptions) {
     }
 
     if (modeTemp === "PATROL") {
-      if (patrol && patrol.id) {
-        await supabase.from("user_patrols").update({
-          battle_resolved: true,
-          battle_result: result
-        }).eq("id", patrol.id);
-      }
-      if (isWin) {
-        await supabase.rpc("advance_tutorial_progress", {
-          p_expected_step: "TUTORIAL_BATTLE",
-          p_next_step: "RULE_GUIDE"
-        });
-      }
+      // Patrol resolution is committed by resolve-battle. The browser only
+      // plays the animation and reflects the already-authoritative result.
       await syncBootstrapData(session.user.id);
       if (setConfirmDialogConfig) {
         setConfirmDialogConfig({
           isOpen: true,
           title: "バトル結果",
-          message: `見回りバトル終了: ${result === "VICTORY" ? "勝利！追加報酬が確定しました。" : "敗北：追加報酬はありません。"}`,
+          message: `見回りバトル終了: ${finalResult === "VICTORY" ? "勝利！追加報酬が確定しました。" : "敗北：追加報酬はありません。"}`,
           onConfirm: () => setConfirmDialogConfig(null),
           onCancel: () => setConfirmDialogConfig(null)
         });
       }
     } else if (modeTemp === "PVP") {
-      const diff = opponentPoints - pvpRate;
-      let pointsDiff = 0;
-      let rewardCash = 0;
-
-      try {
-        const { data: matchReward } = await supabase
-          .from("pvp_match_rewards_master")
-          .select("cash_reward")
-          .eq("result", isWin ? "VICTORY" : "DEFEAT")
-          .single();
-        
-        if (matchReward) {
-          if (isWin) {
-            pointsDiff = Math.min(30, Math.max(5, 15 + Math.floor(diff / 50)));
-            rewardCash = Math.min(1000, Math.max(100, matchReward.cash_reward + Math.floor(diff * 1.5)));
-          } else {
-            pointsDiff = Math.min(-2, Math.max(-15, -5 + Math.floor(diff / 50)));
-            rewardCash = 0;
-          }
-        } else {
-          // フォールバック
-          if (isWin) {
-            pointsDiff = Math.min(30, Math.max(5, 15 + Math.floor(diff / 50)));
-            rewardCash = Math.min(1000, Math.max(100, 400 + Math.floor(diff * 1.5)));
-          } else {
-            pointsDiff = Math.min(-2, Math.max(-15, -5 + Math.floor(diff / 50)));
-            rewardCash = 0;
-          }
-        }
-      } catch (e) {
-        console.warn("Failed to fetch pvp_match_rewards_master", e);
-        if (isWin) {
-          pointsDiff = Math.min(30, Math.max(5, 15 + Math.floor(diff / 50)));
-          rewardCash = Math.min(1000, Math.max(100, 400 + Math.floor(diff * 1.5)));
-        } else {
-          pointsDiff = Math.min(-2, Math.max(-15, -5 + Math.floor(diff / 50)));
-          rewardCash = 0;
-        }
+      if (!hasOfficialPvpResult || !pvpResultTemp) {
+        setErrorMessage("PvPのサーバー確定結果を確認できませんでした。");
+        return;
       }
-
-      const nextPoints = Math.max(pvpRate + pointsDiff, 0);
-
-      const existMe = pvpRankings.find(r => r.user_id === session.user.id);
-      const nextDaily = (existMe?.daily_wins || 0) + (isWin ? 1 : 0);
-      const nextSeason = (existMe?.season_wins || 0) + (isWin ? 1 : 0);
-
-      const res = await supabase.rpc("process_pvp_match_result_v2", {
-        p_user_id: session.user.id,
-        p_is_win: isWin,
-        p_point_diff: pointsDiff,
-        p_cash_reward: rewardCash
-      });
-      if (res.error) throw res.error;
-      if (res.data?.error) throw new Error(res.data.error);
-
-      if (isWin) {
-        await supabase.rpc("evaluate_mission_progress", { p_user_id: session.user.id, p_trigger_type: "PVP_WIN", p_progress_increment: 1 });
-        await addGuildXpAndContributionByAction("PVP");
-      }
-
+      const pointsDiff = Number(pvpResultTemp.rankDelta ?? 0);
+      const rewardCash = Number(pvpResultTemp.rewards?.cash ?? 0);
+      setPvpRate?.(Number(pvpResultTemp.newRankPoints ?? pvpRate));
+      setPvpPoints(Number(pvpResultTemp.remainingPvpPoints ?? pvpPoints));
       postNpcYajiMessage(session, username, "GLOBAL", currentBaseId, "PVP_WIN");
       await syncBootstrapData(session.user.id);
+      const { data: firstPvpMilestone } = await supabase.from("user_funnel_milestones")
+        .select("occurrence_count").eq("user_id", session.user.id).eq("milestone", "first_pvp").maybeSingle();
+      const isFirstOfficialPvp = Number(firstPvpMilestone?.occurrence_count || 0) === 1;
       if (setConfirmDialogConfig) {
         setConfirmDialogConfig({
           isOpen: true,
           title: "PvP結果",
-          message: `PvPバトル終了: ${result === "VICTORY" ? "勝利" : "敗北"}\n獲得ポイント: ${pointsDiff >= 0 ? "+" : ""}${pointsDiff}\n獲得キャッシュ: +${rewardCash}`,
-          onConfirm: () => setConfirmDialogConfig(null),
-          onCancel: () => setConfirmDialogConfig(null)
+          message: createElement(ModeBattleResultCard, { mode: "PVP", victory: finalResult === "VICTORY", opponent: opponentNameTemp, stats: [{ label: "RANK CHANGE", value: `${pointsDiff >= 0 ? "+" : ""}${pointsDiff} pt` }, { label: "PVP POINT", value: `${Number(pvpResultTemp.remainingPvpPoints ?? 0)}/5` }], reward: `CASH +${rewardCash.toLocaleString()}`, note: isFirstOfficialPvp ? "初戦の順位を確認して、次のレイドへ進もう。" : "PvPへ戻って次の対戦相手を選べます。" }),
+          confirmText: isFirstOfficialPvp ? "ランキングを確認" : "PvPへ戻る", cancelText: "Homeへ",
+          onConfirm: () => { setConfirmDialogConfig(null); navigateTab?.(isFirstOfficialPvp ? "ranking" : "pvp"); },
+          onCancel: () => { setConfirmDialogConfig(null); navigateTab?.("home"); }
         });
       }
     } else if (modeTemp === "RAID") {
-      const enemyBoss = enemyPartyStates.find(e => e.id === "ENEMY");
-      const finalBossHp = enemyBoss ? enemyBoss.hp : 0;
-      const totalDmg = Math.max(raidBossHp - finalBossHp, 0);
-
-      // 1. ダメージログの記録
-      const { data: raidResolution, error: raidResolutionError } = await supabase.rpc("record_raid_boss_damage_v2", {
-        p_user_id: session.user.id,
-        p_boss_id: RAID_BOSS_ID,
-        p_damage: totalDmg
-      });
-      if (raidResolutionError) throw raidResolutionError;
-      const isBossDefeated = Boolean(raidResolution?.defeated);
-
-      // 3. 累積ダメージ報酬の判定と配布
-      try {
-        const newTotalDmg = raidTotalDamage + totalDmg;
-        const { data: accumRewards } = await supabase.from("raid_rewards_master").select("*").eq("reward_type", "DAMAGE_ACCUM");
-        const { data: claimed } = await supabase.from("user_raid_claimed_rewards").select("*").eq("user_id", session.user.id);
-        
-        if (accumRewards) {
-          const claimedIds = claimed ? claimed.map((c: any) => c.reward_id) : [];
-          const eligibleRewards = accumRewards.filter((r: any) => newTotalDmg >= Number(r.threshold_val) && !claimedIds.includes(r.id));
-          
-          const expireAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
-          for (const reward of eligibleRewards) {
-            await supabase.from("presents").insert({
-              user_id: session.user.id,
-              item_id: reward.reward_item_id,
-              quantity: reward.reward_quantity,
-              message: `レイド累積与ダメ到達報酬 (${Number(reward.threshold_val).toLocaleString()} Dmg)`,
-              expire_at: expireAt,
-              status: "UNCLAIMED"
-            });
-            await supabase.from("user_raid_claimed_rewards").insert({
-              user_id: session.user.id,
-              reward_id: reward.id
-            });
-          }
-        }
-      } catch (err) {
-        console.warn("Failed to process accumulative raid rewards:", err);
+      if (hasOfficialRaidResult && raidResultTemp) {
+        await syncBootstrapData(session.user.id);
+        if (setConfirmDialogConfig) setConfirmDialogConfig({
+          isOpen:true,title:"レイド結果",
+          message:createElement(ModeBattleResultCard, { mode: "RAID", victory: finalResult === "VICTORY", opponent: opponentNameTemp, stats: [{ label: "今回 DAMAGE", value: Number(raidResultTemp.rawDamage||0).toLocaleString() }, { label: "BOSS HP反映", value: Number(raidResultTemp.appliedDamage||0).toLocaleString() }, { label: "個人 CONTRIBUTION", value: Number(raidResultTemp.personalContribution||0).toLocaleString() }, { label: "BOSS 残りHP", value: Number(raidResultTemp.remainingBossHp||0).toLocaleString() }], reward: "サーバー確定報酬を反映済み", note: userGuildMember ? "TRIBE Contributionにも所属Snapshotで反映されます。" : "TRIBE加入でGuild RankingとContributionへ参加できます。" }),
+          confirmText:userGuildMember ? "レイドへ戻る" : "おすすめTRIBEを見る",cancelText:"Homeへ",
+          onConfirm:()=>{setConfirmDialogConfig(null);if(userGuildMember){navigateTab?.("raid");}else{void supabase.rpc("record_client_funnel_event",{p_event_name:"raid_to_guild_cta",p_source_screen:"raid_result",p_source_cta:"guild",p_object_id:null,p_metadata:{}});navigateTab?.("guild");}},onCancel:()=>{setConfirmDialogConfig(null);navigateTab?.("home");}
+        });
+        return;
       }
-
-      // 4. ボス討伐判定と復活・報酬配布
-      if (isBossDefeated) {
-        try {
-          await supabase.rpc("grant_raid_completion_xp", { p_boss_id: RAID_BOSS_ID });
-          // 討伐報酬の配布
-          const { data: defeatRewards } = await supabase.from("raid_rewards_master").select("*").eq("reward_type", "DEFEAT");
-          const { data: dmgLogs } = await supabase.from("raid_damage_logs").select("*").eq("raid_boss_id", RAID_BOSS_ID);
-
-          if (defeatRewards && dmgLogs) {
-            const userDmgMap: { [key: string]: number } = {};
-            dmgLogs.forEach((log: any) => {
-              userDmgMap[log.user_id] = (userDmgMap[log.user_id] || 0) + Number(log.damage_dealt);
-            });
-            userDmgMap[session.user.id] = (userDmgMap[session.user.id] || 0) + totalDmg;
-
-            const expireAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
-            for (const [uId, sumDmg] of Object.entries(userDmgMap)) {
-              for (const reward of defeatRewards) {
-                if (sumDmg >= Number(reward.threshold_val)) {
-                  await supabase.from("presents").insert({
-                    user_id: uId,
-                    item_id: reward.reward_item_id,
-                    quantity: reward.reward_quantity,
-                    message: `レイドボス討伐貢献報酬 (累計ダメージ: ${sumDmg.toLocaleString()})`,
-                    expire_at: expireAt,
-                    status: "UNCLAIMED"
-                  });
-                }
-              }
-            }
-          }
-
-          // 拠点のランダム再決定とボスの全快復活
-          const { data: masterData } = await supabase.from("raid_boss_master").select("*").eq("id", "BOSS_001").maybeSingle();
-          const maxHp = masterData ? Number(masterData.max_hp) : 9999999;
-          const bases = ["neon_tower", "deep_dock", "junk_bazar", "kitakura_gate"];
-          const randomBase = bases[Math.floor(Math.random() * bases.length)];
-
-          await supabase.rpc("admin_respawn_raid_boss", {
-            p_boss_id: RAID_BOSS_ID,
-            p_max_hp: maxHp,
-            p_base_id: randomBase
-          });
-
-          if (setConfirmDialogConfig) {
-            setConfirmDialogConfig({
-              isOpen: true,
-              title: "レイドボス討伐",
-              message: `レイドボス討伐成功！\n\n討伐貢献報酬が参加者全員のプレゼントBOXへ届きました。\n次のボスが新しい拠点に出現しました！`,
-              onConfirm: () => setConfirmDialogConfig(null),
-              onCancel: () => setConfirmDialogConfig(null)
-            });
-          }
-        } catch (err) {
-          console.warn("Failed to process boss defeat rewards/reset:", err);
-        }
-      } else {
-        if (setConfirmDialogConfig) {
-          setConfirmDialogConfig({
-            isOpen: true,
-            title: "レイド結果",
-            message: `レイド攻撃完了。今回の与ダメ: ${totalDmg.toLocaleString()}`,
-            onConfirm: () => setConfirmDialogConfig(null),
-            onCancel: () => setConfirmDialogConfig(null)
-          });
-        }
-      }
-
-      postNpcYajiMessage(session, username, "GLOBAL", currentBaseId, "RAID_DAMAGE");
-
-      // ミッション: レイド参加
-      await supabase.rpc("evaluate_mission_progress", { p_user_id: session.user.id, p_trigger_type: "RAID_CLEAR", p_progress_increment: 1 });
+      setErrorMessage("Raidのサーバー確定結果を確認できませんでした。再度Raidを開始してください。");
+      return;
     } else if (modeTemp === "GVG") {
       const guildIdFilter = userGuildMember?.guild_id || "";
       if (gvgAttackIdTemp && gvgReplayIdTemp) {
@@ -1776,7 +1987,6 @@ export function useBattle(options: UseBattleOptions) {
             if (res.data?.error) throw new Error(res.data.error);
 
             if (isWin) {
-              await supabase.rpc("evaluate_mission_progress", { p_user_id: session.user.id, p_trigger_type: "GVG_WIN", p_progress_increment: 1 });
               await addGuildXpAndContributionByAction("GVG");
               postNpcYajiMessage(session, username, "BASE", gvgAreaTemp!, "GVG_WIN");
               if (setConfirmDialogConfig) {
@@ -1821,6 +2031,20 @@ export function useBattle(options: UseBattleOptions) {
       setOfficialGvgAttackId(pState.officialGvgAttackId || null);
       setOfficialGvgReplayId(pState.officialGvgReplayId || null);
       setOfficialGvgWinner(pState.officialGvgWinner === "PLAYER" ? "PLAYER" : pState.officialGvgWinner === "ENEMY" ? "ENEMY" : null);
+      setOfficialPatrolReplayId(pState.officialPatrolReplayId || null);
+      setOfficialPatrolWinner(pState.officialPatrolWinner === "PLAYER" ? "PLAYER" : pState.officialPatrolWinner === "ENEMY" ? "ENEMY" : null);
+      setOfficialPatrolEvents(serverBattleEvents(pState.officialPatrolEvents));
+      setOfficialPatrolEventIndex(savedPatrolReplayCursor(pState.officialPatrolReplayId, pState.officialPatrolEventIndex));
+      setOfficialPvpReplayId(pState.officialPvpReplayId || null);
+      setOfficialPvpWinner(pState.officialPvpWinner === "PLAYER" ? "PLAYER" : pState.officialPvpWinner === "ENEMY" ? "ENEMY" : null);
+      setOfficialPvpEvents(serverBattleEvents(pState.officialPvpEvents));
+      setOfficialPvpEventIndex(savedPatrolReplayCursor(pState.officialPvpReplayId, pState.officialPvpEventIndex));
+      setOfficialPvpResult(pState.officialPvpResult || null);
+      setOfficialRaidReplayId(pState.officialRaidReplayId || null);
+      setOfficialRaidWinner(pState.officialRaidWinner === "PLAYER" ? "PLAYER" : pState.officialRaidWinner === "ENEMY" ? "ENEMY" : null);
+      setOfficialRaidEvents(serverBattleEvents(pState.officialRaidEvents));
+      setOfficialRaidEventIndex(savedPatrolReplayCursor(pState.officialRaidReplayId, pState.officialRaidEventIndex));
+      setOfficialRaidResult(pState.officialRaidResult || null);
 
       setPlayerPartyStates(pState.playerStates || []);
       setEnemyPartyStates(eState.enemyStates || []);

@@ -1,7 +1,22 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { supabase, usingMockSupabase } from "@/utils/supabase";
+import { getExternalBrowserUrl, getOAuthCallbackUrl, isXInAppBrowser } from "@/utils/browserDetection";
+import { beginActionPerformance } from "@/utils/actionPerformance";
+
+export const EXISTING_GOOGLE_LOGIN_INTENT_KEY = "tribe_existing_google_login_intent";
+
+export type OnboardingState = {
+  user_id: string;
+  is_anonymous: boolean;
+  has_profile: boolean;
+  tutorial_step: string | null;
+  auth_method: "EMAIL" | "GOOGLE" | null;
+  is_legacy_authenticated: boolean;
+  identity_integrity_valid: boolean;
+  gameplay_authorized: boolean;
+};
 
 export function useAuth(
   playCyberSe: (type: string) => void,
@@ -9,17 +24,30 @@ export function useAuth(
   syncBootstrapData: (userId: string) => Promise<void>,
   navigateTab: (tabName: string) => void,
   checkIfSetupRequired: (userId: string) => Promise<void>,
-  setConfirmDialogConfig: React.Dispatch<React.SetStateAction<import("@/app/components/ui/ConfirmDialog").ConfirmDialogConfig | null>>
+  setConfirmDialogConfig: React.Dispatch<React.SetStateAction<import("@/app/components/ui/ConfirmDialog").ConfirmDialogConfig | null>>,
+  showTitleAfterLogout: () => void
 ) {
   const [session, setSession] = useState<any>(null);
   const [authLoading, setAuthLoading] = useState<boolean>(true);
   const [isSetupRequired, setIsSetupRequired] = useState<boolean>(false);
+  const [onboardingState, setOnboardingState] = useState<OnboardingState | null>(null);
   const [setupUsername, setSetupUsername] = useState<string>("");
   const [setupCharacterId, setSetupCharacterId] = useState<string>("11111111-1111-1111-1111-111111111111");
   const [setupAreaId, setSetupAreaId] = useState<string>("shinjuku");
   const [setupGiftCode, setSetupGiftCode] = useState<string>("");
   const [giftCode, setGiftCode] = useState<string | null>(null);
   const [setupLoading, setSetupLoading] = useState<boolean>(false);
+  const authActionRef = useRef(false);
+  const beginAuthAction = () => {
+    if (authActionRef.current) return false;
+    authActionRef.current = true;
+    setSetupLoading(true);
+    return true;
+  };
+  const endAuthAction = () => {
+    authActionRef.current = false;
+    setSetupLoading(false);
+  };
 
   // アバターメイキング用セットアップステート
   const [setupGender, setSetupGender] = useState<string>("MALE");
@@ -29,6 +57,7 @@ export function useAuth(
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [googleExternalBrowserUrl, setGoogleExternalBrowserUrl] = useState<string | null>(null);
 
   const handleEmailSignup = async () => {
     if (!email.trim() || !password.trim()) {
@@ -39,7 +68,7 @@ export function useAuth(
       setErrorMessage("パスワードは最小6文字以上である必要があります。");
       return;
     }
-    setSetupLoading(true);
+    if (!beginAuthAction()) return;
     try {
       const { error } = await supabase.auth.signUp({ email, password });
       if (error) throw error;
@@ -47,7 +76,7 @@ export function useAuth(
     } catch (e: any) {
       setErrorMessage(e.message);
     } finally {
-      setSetupLoading(false);
+      endAuthAction();
     }
   };
 
@@ -56,33 +85,71 @@ export function useAuth(
       setErrorMessage("メールアドレスとパスワードを入力してください。");
       return;
     }
-    setSetupLoading(true);
+    if (!beginAuthAction()) return;
     try {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
     } catch (e: any) {
       setErrorMessage(e.message);
     } finally {
-      setSetupLoading(false);
+      endAuthAction();
     }
   };
 
   const handleGoogleLogin = async () => {
-    setSetupLoading(true);
+    if (isXInAppBrowser()) {
+      setGoogleExternalBrowserUrl(getExternalBrowserUrl());
+      setErrorMessage(null);
+      return;
+    }
+    if (!beginAuthAction()) return;
     try {
+      // OAuth redirects reload the application. Keep a short-lived marker so
+      // an authorized returning player can skip the title after the callback.
+      localStorage.setItem(EXISTING_GOOGLE_LOGIN_INTENT_KEY, JSON.stringify({
+        startedAt: Date.now()
+      }));
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
-        options: { redirectTo: window.location.origin }
+        options: { redirectTo: getOAuthCallbackUrl() }
       });
       if (error) throw error;
     } catch (e: any) {
+      localStorage.removeItem(EXISTING_GOOGLE_LOGIN_INTENT_KEY);
       setErrorMessage(e.message);
-      setSetupLoading(false);
+      endAuthAction();
+    }
+  };
+
+  const handleStartNewGame = async (): Promise<boolean> => {
+    if (!beginAuthAction()) return false;
+    setErrorMessage(null);
+    playCyberSe("click");
+    try {
+      localStorage.removeItem(EXISTING_GOOGLE_LOGIN_INTENT_KEY);
+      // A stale OAuth callback/session must never turn the name-registration
+      // route into authenticated pre-registration. New-game onboarding always
+      // starts from a fresh anonymous identity.
+      await supabase.auth.signOut();
+      const { data, error } = await supabase.auth.signInAnonymously();
+      if (error || !data.session) throw error || new Error("匿名セッションを作成できませんでした。");
+      if (!data.session.user.is_anonymous) {
+        await supabase.auth.signOut();
+        throw new Error("匿名セッションを確認できませんでした。もう一度お試しください。");
+      }
+      setSession(data.session);
+      await checkIfSetupRequired(data.session.user.id);
+      return true;
+    } catch (error: any) {
+      setErrorMessage(error?.message || "ゲームの開始に失敗しました。");
+      return false;
+    } finally {
+      endAuthAction();
     }
   };
 
   const handleGoogleDemoLogin = async () => {
-    setSetupLoading(true);
+    if (!beginAuthAction()) return;
     playCyberSe("click");
     
     try {
@@ -132,7 +199,7 @@ export function useAuth(
       console.warn("Google demo auth failed:", err.message);
       setErrorMessage("Googleデモ認証の処理中にエラーが発生しました。");
     } finally {
-      setSetupLoading(false);
+      endAuthAction();
     }
   };
 
@@ -145,47 +212,36 @@ export function useAuth(
       setErrorMessage("ユーザー名は8文字以内で入力してください。");
       return;
     }
-    setSetupLoading(true);
+    if (!beginAuthAction()) return;
+    const actionPerformance = beginActionPerformance("game_initialization");
     try {
-      const { error } = await supabase.rpc("initialize_new_user", {
-        p_user_id: session.user.id,
+      actionPerformance.mark("request_start");
+      const { data, error } = await supabase.rpc("initialize_current_player", {
         p_username: setupUsername.trim(),
-        p_character_id: "11111111-1111-1111-1111-111111111111",
-        p_area_id: setupAreaId,
-        p_gift_code: setupGiftCode.trim() || null,
-        p_gender: setupGender,
-        p_hair_id: setupHairId,
-        p_face_id: setupFaceId
+        p_invite_code: setupGiftCode.trim() || null
       });
 
       if (error) {
-        if (
-          error.message?.includes("すでに初期セットアップが完了") || 
-          error.message?.includes("already exists") ||
-          error.message?.includes("duplicate key")
-        ) {
-          setIsSetupRequired(false);
-          setSetupGiftCode("");
-          await syncBootstrapData(session.user.id);
-          navigateTab("home");
-          return;
-        }
-        setErrorMessage(error.message);
+        setErrorMessage(error.code === "23505" || error.message?.includes("already in use")
+          ? "このユーザー名は既に使用されています。"
+          : error.message);
         return;
       }
 
+      if (data?.status !== "success" && data?.status !== "already_initialized") {
+        throw new Error("Unexpected initialization response");
+      }
+      actionPerformance.mark("response");
       setSetupGiftCode("");
-      const { error: tutorialError } = await supabase.rpc("start_tutorial_progress");
-      if (tutorialError) throw tutorialError;
       setIsSetupRequired(false);
-      await syncBootstrapData(session.user.id);
-      setConfirmDialogConfig({ isOpen: true, title: "登録完了", message: "プレイヤー登録が完了し、東京支配の戦いに参入しました！まずはチュートリアルスカウトで最初の構成員をスカウトしてください。", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
-      navigateTab("gacha");
+      await checkIfSetupRequired(session.user.id);
+      actionPerformance.mark("state_update");
+      actionPerformance.markVisualReady();
     } catch (err: any) {
       console.warn(err);
       setErrorMessage("初期化に失敗しました。");
     } finally {
-      setSetupLoading(false);
+      endAuthAction();
     }
   };
 
@@ -199,8 +255,11 @@ export function useAuth(
         stopCyberBgm();
         
         localStorage.removeItem("tribe_demo_uuid");
+        localStorage.removeItem(EXISTING_GOOGLE_LOGIN_INTENT_KEY);
         setSession(null);
         setIsSetupRequired(false);
+        setOnboardingState(null);
+        showTitleAfterLogout();
         
         try {
           await supabase.auth.signOut();
@@ -216,6 +275,7 @@ export function useAuth(
     session, setSession,
     authLoading, setAuthLoading,
     isSetupRequired, setIsSetupRequired,
+    onboardingState, setOnboardingState,
     setupUsername, setSetupUsername,
     setupCharacterId, setSetupCharacterId,
     setupAreaId, setSetupAreaId,
@@ -228,9 +288,12 @@ export function useAuth(
     email, setEmail,
     password, setPassword,
     errorMessage, setErrorMessage,
+    googleExternalBrowserUrl,
+    dismissGoogleExternalBrowserPrompt: () => setGoogleExternalBrowserUrl(null),
     handleEmailSignup,
     handleEmailLogin,
     handleGoogleLogin,
+    handleStartNewGame,
     handleGoogleDemoLogin,
     handleInitializeUser,
     handleLogout

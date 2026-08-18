@@ -5,7 +5,13 @@ WITH critical_tables(table_name) AS (
     ('presents'), ('user_login_bonuses'), ('user_missions'), ('guilds'),
     ('guild_members'), ('guild_join_requests'), ('board_posts'), ('chat_read_states'),
     ('bbs_threads'), ('bbs_posts'), ('bbs_read_states'), ('direct_messages'),
-    ('payment_transactions'), ('user_monthly_passes')
+    ('payment_transactions'), ('user_monthly_passes'),
+    ('user_power_rankings'), ('user_main_formations'), ('ranking_seasons'),
+    ('pvp_daily_wins'), ('raid_damage_logs'), ('guild_base_controls'),
+    ('gvg_guild_ratings'), ('gvg_guild_season_rankings'), ('gvg_individual_season_rankings'),
+    ('pvp_ranks'), ('gvg_match_sessions'), ('gvg_attack_logs'),
+    ('gacha_execution_history'), ('social_activity_feed'),
+    ('guild_human_response_metrics'), ('social_activity_projection_state')
 ), existing_critical_tables AS (
   SELECT t.table_name, c.oid, c.relrowsecurity
   FROM critical_tables t
@@ -19,10 +25,13 @@ WITH critical_tables(table_name) AS (
     ('donate_to_guild(uuid,uuid,integer)'),
     ('exchange_pity_reward(uuid,text,text)'),
     ('execute_asset_gacha(uuid,text,integer,text)'),
+    ('execute_asset_gacha(uuid,text,integer,text,uuid)'),
     ('execute_character_gacha(uuid,text,integer,text)'),
+    ('execute_character_gacha(uuid,text,integer,text,uuid)'),
     ('generate_user_gift_code(uuid)'),
     ('get_public_battle_loadout(uuid)'),
     ('get_public_battle_roster(uuid)'),
+    ('get_public_player_detail(uuid)'),
     ('get_pvp_opponents(uuid,integer)'),
     ('kick_guild_member(uuid,uuid)'),
     ('leave_guild(uuid,uuid,boolean,boolean)'),
@@ -42,8 +51,8 @@ WITH critical_tables(table_name) AS (
     )
 ), checks AS (
   SELECT 10 AS display_order, 'critical_table_inventory' AS check_name,
-    CASE WHEN count(*) = 21 THEN 'PASS' ELSE 'FAIL' END AS status,
-    format('%s/21 critical table(s) resolved', count(*)) AS detail
+    CASE WHEN count(*) = 37 THEN 'PASS' ELSE 'FAIL' END AS status,
+    format('%s/37 critical table(s) resolved', count(*)) AS detail
   FROM existing_critical_tables
 
   UNION ALL
@@ -106,10 +115,10 @@ WITH critical_tables(table_name) AS (
 
   SELECT 70, 'broad_policy_allowlist',
     CASE WHEN count(*) FILTER (
-      WHERE NOT (tablename IN ('bbs_threads', 'bbs_posts') AND cmd = 'SELECT')
+      WHERE NOT (tablename IN ('bbs_threads', 'bbs_posts', 'gvg_match_sessions', 'social_activity_feed') AND cmd = 'SELECT')
     ) = 0 THEN 'PASS' ELSE 'FAIL' END,
     format('%s unexpected broad critical policy/policies', count(*) FILTER (
-      WHERE NOT (tablename IN ('bbs_threads', 'bbs_posts') AND cmd = 'SELECT')
+      WHERE NOT (tablename IN ('bbs_threads', 'bbs_posts', 'gvg_match_sessions', 'social_activity_feed') AND cmd = 'SELECT')
     ))
   FROM pg_policies p
   JOIN critical_tables t ON t.table_name = p.tablename

@@ -36,18 +36,19 @@ export default function TutorialFreeInstant() {
 
   return (
     <div className="modal-overlay background-black-95" style={{ zIndex: 20000 }}>
-      <div className="modal-card border-cyan-glow" style={{ maxWidth: 420 }}>
-        <div className="font-size-8 text-color-cyan font-weight-bold mb-2">NAVIGATOR // INSTANT ACTION</div>
-        <TutorialNavigator message="Use this free instant action to keep the operation moving." />
+      <div className="modal-card" style={{ maxWidth: 420 }}>
+        <div className="modal-title text-left">初回クエスト時短</div>
+        <TutorialNavigator message="今回は無料で時短できるよ。すぐに派遣先へ向かおう。" />
         <div className="modal-desc text-left">
-          This tutorial dispatch can be completed instantly at no cost. Use the free instant action to trigger the encounter.
+          チュートリアル中の今回だけ、CASHを消費せずにクエストを完了できます。
         </div>
         <button
-          className="claim-reward-btn mt-4 font-weight-bold py-2 width-100"
+          className="semantic-cta semantic-cta--primary mt-4 width-100"
+          aria-busy={working}
           onClick={() => void completeForFree()}
           disabled={working}
         >
-          {working ? "COMPLETING..." : "FREE COMPLETE"}
+          {working ? "完了処理中..." : "無料で時短する"}
         </button>
       </div>
     </div>

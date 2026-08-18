@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { supabase } from "@/utils/supabase";
+import { supabase, usingMockSupabase } from "@/utils/supabase";
 import { VITALITY_OVERFLOW_MAX } from "@/utils/game_constants";
+import { useImmediateActionLock } from "@/hooks/useImmediateActionLock";
 
 export function useInventory(
   session: any,
@@ -40,12 +41,28 @@ export function useInventory(
 
   // ミッション ＆ プレゼント
   const [missions, setMissions] = useState<any[]>([]);
-  const [missionTab, setMissionTab] = useState<"DAILY" | "MAIN" | "GUILD">("DAILY");
+  const [missionTab, setMissionTab] = useState<"DAILY" | "NORMAL">("DAILY");
   const [presents, setPresents] = useState<any[]>([]);
   const [presentsPrefetched, setPresentsPrefetched] = useState<boolean>(false);
   const [presentsSyncing, setPresentsSyncing] = useState<boolean>(false);
-  const [presentClaimLoading, setPresentClaimLoading] = useState<boolean>(false);
-  const [missionClaimLoading, setMissionClaimLoading] = useState<boolean>(false);
+  const {
+    isLocked: presentClaimLoading,
+    beginAction: beginPresentClaim,
+    endAction: endPresentClaim
+  } = useImmediateActionLock();
+  const {
+    isLocked: missionClaimLoading,
+    beginAction: beginMissionClaim,
+    endAction: endMissionClaim
+  } = useImmediateActionLock();
+  const setPresentClaimLoading = (loading: boolean) => {
+    if (loading) beginPresentClaim();
+    else endPresentClaim();
+  };
+  const setMissionClaimLoading = (loading: boolean) => {
+    if (loading) beginMissionClaim();
+    else endMissionClaim();
+  };
 
   const handleUseItem = async (itemId: string) => {
     if (!session) return;
@@ -64,7 +81,7 @@ export function useInventory(
       setVitality(nextVitality);
       
       try {
-        const res = await supabase.rpc("use_energy_drink", { p_user_id: session.user.id });
+        const res = await supabase.rpc("use_energy_drink");
         if (res.error) throw res.error;
         if (res.data?.error) throw new Error(res.data.error);
 
@@ -82,11 +99,12 @@ export function useInventory(
 
   const handleClaimPresent = async (id: string) => {
     if (!session) return;
+    if (!beginPresentClaim()) return;
     setPresents(prev => prev.map(p => p.id === id ? { ...p, loading: true } : p));
     playCyberSe("click");
 
     try {
-      if (id === "p_swr") {
+      if (usingMockSupabase && id === "p_swr") {
         setDiamonds(d => d + 50);
         const res = await supabase.rpc("add_test_diamonds", { p_user_id: session.user.id });
         if (res.error || res.data?.error) console.warn(res.error || res.data?.error);
@@ -95,7 +113,6 @@ export function useInventory(
       }
 
       const res = await supabase.rpc("claim_present", {
-        p_user_id: session.user.id,
         p_present_id: id
       });
       if (res.error) throw res.error;
@@ -106,6 +123,8 @@ export function useInventory(
     } catch (err: any) {
       console.warn(err.message);
       setPresents(prev => prev.map(p => p.id === id ? { ...p, loading: false } : p));
+    } finally {
+      endPresentClaim();
     }
   };
 
@@ -114,7 +133,7 @@ export function useInventory(
     const unclaimed = presents.filter(p => p.status === "UNCLAIMED");
     if (unclaimed.length === 0) return;
 
-    setPresentClaimLoading(true);
+    if (!beginPresentClaim()) return;
     setPresents(prev => prev.map(p => p.status === "UNCLAIMED" ? { ...p, loading: true } : p));
     playCyberSe("gacha");
 
@@ -124,12 +143,12 @@ export function useInventory(
         if (p.id === "p_swr") hasSwr = true;
       });
 
-      if (hasSwr) {
+      if (usingMockSupabase && hasSwr) {
         const resSwr = await supabase.rpc("add_test_diamonds", { p_user_id: session.user.id });
         if (resSwr.error || resSwr.data?.error) console.warn(resSwr.error || resSwr.data?.error);
       }
 
-      const res = await supabase.rpc("claim_all_presents", { p_user_id: session.user.id });
+      const res = await supabase.rpc("claim_all_presents");
       if (res.error) throw res.error;
       if (res.data?.error) throw new Error(res.data.error);
 
@@ -139,12 +158,13 @@ export function useInventory(
     } catch (err: any) {
       console.warn(err.message);
     } finally {
-      setPresentClaimLoading(false);
+      endPresentClaim();
     }
   };
 
   const handleClaimMission = async (id: string) => {
     if (!session) return;
+    if (!beginMissionClaim()) return;
     setMissions(prev => prev.map(m => m.id === id ? { ...m, loading: true } : m));
     playCyberSe("click");
 
@@ -153,18 +173,20 @@ export function useInventory(
       if (!targetMission) return;
 
       const res = await supabase.rpc("claim_mission_reward", {
-        p_user_id: session.user.id,
         p_mission_id: id
       });
       if (res.error) throw res.error;
       if (res.data?.error) throw new Error(res.data.error);
 
       setMissions(prev => prev.filter(m => m.id !== id));
+      playCyberSe("MISSION_REWARD");
       await syncBootstrapData(session.user.id);
       setConfirmDialogConfig({ isOpen: true, title: "報酬獲得", message: "報酬がプレゼントへ転送されました。", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
     } catch (err) {
       console.warn(err);
       setMissions(prev => prev.map(m => m.id === id ? { ...m, loading: false } : m));
+    } finally {
+      endMissionClaim();
     }
   };
 
@@ -173,55 +195,26 @@ export function useInventory(
     const clearMissions = missions.filter(m => m.status === "CLEAR" && m.category === missionTab);
     if (clearMissions.length === 0) return;
 
-    setMissionClaimLoading(true);
+    if (!beginMissionClaim()) return;
     setMissions(prev => prev.map(m => m.status === "CLEAR" && m.category === missionTab ? { ...m, loading: true } : m));
     playCyberSe("gacha");
 
     try {
       const missionIds = clearMissions.map(m => m.id);
       const res = await supabase.rpc("claim_all_mission_rewards", {
-        p_user_id: session.user.id,
         p_mission_ids: missionIds
       });
       if (res.error) throw res.error;
       if (res.data?.error) throw new Error(res.data.error);
 
       setMissions(prev => prev.filter(m => !(m.status === "CLEAR" && m.category === missionTab)));
+      playCyberSe("MISSION_REWARD");
       await syncBootstrapData(session.user.id);
       setConfirmDialogConfig({ isOpen: true, title: "クリア報酬", message: "全クリア報酬をプレゼントへ転送しました。", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
     } catch (err: any) {
       console.warn(err.message);
     } finally {
-      setMissionClaimLoading(false);
-    }
-  };
-
-  const handleDailyMissionReset = async () => {
-    if (!session) return;
-    setMissionClaimLoading(true);
-    playCyberSe("click");
-
-    try {
-      const unrecoveredDailies = missions.filter(m => m.status === "CLEAR" && m.category === "DAILY");
-      if (unrecoveredDailies.length > 0) {
-        const expireAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
-        const insertPresents = unrecoveredDailies.map(m => ({ user_id: session.user.id, item_id: m.rewardItemId, quantity: m.rewardQty, message: `ミッション自動救済: ${m.title}`, expire_at: expireAt.toISOString(), status: "UNCLAIMED" }));
-        await supabase.from("presents").insert(insertPresents);
-      }
-
-      const dailyIds = ["m_exp_01", "m_exp_02", "m_pvp_01", "m_pvp_02", "m_gvg_01"];
-      const res = await supabase.rpc("admin_reset_daily_missions", {
-        p_user_id: session.user.id,
-        p_mission_ids: dailyIds
-      });
-      if (res.error) throw res.error;
-      if (res.data?.error) throw new Error(res.data.error);
-      await syncBootstrapData(session.user.id);
-      setConfirmDialogConfig({ isOpen: true, title: "リセット", message: "AM 4:00 デイリーミッションリセット完了。", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
-    } catch (err: any) {
-      console.warn(err.message);
-    } finally {
-      setMissionClaimLoading(false);
+      endMissionClaim();
     }
   };
 
@@ -254,7 +247,6 @@ export function useInventory(
     handleClaimPresent,
     handleClaimAllPresents,
     handleClaimMission,
-    handleClaimAllMissions,
-    handleDailyMissionReset
+    handleClaimAllMissions
   };
 }

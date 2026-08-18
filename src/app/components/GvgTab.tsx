@@ -39,8 +39,10 @@ export default function GvgTab() {
     userCharactersDbList,
     playCyberSe,
     setConfirmDialogConfig,
-    vitality
+    vitality,
+    featureOperatingStates
   } = useGame();
+  const isGvgOpen = featureOperatingStates?.GVG === "OPEN";
 
   const [showDefenseModal, setShowDefenseModal] = useState<boolean>(false);
   const [tempSelectedChars, setTempSelectedChars] = useState<string[]>([]);
@@ -54,7 +56,7 @@ export default function GvgTab() {
   }, []);
 
   useEffect(() => {
-    if (!userGuild?.id) {
+    if (!userGuild?.id || !isGvgOpen) {
       setOfficialMatch(null);
       return;
     }
@@ -68,7 +70,7 @@ export default function GvgTab() {
     void loadOfficialMatch();
     const timer = window.setInterval(() => void loadOfficialMatch(), 5000);
     return () => window.clearInterval(timer);
-  }, [userGuild?.id]);
+  }, [isGvgOpen, userGuild?.id]);
   
   const currentSession = getCurrentSession(now);
   const phase = getGvgPhase(now);
@@ -180,7 +182,7 @@ export default function GvgTab() {
   };
 
   const isFinalDay = phase === "FINALS";
-  const isOfficialActive = officialMatch?.status === "ACTIVE";
+  const isOfficialActive = isGvgOpen && officialMatch?.status === "ACTIVE";
 
   // 自ギルドのアライメントと一致する守備（ホーム）拠点を動的マッピング
   const myGuildAlignment = userGuild?.main_alignment || "";
@@ -220,7 +222,7 @@ export default function GvgTab() {
         <div className="gvg-hero-status">
           <div className="gvg-countdown-label">
             <Badge tone={isOfficialActive ? "danger" : "magenta"}>
-              {isOfficialActive ? "BATTLE LIVE" : "PREPARATION"}
+              {isOfficialActive ? "BATTLE LIVE" : isGvgOpen ? "PREPARATION" : "COMING SOON"}
             </Badge>
             <span>{isOfficialActive ? "公式マッチ終了まで" : "次の抗争開始まで"}</span>
           </div>
@@ -248,9 +250,14 @@ export default function GvgTab() {
       <div className="gvg-content">
         {userGuild ? (
           <div className="flex-col-gap-3">
-            <GvgMatchStatusPanel
-              guildId={userGuild.id}
-            />
+            {isGvgOpen ? (
+              <GvgMatchStatusPanel guildId={userGuild.id} />
+            ) : (
+              <div className="gvg-console-layout p-4" role="status">
+                <strong className="text-color-cyan">GvGは準備中です</strong>
+                <p className="font-size-8 text-secondary mt-2">開催予定時刻は 12:00 / 20:00 / 23:00 です。開始までは編成や開催情報のみ確認できます。</p>
+              </div>
+            )}
             {/* 旧拠点制の移行中表示。公式マッチ以外では侵攻できない。 */}
             <div className="gvg-console-layout p-3 flex-col-gap-2" hidden>
               <div className="flex-row-space-between align-center">
@@ -523,9 +530,9 @@ export default function GvgTab() {
                       onClick={() => toggleCharSelection(char.id)}
                       className={`char-select-card ${isSelected ? "selected" : ""}`}
                     >
-                      <Image src={avatarUrl} alt={master?.jpName || "構成員"} width={72} height={72} className="char-select-img mb-1" />
+                      <Image src={avatarUrl} alt={master?.jpName || "キャラクター"} width={72} height={72} className="char-select-img mb-1" />
                       <span className="font-size-7 text-white font-weight-bold truncate block w-full text-center">
-                        {master?.jpName || "構成員"}
+                        {master?.jpName || "キャラクター"}
                       </span>
                       <span className="font-size-6 text-secondary">Lv.{char.level}</span>
                     </div>

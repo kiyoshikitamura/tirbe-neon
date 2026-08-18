@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useRef, useState } from "react";
 import { supabase } from "@/utils/supabase";
 import { DISPATCH_COURSES } from "@/utils/game_constants";
+import { beginActionPerformance } from "@/utils/actionPerformance";
 
 export function usePatrol(
   session: any,
@@ -15,13 +16,14 @@ export function usePatrol(
   syncBootstrapData: (userId: string) => Promise<void>,
   setUserLevel: React.Dispatch<React.SetStateAction<number>>,
   setUserXp: React.Dispatch<React.SetStateAction<number>>,
-  addGuildXpAndContributionByAction: (actionType: string) => Promise<void>,
-  postNpcYajiMessage: (channel: string, baseId: string, trigger: string) => void
+  addGuildXpAndContributionByAction: (actionType: string, sourceId?: string) => Promise<void>,
+  setTutorialStep: (step: string) => void
 ) {
   const [selectedCourse, setSelectedCourse] = useState<string>("e1e1e1e1-e1e1-e1e1-e1e1-e1e1e1e1e1e1");
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
   const [selectedPatrolMember, setSelectedPatrolMember] = useState<string | null>(null);
   const [dailyCashSkips, setDailyCashSkips] = useState<number>(0);
+  const [dailyCashSkipsResetDate, setDailyCashSkipsResetDate] = useState<string | null>(null);
   const [activePatrols, setActivePatrols] = useState<Array<{
     id: string;
     courseId: string;
@@ -55,6 +57,19 @@ export function usePatrol(
   const [lastPatrolRewards, setLastPatrolRewards] = useState<any | null>(null);
   const [showPatrolRewardModal, setShowPatrolRewardModal] = useState<boolean>(false);
   const [dispatchLoading, setDispatchLoading] = useState<boolean>(false);
+  const mutationInFlightRef = useRef(false);
+
+  const beginMutation = () => {
+    if (mutationInFlightRef.current) return false;
+    mutationInFlightRef.current = true;
+    setDispatchLoading(true);
+    return true;
+  };
+
+  const endMutation = () => {
+    mutationInFlightRef.current = false;
+    setDispatchLoading(false);
+  };
 
   const handleStartPatrol = async () => {
     if (!session || !selectedCourse) return;
@@ -80,12 +95,14 @@ export function usePatrol(
       return;
     }
 
-    setDispatchLoading(true);
-    playCyberSe("click");
+    if (!beginMutation()) return false;
+    const actionPerformance = beginActionPerformance("quest_start");
+    playCyberSe("QUEST_START");
     try {
       const startedAt = new Date();
       const expiresAt = new Date(startedAt.getTime() + course.duration_seconds * 1000);
 
+      actionPerformance.mark("request_start");
       const res = await supabase.rpc("start_patrol", {
         p_course_id: course.id,
         p_character_id: selectedPatrolMember,
@@ -93,8 +110,11 @@ export function usePatrol(
 
       if (res.error) throw res.error;
       if (res.data?.error) throw new Error(res.data.error);
+      actionPerformance.mark("response");
 
-      setVitality(prev => prev - course.cost_vitality);
+      const remainingVitality = Number(res.data?.remaining_vitality);
+      if (Number.isFinite(remainingVitality)) setVitality(remainingVitality);
+      else setVitality(prev => prev - course.cost_vitality);
 
       const newPatrol = {
         id: res.data.patrol_id,
@@ -112,59 +132,91 @@ export function usePatrol(
 
       setActivePatrols(prev => [...prev, newPatrol]);
       setSelectedPatrolMember(null);
-      await supabase.rpc("advance_tutorial_progress", {
-        p_expected_step: "DISPATCH",
-        p_next_step: "FREE_INSTANT"
-      });
+      let nextTutorialStep = res.data?.tutorial_step;
+      if (!nextTutorialStep) {
+        const { data: advancedStep, error: advanceError } = await supabase.rpc("advance_tutorial_progress", {
+          p_expected_step: "DISPATCH",
+          p_next_step: "FREE_INSTANT"
+        });
+        if (!advanceError) nextTutorialStep = advancedStep;
+      }
+      if (nextTutorialStep === "FREE_INSTANT") setTutorialStep(nextTutorialStep);
+      actionPerformance.mark("state_update");
+      actionPerformance.markVisualReady();
     } catch (err: any) {
       console.warn(err.message);
       setErrorMessage(`クエストを開始できませんでした。${err.message ? `（${err.message}）` : ""}`);
     } finally {
-      setDispatchLoading(false);
+      endMutation();
     }
   };
 
-  const handleInstantComplete = async (currency: "CASH" | "DIAMOND" | "FREE_TUTORIAL", patrolId: string) => {
+  const handleInstantComplete = async (currency: "CASH" | "DIAMOND" | "FREE_TUTORIAL" | "FREE_PREOPEN", patrolId: string) => {
     const targetPatrol = activePatrols.find(p => p.id === patrolId);
     if (!session || !targetPatrol) return false;
-    setDispatchLoading(true);
-    playCyberSe("click");
+    if (!beginMutation()) return false;
+    playCyberSe("QUEST_INSTANT");
 
     try {
-      const { data, error } = await supabase.rpc("complete_patrol_instantly", {
-        p_user_id: session.user.id,
-        p_patrol_id: patrolId,
-        p_use_currency: currency
-      });
+      const { data, error } = currency === "FREE_PREOPEN"
+        ? await supabase.rpc("complete_patrol_preopen", { p_patrol_id: patrolId })
+        : await supabase.rpc("complete_patrol_instantly", {
+            p_user_id: session.user.id,
+            p_patrol_id: patrolId,
+            p_use_currency: currency
+          });
 
       if (error) {
-        setErrorMessage(error.message);
+        const detail = String(error.message || "");
+        const normalizedDetail = detail.toLowerCase();
+        setErrorMessage(
+          detail.includes("schema cache") || detail.includes("Could not find the function")
+            ? "時短機能のサーバー設定が未反映です。運営へお問い合わせください。"
+            : normalizedDetail.includes("daily cash instant completion limit reached")
+              ? "本日のCASH時短は3回使用済みです。ダイヤ時短は引き続き利用できます。"
+              : normalizedDetail.includes("cash insufficient")
+                ? "CASHが不足しています。"
+                : normalizedDetail.includes("diamond insufficient")
+                  ? "ダイヤが不足しています。"
+                  : detail
+        );
         return false;
       }
 
       if (data && data.status === "success") {
-        if (currency === "FREE_TUTORIAL") {
-          await supabase.rpc("advance_tutorial_progress", {
-            p_expected_step: "FREE_INSTANT",
-            p_next_step: "TUTORIAL_BATTLE"
-          });
+        if (currency === "CASH" && Number.isFinite(Number(data.daily_cash_skips_count))) {
+          setDailyCashSkips(Number(data.daily_cash_skips_count));
+          setDailyCashSkipsResetDate(data.daily_cash_skips_reset_date || null);
         }
-        await syncBootstrapData(session.user.id);
+        let nextTutorialStep = data.tutorial_step;
+        if (currency === "FREE_TUTORIAL") {
+          if (!nextTutorialStep) {
+            const { data: advancedStep, error: advanceError } = await supabase.rpc("advance_tutorial_progress", {
+              p_expected_step: "FREE_INSTANT",
+              p_next_step: "TUTORIAL_BATTLE"
+            });
+            if (!advanceError) nextTutorialStep = advancedStep;
+          }
+          if (nextTutorialStep === "TUTORIAL_BATTLE") setTutorialStep(nextTutorialStep);
+        }
+        void syncBootstrapData(session.user.id).catch((bootstrapError) => {
+          console.warn("Patrol bootstrap refresh failed:", bootstrapError);
+        });
         return true;
       }
     } catch (err: any) {
       console.warn(err.message);
     } finally {
-      setDispatchLoading(false);
+      endMutation();
     }
     return false;
   };
 
-  const handleClaimRewards = async (patrolId: string) => {
+  const handleClaimRewards = async (patrolId: string, options?: { isTutorialReward?: boolean }) => {
     const targetPatrol = activePatrols.find(p => p.id === patrolId);
-    if (!session || !targetPatrol) return;
+    if (!session || !targetPatrol) return false;
 
-    setDispatchLoading(true);
+    if (!beginMutation()) return false;
     playCyberSe("gacha");
     try {
       const res = await supabase.rpc("claim_patrol_rewards", { p_patrol_id: patrolId });
@@ -183,6 +235,8 @@ export function usePatrol(
       if (Number.isFinite(nextXp) && nextXp >= 0) setUserXp(nextXp);
 
       const rewardSummary = {
+        patrolId,
+        isTutorialReward: options?.isTutorialReward === true,
         courseName: res.data?.course_name || "クエスト",
         baseCash: Number(res.data?.cash || 0),
         baseXp: Number(res.data?.xp || 0),
@@ -206,18 +260,26 @@ export function usePatrol(
 
       setLastPatrolRewards(rewardSummary);
       setShowPatrolRewardModal(true);
-      await syncBootstrapData(session.user.id);
-      try {
-        await addGuildXpAndContributionByAction("QUEST");
-        postNpcYajiMessage("GLOBAL", currentBaseId, "PATROL_CLEAR");
-      } catch (sideEffectError) {
-        console.warn("Patrol side effect failed after reward claim:", sideEffectError);
-      }
+      void Promise.allSettled([
+        syncBootstrapData(session.user.id),
+        addGuildXpAndContributionByAction("QUEST", patrolId),
+      ]).then((results) => {
+        results.forEach((result) => {
+          if (result.status === "rejected") console.warn("Patrol post-claim refresh failed:", result.reason);
+        });
+      });
+      return true;
     } catch (err: any) {
       console.warn(err.message);
-      setErrorMessage(`報酬を獲得できませんでした。${err.message ? `（${err.message}）` : ""}`);
+      const detail = String(err?.message || "");
+      setErrorMessage(
+        detail.includes("schema cache") || detail.includes("Could not find the function")
+          ? "報酬受取機能のサーバー設定が未反映です。運営へお問い合わせください。"
+          : `報酬を獲得できませんでした。${detail ? `（${detail}）` : ""}`
+      );
+      return false;
     } finally {
-      setDispatchLoading(false);
+      endMutation();
     }
   };
 
@@ -226,6 +288,7 @@ export function usePatrol(
     selectedMembers, setSelectedMembers,
     selectedPatrolMember, setSelectedPatrolMember,
     dailyCashSkips, setDailyCashSkips,
+    dailyCashSkipsResetDate, setDailyCashSkipsResetDate,
     activePatrols, setActivePatrols,
     patrolLogs, setPatrolLogs,
     patrolCourses, setPatrolCourses,

@@ -1779,7 +1779,6 @@ export const EQUIPMENTS_MASTER_DATA: EquipmentMaster[] = [
     atk: 0, def: 0, hp: 100, spd: 0, luk: 25,
     is_exclusive: false, exclusive_character_id: null,
     effect_description: null,
-    description: "古い裏社会の構成員から譲り受けた、銃弾を弾くと言われる幸運のお守り。鈍く輝く金属の縁取り。"
+    description: "古い裏社会の仲間から譲り受けた、銃弾を弾くと言われる幸運のお守り。鈍く輝く金属の縁取り。"
   }
 ];
-

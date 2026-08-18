@@ -50,6 +50,60 @@
   text-shadow: 0 0 8px rgba(255,255,255,0.6);
 }
 
+.gacha-presentation-stage {
+  position: relative;
+  display: grid;
+  width: 100%;
+  height: 100%;
+  place-items: center;
+  overflow: hidden;
+  background: radial-gradient(circle at center, rgba(0, 229, 255, .16), #02050a 58%);
+}
+.gacha-presentation-gold { background: radial-gradient(circle at center, rgba(242, 201, 95, .22), #070501 60%); }
+.gacha-presentation-purple { background: radial-gradient(circle at center, rgba(198, 109, 255, .2), #06020a 60%); }
+.gacha-presentation-rings { position: absolute; width: min(72vw, 310px); aspect-ratio: 1; }
+.gacha-presentation-rings i { position: absolute; inset: 0; border: 1px solid rgba(0, 240, 255, .42); border-radius: 50%; animation: gacha-ring 1.25s ease-out infinite; }
+.gacha-presentation-rings i:nth-child(2) { animation-delay: .2s; }
+.gacha-presentation-rings i:nth-child(3) { animation-delay: .4s; }
+.gacha-presentation-gold .gacha-presentation-rings i { border-color: rgba(242, 201, 95, .54); }
+.gacha-presentation-purple .gacha-presentation-rings i { border-color: rgba(198, 109, 255, .52); }
+.gacha-presentation-copy { position: relative; z-index: 3; display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; }
+.gacha-presentation-copy span { color: var(--neon-cyan); font-size: 9px; font-weight: 900; letter-spacing: .28em; }
+.gacha-presentation-copy strong { color: #fff; font-size: 19px; letter-spacing: .08em; text-shadow: 0 0 18px rgba(0, 240, 255, .45); }
+.gacha-presentation-copy small { color: #92a7b4; font-size: 10px; }
+
+.gacha-result-panel {
+  display: flex;
+  flex-direction: column;
+  width: min(calc(100% - 24px), 410px);
+  max-height: min(760px, calc(100dvh - 32px));
+  padding: 16px;
+  overflow: hidden;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-lg);
+  background: linear-gradient(160deg, var(--ui-bg-raised), var(--ui-bg-root));
+  box-shadow: 0 22px 70px rgba(0, 0, 0, .72);
+}
+.gacha-result-heading { flex: 0 0 auto; text-align: center; }
+.gacha-result-heading span { color: var(--ui-accent); font-size: var(--ui-font-caption); font-weight: 900; letter-spacing: .18em; }
+.gacha-result-heading h3 { margin: 3px 0 1px; color: var(--ui-text-primary); font-size: var(--ui-font-title); }
+.gacha-result-heading p { margin: 0 0 12px; color: var(--ui-text-secondary); font-size: var(--ui-font-caption); }
+.gacha-result-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; min-height: 0; margin-bottom: 14px; overflow-y: auto; }
+.gacha-result-grid.is-ten-pull { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; overflow: visible; }
+.gacha-result-card { position: relative; min-width: 0; }
+.gacha-result-card .character-presentation { width: 100%; }
+.gacha-result-outcome { position: relative; z-index: 4; min-height: 19px; margin-top: -1px; padding: 3px 2px; overflow: hidden; border: 1px solid var(--ui-border); color: var(--ui-text-secondary); background: var(--ui-bg-root); font-size: 7px; font-weight: 900; text-align: center; text-overflow: ellipsis; white-space: nowrap; }
+.gacha-result-outcome.is-new { color: #07120c; border-color: var(--ui-success); background: var(--ui-success); }
+.gacha-result-asset-placeholder { display: flex; flex-direction: column; justify-content: flex-end; aspect-ratio: 3 / 4; padding: 7px; border: 1px solid rgba(0, 240, 255, .3); color: #fff; background: radial-gradient(circle at 50% 32%, rgba(0, 240, 255, .2), transparent 35%), #08111a; }
+.gacha-result-asset-placeholder span { color: var(--neon-cyan); font-size: 7px; font-weight: 900; }
+.gacha-result-asset-placeholder strong { overflow: hidden; font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }
+.gacha-result-next { flex: 0 0 auto; min-height: 48px; border-radius: var(--ui-radius-sm); font-size: var(--ui-font-button); font-weight: 900; letter-spacing: .08em; }
+.tutorial-gacha-reveal{position:relative;width:min(86vw,360px);min-height:min(76vh,620px);overflow:hidden;border:1px solid rgba(0,244,255,.55);border-radius:18px;background:radial-gradient(circle at 50% 36%,rgba(0,244,255,.24),transparent 38%),#03070d;color:#fff;padding:20px;box-shadow:0 0 40px rgba(0,244,255,.2)}.tutorial-gacha-reveal.is-guaranteed{border-color:#f2c95f;background:radial-gradient(circle at 50% 36%,rgba(242,201,95,.32),transparent 42%),#080601;box-shadow:0 0 60px rgba(242,201,95,.32)}.tutorial-gacha-count{position:absolute;top:16px;left:18px;z-index:3;font-size:10px;font-weight:900;letter-spacing:.16em;color:var(--color-cyan,#00f4ff)}.tutorial-gacha-guaranteed{position:absolute;top:40px;left:18px;z-index:3;color:#f2c95f;font-size:12px;letter-spacing:.12em}.tutorial-gacha-reveal .character-presentation{height:430px;max-height:58vh;margin:auto}.tutorial-gacha-reveal-copy{position:absolute;z-index:4;left:18px;right:18px;bottom:18px;padding:14px;background:linear-gradient(90deg,rgba(2,6,12,.96),rgba(2,6,12,.72));border-left:3px solid var(--color-cyan,#00f4ff);text-align:left}.tutorial-gacha-reveal.is-guaranteed .tutorial-gacha-reveal-copy{border-color:#f2c95f}.tutorial-gacha-reveal-copy b{color:#f2c95f;font-size:13px}.tutorial-gacha-reveal-copy h3{margin:3px 0;font-size:22px}.tutorial-gacha-reveal-copy small{color:rgba(255,255,255,.62)}
+
+@keyframes gacha-ring { 0% { transform: scale(.28); opacity: 0; } 24% { opacity: .9; } 100% { transform: scale(1.08); opacity: 0; } }
+@media (max-width: 374px) { .gacha-result-panel { padding: 12px; } .gacha-result-grid.is-ten-pull { gap: 4px; } }
+@media (prefers-reduced-motion: reduce) { .gacha-presentation-rings i { animation: none; opacity: .5; } }
+
 /* ===== 詳細プロフィール・紹介ポップアップ (Matte Outlaw UI) ===== */
 
 .detail-modal-layout {
@@ -161,3 +215,7 @@
   margin-bottom: 6px;
   font-family: var(--font-outfit);
 }
+.guild-public-status-grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 6px; margin-bottom: 10px; }
+.guild-public-status-grid span { display: grid; gap: 3px; min-width: 0; padding: 8px 5px; border: 1px solid rgba(0, 240, 255, .22); background: rgba(5, 10, 18, .78); text-align: center; }
+.guild-public-status-grid small { color: var(--ui-text-secondary); font-size: 7px; letter-spacing: .06em; }
+.guild-public-status-grid strong { color: #fff; font-size: 9px; line-height: 1.3; }

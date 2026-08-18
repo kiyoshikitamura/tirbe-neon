@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { supabase } from "@/utils/supabase";
 import { CHARACTERS_MASTER } from "@/utils/game_constants";
-import { getCharacterTotalStats } from "@/utils/stats_calculator";
 
 export function usePvp(
   session: any,
@@ -89,34 +88,14 @@ export function usePvp(
     }
   };
 
-  const syncUserPower = async (userId: string, charsList: any[], equipsList: any[], selectedMembersList: string[]) => {
-    if (!userId || charsList.length === 0) return 0;
+  const syncUserPower = async (userId: string, _charsList: any[], _equipsList: any[], _selectedMembersList: string[]) => {
+    if (!userId) return 0;
     try {
-      let powerSum = 0;
-      selectedMembersList.forEach(id => {
-        const charRec = charsList.find(c => c.id === id || c.character_id === id);
-        if (charRec) {
-          const stats = getCharacterTotalStats(charRec, equipsList);
-          powerSum += stats.hp + stats.atk + stats.def + stats.spd + stats.luk;
-        }
-      });
-
-      if (powerSum === 0) return 0;
-
-      const { error } = await supabase
-        .from("user_power_rankings")
-        .upsert({
-          user_id: userId,
-           total_power: powerSum,
-          updated_at: new Date().toISOString()
-        }, { onConflict: "user_id" });
-
-      if (error) {
-        console.warn("Failed to sync user power:", error);
-      }
-      return powerSum;
+      const { data, error } = await supabase.rpc("get_my_power_snapshot");
+      if (error) throw error;
+      return Number(data?.total_power || 0);
     } catch (err) {
-      console.warn("Failed to sync user power:", err);
+      console.warn("Failed to read server power:", err);
       return 0;
     }
   };

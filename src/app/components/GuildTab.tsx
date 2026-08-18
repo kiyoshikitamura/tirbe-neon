@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useGame } from "../context/GameContext";
 import { CHARACTERS_MASTER } from "@/utils/game_constants";
 import "./GuildTab.css";
@@ -9,6 +9,7 @@ import SubTabNav from "./ui/SubTabNav";
 import OutlawCard from "./ui/OutlawCard";
 import OutlawButton from "./ui/OutlawButton";
 import FullScreenPanel from "./ui/FullScreenPanel";
+import { supabase } from "@/utils/supabase";
 
 const DECORATIONS_SHOP = [
   { id: "bg_neon_kabukicho", name: "歌舞伎町ネオン背景", cost: 5000, type: "DECORATION", desc: "鈍く光るネオン街の夜背景" },
@@ -28,6 +29,11 @@ export default function GuildTab() {
     handleCreateGuild,
     allGuildsDbList,
     handleDemoJoinGuild,
+    handleSearchGuilds,
+    pendingGuildJoinRequests,
+    handleCancelGuildJoinRequest,
+    guildJoinRequests,
+    handleReviewGuildJoinRequest,
     guildSubTab,
     setGuildSubTab,
     guildMembersList,
@@ -35,6 +41,7 @@ export default function GuildTab() {
     handleKickMember,
     handleLeaveGuild,
     handleUpdateGuildAlignment,
+    handleUpdateGuildSettings,
     gvgResetLoading,
     getGuildPenaltyState,
     playCyberSe,
@@ -43,15 +50,34 @@ export default function GuildTab() {
     handleDonateToGuild,
     handleBuyGuildDecoration,
     handleEquipGuildDecoration,
-    guildLevelMaster
+    guildLevelMaster,
+    fetchGuildDetail,
+    setShowTribeChatPanel,
+    navigateTab,
+    setChatChannel,
+    setChatInput
   } = useGame();
 
   const [selectedMember, setSelectedMember] = useState<any | null>(null);
   const [donateAmount, setDonateAmount] = useState<number>(1000);
+  const [guildSearchQuery, setGuildSearchQuery] = useState("");
+  const [guildDescriptionDraft, setGuildDescriptionDraft] = useState(userGuild?.description || "");
+  const [approvalRequiredDraft, setApprovalRequiredDraft] = useState(Boolean(userGuild?.approval_required));
+  const [recommendedGuilds, setRecommendedGuilds] = useState<any[]>([]);
+  useEffect(() => {
+    if (userGuild) return;
+    void supabase.rpc("get_recommended_guilds", { p_limit: 5 }).then(({ data }) => {
+      if (Array.isArray(data)) setRecommendedGuilds(data);
+    });
+  }, [userGuild?.id]);
+  useEffect(() => {
+    setGuildDescriptionDraft(userGuild?.description || "");
+    setApprovalRequiredDraft(Boolean(userGuild?.approval_required));
+  }, [userGuild?.id, userGuild?.description, userGuild?.approval_required]);
   const penalty = getGuildPenaltyState();
 
   const isMaster = userGuildMember?.role === "MASTER";
-  const isSubMaster = userGuildMember?.role === "SUBMASTER";
+  const isSubMaster = userGuildMember?.role === "SUBMASTER" || userGuildMember?.role === "SUB_MASTER";
   const canPurchaseDecorations = isMaster || isSubMaster;
   const canChangeDecorations = isMaster;
 
@@ -121,6 +147,12 @@ export default function GuildTab() {
   if (!userGuild) {
     const joinUnlocked = userLevel >= 3 && !penalty.isPenalty;
     const createUnlocked = userLevel >= 8 && cash >= 5000 && !penalty.isPenalty;
+    const recommendationById = new Map(recommendedGuilds.map((guild) => [guild.guild_id, guild]));
+    const guildById = new Map(allGuildsDbList.map((guild: any) => [guild.id, guild]));
+    recommendedGuilds.forEach((guild: any) => {
+      if (!guildById.has(guild.guild_id)) guildById.set(guild.guild_id, { ...guild, id: guild.guild_id });
+    });
+    const displayGuilds = Array.from(guildById.values()).sort((a: any, b: any) => Number(recommendationById.get(b.id)?.recommendation_score || 0) - Number(recommendationById.get(a.id)?.recommendation_score || 0));
     return (
       <div className="view-container guild-lobby-view">
         <SectionHeader title="ギルド" />
@@ -146,14 +178,57 @@ export default function GuildTab() {
 
           <section className="guild-lobby-section">
             <div className="guild-lobby-section-heading"><span>募集中の連合</span><small>Lv.3から加入</small></div>
+            <div className="flex gap-2 mb-3">
+              <input
+                type="search"
+                value={guildSearchQuery}
+                onChange={(event) => setGuildSearchQuery(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") void handleSearchGuilds(guildSearchQuery);
+                }}
+                maxLength={30}
+                placeholder="ギルド名で検索"
+                className="flex-1 bg-black-60 border-subtle text-white font-size-9 p-2 rounded outline-none"
+              />
+              <OutlawButton variant="secondary" onClick={() => void handleSearchGuilds(guildSearchQuery)} disabled={gvgResetLoading}>
+                検索
+              </OutlawButton>
+            </div>
             <div className="guild-lobby-list">
-              {allGuildsDbList.map((g: any) => (
+              {displayGuilds.map((g: any) => {
+                const activity = recommendationById.get(g.id);
+                const pendingRequest = pendingGuildJoinRequests.find((request: any) => request.guild_id === g.id);
+                const hasOtherPendingRequest = pendingGuildJoinRequests.length > 0 && !pendingRequest;
+                const isFull = Number(g.member_count || 0) >= Number(g.member_limit || 10);
+                return (
                 <div key={g.id} className="guild-lobby-guild-card">
                   <div className="guild-lobby-guild-mark">連</div>
-                  <div className="guild-lobby-guild-info"><strong>{g.name}</strong><span>Lv.{g.level} ・ メンバーを募集中</span></div>
-                  <OutlawButton variant={joinUnlocked ? "primary" : "secondary"} className="font-size-8 px-3" disabled={!joinUnlocked || gvgResetLoading} onClick={() => handleDemoJoinGuild(g.id, g.name)}>{joinUnlocked ? "加入する" : "Lv.3で解放"}</OutlawButton>
+                  <button className="guild-lobby-guild-info guild-detail-trigger" onClick={() => void fetchGuildDetail(g.id)}>
+                    <strong>{g.name}</strong>
+                    <span>Lv.{g.level} ・ {g.member_count || 0}/{g.member_limit || 10}名 ・ {g.approval_required ? "承認制" : "即時加入"}</span>
+                    <span className="guild-activity-line">活動 {activity?.active_members_7d ?? "-"}人 ・ Raid {Number(activity?.raid_contribution_7d || 0).toLocaleString()} ・ 戦力 {Number(activity?.guild_power || 0).toLocaleString()}</span>
+                    <small>詳細・実績を見る ›</small>
+                  </button>
+                  {pendingRequest ? (
+                    <OutlawButton variant="secondary" className="font-size-8 px-3" disabled={gvgResetLoading} onClick={() => void handleCancelGuildJoinRequest(pendingRequest.id)}>
+                      申請取消
+                    </OutlawButton>
+                  ) : (
+                    <OutlawButton
+                      variant={joinUnlocked && !isFull && !hasOtherPendingRequest ? "primary" : "secondary"}
+                      className="font-size-8 px-3"
+                      disabled={!joinUnlocked || isFull || hasOtherPendingRequest || gvgResetLoading}
+                      onClick={() => handleDemoJoinGuild(g.id, g.name)}
+                    >
+                      {!joinUnlocked ? "Lv.3で解放" : isFull ? "満員" : hasOtherPendingRequest ? "他へ申請中" : g.approval_required ? "加入申請" : "加入する"}
+                    </OutlawButton>
+                  )}
                 </div>
-              ))}
+                );
+              })}
+              {allGuildsDbList.length === 0 && (
+                <div className="font-size-8 text-secondary text-center py-4">条件に一致するギルドはありません。</div>
+              )}
             </div>
           </section>
 
@@ -232,6 +307,29 @@ export default function GuildTab() {
           <div className="xp-bar-fill" style={{ width: `${xpPercent}%` }} />
         </div>
       </div>
+
+      <section className="guild-welcome-card" aria-label="TRIBEへようこそ">
+        <div><small>SYSTEM / WELCOME</small><strong>{userGuild.name}へようこそ</strong></div>
+        <p>{userGuild.welcome_message || "加入ありがとう。まずは挨拶して、仲間とレイドへ挑もう。"}</p>
+        <OutlawButton variant="primary" onClick={() => {
+          setChatChannel("GUILD");
+          setChatInput("はじめまして！よろしくお願いします！");
+          setShowTribeChatPanel(true);
+        }}>挨拶する</OutlawButton>
+        <small>定型文は送信前に編集できます。自動送信されません。</small>
+      </section>
+      <section className="guild-membership-summary" aria-label="所属TRIBE">
+        <div><small>MEMBERSHIP</small><strong>所属TRIBE</strong><span>{guildMembersList.length}/{userGuild.member_limit || 10}名 ・ {userGuild.approval_required ? "承認制" : "募集中"}</span></div>
+        <div className="guild-membership-actions"><OutlawButton variant="primary" onClick={() => setShowTribeChatPanel(true)}>TRIBE Chat</OutlawButton><OutlawButton variant="secondary" onClick={() => navigateTab("raid")}>レイドへ</OutlawButton></div>
+      </section>
+      <section className="guild-gvg-coming-soon" aria-label="GvG開催予定">
+        <div>
+          <small>GvG / PRE-OPEN</small>
+          <strong>COMING SOON</strong>
+          <span>開催予定 12:00 / 20:00 / 23:00</span>
+        </div>
+        <p>実戦参加は正式オープン後に、既存の参加条件に従って判定されます。</p>
+      </section>
       
       {/* サブタブメニュー */}
       <div className="mt-3">
@@ -251,8 +349,27 @@ export default function GuildTab() {
         {/* 1. メンバーリスト表示 */}
         {guildSubTab === "members" && (
           <div className="flex-col-gap-3">
+            {isMaster && guildJoinRequests.length > 0 && (
+              <OutlawCard glowLine="left">
+                <div className="font-bold text-neon-cyan mb-2">加入申請</div>
+                <div className="flex-col-gap-2">
+                  {guildJoinRequests.map((request: any) => (
+                    <div key={request.id} className="list-item flex-row-space-between align-center p-2">
+                      <div>
+                        <strong className="font-size-9 text-white">{request.user?.username || "申請ユーザー"}</strong>
+                        <div className="font-size-7 text-secondary">Lv.{request.user?.level || 1}</div>
+                      </div>
+                      <div className="flex gap-2">
+                        <OutlawButton variant="primary" disabled={gvgResetLoading} onClick={() => void handleReviewGuildJoinRequest(request.id, true)}>承認</OutlawButton>
+                        <OutlawButton variant="danger" disabled={gvgResetLoading} onClick={() => void handleReviewGuildJoinRequest(request.id, false)}>却下</OutlawButton>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </OutlawCard>
+            )}
             <div className="flex justify-between items-center guild-quit-btn-row p-1">
-              <span className="font-size-8 text-secondary">構成員階級と貢献度 (タップで詳細)</span>
+              <span className="font-size-8 text-secondary">メンバー階級と貢献度（タップで詳細）</span>
               <OutlawButton 
                 variant="danger"
                 onClick={handleLeaveGuild} 
@@ -299,7 +416,7 @@ export default function GuildTab() {
                         {isMe && <span className="font-size-7 text-color-cyan font-bold">(あなた)</span>}
                       </div>
                       <span className="font-size-8 bg-black-60 px-2 py-0.5 rounded text-secondary border border-gray-800">
-                        {m.role === "MASTER" ? "マスター" : m.role === "SUBMASTER" ? "サブマスター" : "一般構成員"}
+                        {m.role === "MASTER" ? "マスター" : ["SUBMASTER", "SUB_MASTER"].includes(m.role) ? "サブマスター" : "一般メンバー"}
                       </span>
                     </div>
 
@@ -310,9 +427,16 @@ export default function GuildTab() {
                           <OutlawButton 
                             variant="secondary"
                             className="font-size-7 py-0.5 px-2" 
-                            onClick={() => handleUpdateMemberRole(m.user_id, m.users?.username, m.role === "SUBMASTER" ? "MEMBER" : "SUBMASTER")}
+                            onClick={() => handleUpdateMemberRole(m.user_id, m.users?.username, ["SUBMASTER", "SUB_MASTER"].includes(m.role) ? "MEMBER" : "SUB_MASTER")}
                           >
-                            {m.role === "SUBMASTER" ? "降格" : "昇格"}
+                            {["SUBMASTER", "SUB_MASTER"].includes(m.role) ? "降格" : "昇格"}
+                          </OutlawButton>
+                          <OutlawButton
+                            variant="secondary"
+                            className="font-size-7 py-0.5 px-2"
+                            onClick={() => handleUpdateMemberRole(m.user_id, m.users?.username, "MASTER")}
+                          >
+                            MASTER譲渡
                           </OutlawButton>
                           <OutlawButton 
                             variant="danger"
@@ -349,6 +473,36 @@ export default function GuildTab() {
         {/* 2. 属性設定表示 */}
         {guildSubTab === "settings" && (
           <div className="flex-col-gap-3">
+            <OutlawCard>
+              <div className="font-bold text-neon-cyan mb-2">加入・公開設定</div>
+              <textarea
+                value={guildDescriptionDraft}
+                onChange={(event) => setGuildDescriptionDraft(event.target.value)}
+                maxLength={200}
+                disabled={!isMaster || gvgResetLoading}
+                placeholder="ギルド紹介（200文字以内）"
+                className="width-100 bg-black-60 border-subtle text-white font-size-8 p-2 rounded outline-none"
+              />
+              <label className="flex items-center gap-2 mt-3 font-size-8 text-secondary">
+                <input
+                  type="checkbox"
+                  checked={approvalRequiredDraft}
+                  onChange={(event) => setApprovalRequiredDraft(event.target.checked)}
+                  disabled={!isMaster || gvgResetLoading}
+                />
+                加入時にMASTERの承認を必要とする
+              </label>
+              {isMaster && (
+                <OutlawButton
+                  variant="primary"
+                  className="width-100 mt-3"
+                  disabled={gvgResetLoading}
+                  onClick={() => void handleUpdateGuildSettings(guildDescriptionDraft, approvalRequiredDraft)}
+                >
+                  設定を保存
+                </OutlawButton>
+              )}
+            </OutlawCard>
             <OutlawCard glowLine="right">
               <div className="font-bold text-neon-magenta mb-1">ギルドアライメント設定</div>
               <p className="font-size-8 text-secondary mt-1 mb-4">GvGの攻撃力・HP倍率ボーナスに影響する属性を決定します。</p>
@@ -510,7 +664,7 @@ export default function GuildTab() {
       {selectedMember && (
         <FullScreenPanel
           onClose={() => setSelectedMember(null)}
-          title="構成員データファイル"
+          title="メンバープロフィール"
         >
           <div className="p-4 text-left">
             {/* 基本情報 */}
@@ -526,7 +680,7 @@ export default function GuildTab() {
                 </h3>
                 <div className="flex gap-2 mt-1 align-center">
                   <span className="font-size-7 bg-gray-900 border border-gray-800 px-2 py-0.5 rounded text-secondary">
-                    {selectedMember.role === "MASTER" ? "マスター" : selectedMember.role === "SUBMASTER" ? "サブマスター" : "一般構成員"}
+                    {selectedMember.role === "MASTER" ? "マスター" : ["SUBMASTER", "SUB_MASTER"].includes(selectedMember.role) ? "サブマスター" : "一般メンバー"}
                   </span>
                   <span className="font-size-8 text-white font-bold">
                     Lv.{selectedMember.userLevel || 1}

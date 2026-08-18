@@ -5,6 +5,14 @@ import { supabase } from "@/utils/supabase";
 import { CHARACTER_AWAKENING_MASTER } from "@/utils/game_constants";
 import { EQUIPMENTS_MASTER_DATA } from "@/utils/equipments_master_data";
 import { SKILLS_MASTER_DATA } from "@/utils/skills_master_data";
+import { useImmediateActionLock } from "@/hooks/useImmediateActionLock";
+import { getCharacterTotalStats } from "@/utils/stats_calculator";
+import { getEquipmentLevelScale } from "@/utils/equipment_progression";
+import type { ConfirmDialogConfig } from "@/app/components/ui/ConfirmDialog";
+import { beginActionPerformance } from "@/utils/actionPerformance";
+
+const sumPower = (stats: { hp: number; atk: number; def: number; spd: number; luk: number }) =>
+  stats.hp + stats.atk + stats.def;
 
 export function useCharacterProgression(
   session: any,
@@ -54,20 +62,27 @@ export function useCharacterProgression(
   const [equipmentLimitBreakMaster, setEquipmentLimitBreakMaster] = useState<any[]>([]);
 
   const [upgradeSubTab, setUpgradeSubTab] = useState<string>("character");
-  const [upgradeLoading, setUpgradeLoading] = useState<boolean>(false);
+  const {
+    isLocked: upgradeLoading,
+    beginAction: beginUpgradeAction,
+    endAction: endUpgradeAction
+  } = useImmediateActionLock();
+  const setUpgradeLoading = (loading: boolean) => {
+    if (loading) beginUpgradeAction();
+    else endUpgradeAction();
+  };
 
-  const handleCharacterLevelUp = async (expItemId: string = "CHAR_EXP_S", count: number = 1) => {
-    if (!session || characterLevel >= 100) return;
-    if (characterLevel >= 50 && characterAwaken === 0) {
+  const handleCharacterLevelUp = async (
+    expItemId: string = "CHAR_EXP_S",
+    count: number = 1,
+    deferResult?: (config: ConfirmDialogConfig) => void
+  ) => {
+    if (!session || characterLevel >= 100) return false;
+    const characterLevelCap = Math.min(100, 50 + Math.min(Math.max(characterAwaken, 0), 5) * 10);
+    if (characterLevel >= characterLevelCap) {
       setErrorMessage("「覚醒の書」で覚醒させてレベル上限を解放してください。");
-      return;
+      return false;
     }
-
-    const expValues: { [key: string]: number } = {
-      CHAR_EXP_S: 500,
-      CHAR_EXP_M: 2000,
-      CHAR_EXP_L: 10000
-    };
 
     let userItemQty = 0;
     if (expItemId === "CHAR_EXP_S") userItemQty = charExpS;
@@ -76,40 +91,67 @@ export function useCharacterProgression(
 
     if (userItemQty < count) {
       setErrorMessage("該当する経験の書が不足しています。");
-      return;
+      return false;
     }
 
     const cost = count * 100;
     if (cash < cost) {
       setErrorMessage("キャッシュ不足です。");
-      return;
+      return false;
     }
 
-    setUpgradeLoading(true);
-    playCyberSe("click");
+    const previousLevel = characterLevel;
+    if (!beginUpgradeAction()) return false;
+    const actionPerformance = beginActionPerformance("growth");
+    playCyberSe("GROWTH_START");
     try {
-      const res = await supabase.rpc("character_level_up", {
-        p_user_id: session.user.id,
-        p_character_id: upgradeSelectedCharId,
+      const character = userCharactersDbList.find((entry) => entry.character_id === upgradeSelectedCharId);
+      if (!character) {
+        setErrorMessage("育成対象のキャラクターが見つかりません。");
+        return false;
+      }
+      actionPerformance.mark("request_start");
+      const res = await supabase.rpc("level_up_character", {
+        p_character_id: character.id,
         p_exp_item_id: expItemId,
-        p_count: count,
-        p_cash_cost: cost
+        p_count: count
       });
 
       if (res.error) {
         setErrorMessage(res.error.message || "レベルアップに失敗しました。");
-        return;
+        return false;
       }
       if (res.data?.error) {
         setErrorMessage(res.data.error);
-        return;
+        return false;
       }
+      actionPerformance.mark("response");
 
-      await syncBootstrapData(session.user.id);
+      const newLevel = Number(res.data?.level ?? previousLevel + count);
+      playCyberSe("LEVEL_UP");
+      const powerBefore = sumPower(getCharacterTotalStats(character, userEquipmentsList));
+      const powerAfter = sumPower(getCharacterTotalStats({ ...character, level: newLevel }, userEquipmentsList));
+      const resultConfig: ConfirmDialogConfig = {
+        isOpen: true,
+        title: "レベルアップ結果",
+        message: `キャラクターが Lv.${previousLevel} → Lv.${newLevel} になりました。\n戦力 ${powerBefore.toLocaleString()} → ${powerAfter.toLocaleString()}（+${Math.max(0, powerAfter - powerBefore).toLocaleString()}）`,
+        onConfirm: () => setConfirmDialogConfig(null),
+        onCancel: () => setConfirmDialogConfig(null)
+      };
+      if (deferResult) deferResult(resultConfig);
+      else setConfirmDialogConfig(resultConfig);
+      actionPerformance.mark("state_update");
+      actionPerformance.markVisualReady();
+      void syncBootstrapData(session.user.id).catch((bootstrapError) => {
+        console.warn("Character level-up refresh failed:", bootstrapError);
+      });
+      return true;
     } catch (err) {
       console.warn(err);
+      setErrorMessage("レベルアップに失敗しました。もう一度お試しください。");
+      return false;
     } finally {
-      setUpgradeLoading(false);
+      endUpgradeAction();
     }
   };
 
@@ -126,14 +168,15 @@ export function useCharacterProgression(
       return;
     }
 
-    setUpgradeLoading(true);
+    if (!beginUpgradeAction()) return;
     playCyberSe("click");
     try {
-      const res = await supabase.rpc("character_awaken", {
-        p_user_id: session.user.id,
-        p_character_id: upgradeSelectedCharId,
-        p_cash_cost: cost
-      });
+      const character = userCharactersDbList.find((entry) => entry.character_id === upgradeSelectedCharId);
+      if (!character) {
+        setErrorMessage("覚醒対象のキャラクターが見つかりません。");
+        return;
+      }
+      const res = await supabase.rpc("awaken_character", { p_character_id: character.id });
 
       if (res.error) {
         setErrorMessage(res.error.message || "覚醒に失敗しました。");
@@ -148,74 +191,116 @@ export function useCharacterProgression(
     } catch (err) {
       console.warn(err);
     } finally {
-      setUpgradeLoading(false);
+      endUpgradeAction();
     }
   };
 
-  const handleEquipGear = async (gearId: string) => {
-    if (!session || activeGearSlot === null) return;
-    setUpgradeLoading(true);
+  const handleEquipGear = async (gearId: string, slotOverride?: number) => {
+    const slotIndex = slotOverride ?? activeGearSlot;
+    if (!session || slotIndex === null) return;
+    const activeChar = userCharactersDbList.find(c => c.character_id === upgradeSelectedCharId);
+    if (!activeChar) {
+      setErrorMessage("装着先のキャラクターが見つかりません。");
+      return;
+    }
+    if (!beginUpgradeAction()) return;
     playCyberSe("click");
 
-    const activeChar = userCharactersDbList.find(c => c.character_id === upgradeSelectedCharId);
-    if (!activeChar) return;
-
     try {
-      await supabase.from("user_equipments").update({ equipped_character_id: null, slot_index: null }).eq("equipped_character_id", activeChar.id).eq("slot_index", activeGearSlot);
-      await supabase.from("user_equipments").update({ equipped_character_id: activeChar.id, slot_index: activeGearSlot }).eq("id", gearId);
+      const { error } = await supabase.rpc("set_character_equipment", {
+        p_character_id: activeChar.id,
+        p_equipment_id: gearId,
+        p_slot_index: slotIndex,
+      });
+      if (error) {
+        setErrorMessage(error.message || "装備の変更に失敗しました。");
+        return;
+      }
 
       setShowGearModal(false);
       setActiveGearSlot(null);
       await syncBootstrapData(session.user.id);
+      const equipped = userEquipmentsList.find((item: any) => item.id === gearId);
+      const equippedName = EQUIPMENTS_MASTER_DATA.find((item: any) => item.id === equipped?.equipment_id)?.name || "装備品";
+      setConfirmDialogConfig({
+        isOpen: true, title: "装備変更結果",
+        message: `${equippedName}をスロット${slotIndex + 1}へ装備しました。編成戦力へ反映されます。`,
+        onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null)
+      });
     } catch (err) {
       console.warn(err);
     } finally {
-      setUpgradeLoading(false);
+      endUpgradeAction();
     }
   };
 
   const handleUnequipGear = async (gearId: string) => {
     if (!session) return;
-    setUpgradeLoading(true);
+    if (!beginUpgradeAction()) return;
     playCyberSe("click");
     try {
-      await supabase.from("user_equipments").update({ equipped_character_id: null, slot_index: null }).eq("id", gearId);
+      const { error } = await supabase.rpc("unequip_character_equipment", { p_equipment_id: gearId });
+      if (error) {
+        setErrorMessage(error.message || "装備を外せませんでした。");
+        return;
+      }
       await syncBootstrapData(session.user.id);
     } catch (err) {
       console.warn(err);
     } finally {
-      setUpgradeLoading(false);
+      endUpgradeAction();
     }
   };
 
-  const handleEquipSkill = async (skillCardUuid: string) => {
-    if (!session || activeSkillSlot === null) return;
-    setUpgradeLoading(true);
+  const handleEquipSkill = async (skillCardUuid: string, slotOverride?: number) => {
+    const slotIndex = slotOverride ?? activeSkillSlot;
+    if (!session || slotIndex === null) return;
+    const activeChar = userCharactersDbList.find(c => c.character_id === upgradeSelectedCharId);
+    if (!activeChar) {
+      setErrorMessage("装備先のキャラクターが見つかりません。");
+      return;
+    }
+    if (!beginUpgradeAction()) return;
     playCyberSe("click");
 
-    const activeChar = userCharactersDbList.find(c => c.character_id === upgradeSelectedCharId);
-    if (!activeChar) return;
-
     try {
-      await supabase.from("user_skills").update({ equipped_character_id: null, slot_index: null }).eq("equipped_character_id", activeChar.id).eq("slot_index", activeSkillSlot);
-      await supabase.from("user_skills").update({ equipped_character_id: activeChar.id, slot_index: activeSkillSlot }).eq("id", skillCardUuid);
+      const { error } = await supabase.rpc("set_character_skill", {
+        p_character_id: activeChar.id,
+        p_skill_id: skillCardUuid,
+        p_slot_index: slotIndex
+      });
+      if (error) {
+        setErrorMessage(error.message || "スキルの装備に失敗しました。");
+        return;
+      }
 
       setShowSkillModal(false);
       setActiveSkillSlot(null);
       await syncBootstrapData(session.user.id);
+      const equipped = userSkillsList.find((item: any) => item.id === skillCardUuid);
+      const equippedName = SKILLS_MASTER_DATA.find((item: any) => item.id === equipped?.skill_card_id)?.name || "スキル";
+      setConfirmDialogConfig({
+        isOpen: true, title: "スキル変更結果",
+        message: `${equippedName}をスロット${slotIndex + 1}へ装備しました。次回バトルから効果が反映されます。`,
+        onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null)
+      });
     } catch (err) {
       console.warn(err);
     } finally {
-      setUpgradeLoading(false);
+      endUpgradeAction();
     }
   };
 
   const handleUnequipSkill = async (skillCardUuid: string) => {
     if (!session) return;
-    setUpgradeLoading(true);
+    if (!beginUpgradeAction()) return;
     playCyberSe("click");
     try {
-      await supabase.from("user_skills").update({ equipped_character_id: null, slot_index: null }).eq("id", skillCardUuid);
+      const { error } = await supabase.rpc("unequip_character_skill", { p_skill_id: skillCardUuid });
+      if (error) {
+        setErrorMessage(error.message || "スキルの解除に失敗しました。");
+        return;
+      }
       setSelectedSkill((prev: any) => {
         if (prev && prev.id === skillCardUuid) {
           return { ...prev, equipped_character_id: null, slot_index: null };
@@ -226,30 +311,30 @@ export function useCharacterProgression(
     } catch (err) {
       console.warn(err);
     } finally {
-      setUpgradeLoading(false);
+      endUpgradeAction();
     }
   };
 
   const handleUnequipGearBulk = async (characterDbId: string) => {
     if (!session || !characterDbId) return;
-    setUpgradeLoading(true);
+    if (!beginUpgradeAction()) return;
     playCyberSe("click");
     try {
-      await supabase.rpc("unequip_gear_bulk", {
-        p_user_id: session.user.id,
-        p_character_id: characterDbId
+      const { error } = await supabase.rpc("unequip_character_equipment_bulk", {
+        p_character_id: characterDbId,
       });
+      if (error) setErrorMessage(error.message || "装備の一括解除に失敗しました。");
       await syncBootstrapData(session.user.id);
     } catch (err) {
       console.warn("Failed unequip_gear_bulk:", err);
     } finally {
-      setUpgradeLoading(false);
+      endUpgradeAction();
     }
   };
 
   const handleEquipGearBulkRecommended = async (characterDbId: string, masterCharId: string) => {
     if (!session || !characterDbId) return;
-    setUpgradeLoading(true);
+    if (!beginUpgradeAction()) return;
     playCyberSe("click");
     try {
       const availableGears = userEquipmentsList.filter((e: any) => {
@@ -262,11 +347,11 @@ export function useCharacterProgression(
 
       const slotTypes: ("WEAPON" | "HEAD" | "BODY" | "LEGS" | "ACCESSORY")[] = ["WEAPON", "HEAD", "BODY", "LEGS", "ACCESSORY"];
       const slotIndexesMap: { [key: string]: number[] } = {
-        WEAPON: [0],
-        HEAD: [1],
-        BODY: [2],
-        LEGS: [3],
-        ACCESSORY: [4, 5, 6]
+        WEAPON: [0, 1],
+        HEAD: [2],
+        BODY: [3],
+        LEGS: [4],
+        ACCESSORY: [5, 6]
       };
 
       const selectedGearUuids: string[] = [];
@@ -298,54 +383,70 @@ export function useCharacterProgression(
       }
 
       if (selectedGearUuids.length > 0) {
-        await supabase.rpc("equip_gear_bulk", {
-          p_user_id: session.user.id,
+        const { error } = await supabase.rpc("set_character_equipment_bulk", {
           p_character_id: characterDbId,
-          p_equipment_uuids: selectedGearUuids,
-          p_slot_indexes: selectedSlotIndexes
+          p_equipment_ids: selectedGearUuids,
+          p_slot_indexes: selectedSlotIndexes,
         });
+        if (error) {
+          setErrorMessage(error.message || "おすすめ装備の適用に失敗しました。");
+          return;
+        }
         await syncBootstrapData(session.user.id);
       }
     } catch (err) {
       console.warn("Failed equip_gear_bulk:", err);
     } finally {
-      setUpgradeLoading(false);
+      endUpgradeAction();
     }
   };
 
   const handleUnequipSkillBulk = async (characterDbId: string) => {
     if (!session || !characterDbId) return;
-    setUpgradeLoading(true);
+    if (!beginUpgradeAction()) return;
     playCyberSe("click");
     try {
-      await supabase.rpc("unequip_skill_bulk", {
-        p_user_id: session.user.id,
-        p_character_id: characterDbId
+      const { error } = await supabase.rpc("set_character_skill_loadout", {
+        p_character_id: characterDbId,
+        p_skill_ids: [],
+        p_slot_indexes: []
       });
+      if (error) {
+        setErrorMessage(error.message || "スキルの一括解除に失敗しました。");
+        return;
+      }
       await syncBootstrapData(session.user.id);
     } catch (err) {
       console.warn("Failed unequip_skill_bulk:", err);
     } finally {
-      setUpgradeLoading(false);
+      endUpgradeAction();
     }
   };
 
-  const handleEquipSkillBulkRecommended = async (characterDbId: string, masterCharId: string) => {
+  const handleEquipSkillBulkRecommended = async (characterDbId: string, masterCharId?: string) => {
     if (!session || !characterDbId) return;
-    setUpgradeLoading(true);
+    const targetCharacter = userCharactersDbList.find((character: any) => character.id === characterDbId);
+    const resolvedMasterCharId = masterCharId || targetCharacter?.character_id;
+    if (!resolvedMasterCharId) {
+      setErrorMessage("装備先のキャラクターが見つかりません。");
+      return;
+    }
+    if (!beginUpgradeAction()) return;
     playCyberSe("click");
     try {
       const availableSkills = userSkillsList.filter((s: any) => {
         if (s.equipped_character_id && s.equipped_character_id !== characterDbId) return false;
         const master = SKILLS_MASTER_DATA.find((m: any) => m.id === s.skill_card_id);
         if (!master) return false;
-        if (master.is_exclusive && master.exclusive_character_id && master.exclusive_character_id !== masterCharId) return false;
+        const skillNumber = Number(s.skill_card_id?.match(/\d+$/)?.[0]);
+        if (!Number.isInteger(skillNumber) || skillNumber < 1 || skillNumber > 50) return false;
+        if (master.is_exclusive && master.exclusive_character_id && master.exclusive_character_id !== resolvedMasterCharId) return false;
         return true;
       }).sort((a: any, b: any) => {
         const mA = SKILLS_MASTER_DATA.find((m: any) => m.id === a.skill_card_id);
         const mB = SKILLS_MASTER_DATA.find((m: any) => m.id === b.skill_card_id);
-        const isSynergyA = mA?.exclusive_character_id === masterCharId ? 1 : 0;
-        const isSynergyB = mB?.exclusive_character_id === masterCharId ? 1 : 0;
+        const isSynergyA = mA?.exclusive_character_id === resolvedMasterCharId ? 1 : 0;
+        const isSynergyB = mB?.exclusive_character_id === resolvedMasterCharId ? 1 : 0;
         if (isSynergyB !== isSynergyA) return isSynergyB - isSynergyA;
         const lbDiff = (b.plus_val || 0) - (a.plus_val || 0);
         if (lbDiff !== 0) return lbDiff;
@@ -356,35 +457,39 @@ export function useCharacterProgression(
       const selectedSkillUuids: string[] = [];
       const selectedSlotIndexes: number[] = [];
 
-      const maxSlots = 6;
+      const maxSlots = Math.min(6, 3 + Math.max(0, targetCharacter?.awakening_level || 0));
       for (let i = 0; i < Math.min(availableSkills.length, maxSlots); i++) {
         selectedSkillUuids.push(availableSkills[i].id);
         selectedSlotIndexes.push(i);
       }
 
       if (selectedSkillUuids.length > 0) {
-        await supabase.rpc("equip_skill_bulk", {
-          p_user_id: session.user.id,
+        const { error } = await supabase.rpc("set_character_skill_loadout", {
           p_character_id: characterDbId,
-          p_skill_uuids: selectedSkillUuids,
+          p_skill_ids: selectedSkillUuids,
           p_slot_indexes: selectedSlotIndexes
         });
+        if (error) {
+          setErrorMessage(error.message || "推奨スキルの一括装備に失敗しました。");
+          return;
+        }
         await syncBootstrapData(session.user.id);
+      } else {
+        setErrorMessage("装備できるOpen Beta対応スキルがありません。");
       }
     } catch (err) {
       console.warn("Failed equip_skill_bulk:", err);
     } finally {
-      setUpgradeLoading(false);
+      endUpgradeAction();
     }
   };
 
   const handleSellGearBulk = async (equipmentUuids: string[]) => {
     if (!session || !equipmentUuids || equipmentUuids.length === 0) return;
-    setUpgradeLoading(true);
+    if (!beginUpgradeAction()) return;
     playCyberSe("gacha");
     try {
-      const { error } = await supabase.rpc("sell_gear_bulk", {
-        p_user_id: session.user.id,
+      const { error } = await supabase.rpc("sell_owned_equipment", {
         p_equipment_ids: equipmentUuids
       });
       if (error) {
@@ -395,13 +500,14 @@ export function useCharacterProgression(
     } catch (err: any) {
       setErrorMessage(err.message || "売却処理に失敗しました。");
     } finally {
-      setUpgradeLoading(false);
+      endUpgradeAction();
     }
   };
 
   const handleEquipmentLevelUp = async (expItemId: string = "EQUIP_EXP_S", count: number = 1) => {
     if (!session || !selectedEquipment) return;
-    if (equipmentLevel >= 50) return;
+    const equipmentLevelCap = Math.min(100, 50 + Math.min(Math.max(selectedEquipment.plus_val || 0, 0), 5) * 10);
+    if (equipmentLevel >= equipmentLevelCap) return;
 
     let userItemQty = 0;
     if (expItemId === "EQUIP_EXP_S") userItemQty = equipExpS;
@@ -419,15 +525,15 @@ export function useCharacterProgression(
       return;
     }
 
-    setUpgradeLoading(true);
+    const previousLevel = equipmentLevel;
+    const equipmentName = EQUIPMENTS_MASTER_DATA.find((entry: any) => entry.id === selectedEquipment.equipment_id)?.name || selectedEquipment.equipment_id;
+    if (!beginUpgradeAction()) return;
     playCyberSe("click");
     try {
-      const res = await supabase.rpc("upgrade_gear", {
-        p_user_id: session.user.id,
+      const res = await supabase.rpc("level_up_equipment", {
         p_equipment_id: selectedEquipment.id,
         p_exp_item_id: expItemId,
-        p_count: count,
-        p_cash_cost: cost
+        p_count: count
       });
 
       if (res.error) {
@@ -439,11 +545,26 @@ export function useCharacterProgression(
         return;
       }
 
+      const newLevel = Number(res.data?.level ?? previousLevel + count);
+      const master = EQUIPMENTS_MASTER_DATA.find((entry: any) => entry.id === selectedEquipment.equipment_id);
+      const basePower = master ? Number(master.hp || 0) + Number(master.atk || 0) + Number(master.def || 0) : 0;
+      const utilityPower = master ? Number(master.spd || 0) + Number(master.luk || 0) : 0;
+      const plusScale = Number(selectedEquipment.plus_val || 0) * 0.1;
+      const powerBefore = Math.floor(basePower * (getEquipmentLevelScale(previousLevel) + plusScale)) + utilityPower;
+      const powerAfter = Math.floor(basePower * (getEquipmentLevelScale(newLevel) + plusScale)) + utilityPower;
       await syncBootstrapData(session.user.id);
+      setSelectedEquipment((previous: any) => previous ? { ...previous, level: newLevel } : null);
+      setConfirmDialogConfig({
+        isOpen: true,
+        title: "レベルアップ結果",
+        message: `${equipmentName} が Lv.${previousLevel} → Lv.${newLevel} になりました。\n装備戦力 ${powerBefore.toLocaleString()} → ${powerAfter.toLocaleString()}（+${Math.max(0, powerAfter - powerBefore).toLocaleString()}）`,
+        onConfirm: () => setConfirmDialogConfig(null),
+        onCancel: () => setConfirmDialogConfig(null)
+      });
     } catch (err) {
       console.warn(err);
     } finally {
-      setUpgradeLoading(false);
+      endUpgradeAction();
     }
   };
 
@@ -470,16 +591,9 @@ export function useCharacterProgression(
       }
     }
 
-    setUpgradeLoading(true);
+    if (!beginUpgradeAction()) return;
     playCyberSe("gacha");
     const nextLb = equipmentLimitBreak + 1;
-    const updatedOptions = subOptions.map((opt, idx) => {
-      if (nextLb >= 3 && idx === 1) return { ...opt, unlocked: true };
-      if (nextLb >= 5 && idx === 2) return { ...opt, unlocked: true };
-      if (nextLb >= 10 && idx === 3) return { ...opt, unlocked: true };
-      return opt;
-    });
-
     try {
       let targetDupeId = null;
       if (!useWildcard) {
@@ -487,13 +601,10 @@ export function useCharacterProgression(
         targetDupeId = dupes[0]?.id;
       }
 
-      const res = await supabase.rpc("limit_break_gear_v2", {
-        p_user_id: session.user.id,
+      const res = await supabase.rpc("limit_break_equipment", {
         p_equipment_id: selectedEquipment.id,
-        p_cash_cost: cost,
         p_use_wildcard: useWildcard,
-        p_dupe_id: targetDupeId,
-        p_new_options: updatedOptions
+        p_dupe_id: targetDupeId
       });
 
       if (res.error) {
@@ -510,7 +621,7 @@ export function useCharacterProgression(
     } catch (err: any) {
       console.warn(err.message);
     } finally {
-      setUpgradeLoading(false);
+      endUpgradeAction();
     }
   };
 
@@ -525,7 +636,6 @@ export function useCharacterProgression(
     if (!skillMaster) return;
 
     const isExclusive = !!skillMaster.is_exclusive;
-    const required_item_id = isExclusive ? "EXCLUSIVE_CONTRACT" : "SKILL_LB_BOOK";
     const required_cash = (selectedSkill.plus_val + 1) * 1000;
 
     if (cash < required_cash) {
@@ -547,7 +657,7 @@ export function useCharacterProgression(
       }
     }
 
-    setUpgradeLoading(true);
+    if (!beginUpgradeAction()) return;
     playCyberSe("click");
 
     try {
@@ -557,13 +667,10 @@ export function useCharacterProgression(
         targetDupeId = dupes[0]?.id;
       }
 
-      const res = await supabase.rpc("limit_break_skill_v2", {
-        p_user_id: session.user.id,
+      const res = await supabase.rpc("limit_break_skill", {
         p_skill_id: selectedSkill.id,
-        p_cash_cost: required_cash,
         p_use_wildcard: useWildcard,
-        p_dupe_id: targetDupeId,
-        p_wildcard_item_id: required_item_id
+        p_dupe_id: targetDupeId
       });
 
       if (res.error) {
@@ -582,7 +689,7 @@ export function useCharacterProgression(
     } catch (err: any) {
       console.warn(err.message);
     } finally {
-      setUpgradeLoading(false);
+      endUpgradeAction();
     }
   };
 

@@ -12,6 +12,7 @@ import "./GachaTab.css";
 export default function GachaTab() {
   const {
     handleScout,
+    featureOperatingStates,
     gachaMasters,
     dailyFreeGachaFlags,
     specialPityPoints,
@@ -19,7 +20,9 @@ export default function GachaTab() {
     userItems,
     activeBanners,
     upgradeLoading,
-    onboardingState
+    onboardingState,
+    setScoutAnimationState,
+    playSe
   } = useGame();
   const isTutorialScout = onboardingState?.tutorial_step === "FREE_GACHA";
 
@@ -36,6 +39,9 @@ export default function GachaTab() {
     currency: "CASH" | "DIAMOND" | "FREE" | "TICKET"
   ) => {
     if (!beginAction()) return;
+    playSe("GACHA_START");
+    // Lock and acknowledge the tap before waiting for the authoritative result.
+    setScoutAnimationState("FLASHING");
     try {
       await handleScout(gachaId, count, currency);
     } finally {
@@ -43,7 +49,9 @@ export default function GachaTab() {
     }
   };
 
-  const gachaTickets = userItems?.find((i: any) => i.item_id === "GACHA_TICKET")?.quantity || 0;
+  const normalGachaTickets = userItems?.find((i: any) => i.item_id === "NORMAL_GACHA_TICKET")?.quantity || 0;
+  const specialGachaTickets = userItems?.find((i: any) => i.item_id === "SPECIAL_GACHA_TICKET")?.quantity || 0;
+  const isSpecialGachaOpen = featureOperatingStates?.SPECIAL_GACHA === "OPEN";
 
   const categoryAvailability = {
     CHARACTER: Boolean(gachaMasters?.some((g: any) => g.id === "CHAR_NORMAL")),
@@ -62,7 +70,9 @@ export default function GachaTab() {
   const hasDailyFree = dailyFreeGachaFlags[activeCategory];
   const gachaPrefix = activeCategory === "CHARACTER" ? "CHAR" : activeCategory === "EQUIPMENT" ? "EQUIP" : "SKILL";
   const normalGachaId = `${gachaPrefix}_NORMAL`;
+  const specialGachaId = `${gachaPrefix}_SPECIAL`;
   const normalGacha = gachaMasters?.find((g: any) => g.id === normalGachaId);
+  const specialGacha = gachaMasters?.find((g: any) => g.id === specialGachaId);
   const formatCost = (value: unknown, pulls = 1) => {
     const numeric = Number(value);
     return Number.isFinite(numeric) ? (numeric * pulls).toLocaleString("ja-JP") : "--";
@@ -150,7 +160,9 @@ export default function GachaTab() {
 
         {/* 1. 期間限定/ピックアップガチャ (マスタ連動) */}
         {!isTutorialScout && activeBanners?.filter((b: any) =>
-          b.gacha_category === activeCategory && gachaMasters?.some((g: any) => g.id === b.id)
+          b.gacha_category === activeCategory
+          && gachaMasters?.some((g: any) => g.id === b.id)
+          && (isSpecialGachaOpen || !String(b.id).includes("SPECIAL"))
         ).map((banner: any) => {
           const bannerGacha = gachaMasters?.find((g: any) => g.id === banner.id);
           return (
@@ -170,14 +182,14 @@ export default function GachaTab() {
             <div className="flex gap-2 mt-3 gacha-btn-layout">
               <button
                 className="upgrade-btn flex-1 active-scale-effect font-size-8 py-2 gacha-warning-outline"
-                onClick={() => handleScout(banner.id, 1, "DIAMOND")}
+                onClick={() => runScout(banner.id, 1, "DIAMOND")}
                 disabled={!bannerGacha}
               >
                 {bannerGacha ? `1回 (ダイヤ ${formatCost(bannerGacha.cost_diamond)})` : "準備中"}
               </button>
               <button
                 className="upgrade-btn flex-1 active-scale-effect font-size-8 py-2 gacha-warning-outline"
-                onClick={() => handleScout(banner.id, 10, "DIAMOND")}
+                onClick={() => runScout(banner.id, 10, "DIAMOND")}
                 disabled={!bannerGacha}
               >
                 {bannerGacha ? `10回 (ダイヤ ${formatCost(bannerGacha.cost_diamond, 10)})` : "準備中"}
@@ -188,14 +200,30 @@ export default function GachaTab() {
         })}
 
         {/* 2. スペシャルガチャ (常設・R以上確定・200Pt天井) */}
-        {!isTutorialScout && <div className="upgrade-card border-magenta gacha-card-special gacha-special-disabled" aria-disabled="true">
+        {!isTutorialScout && <div className={`upgrade-card border-magenta gacha-card-special ${isSpecialGachaOpen ? "" : "gacha-special-disabled"}`} aria-disabled={!isSpecialGachaOpen}>
           <div className="upgrade-card-title flex items-center justify-between gacha-title-row">
             <span className="text-color-magenta font-weight-bold">スペシャルガチャ</span>
-            <span className="font-size-8 text-secondary font-weight-bold">準備中</span>
+            <span className="font-size-8 text-secondary font-weight-bold">{isSpecialGachaOpen ? "R以上確定 / SSR 5%" : "準備中"}</span>
           </div>
           <div className="font-size-8 text-gray-400 mt-1">
-            Open Betaでは利用できません。
+            {isSpecialGachaOpen ? "R 60% / SR 35% / SSR 5%。無料10連の対象外です。" : "現在は利用できません。開始時はゲーム内でお知らせします。"}
           </div>
+          {isSpecialGachaOpen && specialGacha && (
+            <>
+              <div className="flex gap-2 mt-3 gacha-btn-layout">
+                <button className="upgrade-btn flex-1 active-scale-effect font-size-8 py-2" onClick={() => runScout(specialGachaId, 1, "CASH")}>1回（CASH {formatCost(specialGacha.cost_cash)}）</button>
+                <button className="upgrade-btn flex-1 active-scale-effect font-size-8 py-2" onClick={() => runScout(specialGachaId, 10, "CASH")}>10回（CASH {formatCost(specialGacha.cost_cash, 10)}）</button>
+              </div>
+              <div className="flex gap-2 mt-3 gacha-btn-layout">
+                <button className="upgrade-btn flex-1 active-scale-effect font-size-8 py-2" onClick={() => runScout(specialGachaId, 1, "DIAMOND")}>1回（ダイヤ {formatCost(specialGacha.cost_diamond)}）</button>
+                <button className="upgrade-btn flex-1 active-scale-effect font-size-8 py-2" onClick={() => runScout(specialGachaId, 10, "DIAMOND")}>10回（ダイヤ {formatCost(specialGacha.cost_diamond, 10)}）</button>
+              </div>
+              <div className="flex gap-2 mt-2 gacha-btn-layout">
+                <button className="upgrade-btn flex-1 active-scale-effect font-size-8 py-2" onClick={() => runScout(specialGachaId, 1, "TICKET")} disabled={specialGachaTickets < 1}>1回（専用チケット 1枚）</button>
+                <button className="upgrade-btn flex-1 active-scale-effect font-size-8 py-2" onClick={() => runScout(specialGachaId, 10, "TICKET")} disabled={specialGachaTickets < 10}>10回（専用チケット 10枚）</button>
+              </div>
+            </>
+          )}
         </div>}
 
         {/* 3. ノーマルガチャ (毎日10連無料 / N 50%, R 40%, SR 10%) */}
@@ -223,10 +251,11 @@ export default function GachaTab() {
           {hasDailyFree ? (
             <div className="mt-3">
               <button
-                className="claim-reward-btn active-scale-effect width-100 py-3 font-weight-bold font-size-9 gacha-free-btn"
+                className="semantic-cta semantic-cta--primary active-scale-effect width-100 gacha-free-btn"
                 aria-label="無料10連を引く"
                 onClick={() => void runScout(normalGachaId, 10, "FREE")}
-                disabled={!normalGacha}
+                disabled={!normalGacha || isGachaActionLocked}
+                aria-busy={isGachaActionLocked}
               >
                 <span>{isGachaActionLocked ? "ガチャを準備しています" : "無料10連を引く"}</span>
                 {!isGachaActionLocked && <small>消費なし</small>}
@@ -242,14 +271,14 @@ export default function GachaTab() {
           {!isTutorialScout && <div className="flex gap-2 mt-3 gacha-btn-layout">
             <button
               className="upgrade-btn flex-1 active-scale-effect font-size-8 py-2"
-              onClick={() => handleScout(normalGachaId, 1, "CASH")}
+              onClick={() => runScout(normalGachaId, 1, "CASH")}
               disabled={!normalGacha}
             >
               {normalGacha ? `1回 (金 ${formatCost(normalGacha.cost_cash)})` : "準備中"}
             </button>
             <button
               className="upgrade-btn flex-1 active-scale-effect font-size-8 py-2"
-              onClick={() => handleScout(normalGachaId, 10, "CASH")}
+              onClick={() => runScout(normalGachaId, 10, "CASH")}
               disabled={!normalGacha}
             >
               {normalGacha ? `10回 (金 ${formatCost(normalGacha.cost_cash, 10)})` : "準備中"}
@@ -260,14 +289,14 @@ export default function GachaTab() {
           {!isTutorialScout && <div className="flex gap-2 mt-2 gacha-btn-layout">
             <button
               className="upgrade-btn flex-1 active-scale-effect font-size-8 py-2 border-cyan-subtle"
-              onClick={() => handleScout(normalGachaId, 1, "DIAMOND")}
+              onClick={() => runScout(normalGachaId, 1, "DIAMOND")}
               disabled={!normalGacha}
             >
               {normalGacha ? `1回 (ダイヤ ${formatCost(normalGacha.cost_diamond)})` : "準備中"}
             </button>
             <button
               className="upgrade-btn flex-1 active-scale-effect font-size-8 py-2 border-cyan-subtle"
-              onClick={() => handleScout(normalGachaId, 10, "DIAMOND")}
+              onClick={() => runScout(normalGachaId, 10, "DIAMOND")}
               disabled={!normalGacha}
             >
               {normalGacha ? `10回 (ダイヤ ${formatCost(normalGacha.cost_diamond, 10)})` : "準備中"}
@@ -278,15 +307,15 @@ export default function GachaTab() {
           {!isTutorialScout && <div className="flex gap-2 mt-2 gacha-btn-layout">
             <button
               className="upgrade-btn flex-1 active-scale-effect font-size-8 py-2 border-cyan-subtle"
-              onClick={() => handleScout(normalGachaId, 1, "TICKET")}
-              disabled={!normalGacha || gachaTickets < 1}
+              onClick={() => runScout(normalGachaId, 1, "TICKET")}
+              disabled={!normalGacha || normalGachaTickets < 1}
             >
               1回 (チケット 1枚)
             </button>
             <button
               className="upgrade-btn flex-1 active-scale-effect font-size-8 py-2 border-cyan-subtle"
-              onClick={() => handleScout(normalGachaId, 10, "TICKET")}
-              disabled={!normalGacha || gachaTickets < 10}
+              onClick={() => runScout(normalGachaId, 10, "TICKET")}
+              disabled={!normalGacha || normalGachaTickets < 10}
             >
               10回 (チケット 10枚)
             </button>

@@ -3,6 +3,7 @@ import { useGame } from "../context/GameContext";
 import FullScreenPanel from "./ui/FullScreenPanel";
 import SubTabNav from "./ui/SubTabNav";
 import OutlawButton from "./ui/OutlawButton";
+import { supabase } from "../../utils/supabase";
 import "./FriendPanel.css";
 
 export default function FriendPanel() {
@@ -23,16 +24,21 @@ export default function FriendPanel() {
     session,
     playCyberSe,
     selectedBattleHelper,
-    setSelectedBattleHelper
+    setSelectedBattleHelper,
+    giftCode,
+    handleGenerateGiftCode
   } = useGame();
   
   const [activeTab, setActiveTab] = useState<string>("list");
   const [friendNameInput, setFriendNameInput] = useState<string>("");
+  const [invitationCount, setInvitationCount] = useState(0);
 
   useEffect(() => {
     if (showFriendPanel && session?.user?.id) {
       fetchFriends(session.user.id);
       fetchFriendRequests(session.user.id);
+      void supabase.from("user_invitations").select("id", { count: "exact", head: true })
+        .eq("inviter_user_id", session.user.id).then(({ count }) => setInvitationCount(count || 0));
     }
   }, [showFriendPanel, session?.user?.id, fetchFriends, fetchFriendRequests]);
 
@@ -45,7 +51,8 @@ export default function FriendPanel() {
   const tabs = [
     { id: "list", label: "一覧" },
     { id: "add", label: "友達追加" },
-    { id: "requests", label: "承認待ち" }
+    { id: "requests", label: "承認待ち" },
+    { id: "invite", label: "招待" }
   ];
 
   const handleSearch = async () => {
@@ -206,6 +213,36 @@ export default function FriendPanel() {
                 <p className="font-size-8 text-secondary">受信した申請はありません。</p>
               )}
             </div>
+          </div>
+        )}
+
+        {activeTab === "invite" && (
+          <div className="flex-col-gap-3">
+            <h3 className="font-size-9 text-color-cyan font-weight-bold">友達をTRIBE NEONへ招待</h3>
+            <p className="font-size-8 text-secondary">招待URLから新規プレイヤー登録が完了すると成立します。最大10人まで招待できます。</p>
+            <div className="friend-card border-subtle p-3 bg-black-60">
+              <div className="font-size-7 text-secondary">招待実績</div>
+              <div className="font-size-12 text-white font-weight-bold">{invitationCount} / 10人</div>
+              <div className="font-size-7 text-secondary mt-2">招待コード</div>
+              <div className="font-size-12 text-color-cyan font-weight-bold">{giftCode || "未発行"}</div>
+            </div>
+            {!giftCode ? (
+              <OutlawButton variant="primary" onClick={() => void handleGenerateGiftCode()}>招待コードを発行</OutlawButton>
+            ) : (
+              <>
+                <OutlawButton variant="secondary" onClick={async () => {
+                  const url = `${window.location.origin}/?invite=${encodeURIComponent(giftCode)}`;
+                  await navigator.clipboard.writeText(url);
+                  setConfirmDialogConfig({ isOpen: true, title: "招待URL", message: "招待URLをコピーしました。", onConfirm: () => setConfirmDialogConfig(null) });
+                }}>招待URLをコピー</OutlawButton>
+                <OutlawButton variant="secondary" onClick={() => {
+                  const url = `${window.location.origin}/?invite=${encodeURIComponent(giftCode)}`;
+                  const text = "TRIBE NEONで一緒に東京の頂点を目指そう。";
+                  window.open(`https://x.com/intent/post?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`, "_blank", "noopener,noreferrer");
+                }}>Xで共有</OutlawButton>
+              </>
+            )}
+            <p className="font-size-7 text-secondary">被招待者にはダイヤ100、招待者には招待ミッション報酬が付与されます。報酬値はOpen Beta暫定です。</p>
           </div>
         )}
       </div>

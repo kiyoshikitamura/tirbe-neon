@@ -78,6 +78,7 @@
   display: grid;
   gap: 6px;
 }
+.ranking-return-cta { margin-top: 12px; min-height: 44px; }
 
 .toggle-switch-container {
   display: flex;

@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import { useImagePreloader } from "./hooks/useImagePreloader";
 import { HOME_BOOT_ASSETS } from "./lib/screenManifests";
 import { GameProvider, useGame } from "./context/GameContext";
+import { AudioProvider, useAudio } from "@/audio/AudioProvider";
 import AuthView from "./components/AuthView";
 import SetupView from "./components/SetupView";
 import Header from "./components/Header";
@@ -39,17 +40,27 @@ import PageShell from "./components/ui/PageShell";
 import TitleView from "./components/TitleView";
 import MoveBaseModal from "./components/MoveBaseModal";
 import TutorialWorldIntro from "./components/TutorialWorldIntro";
-import TutorialFreeInstant from "./components/TutorialFreeInstant";
 import TutorialRuleGuide from "./components/TutorialRuleGuide";
 import TutorialBattlePrompt from "./components/TutorialBattlePrompt";
 import TutorialAuthentication from "./components/TutorialAuthentication";
 
 function AppContent() {
-  const { session, authLoading, isSetupRequired, activeTab, showTitleView,
+  const { session, authLoading, isSetupRequired, onboardingState, activeTab, showTitleView, battleState,
+    handleLogout,
     confirmDialogConfig,
     globalInteractionBlocking
   } = useGame();
+  const { playBgm } = useAudio();
   const homeAssetsReady = useImagePreloader(HOME_BOOT_ASSETS);
+  const tutorialStep = onboardingState?.tutorial_step;
+  const isMandatoryTutorial = Boolean(tutorialStep && tutorialStep !== "AUTHENTICATION");
+
+  React.useEffect(() => {
+    if (showTitleView) playBgm("TITLE");
+    else if (battleState) playBgm("BATTLE");
+    else if (activeTab === "guild") playBgm("GUILD");
+    else playBgm("HOME");
+  }, [activeTab, battleState, playBgm, showTitleView]);
 
 
 
@@ -91,6 +102,25 @@ function AppContent() {
     );
   }
 
+  if (onboardingState?.tutorial_step === "AUTHENTICATION" && onboardingState.identity_integrity_valid === false) {
+    return (
+      <div className="app-container">
+        <div className="modal-overlay background-black-95">
+          <div className="modal-card border-cyan-glow" style={{ maxWidth: 460 }}>
+            <div className="font-size-8 text-color-red font-weight-bold mb-2">アカウント認証エラー</div>
+            <div className="modal-desc text-left mb-3">
+              認証方式の整合性を確認できないため、ゲームデータへのアクセスを停止しました。メールまたはGoogleのどちらか1方式だけを使用してください。
+            </div>
+            <button className="claim-reward-btn font-weight-bold py-2 width-100" onClick={() => void handleLogout()}>
+              ログアウトして戻る
+            </button>
+            <ConfirmDialog {...confirmDialogConfig} />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (!homeAssetsReady) {
     return (
       <div className="app-container">
@@ -104,7 +134,7 @@ function AppContent() {
     <div className="app-container">
       <PageShell
         header={<Header />}
-        footer={<Footer />}
+        footer={isMandatoryTutorial ? null : <Footer />}
         overlays={(
           <>
             {/* Layer 3: コンパクトモーダル */}
@@ -123,7 +153,6 @@ function AppContent() {
             <AdvView />
             <CardBattleView />
             <TutorialWorldIntro />
-            <TutorialFreeInstant />
             <TutorialRuleGuide />
             <TutorialBattlePrompt />
             <TutorialAuthentication />
@@ -156,8 +185,10 @@ function AppContent() {
 
 export default function Home() {
   return (
-    <GameProvider>
-      <AppContent />
-    </GameProvider>
+    <AudioProvider>
+      <GameProvider>
+        <AppContent />
+      </GameProvider>
+    </AudioProvider>
   );
 }

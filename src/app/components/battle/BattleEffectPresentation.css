@@ -1,0 +1,95 @@
+.battle-skill-cutin {
+  position: absolute;
+  z-index: 18;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  isolation: isolate;
+  animation: battle-cutin-life 700ms ease-out both;
+}
+
+.battle-skill-cutin.is-ssr { animation-duration: 900ms; }
+.battle-skill-cutin.is-speed-fast { animation-duration: 520ms; }
+.battle-cutin-darken,
+.battle-cutin-frame,
+.battle-cutin-speed-lines { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.battle-cutin-darken { z-index: 0; opacity: .86; }
+.battle-cutin-frame { z-index: 1; object-position: center; }
+.battle-skill-cutin.is-ssr .battle-cutin-frame { opacity: .94; mix-blend-mode: multiply; transform: scale(1.48); }
+.battle-cutin-speed-lines { z-index: 3; opacity: .68; mix-blend-mode: screen; animation: battle-cutin-lines 700ms ease-out both; }
+
+.battle-cutin-character {
+  position: absolute;
+  z-index: 2;
+  top: 0;
+  right: 42%;
+  bottom: -14%;
+  left: -4%;
+  transform: translateX(-8%);
+  animation: battle-cutin-character 700ms cubic-bezier(.16, 1, .3, 1) both;
+}
+.battle-skill-cutin.is-ssr .battle-cutin-character { right: 36%; }
+.battle-cutin-character .character-presentation { width: 100%; height: 100%; border: 0; background: transparent; box-shadow: none; }
+.battle-cutin-character .character-presentation-art::before,
+.battle-cutin-character .character-presentation-light { display: none; }
+.battle-cutin-character .character-presentation img { object-fit: cover; object-position: 50% 0; transform: scale(1.03); filter: drop-shadow(10px 0 12px rgba(0, 0, 0, .88)); }
+
+.battle-cutin-copy {
+  position: absolute;
+  z-index: 5;
+  top: 50%;
+  right: 5%;
+  display: grid;
+  width: 58%;
+  transform: translateY(-50%);
+  text-align: right;
+  text-shadow: 0 2px 2px #000, 0 0 16px rgba(255, 255, 255, .25);
+}
+.battle-cutin-copy small { color: #cfd6dd; font-size: 8px; font-weight: 1000; letter-spacing: .24em; }
+.battle-skill-cutin.is-ssr .battle-cutin-copy small { color: var(--ui-value); }
+.battle-cutin-copy strong { overflow: hidden; color: #fff; font-size: clamp(18px, 5.6vw, 27px); line-height: 1.15; text-overflow: ellipsis; white-space: nowrap; }
+.battle-cutin-copy span { margin-top: 3px; color: #adb7c0; font-size: 8px; font-weight: 900; letter-spacing: .08em; }
+
+.battle-asset-impact {
+  position: absolute;
+  z-index: 14;
+  inset: 21% -8% 1% 35%;
+  pointer-events: none;
+  animation: battle-asset-impact 520ms cubic-bezier(.16, 1, .3, 1) both;
+}
+.battle-asset-impact.is-speed-fast { animation-duration: 360ms; }
+.battle-asset-impact img { width: 100%; height: 100%; object-fit: contain; mix-blend-mode: screen; filter: contrast(1.08) saturate(.9); }
+.battle-asset-impact.is-slash { inset: 16% -11% 0 25%; transform: rotate(-5deg); }
+.battle-asset-impact.is-muzzle { inset: 25% -7% 5% 39%; }
+
+@keyframes battle-cutin-life {
+  0% { opacity: 0; transform: translateX(-4%); }
+  16%, 76% { opacity: 1; transform: translateX(0); }
+  100% { opacity: 0; transform: translateX(3%); }
+}
+@keyframes battle-cutin-character {
+  from { opacity: 0; transform: translateX(-12%) scale(1.06); }
+  28%, to { opacity: 1; transform: translateX(0) scale(1); }
+}
+@keyframes battle-cutin-lines {
+  from { opacity: 0; transform: scale(1.14); }
+  28%, to { opacity: .68; transform: scale(1); }
+}
+@keyframes battle-asset-impact {
+  0% { opacity: 0; transform: scale(.55); }
+  22% { opacity: 1; transform: scale(1.06); }
+  100% { opacity: 0; transform: scale(1.18); }
+}
+
+@media (max-width: 390px) {
+  .battle-cutin-character { right: 38%; }
+  .battle-cutin-copy { right: 4%; width: 62%; }
+  .battle-asset-impact { right: -11%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .battle-skill-cutin,
+  .battle-cutin-speed-lines,
+  .battle-cutin-character,
+  .battle-asset-impact { animation: none; }
+}
