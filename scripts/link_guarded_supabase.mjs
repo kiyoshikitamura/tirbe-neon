@@ -18,17 +18,19 @@ if (typeof process.loadEnvFile === "function") {
 }
 
 const targets = JSON.parse(await readFile("config/supabase-targets.json", "utf8"));
-const projectRef = environment === "preview"
-  ? process.env.SUPABASE_PREVIEW_PROJECT_REF?.trim()
-  : targets[environment];
+const projectRef = targets[environment];
 const explicitRef = process.env.SUPABASE_EXPECTED_PROJECT_REF?.trim();
 
 if (!projectRef || projectRef !== explicitRef) {
   console.error(`Ref mismatch before link: environment=${environment}.`);
   process.exit(1);
 }
-if (environment === "preview" && Object.values(targets).includes(projectRef)) {
-  console.error("Preview project must differ from Development and Production.");
+if (new Set(Object.values(targets)).size !== Object.values(targets).length) {
+  console.error("Development, Preview, and Production project refs must all differ.");
+  process.exit(1);
+}
+if (environment === "preview" && process.env.SUPABASE_PREVIEW_PROJECT_REF?.trim() !== projectRef) {
+  console.error("SUPABASE_PREVIEW_PROJECT_REF must match the canonical Preview ref.");
   process.exit(1);
 }
 if (!process.env.SUPABASE_ACCESS_TOKEN || !process.env.SUPABASE_DB_PASSWORD) {

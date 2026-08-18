@@ -1,6 +1,8 @@
 import { defineConfig } from "@playwright/test";
 
 const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
+const testPort = process.env.PLAYWRIGHT_PORT || "3100";
+const testBaseUrl = `http://127.0.0.1:${testPort}`;
 
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -8,15 +10,15 @@ export default defineConfig({
   expect: { timeout: 12_000 },
   fullyParallel: false,
   use: {
-    baseURL: "http://127.0.0.1:3100",
+    baseURL: testBaseUrl,
     headless: true,
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
     video: "retain-on-failure",
   },
   webServer: {
-    command: `${npmCommand} run dev -- --hostname 127.0.0.1 --port 3100`,
-    url: "http://127.0.0.1:3100",
+    command: `${npmCommand} run dev -- --hostname 127.0.0.1 --port ${testPort}`,
+    url: testBaseUrl,
     // ローカルでは既存の開発サーバーを利用し、Playwright終了時に不要な
     // Next.js開発サーバープロセスを残さない。
     reuseExistingServer: true,

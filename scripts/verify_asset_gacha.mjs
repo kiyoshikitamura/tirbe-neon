@@ -17,7 +17,8 @@ const { data, error } = await client.rpc("execute_asset_gacha", {
   p_user_id: auth.user.id,
   p_gacha_id: "SKILL_NORMAL",
   p_pull_count: 0,
-  p_currency_type: "free"
+  p_currency_type: "free",
+  p_request_id: crypto.randomUUID()
 });
 
 if (!error && !data?.error) {

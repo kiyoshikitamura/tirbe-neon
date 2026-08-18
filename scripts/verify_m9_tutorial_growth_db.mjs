@@ -32,6 +32,7 @@ try {
     p_gacha_id: "CHAR_NORMAL",
     p_pull_count: 10,
     p_currency_type: "free",
+    p_request_id: crypto.randomUUID(),
   });
   if (drawError || draw?.status !== "success" || draw.results?.length !== 10) {
     throw drawError || new Error(`Unexpected tutorial draw: ${JSON.stringify(draw)}`);

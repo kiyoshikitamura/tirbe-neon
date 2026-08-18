@@ -11,6 +11,7 @@ const userId = "mock-secure-patrol-user";
 localStorage.setItem("tribe_demo_uuid", userId);
 
 const { executeMockRpc } = await import("../src/utils/mock/mockRpc.ts");
+const { resolveBattle } = await import("../supabase/functions/resolve-battle/engine.ts");
 const client = {
   getStorage: (key) => storage.has(key) ? JSON.parse(storage.get(key)) : [],
   setStorage: (key, value) => storage.set(key, JSON.stringify(value)),
@@ -18,6 +19,16 @@ const client = {
 
 client.setStorage("users", [{ id: userId, vitality: 20, cash: 5000, neon_diamonds: 200, level: 1, xp: 0 }]);
 client.setStorage("user_characters", [{ id: "owned-1", user_id: userId, character_id: "character-1" }]);
+client.setStorage("equipment_battle_master", [{ equipment_id: "WEAPON_001", hp: 0, atk: 5, def: 0, spd: 0, luk: 0, is_exclusive: false }]);
+client.setStorage("user_equipments", [{ id: "equip-1", user_id: userId, equipment_id: "WEAPON_001", equipped_character_id: "owned-1", slot_index: 1, level: 2, plus_val: 1 }]);
+client.setStorage("user_skills", [
+  { id: "skill-1", user_id: userId, skill_card_id: "SKILL_001", equipped_character_id: "owned-1", slot_index: 1, plus_val: 10 },
+  { id: "skill-placeholder", user_id: userId, skill_card_id: "SKILL_051", equipped_character_id: "owned-1", slot_index: 2, plus_val: 0 },
+]);
+client.setStorage("skill_battle_master", [
+  { skill_id: "SKILL_001", display_name: "Street Punch", enabled: true, kind: "ATTACK", target: "ENEMY_SINGLE", power_percent: 50, cooldown: 2, initial_cooldown: 0 },
+  { skill_id: "SKILL_051", display_name: "Placeholder", enabled: false, kind: "ATTACK", target: "ENEMY_SINGLE", power_percent: 180, cooldown: 5, initial_cooldown: 0 },
+]);
 client.setStorage("quests", [{ id: "quest-1", name: "Mock patrol", duration_seconds: 120, cost_vitality: 7, cash_reward: 250, exp_reward: 40, item_rewards: [] }]);
 
 const unowned = await executeMockRpc(client, "start_patrol", { p_course_id: "quest-1", p_character_id: "not-owned" });
@@ -26,7 +37,7 @@ if (unowned.error?.code !== "23503") throw new Error("Unowned patrol character w
 const started = await executeMockRpc(client, "start_patrol", { p_course_id: "quest-1", p_character_id: "owned-1" });
 const patrol = client.getStorage("user_patrols")[0];
 const user = client.getStorage("users")[0];
-if (started.error || !patrol || patrol.character_id !== "character-1" || started.data.duration_seconds !== 120 || user.vitality !== 13) {
+if (started.error || !patrol || patrol.character_id !== "character-1" || started.data.duration_seconds !== 120 || started.data.remaining_vitality !== 13 || user.vitality !== 13) {
   throw new Error("Secure patrol start did not use authoritative quest and ownership data");
 }
 
@@ -40,7 +51,7 @@ const instant = await executeMockRpc(client, "complete_patrol_instantly", {
 });
 const instantPatrol = client.getStorage("user_patrols")[0];
 const chargedUser = client.getStorage("users")[0];
-if (instant.error || instantPatrol.status !== "CLAIMABLE" || chargedUser.cash !== 4000) {
+if (instant.error || instantPatrol.status !== "CLAIMABLE" || chargedUser.cash !== 4800 || chargedUser.daily_cash_skips_count !== 1) {
   throw new Error("Secure patrol instant completion did not atomically charge and complete the patrol");
 }
 
@@ -49,9 +60,32 @@ const repeatedInstant = await executeMockRpc(client, "complete_patrol_instantly"
   p_patrol_id: patrol.id,
   p_use_currency: "CASH",
 });
-if (!repeatedInstant.error || client.getStorage("users")[0].cash !== 4000) {
+if (!repeatedInstant.error || client.getStorage("users")[0].cash !== 4800) {
   throw new Error("Repeated patrol instant completion was not rejected before charging");
 }
+
+const blockedClaim = await executeMockRpc(client, "claim_patrol_rewards", { p_patrol_id: patrol.id });
+if (!blockedClaim.error) throw new Error("An unresolved mandatory NPC battle did not block patrol rewards");
+
+client.setStorage("patrol_npcs", [{ id: "npc-quest-1", quest_id: "quest-1", npc_name: "Mock NPC", enemy_data: { hp: 900, atk: 55, def: 35, spd: 75, luk: 3 } }]);
+const replay = await executeMockRpc(client, "create_patrol_battle_replay", { p_patrol_id: patrol.id, p_tactic_id: "ATTACK_PRIORITY" });
+if (replay.error || !replay.data?.replay_session_id) throw new Error("Server-authoritative patrol replay was not created");
+if (replay.data.player_snapshot[0]?.stats?.atk !== 100 + Math.floor(5 * (0.1 + 0.5 / 49 + 0.1))
+  || replay.data.player_snapshot[0]?.equipment?.[0]?.equipmentId !== "WEAPON_001"
+  || replay.data.player_snapshot[0]?.equippedSkillRefs?.[0]?.effectScale !== 1.41
+  || replay.data.player_snapshot[0]?.skills?.[0]?.id !== "SKILL_001"
+  || replay.data.player_snapshot[0]?.skills?.[0]?.powerPercent !== 71
+  || replay.data.player_snapshot[0]?.skills?.some((skill) => skill.id === "SKILL_051")) {
+  throw new Error("Patrol replay did not snapshot canonical equipment stats and executable skills");
+}
+const replayRow = client.getStorage("battle_replay_sessions").find((entry) => entry.id === replay.data.replay_session_id);
+const resolved = resolveBattle(Number(replayRow.random_seed) || 1, replayRow.tactic_id, 15, replayRow.player_snapshot, replayRow.enemy_snapshot);
+if (!["PLAYER", "ENEMY"].includes(resolved.winner)) throw new Error("Server-authoritative patrol replay was not resolved");
+const resolvedPatrols = client.getStorage("user_patrols");
+const resolvedPatrol = resolvedPatrols.find((entry) => entry.id === patrol.id);
+resolvedPatrol.battle_resolved = true;
+resolvedPatrol.battle_result = resolved.winner === "PLAYER" ? "VICTORY" : "DEFEAT";
+client.setStorage("user_patrols", resolvedPatrols);
 
 const claimed = await executeMockRpc(client, "claim_patrol_rewards", { p_patrol_id: patrol.id });
 const claimedPatrol = client.getStorage("user_patrols")[0];
@@ -64,6 +98,38 @@ if (claimed.error || claimedPatrol.status !== "COMPLETED" || rewardPresent.quant
 const repeatedClaim = await executeMockRpc(client, "claim_patrol_rewards", { p_patrol_id: patrol.id });
 if (!repeatedClaim.error || client.getStorage("presents").length !== 1 || client.getStorage("users")[0].xp !== 40) {
   throw new Error("Repeated patrol reward claim was not rejected before granting rewards");
+}
+
+const limitUser = client.getStorage("users")[0];
+limitUser.daily_cash_skips_count = 3;
+limitUser.daily_cash_skips_reset_date = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
+client.setStorage("users", [limitUser]);
+const limitPatrol = {
+  id: "patrol-cash-limit",
+  user_id: userId,
+  course_id: "quest-1",
+  character_id: "character-1",
+  status: "ONGOING",
+  expires_at: new Date(Date.now() + 120_000).toISOString(),
+};
+client.setStorage("user_patrols", [...client.getStorage("user_patrols"), limitPatrol]);
+
+const cashLimited = await executeMockRpc(client, "complete_patrol_instantly", {
+  p_user_id: userId,
+  p_patrol_id: limitPatrol.id,
+  p_use_currency: "CASH",
+});
+if (!cashLimited.error || client.getStorage("users")[0].cash !== 4800) {
+  throw new Error("Daily CASH instant-completion limit was not enforced before charging");
+}
+
+const diamondInstant = await executeMockRpc(client, "complete_patrol_instantly", {
+  p_user_id: userId,
+  p_patrol_id: limitPatrol.id,
+  p_use_currency: "DIAMOND",
+});
+if (diamondInstant.error || client.getStorage("users")[0].neon_diamonds !== 190) {
+  throw new Error("DIAMOND instant completion should remain available after the CASH daily limit");
 }
 
 console.log("Mock secure patrol verification passed.");

@@ -55,3 +55,6 @@ scratch/
 .dm-e2e-state.json
 .login-bonus-e2e-state.json
 .mission-e2e-state.json
+
+.vercel
+.env*

@@ -23,23 +23,22 @@ export async function verifySupabaseTarget({ environment, mutation = false }) {
   }
 
   const configuredTargets = JSON.parse(await readTrimmed("config/supabase-targets.json"));
-  const configuredRef = environment === "preview"
-    ? process.env.SUPABASE_PREVIEW_PROJECT_REF?.trim()
-    : configuredTargets[environment];
+  const configuredRef = configuredTargets[environment];
+  const previewRef = process.env.SUPABASE_PREVIEW_PROJECT_REF?.trim();
   const explicitRef = process.env.SUPABASE_EXPECTED_PROJECT_REF?.trim();
   const linkedRef = await readTrimmed("supabase/.temp/project-ref");
 
   if (!configuredRef || !PROJECT_REF_PATTERN.test(configuredRef)) {
-    throw new Error(`${environment} project ref is not configured. Preview requires SUPABASE_PREVIEW_PROJECT_REF.`);
+    throw new Error(`${environment} project ref is not configured in config/supabase-targets.json.`);
   }
   if (!explicitRef || !PROJECT_REF_PATTERN.test(explicitRef)) {
     throw new Error("SUPABASE_EXPECTED_PROJECT_REF must be explicitly set for every guarded DB operation.");
   }
   if (new Set(Object.values(configuredTargets)).size !== Object.values(configuredTargets).length) {
-    throw new Error("Development and Production project refs must be different.");
+    throw new Error("Development, Preview, and Production project refs must all be different.");
   }
-  if (environment === "preview" && Object.values(configuredTargets).includes(configuredRef)) {
-    throw new Error("Preview must use a project distinct from Development and Production.");
+  if (environment === "preview" && previewRef !== configuredRef) {
+    throw new Error(`Preview ref mismatch: configured=${configuredRef}, environment=${previewRef || "missing"}.`);
   }
   if (explicitRef !== configuredRef) {
     throw new Error(`Explicit target mismatch: environment=${environment}, expected=${configuredRef}, explicit=${explicitRef}.`);
