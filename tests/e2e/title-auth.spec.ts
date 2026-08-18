@@ -66,7 +66,7 @@ test("a new player explicitly creates an anonymous session before name setup", a
   await page.getByRole("button", { name: "はじめから" }).click();
   await enterNameRegistration(page);
 
-  await expect(page.getByText("プレイヤー登録")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "名前を教えて" })).toBeVisible();
   await expect(page.getByPlaceholder("プレイヤー名を入力")).toBeVisible();
   await expect(page.locator(".setup-invite-details")).toContainText("招待コードをお持ちの方");
   await expect(page.getByPlaceholder("8文字の招待コード")).toBeHidden();
@@ -84,7 +84,7 @@ test("an invitation URL carries its code without adding a primary form field", a
   await page.getByRole("button", { name: "はじめから" }).click();
   await enterNameRegistration(page);
 
-  await expect(page.getByText("招待コードを受け取りました。")).toBeVisible();
+  await expect(page.getByRole("status")).toHaveText("招待URLを確認しました");
   await expect(page.getByPlaceholder("8文字の招待コード")).toHaveCount(0);
 });
 
@@ -97,11 +97,11 @@ test("an authenticated Google user without game data cannot enter anonymous name
   await page.getByText("TAP TO START").click();
 
   await expect(page.getByText(/このGoogleアカウントにはゲームデータがありません/)).toBeVisible();
-  await expect(page.getByText("プレイヤー登録")).toBeHidden();
+  await expect(page.getByRole("heading", { name: "名前を教えて" })).toBeHidden();
 
   await page.locator(".title-entry-primary").click();
   await enterNameRegistration(page);
-  await expect(page.getByText("プレイヤー登録")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "名前を教えて" })).toBeVisible();
   await expect(page.getByPlaceholder("プレイヤー名を入力")).toBeVisible();
   await expect.poll(async () => page.evaluate(() => localStorage.getItem("mock_auth_mode"))).toBe("ANONYMOUS");
 });
@@ -112,7 +112,7 @@ test("name-only initialization is idempotent and resumes the tutorial after relo
   await page.getByRole("button", { name: "はじめから" }).click();
   await enterNameRegistration(page);
   await page.getByPlaceholder("プレイヤー名を入力").fill("新宿太郎");
-  await page.getByRole("button", { name: "入力内容を確認する" }).click();
+  await page.getByRole("button", { name: "この名前で進む" }).click();
   await page.getByRole("button", { name: "この名前で始める" }).evaluate((button: HTMLButtonElement) => {
     // Simulate a rapid duplicate submission before React can repaint the
     // disabled state. The RPC must still create each starter row only once.
@@ -120,7 +120,7 @@ test("name-only initialization is idempotent and resumes the tutorial after relo
     button.click();
   });
 
-  await expect(page.getByText("最初の案内")).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "TRIBE NEONへようこそ" })).toBeVisible();
   const storedCounts = await page.evaluate(() => ({
     users: JSON.parse(localStorage.getItem("mock_db_users") || "[]").length,
     characters: JSON.parse(localStorage.getItem("mock_db_user_characters") || "[]").length,
@@ -131,7 +131,7 @@ test("name-only initialization is idempotent and resumes the tutorial after relo
   await page.reload();
   await page.getByText("TAP TO START").waitFor({ state: "visible", timeout: 2_000 }).catch(() => undefined);
   if (await page.getByText("TAP TO START").isVisible()) await page.getByText("TAP TO START").click();
-  await expect(page.getByText("最初の案内")).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "TRIBE NEONへようこそ" })).toBeVisible();
   const reloadedCounts = await page.evaluate(() => ({
     users: JSON.parse(localStorage.getItem("mock_db_users") || "[]").length,
     characters: JSON.parse(localStorage.getItem("mock_db_user_characters") || "[]").length,
@@ -149,7 +149,7 @@ test("name-only initialization rejects a normalized duplicate username", async (
   await page.getByRole("button", { name: "はじめから" }).click();
   await enterNameRegistration(page);
   await page.getByPlaceholder("プレイヤー名を入力").fill(" neon ");
-  await page.getByRole("button", { name: "入力内容を確認する" }).click();
+  await page.getByRole("button", { name: "この名前で進む" }).click();
   await page.getByRole("button", { name: "この名前で始める" }).click();
 
   await expect(page.getByText("このユーザー名は既に使用されています。")).toBeVisible();
