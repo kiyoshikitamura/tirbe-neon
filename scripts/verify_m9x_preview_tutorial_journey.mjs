@@ -78,6 +78,9 @@ try {
 
   await (await visible(".gacha-result-next", 20_000)).click();
   await (await visible(".char-party-auto-btn", 20_000)).click();
+  await visible('[data-acceptance-state="FORMATION_SKILL_READY"]', 20_000);
+  await page.screenshot({ path: path.join(artifactsDirectory, "preview-formation-skill.png"), fullPage: true });
+  await page.locator('[data-acceptance-state="FORMATION_SKILL_READY"] button').click();
 
   const stateSequence = [];
   const recordState = async (state, timeout = 25_000) => {
@@ -100,6 +103,8 @@ try {
   await page.locator('[data-acceptance-state="B1"] .start-battle-btn').click();
   await recordState("B2");
   await recordState("B3");
+  await recordState("B4", 30_000);
+  await page.screenshot({ path: path.join(artifactsDirectory, "preview-B4.png"), fullPage: true });
   await recordState("B5", 45_000);
   await recordState("B6", 45_000);
   await page.screenshot({ path: path.join(artifactsDirectory, "preview-B6.png"), fullPage: true });
@@ -135,13 +140,39 @@ try {
   if (!userId) throw new Error("The anonymous Preview user id could not be resolved from the browser session.");
   if (browserState.errorDialogs.length) throw new Error(`Unexpected error UI: ${browserState.errorDialogs.join(" | ")}`);
   if (pageErrors.length) throw new Error(`Browser page errors: ${pageErrors.join(" | ")}`);
-  if (stateSequence.join(">") !== "Q1>Q2>Q3>Q4>Q5>Q6>B1>B2>B3>B5>B6>MISSION_HUB") {
+  if (stateSequence.join(">") !== "Q1>Q2>Q3>Q4>Q5>Q6>B1>B2>B3>B4>B5>B6>MISSION_HUB") {
     throw new Error(`Unexpected UI state sequence: ${stateSequence.join(">")}`);
   }
   const requiredTracePhases = ["dispatch_request", "dispatch_committed", "speed_up_request", "speed_up_committed", "quest_completion_observed", "quest_return_confirmed", "battle_cta_request"];
   const tracePhases = new Set(trace.map((entry) => entry.phase));
   const missingTracePhases = requiredTracePhases.filter((phase) => !tracePhases.has(phase));
   if (missingTracePhases.length) throw new Error(`Missing journey trace phases: ${missingTracePhases.join(", ")}`);
+
+  const admin = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false, autoRefreshToken: false } });
+  const [{ data: skills, error: skillError }, { data: replay, error: replayError }, { count: skillGachaCount, error: skillGachaError }] = await Promise.all([
+    admin.from("user_skills").select("id,skill_card_id,plus_val,equipped_character_id,slot_index").eq("user_id", userId),
+    admin.from("battle_replay_sessions").select("player_snapshot,enemy_snapshot,result").eq("requester_user_id", userId).eq("battle_mode", "QUEST").order("created_at", { ascending: false }).limit(1).single(),
+    admin.from("gacha_execution_history").select("id", { count: "exact", head: true }).eq("user_id", userId).like("gacha_id", "SKILL%"),
+  ]);
+  if (skillError || replayError || skillGachaError) throw skillError || replayError || skillGachaError;
+  const starterSkills = (skills || []).filter((skill) => skill.skill_card_id === "SKILL_001");
+  if (starterSkills.length !== 1 || Number(starterSkills[0].plus_val) !== 0 || Number(starterSkills[0].slot_index) !== 0) {
+    throw new Error(`Invalid tutorial starter skill ownership: ${JSON.stringify(starterSkills)}`);
+  }
+  if (skillGachaCount !== 0) throw new Error("Tutorial starter skill incorrectly created Skill Gacha history.");
+  const leader = replay?.player_snapshot?.[0];
+  const events = Array.isArray(replay?.result?.events) ? replay.result.events : [];
+  const leaderActions = events.filter((event) => event.type === "ACTION" && event.payload?.actorId === leader?.id);
+  const basicActionIndex = events.findIndex((event) => event === leaderActions.find((action) => action.payload?.skillId === "BASIC_ATTACK"));
+  const skillAction = leaderActions.find((action) => action.payload?.skillId && action.payload.skillId !== "BASIC_ATTACK");
+  const skillActionIndex = events.findIndex((event) => event === skillAction);
+  const skillImpactIndex = events.findIndex((event, index) => index > skillActionIndex && ["DAMAGE", "HEAL", "EFFECT", "STATUS"].includes(event.type) && event.payload?.actorId === leader?.id);
+  if (basicActionIndex < 0 || skillActionIndex <= basicActionIndex || skillImpactIndex <= skillActionIndex) {
+    throw new Error(`Authoritative tutorial sequence is incomplete: ${JSON.stringify(leaderActions)}`);
+  }
+  const firstDefeatIndex = events.findIndex((event) => event.type === "DEFEAT" && String(event.payload?.targetId || "").startsWith("enemy_"));
+  if (firstDefeatIndex >= 0 && firstDefeatIndex < skillImpactIndex) throw new Error("Tutorial enemy was defeated before the Skill impact.");
+  if (replay?.result?.winner !== "PLAYER") throw new Error("Tutorial expected winner was not preserved.");
 
   console.log(JSON.stringify({
     status: "PASS",
@@ -156,6 +187,8 @@ try {
     failedResponses,
     actionMetrics: browserState.actionMetrics,
     trace,
+    starterSkill: { skillId: starterSkills[0].skill_card_id, plusValue: starterSkills[0].plus_val, slotIndex: starterSkills[0].slot_index },
+    replayContract: { basicActionIndex, skillActionIndex, skillImpactIndex, winner: replay.result.winner },
     artifact: path.join(artifactsDirectory, "preview-B1.png"),
   }, null, 2));
 } catch (error) {

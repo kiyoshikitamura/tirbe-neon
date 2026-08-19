@@ -471,6 +471,16 @@ test("formation advances directly to the quest boundary and resumes there", asyn
     button.click();
     button.click();
   });
+  await expect(page.locator('[data-acceptance-state="FORMATION_SKILL_READY"]')).toBeVisible();
+  await expect(page.locator(".tutorial-formation-skill-confirmation")).toContainText("ストリートパンチ");
+  const starterSkillContract = await page.evaluate(() => {
+    const userId = localStorage.getItem("tribe_demo_uuid");
+    const skills = JSON.parse(localStorage.getItem("mock_db_user_skills") || "[]")
+      .filter((skill: any) => skill.user_id === userId && skill.skill_card_id === "SKILL_001");
+    return { count: skills.length, plusValue: skills[0]?.plus_val, slot: skills[0]?.slot_index };
+  });
+  expect(starterSkillContract).toEqual({ count: 1, plusValue: 0, slot: 0 });
+  await page.getByRole("button", { name: "クエストへ進む" }).click();
 
   await expect(page.locator('[data-acceptance-state="Q1"]')).toBeVisible();
   await expect.poll(async () => page.evaluate(() => {
@@ -525,6 +535,8 @@ test("three random tutorial SSRs remain the same owned character through result 
     if (await page.getByText("TAP TO START").isVisible()) await page.getByText("TAP TO START").click();
     await expect(page.getByRole("button", { name: "おすすめ編成にする" })).toBeVisible();
     await page.getByRole("button", { name: "おすすめ編成にする" }).click();
+    await expect(page.locator('[data-acceptance-state="FORMATION_SKILL_READY"]')).toBeVisible();
+    await page.getByRole("button", { name: "クエストへ進む" }).click();
 
     await expect(page.locator('[data-acceptance-state="Q1"]')).toBeVisible();
     await expect(page.locator(`.tutorial-wire-member[data-user-character-id="${ownedId}"]`)).toHaveAttribute("data-character-id", tutorialSsr.id);
@@ -862,6 +874,9 @@ test("new mobile player completes the guided first session without footer naviga
   await assertCenteredGameCanvas(page, ".char-party-modal-backdrop");
   await expect(page.getByRole("button", { name: "おすすめ編成にする" })).toHaveClass(/semantic-cta--primary/);
   await page.getByRole("button", { name: "おすすめ編成にする" }).click();
+  await expect(page.locator('[data-acceptance-state="FORMATION_SKILL_READY"]')).toBeVisible();
+  await page.screenshot({ path: test.info().outputPath("formation-skill-equipped.png"), fullPage: true });
+  await page.getByRole("button", { name: "クエストへ進む" }).click();
   await expect(page.locator('[data-acceptance-state="Q1"]')).toBeVisible();
   await assertCenteredGameCanvas(page, ".patrol-container");
   await page.screenshot({ path: test.info().outputPath("Q1-dispatch-before.png"), fullPage: true });
@@ -894,6 +909,10 @@ test("new mobile player completes the guided first session without footer naviga
   await assertCenteredGameCanvas(page, ".battle-screen");
   await expect(page.locator('[data-acceptance-state="B3"]')).toBeVisible();
   await page.screenshot({ path: test.info().outputPath("B3-normal-attack.png"), fullPage: true });
+  await expect(page.locator('[data-acceptance-state="B4"]')).toBeVisible({ timeout: 20_000 });
+  await expect(page.locator(".battle-skill-cutin.is-standard")).toBeVisible();
+  await expect(page.locator(".battle-cutin-copy")).toContainText("ストリートパンチ");
+  await page.screenshot({ path: test.info().outputPath("B4-skill.png"), fullPage: true });
   await expect(page.locator('[data-acceptance-state="B5"]')).toBeVisible({ timeout: 35_000 });
   await page.screenshot({ path: test.info().outputPath("B5-final-hit.png"), fullPage: true });
   await expect(page.locator('[data-acceptance-state="B6"]')).toBeVisible({ timeout: 35_000 });
@@ -967,6 +986,8 @@ test("formation remains the only post-gacha tutorial action and resumes idempote
   await page.reload();
   await expect(page.getByRole("button", { name: "おすすめ編成にする" })).toBeVisible();
   await page.getByRole("button", { name: "おすすめ編成にする" }).click();
+  await expect(page.locator('[data-acceptance-state="FORMATION_SKILL_READY"]')).toBeVisible();
+  await page.getByRole("button", { name: "クエストへ進む" }).click();
   await expect(page.locator('[data-acceptance-state="Q1"]')).toBeVisible();
   const result = await page.evaluate(() => ({
     step: JSON.parse(localStorage.getItem("mock_db_tutorial_progress") || "[]")[0]?.step_id,

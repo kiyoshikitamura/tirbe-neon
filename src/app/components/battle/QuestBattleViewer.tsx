@@ -121,6 +121,7 @@ export default function QuestBattleViewer(props: Props) {
   const acceptanceState = props.damagePopup
     ? (props.enemyParty.every((entry) => entry.isDead || entry.hp <= 0) ? "B5" : isSkillAction ? "B4" : "B3")
     : isSkillAction ? "B4" : "B3";
+  const isFinalHit = acceptanceState === "B5";
   const roundLimit = props.battleMode === "RAID" ? 30 : props.battleMode === "PVP" || props.battleMode === "GVG" ? 20 : 15;
 
   return (
@@ -152,7 +153,7 @@ export default function QuestBattleViewer(props: Props) {
         hasAdvantage={hasAdvantage}
       />
 
-      <section className={`battle-action-stage is-${activeSide}-actor is-phase-${actionPhase} ${isSkillAction ? "is-skill-action" : "is-normal-action"}`} aria-live="polite">
+      <section className={`battle-action-stage is-${activeSide}-actor is-phase-${actionPhase} ${isSkillAction ? "is-skill-action" : "is-normal-action"} ${isFinalHit ? "is-final-hit" : ""}`} aria-live="polite">
         <div className="battle-action-copy">
           <span>{isSkillAction ? "SKILL" : "ACTION"} / {activeParticipant?.name || "ACTION"}</span>
           <strong>{skillName}</strong>

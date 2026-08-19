@@ -773,12 +773,20 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     const npcs = client.getStorage("patrol_npcs") || [];
     const npc = npcs.find((entry: any) => entry.quest_id === patrol.course_id);
     const enemy = npc?.enemy_data || { hp: 900, atk: 55, def: 35, spd: 75, luk: 3 };
+    const tutorialBattle = (client.getStorage("tutorial_progress") || [])
+      .some((entry: any) => entry.user_id === userId && entry.step_id === "TUTORIAL_BATTLE");
+    if (tutorialBattle && playerSnapshot[0]?.skills?.length) {
+      playerSnapshot[0].skills.forEach((skill: any) => { skill.initialCooldown = 2; });
+    }
+    const tutorialEnemyHp = tutorialBattle
+      ? playerSnapshot.reduce((total: number, unit: any) => total + Number(unit.stats?.atk || 0), 0) * 4
+      : 0;
     const enemySnapshot = [{
       id: `enemy_${npc?.id || patrol.course_id}`,
       name: npc?.npc_name || "Street Outlaw",
       team: "ENEMY",
       alignment: "CHAOS",
-      stats: { hp: Number(enemy.hp || 900), atk: Number(enemy.atk || 55), def: Number(enemy.def || 35), spd: Number(enemy.spd || 75), luk: Number(enemy.luk || 3) },
+      stats: { hp: Math.max(Number(enemy.hp || 900), tutorialEnemyHp), atk: Number(enemy.atk || 55), def: Number(enemy.def || 35), spd: Number(enemy.spd || 75), luk: Number(enemy.luk || 3) },
       skills: [{ id: "npc_basic_attack", name: "Attack", kind: "ATTACK", target: "ENEMY_SINGLE", powerPercent: 100, cooldown: 0 }],
     }];
     const sessions = client.getStorage("battle_replay_sessions") || [];
@@ -995,6 +1003,46 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
       updated_at: new Date().toISOString(),
     });
     client.setStorage("pvp_defense_decks", defenseDecks);
+    const skills = client.getStorage("user_skills") || [];
+    const skillMasters = client.getStorage("skill_battle_master") || [];
+    const eligibleOwned = skills
+      .filter((skill: any) => skill.user_id === userId)
+      .map((skill: any) => ({
+        owned: skill,
+        master: skillMasters.find((master: any) => master.skill_id === skill.skill_card_id
+          && master.enabled !== false
+          && (!master.exclusive_character_id || master.exclusive_character_id === owned[0].character_id)),
+      }))
+      .filter((skill: any) => skill.master)
+      .sort((left: any, right: any) => Number(right.master.power_percent || 0) - Number(left.master.power_percent || 0));
+    let recommended = eligibleOwned[0];
+    let starterGranted = false;
+    if (!recommended) {
+      const starterMaster = skillMasters.find((master: any) => master.skill_id === "SKILL_001" && master.enabled !== false && !master.exclusive_character_id)
+        || { skill_id: "SKILL_001", display_name: "ストリートパンチ", enabled: true, kind: "ATTACK", target: "ENEMY_SINGLE", power_percent: 50, cooldown: 2, initial_cooldown: 0 };
+      if (!skillMasters.some((master: any) => master.skill_id === starterMaster.skill_id)) {
+        skillMasters.push(starterMaster);
+        client.setStorage("skill_battle_master", skillMasters);
+      }
+      let starterOwned = skills.find((skill: any) => skill.user_id === userId && skill.skill_card_id === starterMaster.skill_id);
+      if (!starterOwned) {
+        starterOwned = { id: `tutorial_skill_${userId}`, user_id: userId, skill_card_id: starterMaster.skill_id, plus_val: 0, equipped_character_id: null, slot_index: null, created_at: new Date().toISOString() };
+        skills.push(starterOwned);
+        starterGranted = true;
+      }
+      recommended = { owned: starterOwned, master: starterMaster };
+    }
+    skills.forEach((skill: any) => {
+      if (skill.user_id === userId && skill.equipped_character_id === owned[0].id && Number(skill.slot_index) === 0) {
+        skill.equipped_character_id = null;
+        skill.slot_index = null;
+      }
+      if (skill === recommended.owned) {
+        skill.equipped_character_id = owned[0].id;
+        skill.slot_index = 0;
+      }
+    });
+    client.setStorage("user_skills", skills);
     entry.step_id = "DISPATCH";
     client.setStorage("tutorial_progress", progress);
     return {
@@ -1004,7 +1052,10 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
         formation: { status: "success", character_ids: owned.map((row: any) => row.character_id) },
         leader_character_id: owned[0].character_id,
         leader_user_character_id: owned[0].id,
-        skill_equipped: false,
+        skill_equipped: true,
+        skill_id: recommended.master.skill_id,
+        skill_name: recommended.master.display_name,
+        starter_skill_granted: starterGranted,
       },
       error: null,
     };

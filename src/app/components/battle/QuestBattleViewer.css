@@ -17,6 +17,22 @@
 .quest-battle-viewer.is-tutorial { background:linear-gradient(180deg,rgba(4,8,14,.7),rgba(2,5,10,.96)),url('/bg/bg_street_shinjuku.png') center/cover no-repeat; }
 .quest-battle-viewer.is-tutorial .battle-party-grid { grid-template-columns:repeat(5,minmax(0,1fr)); }
 .quest-battle-viewer.is-tutorial .battle-action-stage { border-color:rgba(242,201,95,.3);background:linear-gradient(100deg,rgba(0,240,255,.12),rgba(2,6,12,.88) 45%,rgba(255,67,105,.13));box-shadow:inset 0 0 42px rgba(0,0,0,.6),0 0 18px rgba(242,201,95,.08); }
+.quest-battle-viewer.is-tutorial .battle-unit-party .battle-unit-art { height:clamp(66px,8.2dvh,72px); }
+.quest-battle-viewer.is-tutorial .battle-unit-party .battle-unit-meta { padding:2px 3px 1px; }
+.quest-battle-viewer.is-tutorial .battle-unit-party .battle-unit-hp-copy { padding:2px 3px 3px; }
+.quest-battle-viewer.is-tutorial .battle-action-stage { min-height:clamp(228px,36dvh,320px);overflow:visible; }
+.quest-battle-viewer.is-tutorial .battle-action-units { inset:34px 3px 4px;grid-template-columns:minmax(0,1fr) 26px minmax(0,1fr);gap:0; }
+.quest-battle-viewer.is-tutorial .battle-unit-action { height:100%;overflow:visible;border:0;border-radius:0;background:transparent;box-shadow:none; }
+.quest-battle-viewer.is-tutorial .battle-unit-action .battle-unit-art { height:calc(100% - 42px);overflow:visible;background:transparent; }
+.quest-battle-viewer.is-tutorial .battle-unit-action .character-presentation { overflow:visible;background:transparent; }
+.quest-battle-viewer.is-tutorial .battle-unit-action .character-presentation-art { overflow:visible; }
+.quest-battle-viewer.is-tutorial .battle-unit-action .battle-unit-meta { position:absolute;z-index:8;right:0;bottom:20px;left:0;padding:5px 7px;background:linear-gradient(90deg,rgba(2,7,13,.96),rgba(2,7,13,.54)); }
+.quest-battle-viewer.is-tutorial .battle-unit-action .battle-unit-hp { position:absolute;z-index:8;right:5px;bottom:10px;left:5px;margin:0; }
+.quest-battle-viewer.is-tutorial .battle-unit-action .battle-unit-hp-copy { position:absolute;z-index:8;right:4px;bottom:-4px;left:4px;padding:0;color:#d8e9f4; }
+.quest-battle-viewer.is-tutorial .battle-unit-action.is-actor { transform:translateX(7px) scale(1.045);filter:brightness(1.12); }
+.quest-battle-viewer.is-tutorial .battle-unit-action.is-target { transform:translateX(-5px); }
+.quest-battle-viewer.is-tutorial .battle-action-stage.is-skill-action { box-shadow:inset 0 0 52px rgba(0,0,0,.7),0 0 26px rgba(168,75,255,.2); }
+.quest-battle-viewer.is-tutorial .battle-action-stage.is-final-hit::after { position:absolute;z-index:16;inset:0;content:"FINAL HIT";display:grid;place-items:center;color:#fff2ad;background:radial-gradient(circle,rgba(255,69,30,.36),transparent 54%);font-size:clamp(28px,10vw,44px);font-style:italic;font-weight:1000;letter-spacing:.08em;text-shadow:0 0 28px #ff531f;pointer-events:none;animation:battle-final-hit-label .72s ease-out both; }
 
 .battle-viewer-header { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; min-height: 30px; border-bottom: 1px solid color-mix(in srgb, var(--ui-accent) 38%, transparent); }
 .battle-viewer-header span { color: var(--ui-accent); font-size: var(--ui-font-caption); font-weight: 1000; letter-spacing: .12em; }
@@ -82,6 +98,7 @@
 @keyframes battle-unit-shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
 @keyframes battle-impact-ring { from { opacity: .9; transform: scale(.15); } to { opacity: 0; transform: scale(1.5); } }
 @keyframes battle-target-impact { 0%, 100% { transform: translateX(0); } 35% { transform: translateX(7px); } 65% { transform: translateX(-4px); } }
+@keyframes battle-final-hit-label { 0%{opacity:0;transform:scale(1.28)} 30%,72%{opacity:1;transform:scale(1)} 100%{opacity:0;transform:scale(.96)} }
 
 @media (max-width: 390px) {
   .quest-battle-viewer { gap: 5px; padding-right: 6px; padding-left: 6px; }
@@ -97,6 +114,8 @@
   .battle-action-copy { top: 5px; }
   .battle-action-units { top: 28px; }
   .battle-viewer-controls button { min-height: 30px; }
+  .quest-battle-viewer.is-tutorial .battle-action-stage { min-height:178px; }
+  .quest-battle-viewer.is-tutorial .battle-unit-action .battle-unit-art { height:calc(100% - 38px); }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -108,8 +108,10 @@ export default function CharacterTab() {
   const [formationEditMode, setFormationEditMode] = useState(false);
   const [formationSubmitting, setFormationSubmitting] = useState(false);
   const [tutorialFormationPreviewReady, setTutorialFormationPreviewReady] = useState(false);
+  const [tutorialSkillDialogue, setTutorialSkillDialogue] = useState<{ skillName: string } | null>(null);
   const [skillDisplayById, setSkillDisplayById] = useState<Record<string, any>>({});
   const formationSubmittingRef = useRef(false);
+  const tutorialContinueRef = useRef<(() => void) | null>(null);
   const isTutorialFormation = onboardingState?.tutorial_step === "AUTO_FORMATION" && formationEditMode;
 
   const ownedSkillMasterIds = useMemo(() => Array.from(new Set((userSkillsList || []).map((skill: any) => skill.skill_card_id || skill.skill_id).filter(Boolean))).sort(), [userSkillsList]);
@@ -496,6 +498,24 @@ export default function CharacterTab() {
       {formationEditMode && (
         <div className="char-party-modal-backdrop" onClick={() => { if (!isTutorialFormation) setFormationEditMode(false); }}>
           <section className={`char-party-modal ${isTutorialFormation ? "tutorial-character-step" : ""}`} onClick={(event) => event.stopPropagation()} aria-label="出撃パーティ編集">
+            {tutorialSkillDialogue ? (
+              <div className="tutorial-formation-skill-dialogue" data-acceptance-state="FORMATION_SKILL_READY">
+                <TutorialNavigator message={<>今回は特別に、おすすめのスキルを装備させておいたよ。<br />バトルで使うところ、見ててね。</>} />
+                <div className="tutorial-formation-skill-confirmation">
+                  <span>RECOMMENDED SKILL</span>
+                  <strong>{tutorialSkillDialogue.skillName}</strong>
+                  <small>保証SSR・スキル枠1へ装備済み</small>
+                </div>
+                <button
+                  className="semantic-cta semantic-cta--primary tutorial-primary-target"
+                  onClick={() => {
+                    const continueTutorial = tutorialContinueRef.current;
+                    tutorialContinueRef.current = null;
+                    continueTutorial?.();
+                  }}
+                >クエストへ進む</button>
+              </div>
+            ) : <>
             {isTutorialFormation && (
               <TutorialNavigator message={<>バトルに出るメンバーはここで決めるよ。<br />まずは今いるメンバーで編成してみて。</>} />
             )}
@@ -563,6 +583,10 @@ export default function CharacterTab() {
                     navigateAfter: false,
                     presentationDelayMs: isTutorialFormation ? 900 : 0,
                     onPreviewReady: isTutorialFormation ? () => setTutorialFormationPreviewReady(true) : undefined,
+                    waitForTutorialContinue: isTutorialFormation ? (result: any) => new Promise<void>((resolve) => {
+                      tutorialContinueRef.current = resolve;
+                      setTutorialSkillDialogue({ skillName: String(result?.skill_name || "おすすめスキル") });
+                    }) : undefined,
                   });
                   if (completed) playCyberSe("FORMATION_CONFIRM");
                   if (completed && onboardingState?.tutorial_step === "AUTO_FORMATION") {
@@ -577,6 +601,7 @@ export default function CharacterTab() {
             >
               {tutorialFormationPreviewReady ? "編成完了" : formationSubmitting ? "編成中..." : isTutorialFormation ? "おすすめ編成にする" : "戦力順でおまかせ編成"}
             </button>
+            </>}
           </section>
         </div>
       )}

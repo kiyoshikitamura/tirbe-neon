@@ -3488,7 +3488,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     return true;
   };
 
-  const handleAutoFormation = async ({ navigateAfter = true, presentationDelayMs = 0, onPreviewReady }: { navigateAfter?: boolean; presentationDelayMs?: number; onPreviewReady?: () => void } = {}) => {
+  const handleAutoFormation = async ({ navigateAfter = true, presentationDelayMs = 0, onPreviewReady, waitForTutorialContinue }: { navigateAfter?: boolean; presentationDelayMs?: number; onPreviewReady?: () => void; waitForTutorialContinue?: (result: any) => Promise<void> } = {}) => {
     const actionPerformance = beginActionPerformance("formation_save");
     let committedParty = [...userCharactersDbList]
       .sort((left: any, right: any) => {
@@ -3528,6 +3528,9 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         onPreviewReady?.();
         if (presentationDelayMs > 0) {
           await new Promise(resolve => window.setTimeout(resolve, presentationDelayMs));
+        }
+        if (waitForTutorialContinue) {
+          await waitForTutorialContinue(tutorialFormation);
         }
         setOnboardingState(current => current ? { ...current, tutorial_step: nextStep } : current);
         setActiveTab("patrol");
