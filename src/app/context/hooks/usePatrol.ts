@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { supabase } from "@/utils/supabase";
 import { DISPATCH_COURSES } from "@/utils/game_constants";
 import { beginActionPerformance } from "@/utils/actionPerformance";
+import { traceTutorialJourney } from "@/utils/tutorialJourneyTrace";
 
 export function usePatrol(
   session: any,
@@ -96,6 +97,9 @@ export function usePatrol(
     }
 
     if (!beginMutation()) return false;
+    const selectedOwnedCharacterId = getUserCharactersDbList().find(
+      (ownedCharacter) => ownedCharacter.character_id === selectedPatrolMember
+    )?.id ?? null;
     const actionPerformance = beginActionPerformance("quest_start");
     playCyberSe("QUEST_START");
     try {
@@ -103,6 +107,13 @@ export function usePatrol(
       const expiresAt = new Date(startedAt.getTime() + course.duration_seconds * 1000);
 
       actionPerformance.mark("request_start");
+      traceTutorialJourney("dispatch_request", {
+        userId: session.user.id,
+        tutorialStepBefore: "DISPATCH",
+        questId: course.id,
+        dispatchedCharacterId: selectedPatrolMember,
+        dispatchedUserCharacterId: selectedOwnedCharacterId,
+      });
       const res = await supabase.rpc("start_patrol", {
         p_course_id: course.id,
         p_character_id: selectedPatrolMember,
@@ -141,9 +152,22 @@ export function usePatrol(
         if (!advanceError) nextTutorialStep = advancedStep;
       }
       if (nextTutorialStep === "FREE_INSTANT") setTutorialStep(nextTutorialStep);
+      traceTutorialJourney("dispatch_committed", {
+        userId: session.user.id,
+        tutorialStepBefore: "DISPATCH",
+        tutorialStepAfter: nextTutorialStep || null,
+        nextExpectedTutorialStep: "FREE_INSTANT",
+        questId: course.id,
+        patrolId: res.data.patrol_id,
+        patrolStatus: "ONGOING",
+        dispatchedCharacterId: selectedPatrolMember,
+        dispatchedUserCharacterId: selectedOwnedCharacterId,
+        battleEligibility: Boolean(res.data.has_battle),
+      });
       actionPerformance.mark("state_update");
       actionPerformance.markVisualReady();
     } catch (err: any) {
+      traceTutorialJourney("dispatch_rejected", { reason: err?.message || String(err) });
       console.warn(err.message);
       setErrorMessage(`クエストを開始できませんでした。${err.message ? `（${err.message}）` : ""}`);
     } finally {
@@ -155,9 +179,21 @@ export function usePatrol(
     const targetPatrol = activePatrols.find(p => p.id === patrolId);
     if (!session || !targetPatrol) return false;
     if (!beginMutation()) return false;
+    const dispatchedUserCharacterId = getUserCharactersDbList().find(
+      (ownedCharacter) => ownedCharacter.character_id === targetPatrol.characterId
+    )?.id ?? null;
     playCyberSe("QUEST_INSTANT");
 
     try {
+      traceTutorialJourney("speed_up_request", {
+        userId: session.user.id,
+        tutorialStepBefore: currency === "FREE_TUTORIAL" ? "FREE_INSTANT" : null,
+        questId: targetPatrol.courseId,
+        patrolId,
+        patrolStatus: targetPatrol.status,
+        dispatchedCharacterId: targetPatrol.characterId,
+        dispatchedUserCharacterId,
+      });
       const { data, error } = currency === "FREE_PREOPEN"
         ? await supabase.rpc("complete_patrol_preopen", { p_patrol_id: patrolId })
         : await supabase.rpc("complete_patrol_instantly", {
@@ -167,6 +203,10 @@ export function usePatrol(
           });
 
       if (error) {
+        traceTutorialJourney("speed_up_rejected", {
+          patrolId,
+          reason: error.message || "unknown error",
+        });
         const detail = String(error.message || "");
         const normalizedDetail = detail.toLowerCase();
         setErrorMessage(
@@ -199,6 +239,21 @@ export function usePatrol(
           }
           if (nextTutorialStep === "TUTORIAL_BATTLE") setTutorialStep(nextTutorialStep);
         }
+        setActivePatrols((current) => current.map((entry) => entry.id === patrolId
+          ? { ...entry, status: "CLAIMABLE", secondsLeft: 0, expires_at: new Date().toISOString() }
+          : entry));
+        traceTutorialJourney("speed_up_committed", {
+          userId: session.user.id,
+          tutorialStepBefore: currency === "FREE_TUTORIAL" ? "FREE_INSTANT" : null,
+          tutorialStepAfter: nextTutorialStep || null,
+          nextExpectedTutorialStep: currency === "FREE_TUTORIAL" ? "TUTORIAL_BATTLE" : null,
+          questId: targetPatrol.courseId,
+          patrolId,
+          patrolStatus: "CLAIMABLE",
+          dispatchedCharacterId: targetPatrol.characterId,
+          dispatchedUserCharacterId,
+          speedUpRpcResult: data,
+        });
         void syncBootstrapData(session.user.id).catch((bootstrapError) => {
           console.warn("Patrol bootstrap refresh failed:", bootstrapError);
         });
@@ -270,6 +325,7 @@ export function usePatrol(
       });
       return true;
     } catch (err: any) {
+      traceTutorialJourney("speed_up_exception", { patrolId, reason: err?.message || String(err) });
       console.warn(err.message);
       const detail = String(err?.message || "");
       setErrorMessage(

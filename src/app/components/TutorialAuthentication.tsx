@@ -282,13 +282,14 @@ export default function TutorialAuthentication() {
         <div className="modal-desc text-left mb-3">
           データを引き継げるよう、Googleまたはメールのどちらか1つを連携してください。同じアカウントで両方を使用することはできません。
         </div>
+        <button className="semantic-cta semantic-cta--primary width-100" onClick={() => void connectGoogle()} disabled={working || googleIdentityMismatch || hasOnlyEmailIdentity} aria-busy={working}>
+          {working ? "連携中..." : "Googleアカウントを連携"}
+        </button>
+        <div className="auth-method-divider mt-3 mb-3"><span>またはメールで連携</span></div>
         <input className="auth-input mb-2" type="email" placeholder="メールアドレス" value={email} onChange={(event) => setEmail(event.target.value)} disabled={hasOnlyEmailIdentity} />
         <input className="auth-input" type="password" placeholder="パスワード（6文字以上）" value={password} onChange={(event) => setPassword(event.target.value)} />
-        <button className="semantic-cta semantic-cta--primary mt-3 width-100" onClick={() => void connectEmail()} disabled={working || googleIdentityMismatch} aria-busy={working}>
+        <button className="semantic-cta semantic-cta--secondary mt-3 width-100" onClick={() => void connectEmail()} disabled={working || googleIdentityMismatch} aria-busy={working}>
           {working ? "連携中..." : hasOnlyEmailIdentity ? "パスワードを設定して完了" : "メールアカウントを連携"}
-        </button>
-        <button className="semantic-cta semantic-cta--secondary mt-2 width-100" onClick={() => void connectGoogle()} disabled={working || googleIdentityMismatch || hasOnlyEmailIdentity} aria-busy={working}>
-          {working ? "連携中..." : "Googleアカウントを連携"}
         </button>
         {displayedNotice && <div className="text-color-cyan font-size-7 mt-2" role="status">{displayedNotice}</div>}
         {(error || identityConflict || googleIdentityMismatch) && <div className="text-color-red font-size-7 mt-2">

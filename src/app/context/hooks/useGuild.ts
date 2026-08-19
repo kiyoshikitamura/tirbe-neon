@@ -33,7 +33,7 @@ export function useGuild(
     setConfirmDialogConfig({
       isOpen: true,
       title: "TRIBEへようこそ",
-      message: `「${guildName}」への加入が完了しました。まずはTRIBE Chatで仲間へ挨拶し、そのままレイドへ参加しましょう。`,
+      message: `「${guildName}」への加入が完了しました。`,
       confirmText: "Chatを開く",
       cancelText: "あとで",
       onConfirm: () => {
@@ -52,7 +52,7 @@ export function useGuild(
     setConfirmDialogConfig({
       isOpen: true,
       title: "TRIBEへようこそ",
-      message: `「${guildName}」への加入が完了しました。まずはTRIBE Chatで仲間へ挨拶するか、レイドへ戻りましょう。`,
+      message: `「${guildName}」への加入が完了しました。`,
       confirmText: "TRIBE Chatを見る",
       cancelText: "レイドへ",
       onConfirm: () => {

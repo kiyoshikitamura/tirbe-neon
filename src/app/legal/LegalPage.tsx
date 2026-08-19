@@ -12,7 +12,7 @@ export default function LegalPage({ title, updatedAt, children }: LegalPageProps
     <main className="legal-page">
       <section className="legal-page-card" aria-labelledby="legal-page-title">
         <Link href="/" className="legal-page-back">← タイトルへ戻る</Link>
-        <p className="legal-page-brand">TRIBE: NEON REIGN</p>
+        <p className="legal-page-brand">TRIBE NEON</p>
         <h1 id="legal-page-title">{title}</h1>
         <p className="legal-page-updated">最終更新日: {updatedAt}</p>
         <div className="legal-page-content">{children}</div>
@@ -21,7 +21,7 @@ export default function LegalPage({ title, updatedAt, children }: LegalPageProps
           <Link href="/legal/privacy">プライバシーポリシー</Link>
           <Link href="/legal/commercial">特定商取引法に基づく表記</Link>
         </nav>
-        <p className="legal-page-copyright">© 2026 TRIBE: NEON REIGN. All rights reserved.</p>
+        <p className="legal-page-copyright">© 2026 TRIBE NEON</p>
       </section>
     </main>
   );

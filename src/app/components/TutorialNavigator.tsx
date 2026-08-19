@@ -1,15 +1,16 @@
 "use client";
 
+import type { ReactNode } from "react";
 import CharacterPresentation from "./character/CharacterPresentation";
 
-export default function TutorialNavigator({ message }: { message: string }) {
+export default function TutorialNavigator({ message }: { message: ReactNode }) {
   return (
     <div className="tutorial-navigator">
       <div className="tutorial-navigator-portrait">
         <CharacterPresentation
           src="/characters/ageha_transparent_asset.png"
           alt="アゲハ"
-          variant="portrait"
+          variant="dialogue-bust"
           className="tutorial-navigator-character"
         />
       </div>

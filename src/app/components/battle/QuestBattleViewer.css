@@ -14,6 +14,10 @@
     linear-gradient(180deg, var(--ui-bg-surface), var(--ui-bg-root));
 }
 
+.quest-battle-viewer.is-tutorial { background:linear-gradient(180deg,rgba(4,8,14,.7),rgba(2,5,10,.96)),url('/bg/bg_street_shinjuku.png') center/cover no-repeat; }
+.quest-battle-viewer.is-tutorial .battle-party-grid { grid-template-columns:repeat(5,minmax(0,1fr)); }
+.quest-battle-viewer.is-tutorial .battle-action-stage { border-color:rgba(242,201,95,.3);background:linear-gradient(100deg,rgba(0,240,255,.12),rgba(2,6,12,.88) 45%,rgba(255,67,105,.13));box-shadow:inset 0 0 42px rgba(0,0,0,.6),0 0 18px rgba(242,201,95,.08); }
+
 .battle-viewer-header { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; min-height: 30px; border-bottom: 1px solid color-mix(in srgb, var(--ui-accent) 38%, transparent); }
 .battle-viewer-header span { color: var(--ui-accent); font-size: var(--ui-font-caption); font-weight: 1000; letter-spacing: .12em; }
 .battle-viewer-header strong { font-size: 14px; letter-spacing: .06em; }
@@ -98,3 +102,12 @@
 @media (prefers-reduced-motion: reduce) {
   .battle-skill-flash, .laser-path, .shake, .battle-impact-burst i, .battle-action-stage.is-phase-impact .battle-action-units > .battle-unit:last-child { animation: none; }
 }
+
+/* 430px Human QA: combat hierarchy must remain readable without desktop expansion. */
+.battle-viewer-header span{font-size:10px}.battle-viewer-header strong{font-size:16px}.battle-viewer-header strong small{font-size:9px}.battle-viewer-header i{padding:3px 7px;font-size:9px}
+.battle-timeline-slot{padding:5px 6px}.battle-timeline-slot small{font-size:8px}.battle-timeline-slot strong{font-size:10px}
+.battle-party-label{min-height:20px}.battle-party-label span{font-size:10px}.battle-party-label strong{font-size:9px}
+.battle-action-copy span{font-size:9px}.battle-action-copy strong{font-size:clamp(17px,5vw,22px)}
+.battle-action-sequence span{font-size:8px}.battle-action-impact strong{font-size:12px}
+.battle-skill-flash{padding:8px}.battle-skill-flash small{font-size:9px}.battle-skill-flash strong{font-size:19px}
+.battle-tactic-label{font-size:10px}.battle-viewer-controls button{min-height:38px;font-size:11px}

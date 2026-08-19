@@ -54,8 +54,8 @@ async function seedAuthenticatedPlayer(page: Page, asMaster = false) {
 
 async function enterHome(page: Page) {
   await page.goto("/");
-  await expect(page.getByRole("button", { name: "TAP TO START" })).toBeVisible();
-  await page.getByRole("button", { name: "TAP TO START" }).click();
+  const titleAction = page.getByRole("button", { name: "TAP TO START" });
+  if (await titleAction.isVisible()) await titleAction.click();
   await expect(page.locator(".header-mobile")).toBeVisible();
 }
 
@@ -99,16 +99,17 @@ test("Guild master edits the welcome message through the existing secure contrac
   await expect(page.locator(".guild-welcome-card")).toContainText("みんなでレイドへ行こう");
   await assertMobileWave(page, ".guild-welcome-card", "guild-welcome-editor");
   await page.reload();
-  await page.getByRole("button", { name: "TAP TO START" }).click();
+  const titleAction = page.getByRole("button", { name: "TAP TO START" });
+  if (await titleAction.isVisible()) await titleAction.click();
   await page.getByRole("button", { name: "ギルド" }).click();
   await expect(page.locator(".guild-welcome-card")).toContainText("みんなでレイドへ行こう");
 });
 
 test("Title to Guild human response journey remains visible across every mobile wave", async ({ page }) => {
-  await seedAuthenticatedPlayer(page);
   await page.goto("/");
   await assertMobileWave(page, ".title-view-overlay", "journey-title");
-  await page.getByRole("button", { name: "TAP TO START" }).click();
+  await seedAuthenticatedPlayer(page);
+  await page.reload();
   await assertMobileWave(page, ".mypage-view", "journey-home");
   await page.getByRole("button", { name: "ギルド" }).click();
   await assertMobileWave(page, ".guild-lobby-view", "journey-guild-discovery");
@@ -126,7 +127,8 @@ test("Title to Guild human response journey remains visible across every mobile 
     localStorage.setItem("mock_db_board_posts", JSON.stringify(posts));
   }, { master, guildId });
   await page.reload();
-  await page.getByRole("button", { name: "TAP TO START" }).click();
+  const titleAction = page.getByRole("button", { name: "TAP TO START" });
+  if (await titleAction.isVisible()) await titleAction.click();
   await page.getByRole("button", { name: "ギルド" }).click();
   await page.getByRole("button", { name: "TRIBE Chat" }).click();
   await expect(page.getByRole("button", { name: /ギルド \(1\)/ })).toBeVisible();

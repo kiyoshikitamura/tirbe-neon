@@ -23,7 +23,7 @@ import {
   DEFAULT_LOGIN_BONUS_MASTERS,
 } from "@/utils/login_bonus_master_data";
 import { useBattle } from "@/hooks/useBattle";
-import { getCharacterTotalStats } from "@/utils/stats_calculator";
+import { getCharacterBaseStats, getCharacterTotalStats } from "@/utils/stats_calculator";
 import { SHOP_PRODUCTS_MASTER, ShopProductItem } from "@/utils/shop_master_data";
 import { ConfirmDialogConfig } from "@/app/components/ui/ConfirmDialog";
 import { useNavigation } from "./hooks/useNavigation";
@@ -36,6 +36,7 @@ import { useGuild } from "./hooks/useGuild";
 import { beginActionPerformance } from "@/utils/actionPerformance";
 import { useAudio } from "@/audio/AudioProvider";
 import type { SeEvent } from "@/audio/audioContract";
+import { beginAssetTierMetric, finishAssetTierMetric, preloadAssetManifest } from "@/app/lib/screenAssets";
 
 const ONBOARDING_AUTH_INTENT_KEY = "tribe_onboarding_auth_intent";
 const ONBOARDING_AUTH_INTENT_MAX_AGE_MS = 30 * 60 * 1000;
@@ -81,6 +82,7 @@ const GameContext = createContext<any>(null);
 
 export function GameProvider({ children }: { children: React.ReactNode }) {
   const lastValidatedAuthUserIdRef = useRef<string | null>(null);
+  const tutorialResultCommitRef = useRef(false);
   const audio = useAudio();
   const playCyberSe = (type: string) => audio.playLegacySe(type);
   const handleFirstUserInteraction = () => { void audio.unlockAudio(); };
@@ -631,20 +633,6 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       const { data, error } = await supabase.rpc("get_current_onboarding_state");
       if (error) throw error;
       let nextState = data as import("./hooks/useAuth").OnboardingState;
-      if (nextState.tutorial_step === "AUTO_FORMATION") {
-        const { data: growthMilestone } = await supabase
-          .from("user_funnel_milestones")
-          .select("milestone")
-          .eq("user_id", userId)
-          .eq("milestone", "first_growth")
-          .maybeSingle();
-        if (growthMilestone) {
-          const { data: resumedGrowth, error: resumeGrowthError } = await supabase.rpc("advance_current_tutorial_after_growth");
-          if (!resumeGrowthError && resumedGrowth?.tutorial_step) {
-            nextState = { ...nextState, tutorial_step: resumedGrowth.tutorial_step };
-          }
-        }
-      }
       if (nextState.tutorial_step === "TUTORIAL_BATTLE") {
         // Reward claiming is authoritative and idempotent, but the tutorial
         // step is deliberately kept on TUTORIAL_BATTLE while its result modal
@@ -694,6 +682,13 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         setShowTitleView(false);
       }
       if (nextState.has_profile) {
+        // A persisted first-session step is a resume target, not a reason to
+        // return the player to the title while auth/bootstrap is settling.
+        // This also removes the cold-cache race where TAP TO START appeared
+        // after a reload even though the tutorial route was already known.
+        if (nextState.tutorial_step && nextState.tutorial_step !== "COMPLETE") {
+          setShowTitleView(false);
+        }
         // Resume an interrupted mandatory tutorial at the screen required by
         // the persisted server-side step instead of falling back to Home.
         if (nextState.tutorial_step === "FREE_GACHA") setActiveTab("gacha");
@@ -785,9 +780,42 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     setConfirmDialogConfig,
     patrolNpcs,
     patrol: activePatrols.find((entry: any) => entry.has_battle_event && !entry.battle_resolved),
+    tutorialStep: onboardingState?.tutorial_step,
     navigateTab: (tabName: string) => setActiveTab(tabName as any),
     setTutorialStep: (step: string) => setOnboardingState(current => current ? { ...current, tutorial_step: step } : current)
   });
+
+  // Tutorial quest result has one owner. The battle viewer stays mounted until
+  // the authoritative patrol reward is visible, then this action advances the
+  // tutorial exactly once and releases the battle surface.
+  const completeTutorialBattleResult = async () => {
+    const isTutorialResult = battle.battleMode === "PATROL"
+      && battle.battleState === "RESULT"
+      && battle.tutorialBattleActive;
+    if (!isTutorialResult) {
+      battle.completeBattleResult();
+      return;
+    }
+    if (tutorialResultCommitRef.current || !lastPatrolRewards?.isTutorialReward) return;
+    tutorialResultCommitRef.current = true;
+    setGlobalInteractionBlocking(true);
+    try {
+      const { data, error } = await supabase.rpc("advance_tutorial_progress", {
+        p_expected_step: "TUTORIAL_BATTLE",
+        p_next_step: "RULE_GUIDE",
+      });
+      if (error) throw error;
+      setShowPatrolRewardModal(false);
+      setLastPatrolRewards(null);
+      setOnboardingState((current: any) => current ? { ...current, tutorial_step: data || "RULE_GUIDE" } : current);
+      battle.completeBattleResult();
+    } catch (error: any) {
+      setErrorMessage(`チュートリアルを進められませんでした。${error?.message ? `（${error.message}）` : ""}`);
+    } finally {
+      tutorialResultCommitRef.current = false;
+      setGlobalInteractionBlocking(false);
+    }
+  };
 
 
   // ログインボーナスのチェックと受取処理 (RPC呼び出し)
@@ -2738,11 +2766,27 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         const serverResults = drawResult.data?.results || [];
         const results = serverResults.map((result: { character_id: string; outcome: string; rarity?: string }) => {
           const character = CHARACTERS_MASTER.find(c => c.id === result.character_id);
+          const revealStats = character ? getCharacterBaseStats(character.id, 1, 0) : null;
+          const roleLabels: Record<string, string> = {
+            BALANCED: "バランス", HP_TANK: "タンク", ATTACKER: "アタッカー",
+            DEFENDER: "ディフェンダー", SPEEDSTER: "スピード", LUCKY_STAR: "サポート",
+          };
+          const attributeLabels: Record<string, string> = {
+            ORDER: "秩序", JUSTICE: "正義", CHAOS: "混沌", EVIL: "悪",
+          };
           return {
             type: "CHARACTER",
+            characterId: result.character_id,
             name: character?.jpName || result.character_id,
             rarity: result.rarity || character?.rarity || "R",
             imageUrl: character ? getCharacterTransparentImg(character.name) : undefined,
+            title: character?.title || "新たな仲間",
+            role: roleLabels[character?.growthPatternId || ""] || "バランス",
+            attribute: attributeLabels[character?.alignment || ""] || "無所属",
+            hp: revealStats?.hp,
+            atk: revealStats?.atk,
+            def: revealStats?.def,
+            initialLevel: 1,
             converted: result.outcome === "converted",
             convertReward: result.outcome === "awakening" ? "覚醒段階+1" : result.outcome === "converted" ? "抗争の掟 x1" : "新規獲得"
           };
@@ -2766,15 +2810,28 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         }
         setScoutResults(results);
         setScoutFlashingColor(results.some((r: { rarity: string }) => r.rarity === "SSR") ? "GOLD" : results.some((r: { rarity: string }) => r.rarity === "SR") ? "PURPLE" : "BLUE");
-        reportScoutTiming("asset_ready", { assetWaitMs: 0, reason: "css-only tutorial animation" });
         setScoutAnimationState("FLASHING");
         actionPerformance.mark("state_update");
         actionPerformance.markVisualReady();
         reportScoutTiming("animation_start", { resultCount: results.length });
-        setTimeout(() => {
+        const resultImageStartedAt = typeof performance !== "undefined" ? performance.now() : Date.now();
+        beginAssetTierMetric("DYNAMIC_RESULT");
+        const resultImagePromise = preloadAssetManifest(
+          results
+            .filter((result: { imageUrl?: string }) => Boolean(result.imageUrl))
+            .map((result: { imageUrl: string }) => ({ src: result.imageUrl, required: true })),
+        ).then((assetResults) => {
+          finishAssetTierMetric("DYNAMIC_RESULT", assetResults);
+          reportScoutTiming("asset_ready", {
+            assetWaitMs: Math.round((typeof performance !== "undefined" ? performance.now() : Date.now()) - resultImageStartedAt),
+            failedAssets: assetResults.filter((asset) => asset.status === "failed").length,
+          });
+        });
+        const presentationPromise = new Promise((resolve) => window.setTimeout(resolve, 1800));
+        void Promise.all([resultImagePromise, presentationPromise]).then(() => {
           reportScoutTiming("result_display");
-          setScoutAnimationState("SHOW_RESULTS");
-        }, 1800);
+          setScoutAnimationState(isTutorialTenPull ? "READY" : "SHOW_RESULTS");
+        });
         await bootstrapPromise;
         return;
       }
@@ -3431,9 +3488,9 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     return true;
   };
 
-  const handleAutoFormation = async ({ navigateAfter = true }: { navigateAfter?: boolean } = {}) => {
+  const handleAutoFormation = async ({ navigateAfter = true, presentationDelayMs = 0, onPreviewReady }: { navigateAfter?: boolean; presentationDelayMs?: number; onPreviewReady?: () => void } = {}) => {
     const actionPerformance = beginActionPerformance("formation_save");
-    const nextParty = [...userCharactersDbList]
+    let committedParty = [...userCharactersDbList]
       .sort((left: any, right: any) => {
         const leftStats = getCharacterTotalStats(left, userEquipmentsList);
         const rightStats = getCharacterTotalStats(right, userEquipmentsList);
@@ -3444,7 +3501,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       .slice(0, 5)
       .map((character: any) => character.character_id);
 
-    if (nextParty.length === 0) {
+    if (committedParty.length === 0) {
       setErrorMessage("編成できるキャラクターがいません。");
       return false;
     }
@@ -3452,30 +3509,48 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     playCyberSe("click");
     if (session?.user?.id) {
       actionPerformance.mark("request_start");
-      const saveError = await persistPartyFormation(nextParty);
-      if (saveError) {
-        console.warn("Failed to save auto formation:", saveError);
-        setErrorMessage(`編成の保存に失敗しました。（${saveError.code || "unknown"}）`);
-        return false;
-      }
       if (onboardingState?.tutorial_step === "AUTO_FORMATION") {
-        const { data: tutorialFormation, error: growthPreparationError } = await supabase.rpc("complete_current_tutorial_formation");
-        if (growthPreparationError) {
-          console.warn("Failed to complete tutorial formation:", growthPreparationError);
-          setErrorMessage(`強化チュートリアルの準備に失敗しました。（${growthPreparationError.message}）`);
+        // Tutorial formation is one server-authoritative transaction: party,
+        // recommended skill and the persisted tutorial step commit together.
+        const { data: tutorialFormation, error: tutorialFormationError } = await supabase.rpc("complete_current_tutorial_formation");
+        if (tutorialFormationError) {
+          console.warn("Failed to complete tutorial formation:", tutorialFormationError);
+          setErrorMessage(`編成チュートリアルの完了に失敗しました。（${tutorialFormationError.message}）`);
           return false;
         }
         const nextStep = tutorialFormation?.tutorial_step || "DISPATCH";
+        const serverParty = tutorialFormation?.formation?.character_ids;
+        if (Array.isArray(serverParty) && serverParty.length > 0) committedParty = serverParty;
+        // Reflect the authoritative formation before leaving the tutorial page so
+        // the player can see which five members and recommended skill were set.
+        setSelectedMembers(committedParty);
+        setUpgradeSelectedCharId(committedParty[0]);
+        onPreviewReady?.();
+        if (presentationDelayMs > 0) {
+          await new Promise(resolve => window.setTimeout(resolve, presentationDelayMs));
+        }
         setOnboardingState(current => current ? { ...current, tutorial_step: nextStep } : current);
         setActiveTab("patrol");
-        void syncBootstrapData(session.user.id).catch((bootstrapError) => {
-          console.warn("Tutorial formation bootstrap refresh failed:", bootstrapError);
-        });
+        void Promise.all([
+          syncBootstrapData(session.user.id),
+          supabase.rpc("get_current_onboarding_state"),
+        ]).then(([, refreshedOnboarding]) => {
+          if (!refreshedOnboarding.error && refreshedOnboarding.data) {
+            setOnboardingState(refreshedOnboarding.data as import("./hooks/useAuth").OnboardingState);
+          }
+        }).catch((bootstrapError) => console.warn("Tutorial formation bootstrap refresh failed:", bootstrapError));
+      } else {
+        const saveError = await persistPartyFormation(committedParty);
+        if (saveError) {
+          console.warn("Failed to save auto formation:", saveError);
+          setErrorMessage(`編成の保存に失敗しました。（${saveError.code || "unknown"}）`);
+          return false;
+        }
       }
       actionPerformance.mark("response");
     }
-    setSelectedMembers(nextParty);
-    setUpgradeSelectedCharId(nextParty[0]);
+    setSelectedMembers(committedParty);
+    setUpgradeSelectedCharId(committedParty[0]);
     actionPerformance.mark("state_update");
     actionPerformance.markVisualReady();
     if (navigateAfter && onboardingState?.tutorial_step !== "AUTO_FORMATION") {
@@ -3739,6 +3814,10 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     setBattleOpponentName: battle.setBattleOpponentName,
     battleState: battle.battleState,
     setBattleState: battle.setBattleState,
+    battleOutcome: battle.battleOutcome,
+    tutorialBattleActive: battle.tutorialBattleActive,
+    battleEncounterLocked: battle.battleEncounterLocked,
+    settledPatrolEncounterId: battle.settledPatrolEncounterId,
     battleLog: battle.battleLog,
     setBattleLog: battle.setBattleLog,
     ap: battle.ap,
@@ -3775,6 +3854,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     launchBattlePlaying: battle.launchBattlePlaying,
     handleEndTurn: battle.handleEndTurn,
     endBattleSession: battle.endBattleSession,
+    completeBattleResult: battle.completeBattleResult,
+    completeTutorialBattleResult,
 
     // 共通ハンドラ
     playCyberSe,

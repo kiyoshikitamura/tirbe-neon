@@ -2,11 +2,12 @@
 
 import React from "react";
 import "./CharacterPresentation.css";
+import { getCharacterPresentationMetadata } from "./characterPresentationMetadata";
 
-export type CharacterPresentationVariant = "portrait" | "card" | "thumbnail" | "full-body" | "battle" | "icon";
+export type CharacterPresentationVariant = "portrait" | "dialogue" | "dialogue-bust" | "reveal" | "quest" | "battle-leader" | "card" | "thumbnail" | "full-body" | "battle" | "icon";
 
 type Props = {
-  src: string;
+  src?: string;
   alt: string;
   variant: CharacterPresentationVariant;
   rarity?: string;
@@ -29,10 +30,17 @@ export default function CharacterPresentation({
   className = "",
 }: Props) {
   const rarityClass = rarity ? `character-presentation-rarity-${rarity.toLowerCase()}` : "";
+  const framing = getCharacterPresentationMetadata(src || "");
+  const presentationStyle = {
+    "--character-focal-x": `${framing.focalX}%`,
+    "--character-thumbnail-focal-y": `${framing.thumbnailFocalY}%`,
+    "--character-portrait-focal-y": `${framing.portraitFocalY}%`,
+    "--character-card-focal-y": `${framing.cardFocalY}%`,
+  } as React.CSSProperties;
   return (
-    <figure className={`character-presentation character-presentation-${variant} ${rarityClass} ${selected ? "is-selected" : ""} ${className}`.trim()}>
+    <figure style={presentationStyle} className={`character-presentation character-presentation-${variant} ${rarityClass} ${selected ? "is-selected" : ""} ${className}`.trim()}>
       <div className="character-presentation-art">
-        <img src={src} alt={alt} />
+        {src ? <img src={src} alt={alt} /> : <span className="character-presentation-missing" role="img" aria-label={`${alt}の画像は準備中`} />}
         <span className="character-presentation-light" aria-hidden="true" />
       </div>
       {badge && <span className="character-presentation-badge">{badge}</span>}

@@ -34,3 +34,46 @@ export const SCREEN_ASSET_MANIFESTS = {
 } as const;
 
 export const HOME_BOOT_ASSETS = SCREEN_ASSET_MANIFESTS.home.map((asset) => asset.src);
+
+/**
+ * Cold-start asset policy.
+ *
+ * BOOT_CRITICAL is the only blocking tier. TUTORIAL_CRITICAL starts after the
+ * title has become visible, and DEFERRED must never hold the first session.
+ * Character images returned by the tutorial draw are loaded from the actual
+ * server result during the gacha presentation instead of preloading the full
+ * release roster here.
+ */
+export const BOOT_CRITICAL_ASSETS: AssetRequest[] = [
+  { src: "/branding/title-key-visual.png", required: true },
+  { src: "/branding/tribe-neon-logo.png", required: true },
+  { src: "/bg/bg_street_shinjuku.png", required: true },
+  { src: "/characters/ageha_transparent_asset.png", required: true },
+];
+
+export const TUTORIAL_CRITICAL_ASSETS: AssetRequest[] = optionalAssets([
+  ...FRAME_ASSETS,
+  "/gacha/bg_gacha_normal.png",
+  "/gacha/bg_gacha_sr.png",
+  "/gacha/bg_gacha_ssr.png",
+  "/bg/bg_street_shinjuku.png",
+  "/characters/ageha_transparent_asset.png",
+  "/characters/reiji_transparent_asset.png",
+  "/characters/rui_transparent_asset.png",
+  "/characters/chang_transparent_asset.png",
+  "/characters/alice_transparent_asset.png",
+  "/characters/kaito_transparent_asset.png",
+  "/characters/koharu_transparent_asset.png",
+  "/characters/leon_transparent_asset.png",
+  "/characters/sakura_transparent_asset.png",
+  "/characters/yuki_transparent_asset.png",
+  "/effects/fx_screen_darken.png",
+  "/effects/fx_speed_lines.png",
+  "/effects/fx_heavy_impact.png",
+  "/effects/fx_heavy_slash.png",
+  "/effects/fx_muzzle_flash.png",
+  "/effects/cutin_bg_sr.png",
+  "/effects/cutin_bg_ssr.png",
+]);
+
+export const DEFERRED_ASSETS: AssetRequest[] = SCREEN_ASSET_MANIFESTS.home;

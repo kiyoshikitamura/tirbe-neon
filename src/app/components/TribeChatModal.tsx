@@ -3,7 +3,6 @@ import { useGame } from "../context/GameContext";
 import FullScreenPanel from "./ui/FullScreenPanel";
 import SubTabNav from "./ui/SubTabNav";
 import OutlawButton from "./ui/OutlawButton";
-import { supabase } from "../../utils/supabase";
 import "./TribeChatModal.css";
 
 export default function TribeChatModal() {
@@ -12,7 +11,6 @@ export default function TribeChatModal() {
     setShowTribeChatPanel,
     session,
     userGuild,
-    userGuildMember,
     guildMembersList,
     userFriends,
     chatChannel,
@@ -26,15 +24,13 @@ export default function TribeChatModal() {
     chatCooldown,
     chatSending,
     handleSendChat,
-    playCyberSe,
     dmRecipientId,
     setDmRecipientId,
     directMessages,
     dmUnreadConversations,
     dmUnreadTotal,
     handleSendDirectMessage,
-    fetchPlayerDetail,
-    navigateTab
+    fetchPlayerDetail
   } = useGame();
 
   const [localDmText, setLocalDmText] = useState("");
@@ -98,7 +94,7 @@ export default function TribeChatModal() {
   };
 
   return (
-    <FullScreenPanel title="暗号メッセージ『トライブ』" onClose={handleClose} className="tribe-chat-panel">
+    <FullScreenPanel title="TRIBE Chat" onClose={handleClose} className="tribe-chat-panel">
       <div className="tribe-modal-container-inner flex-col" style={{ height: '100%' }}>
         {/* チャンネルタブ (全体 / ギルド / DM) */}
         <SubTabNav
@@ -240,23 +236,6 @@ export default function TribeChatModal() {
               <div><b>{chatReplyTo.author_name}</b><span>{chatReplyTo.content}</span></div>
               <button type="button" onClick={() => setChatReplyTo(null)} aria-label="返信を解除">×</button>
             </div>
-          )}
-          {chatChannel === "GUILD" && userGuild && (
-            <OutlawButton
-              variant="secondary"
-              fullWidth
-              onClick={() => {
-                void supabase.rpc("record_client_funnel_event", {
-                  p_event_name: "guild_chat_raid_click", p_source_screen: "guild_chat",
-                  p_source_cta: "open_raid", p_object_id: userGuild.id, p_metadata: {}
-                });
-                setShowTribeChatPanel(false);
-                navigateTab("raid");
-                playCyberSe("click");
-              }}
-            >
-              TRIBE Contributionを増やす（レイドへ）
-            </OutlawButton>
           )}
           <div style={{ display: 'flex', gap: '8px' }}>
             <input

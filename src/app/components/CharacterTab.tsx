@@ -15,7 +15,6 @@ import { getCharacterTotalStats } from "@/utils/stats_calculator";
 import { useImagePreloader } from "../hooks/useImagePreloader";
 import TutorialNavigator from "./TutorialNavigator";
 import CharacterPresentation from "./character/CharacterPresentation";
-import type { ConfirmDialogConfig } from "./ui/ConfirmDialog";
 import "./CharacterTab.css";
 
 const CHARACTER_ROLE_LABELS: Record<string, string> = {
@@ -94,10 +93,7 @@ export default function CharacterTab() {
     playCyberSe,
     currentBaseId,
     session,
-    onboardingState,
-    setOnboardingState,
-    setConfirmDialogConfig,
-    setErrorMessage
+    onboardingState
   } = useGame();
 
   // ボトムシートモーダル状態: null (閉じ) | "STATUS" | "SKILL" | "GEAR"
@@ -111,13 +107,10 @@ export default function CharacterTab() {
   const [selectedSkillSlotIdx, setSelectedSkillSlotIdx] = useState<number | null>(null);
   const [formationEditMode, setFormationEditMode] = useState(false);
   const [formationSubmitting, setFormationSubmitting] = useState(false);
-  const [tutorialGrowthSubmitting, setTutorialGrowthSubmitting] = useState(false);
+  const [tutorialFormationPreviewReady, setTutorialFormationPreviewReady] = useState(false);
   const [skillDisplayById, setSkillDisplayById] = useState<Record<string, any>>({});
   const formationSubmittingRef = useRef(false);
-  const tutorialGrowthSubmittingRef = useRef(false);
-  const tutorialGrowthResumeKey = session?.user?.id ? `tribe_tutorial_growth_ready:${session.user.id}` : null;
   const isTutorialFormation = onboardingState?.tutorial_step === "AUTO_FORMATION" && formationEditMode;
-  const isTutorialGrowth = onboardingState?.tutorial_step === "AUTO_FORMATION" && bottomModalTab === "STATUS" && !formationEditMode;
 
   const ownedSkillMasterIds = useMemo(() => Array.from(new Set((userSkillsList || []).map((skill: any) => skill.skill_card_id || skill.skill_id).filter(Boolean))).sort(), [userSkillsList]);
 
@@ -136,18 +129,14 @@ export default function CharacterTab() {
 
   useEffect(() => {
     if (onboardingState?.tutorial_step === "AUTO_FORMATION") {
-      const resumeGrowth = tutorialGrowthResumeKey && window.localStorage.getItem(tutorialGrowthResumeKey) === "true";
-      setFormationEditMode(!resumeGrowth);
-      if (resumeGrowth) setBottomModalTab("STATUS");
-    } else if (tutorialGrowthResumeKey) {
-      window.localStorage.removeItem(tutorialGrowthResumeKey);
+      setFormationEditMode(true);
     }
-  }, [onboardingState?.tutorial_step, tutorialGrowthResumeKey]);
+  }, [onboardingState?.tutorial_step]);
 
   // 選択中キャラクター情報の取得
   const ownedCharIds = useMemo(() => {
     const ids = (userCharactersDbList || []).map((uc: any) => uc.character_id);
-    return ids.length > 0 ? ids : ["reiji"];
+    return ids;
   }, [userCharactersDbList]);
 
   const activeCharRecord = useMemo(() => {
@@ -155,8 +144,8 @@ export default function CharacterTab() {
   }, [userCharactersDbList, upgradeSelectedCharId]);
 
   const activeCharMaster = useMemo(() => {
-    const charId = activeCharRecord?.character_id || upgradeSelectedCharId || "reiji";
-    return CHARACTERS_MASTER.find((c: any) => c.id === charId) || CHARACTERS_MASTER[0];
+    const charId = activeCharRecord?.character_id || upgradeSelectedCharId;
+    return charId ? CHARACTERS_MASTER.find((c: any) => c.id === charId) || null : null;
   }, [activeCharRecord, upgradeSelectedCharId]);
 
   // キャラクター総ステータス算出 (stats_calculator.ts 準拠)
@@ -170,7 +159,7 @@ export default function CharacterTab() {
   const alignInfo = getAlignmentShortJp(activeCharMaster?.alignment || "");
   const awakeningLevel = activeCharRecord?.awakening_level || 0;
   const characterRarity = (activeCharMaster?.rarity || "N").toLowerCase();
-  const isCurrentLeader = selectedLeader === activeCharMaster.id;
+  const isCurrentLeader = selectedLeader === activeCharMaster?.id;
   const maxSkillSlots = Math.min(6, 3 + awakeningLevel);
   const activeCharacterDbId = activeCharRecord?.id;
 
@@ -221,6 +210,15 @@ export default function CharacterTab() {
     const master = CHARACTERS_MASTER.find((item: any) => item.id === characterId);
     return { characterId, record, master };
   }), [selectedMembers, userCharactersDbList]);
+  const tutorialPartyHasSsr = partyMembers.some((member: { master?: { rarity?: string } }) => member.master?.rarity === "SSR");
+  // The tutorial RPC creates slot 10 last. Production rows carry created_at;
+  // the mock mirrors it, so reloads still identify the exact guaranteed pull
+  // before the authoritative formation transaction is committed.
+  const tutorialGuaranteedSsr = useMemo(() => (userCharactersDbList || [])
+    .filter((record: any) => CHARACTERS_MASTER.find((master: any) => master.id === record.character_id)?.rarity === "SSR")
+    .slice()
+    .sort((left: any, right: any) => new Date(right.created_at || 0).getTime() - new Date(left.created_at || 0).getTime())[0] || null,
+  [userCharactersDbList]);
 
   useEffect(() => {
     const characterId = activeCharRecord?.id;
@@ -349,16 +347,17 @@ export default function CharacterTab() {
 
   const leftSlots = GEAR_SLOTS_MASTER.slice(0, 3);
   const rightSlots = GEAR_SLOTS_MASTER.slice(3, 7);
+  if (!activeCharRecord || !activeCharMaster) {
+    return <div className="char-tab-container char-data-unavailable" role="status">キャラクターデータを確認しています。</div>;
+  }
+
   return (
     <div className="char-tab-container">
       {/* 1. 上部: 所持キャラクター丸型スライダー */}
       <div className="char-slider-header">
         <button className="char-slider-arrow" onClick={handlePrevChar}>◀</button>
         <div className="char-slider-track">
-          {((userCharactersDbList && userCharactersDbList.length > 0)
-            ? userCharactersDbList
-            : [{ character_id: "reiji", id: "demo_reiji" }]
-          ).map((uc: any) => {
+          {(userCharactersDbList || []).map((uc: any) => {
             const master = CHARACTERS_MASTER.find(m => m.id === uc.character_id) || CHARACTERS_MASTER[0];
             const isSelected = uc.character_id === activeCharMaster.id;
             const deckIndex = selectedMembers.indexOf(uc.character_id);
@@ -498,18 +497,17 @@ export default function CharacterTab() {
         <div className="char-party-modal-backdrop" onClick={() => { if (!isTutorialFormation) setFormationEditMode(false); }}>
           <section className={`char-party-modal ${isTutorialFormation ? "tutorial-character-step" : ""}`} onClick={(event) => event.stopPropagation()} aria-label="出撃パーティ編集">
             {isTutorialFormation && (
-              <TutorialNavigator message="スカウトした仲間を出撃編成へ加えよう。「おすすめ編成で決定」を押してね。" />
+              <TutorialNavigator message={<>バトルに出るメンバーはここで決めるよ。<br />まずは今いるメンバーで編成してみて。</>} />
             )}
             <header className="char-party-modal-header">
               <div><span>編成</span><strong>出撃編成 {partyMembers.length}/5</strong></div>
               {!isTutorialFormation && <button onClick={() => setFormationEditMode(false)}>完了 ✕</button>}
             </header>
-            {isTutorialFormation && <div className="char-party-v0-callout"><strong>出撃メンバーを決めよう</strong><span>戦力の高い仲間を自動で5人まで選びます。</span></div>}
             <div className="char-party-modal-slots">
               {Array.from({ length: 5 }).map((_, index) => {
                 const member = partyMembers[index];
                 return member?.master ? (
-                  <button key={`${member.characterId}-${index}`} disabled={isTutorialFormation} onClick={() => void handleTogglePartyMember(member.characterId)}>
+                  <button key={`${member.characterId}-${index}`} data-character-id={member.characterId} data-user-character-id={member.record?.id} disabled={isTutorialFormation} onClick={() => void handleTogglePartyMember(member.characterId)}>
                     <span>{index + 1}</span>
                     <CharacterPresentation src={getCharacterTransparentImg(member.master.name)} alt={member.master.jpName} variant="thumbnail" rarity={member.master.rarity || "N"} />
                     <b>{member.master.jpName}</b>
@@ -517,7 +515,15 @@ export default function CharacterTab() {
                 ) : <div className="is-empty" key={`party-empty-${index}`}><span>{index + 1}</span><i>＋</i><b>未編成</b></div>;
               })}
             </div>
-            <p className="char-party-modal-help">所持キャラクターをタップして、出撃メンバーに追加／解除します。</p>
+            {isTutorialFormation && (
+              <div className={`tutorial-formation-status ${tutorialFormationPreviewReady ? "is-complete" : ""}`} aria-live="polite">
+                <span className={partyMembers.length === 5 ? "is-ready" : ""}><b>{partyMembers.length}/5</b> メンバー</span>
+                <span className={tutorialPartyHasSsr ? "is-ready" : ""}><b>SSR</b> 編成</span>
+                <span className={tutorialFormationPreviewReady ? "is-ready" : ""}><b>SKILL</b> 自動装備</span>
+              </div>
+            )}
+            {!isTutorialFormation && <p className="char-party-modal-help">所持キャラクターをタップして、出撃メンバーに追加／解除します。</p>}
+            {isTutorialFormation && <h3 className="tutorial-formation-owned-title">所持キャラクター</h3>}
             <div className="char-party-candidates">
               {(userCharactersDbList || []).map((character: any) => {
                 const master = CHARACTERS_MASTER.find((item: any) => item.id === character.character_id) || CHARACTERS_MASTER[0];
@@ -525,7 +531,9 @@ export default function CharacterTab() {
                 return (
                   <button
                     key={character.id || character.character_id}
-                    className={`${partyIndex >= 0 ? "is-selected" : ""} active-scale-effect`}
+                    className={`${partyIndex >= 0 ? "is-selected" : ""} ${isTutorialFormation && character.id === tutorialGuaranteedSsr?.id ? "is-guaranteed-ssr" : ""} active-scale-effect`}
+                    data-character-id={character.character_id}
+                    data-user-character-id={character.id}
                     disabled={isTutorialFormation}
                     onClick={() => void handleTogglePartyMember(character.character_id)}
                   >
@@ -536,6 +544,7 @@ export default function CharacterTab() {
                       rarity={(master as any).rarity || "R"}
                     />
                     <span>{master.jpName}</span>
+                    {isTutorialFormation && character.id === tutorialGuaranteedSsr?.id && <em>保証SSR</em>}
                     {partyIndex >= 0 && <b>{partyIndex + 1}</b>}
                   </button>
                 );
@@ -550,10 +559,13 @@ export default function CharacterTab() {
                 formationSubmittingRef.current = true;
                 setFormationSubmitting(true);
                 try {
-                  const completed = await handleAutoFormation({ navigateAfter: false });
+                  const completed = await handleAutoFormation({
+                    navigateAfter: false,
+                    presentationDelayMs: isTutorialFormation ? 900 : 0,
+                    onPreviewReady: isTutorialFormation ? () => setTutorialFormationPreviewReady(true) : undefined,
+                  });
                   if (completed) playCyberSe("FORMATION_CONFIRM");
                   if (completed && onboardingState?.tutorial_step === "AUTO_FORMATION") {
-                    if (tutorialGrowthResumeKey) window.localStorage.removeItem(tutorialGrowthResumeKey);
                     setFormationEditMode(false);
                     setBottomModalTab(null);
                   }
@@ -563,7 +575,7 @@ export default function CharacterTab() {
                 }
               })()}
             >
-              {formationSubmitting ? "編成を保存中..." : isTutorialFormation ? "おすすめ編成で決定" : "戦力順でおまかせ編成"}
+              {tutorialFormationPreviewReady ? "編成完了" : formationSubmitting ? "編成中..." : isTutorialFormation ? "おすすめ編成にする" : "戦力順でおまかせ編成"}
             </button>
           </section>
         </div>
@@ -571,60 +583,47 @@ export default function CharacterTab() {
 
       {/* 5. ボトムシートモーダル (画面見切れ100%防止 ＆ モーダル内インライン4列グリッド) */}
       {bottomModalTab !== null && (
-        <div className="char-bottom-modal-backdrop" onClick={() => { if (!isTutorialGrowth) setBottomModalTab(null); }}>
-          <div className={`char-bottom-modal-sheet ${isTutorialGrowth ? "tutorial-character-step" : ""}`} onClick={(e) => e.stopPropagation()}>
-            {isTutorialGrowth && (
-              <TutorialNavigator message="編成したレイジを強化しよう。「レベルアップ」を1回押してね。" />
-            )}
+        <div className="char-bottom-modal-backdrop" onClick={() => setBottomModalTab(null)}>
+          <div className="char-bottom-modal-sheet" onClick={(e) => e.stopPropagation()}>
             <div className="char-modal-header">
               <div className="char-modal-title-tabs">
                 <button
                   className={`char-modal-tab-btn ${bottomModalTab === "STATUS" ? "active" : ""}`}
-                  disabled={isTutorialGrowth}
                   onClick={() => { setBottomModalTab("STATUS"); playCyberSe("click"); }}
                 >
                   強化
                 </button>
                 <button
                   className={`char-modal-tab-btn ${bottomModalTab === "SKILL" ? "active" : ""}`}
-                  disabled={isTutorialGrowth}
                   onClick={() => { setBottomModalTab("SKILL"); playCyberSe("click"); }}
                 >
                   スキル
                 </button>
                 <button
                   className={`char-modal-tab-btn ${bottomModalTab === "GEAR" ? "active" : ""}`}
-                  disabled={isTutorialGrowth}
                   onClick={() => { setBottomModalTab("GEAR"); playCyberSe("click"); }}
                 >
                   装備
                 </button>
                 <button
                   className={`char-modal-tab-btn ${bottomModalTab === "STYLE" ? "active" : ""}`}
-                  disabled={isTutorialGrowth}
                   onClick={() => { setBottomModalTab("STYLE"); playCyberSe("click"); }}
                 >
                   演出
                 </button>
               </div>
 
-              {!isTutorialGrowth && <button
+              <button
                 className="char-modal-close-btn active-scale-effect"
                 onClick={() => setBottomModalTab(null)}
               >
                 閉じる ✕
-              </button>}
+              </button>
             </div>
 
             {/* モーダルコンテンツ: タブA 育成 */}
             {bottomModalTab === "STATUS" && (
               <div>
-                {isTutorialGrowth && (
-                  <div className="char-growth-focus">
-                    <img src={getCharacterTransparentImg(activeCharMaster.name)} alt={activeCharMaster.jpName} />
-                    <div><span>今回の強化</span><strong>{activeCharMaster.jpName}</strong><p>Lv.{activeCharRecord?.level || 1} <b>→</b> Lv.{Math.min(100, Number(activeCharRecord?.level || 1) + 1)}</p></div>
-                  </div>
-                )}
                 <div className="char-status-grid">
                   <div className="char-status-card">
                     <span className="char-status-label">HP</span>
@@ -650,71 +649,17 @@ export default function CharacterTab() {
 
                 <div className="char-upgrade-actions">
                   <button
-                    className={`char-upgrade-btn semantic-cta semantic-cta--primary active-scale-effect ${isTutorialGrowth ? "tutorial-primary-target" : ""}`}
-                    disabled={upgradeLoading || tutorialGrowthSubmitting}
-                    aria-busy={upgradeLoading || tutorialGrowthSubmitting}
-                    onClick={() => void (async () => {
-                      if (!activeCharRecord) return;
-                      if (tutorialGrowthSubmittingRef.current) return;
-                      tutorialGrowthSubmittingRef.current = true;
-                      setTutorialGrowthSubmitting(true);
-                      const resultHolder: { current: ConfirmDialogConfig | null } = { current: null };
-                      try {
-                        const succeeded = await handleCharacterLevelUp("CHAR_EXP_S", 1, (config: ConfirmDialogConfig) => { resultHolder.current = config; });
-                        if (!succeeded || onboardingState?.tutorial_step !== "AUTO_FORMATION") return;
-                        const { data, error } = await supabase.rpc("advance_current_tutorial_after_growth");
-                        if (error) {
-                          console.warn("Failed to advance tutorial after growth:", error);
-                          const resultConfig = resultHolder.current;
-                          if (resultConfig) {
-                            setConfirmDialogConfig({
-                              ...resultConfig,
-                              title: "強化完了",
-                              message: `${String(resultConfig.message)}\n進行情報の更新に失敗しました。再読み込みすると続きから再開できます。`,
-                              confirmText: "再読み込み",
-                              cancelText: "",
-                              onConfirm: () => window.location.reload(),
-                              onCancel: () => window.location.reload()
-                            });
-                          } else {
-                            setErrorMessage("強化は完了しましたが、進行情報の更新に失敗しました。再読み込みしてください。");
-                          }
-                          return;
-                        }
-                        const nextStep = data?.tutorial_step || "DISPATCH";
-                        if (tutorialGrowthResumeKey) window.localStorage.removeItem(tutorialGrowthResumeKey);
-                        setBottomModalTab(null);
-                        const resultConfig = resultHolder.current;
-                        if (resultConfig) {
-                          setConfirmDialogConfig({
-                            ...resultConfig,
-                            title: "強化完了",
-                            message: <div className="growth-result-v0"><span>LEVEL UP</span><strong>{activeCharMaster.jpName}が強くなった！</strong><p>{resultConfig.message}</p><small>次は最初のクエストへ向かいます。</small></div>,
-                            confirmText: "クエストへ進む",
-                            confirmVariant: "primary",
-                            cancelText: "",
-                            onConfirm: () => {
-                              setConfirmDialogConfig(null);
-                              setOnboardingState((current: any) => current ? { ...current, tutorial_step: nextStep } : current);
-                            },
-                            onCancel: () => {
-                              setConfirmDialogConfig(null);
-                              setOnboardingState((current: any) => current ? { ...current, tutorial_step: nextStep } : current);
-                            }
-                          });
-                        } else {
-                          setOnboardingState((current: any) => current ? { ...current, tutorial_step: nextStep } : current);
-                        }
-                      } finally {
-                        tutorialGrowthSubmittingRef.current = false;
-                        setTutorialGrowthSubmitting(false);
-                      }
-                    })()}
+                    className="char-upgrade-btn semantic-cta semantic-cta--primary active-scale-effect"
+                    disabled={upgradeLoading}
+                    aria-busy={upgradeLoading}
+                    onClick={() => {
+                      if (activeCharRecord) void handleCharacterLevelUp("CHAR_EXP_S", 1);
+                    }}
                   >
-                    <span>{tutorialGrowthSubmitting ? "強化中..." : "レベルアップ"}</span>
+                    <span>{upgradeLoading ? "強化中..." : "レベルアップ"}</span>
                     <span className="char-upgrade-sub">経験の書(S) {Math.max(0, Number(charExpS) || 0)} / CASH {safeCash.toLocaleString()}</span>
                   </button>
-                  {!isTutorialGrowth && <button
+                  <button
                     className="char-upgrade-btn awaken active-scale-effect"
                     disabled={upgradeLoading}
                     onClick={() => {
@@ -724,7 +669,7 @@ export default function CharacterTab() {
                   >
                     <span>覚醒限界突破</span>
                     <span className="char-upgrade-sub">掟消費 (+{awakeningLevel} → +{Math.min(5, awakeningLevel + 1)})</span>
-                  </button>}
+                  </button>
                 </div>
               </div>
             )}

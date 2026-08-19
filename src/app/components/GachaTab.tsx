@@ -96,11 +96,37 @@ export default function GachaTab() {
     setSelectedPityRewardId("");
   };
 
+  if (isTutorialScout) {
+    return (
+      <fieldset className="view-container relative gacha-view-root gacha-action-fieldset tutorial-gacha-page" disabled={upgradeLoading || isGachaActionLocked} aria-busy={upgradeLoading || isGachaActionLocked}>
+        <TutorialNavigator message={<>ここでは、ガチャで仲間を増やせるよ。<br />まずは10連、引いてみよ。</>} />
+        <section className="tutorial-gacha-hero" aria-labelledby="tutorial-gacha-title">
+          <img className="tutorial-gacha-banner" src="/gacha/bg_gacha_ssr.png" alt="" />
+          <h2 id="tutorial-gacha-title">無料10連ガチャ</h2>
+        </section>
+        <section className="tutorial-gacha-offer" aria-label="チュートリアル無料10連">
+          <div className="tutorial-gacha-benefits">
+            <span><b>10連</b>無料</span>
+          </div>
+          <button
+            className="semantic-cta semantic-cta--primary gacha-free-btn"
+            aria-label="無料10連を引く"
+            onClick={() => void runScout(normalGachaId, 10, "FREE")}
+            disabled={!normalGacha || !hasDailyFree || isGachaActionLocked}
+            aria-busy={isGachaActionLocked}
+          >
+            <span>無料10連を引く</span>
+          </button>
+        </section>
+      </fieldset>
+    );
+  }
+
   return (
     <fieldset className="view-container relative gacha-view-root gacha-action-fieldset" disabled={upgradeLoading || isGachaActionLocked} aria-busy={upgradeLoading || isGachaActionLocked}>
       <header className="gacha-v0-header">
         <div>
-          <span className="gacha-v0-eyebrow">NEON DRAW</span>
+          <span className="gacha-v0-eyebrow">ガチャ</span>
           <h2>ガチャ</h2>
           <p>新しい仲間と力を手に入れろ。</p>
         </div>
@@ -118,7 +144,7 @@ export default function GachaTab() {
           title={!categoryAvailability.CHARACTER ? "キャラクターガチャは準備中です" : undefined}
         >
           キャラクター{!categoryAvailability.CHARACTER && "（準備中）"}
-          {dailyFreeGachaFlags.CHARACTER && <span className="free-badge-dot">FREE</span>}
+          {dailyFreeGachaFlags.CHARACTER && <span className="free-badge-dot">無料</span>}
         </button>
 
         <button
@@ -128,7 +154,7 @@ export default function GachaTab() {
           onClick={() => setActiveCategory("SKILL")}
         >
           スキル
-          {dailyFreeGachaFlags.SKILL && <span className="free-badge-dot">FREE</span>}
+          {dailyFreeGachaFlags.SKILL && <span className="free-badge-dot">無料</span>}
         </button>
 
         <button
@@ -138,7 +164,7 @@ export default function GachaTab() {
           onClick={() => setActiveCategory("EQUIPMENT")}
         >
           装備品
-          {dailyFreeGachaFlags.EQUIPMENT && <span className="free-badge-dot">FREE</span>}
+          {dailyFreeGachaFlags.EQUIPMENT && <span className="free-badge-dot">無料</span>}
         </button>
       </div>}
 
@@ -229,7 +255,7 @@ export default function GachaTab() {
         {/* 3. ノーマルガチャ (毎日10連無料 / N 50%, R 40%, SR 10%) */}
         <div className={`upgrade-card border-cyan gacha-card-normal ${isTutorialScout ? "tutorial-primary-target" : ""}`}>
           <div className="gacha-normal-visual" aria-hidden="true">
-            <span>DAILY FREE</span>
+            <span>毎日無料</span>
             <strong>10</strong>
             <i>連</i>
           </div>

@@ -4,9 +4,30 @@ import React, { useEffect, useRef } from "react";
 import { useGame } from "../context/GameContext";
 import { EQUIPMENTS_MASTER_DATA } from "@/utils/equipments_master_data";
 import { SKILLS_MASTER_DATA } from "@/utils/skills_master_data";
+import { CHARACTERS_MASTER } from "@/utils/game_constants";
 import CharacterPresentation from "./character/CharacterPresentation";
 import OutlawButton from "./ui/OutlawButton";
+import TutorialNavigator from "./TutorialNavigator";
 import "./CommonModals.css";
+
+const GACHA_LOCATION_BACKGROUNDS: Record<string, string> = {
+  shinjuku: "/bg/bg_street_shinjuku.png",
+  shibuya: "/bg/bg_street_shibuya.png",
+  ikebukuro: "/bg/bg_street_ikebukuro.png",
+  roppongi: "/bg/bg_street_roppongi.png",
+  akihabara: "/bg/bg_street_akihabara.png",
+  kawasaki: "/bg/bg_street_kawasaki.png",
+  yokohama: "/bg/bg_street_yokohama.png",
+};
+
+const rarityFrameSrc = (rarity: unknown) => `/gacha/rarity-frame-${String(rarity || "N").toLowerCase()}.png`;
+
+function gachaLocationStyle(result: any): React.CSSProperties {
+  const master = CHARACTERS_MASTER.find((character: any) => character.id === result?.characterId);
+  const background = GACHA_LOCATION_BACKGROUNDS[String(master?.homeTown || "shinjuku").toLowerCase()]
+    || GACHA_LOCATION_BACKGROUNDS.shinjuku;
+  return { "--gacha-location-background": `url(${background})` } as React.CSSProperties;
+}
 
 export default function CommonModals() {
   const {
@@ -44,24 +65,71 @@ export default function CommonModals() {
   } = useGame();
   const announcedScoutResultRef = useRef<any[] | null>(null);
   const [tutorialRevealIndex, setTutorialRevealIndex] = React.useState(0);
+  const [tutorialSsrStage, setTutorialSsrStage] = React.useState<"PAUSE" | "OMEN" | "REVEAL">("PAUSE");
+  const [tutorialRevealAdvancing, setTutorialRevealAdvancing] = React.useState(false);
+  const [tutorialRevealCanAdvance, setTutorialRevealCanAdvance] = React.useState(false);
+  const [tutorialPullStarted, setTutorialPullStarted] = React.useState(false);
+  const [tutorialPullBurst, setTutorialPullBurst] = React.useState(false);
+  const tutorialRevealAdvanceRef = useRef(false);
   const isTutorialTenReveal = onboardingState?.tutorial_step === "AUTO_FORMATION" && scoutResults.length === 10;
+  const tutorialRevealResult = scoutResults[tutorialRevealIndex];
 
   useEffect(() => {
     if (scoutAnimationState !== "SHOW_RESULTS" || announcedScoutResultRef.current === scoutResults) return;
     announcedScoutResultRef.current = scoutResults;
     playSe("GACHA_REVEAL");
     const rarities = scoutResults.map((result: any) => String(result.rarity || "").toUpperCase());
-    if (rarities.includes("SSR")) playSe("GACHA_SSR");
-    else if (rarities.includes("SR")) playSe("GACHA_SR");
+    if (!rarities.includes("SSR") && rarities.includes("SR")) playSe("GACHA_SR");
   }, [playSe, scoutAnimationState, scoutResults]);
 
   useEffect(() => {
-    if (scoutAnimationState === null) announcedScoutResultRef.current = null;
+    if (scoutAnimationState === null) {
+      announcedScoutResultRef.current = null;
+      setTutorialPullStarted(false);
+      setTutorialPullBurst(false);
+    }
   }, [scoutAnimationState]);
 
   useEffect(() => {
-    if (scoutAnimationState === "SHOW_RESULTS") setTutorialRevealIndex(0);
+    if (scoutAnimationState !== "READY" || !tutorialPullStarted) return;
+    setTutorialPullBurst(true);
+    const timer = window.setTimeout(() => setScoutAnimationState("SHOW_RESULTS"), 620);
+    return () => window.clearTimeout(timer);
+  }, [scoutAnimationState, setScoutAnimationState, tutorialPullStarted]);
+
+  useEffect(() => {
+    if (scoutAnimationState === "SHOW_RESULTS") {
+      setTutorialRevealIndex(0);
+      setTutorialSsrStage("PAUSE");
+      setTutorialRevealAdvancing(false);
+      tutorialRevealAdvanceRef.current = false;
+    }
   }, [scoutAnimationState, scoutResults]);
+
+  useEffect(() => {
+    if (!isTutorialTenReveal || scoutAnimationState !== "SHOW_RESULTS") return;
+    setTutorialRevealCanAdvance(false);
+    if (tutorialRevealIndex === 9 && tutorialSsrStage !== "REVEAL") return;
+    const rarity = String(tutorialRevealResult?.rarity || "N").toUpperCase();
+    const dwellMs = rarity === "SSR" ? 900 : rarity === "SR" ? 1600 : rarity === "R" ? 1100 : 650;
+    const timer = window.setTimeout(() => setTutorialRevealCanAdvance(true), dwellMs);
+    return () => window.clearTimeout(timer);
+  }, [isTutorialTenReveal, scoutAnimationState, tutorialRevealIndex, tutorialRevealResult?.rarity, tutorialSsrStage]);
+
+  useEffect(() => {
+    if (!isTutorialTenReveal || tutorialRevealIndex !== 9) return;
+    if (tutorialSsrStage === "PAUSE") {
+      const timer = window.setTimeout(() => setTutorialSsrStage("OMEN"), 280);
+      return () => window.clearTimeout(timer);
+    }
+    if (tutorialSsrStage === "OMEN") {
+      const timer = window.setTimeout(() => {
+        playSe("GACHA_SSR");
+        setTutorialSsrStage("REVEAL");
+      }, 880);
+      return () => window.clearTimeout(timer);
+    }
+  }, [isTutorialTenReveal, playSe, tutorialRevealIndex, tutorialSsrStage]);
 
   const compactGachaOutcome = (result: any) => {
     const outcome = String(result.convertReward || "");
@@ -70,6 +138,10 @@ export default function CommonModals() {
     if (result.converted || outcome.includes("抗争の掟")) return "重複 / 掟+1";
     if (outcome.includes("限界突破")) return outcome;
     return outcome || "獲得";
+  };
+  const formatRevealParameter = (value: unknown) => {
+    const numeric = Number(value);
+    return Number.isFinite(numeric) ? numeric.toLocaleString() : "—";
   };
 
   return (
@@ -161,39 +233,92 @@ export default function CommonModals() {
       {/* 🎰 ガチャ演出モーダル (FLASHING / SHOW_RESULTS) */}
       {scoutAnimationState !== null && (
         <div className="modal-overlay background-black-95" style={{ zIndex: 20000 }}>
-          {scoutAnimationState === "FLASHING" ? (
-            <div className={`gacha-presentation-stage gacha-presentation-${scoutFlashingColor.toLowerCase()}`}>
+          {scoutAnimationState === "FLASHING" || scoutAnimationState === "READY" ? (
+            <div className={`gacha-presentation-stage gacha-presentation-${scoutFlashingColor.toLowerCase()} ${tutorialPullStarted ? "is-pull-started" : "is-awaiting-pull"}`}>
               <div className={`gacha-flash-effect flash-${scoutFlashingColor.toLowerCase()}`} />
               <div className="gacha-presentation-rings" aria-hidden="true"><i /><i /><i /></div>
-              <div className="gacha-presentation-copy">
-                <span>NEON SIGNAL DETECTED</span>
-                <strong>新しい仲間の気配――</strong>
-                <small>ガチャ実行中...</small>
-              </div>
+              {!tutorialPullStarted ? (
+                <button
+                  type="button"
+                  className="gacha-pull-gate"
+                  onClick={() => {
+                    setTutorialPullStarted(true);
+                    playCyberSe("click");
+                  }}
+                >
+                  <strong>10 PLAYERS</strong>
+                  <span>TAP TO START</span>
+                </button>
+              ) : (
+                <div className={`gacha-pull-burst ${tutorialPullBurst ? "is-ready" : ""}`} role="status" aria-label="ガチャ演出中">
+                  <strong>PULL!</strong>
+                </div>
+              )}
             </div>
           ) : isTutorialTenReveal && tutorialRevealIndex < scoutResults.length ? (
             <button
               type="button"
-              className={`tutorial-gacha-reveal rarity-${String(scoutResults[tutorialRevealIndex]?.rarity || "N").toLowerCase()} ${tutorialRevealIndex === 9 ? "is-guaranteed" : ""}`}
-              onClick={() => { playCyberSe("click"); setTutorialRevealIndex(value => Math.min(scoutResults.length, value + 1)); }}
+              className={`tutorial-gacha-reveal rarity-${String(tutorialRevealResult?.rarity || "N").toLowerCase()} ${tutorialRevealResult?.convertReward === "新規獲得" ? "acquisition-new" : "acquisition-duplicate"} ${tutorialRevealAdvancing ? "is-advancing" : ""} ${tutorialRevealIndex === 9 ? "is-guaranteed" : ""} ${tutorialRevealIndex === 9 && tutorialSsrStage === "OMEN" ? "is-ssr-omen" : ""} ${tutorialRevealIndex === 9 && tutorialSsrStage === "REVEAL" ? "is-ssr-reveal" : ""}`}
+              style={gachaLocationStyle(tutorialRevealResult)}
+              onClick={() => {
+                if (tutorialRevealAdvanceRef.current || !tutorialRevealCanAdvance || (tutorialRevealIndex === 9 && tutorialSsrStage !== "REVEAL")) return;
+                tutorialRevealAdvanceRef.current = true;
+                setTutorialRevealAdvancing(true);
+                playCyberSe("click");
+                window.setTimeout(() => {
+                  setTutorialRevealIndex(value => Math.min(scoutResults.length, value + 1));
+                  tutorialRevealAdvanceRef.current = false;
+                  setTutorialRevealAdvancing(false);
+                }, 280);
+              }}
+              disabled={tutorialRevealAdvancing}
+              aria-disabled={!tutorialRevealCanAdvance || (tutorialRevealIndex === 9 && tutorialSsrStage !== "REVEAL")}
+              aria-busy={tutorialRevealAdvancing}
+              data-can-advance={tutorialRevealCanAdvance && (tutorialRevealIndex !== 9 || tutorialSsrStage === "REVEAL")}
               aria-label={`${tutorialRevealIndex + 1}人目を確認`}
+              data-character-id={tutorialRevealResult?.characterId || undefined}
+              data-presentation-state={tutorialRevealIndex === 9 ? `SSR_${tutorialSsrStage}` : "STANDARD_REVEAL"}
             >
-              <span className="tutorial-gacha-count">REVEAL {tutorialRevealIndex + 1} / 10</span>
-              {tutorialRevealIndex === 9 && <strong className="tutorial-gacha-guaranteed">SSR GUARANTEED</strong>}
-              {scoutResults[tutorialRevealIndex]?.imageUrl && <CharacterPresentation src={scoutResults[tutorialRevealIndex].imageUrl} alt={scoutResults[tutorialRevealIndex].name} variant="card" rarity={scoutResults[tutorialRevealIndex].rarity} />}
-              <div className="tutorial-gacha-reveal-copy"><b>{scoutResults[tutorialRevealIndex]?.rarity}</b><h3>{scoutResults[tutorialRevealIndex]?.name}</h3><small>タップして次へ</small></div>
+              <span className="tutorial-gacha-count">{tutorialRevealIndex + 1} / 10</span>
+              {tutorialRevealIndex === 9 && tutorialSsrStage !== "REVEAL" ? (
+                <div className="tutorial-ssr-omen" role="status">
+                  <i aria-hidden="true" />
+                  {tutorialSsrStage === "OMEN" && <strong>SSR</strong>}
+                </div>
+              ) : (
+                <div key={`${tutorialRevealIndex}-${tutorialRevealResult?.name || "character"}`} className="tutorial-gacha-reveal-body">
+                  {tutorialRevealResult?.imageUrl && <CharacterPresentation src={tutorialRevealResult.imageUrl} alt={tutorialRevealResult.name} variant="reveal" rarity={tutorialRevealResult.rarity} />}
+                  <img className="tutorial-gacha-rarity-frame" src={rarityFrameSrc(tutorialRevealResult?.rarity)} alt="" aria-hidden="true" />
+                  <div className="tutorial-gacha-reveal-copy">
+                    <div className="tutorial-gacha-reveal-heading"><b>{tutorialRevealResult?.rarity}</b><span>{tutorialRevealResult?.convertReward === "新規獲得" ? "NEW" : compactGachaOutcome(tutorialRevealResult)}</span></div>
+                    <h3>{tutorialRevealResult?.name}</h3>
+                    <div className="tutorial-gacha-reveal-stats">
+                      <span>{tutorialRevealResult?.role || "バランス"}</span>
+                      <span>{tutorialRevealResult?.attribute || "無所属"}</span>
+                    </div>
+                    <dl className="tutorial-gacha-reveal-parameters" aria-label="初期パラメータ">
+                      <div><dt>HP</dt><dd>{formatRevealParameter(tutorialRevealResult?.hp)}</dd></div>
+                      <div><dt>ATK</dt><dd>{formatRevealParameter(tutorialRevealResult?.atk)}</dd></div>
+                      <div><dt>DEF</dt><dd>{formatRevealParameter(tutorialRevealResult?.def)}</dd></div>
+                    </dl>
+                    <small>タップして次へ</small>
+                  </div>
+                </div>
+              )}
             </button>
           ) : (
             <div className="gacha-result-panel">
+              {onboardingState?.tutorial_step === "AUTO_FORMATION" && (
+                <TutorialNavigator message="いいじゃん。じゃ、この中から一緒に動くメンバーを決めよ。" />
+              )}
               <header className="gacha-result-heading">
-                <span>SCOUT COMPLETE</span>
                 <h3>ガチャ結果</h3>
                 <p>{scoutResults.length}件の獲得結果</p>
               </header>
 
               <div className={`gacha-result-grid ${scoutResults.length >= 10 ? "is-ten-pull" : ""}`}>
                 {scoutResults.map((res: any, idx: number) => (
-                  <article key={`${res.name}-${idx}`} className={`gacha-result-card rarity-${String(res.rarity).toLowerCase()}`}>
+                  <article key={`${res.name}-${idx}`} data-acquisition={res.convertReward === "新規獲得" ? "NEW" : "DUPLICATE"} className={`gacha-result-card rarity-${String(res.rarity).toLowerCase()} ${res.convertReward === "新規獲得" ? "is-new" : "is-duplicate"}`}>
                     {res.imageUrl ? (
                       <CharacterPresentation
                         src={res.imageUrl}
@@ -204,8 +329,10 @@ export default function CommonModals() {
                         badge={res.convertReward === "新規獲得" ? "NEW" : undefined}
                       />
                     ) : (
-                      <div className="gacha-result-asset-placeholder"><span>{res.type === "SKILL" ? "SKILL" : "GEAR"}</span><strong>{res.name}</strong></div>
+                      <div className="gacha-result-asset-placeholder"><span>{res.type === "SKILL" ? "スキル" : "装備"}</span><strong>{res.name}</strong></div>
                     )}
+                    {res.type === "CHARACTER" && <img className="gacha-result-rarity-frame" src={rarityFrameSrc(res.rarity)} alt="" aria-hidden="true" />}
+                    {res.type === "CHARACTER" && <span className="gacha-result-attribute">{res.attribute || "無所属"}</span>}
                     <div className={`gacha-result-outcome ${res.convertReward === "新規獲得" ? "is-new" : "is-duplicate"}`}>{compactGachaOutcome(res)}</div>
                   </article>
                 ))}

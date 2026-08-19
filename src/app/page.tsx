@@ -2,8 +2,8 @@
 
 import React from "react";
 import dynamic from "next/dynamic";
-import { useImagePreloader } from "./hooks/useImagePreloader";
-import { HOME_BOOT_ASSETS } from "./lib/screenManifests";
+import { useAssetTierPreloader } from "./hooks/useImagePreloader";
+import { BOOT_CRITICAL_ASSETS, DEFERRED_ASSETS, TUTORIAL_CRITICAL_ASSETS } from "./lib/screenManifests";
 import { GameProvider, useGame } from "./context/GameContext";
 import { AudioProvider, useAudio } from "@/audio/AudioProvider";
 import AuthView from "./components/AuthView";
@@ -11,7 +11,7 @@ import SetupView from "./components/SetupView";
 import Header from "./components/Header";
 import Footer from "./components/Footer";
 import HomeTab from "./components/HomeTab";
-const TabLoading = () => <div className="app-loading-screen"><div className="spinner" /></div>;
+const TabLoading = () => <div className="app-loading-screen app-loading-screen--transition"><BrandedLoading label="画面を準備中" /></div>;
 const PatrolTab = dynamic(() => import("./components/PatrolTab"), { loading: TabLoading });
 const PvpTab = dynamic(() => import("./components/PvpTab"), { loading: TabLoading });
 const GvgTab = dynamic(() => import("./components/GvgTab"), { loading: TabLoading });
@@ -41,8 +41,8 @@ import TitleView from "./components/TitleView";
 import MoveBaseModal from "./components/MoveBaseModal";
 import TutorialWorldIntro from "./components/TutorialWorldIntro";
 import TutorialRuleGuide from "./components/TutorialRuleGuide";
-import TutorialBattlePrompt from "./components/TutorialBattlePrompt";
 import TutorialAuthentication from "./components/TutorialAuthentication";
+import BrandedLoading from "./components/ui/BrandedLoading";
 
 function AppContent() {
   const { session, authLoading, isSetupRequired, onboardingState, activeTab, showTitleView, battleState,
@@ -51,9 +51,27 @@ function AppContent() {
     globalInteractionBlocking
   } = useGame();
   const { playBgm } = useAudio();
-  const homeAssetsReady = useImagePreloader(HOME_BOOT_ASSETS);
   const tutorialStep = onboardingState?.tutorial_step;
   const isMandatoryTutorial = Boolean(tutorialStep && tutorialStep !== "AUTHENTICATION");
+
+  React.useLayoutEffect(() => {
+    const resetCanvasOrigin = () => {
+      window.scrollTo({ left: 0, top: 0 });
+      document.documentElement.scrollLeft = 0;
+      document.body.scrollLeft = 0;
+      document.querySelector<HTMLElement>(".main-content")?.scrollTo({ left: 0, top: 0 });
+    };
+    resetCanvasOrigin();
+    const frame = window.requestAnimationFrame(resetCanvasOrigin);
+    return () => window.cancelAnimationFrame(frame);
+  }, [activeTab]);
+  const bootAssets = useAssetTierPreloader(BOOT_CRITICAL_ASSETS, "BOOT_CRITICAL");
+  useAssetTierPreloader(TUTORIAL_CRITICAL_ASSETS, "TUTORIAL_CRITICAL", bootAssets.ready);
+  useAssetTierPreloader(
+    DEFERRED_ASSETS,
+    "DEFERRED",
+    bootAssets.ready && !showTitleView && tutorialStep === "AUTHENTICATION",
+  );
 
   React.useEffect(() => {
     if (showTitleView) playBgm("TITLE");
@@ -63,6 +81,23 @@ function AppContent() {
   }, [activeTab, battleState, playBgm, showTitleView]);
 
 
+
+  if (!bootAssets.ready) {
+    return (
+      <div className="app-container">
+        <div className="app-loading-screen app-loading-screen--boot" role="status" aria-live="polite">
+          {bootAssets.settled && bootAssets.requiredFailed ? (
+            <>
+              <strong>起動に必要なデータを読み込めませんでした</strong>
+              <button className="semantic-cta semantic-cta--primary" onClick={() => window.location.reload()}>再読み込み</button>
+            </>
+          ) : (
+            <BrandedLoading label="起動中" />
+          )}
+        </div>
+      </div>
+    );
+  }
 
   // 1. タイトル画面 (一番最初に表示)
   if (showTitleView) {
@@ -77,9 +112,7 @@ function AppContent() {
   if (authLoading) {
     return (
       <div className="app-container">
-        <div className="app-loading-screen">
-          <div className="spinner" />
-        </div>
+        <div className="app-loading-screen app-loading-screen--boot"><BrandedLoading label="認証状態を確認中" /></div>
       </div>
     );
   }
@@ -121,19 +154,11 @@ function AppContent() {
     );
   }
 
-  if (!homeAssetsReady) {
-    return (
-      <div className="app-container">
-        <div className="app-loading-screen"><div className="spinner" /></div>
-      </div>
-    );
-  }
-
   // 4. メインゲーム画面 (全13タブ共通フレーム)
   return (
     <div className="app-container">
       <PageShell
-        header={<Header />}
+        header={isMandatoryTutorial ? null : <Header />}
         footer={isMandatoryTutorial ? null : <Footer />}
         overlays={(
           <>
@@ -154,7 +179,6 @@ function AppContent() {
             <CardBattleView />
             <TutorialWorldIntro />
             <TutorialRuleGuide />
-            <TutorialBattlePrompt />
             <TutorialAuthentication />
 
             {/* Layer 6: 最上位の共通ダイアログとブロッカー */}

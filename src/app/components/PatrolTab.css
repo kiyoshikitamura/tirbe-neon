@@ -44,6 +44,45 @@
   padding-bottom: 24px;
 }
 
+/* M9-X tutorial quest: the six wireframe states intentionally do not reuse
+   the normal quest-management information architecture. */
+.tutorial-quest-shell > .ui-page-header { display: none; }
+.tutorial-quest-shell .ui-hub-page-scroll { overflow: hidden; }
+.tutorial-quest-shell .ui-hub-page-content { gap: 0; padding: 0; }
+.tutorial-quest-wire { position: relative; display: grid; align-content: center; gap: 14px; min-height: 100%; padding: calc(env(safe-area-inset-top) + 24px) 18px calc(env(safe-area-inset-bottom) + 24px); overflow: hidden; background-position: center; background-size: cover; color: var(--ui-text-primary); isolation: isolate; }
+.tutorial-quest-wire::before { position: absolute; inset: 0; z-index: -1; content: ""; background: radial-gradient(circle at 50% 35%, rgba(135, 74, 255, .18), transparent 36%), linear-gradient(180deg, transparent 20%, rgba(1, 2, 9, .9)); }
+.tutorial-wire-heading { display: grid; gap: 5px; padding: 18px; border: 1px solid rgba(178, 116, 255, .45); border-radius: var(--ui-radius-lg); background: rgba(4, 5, 16, .72); }
+.tutorial-wire-heading span,.tutorial-wire-progress-title span { font-size: clamp(28px, 8vw, 38px); font-weight: 950; }
+.tutorial-wire-heading strong { font-size: var(--ui-font-screen-title); }
+.tutorial-wire-heading small,.tutorial-wire-progress-title small,.tutorial-wire-complete small,.tutorial-wire-encounter small { color: #c78dff; font-size: var(--ui-font-caption); font-weight: 900; letter-spacing: .14em; }
+.tutorial-wire-rewards { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; padding: 10px; border: 1px solid rgba(255,255,255,.12); border-radius: var(--ui-radius-md); background: rgba(3,5,13,.82); }
+.tutorial-wire-rewards span { display: grid; min-height: 48px; place-items: center; color: #e9e1ff; font-size: 9px; font-weight: 800; text-align: center; }
+.tutorial-wire-member { display: grid; grid-template-columns: 112px 1fr; align-items: center; gap: 14px; padding: 12px; border: 1px solid rgba(209, 104, 255, .5); border-radius: var(--ui-radius-lg); background: linear-gradient(135deg,rgba(18,8,32,.94),rgba(5,6,15,.9)); }
+.tutorial-wire-member > div:last-child { display: grid; gap: 6px; }
+.tutorial-wire-member small { color: var(--ui-text-muted); }
+.tutorial-wire-member b { font-size: var(--ui-font-section-heading); }
+.tutorial-wire-member span { color: #ff70df; font-weight: 900; }
+.tutorial-wire-progress-title,.tutorial-wire-complete { display: grid; justify-items: center; gap: 4px; text-align: center; }
+.tutorial-wire-progress-character,.tutorial-wire-return-character { width: min(62vw, 246px); height: min(42vh, 330px); justify-self: center; overflow: hidden; border: 1px solid rgba(181, 111, 255, .52); border-radius: var(--ui-radius-lg); background: rgba(4,4,13,.58); box-shadow: 0 0 32px rgba(142,67,255,.2); }
+.tutorial-wire-progress-character .character-presentation,.tutorial-wire-return-character .character-presentation { width: 100%; height: 100%; border: 0; }
+.tutorial-wire-course { justify-self: center; font-size: var(--ui-font-section-heading); }
+.tutorial-wire-time { justify-self: center; color: var(--ui-text-muted); }
+.tutorial-wire-time b { color: #fff; font-size: var(--ui-font-numeric); }
+.tutorial-wire-progress { position: relative; width: 100%; height: 8px; overflow: hidden; border: 1px solid rgba(191,126,255,.4); border-radius: 99px; background: rgba(4,4,14,.9); }
+.tutorial-wire-progress i { display: block; width: 24%; height: 100%; border-radius: inherit; background: linear-gradient(90deg,#692cff,#f4d5ff); box-shadow: 0 0 16px #9e5cff; transition: width .45s ease; }
+.tutorial-wire-speedup { display: grid; place-items: center; gap: 20px; text-align: center; }
+.tutorial-wire-speed-icon { display: grid; width: 112px; height: 112px; place-items: center; border: 4px solid #b971ff; border-radius: 50%; color: #fff; font-size: 72px; font-weight: 950; line-height: 1; box-shadow: 0 0 34px #7432ff; animation: tutorial-speedup-pulse .5s ease-in-out infinite alternate; }
+.tutorial-wire-speedup .tutorial-wire-progress i { width: 100%; animation: tutorial-speedup-sweep .56s ease both; }
+.tutorial-wire-complete h2,.tutorial-wire-encounter h2 { margin: 0; font-size: clamp(30px,9vw,42px); }
+.tutorial-wire-rewards.is-return { margin-top: 4px; }
+.tutorial-wire-encounter { display: grid; min-height: 70vh; align-content: center; justify-items: center; gap: 12px; text-align: center; }
+.tutorial-wire-glitch { display: grid; width: 132px; height: 118px; place-items: center; border: 3px solid #ff2780; color: #ff4d99; font-size: 58px; clip-path: polygon(50% 0,100% 100%,0 100%); filter: drop-shadow(0 0 18px rgba(255,32,128,.7)); }
+.tutorial-wire-encounter .semantic-cta { align-self: end; width: 100%; margin-top: min(18vh,130px); }
+@keyframes tutorial-speedup-pulse { to { transform: scale(1.06); filter: brightness(1.3); } }
+@keyframes tutorial-speedup-sweep { from { width: 8%; } to { width: 100%; } }
+@media (max-height: 720px) { .tutorial-quest-wire { gap: 9px; padding-top: calc(env(safe-area-inset-top) + 12px); } .tutorial-wire-progress-character,.tutorial-wire-return-character { height: 230px; } }
+@media (prefers-reduced-motion: reduce) { .tutorial-wire-speed-icon,.tutorial-wire-speedup .tutorial-wire-progress i { animation: none; } }
+
 .patrol-hero {
   min-height: 126px;
   margin-bottom: 12px;
@@ -69,6 +108,15 @@
   z-index: auto;
   padding-bottom: 0;
 }
+
+.tutorial-quest-city { position:relative;min-height:220px;margin:-4px 0 12px;overflow:hidden;border:1px solid rgba(0,240,255,.28);border-radius:var(--ui-radius-lg);background-position:center;background-size:cover;box-shadow:inset 0 -48px 70px rgba(0,0,0,.65); }
+.tutorial-quest-city > div { position:absolute;right:16px;bottom:15px;left:16px; }
+.tutorial-quest-city span { color:var(--ui-accent);font-size:8px;font-weight:900;letter-spacing:.18em; }
+.tutorial-quest-city h2 { margin:2px 0 0;color:#fff;font-size:30px;line-height:1;text-shadow:0 3px 18px #000; }
+.tutorial-quest-city p { margin:6px 0 0;color:#d6e2e8;font-size:11px;font-weight:800; }
+.tutorial-quest-guidance { display:grid;gap:8px;margin-bottom:12px; }
+.tutorial-quest-guidance .tutorial-navigator { margin:0;animation:tutorial-quest-guidance-in .28s ease both; }
+.tutorial-quest-guidance.is-return .tutorial-navigator:last-child { animation-delay:.16s; }
 
 /* ----------------------------------------------------
    コース選択グリッド
@@ -165,7 +213,7 @@
 
 .quest-stage-track {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 3px;
   margin: 0 0 12px;
   padding: 9px 7px;
@@ -201,6 +249,13 @@
 .quest-v0-summary dd { margin: 2px 0 0; color: #fff1af; font-size: 9px; font-weight: 900; }
 .quest-v0-section-label { margin-bottom: 7px; color: #a9b7c4; font-size: 10px; font-weight: 800; }
 .quest-v0-section-label b { color: #fff; }
+
+.patrol-container:has(.tutorial-quest-city) .patrol-char-grid { grid-template-columns:minmax(0,112px);max-height:none;overflow:visible;background:transparent;border:0;padding:0; }
+.patrol-container:has(.tutorial-quest-city) .patrol-char-item { min-height:126px; }
+.patrol-container:has(.tutorial-quest-city) .active-patrol-card { border-color:rgba(0,240,255,.32);background:linear-gradient(155deg,rgba(9,17,28,.98),rgba(4,8,14,.98)); }
+.patrol-container:has(.tutorial-quest-city) .battle-alert { padding:12px!important;border:1px solid rgba(242,201,95,.56)!important;background:radial-gradient(circle at 50% 0,rgba(242,201,95,.12),transparent 62%); }
+
+@keyframes tutorial-quest-guidance-in { from{opacity:0;transform:translateY(7px)} to{opacity:1;transform:none} }
 
 .patrol-char-item:hover:not(.locked):not(.deployed) {
   background: rgba(40, 40, 45, 0.9);

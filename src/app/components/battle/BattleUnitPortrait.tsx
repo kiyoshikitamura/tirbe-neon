@@ -24,7 +24,7 @@ export type BattleDamagePopup = {
 
 type Props = {
   participant: BattleParticipantView;
-  imageSrc: string;
+  imageSrc?: string;
   side: "player" | "enemy";
   frame?: "party" | "action";
   domId?: string;
@@ -68,14 +68,13 @@ export default function BattleUnitPortrait({
   return (
     <article
       id={domId}
-      className={`battle-unit battle-unit-${frame} battle-unit-${side} ${actor ? "is-actor" : ""} ${target ? "is-target" : ""} ${participant.isDead ? "is-defeated" : ""}`.trim()}
+      className={`battle-unit battle-unit-${frame} battle-unit-${side} ${placeholderAsset ? "has-placeholder-art" : ""} ${actor ? "is-actor" : ""} ${target ? "is-target" : ""} ${participant.isDead ? "is-defeated" : ""}`.trim()}
       aria-label={`${participant.name} HP ${hp} / ${maxHp}${actor ? " 行動中" : ""}${target ? " 対象" : ""}`}
     >
       <div className="battle-unit-art">
         <CharacterPresentation src={imageSrc} alt={participant.name} variant="battle" className={`character-presentation-battle-${frame}`} />
         {actor && <span className="battle-unit-role is-actor-label">ACTOR</span>}
         {target && <span className="battle-unit-role is-target-label">TARGET</span>}
-        {placeholderAsset && <span className="battle-unit-placeholder">仮ビジュアル</span>}
         {participant.isDead && <span className="battle-unit-defeated">戦闘不能</span>}
         {popup && (
           <div className={`battle-unit-popup is-${popup.type} ${popup.isCritical ? "is-critical" : ""}`}>

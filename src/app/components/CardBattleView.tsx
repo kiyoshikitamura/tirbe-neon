@@ -3,9 +3,9 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useGame } from "../context/GameContext";
 import { CHARACTERS_MASTER, getCharacterTransparentImg } from "@/utils/game_constants";
-import TutorialNavigator from "./TutorialNavigator";
 import CharacterPresentation from "./character/CharacterPresentation";
 import QuestBattleViewer from "./battle/QuestBattleViewer";
+import BattleResultSummary from "./battle/BattleResultSummary";
 import { preloadBattleEffects } from "./battle/BattleEffectPresentation";
 import "./CardBattleView.css";
 
@@ -14,6 +14,8 @@ export default function CardBattleView() {
     battleMode,
     battleOpponentName,
     battleState,
+    battleOutcome,
+    tutorialBattleActive,
     tactic,
     setTactic,
     battleSpeed,
@@ -33,14 +35,16 @@ export default function CardBattleView() {
     damagePopup,
     launchBattlePlaying,
     endBattleSession,
+    completeBattleResult,
+    completeTutorialBattleResult,
+    lastPatrolRewards,
     playCyberSe,
     handleFirstUserInteraction,
-    setShowFriendPanel,
-    onboardingState
+    setShowFriendPanel
     , playSe
     , preloadAudio
   } = useGame();
-  const isTutorialBattle = battleMode === "PATROL" && onboardingState?.tutorial_step === "TUTORIAL_BATTLE";
+  const isTutorialBattle = battleMode === "PATROL" && tutorialBattleActive;
 
   // SETUP画面でカードタップ時に開く閲覧専用詳細ポップアップ
   const [selectedCharDetail, setSelectedCharDetail] = useState<any | null>(null);
@@ -76,7 +80,7 @@ export default function CardBattleView() {
     battleLaunchRef.current = true;
     setSetupLaunching(true);
     playSe("BATTLE_START");
-    launchBattlePlaying();
+    window.setTimeout(() => launchBattlePlaying(), 560);
   };
 
   const launchRegularBattle = () => {
@@ -88,10 +92,37 @@ export default function CardBattleView() {
   };
 
   if (!battleMode || !battleState) return null;
-  const getBattleCharacterImage = (characterId: string | undefined, fallbackName = "reiji") => {
+  const getBattleCharacterImage = (characterId: string | undefined) => {
     const master = CHARACTERS_MASTER.find((character: any) => character.id === characterId || character.name === characterId);
-    return getCharacterTransparentImg(master?.name || fallbackName);
+    return master ? getCharacterTransparentImg(master.name) : undefined;
   };
+
+  if (battleState === "ENDING" || battleState === "OUTCOME" || battleState === "RESULT") {
+    const victory = battleOutcome === "VICTORY";
+    return (
+      <div className={`battle-screen battle-ending-screen is-${battleState.toLowerCase()}`} data-battle-outcome={battleOutcome || "PENDING"} data-acceptance-state={battleState === "ENDING" ? "B5" : battleState === "RESULT" ? "B6" : undefined}>
+        <div className="battle-ending-backdrop" aria-hidden="true" />
+        {battleState === "ENDING" ? (
+          <div className="battle-ending-hold" role="status" aria-label="バトル終了演出">
+            <span>FINAL</span>
+            <i />
+          </div>
+        ) : battleState === "OUTCOME" ? (
+          <div className={`battle-outcome-mark ${victory ? "is-victory" : "is-defeat"}`} role="status">
+            <span>バトル結果</span>
+            <strong>{victory ? "WIN" : "LOSE"}</strong>
+          </div>
+        ) : (
+          <BattleResultSummary
+            victory={victory}
+            tutorial={isTutorialBattle}
+            rewards={isTutorialBattle ? lastPatrolRewards : null}
+            onContinue={isTutorialBattle ? completeTutorialBattleResult : completeBattleResult}
+          />
+        )}
+      </div>
+    );
+  }
 
   // 1. SETUP 出撃準備画面
   if (battleState === "SETUP") {
@@ -101,6 +132,30 @@ export default function CardBattleView() {
       return total + Number(enemy.maxHp || 0) + Number(stats.atk || 0) + Number(stats.def || 0);
     }, 0);
     const enemySkills = enemyPartyStates.flatMap((enemy: any) => enemy.skills || []);
+    const playerPower = playerPartyStates.reduce((total: number, player: any) => total + Number(player.maxHp || 0) + Number(player.stats?.atk || 0) + Number(player.stats?.def || 0), 0);
+
+    if (isTutorialBattle) {
+      const playerLeader = playerPartyStates[0];
+      const enemyLeader = enemyPartyStates[0];
+      if (setupLaunching) {
+        return <div className="battle-screen tutorial-battle-start-transition" data-acceptance-state="B2" role="status">
+          <div className="battle-start-leader is-player"><CharacterPresentation src={getBattleCharacterImage(playerLeader?.characterId)} alt={playerLeader?.name || "PLAYER"} variant="battle-leader" /></div>
+          <div className="battle-start-diagonal"><i /><strong>BATTLE<br />START</strong><i /></div>
+          <div className="battle-start-leader is-enemy"><CharacterPresentation src={getBattleCharacterImage(enemyLeader?.characterId)} alt={enemyLeader?.name || "ENEMY"} variant="battle-leader" /></div>
+        </div>;
+      }
+      return <div className="battle-screen tutorial-battle-briefing" data-acceptance-state="B1" onClick={handleFirstUserInteraction}>
+        <div className="tutorial-battle-location"><span>新宿・初級</span><small>QUEST BATTLE</small></div>
+        <div className="tutorial-battle-versus">
+          <article className="tutorial-battle-leader is-player" data-character-id={playerLeader?.characterId}><CharacterPresentation src={getBattleCharacterImage(playerLeader?.characterId)} alt={playerLeader?.name || "PLAYER"} variant="battle-leader" /><div><small>PLAYER</small><b>{playerLeader?.name}</b><strong>{playerPower.toLocaleString()}</strong></div></article>
+          <div className="tutorial-battle-vs">VS</div>
+          <article className="tutorial-battle-leader is-enemy"><CharacterPresentation src={getBattleCharacterImage(enemyLeader?.characterId)} alt={enemyLeader?.name || battleOpponentName} variant="battle-leader" /><div><small>ENEMY</small><b>{enemyLeader?.name || battleOpponentName}</b><strong>{enemyPower.toLocaleString()}</strong></div></article>
+        </div>
+        <div className="tutorial-battle-party-icons" aria-label="出撃パーティ">{playerPartyStates.map((member: any) => <CharacterPresentation key={member.id} src={getBattleCharacterImage(member.characterId)} alt={member.name} variant="thumbnail" />)}</div>
+        <div className="tutorial-battle-strategy"><small>STRATEGY</small><b>{tactic === "ATTACK_PRIORITY" ? "攻撃優先" : tactic === "HEAL_PRIORITY" ? "回復優先" : tactic === "SKILL_PRIORITY" ? "スキル優先" : tactic === "WEAKNESS_FOCUS" ? "弱点集中" : "バランス"}</b></div>
+        <button className="start-battle-btn semantic-cta semantic-cta--primary active-scale-effect tutorial-primary-target" onClick={launchBattleOnce}>バトルスタート</button>
+      </div>;
+    }
 
     return (
       <div className="battle-screen" onClick={handleFirstUserInteraction}>
@@ -108,10 +163,6 @@ export default function CardBattleView() {
           <div className="setup-title-bar">
             {isTutorialBattle ? "初回バトル準備" : "バトル準備"}
           </div>
-
-          {isTutorialBattle && (
-            <TutorialNavigator message="編成と敵を確認したら、「バトル開始」を押してね。戦闘は自動で進むよ。" />
-          )}
 
           <div className="setup-match-heading" aria-label="battle briefing">
             <span className="setup-mode-stamp">
@@ -136,15 +187,17 @@ export default function CardBattleView() {
                 </div>
               ) : (
                 <div className="setup-enemy-spec">
-                  <div className="setup-enemy-threat" aria-hidden="true"><span>ENEMY</span><strong>!</strong></div>
+                  <div className="setup-enemy-threat">
+                    <CharacterPresentation src={getBattleCharacterImage(enemyPartyStates[0]?.characterId)} alt={battleOpponentName} variant="thumbnail" />
+                  </div>
                   <div className="setup-enemy-detail-list">
                     <span className="font-size-9 font-weight-bold text-white">{battleOpponentName}</span>
                     <span className="font-size-7 text-secondary">遭遇エネミー</span>
-                    <span className="font-size-7 text-secondary">HP {Number(enemyPartyStates[0]?.maxHp || 0).toLocaleString()}</span>
+                    <span className="font-size-7 text-secondary">総合力 {enemyPower.toLocaleString()}</span>
                   </div>
                 </div>
               )}
-              <div className="setup-enemy-detail-list mt-2">
+              {!isTutorialBattle && <div className="setup-enemy-detail-list mt-2">
                 <span className="font-size-7 text-secondary">戦力 {enemyPower.toLocaleString()}</span>
                 <span className="font-size-7 text-secondary">
                   攻撃 {enemyPartyStates.reduce((total: number, enemy: any) => total + Number(enemy.stats?.atk || 0), 0).toLocaleString()}
@@ -154,7 +207,7 @@ export default function CardBattleView() {
                 {enemySkills.length > 0 && (
                   <span className="font-size-7 text-secondary">スキル {enemySkills.map((skill: any) => skill.name).join("、")}</span>
                 )}
-              </div>
+              </div>}
             </div>
 
             {/* 下段：自部隊カード編成 */}
@@ -174,12 +227,12 @@ export default function CardBattleView() {
                   return (
                     <div 
                       key={idx} 
-                      className="setup-char-card flex-col items-center cursor-pointer active-scale-effect"
-                      onClick={() => { setSelectedCharDetail(charState); playCyberSe("click"); }}
+                      className={`setup-char-card ${idx === 0 ? "is-leader" : ""} flex-col items-center cursor-pointer active-scale-effect`}
+                      onClick={() => { if (!isTutorialBattle) { setSelectedCharDetail(charState); playCyberSe("click"); } }}
                     >
                       <CharacterPresentation
                         rarity={rarity}
-                        src={getCharacterTransparentImg(masterData?.name || "reiji")}
+                        src={masterData ? getCharacterTransparentImg(masterData.name) : undefined}
                         alt={charState.name}
                         variant="thumbnail"
                       />
@@ -216,7 +269,7 @@ export default function CardBattleView() {
                   { id: "SKILL_PRIORITY", label: "スキル優先" },
                   { id: "BALANCED", label: "バランス" },
                   { id: "WEAKNESS_FOCUS", label: "弱点集中" }
-                ].map(t => (
+                ].filter(t => !isTutorialBattle || t.id === tactic).map(t => (
                   <button
                     key={t.id}
                     className={`tactic-btn active-scale-effect ${tactic === t.id ? "active" : ""}`}
@@ -240,7 +293,7 @@ export default function CardBattleView() {
             disabled={setupLaunching}
             aria-busy={setupLaunching}
           >
-            {setupLaunching ? "バトル準備中..." : battleMode === "PVP_PRACTICE" ? "模擬戦開始" : isTutorialBattle ? "バトル開始" : "抗争開始"}
+            {setupLaunching ? "BATTLE START" : battleMode === "PVP_PRACTICE" ? "模擬戦開始" : isTutorialBattle ? "BATTLE START" : "抗争開始"}
           </button>
         </div>
 
@@ -260,7 +313,7 @@ export default function CardBattleView() {
 
               <div className="detail-modal-body">
                 <div>
-                  <div className="detail-modal-section-title">ステータス (Stats)</div>
+                  <div className="detail-modal-section-title">ステータス</div>
                   <div className="detail-modal-row"><span>レベル:</span><span className="val">Lv.{selectedCharDetail.level}</span></div>
                   <div className="detail-modal-row"><span>HP上限:</span><span className="val">{selectedCharDetail.maxHp}</span></div>
                   <div className="detail-modal-row"><span>ATK (攻撃力):</span><span className="val">{selectedCharDetail.stats.atk}</span></div>
@@ -270,7 +323,7 @@ export default function CardBattleView() {
                 </div>
 
                 <div>
-                  <div className="detail-modal-section-title">装備スキル (Skills)</div>
+                  <div className="detail-modal-section-title">装備スキル</div>
                   {selectedCharDetail.skills.length > 0 ? (
                     selectedCharDetail.skills.map((sk: any, idx: number) => {
                       return (

@@ -99,10 +99,10 @@ function MainMyPage() {
     key: string; eyebrow: string; title: string; detail: string; tab?: string; action?: "guild_chat";
   }>(() => {
     const tutorialStep = onboardingState?.tutorial_step;
-    if (tutorialStep && tutorialStep !== "AUTHENTICATION") return { key: "tutorial", eyebrow: "NEXT ACTION", title: "チュートリアルを続ける", detail: "最初の成功体験を完了しよう。", tab: tutorialStep === "FREE_GACHA" ? "gacha" : tutorialStep === "AUTO_FORMATION" ? "character" : "patrol" };
-    if (!funnelMilestones.has("first_pvp")) return { key: "first_pvp", eyebrow: "NEXT ACTION", title: "最初のPvPへ挑戦", detail: "街のプレイヤーと競い、現在の強さを確かめよう。", tab: "pvp" };
-    if (!funnelMilestones.has("ranking_viewed")) return { key: "ranking_viewed", eyebrow: "NEXT ACTION", title: "ランキングを確認", detail: "初戦の順位と次の目標を確認しよう。", tab: "ranking" };
-    if (!funnelMilestones.has("first_raid")) return { key: "first_raid", eyebrow: "NEXT ACTION", title: "開催中レイドへ", detail: "全プレイヤーで強敵へ挑み、貢献を残そう。", tab: "raid" };
+    if (tutorialStep && tutorialStep !== "AUTHENTICATION") return { key: "tutorial", eyebrow: "次にすること", title: "チュートリアルを続ける", detail: "最初の成功体験を完了しよう。", tab: tutorialStep === "FREE_GACHA" ? "gacha" : tutorialStep === "AUTO_FORMATION" ? "character" : "patrol" };
+    if (!funnelMilestones.has("first_pvp")) return { key: "first_pvp", eyebrow: "次にすること", title: "最初のPvPへ挑戦", detail: "街のプレイヤーと競い、現在の強さを確かめよう。", tab: "pvp" };
+    if (!funnelMilestones.has("ranking_viewed")) return { key: "ranking_viewed", eyebrow: "次にすること", title: "ランキングを確認", detail: "初戦の順位と次の目標を確認しよう。", tab: "ranking" };
+    if (!funnelMilestones.has("first_raid")) return { key: "first_raid", eyebrow: "次にすること", title: "開催中レイドへ", detail: "全プレイヤーで強敵へ挑み、貢献を残そう。", tab: "raid" };
     if (!userGuildMember) return { key: "guild_discovery", eyebrow: "SOCIAL", title: "おすすめTRIBEを見る", detail: "活動中の仲間と出会い、レイド貢献を共有しよう。", tab: "guild" };
     if (!funnelMilestones.has("guild_activation")) return { key: "guild_home", eyebrow: "SOCIAL", title: "所属TRIBEへ", detail: "加入したTRIBEの仲間と次の行動を確認しよう。", tab: "guild" };
     return isRaidActive
@@ -405,7 +405,7 @@ function MainMyPage() {
 
       <div className="mypage-lower-content">
         <section className="mission-hub" aria-label="ミッションハブ">
-          <header><span>MISSION HUB</span><h2>次の一歩を選ぶ</h2></header>
+          <header><span>ミッション</span><h2>次の一歩を選ぶ</h2></header>
           <div className="mission-hub-grid">
             <button onClick={() => { navigateTab("character"); playCyberSe("click"); }}>
               <b>POWER</b><span>編成・強化</span><small>仲間を強くする</small>

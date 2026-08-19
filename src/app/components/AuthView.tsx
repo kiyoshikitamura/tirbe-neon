@@ -25,11 +25,21 @@ export default function AuthView() {
     <div className="auth-container" onClick={handleFirstUserInteraction}>
       <div className="auth-card">
         <h1 className="auth-title blink">
-          TRIBE: NEON REIGN
+          TRIBE NEON
         </h1>
         <p className="auth-subtitle">Tokyo Syndicate System</p>
         
         <div className="flex-col-gap-3">
+          <button
+            onClick={handleGoogleLogin}
+            disabled={setupLoading}
+            className="auth-btn-google semantic-cta semantic-cta--primary width-100 active-scale-effect"
+            aria-busy={setupLoading}
+          >
+            {setupLoading ? "ログイン中..." : "Googleで始める"}
+          </button>
+
+          <div className="auth-method-divider"><span>またはメールで続ける</span></div>
           <input 
             type="email" 
             placeholder="メールアドレス" 
@@ -49,23 +59,11 @@ export default function AuthView() {
             <button 
               onClick={handleEmailLogin}
               disabled={setupLoading}
-              className="auth-btn-cyan semantic-cta semantic-cta--primary width-100 active-scale-effect"
+              className="auth-btn-cyan semantic-cta semantic-cta--secondary width-100 active-scale-effect"
               aria-busy={setupLoading}
             >
-              {setupLoading ? "ログイン中..." : "ログイン"}
+              {setupLoading ? "ログイン中..." : "メールでログイン"}
             </button>
-          </div>
-
-          <div className="border-top-ultra-subtle pt-4 mt-2">
-            <button 
-              onClick={handleGoogleLogin}
-              disabled={setupLoading}
-              className="auth-btn-google semantic-cta semantic-cta--secondary width-100 active-scale-effect"
-              aria-busy={setupLoading}
-            >
-              {setupLoading ? "ログイン中..." : "Googleでログイン"}
-            </button>
-
           </div>
         </div>
 

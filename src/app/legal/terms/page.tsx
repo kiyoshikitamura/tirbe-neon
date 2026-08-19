@@ -1,14 +1,14 @@
 import type { Metadata } from "next";
 import LegalPage from "../LegalPage";
 
-export const metadata: Metadata = { title: "利用規約 | TRIBE: NEON REIGN" };
+export const metadata: Metadata = { title: "利用規約 | TRIBE NEON" };
 
 export default function TermsPage() {
   return (
     <LegalPage title="利用規約" updatedAt="2026年8月5日">
       <p className="legal-page-notice">本ページは開発・検証環境用の草案です。正式公開前に、運営者情報および正式な規約文を確定し、法務確認を完了してください。</p>
       <h2>第1条（適用）</h2>
-      <p>本規約は、TRIBE: NEON REIGN（以下「本サービス」）の利用条件を定めるものです。ユーザーは、本規約に同意した上で本サービスを利用します。</p>
+      <p>本規約は、TRIBE NEON（以下「本サービス」）の利用条件を定めるものです。ユーザーは、本規約に同意した上で本サービスを利用します。</p>
       <h2>第2条（アカウント）</h2>
       <p>ユーザーは、自己の責任でアカウント情報を管理するものとします。第三者による不正利用が判明した場合は、運営者が定める窓口へ速やかに連絡してください。</p>
       <h2>第3条（禁止事項）</h2>

@@ -95,7 +95,7 @@ export default function GuildTab() {
         p_message: welcomeDraft,
       });
       if (error) throw error;
-      const welcomeMessage = data?.welcome_message || "加入ありがとう。まずは挨拶して、仲間とレイドへ挑もう。";
+      const welcomeMessage = data?.welcome_message || "";
       setUserGuild((current: any) => current ? { ...current, welcome_message: welcomeMessage } : current);
       setWelcomeDraft(welcomeMessage);
       setEditingWelcome(false);
@@ -184,16 +184,14 @@ export default function GuildTab() {
         <SectionHeader title="ギルド" />
         <div className="scroll-container flex-1 guild-lobby-scroll">
           <section className="guild-lobby-hero">
-            <img src="/menu/menu_allies.png" alt="連合" className="guild-lobby-hero-emblem" />
+            <img src="/menu/menu_allies.png" alt="TRIBE" className="guild-lobby-hero-emblem" />
             <div>
-              <p className="guild-lobby-kicker">ALLY NETWORK</p>
-              <h2>一人では獲れない街がある。</h2>
-              <p>仲間と連合を組み、GvGで拠点を奪え。日々の成長は、次の抗争の武器になる。</p>
+              <h2>TRIBEを探す</h2>
             </div>
           </section>
 
           <section className={`guild-lobby-unlock ${joinUnlocked ? "is-ready" : ""}`}>
-            <div><span>連合への加入</span><strong>{joinUnlocked ? "参加可能" : `Lv.${userLevel} / Lv.3`}</strong></div>
+            <div><span>TRIBEへの加入</span><strong>{joinUnlocked ? "参加可能" : `Lv.${userLevel} / Lv.3`}</strong></div>
             <div className="guild-lobby-progress"><span style={{ width: `${Math.min((userLevel / 3) * 100, 100)}%` }} /></div>
             <p>{joinUnlocked ? "加入先を選んで、仲間と活動を始めよう。" : "プレイヤーLv.3で加入先を選べるようになります。"}</p>
           </section>
@@ -203,7 +201,7 @@ export default function GuildTab() {
           )}
 
           <section className="guild-lobby-section">
-            <div className="guild-lobby-section-heading"><span>募集中の連合</span><small>Lv.3から加入</small></div>
+            <div className="guild-lobby-section-heading"><span>募集中のTRIBE</span><small>Lv.3から加入</small></div>
             <div className="flex gap-2 mb-3">
               <input
                 type="search"
@@ -259,8 +257,7 @@ export default function GuildTab() {
           </section>
 
           <section className={`guild-lobby-create ${createUnlocked ? "is-ready" : ""}`}>
-            <div className="guild-lobby-section-heading"><span>新しい連合を立ち上げる</span><small>Lv.8 / 5,000 Cash</small></div>
-            <p>あなたの看板を掲げ、仲間を集めて街を取りに行く。</p>
+            <div className="guild-lobby-section-heading"><span>新しいTRIBEを立ち上げる</span><small>Lv.8 / 5,000 CASH</small></div>
             <div className="flex gap-2">
               <input 
                 type="text" 
@@ -336,7 +333,7 @@ export default function GuildTab() {
 
       <section className="guild-welcome-card" aria-label="TRIBEへようこそ">
         <div className="guild-welcome-heading">
-          <div><small>SYSTEM / WELCOME</small><strong>{userGuild.name}へようこそ</strong></div>
+          <div><small>歓迎メッセージ</small><strong>{userGuild.name}へようこそ</strong></div>
           {isMaster && !editingWelcome && (
             <OutlawButton variant="secondary" onClick={() => setEditingWelcome(true)}>編集</OutlawButton>
           )}
@@ -359,7 +356,7 @@ export default function GuildTab() {
             </div>
           </div>
         ) : (
-          <p>{userGuild.welcome_message || "加入ありがとう。まずは挨拶して、仲間とレイドへ挑もう。"}</p>
+          <p>{userGuild.welcome_message || "歓迎メッセージは未設定です。"}</p>
         )}
         <OutlawButton variant="primary" onClick={() => {
           setChatChannel("GUILD");
@@ -369,7 +366,7 @@ export default function GuildTab() {
         <small>定型文は送信前に編集できます。自動送信されません。</small>
       </section>
       <section className="guild-membership-summary" aria-label="所属TRIBE">
-        <div><small>MEMBERSHIP</small><strong>所属TRIBE</strong><span>{guildMembersList.length}/{userGuild.member_limit || 10}名 ・ {userGuild.approval_required ? "承認制" : "募集中"}</span></div>
+        <div><small>所属情報</small><strong>所属TRIBE</strong><span>{guildMembersList.length}/{userGuild.member_limit || 10}名 ・ {userGuild.approval_required ? "承認制" : "募集中"}</span></div>
         <div className="guild-membership-actions"><OutlawButton variant="primary" onClick={() => setShowTribeChatPanel(true)}>TRIBE Chat</OutlawButton><OutlawButton variant="secondary" onClick={() => navigateTab("raid")}>レイドへ</OutlawButton></div>
       </section>
       <section className="guild-gvg-coming-soon" aria-label="GvG開催予定">

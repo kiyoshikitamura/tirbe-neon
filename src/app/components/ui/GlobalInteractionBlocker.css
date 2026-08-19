@@ -1,5 +1,5 @@
 .outlaw-interaction-blocker {
-  position: fixed;
+  position: absolute;
   inset: 0;
   z-index: 99999;
   background: transparent;

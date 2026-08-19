@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import LegalPage from "../LegalPage";
 
-export const metadata: Metadata = { title: "特定商取引法に基づく表記 | TRIBE: NEON REIGN" };
+export const metadata: Metadata = { title: "特定商取引法に基づく表記 | TRIBE NEON" };
 
 export default function CommercialPage() {
   return (

@@ -158,7 +158,8 @@ export function getCharacterStaticImg(name: string): string {
 export function getCharacterTransparentImg(name: string): string {
   if (!name) return `/characters/reiji_transparent_asset.png`;
   const cleanName = name.toLowerCase().replace(/[^a-z0-9_]/g, "");
-  return `/characters/${cleanName}_transparent_asset.png`;
+  const assetName = cleanName === "yuji" ? "yuuji" : cleanName;
+  return `/characters/${assetName}_transparent_asset.png`;
 }
 
 export function getAlignmentShortJp(align: string): { label: string; colorClass: string } {

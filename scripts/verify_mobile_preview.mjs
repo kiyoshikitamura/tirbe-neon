@@ -17,7 +17,7 @@ try {
     page.on("pageerror", (error) => pageErrors.push(error.message));
 
     const response = await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60_000 });
-    await page.waitForTimeout(3_000);
+    await page.locator("button, a, input").first().waitFor({ state: "visible", timeout: 15_000 });
     const metrics = await page.evaluate(() => ({
       title: document.title,
       viewportWidth: window.innerWidth,

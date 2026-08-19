@@ -15,17 +15,19 @@ export default function TutorialBattlePrompt() {
     playCyberSe,
     battleState,
     battleLoading,
+    battleEncounterLocked,
+    settledPatrolEncounterId,
     setErrorMessage
   } = useGame();
   const [starting, setStarting] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
   const startingRef = useRef(false);
 
-  const patrol = activePatrols.find((entry: any) => entry.has_battle_event && !entry.battle_resolved);
+  const patrol = activePatrols.find((entry: any) => entry.has_battle_event && !entry.battle_resolved && entry.id !== settledPatrolEncounterId);
   if (battleState || onboardingState?.tutorial_step !== "TUTORIAL_BATTLE" || !patrol) return null;
 
   const beginBattle = async () => {
-    if (startingRef.current || battleLoading) return;
+    if (startingRef.current || battleLoading || battleEncounterLocked) return;
     startingRef.current = true;
     setStarting(true);
     playCyberSe("click");
@@ -69,10 +71,7 @@ export default function TutorialBattlePrompt() {
     <div className="modal-overlay background-black-95" style={{ zIndex: 20000 }}>
       <div className="modal-card" style={{ maxWidth: 420 }}>
         <div className="modal-title text-left">初回バトル</div>
-        <TutorialNavigator message="派遣先で敵と遭遇しました。編成した仲間でチュートリアルバトルを開始してください。" />
-        <div className="modal-desc text-left">
-          バトルは選択した作戦に従って自動進行します。勝利するまで、消費なしで再挑戦できます。
-        </div>
+        <TutorialNavigator message={<>こんな感じ。クエストを進めながら、少しずつ強くなってくよ。<br /><br />あ、バトルになったみたい。さっき編成したメンバーでやってみよ。<br />バトルは自動で進むよ。今のメンバーの強さ、見てみよ。</>} />
         {localError && (
           <div className="font-size-7 text-color-red mt-3" role="alert">{localError}</div>
         )}
@@ -80,9 +79,9 @@ export default function TutorialBattlePrompt() {
           className="semantic-cta semantic-cta--primary mt-4 width-100"
           aria-busy={starting || battleLoading}
           onClick={() => void beginBattle()}
-          disabled={starting || battleLoading}
+          disabled={starting || battleLoading || battleEncounterLocked}
         >
-          {starting || battleLoading ? "バトル準備中..." : "チュートリアルバトル開始"}
+          {starting || battleLoading ? "バトル準備中..." : "バトル開始"}
         </button>
       </div>
     </div>

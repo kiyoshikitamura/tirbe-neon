@@ -164,7 +164,7 @@ const CORE_CHARACTERS_MASTER = [
     "alignment": "CHAOS",
     "growthPatternId": "BALANCED",
     "rarity": "N",
-    "img": "/characters/yuji_transparent_asset.png",
+    "img": "/characters/yuuji_transparent_asset.png",
     "visualPrompt": "streetpunk young male, dyed hair, denim vest"
   }
 ];

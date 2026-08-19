@@ -109,3 +109,4 @@
   color: var(--neon-danger);
   font-weight: 700;
 }
+.auth-method-divider{display:flex;align-items:center;gap:9px;color:var(--ui-text-secondary);font-size:9px;text-align:center}.auth-method-divider::before,.auth-method-divider::after{content:"";height:1px;flex:1;background:var(--ui-border)}.auth-method-divider span{white-space:nowrap}

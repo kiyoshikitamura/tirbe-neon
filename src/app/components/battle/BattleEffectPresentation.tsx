@@ -17,7 +17,7 @@ export const BATTLE_EFFECT_ASSETS = {
 } as const;
 
 export type BattleImpactKind = "impact" | "slash" | "muzzle";
-type BattleCutInTier = "SR" | "SSR";
+type BattleCutInTier = "STANDARD" | "SR" | "SSR";
 
 export type BattleSkillPresentation = {
   charName: string;
@@ -63,7 +63,7 @@ export function resolveBattleSkillPresentation(
   return {
     charName: cutIn.charName,
     skillName: cutIn.skillName,
-    tier: isBasicAttack ? null : rarity === "SSR" ? "SSR" : rarity === "SR" ? "SR" : null,
+    tier: isBasicAttack ? null : rarity === "SSR" ? "SSR" : rarity === "SR" ? "SR" : "STANDARD",
     impact: resolveImpactKind(skill),
   };
 }
@@ -81,7 +81,7 @@ export function preloadBattleEffects() {
 type CutInProps = {
   presentation: BattleSkillPresentation | null;
   participant?: BattleParticipantView;
-  imageSrc: string;
+  imageSrc?: string;
   speed: number;
 };
 
@@ -98,7 +98,7 @@ export function BattleSkillCutIn({ presentation, participant, imageSrc, speed }:
       return;
     }
     if (!visible) return;
-    const minimumDuration = speed > 1 ? 520 : visible.tier === "SSR" ? 900 : 700;
+    const minimumDuration = speed > 1 ? 720 : visible.tier === "SSR" ? 1100 : 900;
     const remaining = Math.max(0, minimumDuration - (performance.now() - shownAtRef.current));
     hideTimerRef.current = setTimeout(() => setVisible(null), remaining);
     return () => {
@@ -126,7 +126,7 @@ export function BattleSkillCutIn({ presentation, participant, imageSrc, speed }:
         <CharacterPresentation src={imageSrc} alt={participant?.name || visible.charName} variant="battle" className="character-presentation-battle-cutin" />
       </div>
       <div className="battle-cutin-copy">
-        <small>{visible.tier} SKILL</small>
+        <small>{visible.tier === "STANDARD" ? "SKILL" : `${visible.tier} SKILL`}</small>
         <strong>{visible.skillName}</strong>
         <span>{visible.charName}</span>
       </div>

@@ -8,8 +8,9 @@
   animation: battle-cutin-life 700ms ease-out both;
 }
 
-.battle-skill-cutin.is-ssr { animation-duration: 900ms; }
-.battle-skill-cutin.is-speed-fast { animation-duration: 520ms; }
+.battle-skill-cutin.is-ssr { animation-duration: 1100ms; }
+.battle-skill-cutin.is-speed-fast { animation-duration: 720ms; }
+.battle-skill-cutin.is-standard .battle-cutin-frame{opacity:.78;filter:hue-rotate(-22deg) saturate(.85)}
 .battle-cutin-darken,
 .battle-cutin-frame,
 .battle-cutin-speed-lines { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
@@ -45,10 +46,10 @@
   text-align: right;
   text-shadow: 0 2px 2px #000, 0 0 16px rgba(255, 255, 255, .25);
 }
-.battle-cutin-copy small { color: #cfd6dd; font-size: 8px; font-weight: 1000; letter-spacing: .24em; }
+.battle-cutin-copy small { color: #cfd6dd; font-size: 10px; font-weight: 1000; letter-spacing: .24em; }
 .battle-skill-cutin.is-ssr .battle-cutin-copy small { color: var(--ui-value); }
 .battle-cutin-copy strong { overflow: hidden; color: #fff; font-size: clamp(18px, 5.6vw, 27px); line-height: 1.15; text-overflow: ellipsis; white-space: nowrap; }
-.battle-cutin-copy span { margin-top: 3px; color: #adb7c0; font-size: 8px; font-weight: 900; letter-spacing: .08em; }
+.battle-cutin-copy span { margin-top: 4px; color: #d4dbe0; font-size: 10px; font-weight: 900; letter-spacing: .08em; }
 
 .battle-asset-impact {
   position: absolute;

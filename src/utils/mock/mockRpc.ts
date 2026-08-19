@@ -1,5 +1,7 @@
 "use client";
 
+import { CHARACTERS_MASTER } from "../game_constants";
+
 const getMockEquipmentLevelScale = (level: number) => {
   const normalized = Math.min(100, Math.max(1, Math.trunc(Number(level) || 1)));
   return normalized <= 50 ? 0.1 + ((normalized - 1) * 0.5) / 49 : 0.6 + ((normalized - 50) * 0.4) / 50;
@@ -236,7 +238,19 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     const userId = typeof window === "undefined" ? null : localStorage.getItem("tribe_demo_uuid");
     if (!userId) return { data: null, error: { message: "authentication required", code: "42501" } };
     const rows = (client.getStorage("user_main_formations") || []).filter((row: any) => row.user_id === userId).sort((a: any, b: any) => a.slot - b.slot);
-    return { data: rows, error: null };
+    const owned = client.getStorage("user_characters") || [];
+    const characters = rows.map((row: any) => {
+      const record = owned.find((entry: any) => entry.id === row.user_character_id && entry.user_id === userId) || {};
+      return {
+        slot: row.slot,
+        character_id: record.character_id || null,
+        level: Number(record.level || 1),
+        awakening_level: Number(record.awakening_level || 0),
+        character_power: 0,
+      };
+    }).filter((row: any) => Boolean(row.character_id));
+    const totalPower = (client.getStorage("user_power_rankings") || []).find((entry: any) => entry.user_id === userId)?.total_power || 0;
+    return { data: { characters, total_power: Number(totalPower) }, error: null };
   }
 
   if (funcName === "get_my_power_snapshot") {
@@ -696,6 +710,7 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     const equippedSkills = client.getStorage("user_skills") || [];
     const skillBattleMaster = client.getStorage("skill_battle_master") || [];
     const playerSnapshot = roster.map((character: any) => {
+      const characterMaster = CHARACTERS_MASTER.find((entry: any) => entry.id === character.character_id);
       const equipmentLoadout = equipments
         .filter((owned: any) => owned.user_id === userId && owned.equipped_character_id === character.id)
         .map((owned: any) => ({ owned, master: equipmentBattleMaster.find((master: any) => (master.equipment_id || master.id) === (owned.equipment_id || owned.equipment_master_id)) }))
@@ -739,7 +754,7 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
         id: `ally_${character.character_id}`,
         // Mirror the production snapshot's display-name contract. UUIDs are
         // identifiers, not player-facing battle labels.
-        name: character.display_name || character.name || "メンバー",
+        name: character.display_name || character.name || characterMaster?.jpName || "メンバー",
         team: "PLAYER",
         alignment: "ORDER",
         stats: {
@@ -953,14 +968,46 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
       return { data: { status: "already_advanced", tutorial_step: entry.step_id }, error: null };
     }
     if (entry.step_id !== "AUTO_FORMATION") return { data: null, error: { message: "tutorial formation is unavailable" } };
-    const owned = (client.getStorage("user_characters") || []).filter((row: any) => row.user_id === userId).slice(-5).reverse();
+    const allOwned = (client.getStorage("user_characters") || []).filter((row: any) => row.user_id === userId);
+    const tutorialHistory = (client.getStorage("gacha_execution_history") || [])
+      .filter((row: any) => row.user_id === userId && row.gacha_id === "CHAR_NORMAL" && row.pull_count === 10 && row.result_payload?.tutorial)
+      .slice(-1)[0];
+    const guaranteedMasterId = tutorialHistory?.result_payload?.results
+      ?.find((result: any) => Number(result.tutorial_slot) === 10)?.character_id;
+    const guaranteedOwned = allOwned.find((row: any) => row.character_id === guaranteedMasterId);
+    const owned = [
+      ...(guaranteedOwned ? [guaranteedOwned] : []),
+      ...allOwned.filter((row: any) => row !== guaranteedOwned).slice().reverse(),
+    ].slice(0, 5);
     if (!owned.length) return { data: null, error: { message: "owned character required" } };
     const formations = (client.getStorage("user_main_formations") || []).filter((row: any) => row.user_id !== userId);
     owned.forEach((row: any, index: number) => formations.push({ user_id: userId, slot: index + 1, user_character_id: row.id }));
     client.setStorage("user_main_formations", formations);
+    const defenseDecks = (client.getStorage("pvp_defense_decks") || []).filter((row: any) => row.user_id !== userId);
+    defenseDecks.push({
+      user_id: userId,
+      character_1_id: owned[0]?.id || null,
+      character_2_id: owned[1]?.id || null,
+      character_3_id: owned[2]?.id || null,
+      character_4_id: owned[3]?.id || null,
+      character_5_id: owned[4]?.id || null,
+      tactic: "ATTACK_PRIORITY",
+      updated_at: new Date().toISOString(),
+    });
+    client.setStorage("pvp_defense_decks", defenseDecks);
     entry.step_id = "DISPATCH";
     client.setStorage("tutorial_progress", progress);
-    return { data: { status: "advanced", tutorial_step: "DISPATCH", leader_character_id: owned[0].character_id }, error: null };
+    return {
+      data: {
+        status: "advanced",
+        tutorial_step: "DISPATCH",
+        formation: { status: "success", character_ids: owned.map((row: any) => row.character_id) },
+        leader_character_id: owned[0].character_id,
+        leader_user_character_id: owned[0].id,
+        skill_equipped: false,
+      },
+      error: null,
+    };
   }
 
   if (funcName === "complete_tutorial_authentication") {
@@ -2472,11 +2519,13 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     if (!normal.length || !ssr.length) return { data: null, error: { message: "canonical tutorial gacha bucket is empty" } };
     const characters = client.getStorage("user_characters") || [];
     const results = Array.from({ length: 10 }, (_, index) => {
-      const picked = (index === 9 ? ssr : normal)[Math.floor(Math.random() * (index === 9 ? ssr : normal).length)];
+      // Stable tutorial fixture order keeps N/R/SR visual contract assertions
+      // deterministic while preserving the production RPC response shape.
+      const picked = index === 9 ? ssr[0] : normal[index % normal.length];
       const existing = characters.find((row: any) => row.user_id === userId && row.character_id === picked.item_id);
       const outcome = existing ? "awakening" : "new";
       if (existing) existing.awakening_level = Math.min(5, Number(existing.awakening_level || 0) + 1);
-      else characters.push({ id: `mock_character_${Date.now()}_${index}`, user_id: userId, character_id: picked.item_id, level: 1, awakening_level: 0 });
+      else characters.push({ id: `mock_character_${Date.now()}_${index}`, user_id: userId, character_id: picked.item_id, level: 1, awakening_level: 0, created_at: new Date().toISOString() });
       return { type: "CHARACTER", character_id: picked.item_id, rarity: index === 9 ? "SSR" : picked.rarity, outcome, tutorial_slot: index + 1 };
     });
     const response = { status: "success", request_id: params.p_request_id, results, tutorial: true, guaranteed_ssr_slot: 10 };
@@ -2544,7 +2593,7 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
       const picked = bucket[Math.floor(Math.random() * bucket.length)].item_id;
       const existing = characters.find((entry: any) => entry.user_id === p_user_id && entry.character_id === picked);
       if (!existing) {
-        characters.push({ id: `mock_character_${Date.now()}_${index}`, user_id: p_user_id, character_id: picked, level: 1, awakening_level: 0 });
+        characters.push({ id: `mock_character_${Date.now()}_${index}`, user_id: p_user_id, character_id: picked, level: 1, awakening_level: 0, created_at: new Date().toISOString() });
         results.push({ type: "CHARACTER", character_id: picked, rarity, outcome: "new" });
       } else if (Number(existing.awakening_level || 0) < 5) {
         existing.awakening_level = Number(existing.awakening_level || 0) + 1;

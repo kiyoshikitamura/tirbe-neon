@@ -17,6 +17,7 @@ import { participantsToBattleUnits, toDeterministicTactic } from "./battle/deter
 import { gvgDefenseSnapshotToParticipants } from "./battle/gvgSnapshotAdapter";
 import { patrolSnapshotToParticipants, serverBattleEvents, type ServerBattleEvent } from "./battle/patrolReplayAdapter";
 import { beginActionPerformance } from "@/utils/actionPerformance";
+import { traceTutorialJourney } from "@/utils/tutorialJourneyTrace";
 import ModeBattleResultCard from "@/app/components/battle/ModeBattleResultCard";
 
 export type { UseBattleOptions, ParticipantState, CardState, SkillLogItem };
@@ -73,6 +74,7 @@ export function useBattle(options: UseBattleOptions) {
     setConfirmDialogConfig,
     patrolNpcs = [],
     patrol,
+    tutorialStep,
     setTutorialStep,
     navigateTab,
   } = options;
@@ -81,7 +83,12 @@ export function useBattle(options: UseBattleOptions) {
   const [battleMode, setBattleMode] = useState<BattleMode | null>(null);
   const [hasRaidControlBonus, setHasRaidControlBonus] = useState<boolean>(false);
   const [battleOpponentName, setBattleOpponentName] = useState<string>("");
-  const [battleState, setBattleState] = useState<"SETUP" | "PLAYING" | "OUTRO" | null>(null);
+  const [battleState, setBattleState] = useState<"SETUP" | "PLAYING" | "ENDING" | "OUTCOME" | "RESULT" | null>(null);
+  // Capture the encounter kind when the authoritative battle is opened.
+  // The onboarding bootstrap may refresh while a replay is playing; result
+  // ownership must not be reclassified from that mutable snapshot.
+  const [tutorialBattleActive, setTutorialBattleActive] = useState(false);
+  const [battleOutcome, setBattleOutcome] = useState<"VICTORY" | "DEFEAT" | null>(null);
   const [battleLog, setBattleLog] = useState<string[]>([]);
   const [ap, setAp] = useState<number>(3);
   const [maxAp, setMaxAp] = useState<number>(10);
@@ -91,6 +98,9 @@ export function useBattle(options: UseBattleOptions) {
   const [gvgTargetBaseId, setGvgTargetBaseId] = useState<string | null>(null);
   const [battleLoading, setBattleLoading] = useState<boolean>(false);
   const battleStartInFlightRef = useRef(false);
+  const battleEndingInFlightRef = useRef(false);
+  const [settledPatrolEncounterId, setSettledPatrolEncounterId] = useState<string | null>(null);
+  const activePatrolEncounterIdRef = useRef<string | null>(null);
   const [enemyTactic, setEnemyTactic] = useState<string>("OFFENSIVE");
   const [opponentPoints, setOpponentPoints] = useState<number>(1000);
   const [officialGvgAttackId, setOfficialGvgAttackId] = useState<string | null>(null);
@@ -98,6 +108,8 @@ export function useBattle(options: UseBattleOptions) {
   const [officialGvgWinner, setOfficialGvgWinner] = useState<"PLAYER" | "ENEMY" | null>(null);
   const [officialPatrolReplayId, setOfficialPatrolReplayId] = useState<string | null>(null);
   const [officialPatrolWinner, setOfficialPatrolWinner] = useState<"PLAYER" | "ENEMY" | null>(null);
+  const officialPatrolReplayIdRef = useRef<string | null>(null);
+  const officialPatrolWinnerRef = useRef<"PLAYER" | "ENEMY" | null>(null);
   const [officialPatrolEvents, setOfficialPatrolEvents] = useState<ServerBattleEvent[]>([]);
   const [officialPatrolEventIndex, setOfficialPatrolEventIndex] = useState(0);
   const [officialPvpReplayId, setOfficialPvpReplayId] = useState<string | null>(null);
@@ -201,6 +213,33 @@ export function useBattle(options: UseBattleOptions) {
     patrolIdOverride?: string
   ) => {
     if (!session) return;
+    if (mode === "PATROL" && patrolIdOverride && patrolIdOverride === settledPatrolEncounterId) return;
+    setTutorialBattleActive(mode === "PATROL" && tutorialStep === "TUTORIAL_BATTLE");
+    if (mode === "PATROL") activePatrolEncounterIdRef.current = patrolIdOverride || patrol?.id || null;
+    const tutorialBattleRequestId = mode === "PATROL"
+      ? (typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `quest-${Date.now()}`)
+      : null;
+    const writeTutorialBattleTrace = (phase: string, detail: Record<string, unknown> = {}) => {
+      if (mode !== "PATROL" || typeof window === "undefined") return;
+      const trace = {
+        phase,
+        requestId: tutorialBattleRequestId,
+        tutorialStep: tutorialStep || null,
+        patrolId: patrolIdOverride || patrol?.id || null,
+        patrolStatus: patrol?.status || null,
+        dispatchedCharacterId: patrol?.characterId || null,
+        dispatchedUserCharacterId: userCharactersDbList.find((owned: any) => owned.character_id === patrol?.characterId)?.id || null,
+        occurredAt: new Date().toISOString(),
+        ...detail,
+      };
+      (window as any).__TRIBE_TUTORIAL_BATTLE_TRACE__ = [
+        ...((window as any).__TRIBE_TUTORIAL_BATTLE_TRACE__ || []),
+        trace,
+      ].slice(-30);
+      traceTutorialJourney(`battle_${phase}`, trace);
+      console.info("[Tutorial Battle Trace]", trace);
+    };
+    writeTutorialBattleTrace("start_requested");
     if (mode === "GVG" && !areaIdOrOpponentUserId?.startsWith("gvg_match:")) {
       setErrorMessage("GvGは公式マッチが開催中の場合のみ開始できます。");
       return;
@@ -1017,6 +1056,14 @@ export function useBattle(options: UseBattleOptions) {
             p_enemy_snapshot: enemySnapshot,
             p_source_reference_id: officialGvgAttackIdForBattle,
           });
+      if (replayMode === "QUEST") {
+        writeTutorialBattleTrace("replay_response", {
+          accepted: !replayCreation.error && Boolean(replayCreation.data?.replay_session_id),
+          replaySessionId: replayCreation.data?.replay_session_id || null,
+          errorCode: replayCreation.error?.code || null,
+          errorMessage: replayCreation.error?.message || null,
+        });
+      }
       const error = replayCreation.error;
       const replaySessionId = replayMode === "QUEST"
         ? replayCreation.data?.replay_session_id
@@ -1118,8 +1165,16 @@ export function useBattle(options: UseBattleOptions) {
         }
         setOfficialPatrolReplayId(replaySessionId);
         setOfficialPatrolWinner(resolvedReplay.winner);
+        officialPatrolReplayIdRef.current = replaySessionId;
+        officialPatrolWinnerRef.current = resolvedReplay.winner;
         setOfficialPatrolEvents(officialPatrolEventsForBattle);
         setOfficialPatrolEventIndex(0);
+        writeTutorialBattleTrace("replay_resolved", {
+          accepted: true,
+          replaySessionId,
+          winner: resolvedReplay.winner,
+          playerCharacterIds: canonicalPlayers.map((participant) => participant.characterId),
+        });
       }
       if (replaySessionId && replayMode === "PVP") {
         const canonicalPlayers = patrolSnapshotToParticipants(replayCreation.data?.player_snapshot, false);
@@ -1182,6 +1237,10 @@ export function useBattle(options: UseBattleOptions) {
       }
     } catch (err) {
       console.warn("Failed to create replay snapshot:", err);
+      writeTutorialBattleTrace("start_exception", {
+        accepted: false,
+        errorMessage: err instanceof Error ? err.message : String(err),
+      });
       if (officialGvgAttackIdForBattle) {
         await abortOfficialGvgStart("公式GvGのサーバー確定に失敗しました。もう一度お試しください。");
         return;
@@ -1226,7 +1285,7 @@ export function useBattle(options: UseBattleOptions) {
   };
 
   const startCardBattle = async (...args: Parameters<typeof startCardBattleInternal>) => {
-    if (battleStartInFlightRef.current) return;
+    if (battleStartInFlightRef.current || battleEndingInFlightRef.current || battleState !== null) return;
     battleStartInFlightRef.current = true;
     const actionPerformance = beginActionPerformance("battle_start");
     try {
@@ -1649,7 +1708,21 @@ export function useBattle(options: UseBattleOptions) {
     if (authoritativeEvents.length > 0) {
       const replayEvent = authoritativeEvents[authoritativeEventIndex];
       if (!replayEvent) return;
-      const delay = replayEvent.type === "ACTION" ? 450 : replayEvent.type === "RESULT" ? 700 : 600;
+      const previousReplayEvent = authoritativeEvents[authoritativeEventIndex - 1];
+      const previousSkillId = String(previousReplayEvent?.payload?.skillId ?? "BASIC_ATTACK");
+      const followsSkill = replayEvent.type === "DAMAGE"
+        && previousReplayEvent?.type === "ACTION"
+        && previousSkillId !== "BASIC_ATTACK";
+      const followsFinalHit = replayEvent.type === "RESULT" && previousReplayEvent?.type === "DEFEAT";
+      const delay = replayEvent.type === "ACTION"
+        ? 360
+        : followsSkill
+          ? 1200
+          : followsFinalHit
+            ? 1050
+            : replayEvent.type === "RESULT"
+              ? 820
+              : 520;
       const timer = setTimeout(() => {
         const payload = replayEvent.payload;
         const actorId = String(payload.actorId ?? "");
@@ -1758,9 +1831,8 @@ export function useBattle(options: UseBattleOptions) {
   }, [battleState, battleMode, timelineIndex, isAutoPaused, battleSpeed, officialPatrolEvents, officialPatrolEventIndex, officialPatrolReplayId, officialPvpEvents, officialPvpEventIndex, officialPvpReplayId, officialRaidEvents, officialRaidEventIndex, officialRaidReplayId]);
 
   const endBattleSession = async (result: "VICTORY" | "DEFEAT") => {
-    if (!session) return;
-    setBattleState(null);
-    setBattleMode(null);
+    if (!session || battleEndingInFlightRef.current) return;
+    battleEndingInFlightRef.current = true;
     const modeTemp = battleMode;
     const opponentNameTemp = battleOpponentName;
     const gvgAreaTemp = gvgTargetBaseId;
@@ -1769,9 +1841,12 @@ export function useBattle(options: UseBattleOptions) {
     const gvgWinnerTemp = officialGvgWinner;
     const hasOfficialGvgResult = modeTemp === "GVG" && gvgAttackIdTemp && gvgReplayIdTemp
       && (gvgWinnerTemp === "PLAYER" || gvgWinnerTemp === "ENEMY");
-    const patrolWinnerTemp = officialPatrolWinner;
-    const patrolReplayIdTemp = officialPatrolReplayId;
-    const hasOfficialPatrolResult = modeTemp === "PATROL" && officialPatrolReplayId
+    // React state may still belong to the render that started replay playback.
+    // Keep the authoritative result in refs so the RESULT event cannot race the
+    // state commit and accidentally turn a server victory into a client defeat.
+    const patrolWinnerTemp = officialPatrolWinnerRef.current ?? officialPatrolWinner;
+    const patrolReplayIdTemp = officialPatrolReplayIdRef.current ?? officialPatrolReplayId;
+    const hasOfficialPatrolResult = modeTemp === "PATROL" && patrolReplayIdTemp
       && (patrolWinnerTemp === "PLAYER" || patrolWinnerTemp === "ENEMY");
     const pvpWinnerTemp = officialPvpWinner;
     const pvpReplayIdTemp = officialPvpReplayId;
@@ -1791,6 +1866,8 @@ export function useBattle(options: UseBattleOptions) {
         : hasOfficialPvpResult
           ? (pvpWinnerTemp === "PLAYER" ? "VICTORY" : "DEFEAT")
       : result;
+    setBattleOutcome(finalResult);
+    setBattleState("ENDING");
     setOfficialGvgAttackId(null);
     setOfficialGvgReplayId(null);
     setOfficialGvgWinner(null);
@@ -1819,9 +1896,25 @@ export function useBattle(options: UseBattleOptions) {
     }
     setGvgTargetBaseId(null);
     const isWin = finalResult === "VICTORY";
+    if (modeTemp === "PATROL" && isWin && activePatrolEncounterIdRef.current) setSettledPatrolEncounterId(activePatrolEncounterIdRef.current);
+
+    // Keep the battle surface mounted through the final-hit hold. Result-side
+    // synchronization may continue behind the outcome presentation, but the
+    // tutorial encounter entry points must not become available again.
+    await new Promise((resolve) => window.setTimeout(resolve, Math.max(680, 760 / battleSpeed)));
+    setBattleState("OUTCOME");
+    await new Promise((resolve) => window.setTimeout(resolve, Math.max(900, 980 / battleSpeed)));
+
+    const releaseBattlePresentation = () => {
+      setBattleState(null);
+      setBattleMode(null);
+      setBattleOutcome(null);
+      setBattleSessionId(null);
+      battleEndingInFlightRef.current = false;
+    };
 
     if (modeTemp === "PVP_PRACTICE") {
-      setBattleSessionId(null);
+      releaseBattlePresentation();
       if (setConfirmDialogConfig) {
         setConfirmDialogConfig({
           isOpen: true,
@@ -1856,30 +1949,28 @@ export function useBattle(options: UseBattleOptions) {
       .eq("user_id", session.user.id)
       .single();
 
-    if (tutorialSession && tutorialSession.stage_id === "stage_tutorial_01" && tutorialSession.status === "BATTLE") {
+    if (modeTemp !== "PATROL" && tutorialSession && tutorialSession.stage_id === "stage_tutorial_01" && tutorialSession.status === "BATTLE") {
       if (isWin) {
         await supabase.from("story_sessions").update({ status: "OUTRO_TALK", current_node_id: 0 }).eq("user_id", session.user.id);
       } else {
         await supabase.from("story_sessions").update({ status: "INTRO_TALK", current_node_id: 0 }).eq("user_id", session.user.id);
       }
       await syncBootstrapData(session.user.id);
+      releaseBattlePresentation();
       return;
     }
 
     if (modeTemp === "PATROL") {
       // Patrol resolution is committed by resolve-battle. The browser only
       // plays the animation and reflects the already-authoritative result.
+      // Keep this component as the sole result owner until bootstrap has
+      // observed the resolved patrol; otherwise the tutorial prompt can mount
+      // again with a stale unresolved encounter and issue a duplicate start.
       await syncBootstrapData(session.user.id);
-      if (setConfirmDialogConfig) {
-        setConfirmDialogConfig({
-          isOpen: true,
-          title: "バトル結果",
-          message: `見回りバトル終了: ${finalResult === "VICTORY" ? "勝利！追加報酬が確定しました。" : "敗北：追加報酬はありません。"}`,
-          onConfirm: () => setConfirmDialogConfig(null),
-          onCancel: () => setConfirmDialogConfig(null)
-        });
-      }
+      setBattleState("RESULT");
+      return;
     } else if (modeTemp === "PVP") {
+      releaseBattlePresentation();
       if (!hasOfficialPvpResult || !pvpResultTemp) {
         setErrorMessage("PvPのサーバー確定結果を確認できませんでした。");
         return;
@@ -1904,6 +1995,7 @@ export function useBattle(options: UseBattleOptions) {
         });
       }
     } else if (modeTemp === "RAID") {
+      releaseBattlePresentation();
       if (hasOfficialRaidResult && raidResultTemp) {
         await syncBootstrapData(session.user.id);
         if (setConfirmDialogConfig) setConfirmDialogConfig({
@@ -1917,6 +2009,7 @@ export function useBattle(options: UseBattleOptions) {
       setErrorMessage("Raidのサーバー確定結果を確認できませんでした。再度Raidを開始してください。");
       return;
     } else if (modeTemp === "GVG") {
+      releaseBattlePresentation();
       const guildIdFilter = userGuildMember?.guild_id || "";
       if (gvgAttackIdTemp && gvgReplayIdTemp) {
         try {
@@ -2048,11 +2141,24 @@ export function useBattle(options: UseBattleOptions) {
     await syncBootstrapData(session.user.id);
   };
 
+  const completeBattleResult = () => {
+    if (battleState !== "RESULT") return;
+    setBattleState(null);
+    setBattleMode(null);
+    setBattleOutcome(null);
+    setBattleSessionId(null);
+    officialPatrolReplayIdRef.current = null;
+    officialPatrolWinnerRef.current = null;
+    battleEndingInFlightRef.current = false;
+    setTutorialBattleActive(false);
+  };
+
   const resumeBattleSession = (activeBattleSession: any, localCharIds: string[]) => {
     const pState = activeBattleSession.player_state as any;
     const eState = activeBattleSession.enemy_state as any;
 
     if (pState && eState) {
+      setTutorialBattleActive(activeBattleSession.battle_type === "PATROL" && tutorialStep === "TUTORIAL_BATTLE");
       setBattleSessionId(activeBattleSession.id);
       setBattleMode(activeBattleSession.battle_type as any);
       setBattleOpponentName(activeBattleSession.target_id);
@@ -2062,6 +2168,8 @@ export function useBattle(options: UseBattleOptions) {
       setOfficialGvgWinner(pState.officialGvgWinner === "PLAYER" ? "PLAYER" : pState.officialGvgWinner === "ENEMY" ? "ENEMY" : null);
       setOfficialPatrolReplayId(pState.officialPatrolReplayId || null);
       setOfficialPatrolWinner(pState.officialPatrolWinner === "PLAYER" ? "PLAYER" : pState.officialPatrolWinner === "ENEMY" ? "ENEMY" : null);
+      officialPatrolReplayIdRef.current = pState.officialPatrolReplayId || null;
+      officialPatrolWinnerRef.current = pState.officialPatrolWinner === "PLAYER" ? "PLAYER" : pState.officialPatrolWinner === "ENEMY" ? "ENEMY" : null;
       setOfficialPatrolEvents(serverBattleEvents(pState.officialPatrolEvents));
       setOfficialPatrolEventIndex(savedPatrolReplayCursor(pState.officialPatrolReplayId, pState.officialPatrolEventIndex));
       setOfficialPvpReplayId(pState.officialPvpReplayId || null);
@@ -2103,6 +2211,10 @@ export function useBattle(options: UseBattleOptions) {
     hasRaidControlBonus, setHasRaidControlBonus,
     battleOpponentName, setBattleOpponentName,
     battleState, setBattleState,
+    battleOutcome,
+    tutorialBattleActive,
+    battleEncounterLocked: battleState !== null || battleLoading,
+    settledPatrolEncounterId,
     battleLog, setBattleLog,
     ap, setAp,
     maxAp, setMaxAp,
@@ -2124,6 +2236,7 @@ export function useBattle(options: UseBattleOptions) {
     launchBattlePlaying,
     handleEndTurn,
     endBattleSession,
+    completeBattleResult,
     resumeBattleSession,
     resumeActiveBattleSession
   };

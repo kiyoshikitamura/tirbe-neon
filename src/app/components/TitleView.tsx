@@ -1,13 +1,18 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useGame } from "../context/GameContext";
 import "./TitleView.css";
+import { markTitleAssetReady } from "../lib/screenAssets";
 
 export default function TitleView() {
   const { showTitleView, setShowTitleView, authLoading, setupLoading, session, errorMessage, playCyberSe, handleFirstUserInteraction, handleStartNewGame } = useGame();
   const [showEntryActions, setShowEntryActions] = useState(false);
   const [isGameStartTransition, setIsGameStartTransition] = useState(false);
   const gameStartRef = useRef(false);
+
+  useEffect(() => {
+    if (showTitleView) markTitleAssetReady();
+  }, [showTitleView]);
 
   if (!showTitleView) return null;
 
@@ -54,7 +59,7 @@ export default function TitleView() {
           <div className="game-start-transition" role="status" aria-live="polite" aria-label="ゲーム開始中">
             <img src="/branding/tribe-neon-logo.png" alt="TRIBE NEON" />
             <div className="game-start-signal" aria-hidden="true"><i /><i /><i /></div>
-            <strong>ENTER THE NEON</strong>
+            <strong>起動中</strong>
           </div>
         ) : <div className="title-view-content">
           <div className="title-tap-area">
@@ -78,7 +83,7 @@ export default function TitleView() {
           </div>
           <div className="title-copyright">
             <span>v0.1.0</span>
-            <span>© 2026 TRIBE: NEON REIGN. All rights reserved.</span>
+            <span>© 2026 TRIBE NEON</span>
           </div>
         </div>
       </div>

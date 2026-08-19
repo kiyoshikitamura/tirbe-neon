@@ -13,10 +13,12 @@ test.beforeEach(async ({ page }) => {
       cost_diamond: 100,
       is_active: true,
     }]));
+    const tutorialSsrId = sessionStorage.getItem("m9x_tutorial_ssr_override") || "11111111-1111-1111-1111-111111111111";
     localStorage.setItem("mock_db_gacha_items_master", JSON.stringify([
+      { gacha_id: "CHAR_NORMAL", item_id: "char_yuji_01", rarity: "N", weight: 100 },
       { gacha_id: "CHAR_NORMAL", item_id: "char_go_01", rarity: "R", weight: 100 },
       { gacha_id: "CHAR_NORMAL", item_id: "char_kengo_01", rarity: "SR", weight: 100 },
-      { gacha_id: "CHAR_SPECIAL", item_id: "char_ssr_01", rarity: "SSR", weight: 100 },
+      { gacha_id: "CHAR_SPECIAL", item_id: tutorialSsrId, rarity: "SSR", weight: 100 },
     ]));
     localStorage.setItem("mock_db_quests", JSON.stringify([{
       id: "q_shinjuku_short",
@@ -26,34 +28,153 @@ test.beforeEach(async ({ page }) => {
       cash_reward: 800,
       exp_reward: 120,
     }]));
-    localStorage.setItem("mock_db_patrol_npcs", JSON.stringify([{
-      id: "npc_tutorial",
-      quest_id: "q_shinjuku_short",
-      npc_name: "路地裏のならず者",
-      enemy_data: { hp: 120, atk: 15, def: 5, spd: 40, luk: 1 },
-    }]));
+    const tutorialEnemy = { hp: 120, atk: 1, def: 0, spd: 20, luk: 0 };
+    localStorage.setItem("mock_db_patrol_npcs", JSON.stringify([
+      {
+        id: "npc_tutorial_short",
+        quest_id: "q_shinjuku_short",
+        npc_name: "路地裏のならず者",
+        enemy_data: tutorialEnemy,
+      },
+      {
+        id: "npc_tutorial_canonical",
+        quest_id: "q_shinjuku_1",
+        npc_name: "路地裏のならず者",
+        enemy_data: tutorialEnemy,
+      },
+    ]));
   });
 });
 
-async function enterNameRegistration(page: import("@playwright/test").Page) {
-  await expect(page.getByText("ようこそ。まずはあなたの名前を教えて。")).toBeVisible();
-  await page.getByRole("button", { name: "名前を決める" }).click();
-  await expect(page.getByPlaceholder("プレイヤー名を入力")).toBeVisible();
+const canvasAuditViewports = [
+  { width: 375, height: 844 },
+  { width: 390, height: 844 },
+  { width: 430, height: 932 },
+  { width: 1024, height: 768 },
+  { width: 1440, height: 900 },
+  { width: 1920, height: 1080 },
+];
+
+async function assertCenteredGameCanvas(page: import("@playwright/test").Page, screenSelector: string) {
+  for (const viewport of canvasAuditViewports) {
+    await page.setViewportSize(viewport);
+    await expect(page.locator(screenSelector).first()).toBeVisible();
+    const metrics = await page.locator(screenSelector).first().evaluate((screen) => {
+      const canvas = document.querySelector(".app-container");
+      if (!canvas) throw new Error("app-container is missing");
+      const canvasRect = canvas.getBoundingClientRect();
+      const screenRect = screen.getBoundingClientRect();
+      return {
+        canvasLeft: canvasRect.left,
+        canvasRight: canvasRect.right,
+        canvasWidth: canvasRect.width,
+        canvasCenter: canvasRect.left + canvasRect.width / 2,
+        screenLeft: screenRect.left,
+        screenRight: screenRect.right,
+        viewportCenter: innerWidth / 2,
+        viewportWidth: innerWidth,
+        documentWidth: document.documentElement.scrollWidth,
+      };
+    });
+    expect(metrics.canvasWidth).toBeLessThanOrEqual(Math.min(430, metrics.viewportWidth) + 1);
+    expect(Math.abs(metrics.canvasCenter - metrics.viewportCenter)).toBeLessThanOrEqual(1);
+    expect(metrics.screenLeft).toBeGreaterThanOrEqual(metrics.canvasLeft - 1);
+    expect(metrics.screenRight).toBeLessThanOrEqual(metrics.canvasRight + 1);
+    expect(metrics.documentWidth).toBeLessThanOrEqual(metrics.viewportWidth);
+  }
+  await page.setViewportSize({ width: 390, height: 844 });
 }
 
-async function revealTutorialTenPull(page: import("@playwright/test").Page) {
+async function enterNameRegistration(page: import("@playwright/test").Page, auditCanvas = false) {
+  await expect(page.locator('[data-entry-state="WORLD_INFORMATION"]')).toBeVisible();
+  if (auditCanvas) await assertCenteredGameCanvas(page, ".setup-container");
+  await expect(page.locator('[data-world-stage="4"] .setup-world-tap')).toBeVisible({ timeout: 30_000 });
+  await page.locator(".setup-world-tap").click();
+  await expect(page.locator('[data-entry-state="AGEHA_INTRO"]')).toBeVisible({ timeout: 5_000 });
+  if (auditCanvas) await assertCenteredGameCanvas(page, ".setup-container");
+  await page.locator(".setup-ageha-presentation .setup-primary-action").click();
+  await expect(page.locator('[data-entry-state="NAME_INPUT"]')).toBeVisible();
+  if (auditCanvas) await assertCenteredGameCanvas(page, ".setup-container");
+}
+
+async function revealTutorialTenPull(page: import("@playwright/test").Page, captureVisuals = false) {
+  const pullGate = page.getByRole("button", { name: /10 PLAYERS.*TAP TO START/ });
+  await expect(pullGate).toBeVisible({ timeout: 15_000 });
+  if (captureVisuals) await page.screenshot({ path: test.info().outputPath("G1-pull-gate.png") });
+  await pullGate.click();
+  await expect(page.getByRole("status", { name: "ガチャ演出中" })).toBeVisible();
+  if (captureVisuals) await page.screenshot({ path: test.info().outputPath("G2-pull-flash.png") });
   const reveal = page.locator(".tutorial-gacha-reveal");
+  const assertRevealParameters = async () => {
+    await expect(reveal.locator(".tutorial-gacha-reveal-parameters dt")).toHaveText(["HP", "ATK", "DEF"]);
+    await expect(reveal.locator(".tutorial-gacha-reveal-parameters dd")).toHaveCount(3);
+    await expect.poll(() => reveal.locator(".tutorial-gacha-reveal-parameters dd").allTextContents())
+      .not.toContain("—");
+    await expect(reveal).not.toContainText(/SPD|LUK|戦闘力/);
+  };
   await expect(reveal).toBeVisible({ timeout: 15_000 });
-  for (let index = 0; index < 10; index += 1) await reveal.click();
+  await expect(reveal).toContainText(/バランス|タンク|アタッカー|ディフェンダー|スピード|サポート/);
+  await assertRevealParameters();
+  await expect(reveal).toBeEnabled();
+  if (captureVisuals) await page.screenshot({ path: test.info().outputPath("G1-rarity-N.png") });
+  const revealTapStartedAt = Date.now();
+  await reveal.click();
+  await expect(reveal).toHaveAttribute("aria-label", "2人目を確認");
+  const revealTransitionMs = Date.now() - revealTapStartedAt;
+  const rDwellStartedAt = Date.now();
+  await expect(reveal).not.toHaveClass(/is-advancing/);
+  await assertRevealParameters();
+  await expect(reveal).toBeEnabled();
+  expect(revealTransitionMs).toBeGreaterThanOrEqual(200);
+  expect(revealTransitionMs).toBeLessThan(1_000);
+  test.info().annotations.push({ type: "gacha-reveal-n-transition-ms", description: String(revealTransitionMs) });
+  const rRevealDwellMs = Date.now() - rDwellStartedAt;
+  expect(rRevealDwellMs).toBeGreaterThanOrEqual(900);
+  expect(rRevealDwellMs).toBeLessThan(1_500);
+  test.info().annotations.push({ type: "gacha-reveal-r-dwell-ms", description: String(rRevealDwellMs) });
+  if (captureVisuals) await page.screenshot({ path: test.info().outputPath("G2-rarity-R.png") });
+  await reveal.click();
+  await expect(reveal).toHaveAttribute("aria-label", /^3/);
+  await expect(reveal).not.toHaveClass(/is-advancing/);
+  await assertRevealParameters();
+  await expect(reveal).toBeEnabled();
+  if (captureVisuals) await page.screenshot({ path: test.info().outputPath("G3-rarity-SR.png") });
+  for (let index = 2; index < 9; index += 1) {
+    await expect(reveal).toBeEnabled();
+    await reveal.click();
+  }
+  await expect(reveal).toHaveAttribute("data-presentation-state", "SSR_OMEN");
+  await expect(reveal).toContainText("SSR");
+  if (captureVisuals) {
+    for (const width of [375, 390, 430]) {
+      await page.setViewportSize({ width, height: 844 });
+      await page.screenshot({ path: test.info().outputPath(`m9x-ssr-omen-${width}.png`) });
+    }
+  }
+  await expect(reveal).toHaveAttribute("data-presentation-state", "SSR_REVEAL");
+  await expect(reveal).toContainText("SSR");
+  const finalCharacterId = await reveal.getAttribute("data-character-id");
+  await assertRevealParameters();
+  await expect(reveal).toBeEnabled();
+  if (captureVisuals) {
+    await page.waitForTimeout(700);
+    await page.screenshot({ path: test.info().outputPath("G4-rarity-SSR.png") });
+    for (const width of [375, 390, 430]) {
+      await page.setViewportSize({ width, height: 844 });
+      await page.screenshot({ path: test.info().outputPath(`m9x-ssr-reveal-${width}.png`) });
+    }
+  }
+  await reveal.click();
+  return finalCharacterId;
 }
 
 async function completeRuleGuide(page: import("@playwright/test").Page) {
-  await expect(page.getByRole("heading", { name: "街を進め" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "いろんな奴が、この街で生きてる。" })).toBeVisible();
   await page.getByRole("button", { name: "次へ" }).click();
-  await expect(page.getByRole("heading", { name: "仲間を強くしろ" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "仲間を集めて、もっと強くなる。" })).toBeVisible();
   await page.getByRole("button", { name: "次へ" }).click();
-  await expect(page.getByRole("heading", { name: "仲間とつながれ" })).toBeVisible();
-  await page.getByRole("button", { name: "ミッションハブへ" }).click();
+  await expect(page.getByRole("heading", { name: "気の合う奴らと、TRIBEへ。" })).toBeVisible();
+  await page.getByRole("button", { name: "ミッションへ" }).click();
 }
 
 test("common app shell owns safe area through entry and tutorial overlay", async ({ page }) => {
@@ -86,14 +207,13 @@ test("common app shell owns safe area through entry and tutorial overlay", async
   await expect(page.locator(".game-start-transition")).toBeVisible();
   await expect(page.getByRole("button", { name: /準備中/ })).toHaveCount(0);
   await enterNameRegistration(page);
-  await expect(page.getByRole("button", { name: "この名前で進む" })).toHaveClass(/semantic-cta--primary/);
+  await expect(page.getByRole("button", { name: "この名前で始める" })).toHaveClass(/semantic-cta--primary/);
   await page.screenshot({ path: test.info().outputPath("m9-design-registration-390.png") });
   await expect(page.locator(".app-container")).toHaveCount(1);
   await page.getByPlaceholder("プレイヤー名を入力").fill("境界確認");
-  await page.getByRole("button", { name: "この名前で進む" }).click();
   await page.getByRole("button", { name: "この名前で始める" }).click();
 
-  await expect(page.getByRole("dialog", { name: "TRIBE NEONへようこそ" })).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "アゲハからの案内" })).toBeVisible();
   await expect(page.locator(".app-container .app-container")).toHaveCount(0);
   await expect(page.locator(".footer-mobile")).toHaveCount(0);
   const bounds = await page.locator(".tutorial-world").evaluate((overlay) => {
@@ -112,12 +232,12 @@ test("free gacha presents one CTA, feedback, result assets, and formation connec
   await page.getByRole("button", { name: "はじめから" }).click();
   await enterNameRegistration(page);
   await page.getByPlaceholder("プレイヤー名を入力").fill("ガチャ確認");
-  await page.getByRole("button", { name: "この名前で進む" }).click();
   await page.getByRole("button", { name: "この名前で始める" }).click();
-  await page.getByRole("button", { name: "無料10連ガチャへ" }).click();
+  await page.getByRole("button", { name: "次へ" }).click();
 
-  await expect(page.getByRole("heading", { name: "ガチャ" })).toBeVisible();
-  await expect(page.getByText("STEP 1 / ノーマルガチャ")).toBeVisible();
+  await expect(page.getByRole("heading", { name: /無料10連/ })).toBeVisible();
+  await expect(page.getByText(/10枚目.*SSR確定/)).toHaveCount(0);
+  await expect(page.getByText("SSR 10体からランダム")).toHaveCount(0);
   await expect(page.getByText("スペシャルガチャ")).toHaveCount(0);
   const enabledActions = page.locator(".gacha-view-root button:enabled");
   await expect(enabledActions).toHaveCount(1);
@@ -134,6 +254,7 @@ test("free gacha presents one CTA, feedback, result assets, and formation connec
     });
     expect(metrics.scrollWidth).toBeLessThanOrEqual(metrics.clientWidth + 1);
     expect(metrics.ctaHeight).toBeGreaterThanOrEqual(44);
+    await page.screenshot({ path: test.info().outputPath(`m9x-tutorial-gacha-${width}.png`) });
   }
   await page.screenshot({ path: test.info().outputPath("m9-0c-gacha-430.png"), fullPage: true });
 
@@ -142,14 +263,18 @@ test("free gacha presents one CTA, feedback, result assets, and formation connec
     button.click();
     button.click();
   });
-  await expect(page.getByText(/ガチャ準備中|ガチャ実行中/)).toBeVisible();
+  await expect(page.getByText(/ガチャ準備中|ガチャ実行中/)).toHaveCount(0);
+  await expect(page.locator(".gacha-presentation-stage, .tutorial-gacha-reveal").first()).toBeVisible();
   await expect(page.locator(".blocker-spinner")).toHaveCount(0);
-  await revealTutorialTenPull(page);
+  await revealTutorialTenPull(page, true);
   await expect(page.getByText("ガチャ結果")).toBeVisible({ timeout: 15_000 });
   await expect(page.locator(".gacha-result-card")).toHaveCount(10);
   const elapsedMs = Date.now() - startedAt;
   test.info().annotations.push({ type: "gacha-result-ms", description: String(elapsedMs) });
-  expect(elapsedMs).toBeLessThan(15_000);
+  // Ten reveals are intentionally user-paced. R/SR/SSR each receive a
+  // distinct dwell tier, so the release contract measures responsiveness per
+  // tap rather than forcing the full presentation under the old auto-flow cap.
+  expect(elapsedMs).toBeLessThan(25_000);
   for (const width of [375, 390, 430]) {
     await page.setViewportSize({ width, height: 844 });
     const metrics = await page.locator(".gacha-result-panel").evaluate((modal) => {
@@ -176,8 +301,8 @@ test("free gacha presents one CTA, feedback, result assets, and formation connec
     expect(metrics.rowCount).toBe(2);
     await page.screenshot({ path: test.info().outputPath(`m9-1-gacha-result-${width}.png`), fullPage: true });
   }
-  await expect(page.locator(".gacha-result-card .character-presentation-thumbnail")).toHaveCount(9);
-  await expect(page.locator(".gacha-result-card").filter({ hasText: "GEAR" })).toHaveCount(1);
+  await expect(page.locator(".gacha-result-card .character-presentation-thumbnail")).toHaveCount(10);
+  await expect(page.locator(".gacha-result-card").filter({ hasText: "GEAR" })).toHaveCount(0);
   await expect(page.locator(".gacha-result-card .character-presentation img").first()).toBeVisible();
   const characterImage = await page.locator(".gacha-result-card .character-presentation img").first().evaluate((image) => {
     const rect = image.getBoundingClientRect();
@@ -186,7 +311,7 @@ test("free gacha presents one CTA, feedback, result assets, and formation connec
   expect(characterImage.width).toBeGreaterThanOrEqual(45);
   expect(characterImage.height).toBeGreaterThanOrEqual(45);
   expect(characterImage.objectFit).toBe("cover");
-  expect(characterImage.objectPosition).toContain("8%");
+  expect(characterImage.objectPosition).toContain("0%");
   const resultBounds = await page.locator(".gacha-result-panel").evaluate((modal) => {
     const rect = modal.getBoundingClientRect();
     return { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom, viewportWidth: innerWidth, viewportHeight: innerHeight };
@@ -198,7 +323,7 @@ test("free gacha presents one CTA, feedback, result assets, and formation connec
   await page.screenshot({ path: test.info().outputPath("m9-0c-result-430.png"), fullPage: true });
   await page.getByRole("button", { name: "編成へ進む" }).click();
 
-  await expect(page.getByRole("button", { name: "おすすめ編成で決定" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "おすすめ編成にする" })).toBeVisible();
   await expect(page.locator(".char-party-candidates .character-presentation-thumbnail").first()).toBeVisible();
   await page.screenshot({ path: test.info().outputPath("m9-0c-formation-430.png"), fullPage: true });
   await expect.poll(async () => page.evaluate(() => {
@@ -209,7 +334,7 @@ test("free gacha presents one CTA, feedback, result assets, and formation connec
 
   await page.reload();
   if (await page.getByText("TAP TO START").isVisible()) await page.getByText("TAP TO START").click();
-  await expect(page.getByRole("button", { name: "おすすめ編成で決定" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "おすすめ編成にする" })).toBeVisible();
 });
 
 test("formation advances directly to the quest boundary and resumes there", async ({ page }) => {
@@ -218,15 +343,14 @@ test("formation advances directly to the quest boundary and resumes there", asyn
   await page.getByRole("button", { name: "はじめから" }).click();
   await enterNameRegistration(page);
   await page.getByPlaceholder("プレイヤー名を入力").fill("編成確認");
-  await page.getByRole("button", { name: "この名前で進む" }).click();
   await page.getByRole("button", { name: "この名前で始める" }).click();
-  await page.getByRole("button", { name: "無料10連ガチャへ" }).click();
+  await page.getByRole("button", { name: "次へ" }).click();
   await page.getByRole("button", { name: "無料10連を引く" }).click();
   await revealTutorialTenPull(page);
   await expect(page.getByText("ガチャ結果")).toBeVisible({ timeout: 15_000 });
   await page.getByRole("button", { name: "編成へ進む" }).click();
 
-  const formationAction = page.getByRole("button", { name: "おすすめ編成で決定" });
+  const formationAction = page.getByRole("button", { name: "おすすめ編成にする" });
   await expect(formationAction).toBeVisible();
   await expect(page.locator(".char-party-modal button:enabled")).toHaveCount(1);
   for (const width of [375, 390, 430]) {
@@ -238,6 +362,7 @@ test("formation advances directly to the quest boundary and resumes there", asyn
     });
     expect(metrics.left).toBeGreaterThanOrEqual(0);
     expect(metrics.right).toBeLessThanOrEqual(metrics.viewportWidth);
+    await page.screenshot({ path: test.info().outputPath(`formation-canvas-${width}.png`) });
     expect(metrics.actionHeight).toBeGreaterThanOrEqual(44);
   }
   await page.screenshot({ path: test.info().outputPath("m9-0d-formation-430.png"), fullPage: true });
@@ -246,7 +371,7 @@ test("formation advances directly to the quest boundary and resumes there", asyn
     button.click();
   });
 
-  await expect(page.getByText(/最初の派遣では/)).toBeVisible();
+  await expect(page.locator('[data-acceptance-state="Q1"]')).toBeVisible();
   await expect.poll(async () => page.evaluate(() => {
     const userId = localStorage.getItem("tribe_demo_uuid");
     return JSON.parse(localStorage.getItem("mock_db_tutorial_progress") || "[]")
@@ -255,8 +380,94 @@ test("formation advances directly to the quest boundary and resumes there", asyn
 
   await page.reload();
   if (await page.getByText("TAP TO START").isVisible()) await page.getByText("TAP TO START").click();
-  await expect(page.getByText(/最初の派遣では/)).toBeVisible();
-  await expect(page.getByRole("button", { name: "おすすめ編成で決定" })).toHaveCount(0);
+  await expect(page.locator('[data-acceptance-state="Q1"]')).toBeVisible();
+  await expect(page.getByRole("button", { name: "おまかせ編成" })).toHaveCount(0);
+});
+
+test("three random tutorial SSRs remain the same owned character through result and reload recovery", async ({ page }) => {
+  test.setTimeout(240_000);
+  const cases = [
+    { id: "11111111-1111-1111-1111-111111111111", name: "レイジ" },
+    { id: "33333333-3333-3333-3333-333333333333", name: "ルイ" },
+    { id: "22222222-2222-2222-2222-222222222222", name: "チャン" },
+  ].filter((entry) => !process.env.M9X_SSR_CASE || entry.name === process.env.M9X_SSR_CASE);
+
+  for (const [caseIndex, tutorialSsr] of cases.entries()) {
+    await page.goto("/");
+    await page.evaluate(({ id }) => {
+      localStorage.clear();
+      sessionStorage.clear();
+      sessionStorage.setItem("m9x_tutorial_ssr_override", id);
+    }, tutorialSsr);
+    await page.reload();
+
+    await page.getByText("TAP TO START").click();
+    await page.getByRole("button", { name: "はじめから" }).click();
+    await enterNameRegistration(page);
+    await page.getByPlaceholder("プレイヤー名を入力").fill(`連続性${caseIndex + 1}`);
+    await page.getByRole("button", { name: "この名前で始める" }).click();
+    await page.getByRole("button", { name: "次へ" }).click();
+    await page.getByRole("button", { name: "無料10連を引く" }).click();
+    const ssrRevealId = await revealTutorialTenPull(page);
+    expect(ssrRevealId).toBe(tutorialSsr.id);
+    await expect(page.getByText("ガチャ結果")).toBeVisible();
+    const ownedId = await page.evaluate((masterId) => {
+      const userId = localStorage.getItem("tribe_demo_uuid");
+      return JSON.parse(localStorage.getItem("mock_db_user_characters") || "[]")
+        .find((row: any) => row.user_id === userId && row.character_id === masterId)?.id || null;
+    }, tutorialSsr.id);
+    expect(ownedId).toBeTruthy();
+
+    await page.getByRole("button", { name: "編成へ進む" }).click();
+    await expect(page.locator(`.char-party-candidates [data-user-character-id="${ownedId}"]`)).toHaveClass(/is-guaranteed-ssr/);
+    await page.reload();
+    if (await page.getByText("TAP TO START").isVisible()) await page.getByText("TAP TO START").click();
+    await expect(page.getByRole("button", { name: "おすすめ編成にする" })).toBeVisible();
+    await page.getByRole("button", { name: "おすすめ編成にする" }).click();
+
+    await expect(page.locator('[data-acceptance-state="Q1"]')).toBeVisible();
+    await expect(page.locator(`.tutorial-wire-member[data-user-character-id="${ownedId}"]`)).toHaveAttribute("data-character-id", tutorialSsr.id);
+    const formationContract = await page.evaluate(() => {
+      const userId = localStorage.getItem("tribe_demo_uuid");
+      const main = JSON.parse(localStorage.getItem("mock_db_user_main_formations") || "[]")
+        .find((row: any) => row.user_id === userId && Number(row.slot) === 1);
+      const defense = JSON.parse(localStorage.getItem("mock_db_pvp_defense_decks") || "[]")
+        .find((row: any) => row.user_id === userId);
+      return { main: main?.user_character_id || null, defense: defense?.character_1_id || null };
+    });
+    expect(formationContract).toEqual({ main: ownedId, defense: ownedId });
+
+    await page.reload();
+    await expect(page.locator(`.tutorial-wire-member[data-user-character-id="${ownedId}"]`)).toBeVisible();
+    await page.getByRole("button", { name: "新宿へ派遣する" }).click();
+    await expect(page.locator('[data-acceptance-state="Q3"]')).toBeVisible();
+    await page.reload();
+    await expect(page.locator(`.tutorial-wire-progress-character[data-user-character-id="${ownedId}"]`)).toBeVisible();
+    await page.getByRole("button", { name: /すぐに時短する/ }).click();
+    await expect(page.locator('[data-acceptance-state="Q5"]')).toBeVisible();
+    await page.reload();
+    await expect(page.locator(`.tutorial-wire-return-character[data-user-character-id="${ownedId}"]`)).toBeVisible();
+    await page.getByRole("button", { name: "次へ" }).click();
+    await page.getByRole("button", { name: "バトルへ" }).click();
+
+    await expect(page.locator('[data-acceptance-state="B1"] .tutorial-battle-leader.is-player')).toHaveAttribute("data-character-id", tutorialSsr.id);
+    const trace = await page.evaluate(() => (window as any).__TRIBE_TUTORIAL_BATTLE_TRACE__ || []);
+    expect(trace.some((entry: any) => entry.phase === "replay_resolved" && entry.playerCharacterIds?.includes(tutorialSsr.id))).toBeTruthy();
+    expect(trace.some((entry: any) => entry.phase === "replay_response" && entry.accepted === false)).toBeFalsy();
+
+    await page.getByRole("button", { name: "バトルスタート" }).click();
+    await expect(page.locator('[data-acceptance-state="B6"]')).toBeVisible({ timeout: 40_000 });
+    await expect(page.locator(".battle-result-summary")).toContainText("QUEST COMPLETE");
+    await page.reload();
+    await expect.poll(async () => (
+      await page.locator('[data-acceptance-state="B6"]').isVisible()
+      || await page.locator(".tutorial-rule-screen").isVisible()
+    )).toBe(true);
+    if (await page.locator('[data-acceptance-state="B6"]').isVisible()) {
+      await page.getByRole("button", { name: "次へ" }).click();
+    }
+    await expect(page.locator(".tutorial-rule-screen")).toBeVisible();
+  }
 });
 
 test("first quest connects dispatch, official battle, and one reward to the completion boundary", async ({ page }) => {
@@ -284,18 +495,16 @@ test("first quest connects dispatch, official battle, and one reward to the comp
   }, { userId });
 
   await page.goto("/");
-  await page.getByText("TAP TO START").click();
-  await expect(page.getByText(/最初の仲間と派遣先は選択済み/)).toBeVisible();
+  await expect(page.locator('[data-acceptance-state="Q1"]')).toBeVisible();
   await expect(page.locator(".footer-mobile")).toHaveCount(0);
-  await expect(page.locator(".quest-stage-track .is-current")).toContainText("派遣");
-  await expect(page.locator(".patrol-char-item:not(.locked) .character-presentation-thumbnail").first()).toBeVisible();
+  await expect(page.locator(".tutorial-wire-member .character-presentation")).toBeVisible();
 
-  const questAction = page.getByRole("button", { name: "クエスト開始" });
+  const questAction = page.getByRole("button", { name: "新宿へ派遣する" });
   await expect(questAction).toBeEnabled();
   for (const width of [375, 390, 430]) {
     await page.setViewportSize({ width, height: 844 });
     const metrics = await page.locator(".patrol-container").evaluate((root) => {
-      const action = root.querySelector(".tutorial-primary-target button") as HTMLElement | null;
+      const action = root.querySelector("button") as HTMLElement | null;
       return { scrollWidth: root.scrollWidth, clientWidth: root.clientWidth, actionHeight: action?.getBoundingClientRect().height || 0 };
     });
     expect(metrics.scrollWidth).toBeLessThanOrEqual(metrics.clientWidth + 1);
@@ -307,46 +516,38 @@ test("first quest connects dispatch, official battle, and one reward to the comp
     button.click();
     button.click();
   });
-  await expect(page.getByRole("button", { name: "CASH時短（今回無料）" })).toBeVisible();
-  await expect(page.locator(".quest-stage-track .is-current")).toContainText("無料時短");
+  await expect(page.getByRole("button", { name: /すぐに時短する/ })).toBeVisible();
   test.info().annotations.push({ type: "quest-start-ms", description: String(Date.now() - questStartedAt) });
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem("mock_db_user_patrols") || "[]").length)).toBe(1);
 
   await page.reload();
-  await page.getByText("TAP TO START").click();
-  const instantAction = page.getByRole("button", { name: "CASH時短（今回無料）" });
+  await expect(page.locator('[data-acceptance-state="Q3"]')).toBeVisible();
+  const instantAction = page.getByRole("button", { name: /すぐに時短する/ });
   await expect(instantAction).toBeVisible();
   const instantStartedAt = Date.now();
   await instantAction.evaluate((button: HTMLButtonElement) => {
     button.click();
     button.click();
   });
-  await expect(page.getByText("初回バトル")).toBeVisible();
-  await expect(page.locator(".quest-stage-track .is-current")).toContainText("バトル");
+  await expect(page.locator('[data-acceptance-state="Q5"]')).toBeVisible();
   test.info().annotations.push({ type: "quest-instant-ms", description: String(Date.now() - instantStartedAt) });
-  const promptMetrics = await page.locator(".modal-card").filter({ hasText: "初回バトル" }).evaluate((modal) => {
-    const action = modal.querySelector("button") as HTMLElement | null;
-    const rect = modal.getBoundingClientRect();
-    return { left: rect.left, right: rect.right, viewportWidth: innerWidth, actionHeight: action?.getBoundingClientRect().height || 0 };
-  });
-  expect(promptMetrics.left).toBeGreaterThanOrEqual(0);
-  expect(promptMetrics.right).toBeLessThanOrEqual(promptMetrics.viewportWidth);
-  expect(promptMetrics.actionHeight).toBeGreaterThanOrEqual(44);
+  await expect(page.locator(".modal-card").filter({ hasText: "初回バトル" })).toHaveCount(0);
 
   await page.reload();
-  await page.getByText("TAP TO START").click();
-  const battlePromptAction = page.getByRole("button", { name: "チュートリアルバトル開始" });
+  await expect(page.locator('[data-acceptance-state="Q5"]')).toBeVisible();
+  await page.getByRole("button", { name: "次へ" }).click();
+  const battlePromptAction = page.getByRole("button", { name: "バトルへ" });
   await expect(battlePromptAction).toBeVisible();
   await battlePromptAction.evaluate((button: HTMLButtonElement) => {
     button.click();
     button.click();
   });
-  await expect(page.getByText("初回バトル準備")).toBeVisible();
+  await expect(page.locator('[data-acceptance-state="B1"]')).toBeVisible();
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem("mock_db_battle_replay_sessions") || "[]").length)).toBe(1);
 
   for (const width of [375, 390, 430]) {
     await page.setViewportSize({ width, height: 844 });
-    const setupMetrics = await page.locator(".setup-container").evaluate((setup) => {
+    const setupMetrics = await page.locator(".tutorial-battle-briefing").evaluate((setup) => {
       const cta = setup.querySelector(".start-battle-btn")?.getBoundingClientRect();
       return { scrollWidth: setup.scrollWidth, clientWidth: setup.clientWidth, ctaHeight: cta?.height || 0 };
     });
@@ -355,7 +556,7 @@ test("first quest connects dispatch, official battle, and one reward to the comp
     await page.screenshot({ path: test.info().outputPath(`m9-battle-setup-${width}.png`), fullPage: true });
   }
 
-  await page.getByRole("button", { name: "バトル開始" }).evaluate((button: HTMLButtonElement) => {
+  await page.getByRole("button", { name: "バトルスタート" }).evaluate((button: HTMLButtonElement) => {
     button.click();
     button.click();
   });
@@ -366,8 +567,10 @@ test("first quest connects dispatch, official battle, and one reward to the comp
   await expect(page.locator(".battle-unit.is-actor").first()).toBeVisible();
   await expect(page.locator(".battle-unit.is-target").first()).toBeVisible();
   await expect(page.locator(".battle-action-sequence")).toBeVisible();
+  await page.screenshot({ path: test.info().outputPath("B3-normal-attack.png"), fullPage: true });
   await expect(page.locator(".battle-skill-cutin.is-ssr")).toBeVisible({ timeout: 8_000 });
   await expect(page.locator(".battle-cutin-copy")).toContainText("SSR TEST BREAK");
+  await page.screenshot({ path: test.info().outputPath("B4-skill.png"), fullPage: true });
   await page.screenshot({ path: test.info().outputPath("m9-battle-ssr-cutin-1x-390.png"), fullPage: true });
   await page.getByRole("button", { name: "1x" }).click();
   await expect(page.getByRole("button", { name: "2x" })).toBeVisible();
@@ -404,21 +607,17 @@ test("first quest connects dispatch, official battle, and one reward to the comp
     await page.screenshot({ path: test.info().outputPath(`m9-battle-first-${width}.png`), fullPage: true });
   }
   await page.getByRole("button", { name: "再開" }).click();
-  await expect(page.getByText("バトル結果")).toBeVisible({ timeout: 35_000 });
-  await page.getByRole("button", { name: "クエスト結果へ" }).click();
-  await expect(page.getByText(/確定した勝利報酬/)).toBeVisible();
-
-  const rewardAction = page.getByRole("button", { name: "勝利報酬を獲得" });
+  await expect(page.locator('[data-acceptance-state="B5"]')).toBeVisible({ timeout: 35_000 });
+  await page.screenshot({ path: test.info().outputPath("B5-final-hit.png"), fullPage: true });
+  await expect(page.locator('[data-acceptance-state="B6"]')).toBeVisible({ timeout: 35_000 });
   const rewardStartedAt = Date.now();
-  await rewardAction.evaluate((button: HTMLButtonElement) => {
-    button.click();
-    button.click();
-  });
-  await expect(page.getByText("クエスト完了報告")).toBeVisible();
+  await expect(page.locator(".battle-result-rewards")).toBeVisible();
+  await expect(page.locator(".battle-result-summary")).toContainText("QUEST COMPLETE");
+  await expect(page.getByRole("button", { name: "勝利報酬を獲得" })).toHaveCount(0);
   test.info().annotations.push({ type: "quest-reward-ms", description: String(Date.now() - rewardStartedAt) });
   for (const width of [375, 390, 430]) {
     await page.setViewportSize({ width, height: 844 });
-    const rewardMetrics = await page.locator(".patrol-reward-modal").evaluate((modal) => {
+    const rewardMetrics = await page.locator(".battle-result-summary").evaluate((modal) => {
       const action = modal.querySelector("button") as HTMLElement | null;
       const rect = modal.getBoundingClientRect();
       return { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom, viewportWidth: innerWidth, viewportHeight: innerHeight, actionHeight: action?.getBoundingClientRect().height || 0 };
@@ -434,9 +633,9 @@ test("first quest connects dispatch, official battle, and one reward to the comp
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem("mock_db_tutorial_progress") || "[]")[0]?.step_id)).toBe("TUTORIAL_BATTLE");
   await page.screenshot({ path: test.info().outputPath("m9-0e-reward-430.png"), fullPage: true });
 
-  await page.getByRole("button", { name: "報酬を確認して次へ" }).click();
+  await page.getByRole("button", { name: "次へ" }).click();
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem("mock_db_tutorial_progress") || "[]")[0]?.step_id)).toBe("RULE_GUIDE");
-  await expect(page.getByRole("heading", { name: "街を進め" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "いろんな奴が、この街で生きてる。" })).toBeVisible();
 });
 
 test("claimed tutorial reward resumes at the completion boundary after reload", async ({ page }) => {
@@ -462,8 +661,7 @@ test("claimed tutorial reward resumes at the completion boundary after reload", 
   }, { userId });
 
   await page.goto("/");
-  await page.getByText("TAP TO START").click();
-  await expect(page.getByRole("heading", { name: "街を進め" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "いろんな奴が、この街で生きてる。" })).toBeVisible();
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem("mock_db_tutorial_progress") || "[]")[0]?.step_id)).toBe("RULE_GUIDE");
 });
 
@@ -480,12 +678,11 @@ test("tutorial completion resumes through account save and exposes the Home next
   }, { userId });
 
   await page.goto("/");
-  await page.getByText("TAP TO START").click();
-  await expect(page.getByRole("heading", { name: "街を進め" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "いろんな奴が、この街で生きてる。" })).toBeVisible();
 
-  const completionMetrics = await page.locator(".modal-card").evaluate((modal) => {
-    const action = modal.querySelector("button") as HTMLElement | null;
-    const rect = modal.getBoundingClientRect();
+  const completionMetrics = await page.locator(".tutorial-rule-screen").evaluate((screen) => {
+    const action = screen.querySelector("button") as HTMLElement | null;
+    const rect = screen.getBoundingClientRect();
     return { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom, viewportWidth: innerWidth, viewportHeight: innerHeight, actionHeight: action?.getBoundingClientRect().height || 0 };
   });
   expect(completionMetrics.left).toBeGreaterThanOrEqual(0);
@@ -509,19 +706,24 @@ test("tutorial completion resumes through account save and exposes the Home next
     button.click();
   });
 
-  await expect(page.locator(".mypage-primary-cta")).toContainText("NEXT ACTION");
+  await expect(page.locator(".mypage-primary-cta")).toContainText("次にすること");
   await expect(page.locator(".mypage-primary-cta")).toContainText("最初のPvPへ挑戦");
   await expect(page.locator(".footer-mobile")).toBeVisible();
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem("mock_db_tutorial_progress") || "[]")[0]?.step_id)).toBe("AUTHENTICATION");
 
   await page.reload();
-  await page.getByText("TAP TO START").click();
   await expect(page.locator(".mypage-primary-cta")).toContainText("最初のPvPへ挑戦");
   await expect(page.getByText("ゲームデータを保存")).toBeHidden();
 });
 
 test("new mobile player completes the guided first session without footer navigation", async ({ page }) => {
   const timingStages = new Set<string>();
+  const failedImages: string[] = [];
+  const pageErrors: string[] = [];
+  page.on("response", (response) => {
+    if (response.request().resourceType() === "image" && !response.ok()) failedImages.push(`${response.status()} ${response.url()}`);
+  });
+  page.on("pageerror", (error) => pageErrors.push(error.message));
   page.on("console", (message) => {
     if (!message.text().includes("[M9 scout timing]")) return;
     const stage = message.args()[1]?.evaluate((value: any) => value?.stage).catch(() => null);
@@ -529,23 +731,24 @@ test("new mobile player completes the guided first session without footer naviga
   });
 
   await page.goto("/");
+  await assertCenteredGameCanvas(page, ".title-view-overlay");
   await page.getByText("TAP TO START").click();
   await page.getByRole("button", { name: "はじめから" }).click();
 
-  await enterNameRegistration(page);
+  await enterNameRegistration(page, true);
 
-  await expect(page.getByRole("heading", { name: "名前を教えて" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "プレイヤー名" })).toBeVisible();
   await page.getByPlaceholder("プレイヤー名を入力").fill("新宿ナイン");
-  await page.getByRole("button", { name: "この名前で進む" }).click();
-  await expect(page.getByText("プレイヤー名の確認")).toBeVisible();
   await page.getByRole("button", { name: "この名前で始める" }).click();
 
-  await expect(page.getByRole("dialog", { name: "TRIBE NEONへようこそ" })).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "アゲハからの案内" })).toBeVisible();
+  await assertCenteredGameCanvas(page, ".tutorial-world");
   await expect(page.locator(".footer-mobile")).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "無料10連ガチャへ" })).toHaveClass(/semantic-cta--primary/);
-  await page.getByRole("button", { name: "無料10連ガチャへ" }).click();
+  await expect(page.getByRole("button", { name: "次へ" })).toHaveClass(/semantic-cta--primary/);
+  await page.getByRole("button", { name: "次へ" }).click();
 
-  await expect(page.getByText("STEP 1 / ノーマルガチャ")).toBeVisible();
+  await expect(page.getByRole("heading", { name: /無料10連/ })).toBeVisible();
+  await assertCenteredGameCanvas(page, ".gacha-view-root");
   await expect(page.getByRole("button", { name: "無料10連を引く" })).toBeVisible();
   await expect(page.getByRole("button", { name: "無料10連を引く" })).toHaveClass(/semantic-cta--primary/);
   await page.getByRole("button", { name: "無料10連を引く" }).click();
@@ -554,47 +757,68 @@ test("new mobile player completes the guided first session without footer naviga
   await expect(page.getByRole("button", { name: "編成へ進む" })).toHaveClass(/semantic-cta--primary/);
   await page.getByRole("button", { name: "編成へ進む" }).click();
 
-  await expect(page.getByRole("button", { name: "おすすめ編成で決定" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "おすすめ編成で決定" })).toHaveClass(/semantic-cta--primary/);
-  await page.getByRole("button", { name: "おすすめ編成で決定" }).click();
-  await expect(page.getByText(/最初の派遣では/)).toBeVisible();
-  await expect(page.getByRole("button", { name: "クエスト開始" })).toBeEnabled();
-  await expect(page.getByRole("button", { name: "クエスト開始" })).toHaveClass(/variant-primary/);
-  await page.getByRole("button", { name: "クエスト開始" }).click();
-  await expect(page.getByRole("button", { name: "CASH時短（今回無料）" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "CASH時短（今回無料）" })).toHaveClass(/variant-primary/);
-  await page.getByRole("button", { name: "CASH時短（今回無料）" }).click();
-
-  await expect(page.getByText("初回バトル")).toBeVisible();
-  await expect(page.getByRole("button", { name: "チュートリアルバトル開始" })).toHaveClass(/semantic-cta--primary/);
-  await page.getByRole("button", { name: "チュートリアルバトル開始" }).click();
-  await expect(page.getByText("初回バトル準備")).toBeVisible();
-  await expect(page.getByRole("button", { name: "バトル開始" })).toHaveClass(/semantic-cta--primary/);
-  await page.getByRole("button", { name: "バトル開始" }).click();
-  await expect(page.getByText("バトル結果")).toBeVisible({ timeout: 35_000 });
-  await expect(page.getByRole("button", { name: "クエスト結果へ" })).toHaveClass(/variant-primary/);
-  await page.getByRole("button", { name: "クエスト結果へ" }).click();
-
-  await expect(page.getByText(/確定した勝利報酬/)).toBeVisible();
-  await expect(page.getByRole("button", { name: "勝利報酬を獲得" })).toHaveClass(/variant-primary/);
-  await page.getByRole("button", { name: "勝利報酬を獲得" }).click();
-  await expect(page.getByText("クエスト完了報告")).toBeVisible();
-  await expect(page.getByRole("button", { name: "報酬を確認して次へ" })).toHaveClass(/variant-primary/);
-  await page.getByRole("button", { name: "報酬を確認して次へ" }).click();
+  await expect(page.getByRole("button", { name: "おすすめ編成にする" })).toBeVisible();
+  await assertCenteredGameCanvas(page, ".char-party-modal-backdrop");
+  await expect(page.getByRole("button", { name: "おすすめ編成にする" })).toHaveClass(/semantic-cta--primary/);
+  await page.getByRole("button", { name: "おすすめ編成にする" }).click();
+  await expect(page.locator('[data-acceptance-state="Q1"]')).toBeVisible();
+  await assertCenteredGameCanvas(page, ".patrol-container");
+  await page.screenshot({ path: test.info().outputPath("Q1-dispatch-before.png"), fullPage: true });
+  await expect(page.getByRole("button", { name: "新宿へ派遣する" })).toBeEnabled();
+  await expect(page.getByRole("button", { name: "新宿へ派遣する" })).toHaveClass(/variant-primary/);
+  await page.getByRole("button", { name: "新宿へ派遣する" }).click();
+  await expect(page.locator('[data-acceptance-state="Q2"]')).toBeVisible();
+  await page.screenshot({ path: test.info().outputPath("Q2-dispatch-started.png"), fullPage: true });
+  await expect(page.locator('[data-acceptance-state="Q3"]')).toBeVisible();
+  await page.screenshot({ path: test.info().outputPath("Q3-dispatch-progress.png"), fullPage: true });
+  const speedUp = page.getByRole("button", { name: /すぐに時短する/ });
+  await expect(speedUp).toHaveClass(/variant-primary/);
+  await speedUp.click();
+  await expect(page.locator('[data-acceptance-state="Q4"]')).toBeVisible();
+  await page.screenshot({ path: test.info().outputPath("Q4-speed-up.png"), fullPage: true });
+  await expect(page.locator('[data-acceptance-state="Q5"]')).toBeVisible();
+  await page.screenshot({ path: test.info().outputPath("Q5-return.png"), fullPage: true });
+  await page.getByRole("button", { name: "次へ" }).click();
+  await expect(page.locator('[data-acceptance-state="Q6"]')).toBeVisible();
+  await page.screenshot({ path: test.info().outputPath("Q6-battle-encounter.png"), fullPage: true });
+  await page.getByRole("button", { name: "バトルへ" }).click();
+  await expect(page.locator('[data-acceptance-state="B1"]')).toBeVisible();
+  await assertCenteredGameCanvas(page, ".battle-screen");
+  await page.screenshot({ path: test.info().outputPath("B1-battle-pre.png"), fullPage: true });
+  await expect(page.getByRole("button", { name: "バトルスタート" })).toHaveClass(/semantic-cta--primary/);
+  await page.getByRole("button", { name: "バトルスタート" }).click();
+  await expect(page.locator('[data-acceptance-state="B2"]')).toBeVisible();
+  await page.screenshot({ path: test.info().outputPath("B2-battle-start.png"), fullPage: true });
+  await expect(page.locator(".quest-battle-viewer")).toBeVisible();
+  await assertCenteredGameCanvas(page, ".battle-screen");
+  await expect(page.locator('[data-acceptance-state="B3"]')).toBeVisible();
+  await page.screenshot({ path: test.info().outputPath("B3-normal-attack.png"), fullPage: true });
+  await expect(page.locator('[data-acceptance-state="B5"]')).toBeVisible({ timeout: 35_000 });
+  await page.screenshot({ path: test.info().outputPath("B5-final-hit.png"), fullPage: true });
+  await expect(page.locator('[data-acceptance-state="B6"]')).toBeVisible({ timeout: 35_000 });
+  await assertCenteredGameCanvas(page, ".battle-ending-screen");
+  await expect(page.locator(".battle-result-rewards")).toBeVisible();
+  await page.screenshot({ path: test.info().outputPath("B6-result.png"), fullPage: true });
+  await expect(page.getByRole("button", { name: "勝利報酬を獲得" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "次へ" })).toHaveClass(/variant-primary/);
+  await page.getByRole("button", { name: "次へ" }).click();
+  await expect(page.locator(".tutorial-rule-screen")).toBeVisible();
+  await assertCenteredGameCanvas(page, ".tutorial-rule-screen");
   await completeRuleGuide(page);
-  await expect(page.getByText("クエスト完了報告")).toHaveCount(0);
+  await expect(page.getByText("クエスト結果")).toHaveCount(0);
   await page.waitForTimeout(750);
-  await expect(page.getByText("クエスト完了報告")).toHaveCount(0);
+  await expect(page.getByText("クエスト結果")).toHaveCount(0);
 
   await expect(page.getByText("ゲームデータを保存")).toBeVisible();
+  await assertCenteredGameCanvas(page, ".modal-overlay");
   await page.getByPlaceholder("メールアドレス").fill("m9@example.com");
   await page.getByPlaceholder("パスワード（6文字以上）").fill("m9-preview-pass");
-  await expect(page.getByRole("button", { name: "メールアカウントを連携" })).toHaveClass(/semantic-cta--primary/);
-  await expect(page.getByRole("button", { name: "Googleアカウントを連携" })).toHaveClass(/semantic-cta--secondary/);
+  await expect(page.getByRole("button", { name: "Googleアカウントを連携" })).toHaveClass(/semantic-cta--primary/);
+  await expect(page.getByRole("button", { name: "メールアカウントを連携" })).toHaveClass(/semantic-cta--secondary/);
   await page.getByRole("button", { name: "メールアカウントを連携" }).click();
   await expect(page.locator(".mypage-primary-cta")).toBeVisible();
   await page.waitForTimeout(750);
-  await expect(page.getByText("クエスト完了報告")).toHaveCount(0);
+  await expect(page.getByText("クエスト結果")).toHaveCount(0);
   await expect(page.locator(".mypage-primary-cta")).toHaveClass(/semantic-cta--primary/);
   await expect(page.locator(".mypage-primary-cta")).toContainText("最初のPvPへ挑戦");
   await expect(page.locator(".footer-mobile")).toBeVisible();
@@ -621,9 +845,11 @@ test("new mobile player completes the guided first session without footer naviga
     (window as typeof window & { __TRIBE_ACTION_METRICS__?: unknown[] }).__TRIBE_ACTION_METRICS__ || []
   ));
   test.info().annotations.push({ type: "action-performance", description: JSON.stringify(actionMetrics) });
+  expect(failedImages).toEqual([]);
+  expect(pageErrors).toEqual([]);
 });
 
-test("growth preparation and step advancement resume idempotently after reload", async ({ page }) => {
+test("formation remains the only post-gacha tutorial action and resumes idempotently", async ({ page }) => {
   const userId = "00000000-0000-4000-8000-000000000909";
   await page.addInitScript(({ userId }) => {
     localStorage.setItem("tribe_demo_uuid", userId);
@@ -633,17 +859,14 @@ test("growth preparation and step advancement resume idempotently after reload",
     localStorage.setItem("mock_db_pvp_defense_decks", JSON.stringify([{ id: `deck_${userId}`, user_id: userId, character_1_id: `starter_${userId}` }]));
     localStorage.setItem("mock_db_tutorial_progress", JSON.stringify([{ user_id: userId, step_id: "AUTO_FORMATION" }]));
     localStorage.setItem("mock_db_user_items", JSON.stringify([{ user_id: userId, item_id: "CHAR_EXP_S", quantity: 0 }]));
-    localStorage.setItem("mock_db_user_funnel_milestones", JSON.stringify([{ user_id: userId, milestone: "first_growth", occurrence_count: 1 }]));
   }, { userId });
 
   await page.goto("/");
-  await expect(page.getByText("TAP TO START")).toBeVisible();
-  await page.getByText("TAP TO START").click();
-  await expect(page.getByText(/最初の派遣では/)).toBeVisible();
+  await expect(page.getByRole("button", { name: "おすすめ編成にする" })).toBeVisible();
   await page.reload();
-  await expect(page.getByText("TAP TO START")).toBeVisible();
-  await page.getByText("TAP TO START").click();
-  await expect(page.getByText(/最初の派遣では/)).toBeVisible();
+  await expect(page.getByRole("button", { name: "おすすめ編成にする" })).toBeVisible();
+  await page.getByRole("button", { name: "おすすめ編成にする" }).click();
+  await expect(page.locator('[data-acceptance-state="Q1"]')).toBeVisible();
   const result = await page.evaluate(() => ({
     step: JSON.parse(localStorage.getItem("mock_db_tutorial_progress") || "[]")[0]?.step_id,
     quantity: JSON.parse(localStorage.getItem("mock_db_user_items") || "[]")[0]?.quantity,

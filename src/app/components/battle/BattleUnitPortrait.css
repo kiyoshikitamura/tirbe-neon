@@ -17,21 +17,23 @@
 .battle-unit-action .battle-unit-art { height: clamp(148px, 25dvh, 205px); }
 
 .battle-unit-meta { display: flex; align-items: center; justify-content: space-between; gap: 3px; padding: 3px 4px 2px; }
-.battle-unit-meta strong { min-width: 0; overflow: hidden; font-size: clamp(7px, 2vw, 9px); text-overflow: ellipsis; white-space: nowrap; }
-.battle-unit-meta span { flex: 0 0 auto; color: color-mix(in srgb, var(--battle-side) 82%, white); font-size: 6px; }
-.battle-unit-hp { height: 6px; margin: 0 4px; overflow: hidden; border: 1px solid rgba(255, 255, 255, .12); border-radius: 2px; background: #1d242b; }
+.battle-unit-meta strong { min-width: 0; overflow: hidden; font-size: clamp(9px, 2.5vw, 11px); text-overflow: ellipsis; white-space: nowrap; }
+.battle-unit-meta span { flex: 0 0 auto; color: color-mix(in srgb, var(--battle-side) 82%, white); font-size: 8px; }
+.battle-unit-hp { height: 8px; margin: 0 4px; overflow: hidden; border: 1px solid rgba(255, 255, 255, .2); border-radius: 2px; background: #1d242b; }
 .battle-unit-hp i { display: block; height: 100%; background: linear-gradient(90deg, #28c878, #a7e253); box-shadow: 0 0 8px rgba(60, 220, 135, .35); transition: width .34s ease-out; }
 .battle-unit-enemy .battle-unit-hp i { background: linear-gradient(90deg, #ff3f5f, #f7a145); }
-.battle-unit-hp-copy { display: flex; justify-content: space-between; padding: 2px 4px 3px; color: #96a4af; font-size: 6px; }
+.battle-unit-hp-copy { display: flex; justify-content: space-between; padding: 3px 4px 4px; color: #b5c1ca; font-size: 8px; }
 .battle-unit-hp-copy b { color: #fff; }
 
-.battle-unit-role { position: absolute; z-index: 5; top: 4px; padding: 2px 4px; color: #071014; font-size: 6px; font-weight: 1000; letter-spacing: .08em; }
+.battle-unit-role { position: absolute; z-index: 5; top: 4px; padding: 3px 5px; color: #071014; font-size: 8px; font-weight: 1000; letter-spacing: .08em; }
 .is-actor-label { left: 4px; background: var(--ui-value); }
 .is-target-label { right: 4px; color: var(--ui-text-primary); background: var(--ui-combat); }
-.battle-unit-placeholder { position: absolute; z-index: 4; right: 3px; bottom: 3px; padding: 2px 3px; color: #d0d8de; background: rgba(0, 0, 0, .7); font-size: 5px; }
+.battle-unit-enemy.has-placeholder-art .character-presentation-missing { opacity:.88; filter:drop-shadow(0 0 18px rgba(255,45,92,.55)); }
+.battle-unit-enemy.has-placeholder-art .character-presentation-missing::before { border-color:rgba(255,78,112,.42); background:radial-gradient(circle at 50% 34%,rgba(77,19,34,.96),rgba(7,9,16,.98) 68%); }
+.battle-unit-enemy.has-placeholder-art .character-presentation-missing::after { border-color:rgba(255,65,101,.38); background:linear-gradient(180deg,rgba(72,18,33,.94),rgba(5,8,15,.99)); box-shadow:inset 0 0 28px rgba(255,42,86,.12); }
 .battle-unit-defeated { position: absolute; z-index: 6; inset: 0; display: grid; place-items: center; color: #fff; background: rgba(10, 10, 12, .72); font-size: 9px; font-weight: 900; letter-spacing: .08em; }
 .battle-unit-statuses { position: absolute; z-index: 7; right: 3px; bottom: 22px; left: 3px; display: flex; flex-wrap: wrap; justify-content: center; gap: 2px; }
-.battle-unit-statuses span { padding: 1px 3px; border: 1px solid rgba(255, 210, 94, .52); border-radius: 2px; color: #ffe99a; background: rgba(9, 10, 12, .86); font-size: 5px; font-weight: 900; }
+.battle-unit-statuses span { padding: 2px 4px; border: 1px solid rgba(255, 210, 94, .52); border-radius: 2px; color: #ffe99a; background: rgba(9, 10, 12, .9); font-size: 7px; font-weight: 900; }
 
 .battle-unit.is-actor { z-index: 3; border-color: var(--ui-value); transform: translateY(-4px); box-shadow: 0 0 0 1px rgba(242, 205, 105, .25), 0 0 20px rgba(242, 205, 105, .34); }
 .battle-unit.is-target { z-index: 2; border-color: var(--ui-combat); box-shadow: 0 0 0 1px rgba(255, 66, 101, .25), 0 0 20px rgba(255, 66, 101, .32); }

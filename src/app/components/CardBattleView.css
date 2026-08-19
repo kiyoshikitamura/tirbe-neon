@@ -1,15 +1,92 @@
 .battle-screen {
-  position: fixed;
+  position: absolute;
   z-index: 2000;
   inset: 0;
   display: flex;
   flex-direction: column;
   width: 100%;
-  height: 100dvh;
+  height: 100%;
   overflow: hidden;
   color: var(--ui-text-primary);
   background: var(--ui-bg-root);
 }
+
+/* Tutorial Quest battle wireframe: B1 briefing and B2 transition. */
+.tutorial-battle-briefing { display:grid; grid-template-rows:auto minmax(0,1fr) auto auto auto; gap:12px; padding:calc(env(safe-area-inset-top) + 14px) 14px calc(env(safe-area-inset-bottom) + 16px); background:linear-gradient(180deg,rgba(2,4,12,.28),rgba(2,2,9,.96)),url('/bg/bg_street_shinjuku.png') center/cover no-repeat; }
+.tutorial-battle-location { display:grid; justify-items:center; gap:3px; font-weight:950; }.tutorial-battle-location span{font-size:var(--ui-font-screen-title)}.tutorial-battle-location small{color:#c88fff;letter-spacing:.15em}
+.tutorial-battle-versus { position:relative; display:grid; grid-template-columns:minmax(0,1fr) 48px minmax(0,1fr); align-items:end; min-height:0; }
+.tutorial-battle-leader { position:relative; height:min(52vh,430px); overflow:hidden; border-bottom:2px solid var(--ui-accent); background:linear-gradient(180deg,transparent,rgba(0,0,0,.8)); }
+.tutorial-battle-leader.is-enemy{border-color:var(--ui-combat)}.tutorial-battle-leader .character-presentation{width:100%;height:100%;border:0}.tutorial-battle-leader .character-presentation img{height:165%;object-position:var(--character-focal-x) 2%}.tutorial-battle-leader>div:last-child{position:absolute;z-index:3;right:5px;bottom:5px;left:5px;display:grid;min-width:0;padding:8px;background:linear-gradient(90deg,rgba(2,4,11,.96),rgba(2,4,11,.72))}
+.tutorial-battle-leader small{color:var(--ui-accent);font-size:8px;font-weight:950}.tutorial-battle-leader.is-enemy small{color:var(--ui-combat)}.tutorial-battle-leader b{display:block;min-width:0;overflow:hidden;font-size:11px;text-overflow:ellipsis;white-space:nowrap}.tutorial-battle-leader strong{font-size:var(--ui-font-numeric)}
+.tutorial-battle-vs{align-self:center;color:#ffcf72;font-size:34px;font-style:italic;font-weight:1000;text-align:center;text-shadow:0 0 18px #ff6b00}
+.tutorial-battle-party-icons{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:5px}.tutorial-battle-party-icons .character-presentation{width:100%;height:58px}
+.tutorial-battle-strategy{display:flex;justify-content:space-between;padding:8px 10px;border:1px solid rgba(180,112,255,.35);background:rgba(4,5,14,.8)}.tutorial-battle-strategy small{color:var(--ui-text-muted);letter-spacing:.12em}
+.tutorial-battle-start-transition{display:grid;grid-template-columns:1fr 86px 1fr;align-items:stretch;overflow:hidden;background:linear-gradient(135deg,#060814,#120421 50%,#100306)}
+.battle-start-leader{overflow:hidden;filter:brightness(.82);animation:battle-start-leader-in .5s ease both}.battle-start-leader.is-player{transform-origin:left}.battle-start-leader.is-enemy{transform-origin:right}.battle-start-leader .character-presentation{width:100%;height:100%;border:0}.battle-start-diagonal{position:relative;z-index:2;display:grid;place-items:center;margin:-8vh -48px;transform:skewX(-10deg);background:linear-gradient(180deg,transparent,rgba(128,43,255,.8),transparent);box-shadow:0 0 40px #8a36ff}.battle-start-diagonal strong{color:#fff;font-size:clamp(27px,9vw,42px);font-style:italic;text-align:center;text-shadow:0 0 18px #6a2dff;transform:skewX(10deg)}.battle-start-diagonal i{position:absolute;width:2px;height:100%;background:#fff;box-shadow:0 0 24px #c284ff}
+@keyframes battle-start-leader-in{from{opacity:0;filter:brightness(2);transform:scale(1.06)}to{opacity:1;filter:brightness(.82);transform:none}}
+@media(max-height:700px){.tutorial-battle-briefing{gap:7px}.tutorial-battle-leader{height:42vh}.tutorial-battle-party-icons .character-presentation{height:48px}}
+@media(prefers-reduced-motion:reduce){.battle-start-leader{animation:none}}
+
+.battle-ending-screen {
+  position: absolute;
+  inset: 0;
+  z-index: 180;
+  display: grid;
+  place-items: center;
+  min-height: 0;
+  overflow: hidden;
+  padding: max(18px, env(safe-area-inset-top)) 16px max(18px, env(safe-area-inset-bottom));
+  background: #02040a url('/bg/bg_street_shinjuku.png') center/cover no-repeat;
+}
+
+.battle-ending-backdrop {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 42%, rgba(75, 25, 112, .3), transparent 46%), rgba(1, 3, 8, .72);
+  animation: battle-ending-shade .42s ease-out both;
+}
+
+.battle-ending-hold,
+.battle-outcome-mark,
+.battle-ending-screen .battle-result-summary {
+  position: relative;
+  z-index: 1;
+}
+
+.battle-ending-hold {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  color: rgba(255, 255, 255, .72);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .34em;
+}
+
+.battle-ending-hold i {
+  width: min(52vw, 190px);
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #fff, transparent);
+  box-shadow: 0 0 22px rgba(255, 255, 255, .72);
+  animation: battle-final-line .55s ease-out both;
+}
+
+.battle-outcome-mark {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  animation: battle-outcome-enter .42s cubic-bezier(.2,.85,.25,1) both;
+}
+.battle-outcome-mark::after{width:min(62vw,230px);height:2px;margin-top:7px;content:"";background:linear-gradient(90deg,transparent,#fff1af,transparent);box-shadow:0 0 18px rgba(242,201,95,.65);animation:battle-outcome-sweep 1s .35s ease-in-out infinite alternate}
+
+.battle-outcome-mark span { color: rgba(255,255,255,.72); font-size: 10px; font-weight: 900; letter-spacing: .18em; }
+.battle-outcome-mark strong { color: #fff1af; font-size: clamp(58px, 20vw, 92px); font-style: italic; letter-spacing: .08em; text-indent: .08em; text-shadow: 0 0 36px rgba(242,201,95,.72); }
+.battle-outcome-mark.is-defeat strong { color: #ff738b; text-shadow: 0 0 32px rgba(255,60,95,.55); }
+
+@keyframes battle-ending-shade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes battle-final-line { from { opacity: 0; transform: scaleX(.12); } to { opacity: 1; transform: scaleX(1); } }
+@keyframes battle-outcome-enter { from { opacity: 0; transform: scale(.72); filter: blur(7px); } to { opacity: 1; transform: scale(1); filter: blur(0); } }
+@keyframes battle-outcome-sweep{from{opacity:.28;transform:scaleX(.45)}to{opacity:1;transform:scaleX(1)}}
 
 .setup-container {
   display: flex;
@@ -31,8 +108,19 @@
 
 .setup-scroll-area { display: flex; min-height: 0; flex: 1; flex-direction: column; gap: 11px; margin-bottom: 12px; }
 .tutorial-battle-setup { overflow: hidden; }
+.tutorial-battle-setup { background:linear-gradient(180deg,rgba(4,7,12,.52),rgba(4,7,12,.96)),url('/bg/bg_street_shinjuku.png') center/cover no-repeat; }
 .tutorial-battle-setup .setup-scroll-area { overflow-y: auto; }
 .tutorial-battle-setup > .start-battle-btn { flex: 0 0 auto; }
+.tutorial-battle-setup .setup-player-wrapper { order:1; }
+.tutorial-battle-setup .setup-versus-marker { order:2;justify-content:center;font-size:22px;text-shadow:0 0 18px rgba(242,201,95,.52); }
+.tutorial-battle-setup .setup-enemy-wrapper { order:3; }
+.tutorial-battle-setup .setup-tactic-wrapper { order:4; }
+.tutorial-battle-setup .setup-cards-row { grid-template-columns:1.55fr repeat(4,minmax(0,1fr));align-items:end; }
+.tutorial-battle-setup .setup-char-card.is-leader { border-color:rgba(242,201,95,.72);box-shadow:0 0 20px rgba(242,201,95,.14); }
+.tutorial-battle-setup .setup-char-card.is-leader::before { content:'LEADER';position:absolute;z-index:4;top:2px;left:2px;padding:2px 3px;color:#171000;background:#f2c95f;font-size:6px;font-weight:900; }
+.tutorial-battle-setup .setup-player-title > span:last-child { display:none; }
+.tutorial-battle-setup .setup-tactic-wrapper .tactic-grid { grid-template-columns:1fr; }
+.tutorial-battle-setup .start-battle-btn[aria-busy="true"] { animation:battle-start-transition .36s ease both; }
 
 .setup-enemy-wrapper, .setup-player-wrapper, .setup-tactic-wrapper { min-width: 0; padding: 10px; border: 1px solid var(--ui-border); border-radius: var(--ui-radius-md); }
 .setup-enemy-wrapper { border-color: rgba(255, 67, 105, .34); background: linear-gradient(135deg, rgba(98, 18, 35, .3), rgba(18, 17, 24, .76) 58%); box-shadow: inset 4px 0 0 rgba(255, 67, 105, .72), inset 0 0 24px rgba(62, 7, 19, .38); }
@@ -43,6 +131,7 @@
 .setup-player-title { display: flex; align-items: center; justify-content: space-between; color: var(--ui-accent); }
 .setup-enemy-spec { display: flex; align-items: center; gap: 10px; }
 .setup-enemy-threat { display: grid; width: 72px; height: 72px; flex: 0 0 72px; place-items: center; overflow: hidden; border: 1px solid rgba(255, 67, 105, .5); border-radius: 5px; color: #ff476d; background: radial-gradient(circle, rgba(255, 67, 105, .22), transparent 62%), #0b080d; }
+.setup-enemy-threat .character-presentation { width:100%;height:100%;border:0; }
 .setup-enemy-threat span { align-self: end; font-size: 7px; font-weight: 900; letter-spacing: .18em; }
 .setup-enemy-threat strong { align-self: start; font-size: 35px; line-height: 1; text-shadow: 0 0 16px rgba(255, 67, 105, .72); }
 .setup-enemy-detail-list { display: flex; min-width: 0; flex: 1; flex-direction: column; gap: 2px; }
@@ -83,6 +172,8 @@
   .setup-enemy-cards-row, .setup-cards-row { gap: 3px; }
   .setup-card-name { font-size: 8px; }
 }
+
+@keyframes battle-start-transition { to{filter:brightness(1.65);box-shadow:0 0 30px rgba(242,201,95,.45);letter-spacing:.2em} }
 
 @media (prefers-reduced-motion: reduce) {
   .setup-char-card, .start-battle-btn { transition: none; }

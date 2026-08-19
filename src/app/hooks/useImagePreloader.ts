@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { preloadAssetManifest } from "../lib/screenAssets";
+import type { AssetRequest, AssetResult, AssetTier } from "../lib/screenAssets";
+import { beginAssetTierMetric, finishAssetTierMetric } from "../lib/screenAssets";
 
 const PRELOAD_FRAME_PATHS = [
   "/frames/sq_n.png",
@@ -30,4 +32,37 @@ export function useImagePreloader(customPaths: string[] = []) {
   }, [allPaths, pathsKey]);
 
   return allPaths.length === 0 || loadedKey === pathsKey;
+}
+
+export function useAssetTierPreloader(
+  assets: AssetRequest[],
+  tier: AssetTier,
+  enabled = true,
+) {
+  const manifestKey = assets.map((asset) => `${asset.src}:${asset.required !== false}`).sort().join("|");
+  const manifest = useMemo(() => assets, [manifestKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  const [result, setResult] = useState<{ key: string; results: AssetResult[] } | null>(null);
+
+  useEffect(() => {
+    if (!enabled) return;
+    let cancelled = false;
+    beginAssetTierMetric(tier);
+    void preloadAssetManifest(manifest).then((results) => {
+      finishAssetTierMetric(tier, results);
+      if (!cancelled) setResult({ key: manifestKey, results });
+    });
+    return () => { cancelled = true; };
+  }, [enabled, manifest, manifestKey, tier]);
+
+  const results = result?.key === manifestKey ? result.results : [];
+  const requiredFailed = results.some((assetResult) => {
+    const request = manifest.find((asset) => asset.src === assetResult.requestedSrc);
+    return request?.required !== false && assetResult.status === "failed";
+  });
+  return {
+    ready: !enabled || (result?.key === manifestKey && !requiredFailed),
+    settled: !enabled || result?.key === manifestKey,
+    requiredFailed,
+    results,
+  };
 }

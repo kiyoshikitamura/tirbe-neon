@@ -3,11 +3,12 @@
 import { useRef, useState } from "react";
 import { useGame } from "../context/GameContext";
 import { supabase } from "@/utils/supabase";
-import TutorialNavigator from "./TutorialNavigator";
+import CharacterPresentation from "./character/CharacterPresentation";
+import TypewriterText from "./tutorial/TypewriterText";
 import "./TutorialWorldIntro.css";
 
 export default function TutorialWorldIntro() {
-  const { onboardingState, setOnboardingState, navigateTab, playCyberSe } = useGame();
+  const { onboardingState, setOnboardingState, navigateTab, playCyberSe, username } = useGame();
   const [advancing, setAdvancing] = useState(false);
   const advancingRef = useRef(false);
   if (onboardingState?.tutorial_step !== "WORLD_INTRO") return null;
@@ -29,14 +30,13 @@ export default function TutorialWorldIntro() {
   };
 
   return (
-    <div className="tutorial-world" role="dialog" aria-modal="true" aria-label="TRIBE NEONへようこそ">
+    <div className="tutorial-world" role="dialog" aria-modal="true" aria-label="アゲハからの案内">
       <div className="tutorial-world-shade" />
       <div className="tutorial-world-content">
-        <span className="tutorial-world-kicker">WELCOME TO NEON TOKYO</span>
-        <h1>この街で、<br />あなたの物語が始まる。</h1>
-        <TutorialNavigator message="ようこそ。アタシはアゲハ。この街で生き抜くために、まずは新しい仲間を迎えよう。" />
+        <div className="tutorial-world-ageha" aria-hidden="true"><CharacterPresentation src="/characters/ageha_transparent_asset.png" alt="" variant="dialogue-bust" /></div>
+        <div className="tutorial-world-dialogue"><strong>アゲハ</strong><TypewriterText text={`${username}ね。覚えた。よろしく。\n\nじゃあまず、一緒に動く仲間を探そっか。\nこの街、一人でどうにかするのは大変だから。`} speedMs={34} /></div>
         <button className="semantic-cta semantic-cta--primary" onClick={() => void continueTutorial()} disabled={advancing} aria-busy={advancing}>
-          {advancing ? "ガチャへ移動中..." : "無料10連ガチャへ"}
+          次へ
         </button>
       </div>
     </div>

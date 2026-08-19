@@ -81,7 +81,7 @@ export default function QuestBattleViewer(props: Props) {
   const visualOf = (participant: Participant | undefined, side: "player" | "enemy") => {
     const master = CHARACTERS_MASTER.find((character: any) => character.id === participant?.characterId || character.name === participant?.characterId);
     return {
-      src: getCharacterTransparentImg(master?.name || (side === "enemy" ? "gou" : "reiji")),
+      src: master ? getCharacterTransparentImg(master.name) : undefined,
       placeholder: !master,
     };
   };
@@ -118,10 +118,13 @@ export default function QuestBattleViewer(props: Props) {
     else if (props.damagePopup.type === "dmg") playSe("BATTLE_DAMAGE");
   }, [playSe, props.damagePopup, targetHasAdvantage]);
   const actionPhase = props.damagePopup ? "impact" : props.targetLine ? (isSkillAction ? "skill" : "attack") : "actor";
+  const acceptanceState = props.damagePopup
+    ? (props.enemyParty.every((entry) => entry.isDead || entry.hp <= 0) ? "B5" : isSkillAction ? "B4" : "B3")
+    : isSkillAction ? "B4" : "B3";
   const roundLimit = props.battleMode === "RAID" ? 30 : props.battleMode === "PVP" || props.battleMode === "GVG" ? 20 : 15;
 
   return (
-    <div className="playing-container quest-battle-viewer" data-battle-speed={props.speed}>
+    <div className={`playing-container quest-battle-viewer ${props.tutorial ? "is-tutorial" : ""}`} data-battle-speed={props.speed} data-acceptance-state={props.tutorial ? acceptanceState : undefined}>
       <header className="battle-viewer-header">
         <span>{props.battleMode === "PATROL" ? "QUEST BATTLE" : props.battleMode}</span>
         <strong>ROUND {props.round}<small> / {roundLimit}</small></strong>
@@ -230,7 +233,7 @@ type PartyZoneProps = {
   activeId?: string;
   targetId?: string;
   shakingId: string | null;
-  visualOf: (participant: Participant, side: "player" | "enemy") => { src: string; placeholder: boolean };
+  visualOf: (participant: Participant, side: "player" | "enemy") => { src?: string; placeholder: boolean };
   popupFor: (participant: Participant) => (BattleDamagePopup & { charId: string }) | null;
   hasAdvantage: (participant: Participant) => boolean;
 };

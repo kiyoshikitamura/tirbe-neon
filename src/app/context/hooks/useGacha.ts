@@ -17,7 +17,7 @@ export function useGacha() {
   });
   const [specialPityPoints, setSpecialPityPoints] = useState<number>(0);
 
-  const [scoutAnimationState, setScoutAnimationState] = useState<null | "FLASHING" | "SHOW_RESULTS">(null);
+  const [scoutAnimationState, setScoutAnimationState] = useState<null | "FLASHING" | "READY" | "SHOW_RESULTS">(null);
   const [scoutFlashingColor, setScoutFlashingColor] = useState<"BLUE" | "PURPLE" | "GOLD">("BLUE");
   const [scoutResults, setScoutResults] = useState<any[]>([]);
 

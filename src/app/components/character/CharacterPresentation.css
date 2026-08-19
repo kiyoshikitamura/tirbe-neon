@@ -1,5 +1,9 @@
 .character-presentation {
   --character-accent: #18dbee;
+  --character-focal-x: 50%;
+  --character-thumbnail-focal-y: 0%;
+  --character-portrait-focal-y: 10%;
+  --character-card-focal-y: 12%;
   position: relative;
   min-width: 0;
   margin: 0;
@@ -23,28 +27,53 @@
   z-index: 0;
   background: radial-gradient(circle at 50% 68%, color-mix(in srgb, var(--character-accent) 25%, transparent), transparent 58%);
 }
-.character-presentation-art img { position: relative; z-index: 1; display: block; width: 100%; height: 100%; }
+.character-presentation-art img {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 100%;
+  height: 100%;
+  image-rendering: auto;
+}
 .character-presentation-light { position: absolute; z-index: 2; inset: auto 10% 0; height: 1px; background: var(--character-accent); box-shadow: 0 0 12px var(--character-accent); }
+.character-presentation-missing { position:absolute; inset:5% 8% 0; z-index:1; display:block; opacity:.72; filter:drop-shadow(0 0 14px color-mix(in srgb,var(--character-accent) 48%,transparent)); }
+.character-presentation-missing::before { position:absolute; top:2%; left:50%; width:32%; aspect-ratio:1; border:1px solid color-mix(in srgb,var(--character-accent) 42%,transparent); border-radius:50%; content:""; transform:translateX(-50%); background:radial-gradient(circle at 50% 32%,rgba(185,205,216,.78),rgba(43,56,66,.96) 66%); }
+.character-presentation-missing::after { position:absolute; inset:26% 8% 0; border:1px solid color-mix(in srgb,var(--character-accent) 34%,transparent); border-radius:44% 44% 10% 10% / 18% 18% 6% 6%; content:""; background:linear-gradient(180deg,rgba(112,134,148,.78),rgba(24,34,43,.98)); clip-path:polygon(18% 0,82% 0,100% 100%,0 100%); }
 
 .character-presentation-portrait { width: 112px; height: 136px; border-radius: 8px; }
-.character-presentation-portrait img { object-fit: cover; object-position: 50% 18%; transform: scale(1.08); }
+.character-presentation-portrait img { object-fit: cover; object-position: var(--character-focal-x) var(--character-portrait-focal-y); }
+.character-presentation-dialogue { width: 100%; height: 100%; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+.character-presentation-dialogue .character-presentation-art::before { background: radial-gradient(circle at 50% 62%, rgba(0, 240, 255, .17), transparent 54%); }
+.character-presentation-dialogue img { object-fit: cover; object-position: var(--character-focal-x) var(--character-portrait-focal-y); }
+.character-presentation-dialogue .character-presentation-light { display: none; }
+.character-presentation-dialogue-bust { width:100%; height:100%; border:0; border-radius:0; background:transparent; box-shadow:none; }
+.character-presentation-dialogue-bust .character-presentation-art::before { background:radial-gradient(circle at 50% 60%,rgba(0,240,255,.16),transparent 54%); }
+.character-presentation-dialogue-bust img { object-fit:cover; object-position:var(--character-focal-x) var(--character-portrait-focal-y); transform:scale(1.24); transform-origin:var(--character-focal-x) 16%; }
+.character-presentation-dialogue-bust .character-presentation-light { display:none; }
+.character-presentation-reveal { width:100%; height:100%; border:0; border-radius:0; background:transparent; box-shadow:none; }
+.character-presentation-reveal img { object-fit:contain; object-position:center bottom; }
+.character-presentation-reveal .character-presentation-light { right:16%; left:16%; }
+.character-presentation-quest { width:100%; height:100%; border:0; border-radius:0; background:transparent; box-shadow:none; }
+.character-presentation-quest img { object-fit:cover; object-position:var(--character-focal-x) var(--character-portrait-focal-y); }
+.character-presentation-battle-leader { width:100%; height:100%; border:0; border-radius:0; background:transparent; box-shadow:none; }
+.character-presentation-battle-leader img { object-fit:cover; object-position:var(--character-focal-x) 12%; }
 .character-presentation-card { aspect-ratio: 3 / 4; border-radius: 7px; }
-.character-presentation-card img { object-fit: cover; object-position: 50% 20%; transform: scale(1.05); }
+.character-presentation-card img { object-fit: cover; object-position: var(--character-focal-x) var(--character-card-focal-y); }
 .character-presentation-thumbnail { width: 100%; aspect-ratio: 1 / 1; border-radius: var(--ui-radius-sm); }
-.character-presentation-thumbnail img { object-fit: cover; object-position: 50% 8%; transform: scale(1.22); transform-origin: 50% 12%; }
+.character-presentation-thumbnail img { object-fit: cover; object-position: var(--character-focal-x) var(--character-thumbnail-focal-y); transform:scale(2.25); transform-origin:var(--character-focal-x) 12%; }
 .character-presentation-thumbnail .character-presentation-light { right: 7%; left: 7%; }
-.character-presentation-thumbnail .character-presentation-meta { grid-template-columns: auto minmax(0, 1fr); gap: 2px; min-height: 23px; padding: 8px 3px 3px; font-size: 7px; }
-.character-presentation-thumbnail .character-presentation-meta strong { font-size: 8px; }
+.character-presentation-thumbnail .character-presentation-meta { grid-template-columns: auto minmax(0, 1fr); gap: 3px; min-height: 28px; padding: 10px 4px 4px; font-size: 9px; }
+.character-presentation-thumbnail .character-presentation-meta strong { font-size: 10px; }
 .character-presentation-thumbnail .character-presentation-meta > span:last-child:not(.character-presentation-rarity) { display: none; }
-.character-presentation-thumbnail .character-presentation-badge { top: 3px; right: 3px; left: auto; padding: 2px 3px; font-size: 7px; }
+.character-presentation-thumbnail .character-presentation-badge { top: 3px; right: 3px; left: auto; padding: 3px 4px; font-size: 9px; }
 .character-presentation-full-body { aspect-ratio: 3 / 5; border-radius: 8px; }
 .character-presentation-full-body img { object-fit: contain; object-position: center bottom; }
 .character-presentation-battle { width: 100%; height: 100%; border-radius: 5px; }
-.character-presentation-battle img { object-fit: cover; object-position: 50% 20%; transform: scale(1.08); }
-.character-presentation-battle-party img { object-position: 50% 8%; transform: scale(1.12); }
-.character-presentation-battle-action img { object-position: 50% 18%; transform: scale(1.05); }
+.character-presentation-battle img { object-fit: cover; object-position: 50% 20%; }
+.character-presentation-battle-party img { object-position: 50% 8%; }
+.character-presentation-battle-action img { object-position: 50% 18%; }
 .character-presentation-icon { width: 48px; height: 48px; border-radius: 50%; }
-.character-presentation-icon img { object-fit: cover; object-position: 50% 16%; transform: scale(1.12); }
+.character-presentation-icon img { object-fit: cover; object-position: 50% 16%; }
 
 .character-presentation-meta {
   position: absolute;

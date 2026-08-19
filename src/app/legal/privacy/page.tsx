@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import LegalPage from "../LegalPage";
 
-export const metadata: Metadata = { title: "プライバシーポリシー | TRIBE: NEON REIGN" };
+export const metadata: Metadata = { title: "プライバシーポリシー | TRIBE NEON" };
 
 export default function PrivacyPage() {
   return (

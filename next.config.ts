@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Visual acceptance screenshots must represent the release canvas rather
+  // than the Next.js development toolbar badge.
+  devIndicators: false,
   async headers() {
     return [
       {
