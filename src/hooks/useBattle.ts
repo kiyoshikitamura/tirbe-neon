@@ -1709,20 +1709,36 @@ export function useBattle(options: UseBattleOptions) {
       const replayEvent = authoritativeEvents[authoritativeEventIndex];
       if (!replayEvent) return;
       const previousReplayEvent = authoritativeEvents[authoritativeEventIndex - 1];
+      const previousPreviousReplayEvent = authoritativeEvents[authoritativeEventIndex - 2];
       const previousSkillId = String(previousReplayEvent?.payload?.skillId ?? "BASIC_ATTACK");
       const followsSkill = replayEvent.type === "DAMAGE"
         && previousReplayEvent?.type === "ACTION"
         && previousSkillId !== "BASIC_ATTACK";
+      const followsNormalAttack = replayEvent.type === "DAMAGE"
+        && previousReplayEvent?.type === "ACTION"
+        && previousSkillId === "BASIC_ATTACK";
+      const holdsSkillImpact = (previousReplayEvent?.type === "DAMAGE" || previousReplayEvent?.type === "HEAL" || previousReplayEvent?.type === "STATUS")
+        && previousPreviousReplayEvent?.type === "ACTION"
+        && String(previousPreviousReplayEvent.payload?.skillId ?? "BASIC_ATTACK") !== "BASIC_ATTACK";
+      const holdsNormalImpact = previousReplayEvent?.type === "DAMAGE"
+        && previousPreviousReplayEvent?.type === "ACTION"
+        && String(previousPreviousReplayEvent.payload?.skillId ?? "BASIC_ATTACK") === "BASIC_ATTACK";
       const followsFinalHit = replayEvent.type === "RESULT" && previousReplayEvent?.type === "DEFEAT";
       const delay = replayEvent.type === "ACTION"
-        ? 360
+        ? 320
         : followsSkill
-          ? 1200
+          ? 2350
+          : followsNormalAttack
+            ? 780
+            : holdsSkillImpact
+              ? 1000
+              : holdsNormalImpact
+                ? 540
           : followsFinalHit
             ? 1050
             : replayEvent.type === "RESULT"
               ? 820
-              : 520;
+              : 480;
       const timer = setTimeout(() => {
         const payload = replayEvent.payload;
         const actorId = String(payload.actorId ?? "");
@@ -1734,6 +1750,14 @@ export function useBattle(options: UseBattleOptions) {
 
         if (replayEvent.type === "ACTION") {
           const skillId = String(payload.skillId ?? "BASIC_ATTACK");
+          if (typeof window !== "undefined") {
+            const battleWindow = window as typeof window & { __TRIBE_BATTLE_PRESENTATION__?: { current?: any; history: any[] } };
+            const metrics = battleWindow.__TRIBE_BATTLE_PRESENTATION__ ||= { history: [] };
+            if (metrics.current) {
+              metrics.history.push({ ...metrics.current, totalMs: Math.round(performance.now() - metrics.current.startedAt) });
+            }
+            metrics.current = { kind: skillId === "BASIC_ATTACK" ? "normal" : "skill", skillId, startedAt: performance.now() };
+          }
           const skill = actor?.skills.find((entry: any) => String(entry.id ?? entry.skill_card_id) === skillId);
           const nextImpact = authoritativeEvents.slice(authoritativeEventIndex + 1)
             .find((entry) => entry.type === "DAMAGE" || entry.type === "HEAL");
@@ -1744,6 +1768,11 @@ export function useBattle(options: UseBattleOptions) {
           if (nextTargetId) setTargetLine({ fromId: actorId, toId: nextTargetId });
           setBattleLog((previous) => [...previous, `[ROUND ${replayEvent.round}] ${actor?.name ?? actorId}：${skill?.name ?? "通常攻撃"}`]);
         } else if (replayEvent.type === "DAMAGE") {
+          if (typeof window !== "undefined") {
+            const battleWindow = window as typeof window & { __TRIBE_BATTLE_PRESENTATION__?: { current?: any; history: any[] } };
+            const current = battleWindow.__TRIBE_BATTLE_PRESENTATION__?.current;
+            if (current && typeof current.impactMs !== "number") current.impactMs = Math.round(performance.now() - current.startedAt);
+          }
           const amount = Math.max(0, Number(payload.amount ?? 0));
           const remainingHp = Math.max(0, Number(payload.remainingHp ?? target?.hp ?? 0));
           const critical = payload.critical === true;

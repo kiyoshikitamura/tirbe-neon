@@ -57,7 +57,10 @@ try {
   await page.locator("#setup-player-name").fill(`QA${Date.now().toString(36).slice(-6)}`);
   await page.locator(".setup-name-dialog .setup-primary-action").click();
 
-  await visible(".tutorial-world", 25_000);
+  // Preview cold starts may still be finishing the existing full bootstrap
+  // after the authoritative profile transaction. This is a harness ceiling,
+  // not a presentation delay introduced by the Battle remediation.
+  await visible(".tutorial-world", 60_000);
   userId = await page.evaluate(() => {
     const authKey = Object.keys(localStorage).find((key) => /^sb-.*-auth-token$/.test(key));
     if (!authKey) return null;
@@ -111,6 +114,11 @@ try {
   await page.locator('[data-acceptance-state="B6"] button').click();
 
   await visible(".tutorial-rule-screen", 20_000);
+  await visible('[data-acceptance-state="COMPLETION_DIALOGUE"]', 20_000);
+  await page.screenshot({ path: path.join(artifactsDirectory, "preview-M7-completion-dialogue.png"), fullPage: true });
+  await page.locator('[data-acceptance-state="COMPLETION_DIALOGUE"] button').click();
+  await visible('[data-acceptance-state="WORLD"]', 20_000);
+  await page.screenshot({ path: path.join(artifactsDirectory, "preview-M8-world-first.png"), fullPage: true });
   for (let index = 0; index < 3; index += 1) {
     await page.locator(".tutorial-rule-screen button").click();
   }

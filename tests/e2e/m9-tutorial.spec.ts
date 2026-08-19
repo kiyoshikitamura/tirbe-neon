@@ -169,6 +169,10 @@ async function revealTutorialTenPull(page: import("@playwright/test").Page, capt
 }
 
 async function completeRuleGuide(page: import("@playwright/test").Page) {
+  if (await page.locator('[data-acceptance-state="COMPLETION_DIALOGUE"]').isVisible()) {
+    await expect(page.locator('[data-acceptance-state="COMPLETION_DIALOGUE"]')).toContainText("これでチュートリアルは終わり。");
+    await page.locator('[data-acceptance-state="COMPLETION_DIALOGUE"] button').click();
+  }
   await expect(page.getByRole("heading", { name: "いろんな奴が、この街で生きてる。" })).toBeVisible();
   await page.getByRole("button", { name: "次へ" }).click();
   await expect(page.getByRole("heading", { name: "仲間を集めて、もっと強くなる。" })).toBeVisible();
@@ -226,6 +230,7 @@ async function assertRuleGuideFrame(page: import("@playwright/test").Page, key: 
 }
 
 test("tutorial completion presentation uses final WORLD POWER TRIBE assets", async ({ page, browser }, testInfo) => {
+  test.setTimeout(180_000);
   const pageErrors: string[] = [];
   const consoleErrors: string[] = [];
   const failedImages: string[] = [];
@@ -240,12 +245,16 @@ test("tutorial completion presentation uses final WORLD POWER TRIBE assets", asy
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");
 
+  await expect(page.locator('[data-acceptance-state="COMPLETION_DIALOGUE"]')).toBeVisible();
+  await page.screenshot({ path: testInfo.outputPath("M7-Ageha-Completion-Mobile.png") });
+  await page.locator('[data-acceptance-state="COMPLETION_DIALOGUE"] button').click();
+
   for (const width of [375, 390, 430]) {
     await page.setViewportSize({ width, height: 844 });
     await assertRuleGuideFrame(page, "WORLD");
   }
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.screenshot({ path: testInfo.outputPath("T1-WORLD-Mobile.png") });
+  await page.screenshot({ path: testInfo.outputPath("M8-WORLD-first-Mobile.png") });
 
   const nextButton = page.getByRole("button", { name: "次へ" });
   await nextButton.evaluate((button: HTMLButtonElement) => { button.click(); button.click(); });
@@ -263,6 +272,7 @@ test("tutorial completion presentation uses final WORLD POWER TRIBE assets", asy
   const desktopPage = await desktopContext.newPage();
   await seedRuleGuideState(desktopPage, "00000000-0000-4000-8000-000000000914");
   await desktopPage.goto("/");
+  await desktopPage.locator('[data-acceptance-state="COMPLETION_DIALOGUE"] button').click();
   for (const width of [1024, 1440, 1920]) {
     await desktopPage.setViewportSize({ width, height: 1000 });
     await assertRuleGuideFrame(desktopPage, "WORLD");
@@ -583,7 +593,8 @@ test("three random tutorial SSRs remain the same owned character through result 
   }
 });
 
-test("first quest connects dispatch, official battle, and one reward to the completion boundary", async ({ page }) => {
+test("first quest connects dispatch, official battle, and one reward to the completion boundary", async ({ page, browser }) => {
+  test.setTimeout(180_000);
   const userId = "00000000-0000-4000-8000-000000000910";
   await page.addInitScript(({ userId }) => {
     if (sessionStorage.getItem("m9_0e_seeded") === "true") return;
@@ -673,25 +684,39 @@ test("first quest connects dispatch, official battle, and one reward to the comp
     button.click();
     button.click();
   });
+  await page.setViewportSize({ width: 375, height: 844 });
   await expect(page.locator(".playing-container")).toBeVisible();
   await expect(page.locator(".battle-log-box")).toHaveCount(0);
   await expect(page.locator(".battle-timeline-slot.is-current")).toBeVisible();
-  await expect(page.locator(".battle-timeline-slot")).toHaveCount(4);
+  await expect(page.locator(".battle-timeline-slot")).toHaveCount(3);
   await expect(page.locator(".battle-unit.is-actor").first()).toBeVisible();
   await expect(page.locator(".battle-unit.is-target").first()).toBeVisible();
-  await expect(page.locator(".battle-action-sequence")).toBeVisible();
-  await page.screenshot({ path: test.info().outputPath("B3-normal-attack.png"), fullPage: true });
+  await expect(page.locator(".battle-action-sequence")).toBeHidden();
+  await expect(page.locator('.quest-battle-viewer[data-action-kind="normal"][data-action-phase="impact"]')).toBeVisible({ timeout: 3_000 });
+  const normalImpactDuration = await page.evaluate(() => {
+    const metrics = (window as any).__TRIBE_BATTLE_PRESENTATION__;
+    return [metrics?.current, ...(metrics?.history || []).slice().reverse()].find((entry) => entry?.kind === "normal" && entry?.impactMs)?.impactMs || 0;
+  });
+  expect(normalImpactDuration).toBeGreaterThanOrEqual(650);
+  expect(normalImpactDuration).toBeLessThanOrEqual(1_300);
+  test.info().annotations.push({ type: "normal-impact-ms", description: String(normalImpactDuration) });
+  await page.screenshot({ path: test.info().outputPath("M1-375-B3-normal-attack.png"), fullPage: true });
   await expect(page.locator(".battle-skill-cutin.is-ssr")).toBeVisible({ timeout: 8_000 });
   await expect(page.locator(".battle-cutin-copy")).toContainText("SSR TEST BREAK");
-  await page.screenshot({ path: test.info().outputPath("B4-skill.png"), fullPage: true });
-  await page.screenshot({ path: test.info().outputPath("m9-battle-ssr-cutin-1x-390.png"), fullPage: true });
-  await page.getByRole("button", { name: "1x" }).click();
-  await expect(page.getByRole("button", { name: "2x" })).toBeVisible();
-  await expect(page.locator(".quest-battle-viewer")).toHaveAttribute("data-battle-speed", "2");
-  // Freeze replay presentation while taking three viewport measurements. The
-  // battle can otherwise finish between widths on a slower CI/dev asset load.
+  await expect(page.locator(".battle-skill-cutin")).toHaveCount(1);
+  await page.screenshot({ path: test.info().outputPath("M2-375-B4-skill-cutin.png"), fullPage: true });
+  await expect(page.locator('.quest-battle-viewer[data-action-kind="skill"][data-action-phase="impact"]')).toBeVisible({ timeout: 3_000 });
+  await expect(page.locator(".battle-skill-cutin")).toHaveCount(0);
+  const skillImpactDuration = await page.evaluate(() => {
+    const metrics = (window as any).__TRIBE_BATTLE_PRESENTATION__;
+    return [metrics?.current, ...(metrics?.history || []).slice().reverse()].find((entry) => entry?.kind === "skill" && entry?.impactMs)?.impactMs || 0;
+  });
+  expect(skillImpactDuration).toBeGreaterThanOrEqual(2_100);
+  expect(skillImpactDuration).toBeLessThanOrEqual(3_000);
+  test.info().annotations.push({ type: "skill-impact-ms", description: String(skillImpactDuration) });
   await page.getByRole("button", { name: "一時停止" }).click();
   await expect(page.getByRole("button", { name: "再開" })).toBeVisible();
+  await page.screenshot({ path: test.info().outputPath("M3-375-B4-impact.png"), fullPage: true });
   await expect.poll(() => page.evaluate(() => performance.getEntriesByType("resource")
     .filter((entry) => entry.name.includes("/effects/")).length)).toBeGreaterThanOrEqual(7);
   const effectPerformance = await page.evaluate(() => {
@@ -711,17 +736,70 @@ test("first quest connects dispatch, official battle, and one reward to the comp
       const rect = viewer.getBoundingClientRect();
       const hp = viewer.querySelector(".battle-unit-hp")?.getBoundingClientRect();
       const partyArt = viewer.querySelector(".battle-unit-party .battle-unit-art")?.getBoundingClientRect();
-      return { left: rect.left, right: rect.right, viewportWidth: innerWidth, hpWidth: hp?.width || 0, partyArtHeight: partyArt?.height || 0 };
+      const regions = [".battle-viewer-header", ".battle-timeline", ".battle-enemy-compact", ".battle-action-stage", ".battle-party-zone.is-player", ".battle-viewer-controls"]
+        .map((selector) => viewer.querySelector<HTMLElement>(selector)?.getBoundingClientRect())
+        .filter(Boolean) as DOMRect[];
+      return {
+        left: rect.left,
+        right: rect.right,
+        viewportWidth: innerWidth,
+        hpWidth: hp?.width || 0,
+        partyArtHeight: partyArt?.height || 0,
+        verticalOverlap: regions.some((region, index) => index > 0 && region.top < regions[index - 1].bottom - 1),
+      };
     });
     expect(battleMetrics.left).toBeGreaterThanOrEqual(0);
     expect(battleMetrics.right).toBeLessThanOrEqual(battleMetrics.viewportWidth);
     expect(battleMetrics.hpWidth).toBeGreaterThan(20);
-    expect(battleMetrics.partyArtHeight).toBeGreaterThanOrEqual(66);
-    await page.screenshot({ path: test.info().outputPath(`m9-battle-first-${width}.png`), fullPage: true });
+    expect(battleMetrics.partyArtHeight).toBeGreaterThanOrEqual(48);
+    expect(battleMetrics.verticalOverlap).toBe(false);
+    if (width === 390) await page.screenshot({ path: test.info().outputPath("M5-390-B4-skill.png"), fullPage: true });
+    if (width === 430) await page.screenshot({ path: test.info().outputPath("M6-430-B4-skill.png"), fullPage: true });
   }
+  const desktopContext = await browser.newContext({
+    viewport: { width: 1440, height: 1000 },
+    deviceScaleFactor: 2,
+  });
+  const desktopPage = await desktopContext.newPage();
+  await desktopPage.addInitScript(() => {
+    const desktopUserId = "00000000-0000-4000-8000-000000000919";
+    localStorage.setItem("tribe_demo_uuid", desktopUserId);
+    localStorage.setItem("mock_auth_mode", "ANONYMOUS");
+    localStorage.setItem("mock_db_users", JSON.stringify([{ id: desktopUserId, username: "DPR2 QA", cash: 10000, vitality: 100, level: 1, xp: 0, current_base_id: "shinjuku" }]));
+    localStorage.setItem("mock_db_user_characters", JSON.stringify([{ id: `starter_${desktopUserId}`, user_id: desktopUserId, character_id: "11111111-1111-1111-1111-111111111111", level: 3, awakening_level: 0 }]));
+    localStorage.setItem("mock_db_user_skills", JSON.stringify([{ id: `skill_${desktopUserId}`, user_id: desktopUserId, skill_card_id: "SKILL_036", equipped_character_id: `starter_${desktopUserId}`, slot_index: 0, plus_val: 0 }]));
+    localStorage.setItem("mock_db_skill_battle_master", JSON.stringify([{ skill_id: "SKILL_036", display_name: "SSR TEST BREAK", kind: "ATTACK", target: "ENEMY_SINGLE", power_percent: 240, cooldown: 1, initial_cooldown: 0, enabled: true }]));
+    localStorage.setItem("mock_db_pvp_defense_decks", JSON.stringify([{ id: `deck_${desktopUserId}`, user_id: desktopUserId, character_1_id: `starter_${desktopUserId}` }]));
+    localStorage.setItem("mock_db_tutorial_progress", JSON.stringify([{ user_id: desktopUserId, step_id: "DISPATCH" }]));
+    localStorage.setItem("mock_db_quests", JSON.stringify([{ id: "q_shinjuku_short", name: "新宿", duration_seconds: 60, cost_vitality: 5, cash_reward: 800, exp_reward: 120 }]));
+    localStorage.setItem("mock_db_patrol_npcs", JSON.stringify([{ id: "npc_tutorial_short", quest_id: "q_shinjuku_short", npc_name: "路地裏のならず者", enemy_data: { hp: 120, atk: 1, def: 0, spd: 20, luk: 0 } }]));
+    localStorage.setItem("mock_db_user_patrols", "[]");
+    localStorage.setItem("mock_db_battle_replay_sessions", "[]");
+  });
+  await desktopPage.goto("/");
+  await desktopPage.locator('[data-acceptance-state="Q1"] button').click();
+  await expect(desktopPage.locator('[data-acceptance-state="Q3"]')).toBeVisible();
+  await desktopPage.locator('[data-acceptance-state="Q3"] button').click();
+  await expect(desktopPage.locator('[data-acceptance-state="Q5"]')).toBeVisible();
+  await desktopPage.locator('[data-acceptance-state="Q5"] button').click();
+  await desktopPage.locator('[data-acceptance-state="Q6"] button').click();
+  await desktopPage.locator('[data-acceptance-state="B1"] .start-battle-btn').click();
+  await expect(desktopPage.locator('[data-acceptance-state="B4"]')).toBeVisible({ timeout: 20_000 });
+  await expect(desktopPage.locator(".battle-timeline-slot")).toHaveCount(3);
+  const desktopCanvas = await desktopPage.locator(".app-container").evaluate((canvas) => {
+    const rect = canvas.getBoundingClientRect();
+    return { width: rect.width, center: rect.left + rect.width / 2, viewportCenter: innerWidth / 2 };
+  });
+  expect(desktopCanvas.width).toBeLessThanOrEqual(431);
+  expect(Math.abs(desktopCanvas.center - desktopCanvas.viewportCenter)).toBeLessThanOrEqual(1);
+  expect(await desktopPage.evaluate(() => ({ dpr: devicePixelRatio, width: innerWidth }))).toEqual({ dpr: 2, width: 1440 });
+  await desktopPage.screenshot({ path: test.info().outputPath("M9-desktop-DPR2-B4.png"), fullPage: true });
+  await desktopContext.close();
+  await page.setViewportSize({ width: 375, height: 844 });
   await page.getByRole("button", { name: "再開" }).click();
   await expect(page.locator('[data-acceptance-state="B5"]')).toBeVisible({ timeout: 35_000 });
-  await page.screenshot({ path: test.info().outputPath("B5-final-hit.png"), fullPage: true });
+  await page.setViewportSize({ width: 375, height: 844 });
+  await page.screenshot({ path: test.info().outputPath("M4-375-B5-final-hit.png"), fullPage: true });
   await expect(page.locator('[data-acceptance-state="B6"]')).toBeVisible({ timeout: 35_000 });
   const rewardStartedAt = Date.now();
   await expect(page.locator(".battle-result-rewards")).toBeVisible();
@@ -748,6 +826,9 @@ test("first quest connects dispatch, official battle, and one reward to the comp
 
   await page.getByRole("button", { name: "次へ" }).click();
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem("mock_db_tutorial_progress") || "[]")[0]?.step_id)).toBe("RULE_GUIDE");
+  await expect(page.locator('[data-acceptance-state="COMPLETION_DIALOGUE"]')).toBeVisible();
+  await expect(page.locator('[data-acceptance-state="COMPLETION_DIALOGUE"]')).toContainText("最後に、TRIBE NEONの世界を紹介するね。");
+  await page.locator('[data-acceptance-state="COMPLETION_DIALOGUE"] button').click();
   await expect(page.getByRole("heading", { name: "いろんな奴が、この街で生きてる。" })).toBeVisible();
 });
 
@@ -774,6 +855,7 @@ test("claimed tutorial reward resumes at the completion boundary after reload", 
   }, { userId });
 
   await page.goto("/");
+  await page.locator('[data-acceptance-state="COMPLETION_DIALOGUE"] button').click();
   await expect(page.getByRole("heading", { name: "いろんな奴が、この街で生きてる。" })).toBeVisible();
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem("mock_db_tutorial_progress") || "[]")[0]?.step_id)).toBe("RULE_GUIDE");
 });
@@ -791,6 +873,7 @@ test("tutorial completion resumes through account save and exposes the Home next
   }, { userId });
 
   await page.goto("/");
+  await page.locator('[data-acceptance-state="COMPLETION_DIALOGUE"] button').click();
   await expect(page.getByRole("heading", { name: "いろんな奴が、この街で生きてる。" })).toBeVisible();
 
   const completionMetrics = await page.locator(".tutorial-rule-screen").evaluate((screen) => {

@@ -75,7 +75,7 @@ export default function QuestBattleViewer(props: Props) {
   const start = rawStart < 0 ? 0 : rawStart;
   const timelinePreview = livingTimeline.length === 0
     ? []
-    : Array.from({ length: 4 }, (_, offset) => livingTimeline[(start + offset) % livingTimeline.length]);
+    : Array.from({ length: props.tutorial ? 3 : 4 }, (_, offset) => livingTimeline[(start + offset) % livingTimeline.length]);
 
   const sideOf = (participant?: Participant): "player" | "enemy" => participant?.isEnemy ? "enemy" : "player";
   const visualOf = (participant: Participant | undefined, side: "player" | "enemy") => {
@@ -125,7 +125,7 @@ export default function QuestBattleViewer(props: Props) {
   const roundLimit = props.battleMode === "RAID" ? 30 : props.battleMode === "PVP" || props.battleMode === "GVG" ? 20 : 15;
 
   return (
-    <div className={`playing-container quest-battle-viewer ${props.tutorial ? "is-tutorial" : ""}`} data-battle-speed={props.speed} data-acceptance-state={props.tutorial ? acceptanceState : undefined}>
+    <div className={`playing-container quest-battle-viewer ${props.tutorial ? "is-tutorial" : ""}`} data-battle-speed={props.speed} data-acceptance-state={props.tutorial ? acceptanceState : undefined} data-action-phase={actionPhase} data-action-kind={isSkillAction ? "skill" : "normal"}>
       <header className="battle-viewer-header">
         <span>{props.battleMode === "PATROL" ? "QUEST BATTLE" : props.battleMode}</span>
         <strong>ROUND {props.round}<small> / {roundLimit}</small></strong>
@@ -151,11 +151,12 @@ export default function QuestBattleViewer(props: Props) {
         visualOf={visualOf}
         popupFor={popupFor}
         hasAdvantage={hasAdvantage}
+        tutorial={props.tutorial}
       />
 
       <section className={`battle-action-stage is-${activeSide}-actor is-phase-${actionPhase} ${isSkillAction ? "is-skill-action" : "is-normal-action"} ${isFinalHit ? "is-final-hit" : ""}`} aria-live="polite">
         <div className="battle-action-copy">
-          <span>{isSkillAction ? "SKILL" : "ACTION"} / {activeParticipant?.name || "ACTION"}</span>
+          <span>{activeParticipant?.name || "ACTION"}</span>
           <strong>{skillName}</strong>
         </div>
         <div className="battle-action-sequence" aria-label="行動進行">
@@ -203,6 +204,7 @@ export default function QuestBattleViewer(props: Props) {
         visualOf={visualOf}
         popupFor={popupFor}
         hasAdvantage={hasAdvantage}
+        tutorial={props.tutorial}
       />
 
       <footer className="battle-viewer-controls">
@@ -237,11 +239,23 @@ type PartyZoneProps = {
   visualOf: (participant: Participant, side: "player" | "enemy") => { src?: string; placeholder: boolean };
   popupFor: (participant: Participant) => (BattleDamagePopup & { charId: string }) | null;
   hasAdvantage: (participant: Participant) => boolean;
+  tutorial: boolean;
 };
 
-function PartyZone({ side, label, party, activeId, targetId, shakingId, visualOf, popupFor, hasAdvantage }: PartyZoneProps) {
+function PartyZone({ side, label, party, activeId, targetId, shakingId, visualOf, popupFor, hasAdvantage, tutorial }: PartyZoneProps) {
+  if (tutorial && side === "enemy") {
+    const participant = party.find((entry) => !entry.isDead) || party[0];
+    if (!participant) return null;
+    const hpPercent = Math.min(100, Math.max(0, (Number(participant.hp) / Math.max(1, Number(participant.maxHp))) * 100));
+    return (
+      <section className="battle-enemy-compact" aria-label="敵HP">
+        <div><small>ENEMY</small><strong>{participant.name || label}</strong><b>{Math.round(hpPercent)}%</b></div>
+        <span><i style={{ width: `${hpPercent}%` }} /></span>
+      </section>
+    );
+  }
   return (
-    <section className={`battle-party-zone is-${side}`} aria-label={side === "enemy" ? "敵パーティ" : "味方パーティ"}>
+    <section className={`battle-party-zone is-${side} ${tutorial ? "is-tutorial-party" : ""}`} aria-label={side === "enemy" ? "敵パーティ" : "味方パーティ"}>
       <div className="battle-party-label"><span>{side === "enemy" ? "ENEMY" : "YOUR TEAM"}</span><strong>{label}</strong></div>
       <div className="battle-party-grid">
         {party.map((participant) => {

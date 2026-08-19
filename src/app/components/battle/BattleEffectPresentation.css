@@ -5,7 +5,7 @@
   overflow: hidden;
   pointer-events: none;
   isolation: isolate;
-  animation: battle-cutin-life 700ms ease-out both;
+  animation: battle-cutin-life 960ms ease-out both;
 }
 
 .battle-skill-cutin.is-ssr { animation-duration: 1100ms; }
@@ -17,7 +17,7 @@
 .battle-cutin-darken { z-index: 0; opacity: .86; }
 .battle-cutin-frame { z-index: 1; object-position: center; }
 .battle-skill-cutin.is-ssr .battle-cutin-frame { opacity: .94; mix-blend-mode: multiply; transform: scale(1.48); }
-.battle-cutin-speed-lines { z-index: 3; opacity: .68; mix-blend-mode: screen; animation: battle-cutin-lines 700ms ease-out both; }
+.battle-cutin-speed-lines { z-index: 3; opacity: .68; mix-blend-mode: screen; animation: battle-cutin-lines 960ms ease-out both; }
 
 .battle-cutin-character {
   position: absolute;
@@ -27,7 +27,7 @@
   bottom: -14%;
   left: -4%;
   transform: translateX(-8%);
-  animation: battle-cutin-character 700ms cubic-bezier(.16, 1, .3, 1) both;
+  animation: battle-cutin-character 960ms cubic-bezier(.16, 1, .3, 1) both;
 }
 .battle-skill-cutin.is-ssr .battle-cutin-character { right: 36%; }
 .battle-cutin-character .character-presentation { width: 100%; height: 100%; border: 0; background: transparent; box-shadow: none; }

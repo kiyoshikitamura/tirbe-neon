@@ -504,7 +504,7 @@ export default function CharacterTab() {
                 <div className="tutorial-formation-skill-confirmation">
                   <span>RECOMMENDED SKILL</span>
                   <strong>{tutorialSkillDialogue.skillName}</strong>
-                  <small>保証SSR・スキル枠1へ装備済み</small>
+                  <small>おすすめスキルをスキル枠1へ装備済み</small>
                 </div>
                 <button
                   className="semantic-cta semantic-cta--primary tutorial-primary-target"
@@ -564,7 +564,7 @@ export default function CharacterTab() {
                       rarity={(master as any).rarity || "R"}
                     />
                     <span>{master.jpName}</span>
-                    {isTutorialFormation && character.id === tutorialGuaranteedSsr?.id && <em>保証SSR</em>}
+                    {isTutorialFormation && character.id === tutorialGuaranteedSsr?.id && <em>おすすめ編成</em>}
                     {partyIndex >= 0 && <b>{partyIndex + 1}</b>}
                   </button>
                 );

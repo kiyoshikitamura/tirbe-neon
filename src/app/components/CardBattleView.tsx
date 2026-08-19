@@ -7,6 +7,7 @@ import CharacterPresentation from "./character/CharacterPresentation";
 import QuestBattleViewer from "./battle/QuestBattleViewer";
 import BattleResultSummary from "./battle/BattleResultSummary";
 import { preloadBattleEffects } from "./battle/BattleEffectPresentation";
+import { preloadTutorialCompletionAssets } from "../lib/tutorialCompletionAssets";
 import "./CardBattleView.css";
 
 export default function CardBattleView() {
@@ -74,6 +75,12 @@ export default function CardBattleView() {
       });
     }
   }, [battleState]);
+
+  useEffect(() => {
+    if (isTutorialBattle && battleState === "RESULT") {
+      void preloadTutorialCompletionAssets();
+    }
+  }, [battleState, isTutorialBattle]);
 
   const launchBattleOnce = () => {
     if (battleLaunchRef.current) return;

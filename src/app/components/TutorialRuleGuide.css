@@ -5,6 +5,46 @@
   inset: 0;
 }
 
+.tutorial-completion-bridge {
+  background:
+    radial-gradient(circle at 50% 30%, rgba(0, 229, 255, .16), transparent 42%),
+    linear-gradient(180deg, rgba(2, 7, 14, .82), #01040a 84%),
+    url('/bg/bg_street_shinjuku.png') center/cover no-repeat;
+}
+
+.tutorial-completion-scene {
+  position:relative;
+  width:min(100%,410px);
+  height:min(100%,810px);
+  overflow:hidden;
+  border:1px solid color-mix(in srgb,var(--ui-accent) 48%,transparent);
+  border-radius:var(--ui-radius-card,18px);
+  background:linear-gradient(180deg,rgba(3,9,16,.12),rgba(1,4,9,.98));
+  box-shadow:0 24px 70px rgba(0,0,0,.72),0 0 30px rgba(0,229,255,.1);
+}
+
+.tutorial-completion-ageha { position:absolute;inset:2% -5% 27%; }
+.tutorial-completion-ageha .character-presentation { width:100%;height:100%; }
+.tutorial-completion-dialogue {
+  position:absolute;
+  z-index:2;
+  right:12px;
+  bottom:max(12px,env(safe-area-inset-bottom));
+  left:12px;
+  display:grid;
+  gap:10px;
+  padding:15px;
+  border:1px solid rgba(0,229,255,.42);
+  border-radius:var(--ui-radius-card,14px);
+  background:linear-gradient(180deg,rgba(3,10,18,.94),rgba(1,5,11,.98));
+  box-shadow:0 14px 35px rgba(0,0,0,.6),inset 0 0 24px rgba(0,229,255,.04);
+}
+.tutorial-completion-dialogue small { color:var(--ui-accent);font-size:11px;font-weight:900;letter-spacing:.08em; }
+.tutorial-completion-dialogue p { margin:0;color:#f2f7fa;font-size:15px;font-weight:700;line-height:1.75; }
+.tutorial-completion-dialogue .semantic-cta { min-height:50px; }
+.tutorial-completion-loading { min-height:44px; }
+.tutorial-rule-image-fallback { position:absolute;inset:0;display:grid;place-items:center;background:#02050a; }
+
 .tutorial-rule-landing-guard {
   background: rgba(1, 4, 10, 0.08);
   pointer-events: all;

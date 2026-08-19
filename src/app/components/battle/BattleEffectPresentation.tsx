@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { SKILLS_MASTER_DATA } from "@/utils/skills_master_data";
 import CharacterPresentation from "../character/CharacterPresentation";
 import type { BattleParticipantView } from "./BattleUnitPortrait";
@@ -90,7 +90,7 @@ export function BattleSkillCutIn({ presentation, participant, imageSrc, speed }:
   const shownAtRef = useRef(0);
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
     if (presentation?.tier) {
       shownAtRef.current = performance.now();
@@ -98,7 +98,7 @@ export function BattleSkillCutIn({ presentation, participant, imageSrc, speed }:
       return;
     }
     if (!visible) return;
-    const minimumDuration = speed > 1 ? 720 : visible.tier === "SSR" ? 1100 : 900;
+    const minimumDuration = speed > 1 ? 720 : visible.tier === "SSR" ? 1100 : 960;
     const remaining = Math.max(0, minimumDuration - (performance.now() - shownAtRef.current));
     hideTimerRef.current = setTimeout(() => setVisible(null), remaining);
     return () => {

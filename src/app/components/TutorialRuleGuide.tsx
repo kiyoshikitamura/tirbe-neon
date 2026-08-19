@@ -4,6 +4,9 @@ import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { useGame } from "../context/GameContext";
 import { supabase } from "@/utils/supabase";
+import CharacterPresentation from "./character/CharacterPresentation";
+import BrandedLoading from "./ui/BrandedLoading";
+import { getTutorialCompletionAssetStatus, preloadTutorialCompletionAssets } from "../lib/tutorialCompletionAssets";
 import "./TutorialRuleGuide.css";
 
 const slides = [
@@ -37,10 +40,12 @@ const SLIDE_TRANSITION_MS = 420;
 export default function TutorialRuleGuide() {
   const { onboardingState, setOnboardingState, playCyberSe, navigateTab, setShowMissionPanel } = useGame();
   const [index, setIndex] = useState(0);
+  const [phase, setPhase] = useState<"BRIDGE" | "SLIDES">("BRIDGE");
   const [working, setWorking] = useState(false);
   const [transitioning, setTransitioning] = useState(false);
   const [overlayVisible, setOverlayVisible] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [imageFailed, setImageFailed] = useState(false);
   const workingRef = useRef(false);
   const landedRef = useRef(false);
   const timersRef = useRef<number[]>([]);
@@ -53,6 +58,7 @@ export default function TutorialRuleGuide() {
       navigateTab("home");
       setShowMissionPanel(false);
     }
+    void preloadTutorialCompletionAssets();
     const landingTimer = window.setTimeout(() => setOverlayVisible(true), LANDING_DELAY_MS);
     return () => window.clearTimeout(landingTimer);
     // The tutorial step is the lifecycle boundary. Context action identities
@@ -65,6 +71,8 @@ export default function TutorialRuleGuide() {
     timersRef.current = [];
   }, []);
 
+  useEffect(() => setImageFailed(false), [index]);
+
   if (tutorialStep !== "RULE_GUIDE") return null;
   const slide = slides[index];
 
@@ -72,6 +80,18 @@ export default function TutorialRuleGuide() {
     if (workingRef.current) return;
     workingRef.current = true;
     playCyberSe("click");
+
+    if (phase === "BRIDGE") {
+      setWorking(true);
+      await Promise.race([
+        preloadTutorialCompletionAssets(),
+        new Promise((resolve) => window.setTimeout(resolve, 1400)),
+      ]);
+      setPhase("SLIDES");
+      setWorking(false);
+      workingRef.current = false;
+      return;
+    }
 
     if (index < slides.length - 1) {
       setTransitioning(true);
@@ -102,18 +122,37 @@ export default function TutorialRuleGuide() {
 
   if (!overlayVisible) return <div className="tutorial-rule-landing-guard" aria-hidden="true" />;
 
+  if (phase === "BRIDGE") {
+    return (
+      <div className="tutorial-rule-screen tutorial-completion-bridge" role="dialog" aria-modal="true" aria-label="チュートリアル完了" data-acceptance-state="COMPLETION_DIALOGUE" data-completion-assets={getTutorialCompletionAssetStatus()}>
+        <section className="tutorial-completion-scene">
+          <div className="tutorial-completion-ageha" aria-hidden="true">
+            <CharacterPresentation src="/characters/ageha_transparent_asset.png" alt="" variant="dialogue-bust" />
+          </div>
+          <div className="tutorial-completion-dialogue">
+            <small>アゲハ</small>
+            <p>これでチュートリアルは終わり。<br />最後に、TRIBE NEONの世界を紹介するね。</p>
+            {working && <BrandedLoading className="tutorial-completion-loading" label="世界紹介を準備中" />}
+            <button className="semantic-cta semantic-cta--primary width-100" onClick={() => void next()} disabled={working} aria-busy={working}>次へ</button>
+          </div>
+        </section>
+      </div>
+    );
+  }
+
   return (
-    <div className="tutorial-rule-screen" role="dialog" aria-modal="true" aria-label="チュートリアル完了案内" data-rule-slide={slide.key}>
+    <div className="tutorial-rule-screen" role="dialog" aria-modal="true" aria-label="チュートリアル完了案内" data-rule-slide={slide.key} data-acceptance-state={slide.key}>
       <section className={`tutorial-rule-card tutorial-rule-card--${slide.key.toLowerCase()} ${transitioning ? "is-transitioning" : ""}`}>
         <div className="tutorial-rule-illustration">
-          <Image
+          {!imageFailed ? <Image
             src={slide.image}
             alt={slide.alt}
             fill
             quality={95}
             sizes="(max-width: 430px) 100vw, 430px"
             priority={index === 0}
-          />
+            onError={() => setImageFailed(true)}
+          /> : <BrandedLoading className="tutorial-rule-image-fallback" label={`${slide.key}を準備中`} />}
           <div className="tutorial-rule-illustration-shade" aria-hidden="true" />
         </div>
 
