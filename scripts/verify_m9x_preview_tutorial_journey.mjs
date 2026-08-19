@@ -152,9 +152,11 @@ try {
   const [{ data: skills, error: skillError }, { data: replay, error: replayError }, { count: skillGachaCount, error: skillGachaError }] = await Promise.all([
     admin.from("user_skills").select("id,skill_card_id,plus_val,equipped_character_id,slot_index").eq("user_id", userId),
     admin.from("battle_replay_sessions").select("player_snapshot,enemy_snapshot,result").eq("requester_user_id", userId).eq("battle_mode", "QUEST").order("created_at", { ascending: false }).limit(1).single(),
-    admin.from("gacha_execution_history").select("id", { count: "exact", head: true }).eq("user_id", userId).like("gacha_id", "SKILL%"),
+    admin.from("gacha_execution_history").select("request_id", { count: "exact", head: true }).eq("user_id", userId).like("gacha_id", "SKILL%"),
   ]);
-  if (skillError || replayError || skillGachaError) throw skillError || replayError || skillGachaError;
+  if (skillError || replayError || skillGachaError) {
+    throw new Error(`Preview contract query failed: ${JSON.stringify({ skillError, replayError, skillGachaError })}`);
+  }
   const starterSkills = (skills || []).filter((skill) => skill.skill_card_id === "SKILL_001");
   if (starterSkills.length !== 1 || Number(starterSkills[0].plus_val) !== 0 || Number(starterSkills[0].slot_index) !== 0) {
     throw new Error(`Invalid tutorial starter skill ownership: ${JSON.stringify(starterSkills)}`);
