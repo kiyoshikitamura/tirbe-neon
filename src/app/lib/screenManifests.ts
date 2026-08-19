@@ -74,6 +74,9 @@ export const TUTORIAL_CRITICAL_ASSETS: AssetRequest[] = optionalAssets([
   "/effects/fx_muzzle_flash.png",
   "/effects/cutin_bg_sr.png",
   "/effects/cutin_bg_ssr.png",
+  "/branding/world.png",
+  "/branding/power.png",
+  "/branding/tribe.png",
 ]);
 
 export const DEFERRED_ASSETS: AssetRequest[] = SCREEN_ASSET_MANIFESTS.home;

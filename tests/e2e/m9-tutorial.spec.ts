@@ -177,6 +177,107 @@ async function completeRuleGuide(page: import("@playwright/test").Page) {
   await page.getByRole("button", { name: "ミッションへ" }).click();
 }
 
+async function seedRuleGuideState(page: import("@playwright/test").Page, userId: string) {
+  await page.addInitScript(({ userId }) => {
+    localStorage.setItem("tribe_demo_uuid", userId);
+    localStorage.setItem("mock_auth_mode", "ANONYMOUS");
+    localStorage.setItem("mock_db_users", JSON.stringify([{ id: userId, username: "完了演出QA", cash: 10000, vitality: 95, level: 5, xp: 0, current_base_id: "shinjuku" }]));
+    localStorage.setItem("mock_db_user_characters", JSON.stringify([{ id: `starter_${userId}`, user_id: userId, character_id: "11111111-1111-1111-1111-111111111111", level: 3, awakening_level: 0 }]));
+    localStorage.setItem("mock_db_tutorial_progress", JSON.stringify([{ user_id: userId, step_id: "RULE_GUIDE" }]));
+  }, { userId });
+}
+
+async function assertRuleGuideFrame(page: import("@playwright/test").Page, key: "WORLD" | "POWER" | "TRIBE") {
+  const screen = page.locator(".tutorial-rule-screen");
+  await expect(screen).toHaveAttribute("data-rule-slide", key);
+  await expect(screen.locator(".tutorial-rule-card")).not.toHaveClass(/is-transitioning/);
+  await expect(screen.locator("button")).toBeEnabled();
+  const image = screen.getByRole("img");
+  await expect(image).toBeVisible();
+  await expect.poll(() => image.evaluate((element: HTMLImageElement) => ({ complete: element.complete, width: element.naturalWidth }))).toEqual(expect.objectContaining({ complete: true }));
+  const metrics = await screen.evaluate((element) => {
+    const card = element.querySelector<HTMLElement>(".tutorial-rule-card");
+    const action = element.querySelector<HTMLElement>("button");
+    const root = element.getBoundingClientRect();
+    const cardRect = card?.getBoundingClientRect();
+    return {
+      rootLeft: root.left,
+      rootRight: root.right,
+      rootTop: root.top,
+      rootBottom: root.bottom,
+      cardLeft: cardRect?.left || 0,
+      cardRight: cardRect?.right || 0,
+      cardWidth: cardRect?.width || 0,
+      actionHeight: action?.getBoundingClientRect().height || 0,
+      viewportWidth: innerWidth,
+      viewportHeight: innerHeight,
+      horizontalOverflow: element.scrollWidth > element.clientWidth,
+    };
+  });
+  expect(metrics.rootLeft).toBeGreaterThanOrEqual(0);
+  expect(metrics.rootRight).toBeLessThanOrEqual(metrics.viewportWidth);
+  expect(metrics.rootTop).toBeGreaterThanOrEqual(0);
+  expect(metrics.rootBottom).toBeLessThanOrEqual(metrics.viewportHeight);
+  expect(metrics.cardLeft).toBeGreaterThanOrEqual(0);
+  expect(metrics.cardRight).toBeLessThanOrEqual(metrics.viewportWidth);
+  expect(metrics.cardWidth).toBeLessThanOrEqual(430);
+  expect(metrics.actionHeight).toBeGreaterThanOrEqual(44);
+  expect(metrics.horizontalOverflow).toBe(false);
+}
+
+test("tutorial completion presentation uses final WORLD POWER TRIBE assets", async ({ page, browser }, testInfo) => {
+  const pageErrors: string[] = [];
+  const consoleErrors: string[] = [];
+  const failedImages: string[] = [];
+  page.on("pageerror", (error) => pageErrors.push(error.message));
+  page.on("console", (message) => {
+    if (message.type() === "error" && !message.text().startsWith("Failed to load resource:")) consoleErrors.push(message.text());
+  });
+  page.on("response", (response) => {
+    if (response.request().resourceType() === "image" && !response.ok()) failedImages.push(`${response.status()} ${response.url()}`);
+  });
+  await seedRuleGuideState(page, "00000000-0000-4000-8000-000000000913");
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+
+  for (const width of [375, 390, 430]) {
+    await page.setViewportSize({ width, height: 844 });
+    await assertRuleGuideFrame(page, "WORLD");
+  }
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.screenshot({ path: testInfo.outputPath("T1-WORLD-Mobile.png") });
+
+  const nextButton = page.getByRole("button", { name: "次へ" });
+  await nextButton.evaluate((button: HTMLButtonElement) => { button.click(); button.click(); });
+  await assertRuleGuideFrame(page, "POWER");
+  await page.screenshot({ path: testInfo.outputPath("T2-POWER-Mobile.png") });
+  await nextButton.click();
+  await assertRuleGuideFrame(page, "TRIBE");
+  await page.screenshot({ path: testInfo.outputPath("T3-TRIBE-Mobile.png") });
+
+  expect(failedImages).toEqual([]);
+  expect(pageErrors).toEqual([]);
+  expect(consoleErrors).toEqual([]);
+
+  const desktopContext = await browser.newContext({ viewport: { width: 1440, height: 1000 }, deviceScaleFactor: 2 });
+  const desktopPage = await desktopContext.newPage();
+  await seedRuleGuideState(desktopPage, "00000000-0000-4000-8000-000000000914");
+  await desktopPage.goto("/");
+  for (const width of [1024, 1440, 1920]) {
+    await desktopPage.setViewportSize({ width, height: 1000 });
+    await assertRuleGuideFrame(desktopPage, "WORLD");
+  }
+  await desktopPage.setViewportSize({ width: 1440, height: 1000 });
+  await desktopPage.screenshot({ path: testInfo.outputPath("T4-WORLD-Desktop-DPR2.png") });
+  await desktopPage.getByRole("button", { name: "次へ" }).click();
+  await assertRuleGuideFrame(desktopPage, "POWER");
+  await desktopPage.screenshot({ path: testInfo.outputPath("T5-POWER-Desktop-DPR2.png") });
+  await desktopPage.getByRole("button", { name: "次へ" }).click();
+  await assertRuleGuideFrame(desktopPage, "TRIBE");
+  await desktopPage.screenshot({ path: testInfo.outputPath("T6-TRIBE-Desktop-DPR2.png") });
+  await desktopContext.close();
+});
+
 test("common app shell owns safe area through entry and tutorial overlay", async ({ page }) => {
   await page.goto("/");
   await page.locator("html").evaluate((root) => root.style.setProperty("--app-safe-top", "47px"));
