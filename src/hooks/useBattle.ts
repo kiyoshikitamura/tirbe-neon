@@ -1,6 +1,6 @@
 "use client";
 
-import { createElement, useRef, useState, useEffect } from "react";
+import { createElement, useRef, useState, useEffect, useCallback } from "react";
 import { supabase } from "@/utils/supabase";
 import { SKILLS_MASTER_DATA } from "@/utils/skills_master_data";
 import {
@@ -24,6 +24,8 @@ export type { UseBattleOptions, ParticipantState, CardState, SkillLogItem };
 
 const patrolReplayCursorKey = (replayId: string) => `tribe_neon_patrol_replay_cursor_${replayId}`;
 type BattleMode = "PVP" | "PVP_PRACTICE" | "RAID" | "GVG" | "PATROL";
+export type BattlePresentationPhase = "IDLE" | "ACTOR_FOCUS" | "TARGET_FOCUS" | "ATTACK_MOTION" | "IMPACT" | "DAMAGE" | "HP_TRANSITION" | "ACTION_HOLD";
+export type BattlePresentationTimelineNode = { id: string; name: string; isEnemy?: boolean };
 
 function savedPatrolReplayCursor(replayId: unknown, fallback: unknown): number {
   const fallbackIndex = Math.max(0, Number(fallback || 0));
@@ -135,6 +137,23 @@ export function useBattle(options: UseBattleOptions) {
   const [targetLine, setTargetLine] = useState<{ fromId: string; toId: string } | null>(null);
   const [activeShakingCharId, setActiveShakingCharId] = useState<string | null>(null);
   const [damagePopup, setDamagePopup] = useState<{ val: number; type: "dmg" | "heal" | "shield"; isCritical?: boolean; x: number; y: number; charId: string } | null>(null);
+  const [presentationPhase, setPresentationPhase] = useState<BattlePresentationPhase>("IDLE");
+  const [authoritativeTimeline, setAuthoritativeTimeline] = useState<BattlePresentationTimelineNode[]>([]);
+  const presentationTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+  const clearPresentationTimers = useCallback(() => {
+    presentationTimersRef.current.forEach(clearTimeout);
+    presentationTimersRef.current = [];
+  }, []);
+
+  const recordPresentationStage = (stage: "actorFocusAt" | "targetFocusAt" | "impactAt" | "damageAt" | "hpSettledAt" | "actionCompleteAt") => {
+    if (typeof window === "undefined") return;
+    const battleWindow = window as typeof window & { __TRIBE_BATTLE_PRESENTATION__?: { current?: any; history: any[] } };
+    const current = battleWindow.__TRIBE_BATTLE_PRESENTATION__?.current;
+    if (current && typeof current[stage] !== "number") current[stage] = performance.now();
+  };
+
+  useEffect(() => () => clearPresentationTimers(), [clearPresentationTimers]);
 
 
 
@@ -1724,8 +1743,14 @@ export function useBattle(options: UseBattleOptions) {
         && previousPreviousReplayEvent?.type === "ACTION"
         && String(previousPreviousReplayEvent.payload?.skillId ?? "BASIC_ATTACK") === "BASIC_ATTACK";
       const followsFinalHit = replayEvent.type === "RESULT" && previousReplayEvent?.type === "DEFEAT";
+      const previousAction = authoritativeEvents.slice(0, authoritativeEventIndex).reverse().find((entry) => entry.type === "ACTION");
+      const previousActionWasSkill = previousAction
+        ? String(previousAction.payload?.skillId ?? "BASIC_ATTACK") !== "BASIC_ATTACK"
+        : false;
       const delay = replayEvent.type === "ACTION"
-        ? 320
+        ? (previousAction && previousReplayEvent && previousReplayEvent.type !== "ACTION"
+          ? previousActionWasSkill ? 1050 : 940
+          : 320)
         : followsSkill
           ? 2350
           : followsNormalAttack
@@ -1750,29 +1775,54 @@ export function useBattle(options: UseBattleOptions) {
 
         if (replayEvent.type === "ACTION") {
           const skillId = String(payload.skillId ?? "BASIC_ATTACK");
+          const isSkill = skillId !== "BASIC_ATTACK";
+          clearPresentationTimers();
+          setActiveSkillCutIn(null);
+          setTargetLine(null);
+          setActiveShakingCharId(null);
+          setDamagePopup(null);
+          setPresentationPhase("ACTOR_FOCUS");
           if (typeof window !== "undefined") {
             const battleWindow = window as typeof window & { __TRIBE_BATTLE_PRESENTATION__?: { current?: any; history: any[] } };
             const metrics = battleWindow.__TRIBE_BATTLE_PRESENTATION__ ||= { history: [] };
             if (metrics.current) {
               metrics.history.push({ ...metrics.current, totalMs: Math.round(performance.now() - metrics.current.startedAt) });
             }
-            metrics.current = { kind: skillId === "BASIC_ATTACK" ? "normal" : "skill", skillId, startedAt: performance.now() };
+            const startedAt = performance.now();
+            metrics.current = { kind: isSkill ? "skill" : "normal", skillId, startedAt, actorFocusAt: startedAt };
           }
           const skill = actor?.skills.find((entry: any) => String(entry.id ?? entry.skill_card_id) === skillId);
           const nextImpact = authoritativeEvents.slice(authoritativeEventIndex + 1)
             .find((entry) => entry.type === "DAMAGE" || entry.type === "HEAL");
           const nextTargetId = String(nextImpact?.payload.targetId ?? "");
+          const nextActions = authoritativeEvents
+            .slice(authoritativeEventIndex)
+            .filter((entry) => entry.type === "ACTION")
+            .slice(0, 3)
+            .map((entry) => {
+              const id = String(entry.payload.actorId ?? "");
+              const participant = allParticipants.find((candidate) => candidate.id === id);
+              return { id, name: participant?.name ?? id, isEnemy: enemyPartyStates.some((candidate) => candidate.id === id) };
+            })
+            .filter((entry) => entry.id);
+          setAuthoritativeTimeline(nextActions);
           setActiveSkillCutIn({ charName: actor?.name ?? actorId, skillName: skill?.name ?? (skillId === "BASIC_ATTACK" ? "通常攻撃" : skillId) });
           const actorTimelineIndex = timeline.findIndex((entry) => entry.id === actorId);
           if (actorTimelineIndex >= 0) setTimelineIndex(actorTimelineIndex);
-          if (nextTargetId) setTargetLine({ fromId: actorId, toId: nextTargetId });
+          const targetDelay = (isSkill ? 1120 : 260) / battleSpeed;
+          const attackDelay = (isSkill ? 1480 : 480) / battleSpeed;
+          presentationTimersRef.current.push(setTimeout(() => {
+            if (nextTargetId) setTargetLine({ fromId: actorId, toId: nextTargetId });
+            setPresentationPhase("TARGET_FOCUS");
+            recordPresentationStage("targetFocusAt");
+          }, targetDelay));
+          presentationTimersRef.current.push(setTimeout(() => {
+            setPresentationPhase("ATTACK_MOTION");
+          }, attackDelay));
           setBattleLog((previous) => [...previous, `[ROUND ${replayEvent.round}] ${actor?.name ?? actorId}：${skill?.name ?? "通常攻撃"}`]);
         } else if (replayEvent.type === "DAMAGE") {
-          if (typeof window !== "undefined") {
-            const battleWindow = window as typeof window & { __TRIBE_BATTLE_PRESENTATION__?: { current?: any; history: any[] } };
-            const current = battleWindow.__TRIBE_BATTLE_PRESENTATION__?.current;
-            if (current && typeof current.impactMs !== "number") current.impactMs = Math.round(performance.now() - current.startedAt);
-          }
+          setPresentationPhase("IMPACT");
+          recordPresentationStage("impactAt");
           const amount = Math.max(0, Number(payload.amount ?? 0));
           const remainingHp = Math.max(0, Number(payload.remainingHp ?? target?.hp ?? 0));
           const critical = payload.critical === true;
@@ -1785,11 +1835,25 @@ export function useBattle(options: UseBattleOptions) {
           setTargetLine(actorId && targetId ? { fromId: actorId, toId: targetId } : null);
           setActiveShakingCharId(missed ? null : targetId);
           setDamagePopup({ val: amount, type: "dmg", isCritical: critical, x: 120, y: 40, charId: targetId });
+          presentationTimersRef.current.push(setTimeout(() => {
+            setPresentationPhase("DAMAGE");
+            recordPresentationStage("damageAt");
+          }, 100 / battleSpeed));
+          presentationTimersRef.current.push(setTimeout(() => {
+            setPresentationPhase("HP_TRANSITION");
+            recordPresentationStage("hpSettledAt");
+          }, 450 / battleSpeed));
+          presentationTimersRef.current.push(setTimeout(() => {
+            setPresentationPhase("ACTION_HOLD");
+            recordPresentationStage("actionCompleteAt");
+          }, 900 / battleSpeed));
           playCyberSe(missed ? "click" : "hit");
           setBattleLog((previous) => [...previous, missed
             ? `${actor?.name ?? actorId}の攻撃は外れた。`
             : `${target?.name ?? targetId}に ${amount.toLocaleString()}${critical ? " 【CRITICAL!】" : ""} ダメージ。`]);
         } else if (replayEvent.type === "HEAL") {
+          setPresentationPhase("IMPACT");
+          recordPresentationStage("impactAt");
           const amount = Math.max(0, Number(payload.amount ?? 0));
           const remainingHp = Math.max(0, Number(payload.remainingHp ?? target?.hp ?? 0));
           const updateTarget = (participant: ParticipantState) => participant.id === targetId
@@ -1798,6 +1862,18 @@ export function useBattle(options: UseBattleOptions) {
           setPlayerPartyStates((previous) => previous.map(updateTarget));
           setEnemyPartyStates((previous) => previous.map(updateTarget));
           setDamagePopup({ val: amount, type: "heal", x: 120, y: 40, charId: targetId });
+          presentationTimersRef.current.push(setTimeout(() => {
+            setPresentationPhase("DAMAGE");
+            recordPresentationStage("damageAt");
+          }, 100 / battleSpeed));
+          presentationTimersRef.current.push(setTimeout(() => {
+            setPresentationPhase("HP_TRANSITION");
+            recordPresentationStage("hpSettledAt");
+          }, 450 / battleSpeed));
+          presentationTimersRef.current.push(setTimeout(() => {
+            setPresentationPhase("ACTION_HOLD");
+            recordPresentationStage("actionCompleteAt");
+          }, 900 / battleSpeed));
           playCyberSe("click");
           setBattleLog((previous) => [...previous, `${target?.name ?? targetId}のHPが ${amount.toLocaleString()} 回復。`]);
         } else if (replayEvent.type === "STATUS") {
@@ -1816,20 +1892,20 @@ export function useBattle(options: UseBattleOptions) {
           setEnemyPartyStates((previous) => previous.map(updateTarget));
           setBattleLog((previous) => [...previous, `${target?.name ?? targetId}は戦闘不能。`]);
         } else if (replayEvent.type === "RESULT") {
+          clearPresentationTimers();
           setActiveSkillCutIn(null);
           setTargetLine(null);
           setActiveShakingCharId(null);
           setDamagePopup(null);
+          setPresentationPhase("IDLE");
+          setAuthoritativeTimeline([]);
           const winner = payload.winner === "PLAYER" ? "VICTORY" : "DEFEAT";
           void endBattleSession(winner);
           return;
         }
 
-        if (replayEvent.type !== "ACTION") {
-          setActiveSkillCutIn(null);
-          setTargetLine(null);
-          setActiveShakingCharId(null);
-        }
+        // Keep actor/target/impact context mounted until the next authoritative
+        // ACTION. ACTION + DAMAGE/STATUS/DEFEAT is one visual unit.
         const advanceReplay = (previous: number) => {
           const next = previous + 1;
           if (authoritativeReplayId && typeof window !== "undefined") {
@@ -2259,6 +2335,8 @@ export function useBattle(options: UseBattleOptions) {
     targetLine,
     activeShakingCharId,
     damagePopup, setDamagePopup,
+    presentationPhase,
+    authoritativeTimeline,
     gvgTargetBaseId, setGvgTargetBaseId,
     battleLoading, setBattleLoading,
     startCardBattle,

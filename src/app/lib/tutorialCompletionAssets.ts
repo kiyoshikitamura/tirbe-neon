@@ -1,7 +1,7 @@
 const TUTORIAL_COMPLETION_ASSETS = [
-  "/branding/world.png",
-  "/branding/power.png",
-  "/branding/tribe.png",
+  "/branding/tutorial/world.webp",
+  "/branding/tutorial/power.webp",
+  "/branding/tutorial/tribe.webp",
 ] as const;
 
 export type TutorialCompletionAssetStatus = "idle" | "loading" | "ready" | "degraded";

@@ -87,24 +87,22 @@ type CutInProps = {
 
 export function BattleSkillCutIn({ presentation, participant, imageSrc, speed }: CutInProps) {
   const [visible, setVisible] = useState<BattleSkillPresentation | null>(null);
-  const shownAtRef = useRef(0);
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastPresentationRef = useRef<BattleSkillPresentation | null>(null);
 
   useLayoutEffect(() => {
-    if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
-    if (presentation?.tier) {
-      shownAtRef.current = performance.now();
-      setVisible(presentation);
+    if (!presentation?.tier) {
+      lastPresentationRef.current = null;
+      setVisible(null);
       return;
     }
-    if (!visible) return;
-    const minimumDuration = speed > 1 ? 720 : visible.tier === "SSR" ? 1100 : 960;
-    const remaining = Math.max(0, minimumDuration - (performance.now() - shownAtRef.current));
-    hideTimerRef.current = setTimeout(() => setVisible(null), remaining);
-    return () => {
-      if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
-    };
-  }, [presentation, speed, visible]);
+    if (lastPresentationRef.current === presentation) return;
+    lastPresentationRef.current = presentation;
+    if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
+    setVisible(presentation);
+    const minimumDuration = speed > 1 ? 720 : presentation.tier === "SSR" ? 1100 : 960;
+    hideTimerRef.current = setTimeout(() => setVisible(null), minimumDuration);
+  }, [presentation, speed]);
 
   useEffect(() => () => {
     if (hideTimerRef.current) clearTimeout(hideTimerRef.current);

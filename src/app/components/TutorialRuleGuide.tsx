@@ -1,69 +1,55 @@
 "use client";
 
-import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { useGame } from "../context/GameContext";
 import { supabase } from "@/utils/supabase";
 import CharacterPresentation from "./character/CharacterPresentation";
 import BrandedLoading from "./ui/BrandedLoading";
-import { getTutorialCompletionAssetStatus, preloadTutorialCompletionAssets } from "../lib/tutorialCompletionAssets";
+import { getTutorialCompletionAssetStatus, preloadTutorialCompletionAssets, TUTORIAL_COMPLETION_ASSETS } from "../lib/tutorialCompletionAssets";
 import "./TutorialRuleGuide.css";
 
 const slides = [
   {
     key: "WORLD",
-    image: "/branding/world.png",
+    image: "/branding/tutorial/world.webp",
     alt: "夜の街で暮らすアゲハとレオ、行き交うさまざまな人々",
     title: "いろんな奴が、この街で生きてる。",
     body: <>新宿、渋谷、池袋、六本木、秋葉原。川崎、横浜。<br />街が違えば、そこにいる奴らも違う。まずは、この世界を好きに歩いてみよう。</>,
   },
   {
     key: "POWER",
-    image: "/branding/power.png",
+    image: "/branding/tutorial/power.webp",
     alt: "仲間を育成し、スキルや装備を整えるゴウとカエデ",
     title: "仲間を集めて、もっと強くなる。",
     body: <>キャラクター、スキル、装備。組み合わせて育てれば、総合力はもっと上がる。<br />強くなったら、バトルでその力を試そう。</>,
   },
   {
     key: "TRIBE",
-    image: "/branding/tribe.png",
+    image: "/branding/tutorial/tribe.webp",
     alt: "レイジを中心に集まったTRIBEの仲間たち",
     title: "気の合う奴らと、TRIBEへ。",
     body: <>この街には、たくさんのプレイヤーがいる。仲間を見つけて、TRIBEに集まろう。<br />そしていつか、<strong>自分たちのTRIBEで頂点を目指せ。</strong><br /><small>TRIBE設立はプレイヤーLv8で解放</small></>,
   },
 ] as const;
 
-const LANDING_DELAY_MS = 240;
 const SLIDE_SWAP_MS = 180;
 const SLIDE_TRANSITION_MS = 420;
 
 export default function TutorialRuleGuide() {
-  const { onboardingState, setOnboardingState, playCyberSe, navigateTab, setShowMissionPanel } = useGame();
+  const { onboardingState, setOnboardingState, playCyberSe } = useGame();
   const [index, setIndex] = useState(0);
   const [phase, setPhase] = useState<"BRIDGE" | "SLIDES">("BRIDGE");
   const [working, setWorking] = useState(false);
   const [transitioning, setTransitioning] = useState(false);
-  const [overlayVisible, setOverlayVisible] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [imageFailed, setImageFailed] = useState(false);
   const workingRef = useRef(false);
-  const landedRef = useRef(false);
   const timersRef = useRef<number[]>([]);
   const tutorialStep = onboardingState?.tutorial_step;
 
   useEffect(() => {
     if (tutorialStep !== "RULE_GUIDE") return;
-    if (!landedRef.current) {
-      landedRef.current = true;
-      navigateTab("home");
-      setShowMissionPanel(false);
-    }
     void preloadTutorialCompletionAssets();
-    const landingTimer = window.setTimeout(() => setOverlayVisible(true), LANDING_DELAY_MS);
-    return () => window.clearTimeout(landingTimer);
-    // The tutorial step is the lifecycle boundary. Context action identities
-    // may change during bootstrap and must not keep restarting this reveal.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tutorialStep]);
 
   useEffect(() => () => {
@@ -83,10 +69,7 @@ export default function TutorialRuleGuide() {
 
     if (phase === "BRIDGE") {
       setWorking(true);
-      await Promise.race([
-        preloadTutorialCompletionAssets(),
-        new Promise((resolve) => window.setTimeout(resolve, 1400)),
-      ]);
+      await preloadTutorialCompletionAssets();
       setPhase("SLIDES");
       setWorking(false);
       workingRef.current = false;
@@ -112,19 +95,18 @@ export default function TutorialRuleGuide() {
         return;
       }
       setOnboardingState((current: any) => current ? { ...current, tutorial_step: "COMPLETE" } : current);
-      navigateTab("home");
-      setShowMissionPanel(true);
     } finally {
       workingRef.current = false;
       setWorking(false);
     }
   };
 
-  if (!overlayVisible) return <div className="tutorial-rule-landing-guard" aria-hidden="true" />;
-
   if (phase === "BRIDGE") {
     return (
       <div className="tutorial-rule-screen tutorial-completion-bridge" role="dialog" aria-modal="true" aria-label="チュートリアル完了" data-acceptance-state="COMPLETION_DIALOGUE" data-completion-assets={getTutorialCompletionAssetStatus()}>
+        <div className="tutorial-rule-preload" aria-hidden="true">
+          {TUTORIAL_COMPLETION_ASSETS.map((src) => <img key={src} src={src} alt="" />)}
+        </div>
         <section className="tutorial-completion-scene">
           <div className="tutorial-completion-ageha" aria-hidden="true">
             <CharacterPresentation src="/characters/ageha_transparent_asset.png" alt="" variant="dialogue-bust" />
@@ -142,15 +124,14 @@ export default function TutorialRuleGuide() {
 
   return (
     <div className="tutorial-rule-screen" role="dialog" aria-modal="true" aria-label="チュートリアル完了案内" data-rule-slide={slide.key} data-acceptance-state={slide.key}>
+      <div className="tutorial-rule-preload" aria-hidden="true">
+        {TUTORIAL_COMPLETION_ASSETS.map((src) => <img key={src} src={src} alt="" />)}
+      </div>
       <section className={`tutorial-rule-card tutorial-rule-card--${slide.key.toLowerCase()} ${transitioning ? "is-transitioning" : ""}`}>
         <div className="tutorial-rule-illustration">
-          {!imageFailed ? <Image
+          {!imageFailed ? <img
             src={slide.image}
             alt={slide.alt}
-            fill
-            quality={95}
-            sizes="(max-width: 430px) 100vw, 430px"
-            priority={index === 0}
             onError={() => setImageFailed(true)}
           /> : <BrandedLoading className="tutorial-rule-image-fallback" label={`${slide.key}を準備中`} />}
           <div className="tutorial-rule-illustration-shade" aria-hidden="true" />
@@ -173,7 +154,7 @@ export default function TutorialRuleGuide() {
             disabled={working || transitioning}
             aria-busy={working || transitioning}
           >
-            {working ? "保存中..." : index < slides.length - 1 ? "次へ" : "ミッションへ"}
+            {working ? "保存中..." : index < slides.length - 1 ? "次へ" : "アカウント登録へ"}
           </button>
         </div>
       </section>

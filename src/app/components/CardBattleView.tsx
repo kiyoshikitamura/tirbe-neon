@@ -34,6 +34,8 @@ export default function CardBattleView() {
     targetLine,
     activeShakingCharId,
     damagePopup,
+    presentationPhase,
+    authoritativeTimeline,
     launchBattlePlaying,
     endBattleSession,
     completeBattleResult,
@@ -364,6 +366,8 @@ export default function CardBattleView() {
         enemyParty={enemyPartyStates}
         timeline={timeline}
         timelineIndex={timelineIndex}
+        authoritativeTimeline={authoritativeTimeline}
+        presentationPhase={presentationPhase}
         round={battleRound}
         skillCutIn={activeSkillCutIn}
         targetLine={targetLine}

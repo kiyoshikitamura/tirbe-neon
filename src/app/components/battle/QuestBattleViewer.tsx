@@ -11,6 +11,7 @@ import {
 } from "./BattleEffectPresentation";
 import "./QuestBattleViewer.css";
 import { useAudio } from "@/audio/AudioProvider";
+import type { BattlePresentationPhase } from "@/hooks/useBattle";
 
 type Participant = BattleParticipantView & {
   characterId?: string;
@@ -26,6 +27,8 @@ type Props = {
   enemyParty: Participant[];
   timeline: TimelineNode[];
   timelineIndex: number;
+  authoritativeTimeline?: TimelineNode[];
+  presentationPhase?: BattlePresentationPhase;
   round: number;
   skillCutIn: { charName: string; skillName: string } | null;
   targetLine: { fromId: string; toId: string } | null;
@@ -60,7 +63,7 @@ const tacticLabel: Record<string, string> = {
 export default function QuestBattleViewer(props: Props) {
   const { playSe } = useAudio();
   const allParticipants = [...props.playerParty, ...props.enemyParty];
-  const activeTimelineNode = props.timeline[props.timelineIndex] || props.timeline[0];
+  const activeTimelineNode = props.authoritativeTimeline?.[0] || props.timeline[props.timelineIndex] || props.timeline[0];
   const activeParticipant = allParticipants.find((entry) => entry.id === activeTimelineNode?.id)
     || props.playerParty[0]
     || props.enemyParty[0];
@@ -73,9 +76,11 @@ export default function QuestBattleViewer(props: Props) {
   const livingTimeline = props.timeline.filter((node) => !allParticipants.find((entry) => entry.id === node.id)?.isDead);
   const rawStart = livingTimeline.findIndex((node) => node.id === activeTimelineNode?.id);
   const start = rawStart < 0 ? 0 : rawStart;
-  const timelinePreview = livingTimeline.length === 0
-    ? []
-    : Array.from({ length: props.tutorial ? 3 : 4 }, (_, offset) => livingTimeline[(start + offset) % livingTimeline.length]);
+  const timelinePreview = props.authoritativeTimeline?.length
+    ? props.authoritativeTimeline.slice(0, props.tutorial ? 3 : 4)
+    : livingTimeline.length === 0
+      ? []
+      : Array.from({ length: props.tutorial ? 3 : 4 }, (_, offset) => livingTimeline[(start + offset) % livingTimeline.length]);
 
   const sideOf = (participant?: Participant): "player" | "enemy" => participant?.isEnemy ? "enemy" : "player";
   const visualOf = (participant: Participant | undefined, side: "player" | "enemy") => {
@@ -117,7 +122,7 @@ export default function QuestBattleViewer(props: Props) {
     else if (targetHasAdvantage) playSe("BATTLE_WEAK");
     else if (props.damagePopup.type === "dmg") playSe("BATTLE_DAMAGE");
   }, [playSe, props.damagePopup, targetHasAdvantage]);
-  const actionPhase = props.damagePopup ? "impact" : props.targetLine ? (isSkillAction ? "skill" : "attack") : "actor";
+  const actionPhase = (props.presentationPhase || "IDLE").toLowerCase().replaceAll("_", "-");
   const acceptanceState = props.damagePopup
     ? (props.enemyParty.every((entry) => entry.isDead || entry.hp <= 0) ? "B5" : isSkillAction ? "B4" : "B3")
     : isSkillAction ? "B4" : "B3";
@@ -191,7 +196,7 @@ export default function QuestBattleViewer(props: Props) {
           imageSrc={activeVisual.src}
           speed={props.speed}
         />
-        {props.skillCutIn && !skillPresentation?.tier && <div className="battle-skill-flash"><small>{isSkillAction ? "SKILL" : "ATTACK"}</small><strong>{props.skillCutIn.skillName}</strong></div>}
+        {props.skillCutIn && isSkillAction && !skillPresentation?.tier && <div className="battle-skill-flash"><small>SKILL</small><strong>{props.skillCutIn.skillName}</strong></div>}
       </section>
 
       <PartyZone

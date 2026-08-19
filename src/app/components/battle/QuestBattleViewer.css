@@ -72,13 +72,14 @@
 .battle-action-copy strong { overflow: hidden; font-size: clamp(14px, 4.4vw, 20px); text-overflow: ellipsis; white-space: nowrap; text-shadow: 0 0 12px rgba(25, 220, 233, .52); }
 .battle-action-units { position: absolute; inset: 32px 8px 7px; display: grid; grid-template-columns: minmax(0, 1fr) 32px minmax(0, 1fr); align-items: end; gap: 6px; }
 .battle-action-units > .battle-unit { transition: transform .22s ease, filter .18s ease, box-shadow .18s ease; }
-.battle-action-stage.is-phase-attack .battle-action-units > .battle-unit:first-child,
-.battle-action-stage.is-phase-skill .battle-action-units > .battle-unit:first-child { transform: translateX(8px) scale(1.025); filter: brightness(1.15); }
-.battle-action-stage.is-phase-impact .battle-action-units > .battle-unit:last-child { animation: battle-target-impact .32s ease-out; filter: brightness(1.35); }
+.battle-action-stage.is-phase-attack-motion .battle-action-units > .battle-unit:first-child { transform: translateX(12%) scale(1.045); filter: brightness(1.2); }
+.battle-action-stage.is-enemy-actor.is-phase-attack-motion .battle-action-units > .battle-unit:first-child { transform: translateX(-12%) scale(1.045); }
+.battle-action-stage.is-phase-impact .battle-action-units > .battle-unit:last-child,
+.battle-action-stage.is-phase-damage .battle-action-units > .battle-unit:last-child { animation: battle-target-impact .32s ease-out; filter: brightness(1.35); }
 .battle-action-impact { display: flex; align-items: center; justify-content: center; gap: 2px; }
 .battle-action-impact i { width: 8px; height: 1px; background: #f2cd69; box-shadow: 0 0 7px #f2cd69; }
 .battle-action-impact strong { color: #f2cd69; font-size: 10px; font-style: italic; }
-.battle-action-sequence { position: absolute; z-index: 7; top: 8px; right: 8px; display: flex; align-items: center; gap: 3px; }
+.battle-action-sequence { display: none; }
 .battle-action-sequence span { color: var(--ui-text-disabled); font-size: 6px; font-weight: 900; letter-spacing: .04em; }
 .battle-action-sequence span.is-active { color: var(--ui-value); }
 .battle-action-sequence i { color: var(--ui-border); font-size: 8px; font-style: normal; }
@@ -121,6 +122,7 @@
 }
 .quest-battle-viewer.is-tutorial .battle-timeline { grid-template-columns:1.35fr repeat(2,minmax(0,1fr));min-height:32px; }
 .quest-battle-viewer.is-tutorial .battle-action-sequence { display:none; }
+.quest-battle-viewer .battle-unit-role { display:none; }
 .quest-battle-viewer.is-tutorial .battle-action-copy { right:8px;align-items:center;text-align:center; }
 .quest-battle-viewer.is-tutorial .battle-action-copy span { color:#cbd8df;font-size:10px; }
 .quest-battle-viewer.is-tutorial .battle-action-copy strong { max-width:92%;font-size:clamp(18px,5.7vw,24px); }

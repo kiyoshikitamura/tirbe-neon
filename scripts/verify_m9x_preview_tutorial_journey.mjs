@@ -122,14 +122,9 @@ try {
   for (let index = 0; index < 3; index += 1) {
     await page.locator(".tutorial-rule-screen button").click();
   }
-  const authenticationModal = await visible(".modal-overlay.background-black-95 .modal-card", 20_000);
-  const qaEmail = `m9x-${Date.now()}@example.com`;
-  await authenticationModal.locator('input[type="email"]').fill(qaEmail);
-  await authenticationModal.locator('input[type="password"]').fill("m9x-preview-pass");
-  await authenticationModal.locator("button.semantic-cta--secondary").click();
-  await visible(".mypage-primary-cta", 20_000);
-  stateSequence.push("MISSION_HUB");
-  await page.screenshot({ path: path.join(artifactsDirectory, "preview-mission-hub.png"), fullPage: true });
+  await visible(".modal-overlay.background-black-95 .modal-card", 20_000);
+  stateSequence.push("ACCOUNT_AUTHENTICATION");
+  await page.screenshot({ path: path.join(artifactsDirectory, "preview-account-authentication.png"), fullPage: true });
   const browserState = await page.evaluate(() => {
     const authKey = Object.keys(localStorage).find((key) => /^sb-.*-auth-token$/.test(key));
     let storedUserId = null;
@@ -140,6 +135,7 @@ try {
       userId: storedUserId,
       trace: window.__TRIBE_TUTORIAL_JOURNEY_TRACE__ || [],
       actionMetrics: window.__TRIBE_ACTION_METRICS__ || [],
+      battlePresentation: window.__TRIBE_BATTLE_PRESENTATION__ || { history: [] },
       errorDialogs: Array.from(document.querySelectorAll(".modal-card.border-danger,[role=alert]")).map((node) => node.textContent?.trim()).filter(Boolean),
     };
   });
@@ -148,13 +144,21 @@ try {
   if (!userId) throw new Error("The anonymous Preview user id could not be resolved from the browser session.");
   if (browserState.errorDialogs.length) throw new Error(`Unexpected error UI: ${browserState.errorDialogs.join(" | ")}`);
   if (pageErrors.length) throw new Error(`Browser page errors: ${pageErrors.join(" | ")}`);
-  if (stateSequence.join(">") !== "Q1>Q2>Q3>Q4>Q5>Q6>B1>B2>B3>B4>B5>B6>MISSION_HUB") {
+  if (stateSequence.join(">") !== "Q1>Q2>Q3>Q4>Q5>Q6>B1>B2>B3>B4>B5>B6>ACCOUNT_AUTHENTICATION") {
     throw new Error(`Unexpected UI state sequence: ${stateSequence.join(">")}`);
   }
   const requiredTracePhases = ["dispatch_request", "dispatch_committed", "speed_up_request", "speed_up_committed", "quest_completion_observed", "quest_return_confirmed", "battle_cta_request"];
   const tracePhases = new Set(trace.map((entry) => entry.phase));
   const missingTracePhases = requiredTracePhases.filter((phase) => !tracePhases.has(phase));
   if (missingTracePhases.length) throw new Error(`Missing journey trace phases: ${missingTracePhases.join(", ")}`);
+  const completedBattleActions = (browserState.battlePresentation.history || []).filter((entry) => entry?.actionCompleteAt);
+  for (const kind of ["normal", "skill"]) {
+    const metric = completedBattleActions.find((entry) => entry.kind === kind);
+    const stages = metric && [metric.actorFocusAt, metric.targetFocusAt, metric.impactAt, metric.damageAt, metric.hpSettledAt, metric.actionCompleteAt];
+    if (!metric || !stages.every((value) => typeof value === "number") || stages.some((value, index) => index > 0 && value < stages[index - 1])) {
+      throw new Error(`Incomplete ${kind} action presentation timing: ${JSON.stringify(metric)}`);
+    }
+  }
 
   const admin = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false, autoRefreshToken: false } });
   const [{ data: skills, error: skillError }, { data: replay, error: replayError }, { count: skillGachaCount, error: skillGachaError }] = await Promise.all([
@@ -196,6 +200,7 @@ try {
     consoleErrors,
     failedResponses,
     actionMetrics: browserState.actionMetrics,
+    battlePresentation: browserState.battlePresentation,
     trace,
     starterSkill: { skillId: starterSkills[0].skill_card_id, plusValue: starterSkills[0].plus_val, slotIndex: starterSkills[0].slot_index },
     replayContract: { basicActionIndex, skillActionIndex, skillImpactIndex, winner: replay.result.winner },

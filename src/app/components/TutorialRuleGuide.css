@@ -85,11 +85,18 @@
 }
 
 .tutorial-rule-illustration img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   object-fit: cover;
   object-position: center center;
   transform: translateZ(0);
   backface-visibility: hidden;
 }
+
+.tutorial-rule-preload { position:absolute;width:1px;height:1px;overflow:hidden;opacity:0;pointer-events:none; }
+.tutorial-rule-preload img { width:1px;height:1px; }
 
 .tutorial-rule-card--power .tutorial-rule-illustration img {
   object-position: center 48%;
