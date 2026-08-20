@@ -106,11 +106,28 @@ async function revealTutorialTenPull(page: import("@playwright/test").Page, capt
   if (captureVisuals) await page.screenshot({ path: test.info().outputPath("G2-pull-flash.png") });
   const reveal = page.locator(".tutorial-gacha-reveal");
   const assertRevealParameters = async () => {
+    const rarity = String((await reveal.getAttribute("class"))?.match(/rarity-(n|r|sr|ssr)/)?.[1] || "n").toUpperCase();
     await expect(reveal.locator(".tutorial-gacha-reveal-parameters dt")).toHaveText(["HP", "ATK", "DEF"]);
     await expect(reveal.locator(".tutorial-gacha-reveal-parameters dd")).toHaveCount(3);
     await expect.poll(() => reveal.locator(".tutorial-gacha-reveal-parameters dd").allTextContents())
       .not.toContain("—");
     await expect(reveal).not.toContainText(/SPD|LUK|戦闘力/);
+    await expect(reveal.locator(`.character-presentation-rarity-badge[alt="${rarity}"]`)).toBeVisible();
+    await expect(reveal.locator(".tutorial-gacha-acquisition-badge")).toHaveCount(1);
+    await expect(reveal.locator(".tutorial-gacha-reveal-heading")).toHaveCount(0);
+    const layerMetrics = await reveal.evaluate((root) => {
+      const card = root.getBoundingClientRect();
+      const art = root.querySelector(".character-presentation-art")?.getBoundingClientRect();
+      const background = root.querySelector(".character-presentation-background")?.getBoundingClientRect();
+      const frame = root.querySelector(".character-presentation-frame")?.getBoundingClientRect();
+      return {
+        outerBackground: getComputedStyle(root).backgroundImage.includes("bg_street_"),
+        artInsideCard: Boolean(art && art.left >= card.left && art.right <= card.right && art.top >= card.top && art.bottom <= card.bottom),
+        backgroundInsideArt: Boolean(art && background && background.left >= art.left && background.right <= art.right && background.top >= art.top && background.bottom <= art.bottom),
+        frameCoversArt: Boolean(art && frame && frame.left <= art.left && frame.right >= art.right && frame.top <= art.top && frame.bottom >= art.bottom),
+      };
+    });
+    expect(layerMetrics).toEqual({ outerBackground: false, artInsideCard: true, backgroundInsideArt: true, frameCoversArt: true });
   };
   await expect(reveal).toBeVisible({ timeout: 15_000 });
   await expect(reveal).toContainText(/バランス|タンク|アタッカー|ディフェンダー|スピード|サポート/);
@@ -413,7 +430,7 @@ test("free gacha presents one CTA, feedback, result assets, and formation connec
     expect(metrics.rowCount).toBe(2);
     await page.screenshot({ path: test.info().outputPath(`m9-1-gacha-result-${width}.png`), fullPage: true });
   }
-  await expect(page.locator(".gacha-result-card .character-presentation-card")).toHaveCount(10);
+  await expect(page.locator(".gacha-result-card .character-presentation-gacha-result-compact")).toHaveCount(10);
   await expect(page.locator(".gacha-result-card").filter({ hasText: "GEAR" })).toHaveCount(0);
   await expect(page.locator(".gacha-result-card .character-presentation img").first()).toBeVisible();
   const characterImage = await page.locator(".gacha-result-card .character-presentation img").first().evaluate((image) => {
@@ -765,6 +782,11 @@ test("first quest connects dispatch, official battle, and one reward to the comp
       const regions = [".battle-viewer-header", ".battle-timeline", ".battle-enemy-compact", ".battle-action-stage", ".battle-party-zone.is-player", ".battle-viewer-controls"]
         .map((selector) => viewer.querySelector<HTMLElement>(selector)?.getBoundingClientRect())
         .filter(Boolean) as DOMRect[];
+      const actionStage = viewer.querySelector(".battle-action-stage")?.getBoundingClientRect();
+      const actionUnits = [...viewer.querySelectorAll<HTMLElement>(".battle-unit-action")].map((unit) => unit.getBoundingClientRect());
+      const actionArt = [...viewer.querySelectorAll<HTMLElement>(".battle-unit-action .battle-unit-art")].map((art) => art.getBoundingClientRect());
+      const actionFrames = [...viewer.querySelectorAll<HTMLElement>(".battle-unit-action .character-presentation")];
+      const playerZone = viewer.querySelector(".battle-party-zone.is-player")?.getBoundingClientRect();
       return {
         left: rect.left,
         right: rect.right,
@@ -772,6 +794,10 @@ test("first quest connects dispatch, official battle, and one reward to the comp
         hpWidth: hp?.width || 0,
         partyArtHeight: partyArt?.height || 0,
         verticalOverlap: regions.some((region, index) => index > 0 && region.top < regions[index - 1].bottom - 1),
+        actionUnitCollision: Boolean(actionStage && actionUnits.some((unit) => unit.left < actionStage.left - 1 || unit.right > actionStage.right + 1 || unit.top < actionStage.top - 1 || unit.bottom > actionStage.bottom + 1)),
+        actionArtCollision: Boolean(actionStage && actionArt.some((art) => art.left < actionStage.left - 1 || art.right > actionStage.right + 1 || art.top < actionStage.top - 1 || art.bottom > actionStage.bottom + 1))
+          || actionFrames.some((frame) => getComputedStyle(frame).overflow !== "hidden" || getComputedStyle(frame.querySelector<HTMLElement>(".character-presentation-art")!).overflow !== "hidden"),
+        teamCollision: Boolean(playerZone && actionUnits.some((unit) => unit.bottom > playerZone.top + 1)),
       };
     });
     expect(battleMetrics.left).toBeGreaterThanOrEqual(0);
@@ -779,6 +805,9 @@ test("first quest connects dispatch, official battle, and one reward to the comp
     expect(battleMetrics.hpWidth).toBeGreaterThan(20);
     expect(battleMetrics.partyArtHeight).toBeGreaterThanOrEqual(48);
     expect(battleMetrics.verticalOverlap).toBe(false);
+    expect(battleMetrics.actionUnitCollision).toBe(false);
+    expect(battleMetrics.actionArtCollision).toBe(false);
+    expect(battleMetrics.teamCollision).toBe(false);
     if (width === 390) await page.screenshot({ path: test.info().outputPath("M5-390-B4-skill.png"), fullPage: true });
     if (width === 430) await page.screenshot({ path: test.info().outputPath("M6-430-B4-skill.png"), fullPage: true });
   }

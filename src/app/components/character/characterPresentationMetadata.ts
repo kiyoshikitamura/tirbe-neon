@@ -37,9 +37,9 @@ const DEFAULT_METADATA: CharacterPresentationMetadata = {
   revealScale: .96,
   revealX: 50,
   revealY: 100,
-  battleScale: 1.34,
+  battleScale: 1.08,
   battleX: 50,
-  battleY: 20,
+  battleY: 0,
 };
 
 // Visual framing only. Gameplay and character master data remain server-side.
@@ -47,7 +47,7 @@ const CHARACTER_PRESENTATION_METADATA: Record<string, Partial<CharacterPresentat
   reiji: { focalX: 52 },
   rui: { focalX: 50 },
   chang: { focalX: 51 },
-  ageha: { focalX: 48, portraitFocalY: 4, thumbnailScale: 2, thumbnailY: 4, cardScale: .94, cardY: 4, compactScale: 1.48, compactY: 4, revealScale: .92, battleScale: 1.24, battleY: 18 },
+  ageha: { focalX: 48, portraitFocalY: 4, thumbnailScale: 2, thumbnailY: 4, cardScale: .94, cardY: 4, compactScale: 1.48, compactY: 4, revealScale: .92, battleScale: 1.04, battleY: 0 },
   alice: { focalX: 47 },
   kaito: { focalX: 51 },
   go: { focalX: 50, thumbnailScale: 2.05, compactScale: 1.5 },

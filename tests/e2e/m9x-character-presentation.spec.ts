@@ -1,4 +1,6 @@
 import { expect, test } from "@playwright/test";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 
 const SSR_CHARACTERS = ["ageha", "gou", "kaede", "karen", "kengo", "koharu", "leo", "mio", "miyabi", "reiji"];
 
@@ -56,4 +58,29 @@ test("N R SR SSR samples share the same production artwork viewport", async ({ p
   }, samples);
   await expect(page.locator(".character-presentation-character")).toHaveCount(4);
   await page.screenshot({ path: test.info().outputPath("rarity-samples-card-390.png"), fullPage: true });
+});
+
+test("battle action framing contains production SSR and body-shape samples", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const samples = [...SSR_CHARACTERS, "takeshi", "chang", "ren_male", "maya", "sakura"];
+  const html = `<main class="battle-framing-audit">${samples.map((name) => `<section class="battle-action-stage"><div class="battle-action-units"><article class="battle-unit battle-unit-action battle-unit-player is-actor"><div class="battle-unit-art"><figure class="character-presentation character-presentation-battle character-presentation-battle-action"><div class="character-presentation-art"><img class="character-presentation-character" src="/characters/${name}_transparent_asset.png" alt="${name}"></div></figure><span class="battle-unit-role is-actor-label">ACTOR</span></div><div class="battle-unit-meta is-action-identity"><strong>${name}</strong></div><div class="battle-unit-hp"><i style="width:72%"></i></div><div class="battle-unit-hp-copy"><span>HP</span><b>72%</b></div></article><div class="battle-action-impact"><strong>VS</strong></div><article class="battle-unit battle-unit-action battle-unit-enemy is-target"><div class="battle-unit-art"></div><div class="battle-unit-meta is-action-identity"><strong>TARGET</strong></div><div class="battle-unit-hp"><i style="width:60%"></i></div><div class="battle-unit-hp-copy"><span>HP</span><b>60%</b></div></article></div></section>`).join("")}</main>`;
+  await page.setContent(`<base href="http://127.0.0.1:3100">${html}`);
+  await page.addStyleTag({ content: [
+    readFileSync(resolve(process.cwd(), "src/app/components/character/CharacterPresentation.css"), "utf8"),
+    readFileSync(resolve(process.cwd(), "src/app/components/battle/BattleUnitPortrait.css"), "utf8"),
+    readFileSync(resolve(process.cwd(), "src/app/components/battle/QuestBattleViewer.css"), "utf8"),
+    `.battle-framing-audit{--ui-accent:#00f0ff;--ui-combat:#ff4265;--ui-text-primary:#fff;--ui-bg-root:#02050b;--ui-border:#253745;display:grid;gap:8px;width:390px;box-sizing:border-box;padding:8px;background:#02050b}.battle-framing-audit .battle-action-stage{height:260px}.battle-framing-audit .battle-action-units{inset:40px 4px 4px;grid-template-columns:minmax(0,1fr) 18px minmax(0,1fr)}.battle-framing-audit .battle-unit-action{height:100%;overflow:hidden}.battle-framing-audit .battle-unit-action .battle-unit-art{height:calc(100% - 42px);overflow:hidden}`,
+  ].join("\n") });
+  await expect.poll(() => page.locator(".character-presentation-character").evaluateAll((images) => images.every((image) => (image as HTMLImageElement).complete && (image as HTMLImageElement).naturalWidth > 0))).toBe(true);
+  await expect(page.locator(".battle-unit-action.is-actor")).toHaveCount(samples.length);
+  const collisions = await page.locator(".battle-action-stage").evaluateAll((stages) => stages.map((stage) => {
+    const stageRect = stage.getBoundingClientRect();
+    const unit = stage.querySelector(".battle-unit-action.is-actor")?.getBoundingClientRect();
+    const art = stage.querySelector(".battle-unit-action.is-actor .battle-unit-art")?.getBoundingClientRect();
+    const frame = stage.querySelector<HTMLElement>(".battle-unit-action.is-actor .character-presentation");
+    const hp = stage.querySelector(".battle-unit-action.is-actor .battle-unit-hp")?.getBoundingClientRect();
+    return Boolean(!unit || !art || !frame || !hp || unit.left < stageRect.left - 1 || unit.right > stageRect.right + 1 || unit.top < stageRect.top - 1 || unit.bottom > stageRect.bottom + 1 || art.bottom > hp.top + 1 || getComputedStyle(frame).overflow !== "hidden" || getComputedStyle(frame.querySelector<HTMLElement>(".character-presentation-art")!).overflow !== "hidden");
+  }));
+  expect(collisions).not.toContain(true);
+  await page.screenshot({ path: test.info().outputPath("battle-action-production-samples-390.png"), fullPage: true });
 });

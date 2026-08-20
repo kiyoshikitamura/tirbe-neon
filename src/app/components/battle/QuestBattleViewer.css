@@ -20,16 +20,16 @@
 .quest-battle-viewer.is-tutorial .battle-unit-party .battle-unit-art { height:clamp(66px,8.2dvh,72px); }
 .quest-battle-viewer.is-tutorial .battle-unit-party .battle-unit-meta { padding:2px 3px 1px; }
 .quest-battle-viewer.is-tutorial .battle-unit-party .battle-unit-hp-copy { padding:2px 3px 3px; }
-.quest-battle-viewer.is-tutorial .battle-action-stage { min-height:clamp(228px,36dvh,320px);overflow:visible; }
+.quest-battle-viewer.is-tutorial .battle-action-stage { min-height:clamp(228px,36dvh,320px);overflow:hidden; }
 .quest-battle-viewer.is-tutorial .battle-action-units { inset:34px 3px 4px;grid-template-columns:minmax(0,1fr) 26px minmax(0,1fr);gap:0; }
-.quest-battle-viewer.is-tutorial .battle-unit-action { height:100%;overflow:visible;border:0;border-radius:0;background:transparent;box-shadow:none; }
-.quest-battle-viewer.is-tutorial .battle-unit-action .battle-unit-art { height:calc(100% - 42px);overflow:visible;background:transparent; }
-.quest-battle-viewer.is-tutorial .battle-unit-action .character-presentation { overflow:visible;background:transparent; }
-.quest-battle-viewer.is-tutorial .battle-unit-action .character-presentation-art { overflow:visible; }
+.quest-battle-viewer.is-tutorial .battle-unit-action { height:100%;overflow:hidden;border:0;border-radius:0;background:transparent;box-shadow:none; }
+.quest-battle-viewer.is-tutorial .battle-unit-action .battle-unit-art { height:calc(100% - 42px);overflow:hidden;background:transparent; }
+.quest-battle-viewer.is-tutorial .battle-unit-action .character-presentation { overflow:hidden;background:transparent; }
+.quest-battle-viewer.is-tutorial .battle-unit-action .character-presentation-art { overflow:hidden; }
 .quest-battle-viewer.is-tutorial .battle-unit-action .battle-unit-meta { position:absolute;z-index:8;right:0;bottom:20px;left:0;padding:5px 7px;background:linear-gradient(90deg,rgba(2,7,13,.96),rgba(2,7,13,.54)); }
 .quest-battle-viewer.is-tutorial .battle-unit-action .battle-unit-hp { position:absolute;z-index:8;right:5px;bottom:10px;left:5px;margin:0; }
 .quest-battle-viewer.is-tutorial .battle-unit-action .battle-unit-hp-copy { position:absolute;z-index:8;right:4px;bottom:-4px;left:4px;padding:0;color:#d8e9f4; }
-.quest-battle-viewer.is-tutorial .battle-unit-action.is-actor { transform:translateX(7px) scale(1.045);filter:brightness(1.12); }
+.quest-battle-viewer.is-tutorial .battle-unit-action.is-actor { transform:translateX(5px) scale(1.015);filter:brightness(1.12); }
 .quest-battle-viewer.is-tutorial .battle-unit-action.is-target { transform:translateX(-5px); }
 .quest-battle-viewer.is-tutorial .battle-action-stage.is-skill-action { box-shadow:inset 0 0 52px rgba(0,0,0,.7),0 0 26px rgba(168,75,255,.2); }
 .quest-battle-viewer.is-tutorial .battle-action-stage.is-final-hit::after { position:absolute;z-index:16;inset:0;content:"FINAL HIT";display:grid;place-items:center;color:#fff2ad;background:radial-gradient(circle,rgba(255,69,30,.36),transparent 54%);font-size:clamp(28px,10vw,44px);font-style:italic;font-weight:1000;letter-spacing:.08em;text-shadow:0 0 28px #ff531f;pointer-events:none;animation:battle-final-hit-label .72s ease-out both; }

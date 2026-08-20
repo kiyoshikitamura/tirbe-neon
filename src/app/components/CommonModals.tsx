@@ -14,12 +14,6 @@ import { preloadAssetManifest } from "../lib/screenAssets";
 import { getCharacterLocationBackground } from "@/utils/characterVisualAssets";
 import "./CommonModals.css";
 
-function gachaLocationStyle(result: any): React.CSSProperties {
-  const master = CHARACTERS_MASTER.find((character: any) => character.id === result?.characterId);
-  const background = getCharacterLocationBackground(master?.homeTown);
-  return { "--gacha-location-background": `url(${background})` } as React.CSSProperties;
-}
-
 function gachaLocationBackground(result: any): string {
   const master = CHARACTERS_MASTER.find((character: any) => character.id === result?.characterId);
   return getCharacterLocationBackground(master?.homeTown);
@@ -260,7 +254,6 @@ export default function CommonModals() {
             <button
               type="button"
               className={`tutorial-gacha-reveal rarity-${String(tutorialRevealResult?.rarity || "N").toLowerCase()} ${tutorialRevealResult?.convertReward === "新規獲得" ? "acquisition-new" : "acquisition-duplicate"} ${tutorialRevealAdvancing ? "is-advancing" : ""} ${tutorialRevealIndex === 9 ? "is-guaranteed" : ""} ${tutorialRevealIndex === 9 && tutorialSsrStage === "OMEN" ? "is-ssr-omen" : ""} ${tutorialRevealIndex === 9 && tutorialSsrStage === "REVEAL" ? "is-ssr-reveal" : ""}`}
-              style={gachaLocationStyle(tutorialRevealResult)}
               onClick={() => {
                 if (tutorialRevealAdvanceRef.current || !tutorialRevealCanAdvance || (tutorialRevealIndex === 9 && tutorialSsrStage !== "REVEAL")) return;
                 tutorialRevealAdvanceRef.current = true;
@@ -293,7 +286,6 @@ export default function CommonModals() {
                     <img className="tutorial-gacha-acquisition-badge" src={getAcquisitionBadgeAsset(tutorialRevealResult?.convertReward === "新規獲得" ? "NEW" : "AWAKENING", tutorialRevealResult?.awakeningLevel) || ""} alt={compactGachaOutcome(tutorialRevealResult)} />
                   )}
                   <div className="tutorial-gacha-reveal-copy">
-                    <div className="tutorial-gacha-reveal-heading"><span>{tutorialRevealResult?.convertReward === "新規獲得" ? "NEW" : compactGachaOutcome(tutorialRevealResult)}</span></div>
                     <h3>{tutorialRevealResult?.name}</h3>
                     <div className="tutorial-gacha-reveal-stats">
                       <span>{tutorialRevealResult?.role || "バランス"}</span>
