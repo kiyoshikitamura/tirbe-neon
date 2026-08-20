@@ -144,7 +144,7 @@ async function revealTutorialTenPull(page: import("@playwright/test").Page, capt
     await reveal.click();
   }
   await expect(reveal).toHaveAttribute("data-presentation-state", "SSR_OMEN");
-  await expect(reveal).toContainText("SSR");
+  await expect(reveal.locator('.character-presentation-rarity-badge[alt="SSR"]')).toBeVisible();
   if (captureVisuals) {
     for (const width of [375, 390, 430]) {
       await page.setViewportSize({ width, height: 844 });
@@ -152,7 +152,7 @@ async function revealTutorialTenPull(page: import("@playwright/test").Page, capt
     }
   }
   await expect(reveal).toHaveAttribute("data-presentation-state", "SSR_REVEAL");
-  await expect(reveal).toContainText("SSR");
+  await expect(reveal.locator('.character-presentation-rarity-badge[alt="SSR"]')).toBeVisible();
   const finalCharacterId = await reveal.getAttribute("data-character-id");
   await assertRevealParameters();
   await expect(reveal).toBeEnabled();
@@ -665,11 +665,18 @@ test("first quest connects dispatch, official battle, and one reward to the comp
   await page.getByRole("button", { name: "次へ" }).click();
   const battlePromptAction = page.getByRole("button", { name: "バトルへ" });
   await expect(battlePromptAction).toBeVisible();
+  await page.screenshot({ path: test.info().outputPath("Q6-battle-encounter-initial.png"), fullPage: true });
+  await page.waitForTimeout(320);
+  await page.screenshot({ path: test.info().outputPath("Q6-battle-encounter-impact.png"), fullPage: true });
+  await expect(page.locator('[data-acceptance-state="Q6"] [data-encounter-ready="true"]')).toBeVisible({ timeout: 2_000 });
+  await expect(battlePromptAction).toBeEnabled();
+  await page.screenshot({ path: test.info().outputPath("Q6-battle-encounter-ready.png"), fullPage: true });
   await battlePromptAction.evaluate((button: HTMLButtonElement) => {
     button.click();
     button.click();
   });
   await expect(page.locator('[data-acceptance-state="B1"]')).toBeVisible();
+  await expect(page.locator(".tutorial-battle-party-icons .character-presentation-battle-party")).toHaveCount(1);
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem("mock_db_battle_replay_sessions") || "[]").length)).toBe(1);
 
   for (const width of [375, 390, 430]) {
@@ -694,6 +701,7 @@ test("first quest connects dispatch, official battle, and one reward to the comp
   await expect(page.locator(".battle-timeline-slot")).toHaveCount(3);
   await expect(page.locator(".battle-unit.is-actor").first()).toBeVisible();
   await expect(page.locator(".battle-unit.is-target").first()).toBeVisible();
+  await expect(page.locator(".battle-unit-action.is-actor .battle-unit-identity-badges img")).toHaveCount(2);
   await expect(page.locator(".battle-action-sequence")).toBeHidden();
   await expect.poll(() => page.evaluate(() => {
     const metrics = (window as any).__TRIBE_BATTLE_PRESENTATION__;
@@ -708,6 +716,9 @@ test("first quest connects dispatch, official battle, and one reward to the comp
   expect(normalImpactDuration).toBeLessThanOrEqual(1_300);
   test.info().annotations.push({ type: "normal-impact-ms", description: String(normalImpactDuration) });
   await page.screenshot({ path: test.info().outputPath("M1-375-B3-normal-attack.png"), fullPage: true });
+  await expect(page.locator(".battle-action-stage.is-enemy-actor .battle-unit-action.is-actor")).toBeVisible({ timeout: 12_000 });
+  await expect(page.locator(".battle-action-stage.is-enemy-actor .battle-unit-action.is-actor .battle-unit-identity-badges img")).toHaveCount(1);
+  await page.screenshot({ path: test.info().outputPath("M1-375-enemy-current-actor.png"), fullPage: true });
   await expect(page.locator(".battle-skill-cutin.is-ssr")).toBeVisible({ timeout: 8_000 });
   await expect(page.locator(".battle-cutin-copy")).toContainText("SSR TEST BREAK");
   await expect(page.locator(".battle-skill-cutin")).toHaveCount(1);
@@ -995,9 +1006,13 @@ test("new mobile player completes the guided first session without footer naviga
   await page.screenshot({ path: test.info().outputPath("Q5-return.png"), fullPage: true });
   await page.getByRole("button", { name: "次へ" }).click();
   await expect(page.locator('[data-acceptance-state="Q6"]')).toBeVisible();
+  await expect(page.locator('[data-acceptance-state="Q6"] [data-encounter-ready="true"]')).toBeVisible({ timeout: 2_000 });
+  const encounterAnimations = await page.locator(".tutorial-wire-encounter").evaluate((stage) => stage.getAnimations({ subtree: true }).map((animation) => (animation as CSSAnimation).animationName));
+  expect(encounterAnimations).toEqual(expect.arrayContaining(["encounter-icon-impact", "encounter-title-in", "encounter-subtitle-in"]));
   await page.screenshot({ path: test.info().outputPath("Q6-battle-encounter.png"), fullPage: true });
   await page.getByRole("button", { name: "バトルへ" }).click();
   await expect(page.locator('[data-acceptance-state="B1"]')).toBeVisible();
+  await expect(page.locator(".tutorial-battle-party-icons .character-presentation-battle-party")).toHaveCount(5);
   await assertCenteredGameCanvas(page, ".battle-screen");
   await page.screenshot({ path: test.info().outputPath("B1-battle-pre.png"), fullPage: true });
   await expect(page.getByRole("button", { name: "バトルスタート" })).toHaveClass(/semantic-cta--primary/);
@@ -1007,6 +1022,7 @@ test("new mobile player completes the guided first session without footer naviga
   await expect(page.locator(".quest-battle-viewer")).toBeVisible();
   await assertCenteredGameCanvas(page, ".battle-screen");
   await expect(page.locator('[data-acceptance-state="B3"]')).toBeVisible();
+  await expect(page.locator(".battle-unit-action.is-actor .battle-unit-identity-badges img")).toHaveCount(2);
   await page.screenshot({ path: test.info().outputPath("B3-normal-attack.png"), fullPage: true });
   await expect(page.locator('[data-acceptance-state="B4"]')).toBeVisible({ timeout: 20_000 });
   await expect(page.locator(".battle-skill-cutin.is-standard")).toBeVisible();

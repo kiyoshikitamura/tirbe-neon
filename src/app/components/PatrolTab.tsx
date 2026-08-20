@@ -69,6 +69,7 @@ export default function PatrolTab() {
   const [battleStartingId, setBattleStartingId] = React.useState<string | null>(null);
   const [tutorialDispatchPresentation, setTutorialDispatchPresentation] = React.useState<"STARTED" | "PROGRESS" | "SPEEDUP">("STARTED");
   const [tutorialEncounterPresentation, setTutorialEncounterPresentation] = React.useState<"RETURN" | "ENCOUNTER">("RETURN");
+  const [tutorialEncounterReady, setTutorialEncounterReady] = React.useState(false);
 
   // コースが未選択のときに初期選択を設定
   React.useEffect(() => {
@@ -105,6 +106,12 @@ export default function PatrolTab() {
   React.useEffect(() => {
     if (tutorialStep === "TUTORIAL_BATTLE" && battleState === null) setTutorialEncounterPresentation("RETURN");
   }, [battleState, tutorialStep]);
+
+  React.useEffect(() => {
+    if (tutorialEncounterPresentation !== "ENCOUNTER") return;
+    const timer = window.setTimeout(() => setTutorialEncounterReady(true), 780);
+    return () => window.clearTimeout(timer);
+  }, [tutorialEncounterPresentation]);
 
   React.useEffect(() => {
     if (tutorialStep !== "TUTORIAL_BATTLE") return;
@@ -357,13 +364,14 @@ export default function PatrolTab() {
                 battleEligibility: Boolean(tutorialPatrol && tutorialNpc && tutorialPatrol.has_battle_event && !tutorialPatrol.battle_resolved),
                 rejectionReason: tutorialNpc ? null : "patrol NPC master is unavailable",
               });
+              setTutorialEncounterReady(false);
               setTutorialEncounterPresentation("ENCOUNTER");
             }} fullWidth variant="primary">次へ</OutlawButton>
           </>}
 
-          {acceptanceState === "Q6" && <div className="tutorial-wire-encounter">
+          {acceptanceState === "Q6" && <div className={`tutorial-wire-encounter ${tutorialEncounterReady ? "is-ready" : ""}`} data-encounter-ready={tutorialEncounterReady ? "true" : "false"}>
             <div className="tutorial-wire-glitch" aria-hidden="true">⚔</div><h2>バトル発生</h2><small>BATTLE ENCOUNTER</small>
-            <OutlawButton onClick={() => tutorialPatrol && void handleBattleStart(tutorialPatrol, tutorialNpc)} disabled={!tutorialPatrol || !tutorialNpc || battleStartingId === tutorialPatrol?.id || battleEncounterLocked} fullWidth variant="primary">{battleStartingId ? "バトル準備中…" : "バトルへ"}</OutlawButton>
+            <OutlawButton onClick={() => tutorialPatrol && void handleBattleStart(tutorialPatrol, tutorialNpc)} disabled={!tutorialEncounterReady || !tutorialPatrol || !tutorialNpc || battleStartingId === tutorialPatrol?.id || battleEncounterLocked} fullWidth variant="primary">{battleStartingId ? "バトル準備中…" : "バトルへ"}</OutlawButton>
           </div>}
         </section>
       </HubPage>

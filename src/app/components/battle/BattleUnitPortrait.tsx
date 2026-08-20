@@ -1,6 +1,8 @@
 "use client";
 
 import CharacterPresentation from "../character/CharacterPresentation";
+import { getAttributeBadgeAsset, getAttributeLabel } from "@/utils/attributeAssets";
+import { getRarityBadgeAsset } from "@/utils/rarityAssets";
 import "./BattleUnitPortrait.css";
 
 export type BattleParticipantView = {
@@ -33,6 +35,8 @@ type Props = {
   placeholderAsset?: boolean;
   advantage?: boolean;
   popup?: BattleDamagePopup | null;
+  rarity?: string;
+  attribute?: string;
 };
 
 const alignmentLabel: Record<string, string> = {
@@ -53,6 +57,8 @@ export default function BattleUnitPortrait({
   placeholderAsset = false,
   advantage = false,
   popup,
+  rarity,
+  attribute,
 }: Props) {
   const maxHp = Math.max(1, Number(participant.maxHp) || 1);
   const hp = Math.max(0, Number(participant.hp) || 0);
@@ -85,9 +91,16 @@ export default function BattleUnitPortrait({
         )}
       </div>
 
-      <div className="battle-unit-meta">
+      <div className={`battle-unit-meta ${frame === "action" ? "is-action-identity" : ""}`}>
         <strong>{participant.name}</strong>
-        <span>{alignmentLabel[String(participant.alignment || "")] || String(participant.alignment || "")}</span>
+        {frame === "action" ? (
+          <span className="battle-unit-identity-badges">
+            {rarity && <img src={getRarityBadgeAsset(rarity)} alt={String(rarity).toUpperCase()} />}
+            {getAttributeBadgeAsset(attribute) && <img src={getAttributeBadgeAsset(attribute) || ""} alt={getAttributeLabel(attribute)} />}
+          </span>
+        ) : (
+          <span>{alignmentLabel[String(participant.alignment || "")] || String(participant.alignment || "")}</span>
+        )}
       </div>
       <div className="battle-unit-hp" aria-hidden="true"><i style={{ width: `${hpPercent}%` }} /></div>
       <div className="battle-unit-hp-copy"><span>HP</span><b>{Math.round(hpPercent)}%</b></div>

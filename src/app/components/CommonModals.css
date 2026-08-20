@@ -182,15 +182,19 @@
 .tutorial-gacha-count{z-index:7;top:24px;left:28px;padding:4px 7px;border:1px solid color-mix(in srgb,var(--reveal-accent,#00f0ff) 68%,transparent);background:rgba(2,5,10,.8)}
 .tutorial-gacha-reveal.rarity-sr .tutorial-gacha-rarity-frame{animation:gacha-frame-pulse 1.8s ease-in-out infinite alternate}
 .tutorial-gacha-reveal.rarity-ssr .tutorial-gacha-rarity-frame{animation:gacha-ssr-frame-pulse 1.25s ease-in-out infinite alternate}
-.gacha-result-card{--result-rarity-accent:#9da9b7;isolation:isolate;padding:7px;background:rgba(3,6,11,.96);box-shadow:0 0 12px color-mix(in srgb,var(--result-rarity-accent) 22%,transparent)}
+.gacha-result-card{--result-rarity-accent:#9da9b7;--gacha-result-glint-delay:0s;isolation:isolate;padding:0;overflow:hidden;border-radius:4px;background:rgba(3,6,11,.96);box-shadow:0 0 12px color-mix(in srgb,var(--result-rarity-accent) 22%,transparent)}
 .gacha-result-card.rarity-r{--result-rarity-accent:#27c8ff}.gacha-result-card.rarity-sr{--result-rarity-accent:#c66dff}.gacha-result-card.rarity-ssr{--result-rarity-accent:#f2c95f}
-.gacha-result-card>.character-presentation{position:relative;z-index:5}.gacha-result-card{overflow:hidden}
+.gacha-result-card>.character-presentation{position:relative;z-index:5}
 .gacha-result-card.rarity-sr .gacha-result-rarity-frame{animation:gacha-result-frame-sweep 2s ease-in-out infinite alternate}.gacha-result-card.rarity-ssr .gacha-result-rarity-frame{animation:gacha-result-ssr-sweep 1.35s ease-in-out infinite alternate}
-.gacha-result-card .character-presentation{border:0;border-radius:3px}.gacha-result-attribute{z-index:7;top:9px;left:8px;max-width:54px;font-size:8px}.gacha-result-outcome{font-size:9px}
+.gacha-result-card.rarity-ssr::before{position:absolute;z-index:7;top:-28%;bottom:-28%;left:-58%;width:34%;content:"";pointer-events:none;transform:skewX(-18deg);background:linear-gradient(90deg,transparent,rgba(255,250,205,.2),rgba(255,255,255,.86),rgba(255,230,129,.28),transparent);filter:blur(.2px);opacity:0;animation:gacha-result-ssr-glint 3s var(--gacha-result-glint-delay) ease-in-out infinite}
+.gacha-result-card .character-presentation{border:0;border-radius:3px}.gacha-result-card .character-presentation-rarity-badge{top:2px;left:2px;width:36%}.gacha-result-card .character-presentation-attribute-badge{top:2px;right:2px;width:27%}.gacha-result-attribute{z-index:7;top:9px;left:8px;max-width:54px;font-size:8px}.gacha-result-outcome{font-size:9px}
+.gacha-result-card .gacha-result-acquisition-badge{top:auto;right:2px;bottom:3px;width:58%;max-height:26%;object-fit:contain;object-position:right bottom}
 @keyframes gacha-frame-pulse{from{filter:drop-shadow(0 0 7px rgba(198,109,255,.36))}to{filter:drop-shadow(0 0 18px rgba(240,0,255,.7)) brightness(1.12)}}
 @keyframes gacha-ssr-frame-pulse{from{filter:drop-shadow(0 0 9px rgba(242,201,95,.46))}to{filter:drop-shadow(0 0 24px rgba(242,201,95,.92)) brightness(1.2)}}
 @keyframes gacha-result-frame-sweep{to{filter:drop-shadow(0 0 10px rgba(198,109,255,.74)) brightness(1.12)}}
 @keyframes gacha-result-ssr-sweep{to{filter:drop-shadow(0 0 13px rgba(242,201,95,.96)) brightness(1.2)}}
+@keyframes gacha-result-ssr-glint{0%,72%{left:-58%;opacity:0}76%{opacity:.82}88%{left:126%;opacity:.62}92%,100%{left:126%;opacity:0}}
+@media(prefers-reduced-motion:reduce){.gacha-result-card.rarity-ssr::before{display:none}.gacha-result-card.rarity-ssr{box-shadow:0 0 16px rgba(242,201,95,.42)}}
 
 /* ===== 詳細プロフィール・紹介ポップアップ (Matte Outlaw UI) ===== */
 

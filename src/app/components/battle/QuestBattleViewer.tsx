@@ -85,6 +85,8 @@ export default function QuestBattleViewer(props: Props) {
     return {
       src: master ? getCharacterTransparentImg(master.name) : undefined,
       placeholder: !master,
+      rarity: master?.rarity ? String(master.rarity) : undefined,
+      attribute: participant?.alignment || master?.alignment,
     };
   };
   const popupFor = (participant: Participant) => props.damagePopup?.charId === participant.id ? props.damagePopup : null;
@@ -169,7 +171,7 @@ export default function QuestBattleViewer(props: Props) {
         </div>
         <div className="battle-action-units">
           {activeParticipant && (
-            <BattleUnitPortrait participant={activeParticipant} imageSrc={activeVisual.src} side={activeSide} frame="action" actor placeholderAsset={activeVisual.placeholder} />
+            <BattleUnitPortrait participant={activeParticipant} imageSrc={activeVisual.src} side={activeSide} frame="action" actor placeholderAsset={activeVisual.placeholder} rarity={activeVisual.rarity} attribute={activeVisual.attribute} />
           )}
           <div className="battle-action-impact" aria-hidden="true"><i /><strong>VS</strong><i /></div>
           {targetParticipant && (
@@ -182,6 +184,8 @@ export default function QuestBattleViewer(props: Props) {
               placeholderAsset={targetVisual.placeholder}
               popup={popupFor(targetParticipant)}
               advantage={hasAdvantage(targetParticipant)}
+              rarity={targetVisual.rarity}
+              attribute={targetVisual.attribute}
             />
           )}
         </div>
@@ -238,7 +242,7 @@ type PartyZoneProps = {
   activeId?: string;
   targetId?: string;
   shakingId: string | null;
-  visualOf: (participant: Participant, side: "player" | "enemy") => { src?: string; placeholder: boolean };
+  visualOf: (participant: Participant, side: "player" | "enemy") => { src?: string; placeholder: boolean; rarity?: string; attribute?: string };
   popupFor: (participant: Participant) => (BattleDamagePopup & { charId: string }) | null;
   hasAdvantage: (participant: Participant) => boolean;
   tutorial: boolean;

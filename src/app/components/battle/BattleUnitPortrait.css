@@ -19,6 +19,10 @@
 .battle-unit-meta { display: flex; align-items: center; justify-content: space-between; gap: 3px; padding: 3px 4px 2px; }
 .battle-unit-meta strong { min-width: 0; overflow: hidden; font-size: clamp(9px, 2.5vw, 11px); text-overflow: ellipsis; white-space: nowrap; }
 .battle-unit-meta span { flex: 0 0 auto; color: color-mix(in srgb, var(--battle-side) 82%, white); font-size: 8px; }
+.battle-unit-meta.is-action-identity{align-items:flex-start;min-height:38px;padding:4px 5px;background:linear-gradient(90deg,rgba(2,5,10,.98),rgba(2,5,10,.78))}
+.battle-unit-meta.is-action-identity strong{padding-top:2px;font-size:clamp(10px,2.8vw,12px)}
+.battle-unit-identity-badges{display:flex!important;align-items:flex-start;justify-content:flex-end;gap:3px;min-width:0}
+.battle-unit-identity-badges img{display:block;width:auto;height:clamp(18px,5vw,22px);max-width:50px;object-fit:contain;filter:drop-shadow(0 2px 3px rgba(0,0,0,.72))}
 .battle-unit-hp { height: 8px; margin: 0 4px; overflow: hidden; border: 1px solid rgba(255, 255, 255, .2); border-radius: 2px; background: #1d242b; }
 .battle-unit-hp i { display: block; height: 100%; background: linear-gradient(90deg, #28c878, #a7e253); box-shadow: 0 0 8px rgba(60, 220, 135, .35); transition: width .34s ease-out; }
 .battle-unit-enemy .battle-unit-hp i { background: linear-gradient(90deg, #ff3f5f, #f7a145); }
@@ -56,6 +60,8 @@
   .battle-unit-party .battle-unit-art { height: 66px; }
   .battle-unit-action .battle-unit-art { height: 144px; }
   .battle-unit-meta span { display: none; }
+  .battle-unit-meta .battle-unit-identity-badges { display:flex; }
+  .battle-unit-identity-badges img { height:17px;max-width:42px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -321,14 +321,19 @@ export default function CommonModals() {
 
               <div className={`gacha-result-grid ${scoutResults.length >= 10 ? "is-ten-pull" : ""}`}>
                 {scoutResults.map((res: any, idx: number) => (
-                  <article key={`${res.name}-${idx}`} data-acquisition={res.convertReward === "新規獲得" ? "NEW" : "DUPLICATE"} className={`gacha-result-card rarity-${String(res.rarity).toLowerCase()} ${res.convertReward === "新規獲得" ? "is-new" : "is-duplicate"}`}>
+                  <article
+                    key={`${res.name}-${idx}`}
+                    data-acquisition={res.convertReward === "新規獲得" ? "NEW" : "DUPLICATE"}
+                    data-ssr-glint={String(res.rarity).toUpperCase() === "SSR" ? "enabled" : undefined}
+                    style={{ "--gacha-result-glint-delay": `${(idx % 5) * -0.17}s` } as React.CSSProperties}
+                    className={`gacha-result-card rarity-${String(res.rarity).toLowerCase()} ${res.convertReward === "新規獲得" ? "is-new" : "is-duplicate"}`}
+                  >
                     {res.imageUrl ? (
                       <CharacterPresentation
                         src={res.imageUrl}
                         alt={res.name}
-                        variant="card"
+                        variant="gacha-result-compact"
                         rarity={res.rarity}
-                        name={res.name}
                         attribute={res.attributeKey}
                         backgroundSrc={gachaLocationBackground(res)}
                         frameKind="character"

@@ -67,7 +67,28 @@ test("tutorial ten-pull guarantees slot 10 SSR and formation advances without Gr
   await reveal.click();
   await expect(page.locator(".gacha-result-card")).toHaveCount(10);
   await expect(page.locator(".gacha-result-card .character-presentation-frame.is-character")).toHaveCount(10);
-  await page.screenshot({ path: test.info().outputPath("gacha-ten-pull-result.png") });
+  await expect(page.locator(".gacha-result-card .character-presentation-gacha-result-compact")).toHaveCount(10);
+  await expect(page.locator(".gacha-result-card .character-presentation-rarity-badge")).toHaveCount(10);
+  await expect(page.locator(".gacha-result-card .character-presentation-attribute-badge")).toHaveCount(10);
+  await expect(page.locator(".gacha-result-card .gacha-result-acquisition-badge")).toHaveCount(10);
+  await expect(page.locator('.gacha-result-card[data-ssr-glint="enabled"]')).toHaveCount(1);
+  const glintTiming = await page.locator('.gacha-result-card[data-ssr-glint="enabled"]').evaluate((card) => {
+    const animation = card.getAnimations({ subtree: true }).find((entry) => (entry as CSSAnimation).animationName === "gacha-result-ssr-glint");
+    const timing = animation?.effect?.getComputedTiming();
+    return { playState: animation?.playState, duration: timing?.duration, iterations: timing?.iterations };
+  });
+  expect(glintTiming).toEqual({ playState: "running", duration: 3000, iterations: Infinity });
+  for (const width of [375, 390, 430]) {
+    await page.setViewportSize({ width, height: 844 });
+    const layout = await page.locator(".gacha-result-grid").evaluate((grid) => ({ scrollWidth: grid.scrollWidth, clientWidth: grid.clientWidth }));
+    expect(layout.scrollWidth).toBeLessThanOrEqual(layout.clientWidth + 1);
+    await page.screenshot({ path: test.info().outputPath(`gacha-ten-pull-result-${width}.png`) });
+  }
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send("Emulation.setDeviceMetricsOverride", { width: 430, height: 844, deviceScaleFactor: 2, mobile: false });
+  await page.screenshot({ path: test.info().outputPath("gacha-ten-pull-result-desktop-dpr2.png") });
+  await cdp.send("Emulation.clearDeviceMetricsOverride");
+  await page.setViewportSize({ width: 390, height: 844 });
   const payload = await page.evaluate(() => JSON.parse(localStorage.getItem("mock_db_gacha_execution_history") || "[]")[0]?.result_payload);
   expect(payload.results).toHaveLength(10);
   expect(payload.results[9].rarity).toBe("SSR");

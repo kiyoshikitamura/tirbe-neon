@@ -6,7 +6,7 @@ import { getCharacterPresentationMetadata } from "./characterPresentationMetadat
 import { getRarityBadgeAsset, getRarityFrameAsset, type RarityFrameKind } from "@/utils/rarityAssets";
 import { getAttributeBadgeAsset, getAttributeLabel } from "@/utils/attributeAssets";
 
-export type CharacterPresentationVariant = "portrait" | "dialogue" | "dialogue-bust" | "reveal" | "quest" | "battle-leader" | "card" | "thumbnail" | "full-body" | "battle" | "icon";
+export type CharacterPresentationVariant = "portrait" | "dialogue" | "dialogue-bust" | "reveal" | "quest" | "battle-leader" | "card" | "gacha-result-compact" | "thumbnail" | "full-body" | "battle" | "icon";
 
 type Props = {
   src?: string;
