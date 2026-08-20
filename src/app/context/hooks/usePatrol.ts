@@ -18,7 +18,8 @@ export function usePatrol(
   setUserLevel: React.Dispatch<React.SetStateAction<number>>,
   setUserXp: React.Dispatch<React.SetStateAction<number>>,
   addGuildXpAndContributionByAction: (actionType: string, sourceId?: string) => Promise<void>,
-  setTutorialStep: (step: string) => void
+  setTutorialStep: (step: string) => void,
+  invalidatePatrolBootstrap: () => void
 ) {
   const [selectedCourse, setSelectedCourse] = useState<string>("e1e1e1e1-e1e1-e1e1-e1e1-e1e1e1e1e1e1");
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
@@ -141,6 +142,7 @@ export function usePatrol(
         expires_at: expiresAt.toISOString()
       };
 
+      invalidatePatrolBootstrap();
       setActivePatrols(prev => [...prev, newPatrol]);
       setSelectedPatrolMember(null);
       let nextTutorialStep = res.data?.tutorial_step;
@@ -239,6 +241,7 @@ export function usePatrol(
           }
           if (nextTutorialStep === "TUTORIAL_BATTLE") setTutorialStep(nextTutorialStep);
         }
+        invalidatePatrolBootstrap();
         setActivePatrols((current) => current.map((entry) => entry.id === patrolId
           ? { ...entry, status: "CLAIMABLE", secondsLeft: 0, expires_at: new Date().toISOString() }
           : entry));

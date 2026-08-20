@@ -4,14 +4,22 @@ const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const expectedProjectRef = process.env.SUPABASE_EXPECTED_PROJECT_REF;
 const accessToken = process.env.SUPABASE_ACCESS_TOKEN;
-const requestedUserIds = process.argv.slice(2);
+const environmentIndex = process.argv.indexOf("--environment");
+const environment = environmentIndex >= 0 ? String(process.argv[environmentIndex + 1] || "").toLowerCase() : "preview";
+const allowedRefs = {
+  development: "vosbyukxmskvisbgleug",
+  preview: "sufvuqdnqohpfzkwxohq",
+};
+const requestedUserIds = process.argv.slice(2).filter((value, index, values) =>
+  value !== "--environment" && values[index - 1] !== "--environment"
+);
 
-if (!url || !serviceRoleKey || !expectedProjectRef || !accessToken || requestedUserIds.length === 0) {
-  throw new Error("Preview configuration and at least one disposable QA user id (or --all) are required.");
+if (!url || !expectedProjectRef || !accessToken || requestedUserIds.length === 0) {
+  throw new Error("Non-Production configuration and at least one disposable QA user id (or --all) are required.");
 }
 const actualProjectRef = new URL(url).hostname.split(".")[0];
-if (actualProjectRef !== expectedProjectRef || actualProjectRef !== "sufvuqdnqohpfzkwxohq") {
-  throw new Error(`Refusing mismatched Supabase target: ${actualProjectRef}`);
+if (!(environment in allowedRefs) || actualProjectRef !== expectedProjectRef || actualProjectRef !== allowedRefs[environment]) {
+  throw new Error(`Refusing mismatched or Production Supabase target: environment=${environment}, ref=${actualProjectRef}`);
 }
 
 let userIds = requestedUserIds;
@@ -29,7 +37,7 @@ if (cleanupAll) {
       `,
     }),
   });
-  if (!targetResponse.ok) throw new Error(`Preview cleanup target query failed: ${targetResponse.status} ${await targetResponse.text()}`);
+  if (!targetResponse.ok) throw new Error(`${environment} cleanup target query failed: ${targetResponse.status} ${await targetResponse.text()}`);
   userIds = (await targetResponse.json()).map((row) => row.id);
 }
 
@@ -38,15 +46,28 @@ if (userIds.length === 0) {
   process.exit(0);
 }
 
-const admin = createClient(url, serviceRoleKey, {
-  auth: { persistSession: false, autoRefreshToken: false },
-});
 const removed = [];
 for (const userId of userIds) {
   if (!/^[0-9a-f-]{36}$/i.test(userId)) throw new Error(`Invalid user id: ${userId}`);
-  const { error } = await admin.auth.admin.deleteUser(userId);
-  if (error && !/not found/i.test(error.message)) throw error;
-  removed.push(userId);
+}
+if (serviceRoleKey) {
+  const admin = createClient(url, serviceRoleKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  for (const userId of userIds) {
+    const { error } = await admin.auth.admin.deleteUser(userId);
+    if (error && !/not found/i.test(error.message)) throw error;
+    removed.push(userId);
+  }
+} else {
+  const authTargetSql = userIds.map((id) => `'${id}'::uuid`).join(", ");
+  const authCleanupResponse = await fetch(`https://api.supabase.com/v1/projects/${actualProjectRef}/database/query`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ query: `delete from auth.users where id = any(array[${authTargetSql}]);` }),
+  });
+  if (!authCleanupResponse.ok) throw new Error(`${environment} Auth cleanup failed: ${authCleanupResponse.status} ${await authCleanupResponse.text()}`);
+  removed.push(...userIds);
 }
 
 // Supabase Auth user deletion does not guarantee that the public game profile
@@ -147,7 +168,7 @@ const cleanupResponse = await fetch(`https://api.supabase.com/v1/projects/${actu
     `,
   }),
 });
-if (!cleanupResponse.ok) throw new Error(`Preview game profile cleanup failed: ${cleanupResponse.status} ${await cleanupResponse.text()}`);
+if (!cleanupResponse.ok) throw new Error(`${environment} game profile cleanup failed: ${cleanupResponse.status} ${await cleanupResponse.text()}`);
 
 const verifyResponse = await fetch(`https://api.supabase.com/v1/projects/${actualProjectRef}/database/query`, {
   method: "POST",
@@ -158,10 +179,10 @@ const verifyResponse = await fetch(`https://api.supabase.com/v1/projects/${actua
       : `select (select count(*)::int from auth.users where id = any(array[${targetSql}])) as remaining_auth_users, (select count(*)::int from public.users where id = any(array[${targetSql}])) as remaining_profiles;`,
   }),
 });
-if (!verifyResponse.ok) throw new Error(`Preview cleanup verification failed: ${verifyResponse.status} ${await verifyResponse.text()}`);
+if (!verifyResponse.ok) throw new Error(`${environment} cleanup verification failed: ${verifyResponse.status} ${await verifyResponse.text()}`);
 const verification = await verifyResponse.json();
 if (Number(verification?.[0]?.remaining_auth_users || 0) !== 0 || Number(verification?.[0]?.remaining_profiles || 0) !== 0) {
   throw new Error("Preview account data remains after cleanup.");
 }
 
-console.log(JSON.stringify({ projectRef: actualProjectRef, removedCount: removed.length, remainingAuthUsers: 0, remainingProfiles: 0 }, null, 2));
+console.log(JSON.stringify({ environment, projectRef: actualProjectRef, removedCount: removed.length, remainingAuthUsers: 0, remainingProfiles: 0 }, null, 2));

@@ -25,13 +25,14 @@ test("tutorial ten-pull guarantees slot 10 SSR and formation advances without Gr
       { gacha_id:"CHAR_NORMAL",item_id:"char_kengo_01",rarity:"SR" },
       { gacha_id:"CHAR_SPECIAL",item_id:"11111111-1111-1111-1111-111111111111",rarity:"SSR" },
     ]));
-    localStorage.setItem("mock_db_user_characters", JSON.stringify([{ id:"starter-m9x",user_id:userId,character_id:"char_go_01",level:1,awakening_level:0 }]));
+    localStorage.setItem("mock_db_user_characters", "[]");
     localStorage.setItem("mock_db_user_skills", "[]");
     localStorage.setItem("mock_db_user_main_formations", "[]");
     localStorage.setItem("mock_db_gacha_execution_history", "[]");
   }, { userId });
 
   await page.goto("/");
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem("mock_db_user_characters") || "[]"))).toEqual([]);
   const freeCta = page.locator(".gacha-free-btn");
   const titleCta = page.getByRole("button", { name:"TAP TO START" });
   await expect(freeCta.or(titleCta)).toBeVisible();

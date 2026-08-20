@@ -1,4 +1,5 @@
 import React from "react";
+import { getAttributeBadgeAsset, getAttributeLabel } from "@/utils/attributeAssets";
 
 export type AttributeType = "GO" | "WA" | "SHIN" | "GOKU" | "RIN" | "剛" | "技" | "心" | "極" | "凛" | string;
 
@@ -13,6 +14,9 @@ export const AttributeBadge: React.FC<AttributeBadgeProps> = ({
   size = 28,
   className = ""
 }) => {
+  const asset = getAttributeBadgeAsset(attribute);
+  if (asset) return <img className={className} src={asset} width={size} height={size} alt={getAttributeLabel(attribute)} />;
+
   // 属性名と対応するカラー・漢字のマッピング
   let label = "剛";
   let bgGradient = "radial-gradient(circle at 35% 35%, #FF5555 0%, #CC0000 65%, #660000 100%)";

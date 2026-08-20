@@ -83,6 +83,7 @@ const GameContext = createContext<any>(null);
 export function GameProvider({ children }: { children: React.ReactNode }) {
   const lastValidatedAuthUserIdRef = useRef<string | null>(null);
   const tutorialResultCommitRef = useRef(false);
+  const patrolStateRevisionRef = useRef(0);
   const audio = useAudio();
   const playCyberSe = (type: string) => audio.playLegacySe(type);
   const handleFirstUserInteraction = () => { void audio.unlockAudio(); };
@@ -380,7 +381,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     setUserLevel,
     setUserXp,
     (actionType: string, sourceId?: string) => addGuildXpAndContributionByAction(actionType, sourceId),
-    (step: string) => setOnboardingState(current => current ? { ...current, tutorial_step: step } : current)
+    (step: string) => setOnboardingState(current => current ? { ...current, tutorial_step: step } : current),
+    () => { patrolStateRevisionRef.current += 1; }
   );
 
   const {
@@ -859,6 +861,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   // 4. Supabase DB実データ同期ロード
   // ==========================================
   const syncBootstrapData = async (userId: string) => {
+    const patrolRevisionAtStart = patrolStateRevisionRef.current;
     let localGuildRec: any = null;
     let localCharIds: string[] = [];
     let localDeck: string[] = [];
@@ -1222,7 +1225,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
       const { data: userPatrols } = await supabase.from("user_patrols").select("*").eq("user_id", userId);
       
-      if (userPatrols) {
+      if (userPatrols && patrolRevisionAtStart === patrolStateRevisionRef.current) {
         const active = userPatrols.filter((p: any) => p.status !== "COMPLETED");
         const formattedPatrols = active.map((p: any) => {
           const expiresAt = new Date(p.expires_at).getTime();
@@ -1250,7 +1253,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
         const needBadge = formattedPatrols.some((p: any) => p.status === "CLAIMABLE" && p.has_battle_event && !p.battle_resolved);
         setHasActivePatrolBattle(needBadge);
-      } else {
+      } else if (patrolRevisionAtStart === patrolStateRevisionRef.current) {
         setActivePatrols([]);
         setHasActivePatrolBattle(false);
       }
@@ -2797,6 +2800,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
             title: character?.title || "新たな仲間",
             role: roleLabels[character?.growthPatternId || ""] || "バランス",
             attribute: attributeLabels[character?.alignment || ""] || "無所属",
+            attributeKey: character?.alignment || null,
             hp: revealStats?.hp,
             atk: revealStats?.atk,
             def: revealStats?.def,

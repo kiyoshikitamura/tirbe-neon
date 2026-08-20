@@ -17,6 +17,7 @@ import { CHARACTER_LOADOUT_RARITY_ASSETS } from "../lib/screenManifests";
 import TutorialNavigator from "./TutorialNavigator";
 import CharacterPresentation from "./character/CharacterPresentation";
 import { getRarityFrameAsset } from "@/utils/rarityAssets";
+import { getCharacterLocationBackground } from "@/utils/characterVisualAssets";
 import "./CharacterTab.css";
 
 const CHARACTER_ROLE_LABELS: Record<string, string> = {
@@ -383,6 +384,9 @@ export default function CharacterTab() {
                   alt={master.jpName}
                   variant="thumbnail"
                   rarity={(master as any).rarity || "N"}
+                  attribute={(master as any).alignment}
+                  backgroundSrc={getCharacterLocationBackground((master as any).homeTown)}
+                  attributeBadge
                   className="char-slider-avatar"
                 />
                 {isLeader && <span className="char-slider-badge-leader">リーダー</span>}
@@ -532,7 +536,7 @@ export default function CharacterTab() {
                 return member?.master ? (
                   <button key={`${member.characterId}-${index}`} data-character-id={member.characterId} data-user-character-id={member.record?.id} disabled={isTutorialFormation} onClick={() => void handleTogglePartyMember(member.characterId)}>
                     <span>{index + 1}</span>
-                    <CharacterPresentation src={getCharacterTransparentImg(member.master.name)} alt={member.master.jpName} variant="card" rarity={member.master.rarity || "N"} frameKind="character" rarityBadge />
+                    <CharacterPresentation src={getCharacterTransparentImg(member.master.name)} alt={member.master.jpName} variant="card" rarity={member.master.rarity || "N"} attribute={member.master.alignment} backgroundSrc={getCharacterLocationBackground(member.master.homeTown)} frameKind="character" rarityBadge attributeBadge />
                     <b>{member.master.jpName}</b>
                   </button>
                 ) : <div className="is-empty" key={`party-empty-${index}`}><span>{index + 1}</span><i>＋</i><b>未編成</b></div>;
@@ -566,8 +570,11 @@ export default function CharacterTab() {
                       alt={master.jpName}
                       variant="card"
                       rarity={(master as any).rarity || "R"}
+                      attribute={(master as any).alignment}
+                      backgroundSrc={getCharacterLocationBackground((master as any).homeTown)}
                       frameKind="character"
                       rarityBadge
+                      attributeBadge
                     />
                     <span>{master.jpName}</span>
                     {isTutorialFormation && character.id === tutorialGuaranteedSsr?.id && <em>おすすめ編成</em>}

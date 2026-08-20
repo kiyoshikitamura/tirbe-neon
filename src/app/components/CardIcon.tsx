@@ -40,8 +40,8 @@ export const CardIcon: React.FC<CardIconProps> = memo(({
 
   const calcHeight = height || (mode === "battle_slim" ? size * 2 : size);
 
-  // 属性マッピング (attribute が指定されていない場合は alignment または デフォルト "剛" を使用)
-  const attrKey = attribute || (alignment === "ORDER" ? "剛" : alignment === "CHAOS" ? "技" : alignment === "EVIL" ? "心" : "剛");
+  // Production attribute badges use the canonical alignment contract.
+  const attrKey = attribute || alignment || "JUSTICE";
 
   // 左上属性オーブバッジのサイズ算出 (カード幅に対する比率)
   const badgeSize = Math.max(16, Math.floor(size * 0.28));

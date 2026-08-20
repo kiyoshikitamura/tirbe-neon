@@ -15,6 +15,7 @@ import HeroPanel from "./ui/HeroPanel";
 import Badge from "./ui/Badge";
 import TutorialNavigator from "./TutorialNavigator";
 import CharacterPresentation from "./character/CharacterPresentation";
+import { getCharacterLocationBackground } from "@/utils/characterVisualAssets";
 import { supabase } from "@/utils/supabase";
 import { useScreenReadiness } from "../hooks/useScreenReadiness";
 import { SCREEN_ASSET_MANIFESTS } from "../lib/screenManifests";
@@ -319,7 +320,7 @@ export default function PatrolTab() {
             <header className="tutorial-wire-heading"><span>新宿</span><strong>初級</strong><small>所要時間 {formatClock(tutorialCourse?.duration_seconds)}</small></header>
             <div className="tutorial-wire-rewards" aria-label="獲得可能報酬"><span>PLAYER XP<br />+{Number(tutorialCourse?.reward_xp || 0).toLocaleString()}</span><span>キャラEXP<br />+{Number(tutorialCourse?.reward_xp || 0).toLocaleString()}</span><span>CASH<br />+{Number(tutorialCourse?.reward_cash || 0).toLocaleString()}</span><span>アイテム<br />抽選</span></div>
             <div className="tutorial-wire-member" data-character-id={tutorialCharacter?.id} data-user-character-id={tutorialOwnedCharacter?.id}>
-              <CharacterPresentation src={characterImage(tutorialCharacter?.img) || undefined} alt={tutorialCharacter?.jpName || "派遣メンバー"} variant="quest" rarity={tutorialCharacter?.rarity} />
+              <CharacterPresentation src={characterImage(tutorialCharacter?.img) || undefined} alt={tutorialCharacter?.jpName || "派遣メンバー"} variant="quest" rarity={tutorialCharacter?.rarity} attribute={tutorialCharacter?.alignment} backgroundSrc={getCharacterLocationBackground(tutorialCharacter?.homeTown)} frameKind="character" rarityBadge attributeBadge />
               <div><small>派遣メンバー</small><b>{tutorialCharacter?.jpName || "メンバー"}</b><span>{tutorialCharacter?.rarity || "SSR"}</span></div>
             </div>
             <OutlawButton onClick={handleStart} disabled={dispatchLoading || !selectedCourse || !selectedPatrolMember} fullWidth variant="primary">{dispatchLoading ? "派遣準備中…" : "新宿へ派遣する"}</OutlawButton>
@@ -327,7 +328,7 @@ export default function PatrolTab() {
 
           {(acceptanceState === "Q2" || acceptanceState === "Q3") && <>
             <header className="tutorial-wire-progress-title"><span>新宿へ派遣中</span><small>NEW SHINJUKU DISTRICT</small></header>
-            <div className="tutorial-wire-progress-character" data-character-id={tutorialCharacter?.id} data-user-character-id={tutorialOwnedCharacter?.id}><CharacterPresentation src={characterImage(tutorialCharacter?.img) || undefined} alt={tutorialCharacter?.jpName || "派遣メンバー"} variant="quest" rarity={tutorialCharacter?.rarity} /></div>
+            <div className="tutorial-wire-progress-character" data-character-id={tutorialCharacter?.id} data-user-character-id={tutorialOwnedCharacter?.id}><CharacterPresentation src={characterImage(tutorialCharacter?.img) || undefined} alt={tutorialCharacter?.jpName || "派遣メンバー"} variant="quest" rarity={tutorialCharacter?.rarity} attribute={tutorialCharacter?.alignment} backgroundSrc={getCharacterLocationBackground(tutorialCharacter?.homeTown)} frameKind="character" rarityBadge attributeBadge /></div>
             <strong className="tutorial-wire-course">新宿・初級</strong>
             <div className="tutorial-wire-time">残り時間 <b>{formatClock(remaining)}</b></div>
             <div className="tutorial-wire-progress"><i style={{ width: `${progress}%` }} /></div>
@@ -338,7 +339,7 @@ export default function PatrolTab() {
 
           {acceptanceState === "Q5" && <>
             <header className="tutorial-wire-complete"><h2>クエスト完了</h2><small>QUEST COMPLETE</small></header>
-            <div className="tutorial-wire-return-character" data-character-id={tutorialCharacter?.id} data-user-character-id={tutorialOwnedCharacter?.id}><CharacterPresentation src={characterImage(tutorialCharacter?.img) || undefined} alt={tutorialCharacter?.jpName || "帰還メンバー"} variant="quest" rarity={tutorialCharacter?.rarity} /></div>
+            <div className="tutorial-wire-return-character" data-character-id={tutorialCharacter?.id} data-user-character-id={tutorialOwnedCharacter?.id}><CharacterPresentation src={characterImage(tutorialCharacter?.img) || undefined} alt={tutorialCharacter?.jpName || "帰還メンバー"} variant="quest" rarity={tutorialCharacter?.rarity} attribute={tutorialCharacter?.alignment} backgroundSrc={getCharacterLocationBackground(tutorialCharacter?.homeTown)} frameKind="character" rarityBadge attributeBadge /></div>
             <strong className="tutorial-wire-course">新宿・初級</strong>
             <div className="tutorial-wire-rewards is-return" aria-label="獲得報酬"><span>PLAYER XP<br />+{Number(tutorialCourse?.reward_xp || 0).toLocaleString()}</span><span>キャラEXP<br />+{Number(tutorialCourse?.reward_xp || 0).toLocaleString()}</span><span>CASH<br />+{Number(tutorialCourse?.reward_cash || 0).toLocaleString()}</span><span>アイテム<br />抽選</span></div>
             <OutlawButton onClick={() => {
@@ -484,6 +485,12 @@ export default function PatrolTab() {
                         alt={c.jpName}
                         variant="thumbnail"
                         name={c.jpName}
+                        rarity={c.rarity || "N"}
+                        attribute={c.alignment}
+                        backgroundSrc={getCharacterLocationBackground(c.homeTown)}
+                        frameKind="character"
+                        rarityBadge
+                        attributeBadge
                       />
                     </div>
                     {isHome && <div className="char-bonus-badge">地元一致(LUK{baseLuk})</div>}

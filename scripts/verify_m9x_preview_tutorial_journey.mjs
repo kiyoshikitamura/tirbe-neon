@@ -3,21 +3,33 @@ import { createClient } from "@supabase/supabase-js";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-const previewUrl = process.env.MOBILE_PREVIEW_URL || "https://tribe-neon-mobile-preview.vercel.app";
+const environment = String(process.env.NEXT_PUBLIC_APP_ENV || "preview").toLowerCase();
+const allowedRefs = { development: "vosbyukxmskvisbgleug", preview: "sufvuqdnqohpfzkwxohq" };
+const previewUrl = process.env.MOBILE_PREVIEW_URL || (environment === "development" ? "http://127.0.0.1:3000" : "https://tribe-neon-mobile-preview.vercel.app");
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+let serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const expectedRef = process.env.SUPABASE_EXPECTED_PROJECT_REF || process.env.SUPABASE_PREVIEW_PROJECT_REF;
+const accessToken = process.env.SUPABASE_ACCESS_TOKEN;
 
-if (!supabaseUrl || !serviceRoleKey || !expectedRef) {
-  throw new Error("Preview Supabase URL, service role key, and expected project ref are required.");
+if (!supabaseUrl || !expectedRef || !(environment in allowedRefs)) {
+  throw new Error("Development/Preview Supabase URL and expected project ref are required.");
 }
 const actualRef = new URL(supabaseUrl).hostname.split(".")[0];
-if (actualRef !== expectedRef || actualRef !== "sufvuqdnqohpfzkwxohq") {
-  throw new Error(`Refusing non-Preview Supabase target: ${actualRef}`);
+if (actualRef !== expectedRef || actualRef !== allowedRefs[environment]) {
+  throw new Error(`Refusing mismatched or Production Supabase target: environment=${environment}, ref=${actualRef}`);
 }
+if (!serviceRoleKey && accessToken) {
+  const keysResponse = await fetch(`https://api.supabase.com/v1/projects/${actualRef}/api-keys`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!keysResponse.ok) throw new Error(`Could not resolve ${environment} QA key: ${keysResponse.status}`);
+  const keys = await keysResponse.json();
+  serviceRoleKey = keys.find((key) => key.name === "service_role")?.api_key;
+}
+if (!serviceRoleKey) throw new Error(`${environment} service-role QA key is required.`);
 const admin = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false, autoRefreshToken: false } });
 
-const artifactsDirectory = path.resolve("test-results", "m9x-preview-tutorial-journey");
+const artifactsDirectory = path.resolve("test-results", `m9x-${environment}-tutorial-journey`);
 await mkdir(artifactsDirectory, { recursive: true });
 
 const browser = await chromium.launch({ headless: true });
@@ -29,16 +41,20 @@ const failedResponses = [];
 let userId = null;
 let trace = [];
 const acquisitionAudit = {};
+const qaUsername = `QA${Date.now().toString(36).slice(-6)}`;
 
 const snapshotAcquisitionState = async (label) => {
   if (!userId) throw new Error(`Cannot snapshot ${label} without the Preview QA user id.`);
-  const [{ data: characters, error: characterError }, { data: formation, error: formationError }, { data: history, error: historyError }] = await Promise.all([
+  const [{ data: characters, error: characterError }, { data: formation, error: formationError }, { data: history, error: historyError }, { data: profile, error: profileError }, { data: tutorial, error: tutorialError }, { data: patrols, error: patrolError }] = await Promise.all([
     admin.from("user_characters").select("id,character_id,level,awakening_level,created_at").eq("user_id", userId).order("created_at"),
     admin.from("user_main_formations").select("slot,user_character_id").eq("user_id", userId).order("slot"),
     admin.from("gacha_execution_history").select("request_id,gacha_id,status,result_payload,created_at").eq("user_id", userId).order("created_at"),
+    admin.from("users").select("favorite_character_id").eq("id", userId).single(),
+    admin.from("tutorial_progress").select("step_id").eq("user_id", userId).single(),
+    admin.from("user_patrols").select("id,status,character_id,has_battle_event,battle_resolved,expires_at").eq("user_id", userId).order("started_at"),
   ]);
-  if (characterError || formationError || historyError) throw new Error(`Acquisition snapshot ${label} failed: ${JSON.stringify({ characterError, formationError, historyError })}`);
-  acquisitionAudit[label] = { characters: characters || [], formation: formation || [], history: history || [] };
+  if (characterError || formationError || historyError || profileError || tutorialError || patrolError) throw new Error(`Acquisition snapshot ${label} failed: ${JSON.stringify({ characterError, formationError, historyError, profileError, tutorialError, patrolError })}`);
+  acquisitionAudit[label] = { characters: characters || [], formation: formation || [], history: history || [], profile, tutorial, patrols: patrols || [] };
 };
 
 page.on("pageerror", (error) => pageErrors.push(error.message));
@@ -67,7 +83,7 @@ try {
   await visible('[data-entry-state="AGEHA_INTRO"]');
   await page.locator(".setup-ageha-presentation .setup-primary-action").click();
   await visible('[data-entry-state="NAME_INPUT"]');
-  await page.locator("#setup-player-name").fill(`QA${Date.now().toString(36).slice(-6)}`);
+  await page.locator("#setup-player-name").fill(qaUsername);
   await page.locator(".setup-name-dialog .setup-primary-action").click();
 
   // Preview cold starts may still be finishing the existing full bootstrap
@@ -79,6 +95,11 @@ try {
     if (!authKey) return null;
     try { return JSON.parse(localStorage.getItem(authKey) || "null")?.user?.id || null; } catch { return null; }
   });
+  if (!userId) {
+    const { data: qaProfile, error: qaProfileError } = await admin.from("users").select("id").eq("username", qaUsername).single();
+    if (qaProfileError) throw qaProfileError;
+    userId = qaProfile?.id || null;
+  }
   await snapshotAcquisitionState("INITIAL_CHARACTER");
   await page.locator(".tutorial-world button").click();
   await (await visible(".gacha-free-btn", 25_000)).click();
@@ -113,9 +134,16 @@ try {
   await page.locator('[data-acceptance-state="Q1"] button').click();
   await recordState("Q2");
   await recordState("Q3");
-  await page.locator('[data-acceptance-state="Q3"] button').click();
+  await page.locator('[data-acceptance-state="Q3"] button').evaluate((button) => {
+    button.click();
+    button.click();
+  });
   await recordState("Q4");
   await recordState("Q5");
+  await snapshotAcquisitionState("TUTORIAL_SPEEDUP");
+  trace.push(...await page.evaluate(() => window.__TRIBE_TUTORIAL_JOURNEY_TRACE__ || []));
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await visible('[data-acceptance-state="Q5"]', 30_000);
   await page.locator('[data-acceptance-state="Q5"] button').click();
   await recordState("Q6");
   await page.locator('[data-acceptance-state="Q6"] button').click();
@@ -172,7 +200,7 @@ try {
     };
   });
   userId = browserState.userId;
-  trace = browserState.trace;
+  trace = [...trace, ...browserState.trace];
   if (!userId) throw new Error("The anonymous Preview user id could not be resolved from the browser session.");
   if (browserState.errorDialogs.length) throw new Error(`Unexpected error UI: ${browserState.errorDialogs.join(" | ")}`);
   if (pageErrors.length) throw new Error(`Browser page errors: ${pageErrors.join(" | ")}`);
@@ -219,16 +247,42 @@ try {
   if (firstDefeatIndex >= 0 && firstDefeatIndex < skillImpactIndex) throw new Error("Tutorial enemy was defeated before the Skill impact.");
   if (replay?.result?.winner !== "PLAYER") throw new Error("Tutorial expected winner was not preserved.");
 
-  const starterCharacterId = "11111111-1111-1111-1111-111111111111";
   const initialCharacters = acquisitionAudit.INITIAL_CHARACTER?.characters || [];
-  if (initialCharacters.length !== 1 || initialCharacters[0].character_id !== starterCharacterId) {
-    throw new Error(`Initialization starter provenance is invalid: ${JSON.stringify(initialCharacters)}`);
+  if (initialCharacters.length !== 0) {
+    throw new Error(`Fresh-player roster must be empty before tutorial gacha: ${JSON.stringify(initialCharacters)}`);
+  }
+  if ((acquisitionAudit.INITIAL_CHARACTER?.formation || []).length !== 0 || (acquisitionAudit.INITIAL_CHARACTER?.history || []).length !== 0) {
+    throw new Error(`Fresh-player formation/gacha history must be empty: ${JSON.stringify(acquisitionAudit.INITIAL_CHARACTER)}`);
+  }
+  if (acquisitionAudit.INITIAL_CHARACTER?.profile?.favorite_character_id !== null
+      || acquisitionAudit.INITIAL_CHARACTER?.tutorial?.step_id !== "WORLD_INTRO"
+      || (acquisitionAudit.INITIAL_CHARACTER?.patrols || []).length !== 0) {
+    throw new Error(`Fresh-player profile/tutorial/patrol contract failed: ${JSON.stringify(acquisitionAudit.INITIAL_CHARACTER)}`);
+  }
+  const tutorialHistory = acquisitionAudit.TUTORIAL_GACHA_RESULT?.history || [];
+  const tutorialResults = tutorialHistory.at(-1)?.result_payload?.results || [];
+  const guaranteedResult = tutorialResults[9];
+  if (!guaranteedResult?.character_id || String(guaranteedResult.rarity).toUpperCase() !== "SSR") {
+    throw new Error(`Tutorial tenth-result SSR contract failed: ${JSON.stringify(guaranteedResult)}`);
   }
   const postGachaOwnedIds = new Set((acquisitionAudit.TUTORIAL_GACHA_RESULT?.characters || []).map((character) => character.id));
+  const guaranteedOwned = (acquisitionAudit.TUTORIAL_GACHA_RESULT?.characters || []).find((character) => character.character_id === guaranteedResult.character_id);
+  if (!guaranteedOwned) throw new Error(`Tenth SSR is not owned after gacha: ${JSON.stringify(guaranteedResult)}`);
   const formationRows = acquisitionAudit.RECOMMENDED_FORMATION?.formation || [];
   const unownedFormationRows = formationRows.filter((row) => !postGachaOwnedIds.has(row.user_character_id));
-  if (formationRows.length !== 5 || unownedFormationRows.length) {
+  if (formationRows.length !== 5 || unownedFormationRows.length || !formationRows.some((row) => row.user_character_id === guaranteedOwned.id)) {
     throw new Error(`Recommended formation contains an unowned character: ${JSON.stringify({ formationRows, unownedFormationRows })}`);
+  }
+  const dispatchTrace = trace.find((entry) => entry.phase === "dispatch_committed");
+  if (dispatchTrace?.dispatchedCharacterId !== guaranteedResult.character_id) {
+    throw new Error(`Tenth SSR continuity drifted before dispatch: ${JSON.stringify({ guaranteedResult, dispatchTrace })}`);
+  }
+  const speedupPatrols = acquisitionAudit.TUTORIAL_SPEEDUP?.patrols || [];
+  const tutorialPatrol = speedupPatrols.find((patrol) => patrol.character_id === guaranteedResult.character_id);
+  if (!tutorialPatrol || tutorialPatrol.status !== "CLAIMABLE" || tutorialPatrol.has_battle_event !== true || tutorialPatrol.battle_resolved !== false
+      || new Date(tutorialPatrol.expires_at).getTime() > Date.now() + 1000
+      || acquisitionAudit.TUTORIAL_SPEEDUP?.tutorial?.step_id !== "TUTORIAL_BATTLE") {
+    throw new Error(`Tutorial speed-up authoritative state failed: ${JSON.stringify(acquisitionAudit.TUTORIAL_SPEEDUP)}`);
   }
 
   const enemyParticipantIds = new Set((replay?.enemy_snapshot || []).map((participant) => String(participant.id)));
@@ -264,6 +318,7 @@ try {
     status: "PASS",
     previewUrl,
     projectRef: actualRef,
+    environment,
     userId,
     uiOnly: true,
     directStateMutation: false,
@@ -277,6 +332,7 @@ try {
     starterSkill: { skillId: starterSkills[0].skill_card_id, plusValue: starterSkills[0].plus_val, slotIndex: starterSkills[0].slot_index },
     replayContract: { basicActionIndex, skillActionIndex, skillImpactIndex, winner: replay.result.winner },
     acquisitionAudit,
+    guaranteedTutorialSsr: guaranteedResult.character_id,
     enemyPresentationActions,
     artifact: path.join(artifactsDirectory, "preview-B1.png"),
   };

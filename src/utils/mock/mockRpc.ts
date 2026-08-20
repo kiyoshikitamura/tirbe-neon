@@ -1,7 +1,5 @@
 "use client";
 
-import { CHARACTERS_MASTER } from "../game_constants";
-
 const getMockEquipmentLevelScale = (level: number) => {
   const normalized = Math.min(100, Math.max(1, Math.trunc(Number(level) || 1)));
   return normalized <= 50 ? 0.1 + ((normalized - 1) * 0.5) / 49 : 0.6 + ((normalized - 50) * 0.4) / 50;
@@ -709,8 +707,9 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     const equipmentBattleMaster = client.getStorage("equipment_battle_master") || [];
     const equippedSkills = client.getStorage("user_skills") || [];
     const skillBattleMaster = client.getStorage("skill_battle_master") || [];
+    const characterMasters = client.getStorage("characters_master") || [];
     const playerSnapshot = roster.map((character: any) => {
-      const characterMaster = CHARACTERS_MASTER.find((entry: any) => entry.id === character.character_id);
+      const characterMaster = characterMasters.find((entry: any) => entry.id === character.character_id);
       const equipmentLoadout = equipments
         .filter((owned: any) => owned.user_id === userId && owned.equipped_character_id === character.id)
         .map((owned: any) => ({ owned, master: equipmentBattleMaster.find((master: any) => (master.equipment_id || master.id) === (owned.equipment_id || owned.equipment_master_id)) }))
@@ -1834,7 +1833,6 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
       return { data: null, error: { message: "Username is already in use", code: "23505" } };
     }
 
-    const starterCharacterId = "11111111-1111-1111-1111-111111111111";
     users.push({
       id: userId,
       username,
@@ -1845,18 +1843,12 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
       vitality: 100,
       pvp_points: 5,
       current_base_id: "neon_tower",
-      favorite_character_id: starterCharacterId,
+      favorite_character_id: null,
       level: 1,
       xp: 0,
       sound_settings: { bgm: true, se: true },
     });
     client.setStorage("users", users);
-
-    const characters = client.getStorage("user_characters") || [];
-    if (!characters.some((character: any) => character.user_id === userId && character.character_id === starterCharacterId)) {
-      characters.push({ id: `starter_${userId}`, user_id: userId, character_id: starterCharacterId, level: 1, awakening_level: 0 });
-      client.setStorage("user_characters", characters);
-    }
 
     const progress = client.getStorage("tutorial_progress") || [];
     if (!progress.some((entry: any) => entry.user_id === userId)) {
