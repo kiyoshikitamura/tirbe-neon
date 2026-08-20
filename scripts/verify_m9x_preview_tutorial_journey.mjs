@@ -1,6 +1,6 @@
 import { chromium, devices } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
-import { mkdir } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 const previewUrl = process.env.MOBILE_PREVIEW_URL || "https://tribe-neon-mobile-preview.vercel.app";
@@ -231,7 +231,14 @@ try {
   const completedPresentationActions = [...(browserState.battlePresentation.history || []), browserState.battlePresentation.current]
     .filter((entry) => entry?.actionCompleteAt);
   const enemyPresentationActions = completedPresentationActions.filter((entry) => enemyParticipantIds.has(String(entry.actorId))).slice(0, 3);
-  if (enemyPresentationActions.length < 3) throw new Error(`Expected at least 3 Enemy presentation actions: ${JSON.stringify(enemyPresentationActions)}`);
+  if (enemyPresentationActions.length < 3) {
+    throw new Error(`Expected at least 3 Enemy presentation actions: ${JSON.stringify({
+      enemyPresentationActions,
+      enemyParticipantIds: [...enemyParticipantIds],
+      completedPresentationActorIds: completedPresentationActions.map((entry) => String(entry.actorId)),
+      authoritativeEnemyActions: authoritativeActions.filter((entry) => enemyParticipantIds.has(entry.actorId)),
+    })}`);
+  }
   for (const presentation of enemyPresentationActions) {
     const authoritative = authoritativeActions.find((action) => action.actorId === String(presentation.actorId) && action.targetId === String(presentation.targetId));
     const stageTargets = [presentation.targetFocusAtTargetId, presentation.impactAtTargetId, presentation.damageAtTargetId, presentation.hpSettledAtTargetId].filter(Boolean);
@@ -240,7 +247,7 @@ try {
     }
   }
 
-  console.log(JSON.stringify({
+  const report = {
     status: "PASS",
     previewUrl,
     projectRef: actualRef,
@@ -259,7 +266,9 @@ try {
     acquisitionAudit,
     enemyPresentationActions,
     artifact: path.join(artifactsDirectory, "preview-B1.png"),
-  }, null, 2));
+  };
+  await writeFile(path.join(artifactsDirectory, "preview-journey-report.json"), `${JSON.stringify(report, null, 2)}\n`, "utf8");
+  console.log(JSON.stringify(report, null, 2));
 } catch (error) {
   trace = await page.evaluate(() => window.__TRIBE_TUTORIAL_JOURNEY_TRACE__ || []).catch(() => trace);
   userId ||= trace.find((entry) => typeof entry?.userId === "string")?.userId || null;
