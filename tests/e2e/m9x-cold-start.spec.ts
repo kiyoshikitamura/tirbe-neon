@@ -47,7 +47,7 @@ test("tutorial ten-pull guarantees slot 10 SSR and formation advances without Gr
   await expect(reveal).toBeVisible({ timeout:15_000 });
   const capturedRarities = new Set<string>();
   for (let index=0; index<9; index+=1) {
-    await expect(reveal.locator(".tutorial-gacha-rarity-frame")).toBeVisible();
+    await expect(reveal.locator(".character-presentation-frame.is-reveal")).toBeVisible();
     await expect(reveal).toHaveAttribute("data-can-advance", "true");
     const rarityClass = (await reveal.getAttribute("class"))?.match(/rarity-(n|r|sr|ssr)/)?.[1];
     if (rarityClass && !capturedRarities.has(rarityClass)) {
@@ -61,11 +61,11 @@ test("tutorial ten-pull guarantees slot 10 SSR and formation advances without Gr
   await page.screenshot({ path: test.info().outputPath("gacha-ssr-anticipation.png") });
   await expect(reveal).toHaveAttribute("data-presentation-state", "SSR_REVEAL");
   await expect(reveal).toHaveAttribute("data-can-advance", "true");
-  await expect(reveal.locator(".tutorial-gacha-rarity-frame")).toBeVisible();
+  await expect(reveal.locator(".character-presentation-frame.is-reveal")).toBeVisible();
   await page.screenshot({ path: test.info().outputPath("gacha-ssr-reveal.png") });
   await reveal.click();
   await expect(page.locator(".gacha-result-card")).toHaveCount(10);
-  await expect(page.locator(".gacha-result-rarity-frame")).toHaveCount(10);
+  await expect(page.locator(".gacha-result-card .character-presentation-frame.is-character")).toHaveCount(10);
   await page.screenshot({ path: test.info().outputPath("gacha-ten-pull-result.png") });
   const payload = await page.evaluate(() => JSON.parse(localStorage.getItem("mock_db_gacha_execution_history") || "[]")[0]?.result_payload);
   expect(payload.results).toHaveLength(10);
@@ -75,8 +75,12 @@ test("tutorial ten-pull guarantees slot 10 SSR and formation advances without Gr
   await page.locator(".gacha-result-next").click();
   const formation = page.locator(".char-party-auto-btn");
   await expect(formation).toBeVisible();
+  await page.screenshot({ path: test.info().outputPath("formation-owned-roster.png"), fullPage: true });
   await formation.click();
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem("mock_db_tutorial_progress") || "[]")[0]?.step_id)).toBe("DISPATCH");
+  const skillReady = page.locator('[data-acceptance-state="FORMATION_SKILL_READY"]');
+  await expect(skillReady).toBeVisible();
+  await skillReady.getByRole("button", { name: "クエストへ進む" }).click();
   await expect(page.locator(".tutorial-character-step")).toHaveCount(0);
   await expect(page.locator(".patrol-container")).toBeVisible();
 });

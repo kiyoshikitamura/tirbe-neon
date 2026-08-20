@@ -15,6 +15,7 @@ const actualRef = new URL(supabaseUrl).hostname.split(".")[0];
 if (actualRef !== expectedRef || actualRef !== "sufvuqdnqohpfzkwxohq") {
   throw new Error(`Refusing non-Preview Supabase target: ${actualRef}`);
 }
+const admin = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false, autoRefreshToken: false } });
 
 const artifactsDirectory = path.resolve("test-results", "m9x-preview-tutorial-journey");
 await mkdir(artifactsDirectory, { recursive: true });
@@ -27,6 +28,18 @@ const consoleErrors = [];
 const failedResponses = [];
 let userId = null;
 let trace = [];
+const acquisitionAudit = {};
+
+const snapshotAcquisitionState = async (label) => {
+  if (!userId) throw new Error(`Cannot snapshot ${label} without the Preview QA user id.`);
+  const [{ data: characters, error: characterError }, { data: formation, error: formationError }, { data: history, error: historyError }] = await Promise.all([
+    admin.from("user_characters").select("id,character_id,level,awakening_level,created_at").eq("user_id", userId).order("created_at"),
+    admin.from("user_main_formations").select("slot,user_character_id").eq("user_id", userId).order("slot"),
+    admin.from("gacha_execution_history").select("request_id,gacha_id,status,result_payload,created_at").eq("user_id", userId).order("created_at"),
+  ]);
+  if (characterError || formationError || historyError) throw new Error(`Acquisition snapshot ${label} failed: ${JSON.stringify({ characterError, formationError, historyError })}`);
+  acquisitionAudit[label] = { characters: characters || [], formation: formation || [], history: history || [] };
+};
 
 page.on("pageerror", (error) => pageErrors.push(error.message));
 page.on("console", (message) => {
@@ -66,6 +79,7 @@ try {
     if (!authKey) return null;
     try { return JSON.parse(localStorage.getItem(authKey) || "null")?.user?.id || null; } catch { return null; }
   });
+  await snapshotAcquisitionState("INITIAL_CHARACTER");
   await page.locator(".tutorial-world button").click();
   await (await visible(".gacha-free-btn", 25_000)).click();
   await (await visible(".gacha-pull-gate", 25_000)).click();
@@ -79,9 +93,14 @@ try {
     await reveal.click();
   }
 
+  await visible(".gacha-result-panel", 20_000);
+  await snapshotAcquisitionState("TUTORIAL_GACHA_RESULT");
+  await page.screenshot({ path: path.join(artifactsDirectory, "preview-gacha-result.png"), fullPage: true });
   await (await visible(".gacha-result-next", 20_000)).click();
+  await page.screenshot({ path: path.join(artifactsDirectory, "preview-formation-owned.png"), fullPage: true });
   await (await visible(".char-party-auto-btn", 20_000)).click();
   await visible('[data-acceptance-state="FORMATION_SKILL_READY"]', 20_000);
+  await snapshotAcquisitionState("RECOMMENDED_FORMATION");
   await page.screenshot({ path: path.join(artifactsDirectory, "preview-formation-skill.png"), fullPage: true });
   await page.locator('[data-acceptance-state="FORMATION_SKILL_READY"] button').click();
 
@@ -160,7 +179,6 @@ try {
     }
   }
 
-  const admin = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false, autoRefreshToken: false } });
   const [{ data: skills, error: skillError }, { data: replay, error: replayError }, { count: skillGachaCount, error: skillGachaError }] = await Promise.all([
     admin.from("user_skills").select("id,skill_card_id,plus_val,equipped_character_id,slot_index").eq("user_id", userId),
     admin.from("battle_replay_sessions").select("player_snapshot,enemy_snapshot,result").eq("requester_user_id", userId).eq("battle_mode", "QUEST").order("created_at", { ascending: false }).limit(1).single(),
@@ -188,6 +206,40 @@ try {
   if (firstDefeatIndex >= 0 && firstDefeatIndex < skillImpactIndex) throw new Error("Tutorial enemy was defeated before the Skill impact.");
   if (replay?.result?.winner !== "PLAYER") throw new Error("Tutorial expected winner was not preserved.");
 
+  const starterCharacterId = "11111111-1111-1111-1111-111111111111";
+  const initialCharacters = acquisitionAudit.INITIAL_CHARACTER?.characters || [];
+  if (initialCharacters.length !== 1 || initialCharacters[0].character_id !== starterCharacterId) {
+    throw new Error(`Initialization starter provenance is invalid: ${JSON.stringify(initialCharacters)}`);
+  }
+  const postGachaOwnedIds = new Set((acquisitionAudit.TUTORIAL_GACHA_RESULT?.characters || []).map((character) => character.id));
+  const formationRows = acquisitionAudit.RECOMMENDED_FORMATION?.formation || [];
+  const unownedFormationRows = formationRows.filter((row) => !postGachaOwnedIds.has(row.user_character_id));
+  if (formationRows.length !== 5 || unownedFormationRows.length) {
+    throw new Error(`Recommended formation contains an unowned character: ${JSON.stringify({ formationRows, unownedFormationRows })}`);
+  }
+
+  const enemyParticipantIds = new Set((replay?.enemy_snapshot || []).map((participant) => String(participant.id)));
+  const replayEvents = Array.isArray(replay?.result?.events) ? replay.result.events : [];
+  const authoritativeActions = replayEvents.flatMap((event, index) => {
+    if (event.type !== "ACTION") return [];
+    const unit = replayEvents.slice(index + 1);
+    const nextActionOffset = unit.findIndex((candidate) => candidate.type === "ACTION");
+    const bounded = nextActionOffset < 0 ? unit : unit.slice(0, nextActionOffset);
+    const impact = bounded.find((candidate) => ["DAMAGE", "HEAL", "STATUS"].includes(candidate.type));
+    return [{ actorId: String(event.payload?.actorId || ""), targetId: String(event.payload?.targetId || impact?.payload?.targetId || "") }];
+  });
+  const completedPresentationActions = [...(browserState.battlePresentation.history || []), browserState.battlePresentation.current]
+    .filter((entry) => entry?.actionCompleteAt);
+  const enemyPresentationActions = completedPresentationActions.filter((entry) => enemyParticipantIds.has(String(entry.actorId))).slice(0, 3);
+  if (enemyPresentationActions.length < 3) throw new Error(`Expected at least 3 Enemy presentation actions: ${JSON.stringify(enemyPresentationActions)}`);
+  for (const presentation of enemyPresentationActions) {
+    const authoritative = authoritativeActions.find((action) => action.actorId === String(presentation.actorId) && action.targetId === String(presentation.targetId));
+    const stageTargets = [presentation.targetFocusAtTargetId, presentation.impactAtTargetId, presentation.damageAtTargetId, presentation.hpSettledAtTargetId].filter(Boolean);
+    if (!authoritative || stageTargets.some((target) => target !== authoritative.targetId)) {
+      throw new Error(`Enemy presentation target drift: ${JSON.stringify({ presentation, authoritative, stageTargets })}`);
+    }
+  }
+
   console.log(JSON.stringify({
     status: "PASS",
     previewUrl,
@@ -204,6 +256,8 @@ try {
     trace,
     starterSkill: { skillId: starterSkills[0].skill_card_id, plusValue: starterSkills[0].plus_val, slotIndex: starterSkills[0].slot_index },
     replayContract: { basicActionIndex, skillActionIndex, skillImpactIndex, winner: replay.result.winner },
+    acquisitionAudit,
+    enemyPresentationActions,
     artifact: path.join(artifactsDirectory, "preview-B1.png"),
   }, null, 2));
 } catch (error) {
@@ -216,7 +270,6 @@ try {
   await context.close();
   await browser.close();
   if (userId) {
-    const admin = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false, autoRefreshToken: false } });
     const { error } = await admin.auth.admin.deleteUser(userId);
     if (error && !/not found/i.test(error.message)) {
       console.warn(`Disposable Preview user cleanup needs follow-up: ${userId} (${error.message})`);

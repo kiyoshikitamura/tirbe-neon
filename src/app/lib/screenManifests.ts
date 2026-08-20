@@ -10,6 +10,21 @@ const COMMON_SHELL_ASSETS = [
   "/ui/icon_footer_character.png", "/ui/icon_footer_gacha.png", "/ui/icon_footer_guild.png", "/ui/icon_footer_mypage.png", "/ui/icon_footer_shop.png",
 ];
 
+export const GACHA_RARITY_ASSETS = [
+  ...["n", "r", "sr", "ssr"].map((rarity) => `/ui/rarity/${rarity}.png`),
+  ...["n", "r", "sr", "ssr"].map((rarity) => `/ui/rarity/character-card-${rarity}.png`),
+  ...["n", "r", "sr", "ssr"].map((rarity) => `/ui/rarity/rarity-badge-${rarity}.png`),
+  "/ui/rarity/badge-new.png",
+  ...[1, 2, 3, 4, 5].map((level) => `/ui/rarity/badge-awakening-plus-${level}.png`),
+];
+
+export const CHARACTER_LOADOUT_RARITY_ASSETS = [
+  ...["n", "r", "sr", "ssr"].map((rarity) => `/ui/rarity/character-card-${rarity}.png`),
+  ...["n", "r", "sr", "ssr"].map((rarity) => `/ui/rarity/rarity-badge-${rarity}.png`),
+  ...["n", "r", "sr", "ssr"].map((rarity) => `/ui/rarity/skill-frame-${rarity}.png`),
+  ...["n", "r", "sr", "ssr"].map((rarity) => `/ui/rarity/equipment-frame-${rarity}.png`),
+];
+
 const HOME_ASSETS = [
   "/bg/bg_base_neontower.png", "/bg/bg_base_deepdock.png", "/bg/bg_base_junkbazaar.png", "/bg/bg_base_kitakuragate.png",
   "/characters/reiji_transparent_asset.png", "/characters/rui_transparent_asset.png", "/characters/chang_transparent_asset.png",

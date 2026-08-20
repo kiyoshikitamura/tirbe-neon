@@ -2764,6 +2764,20 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         actionPerformance.mark("response");
 
         const serverResults = drawResult.data?.results || [];
+        const awakenedCharacterIds = Array.from(new Set(serverResults
+          .filter((result: { outcome?: string }) => result.outcome === "awakening")
+          .map((result: { character_id: string }) => result.character_id)));
+        const authoritativeAwakeningByCharacter = new Map<string, number>();
+        if (awakenedCharacterIds.length > 0) {
+          const { data: awakenedRows, error: awakenedRowsError } = await supabase
+            .from("user_characters")
+            .select("character_id,awakening_level")
+            .in("character_id", awakenedCharacterIds);
+          if (awakenedRowsError) console.warn("Authoritative gacha awakening display state is unavailable:", awakenedRowsError);
+          for (const row of awakenedRows || []) {
+            authoritativeAwakeningByCharacter.set(String(row.character_id), Number(row.awakening_level));
+          }
+        }
         const results = serverResults.map((result: { character_id: string; outcome: string; rarity?: string }) => {
           const character = CHARACTERS_MASTER.find(c => c.id === result.character_id);
           const revealStats = character ? getCharacterBaseStats(character.id, 1, 0) : null;
@@ -2787,8 +2801,11 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
             atk: revealStats?.atk,
             def: revealStats?.def,
             initialLevel: 1,
+            awakeningLevel: authoritativeAwakeningByCharacter.get(result.character_id),
             converted: result.outcome === "converted",
-            convertReward: result.outcome === "awakening" ? "覚醒段階+1" : result.outcome === "converted" ? "抗争の掟 x1" : "新規獲得"
+            convertReward: result.outcome === "awakening"
+              ? (authoritativeAwakeningByCharacter.has(result.character_id) ? `覚醒 +${authoritativeAwakeningByCharacter.get(result.character_id)}` : "覚醒")
+              : result.outcome === "converted" ? "抗争の掟 x1" : "新規獲得"
           };
         });
         if (typeof drawResult.data?.cash === "number") setCash(drawResult.data.cash);

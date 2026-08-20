@@ -8,6 +8,9 @@ import { CHARACTERS_MASTER } from "@/utils/game_constants";
 import CharacterPresentation from "./character/CharacterPresentation";
 import OutlawButton from "./ui/OutlawButton";
 import TutorialNavigator from "./TutorialNavigator";
+import { getAcquisitionBadgeAsset } from "@/utils/rarityAssets";
+import { GACHA_RARITY_ASSETS } from "../lib/screenManifests";
+import { preloadAssetManifest } from "../lib/screenAssets";
 import "./CommonModals.css";
 
 const GACHA_LOCATION_BACKGROUNDS: Record<string, string> = {
@@ -19,8 +22,6 @@ const GACHA_LOCATION_BACKGROUNDS: Record<string, string> = {
   kawasaki: "/bg/bg_street_kawasaki.png",
   yokohama: "/bg/bg_street_yokohama.png",
 };
-
-const rarityFrameSrc = (rarity: unknown) => `/gacha/rarity-frame-${String(rarity || "N").toLowerCase()}.png`;
 
 function gachaLocationStyle(result: any): React.CSSProperties {
   const master = CHARACTERS_MASTER.find((character: any) => character.id === result?.characterId);
@@ -88,6 +89,11 @@ export default function CommonModals() {
       setTutorialPullStarted(false);
       setTutorialPullBurst(false);
     }
+  }, [scoutAnimationState]);
+
+  useEffect(() => {
+    if (scoutAnimationState === null) return;
+    void preloadAssetManifest(GACHA_RARITY_ASSETS.map((src) => ({ src, required: false })));
   }, [scoutAnimationState]);
 
   useEffect(() => {
@@ -287,8 +293,10 @@ export default function CommonModals() {
                 </div>
               ) : (
                 <div key={`${tutorialRevealIndex}-${tutorialRevealResult?.name || "character"}`} className="tutorial-gacha-reveal-body">
-                  {tutorialRevealResult?.imageUrl && <CharacterPresentation src={tutorialRevealResult.imageUrl} alt={tutorialRevealResult.name} variant="reveal" rarity={tutorialRevealResult.rarity} />}
-                  <img className="tutorial-gacha-rarity-frame" src={rarityFrameSrc(tutorialRevealResult?.rarity)} alt="" aria-hidden="true" />
+                  {tutorialRevealResult?.imageUrl && <CharacterPresentation src={tutorialRevealResult.imageUrl} alt={tutorialRevealResult.name} variant="reveal" rarity={tutorialRevealResult.rarity} frameKind="reveal" rarityBadge />}
+                  {getAcquisitionBadgeAsset(tutorialRevealResult?.convertReward === "新規獲得" ? "NEW" : "AWAKENING", tutorialRevealResult?.awakeningLevel) && (
+                    <img className="tutorial-gacha-acquisition-badge" src={getAcquisitionBadgeAsset(tutorialRevealResult?.convertReward === "新規獲得" ? "NEW" : "AWAKENING", tutorialRevealResult?.awakeningLevel) || ""} alt={compactGachaOutcome(tutorialRevealResult)} />
+                  )}
                   <div className="tutorial-gacha-reveal-copy">
                     <div className="tutorial-gacha-reveal-heading"><b>{tutorialRevealResult?.rarity}</b><span>{tutorialRevealResult?.convertReward === "新規獲得" ? "NEW" : compactGachaOutcome(tutorialRevealResult)}</span></div>
                     <h3>{tutorialRevealResult?.name}</h3>
@@ -323,15 +331,18 @@ export default function CommonModals() {
                       <CharacterPresentation
                         src={res.imageUrl}
                         alt={res.name}
-                        variant={scoutResults.length >= 10 ? "thumbnail" : "card"}
+                        variant="card"
                         rarity={res.rarity}
                         name={res.name}
-                        badge={res.convertReward === "新規獲得" ? "NEW" : undefined}
+                        frameKind="character"
+                        rarityBadge
                       />
                     ) : (
                       <div className="gacha-result-asset-placeholder"><span>{res.type === "SKILL" ? "スキル" : "装備"}</span><strong>{res.name}</strong></div>
                     )}
-                    {res.type === "CHARACTER" && <img className="gacha-result-rarity-frame" src={rarityFrameSrc(res.rarity)} alt="" aria-hidden="true" />}
+                    {res.type === "CHARACTER" && getAcquisitionBadgeAsset(res.convertReward === "新規獲得" ? "NEW" : "AWAKENING", res.awakeningLevel) && (
+                      <img className="gacha-result-acquisition-badge" src={getAcquisitionBadgeAsset(res.convertReward === "新規獲得" ? "NEW" : "AWAKENING", res.awakeningLevel) || ""} alt={compactGachaOutcome(res)} />
+                    )}
                     {res.type === "CHARACTER" && <span className="gacha-result-attribute">{res.attribute || "無所属"}</span>}
                     <div className={`gacha-result-outcome ${res.convertReward === "新規獲得" ? "is-new" : "is-duplicate"}`}>{compactGachaOutcome(res)}</div>
                   </article>

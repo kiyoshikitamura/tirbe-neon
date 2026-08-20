@@ -3,6 +3,7 @@
 import React from "react";
 import "./CharacterPresentation.css";
 import { getCharacterPresentationMetadata } from "./characterPresentationMetadata";
+import { getRarityBadgeAsset, getRarityFrameAsset, type RarityFrameKind } from "@/utils/rarityAssets";
 
 export type CharacterPresentationVariant = "portrait" | "dialogue" | "dialogue-bust" | "reveal" | "quest" | "battle-leader" | "card" | "thumbnail" | "full-body" | "battle" | "icon";
 
@@ -15,6 +16,8 @@ type Props = {
   level?: number;
   selected?: boolean;
   badge?: string;
+  frameKind?: RarityFrameKind | false;
+  rarityBadge?: boolean;
   className?: string;
 };
 
@@ -27,6 +30,8 @@ export default function CharacterPresentation({
   level,
   selected = false,
   badge,
+  frameKind,
+  rarityBadge = false,
   className = "",
 }: Props) {
   const rarityClass = rarity ? `character-presentation-rarity-${rarity.toLowerCase()}` : "";
@@ -43,6 +48,8 @@ export default function CharacterPresentation({
         {src ? <img src={src} alt={alt} /> : <span className="character-presentation-missing" role="img" aria-label={`${alt}の画像は準備中`} />}
         <span className="character-presentation-light" aria-hidden="true" />
       </div>
+      {rarity && frameKind !== false && frameKind && <img className={`character-presentation-frame is-${frameKind}`} src={getRarityFrameAsset(frameKind, rarity)} alt="" aria-hidden="true" />}
+      {rarity && rarityBadge && <img className="character-presentation-rarity-badge" src={getRarityBadgeAsset(rarity)} alt={rarity} />}
       {badge && <span className="character-presentation-badge">{badge}</span>}
       {(name || rarity || typeof level === "number") && (
         <figcaption className="character-presentation-meta">

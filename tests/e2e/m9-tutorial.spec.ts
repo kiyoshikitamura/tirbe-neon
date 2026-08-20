@@ -413,7 +413,7 @@ test("free gacha presents one CTA, feedback, result assets, and formation connec
     expect(metrics.rowCount).toBe(2);
     await page.screenshot({ path: test.info().outputPath(`m9-1-gacha-result-${width}.png`), fullPage: true });
   }
-  await expect(page.locator(".gacha-result-card .character-presentation-thumbnail")).toHaveCount(10);
+  await expect(page.locator(".gacha-result-card .character-presentation-card")).toHaveCount(10);
   await expect(page.locator(".gacha-result-card").filter({ hasText: "GEAR" })).toHaveCount(0);
   await expect(page.locator(".gacha-result-card .character-presentation img").first()).toBeVisible();
   const characterImage = await page.locator(".gacha-result-card .character-presentation img").first().evaluate((image) => {
@@ -436,7 +436,7 @@ test("free gacha presents one CTA, feedback, result assets, and formation connec
   await page.getByRole("button", { name: "編成へ進む" }).click();
 
   await expect(page.getByRole("button", { name: "おすすめ編成にする" })).toBeVisible();
-  await expect(page.locator(".char-party-candidates .character-presentation-thumbnail").first()).toBeVisible();
+  await expect(page.locator(".char-party-candidates .character-presentation-card").first()).toBeVisible();
   await page.screenshot({ path: test.info().outputPath("m9-0c-formation-430.png"), fullPage: true });
   await expect.poll(async () => page.evaluate(() => {
     const userId = localStorage.getItem("tribe_demo_uuid");
@@ -507,7 +507,9 @@ test("formation advances directly to the quest boundary and resumes there", asyn
 });
 
 test("three random tutorial SSRs remain the same owned character through result and reload recovery", async ({ page }) => {
-  test.setTimeout(240_000);
+  // Three complete tutorial journeys include the production-paced Battle
+  // presentation. Keep the assertion deterministic without truncating replay.
+  test.setTimeout(420_000);
   const cases = [
     { id: "11111111-1111-1111-1111-111111111111", name: "レイジ" },
     { id: "33333333-3333-3333-3333-333333333333", name: "ルイ" },
@@ -580,7 +582,7 @@ test("three random tutorial SSRs remain the same owned character through result 
     expect(trace.some((entry: any) => entry.phase === "replay_response" && entry.accepted === false)).toBeFalsy();
 
     await page.getByRole("button", { name: "バトルスタート" }).click();
-    await expect(page.locator('[data-acceptance-state="B6"]')).toBeVisible({ timeout: 40_000 });
+    await expect(page.locator('[data-acceptance-state="B6"]')).toBeVisible({ timeout: 70_000 });
     await expect(page.locator(".battle-result-summary")).toContainText("QUEST COMPLETE");
     await page.reload();
     await expect.poll(async () => (

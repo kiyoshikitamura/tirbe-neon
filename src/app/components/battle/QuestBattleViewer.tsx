@@ -64,14 +64,11 @@ export default function QuestBattleViewer(props: Props) {
   const { playSe } = useAudio();
   const allParticipants = [...props.playerParty, ...props.enemyParty];
   const activeTimelineNode = props.authoritativeTimeline?.[0] || props.timeline[props.timelineIndex] || props.timeline[0];
-  const activeParticipant = allParticipants.find((entry) => entry.id === activeTimelineNode?.id)
-    || props.playerParty[0]
-    || props.enemyParty[0];
+  const explicitActiveParticipant = allParticipants.find((entry) => entry.id === activeTimelineNode?.id);
+  const activeParticipant = explicitActiveParticipant
+    || (props.presentationPhase === "IDLE" ? props.playerParty[0] || props.enemyParty[0] : undefined);
   const targetId = props.damagePopup?.charId || props.targetLine?.toId;
-  const targetParticipant = allParticipants.find((entry) => entry.id === targetId)
-    || (activeParticipant?.isEnemy
-      ? props.playerParty.find((entry) => !entry.isDead)
-      : props.enemyParty.find((entry) => !entry.isDead));
+  const targetParticipant = targetId ? allParticipants.find((entry) => entry.id === targetId) : undefined;
 
   const livingTimeline = props.timeline.filter((node) => !allParticipants.find((entry) => entry.id === node.id)?.isDead);
   const rawStart = livingTimeline.findIndex((node) => node.id === activeTimelineNode?.id);
@@ -130,7 +127,7 @@ export default function QuestBattleViewer(props: Props) {
   const roundLimit = props.battleMode === "RAID" ? 30 : props.battleMode === "PVP" || props.battleMode === "GVG" ? 20 : 15;
 
   return (
-    <div className={`playing-container quest-battle-viewer ${props.tutorial ? "is-tutorial" : ""}`} data-battle-speed={props.speed} data-acceptance-state={props.tutorial ? acceptanceState : undefined} data-action-phase={actionPhase} data-action-kind={isSkillAction ? "skill" : "normal"}>
+    <div className={`playing-container quest-battle-viewer ${props.tutorial ? "is-tutorial" : ""}`} data-battle-speed={props.speed} data-acceptance-state={props.tutorial ? acceptanceState : undefined} data-action-phase={actionPhase} data-action-kind={isSkillAction ? "skill" : "normal"} data-action-actor-id={activeParticipant?.id || ""} data-action-target-id={targetParticipant?.id || ""}>
       <header className="battle-viewer-header">
         <span>{props.battleMode === "PATROL" ? "QUEST BATTLE" : props.battleMode}</span>
         <strong>ROUND {props.round}<small> / {roundLimit}</small></strong>

@@ -146,11 +146,14 @@ export function useBattle(options: UseBattleOptions) {
     presentationTimersRef.current = [];
   }, []);
 
-  const recordPresentationStage = (stage: "actorFocusAt" | "targetFocusAt" | "impactAt" | "damageAt" | "hpSettledAt" | "actionCompleteAt") => {
+  const recordPresentationStage = (stage: "actorFocusAt" | "targetFocusAt" | "impactAt" | "damageAt" | "hpSettledAt" | "actionCompleteAt", targetId?: string) => {
     if (typeof window === "undefined") return;
     const battleWindow = window as typeof window & { __TRIBE_BATTLE_PRESENTATION__?: { current?: any; history: any[] } };
     const current = battleWindow.__TRIBE_BATTLE_PRESENTATION__?.current;
-    if (current && typeof current[stage] !== "number") current[stage] = performance.now();
+    if (current && typeof current[stage] !== "number") {
+      current[stage] = performance.now();
+      if (targetId) current[`${stage}TargetId`] = targetId;
+    }
   };
 
   useEffect(() => () => clearPresentationTimers(), [clearPresentationTimers]);
@@ -1782,6 +1785,11 @@ export function useBattle(options: UseBattleOptions) {
           setActiveShakingCharId(null);
           setDamagePopup(null);
           setPresentationPhase("ACTOR_FOCUS");
+          const actionUnit = authoritativeEvents.slice(authoritativeEventIndex + 1);
+          const nextActionOffset = actionUnit.findIndex((entry) => entry.type === "ACTION");
+          const boundedActionUnit = nextActionOffset < 0 ? actionUnit : actionUnit.slice(0, nextActionOffset);
+          const nextImpact = boundedActionUnit.find((entry) => entry.type === "DAMAGE" || entry.type === "HEAL" || entry.type === "STATUS");
+          const nextTargetId = String(payload.targetId ?? nextImpact?.payload.targetId ?? "");
           if (typeof window !== "undefined") {
             const battleWindow = window as typeof window & { __TRIBE_BATTLE_PRESENTATION__?: { current?: any; history: any[] } };
             const metrics = battleWindow.__TRIBE_BATTLE_PRESENTATION__ ||= { history: [] };
@@ -1789,12 +1797,9 @@ export function useBattle(options: UseBattleOptions) {
               metrics.history.push({ ...metrics.current, totalMs: Math.round(performance.now() - metrics.current.startedAt) });
             }
             const startedAt = performance.now();
-            metrics.current = { kind: isSkill ? "skill" : "normal", skillId, startedAt, actorFocusAt: startedAt };
+            metrics.current = { kind: isSkill ? "skill" : "normal", skillId, actorId, targetId: nextTargetId || null, startedAt, actorFocusAt: startedAt };
           }
           const skill = actor?.skills.find((entry: any) => String(entry.id ?? entry.skill_card_id) === skillId);
-          const nextImpact = authoritativeEvents.slice(authoritativeEventIndex + 1)
-            .find((entry) => entry.type === "DAMAGE" || entry.type === "HEAL");
-          const nextTargetId = String(nextImpact?.payload.targetId ?? "");
           const nextActions = authoritativeEvents
             .slice(authoritativeEventIndex)
             .filter((entry) => entry.type === "ACTION")
@@ -1814,7 +1819,7 @@ export function useBattle(options: UseBattleOptions) {
           presentationTimersRef.current.push(setTimeout(() => {
             if (nextTargetId) setTargetLine({ fromId: actorId, toId: nextTargetId });
             setPresentationPhase("TARGET_FOCUS");
-            recordPresentationStage("targetFocusAt");
+            recordPresentationStage("targetFocusAt", nextTargetId);
           }, targetDelay));
           presentationTimersRef.current.push(setTimeout(() => {
             setPresentationPhase("ATTACK_MOTION");
@@ -1822,7 +1827,7 @@ export function useBattle(options: UseBattleOptions) {
           setBattleLog((previous) => [...previous, `[ROUND ${replayEvent.round}] ${actor?.name ?? actorId}：${skill?.name ?? "通常攻撃"}`]);
         } else if (replayEvent.type === "DAMAGE") {
           setPresentationPhase("IMPACT");
-          recordPresentationStage("impactAt");
+          recordPresentationStage("impactAt", targetId);
           const amount = Math.max(0, Number(payload.amount ?? 0));
           const remainingHp = Math.max(0, Number(payload.remainingHp ?? target?.hp ?? 0));
           const critical = payload.critical === true;
@@ -1837,11 +1842,11 @@ export function useBattle(options: UseBattleOptions) {
           setDamagePopup({ val: amount, type: "dmg", isCritical: critical, x: 120, y: 40, charId: targetId });
           presentationTimersRef.current.push(setTimeout(() => {
             setPresentationPhase("DAMAGE");
-            recordPresentationStage("damageAt");
+            recordPresentationStage("damageAt", targetId);
           }, 100 / battleSpeed));
           presentationTimersRef.current.push(setTimeout(() => {
             setPresentationPhase("HP_TRANSITION");
-            recordPresentationStage("hpSettledAt");
+            recordPresentationStage("hpSettledAt", targetId);
           }, 450 / battleSpeed));
           presentationTimersRef.current.push(setTimeout(() => {
             setPresentationPhase("ACTION_HOLD");
@@ -1853,7 +1858,7 @@ export function useBattle(options: UseBattleOptions) {
             : `${target?.name ?? targetId}に ${amount.toLocaleString()}${critical ? " 【CRITICAL!】" : ""} ダメージ。`]);
         } else if (replayEvent.type === "HEAL") {
           setPresentationPhase("IMPACT");
-          recordPresentationStage("impactAt");
+          recordPresentationStage("impactAt", targetId);
           const amount = Math.max(0, Number(payload.amount ?? 0));
           const remainingHp = Math.max(0, Number(payload.remainingHp ?? target?.hp ?? 0));
           const updateTarget = (participant: ParticipantState) => participant.id === targetId
@@ -1864,11 +1869,11 @@ export function useBattle(options: UseBattleOptions) {
           setDamagePopup({ val: amount, type: "heal", x: 120, y: 40, charId: targetId });
           presentationTimersRef.current.push(setTimeout(() => {
             setPresentationPhase("DAMAGE");
-            recordPresentationStage("damageAt");
+            recordPresentationStage("damageAt", targetId);
           }, 100 / battleSpeed));
           presentationTimersRef.current.push(setTimeout(() => {
             setPresentationPhase("HP_TRANSITION");
-            recordPresentationStage("hpSettledAt");
+            recordPresentationStage("hpSettledAt", targetId);
           }, 450 / battleSpeed));
           presentationTimersRef.current.push(setTimeout(() => {
             setPresentationPhase("ACTION_HOLD");

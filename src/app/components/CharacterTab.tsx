@@ -13,8 +13,10 @@ import { SKILLS_MASTER_DATA } from "@/utils/skills_master_data";
 import { EQUIPMENTS_MASTER_DATA } from "@/utils/equipments_master_data";
 import { getCharacterTotalStats } from "@/utils/stats_calculator";
 import { useImagePreloader } from "../hooks/useImagePreloader";
+import { CHARACTER_LOADOUT_RARITY_ASSETS } from "../lib/screenManifests";
 import TutorialNavigator from "./TutorialNavigator";
 import CharacterPresentation from "./character/CharacterPresentation";
+import { getRarityFrameAsset } from "@/utils/rarityAssets";
 import "./CharacterTab.css";
 
 const CHARACTER_ROLE_LABELS: Record<string, string> = {
@@ -52,7 +54,7 @@ function equipmentParameter(master: any) {
 
 export default function CharacterTab() {
   // アセット事前自動メモリプリロード
-  useImagePreloader();
+  useImagePreloader(CHARACTER_LOADOUT_RARITY_ASSETS);
 
   const {
     upgradeSelectedCharId,
@@ -211,7 +213,7 @@ export default function CharacterTab() {
     const record = (userCharactersDbList || []).find((item: any) => item.character_id === characterId);
     const master = CHARACTERS_MASTER.find((item: any) => item.id === characterId);
     return { characterId, record, master };
-  }), [selectedMembers, userCharactersDbList]);
+  }).filter((member: { record: any; master: any }) => member.record && member.master), [selectedMembers, userCharactersDbList]);
   const tutorialPartyHasSsr = partyMembers.some((member: { master?: { rarity?: string } }) => member.master?.rarity === "SSR");
   // The tutorial RPC creates slot 10 last. Production rows carry created_at;
   // the mock mirrors it, so reloads still identify the exact guaranteed pull
@@ -323,6 +325,7 @@ export default function CharacterTab() {
           playCyberSe("click");
         }}
       >
+        {previewGear && <img className="production-rarity-item-frame" src={getRarityFrameAsset("equipment", rarity)} alt="" aria-hidden="true" />}
         <div className="slot-header-row">
           <span className="slot-label">{slotDef.label}</span>
           {previewGear && (
@@ -529,7 +532,7 @@ export default function CharacterTab() {
                 return member?.master ? (
                   <button key={`${member.characterId}-${index}`} data-character-id={member.characterId} data-user-character-id={member.record?.id} disabled={isTutorialFormation} onClick={() => void handleTogglePartyMember(member.characterId)}>
                     <span>{index + 1}</span>
-                    <CharacterPresentation src={getCharacterTransparentImg(member.master.name)} alt={member.master.jpName} variant="thumbnail" rarity={member.master.rarity || "N"} />
+                    <CharacterPresentation src={getCharacterTransparentImg(member.master.name)} alt={member.master.jpName} variant="card" rarity={member.master.rarity || "N"} frameKind="character" rarityBadge />
                     <b>{member.master.jpName}</b>
                   </button>
                 ) : <div className="is-empty" key={`party-empty-${index}`}><span>{index + 1}</span><i>＋</i><b>未編成</b></div>;
@@ -546,7 +549,8 @@ export default function CharacterTab() {
             {isTutorialFormation && <h3 className="tutorial-formation-owned-title">所持キャラクター</h3>}
             <div className="char-party-candidates">
               {(userCharactersDbList || []).map((character: any) => {
-                const master = CHARACTERS_MASTER.find((item: any) => item.id === character.character_id) || CHARACTERS_MASTER[0];
+                const master = CHARACTERS_MASTER.find((item: any) => item.id === character.character_id);
+                if (!master) return null;
                 const partyIndex = selectedMembers.indexOf(character.character_id);
                 return (
                   <button
@@ -560,8 +564,10 @@ export default function CharacterTab() {
                     <CharacterPresentation
                       src={getCharacterTransparentImg(master.name)}
                       alt={master.jpName}
-                      variant="thumbnail"
+                      variant="card"
                       rarity={(master as any).rarity || "R"}
+                      frameKind="character"
+                      rarityBadge
                     />
                     <span>{master.jpName}</span>
                     {isTutorialFormation && character.id === tutorialGuaranteedSsr?.id && <em>おすすめ編成</em>}
@@ -745,6 +751,7 @@ export default function CharacterTab() {
                           }
                         }}
                       >
+                        {skillMaster && <img className="production-rarity-item-frame" src={getRarityFrameAsset("skill", skillMaster.rarity)} alt="" aria-hidden="true" />}
                         {isSynergy && <span className="char-synergy-badge">AP-1</span>}
                         {isUnlocked ? (
                           previewSkillRecord && skillMaster ? (
@@ -809,6 +816,7 @@ export default function CharacterTab() {
                                 setSelectedSkillSlotIdx(null);
                               }}
                             >
+                              {mData && <img className="production-rarity-item-frame" src={getRarityFrameAsset("skill", display?.rarity || mData.rarity)} alt="" aria-hidden="true" />}
                               {isOwnerMatch && <span className="char-synergy-badge">AP-1</span>}
                               <span className="char-tile-name">{display?.display_name || mData?.name || "スキル"}</span>
                               {mData && <span className="char-tile-spec">{display?.rarity || mData.rarity} ・ {display?.display_effect || SKILL_EFFECT_LABELS[mData.effect_type] || "特殊"}<br />対象 {SKILL_TARGET_DISPLAY[display?.target_type] || SKILL_TARGET_LABELS[mData.effect_type] || "特殊"} ・ 再使用 {display?.cooldown ?? SKILL_COOLDOWN_BY_RARITY[mData.rarity] ?? 5}T</span>}
@@ -863,6 +871,7 @@ export default function CharacterTab() {
                           onClick={() => setSelectedSkill(skill)}
                           disabled={upgradeLoading}
                         >
+                          {master && <img className="production-rarity-item-frame" src={getRarityFrameAsset("skill", master.rarity)} alt="" aria-hidden="true" />}
                           <span>{master?.name || skillMasterId}</span>
                           <small>{master ? `${SKILL_EFFECT_LABELS[master.effect_type] || "特殊"} / ${master.power}%` : "詳細未取得"}</small>
                           <b>+{skill.plus_val || 0}</b>
@@ -940,6 +949,7 @@ export default function CharacterTab() {
                                 setSelectedEquipSlotIdx(null);
                               }}
                             >
+                              {gearMaster && <img className="production-rarity-item-frame" src={getRarityFrameAsset("equipment", gearMaster.rarity)} alt="" aria-hidden="true" />}
                               <span className="char-tile-name">{gearMaster?.name || eq.equipment_id}</span>
                               <span className="char-tile-spec">{gearMaster?.rarity || "N"} ・ {equipmentParameter(gearMaster)}</span>
                               <span className="char-tile-lv-label">Lv.{eq.level} ・ {eq.equipped_character_id ? "装備中" : "未装備"}</span>
@@ -990,6 +1000,7 @@ export default function CharacterTab() {
                           onClick={() => selectUpgradeEquipment(equipment)}
                           disabled={upgradeLoading}
                         >
+                          {master && <img className="production-rarity-item-frame" src={getRarityFrameAsset("equipment", master.rarity)} alt="" aria-hidden="true" />}
                           <span>{master?.name || equipment.equipment_id}</span>
                           <small>{master ? `${master.rarity} ・ ${equipmentParameter(master)}` : "詳細未取得"}</small>
                           <b>Lv.{equipment.level || 1} / +{equipment.plus_val || 0}</b>
