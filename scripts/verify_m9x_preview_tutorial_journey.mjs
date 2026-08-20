@@ -1,5 +1,6 @@
 import { chromium, devices } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
+import { spawnSync } from "node:child_process";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
@@ -41,6 +42,7 @@ const failedResponses = [];
 let userId = null;
 let trace = [];
 const acquisitionAudit = {};
+const battleNetworkTrace = [];
 const qaUsername = `QA${Date.now().toString(36).slice(-6)}`;
 
 const snapshotAcquisitionState = async (label) => {
@@ -62,8 +64,16 @@ page.on("console", (message) => {
   if (message.type() === "error") consoleErrors.push(message.text());
 });
 page.on("response", (response) => {
-  if (response.status() < 400) return;
   const requestUrl = new URL(response.url());
+  if (requestUrl.pathname.includes("/rpc/create_patrol_battle_replay") || requestUrl.pathname.includes("/functions/v1/resolve-battle")) {
+    battleNetworkTrace.push({
+      method: response.request().method(),
+      pathname: requestUrl.pathname,
+      status: response.status(),
+      occurredAt: new Date().toISOString(),
+    });
+  }
+  if (response.status() < 400) return;
   failedResponses.push({ status: response.status(), pathname: requestUrl.pathname });
 });
 
@@ -146,7 +156,51 @@ try {
   await visible('[data-acceptance-state="Q5"]', 30_000);
   await page.locator('[data-acceptance-state="Q5"] button').click();
   await recordState("Q6");
-  await page.locator('[data-acceptance-state="Q6"] button').click();
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await visible('[data-acceptance-state="Q5"],[data-acceptance-state="Q6"]', 30_000);
+  if (await page.locator('[data-acceptance-state="Q5"]').isVisible()) {
+    await page.locator('[data-acceptance-state="Q5"] button').click();
+  }
+  await visible('[data-acceptance-state="Q6"]', 30_000);
+  await page.waitForFunction(() => {
+    const button = document.querySelector('[data-acceptance-state="Q6"] button');
+    return button instanceof HTMLButtonElement && !button.disabled;
+  }, undefined, { timeout: 10_000 });
+  if (process.env.M9X_PROBE_CONCURRENT_CREATE === "1") {
+    const authState = await page.evaluate(() => {
+      const authKey = Object.keys(localStorage).find((key) => /^sb-.*-auth-token$/.test(key));
+      if (!authKey) return null;
+      try { return JSON.parse(localStorage.getItem(authKey) || "null"); } catch { return null; }
+    });
+    const accessToken = authState?.access_token;
+    const patrolId = acquisitionAudit.TUTORIAL_SPEEDUP?.patrols?.find((entry) => entry.has_battle_event && !entry.battle_resolved)?.id;
+    if (!accessToken || !patrolId) throw new Error("Concurrent create probe could not resolve the authenticated patrol context.");
+    const probeClient = createClient(supabaseUrl, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY, {
+      auth: { persistSession: false, autoRefreshToken: false },
+      global: { headers: { Authorization: `Bearer ${accessToken}` } },
+    });
+    const createResponses = await Promise.all([
+      probeClient.rpc("create_patrol_battle_replay", { p_patrol_id: patrolId, p_tactic_id: "ATTACK_PRIORITY" }),
+      probeClient.rpc("create_patrol_battle_replay", { p_patrol_id: patrolId, p_tactic_id: "ATTACK_PRIORITY" }),
+    ]);
+    const { data: replayRows, error: replayRowsError } = await admin.from("battle_replay_sessions")
+      .select("id,status,resolution_authority,finalization_status,result")
+      .eq("requester_user_id", userId)
+      .eq("source_reference_id", patrolId)
+      .order("created_at");
+    if (replayRowsError) throw replayRowsError;
+    const probeReport = { patrolId, createResponses, replayRows };
+    await writeFile(path.join(artifactsDirectory, "preview-concurrent-create-probe.json"), `${JSON.stringify(probeReport, null, 2)}\n`, "utf8");
+    console.log(JSON.stringify({ status: "DIAGNOSTIC", concurrentCreateProbe: probeReport }, null, 2));
+    if ((replayRows || []).length !== 1) {
+      throw new Error(`Confirmed duplicate patrol replay creation: ${JSON.stringify(probeReport)}`);
+    }
+  }
+
+  await page.locator('[data-acceptance-state="Q6"] button').evaluate((button) => {
+    button.click();
+    button.click();
+  });
   await recordState("B1");
 
   await page.screenshot({ path: path.join(artifactsDirectory, "preview-B1.png"), fullPage: true });
@@ -285,6 +339,22 @@ try {
     throw new Error(`Tutorial speed-up authoritative state failed: ${JSON.stringify(acquisitionAudit.TUTORIAL_SPEEDUP)}`);
   }
 
+  const [{ data: finalPatrol, error: finalPatrolError }, { data: patrolReplays, error: patrolReplayError }] = await Promise.all([
+    admin.from("user_patrols").select("id,status,battle_resolved,battle_result").eq("id", tutorialPatrol.id).single(),
+    admin.from("battle_replay_sessions").select("id,status,resolution_authority,finalization_status,result").eq("requester_user_id", userId).eq("source_reference_id", tutorialPatrol.id).order("created_at"),
+  ]);
+  if (finalPatrolError || patrolReplayError) throw new Error(`Battle resolve audit query failed: ${JSON.stringify({ finalPatrolError, patrolReplayError })}`);
+  const canonicalReplay = patrolReplays?.[0];
+  if (patrolReplays?.length !== 1 || !canonicalReplay || canonicalReplay.status !== "RESOLVED" || canonicalReplay.finalization_status !== "NOT_REQUIRED"
+      || finalPatrol?.battle_resolved !== true || !canonicalReplay.result || !finalPatrol.battle_result) {
+    throw new Error(`Battle resolve contract drift: ${JSON.stringify({ finalPatrol, patrolReplays })}`);
+  }
+  const createResponses = battleNetworkTrace.filter((entry) => entry.pathname.includes("create_patrol_battle_replay"));
+  const resolveResponses = battleNetworkTrace.filter((entry) => entry.pathname.includes("resolve-battle"));
+  if (process.env.M9X_PROBE_CONCURRENT_CREATE !== "1" && (createResponses.length !== 1 || resolveResponses.length !== 1)) {
+    throw new Error(`Battle start handler was re-entered: ${JSON.stringify({ createResponses, resolveResponses })}`);
+  }
+
   const enemyParticipantIds = new Set((replay?.enemy_snapshot || []).map((participant) => String(participant.id)));
   const replayEvents = Array.isArray(replay?.result?.events) ? replay.result.events : [];
   const authoritativeActions = replayEvents.flatMap((event, index) => {
@@ -329,8 +399,10 @@ try {
     actionMetrics: browserState.actionMetrics,
     battlePresentation: browserState.battlePresentation,
     trace,
+    battleNetworkTrace,
     starterSkill: { skillId: starterSkills[0].skill_card_id, plusValue: starterSkills[0].plus_val, slotIndex: starterSkills[0].slot_index },
     replayContract: { basicActionIndex, skillActionIndex, skillImpactIndex, winner: replay.result.winner },
+    battleResolveContract: { patrol: finalPatrol, replay: canonicalReplay, createResponseCount: createResponses.length, resolveResponseCount: resolveResponses.length },
     acquisitionAudit,
     guaranteedTutorialSsr: guaranteedResult.character_id,
     enemyPresentationActions,
@@ -348,9 +420,18 @@ try {
   await context.close();
   await browser.close();
   if (userId) {
-    const { error } = await admin.auth.admin.deleteUser(userId);
-    if (error && !/not found/i.test(error.message)) {
-      console.warn(`Disposable Preview user cleanup needs follow-up: ${userId} (${error.message})`);
+    if (accessToken) {
+      const cleanup = spawnSync(process.execPath, ["scripts/cleanup_preview_qa_users.mjs", userId, "--environment", environment], {
+        cwd: process.cwd(),
+        env: process.env,
+        encoding: "utf8",
+      });
+      if (cleanup.status !== 0) console.warn(`Disposable Preview user cleanup needs follow-up: ${userId} (${cleanup.stderr || cleanup.stdout})`);
+    } else {
+      const { error } = await admin.auth.admin.deleteUser(userId);
+      if (error && !/not found/i.test(error.message)) {
+        console.warn(`Disposable Preview Auth cleanup needs follow-up: ${userId} (${error.message})`);
+      }
     }
   }
 }

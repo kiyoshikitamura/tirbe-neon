@@ -4,6 +4,21 @@
   --character-thumbnail-focal-y: 0%;
   --character-portrait-focal-y: 10%;
   --character-card-focal-y: 12%;
+  --character-thumbnail-scale: 2.15;
+  --character-thumbnail-x: 50%;
+  --character-thumbnail-y: 0%;
+  --character-card-scale: 1;
+  --character-card-x: 50%;
+  --character-card-y: 12%;
+  --character-compact-scale: 1.58;
+  --character-compact-x: 50%;
+  --character-compact-y: 0%;
+  --character-reveal-scale: .96;
+  --character-reveal-x: 50%;
+  --character-reveal-y: 100%;
+  --character-battle-scale: 1.34;
+  --character-battle-x: 50%;
+  --character-battle-y: 20%;
   position: relative;
   min-width: 0;
   margin: 0;
@@ -19,7 +34,9 @@
 .character-presentation-rarity-n { --character-accent: #9da9b7; }
 .character-presentation.is-selected { box-shadow: 0 0 0 2px var(--character-accent), 0 0 22px color-mix(in srgb, var(--character-accent) 35%, transparent); }
 
-.character-presentation-art { position: relative; width: 100%; height: 100%; overflow: hidden; }
+.character-presentation-art { position: absolute; inset: 0; overflow: hidden; }
+.character-presentation.has-rarity-frame.is-frame-reveal .character-presentation-art { inset: 8.5% 11% 9%; }
+.character-presentation.has-rarity-frame.is-frame-character .character-presentation-art { inset: 9% 10% 10%; }
 .character-presentation-art::before {
   content: "";
   position: absolute;
@@ -47,43 +64,43 @@
 .character-presentation-missing::after { position:absolute; inset:26% 8% 0; border:1px solid color-mix(in srgb,var(--character-accent) 34%,transparent); border-radius:44% 44% 10% 10% / 18% 18% 6% 6%; content:""; background:linear-gradient(180deg,rgba(112,134,148,.78),rgba(24,34,43,.98)); clip-path:polygon(18% 0,82% 0,100% 100%,0 100%); }
 
 .character-presentation-portrait { width: 112px; height: 136px; border-radius: 8px; }
-.character-presentation-portrait img { object-fit: cover; object-position: var(--character-focal-x) var(--character-portrait-focal-y); }
+.character-presentation-portrait .character-presentation-character { object-fit: cover; object-position: var(--character-focal-x) var(--character-portrait-focal-y); }
 .character-presentation-dialogue { width: 100%; height: 100%; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
 .character-presentation-dialogue .character-presentation-art::before { background: radial-gradient(circle at 50% 62%, rgba(0, 240, 255, .17), transparent 54%); }
-.character-presentation-dialogue img { object-fit: cover; object-position: var(--character-focal-x) var(--character-portrait-focal-y); }
+.character-presentation-dialogue .character-presentation-character { object-fit: cover; object-position: var(--character-focal-x) var(--character-portrait-focal-y); }
 .character-presentation-dialogue .character-presentation-light { display: none; }
 .character-presentation-dialogue-bust { width:100%; height:100%; border:0; border-radius:0; background:transparent; box-shadow:none; }
 .character-presentation-dialogue-bust .character-presentation-art::before { background:radial-gradient(circle at 50% 60%,rgba(0,240,255,.16),transparent 54%); }
-.character-presentation-dialogue-bust img { object-fit:cover; object-position:var(--character-focal-x) var(--character-portrait-focal-y); transform:scale(1.24); transform-origin:var(--character-focal-x) 16%; }
+.character-presentation-dialogue-bust .character-presentation-character { object-fit:cover; object-position:var(--character-focal-x) var(--character-portrait-focal-y); transform:scale(1.24); transform-origin:var(--character-focal-x) 16%; }
 .character-presentation-dialogue-bust .character-presentation-light { display:none; }
 .character-presentation-reveal { width:100%; height:100%; border:0; border-radius:0; background:transparent; box-shadow:none; }
-.character-presentation-reveal img { object-fit:contain; object-position:center bottom; }
+.character-presentation-reveal .character-presentation-character { object-fit:contain; object-position:var(--character-reveal-x) var(--character-reveal-y); transform:scale(var(--character-reveal-scale)); transform-origin:var(--character-reveal-x) var(--character-reveal-y); }
 .character-presentation-reveal .character-presentation-light { right:16%; left:16%; }
 .character-presentation-quest { width:100%; height:100%; border:0; border-radius:0; background:transparent; box-shadow:none; }
-.character-presentation-quest img { object-fit:cover; object-position:var(--character-focal-x) var(--character-portrait-focal-y); }
+.character-presentation-quest .character-presentation-character { object-fit:cover; object-position:var(--character-focal-x) var(--character-portrait-focal-y); }
 .character-presentation-battle-leader { width:100%; height:100%; border:0; border-radius:0; background:transparent; box-shadow:none; }
-.character-presentation-battle-leader img { object-fit:cover; object-position:var(--character-focal-x) 12%; }
+.character-presentation-battle-leader .character-presentation-character { object-fit:cover; object-position:var(--character-focal-x) 12%; }
 .character-presentation-card { aspect-ratio: 3 / 4; border-radius: 7px; }
-.character-presentation-card img { object-fit: cover; object-position: var(--character-focal-x) var(--character-card-focal-y); }
+.character-presentation-card .character-presentation-character { object-fit: cover; object-position: var(--character-card-x) var(--character-card-y); transform:scale(var(--character-card-scale)); transform-origin:var(--character-card-x) 18%; }
 .character-presentation-gacha-result-compact { width:100%; aspect-ratio:4 / 5; border:0; border-radius:4px; box-shadow:none; }
-.character-presentation-gacha-result-compact .character-presentation-art > img:not(.character-presentation-background) { object-fit:cover; object-position:var(--character-focal-x) var(--character-thumbnail-focal-y); transform:scale(1.72); transform-origin:var(--character-focal-x) 13%; }
+.character-presentation-gacha-result-compact .character-presentation-character { object-fit:cover; object-position:var(--character-compact-x) var(--character-compact-y); transform:scale(var(--character-compact-scale)); transform-origin:var(--character-compact-x) 13%; }
 .character-presentation-gacha-result-compact .character-presentation-light { right:8%; left:8%; }
 .character-presentation-gacha-result-compact .character-presentation-meta { display:none; }
 .character-presentation-thumbnail { width: 100%; aspect-ratio: 1 / 1; border-radius: var(--ui-radius-sm); }
-.character-presentation-thumbnail img { object-fit: cover; object-position: var(--character-focal-x) var(--character-thumbnail-focal-y); transform:scale(2.25); transform-origin:var(--character-focal-x) 12%; }
+.character-presentation-thumbnail .character-presentation-character { object-fit: cover; object-position: var(--character-thumbnail-x) var(--character-thumbnail-y); transform:scale(var(--character-thumbnail-scale)); transform-origin:var(--character-thumbnail-x) 12%; }
 .character-presentation-thumbnail .character-presentation-light { right: 7%; left: 7%; }
 .character-presentation-thumbnail .character-presentation-meta { grid-template-columns: auto minmax(0, 1fr); gap: 3px; min-height: 28px; padding: 10px 4px 4px; font-size: 9px; }
 .character-presentation-thumbnail .character-presentation-meta strong { font-size: 10px; }
 .character-presentation-thumbnail .character-presentation-meta > span:last-child:not(.character-presentation-rarity) { display: none; }
 .character-presentation-thumbnail .character-presentation-badge { top: 3px; right: 3px; left: auto; padding: 3px 4px; font-size: 9px; }
 .character-presentation-full-body { aspect-ratio: 3 / 5; border-radius: 8px; }
-.character-presentation-full-body img { object-fit: contain; object-position: center bottom; }
+.character-presentation-full-body .character-presentation-character { object-fit: contain; object-position: center bottom; }
 .character-presentation-battle { width: 100%; height: 100%; border-radius: 5px; }
-.character-presentation-battle img { object-fit: cover; object-position: 50% 20%; }
-.character-presentation-battle-party .character-presentation-art > img:not(.character-presentation-background) { object-position:var(--character-focal-x) var(--character-thumbnail-focal-y); transform:scale(1.42); transform-origin:var(--character-focal-x) 10%; }
-.character-presentation-battle-action img { object-position: 50% 18%; }
+.character-presentation-battle .character-presentation-character { object-fit: cover; object-position: var(--character-battle-x) var(--character-battle-y); transform:scale(var(--character-battle-scale)); transform-origin:var(--character-battle-x) 12%; }
+.character-presentation-battle-party .character-presentation-character { object-position:var(--character-thumbnail-x) var(--character-thumbnail-y); }
+.character-presentation-battle-action .character-presentation-character { object-position: var(--character-battle-x) var(--character-battle-y); }
 .character-presentation-icon { width: 48px; height: 48px; border-radius: 50%; }
-.character-presentation-icon img { object-fit: cover; object-position: 50% 16%; }
+.character-presentation-icon .character-presentation-character { object-fit: cover; object-position: var(--character-focal-x) 16%; }
 
 .character-presentation-meta {
   position: absolute;

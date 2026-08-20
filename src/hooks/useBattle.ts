@@ -27,6 +27,17 @@ type BattleMode = "PVP" | "PVP_PRACTICE" | "RAID" | "GVG" | "PATROL";
 export type BattlePresentationPhase = "IDLE" | "ACTOR_FOCUS" | "TARGET_FOCUS" | "ATTACK_MOTION" | "IMPACT" | "DAMAGE" | "HP_TRANSITION" | "ACTION_HOLD";
 export type BattlePresentationTimelineNode = { id: string; name: string; isEnemy?: boolean };
 
+function isRetryableResolveFailure(error: unknown): boolean {
+  const context = typeof error === "object" && error !== null && "context" in error
+    ? (error as { context?: { status?: unknown } }).context
+    : undefined;
+  const status = Number(context?.status);
+  // A missing HTTP response is a transport failure. HTTP 408/429/5xx can
+  // also be retried against the same idempotent replay session. Contract
+  // errors such as 400/401/403/404/409 must remain visible and are not retried.
+  return !Number.isFinite(status) || status === 408 || status === 429 || status >= 500;
+}
+
 function savedPatrolReplayCursor(replayId: unknown, fallback: unknown): number {
   const fallbackIndex = Math.max(0, Number(fallback || 0));
   if (typeof window === "undefined" || typeof replayId !== "string" || !replayId) return fallbackIndex;
@@ -1166,7 +1177,7 @@ export function useBattle(options: UseBattleOptions) {
         let { data: resolvedReplay, error: resolveError } = await supabase.functions.invoke("resolve-battle", {
           body: { replaySessionId },
         });
-        if (resolveError) {
+        if (resolveError && isRetryableResolveFailure(resolveError)) {
           const retry = await supabase.functions.invoke("resolve-battle", { body: { replaySessionId } });
           resolvedReplay = retry.data;
           resolveError = retry.error;

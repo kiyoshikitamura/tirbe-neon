@@ -48,12 +48,28 @@ export default function CharacterPresentation({
     "--character-thumbnail-focal-y": `${framing.thumbnailFocalY}%`,
     "--character-portrait-focal-y": `${framing.portraitFocalY}%`,
     "--character-card-focal-y": `${framing.cardFocalY}%`,
+    "--character-thumbnail-scale": framing.thumbnailScale,
+    "--character-thumbnail-x": `${framing.thumbnailX}%`,
+    "--character-thumbnail-y": `${framing.thumbnailY}%`,
+    "--character-card-scale": framing.cardScale,
+    "--character-card-x": `${framing.cardX}%`,
+    "--character-card-y": `${framing.cardY}%`,
+    "--character-compact-scale": framing.compactScale,
+    "--character-compact-x": `${framing.compactX}%`,
+    "--character-compact-y": `${framing.compactY}%`,
+    "--character-reveal-scale": framing.revealScale,
+    "--character-reveal-x": `${framing.revealX}%`,
+    "--character-reveal-y": `${framing.revealY}%`,
+    "--character-battle-scale": framing.battleScale,
+    "--character-battle-x": `${framing.battleX}%`,
+    "--character-battle-y": `${framing.battleY}%`,
   } as React.CSSProperties;
+  const frameClass = frameKind ? `has-rarity-frame is-frame-${frameKind}` : "";
   return (
-    <figure style={presentationStyle} className={`character-presentation character-presentation-${variant} ${rarityClass} ${selected ? "is-selected" : ""} ${className}`.trim()}>
+    <figure style={presentationStyle} className={`character-presentation character-presentation-${variant} ${rarityClass} ${frameClass} ${selected ? "is-selected" : ""} ${className}`.trim()}>
       <div className="character-presentation-art">
         {backgroundSrc && <img className="character-presentation-background" src={backgroundSrc} alt="" aria-hidden="true" />}
-        {src ? <img src={src} alt={alt} /> : <span className="character-presentation-missing" role="img" aria-label={`${alt}の画像は準備中`} />}
+        {src ? <img className="character-presentation-character" src={src} alt={alt} /> : <span className="character-presentation-missing" role="img" aria-label={`${alt}の画像は準備中`} />}
         <span className="character-presentation-light" aria-hidden="true" />
       </div>
       {rarity && frameKind !== false && frameKind && <img className={`character-presentation-frame is-${frameKind}`} src={getRarityFrameAsset(frameKind, rarity)} alt="" aria-hidden="true" />}

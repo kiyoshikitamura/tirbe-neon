@@ -37,6 +37,8 @@ test("tutorial ten-pull guarantees slot 10 SSR and formation advances without Gr
   const titleCta = page.getByRole("button", { name:"TAP TO START" });
   await expect(freeCta.or(titleCta)).toBeVisible();
   if (await titleCta.isVisible()) await titleCta.click();
+  const newGameCta = page.locator(".title-entry-primary");
+  if (await newGameCta.isVisible()) await newGameCta.click();
   await expect(freeCta).toBeEnabled();
   await freeCta.click();
   const pullGate = page.getByRole("button", { name: /10 PLAYERS.*TAP TO START/ });
