@@ -127,6 +127,19 @@ try {
   await recordState("B3");
   await recordState("B4", 30_000);
   await page.screenshot({ path: path.join(artifactsDirectory, "preview-B4.png"), fullPage: true });
+  const waitForEnemyPresentationStage = (stage) => page.waitForFunction((expectedStage) => {
+    const current = window.__TRIBE_BATTLE_PRESENTATION__?.current;
+    if (!String(current?.actorId || "").startsWith("enemy_")) return false;
+    if (expectedStage === "ACTOR_FOCUS") return !current.targetFocusAt;
+    if (expectedStage === "TARGET_FOCUS") return Boolean(current.targetFocusAt) && !current.impactAt;
+    return Boolean(current.impactAt);
+  }, stage, { timeout: 45_000, polling: 50 });
+  await waitForEnemyPresentationStage("ACTOR_FOCUS");
+  await page.screenshot({ path: path.join(artifactsDirectory, "preview-enemy-actor-focus.png"), fullPage: true });
+  await waitForEnemyPresentationStage("TARGET_FOCUS");
+  await page.screenshot({ path: path.join(artifactsDirectory, "preview-enemy-target-focus.png"), fullPage: true });
+  await waitForEnemyPresentationStage("IMPACT");
+  await page.screenshot({ path: path.join(artifactsDirectory, "preview-enemy-impact-damage.png"), fullPage: true });
   await recordState("B5", 45_000);
   await recordState("B6", 45_000);
   await page.screenshot({ path: path.join(artifactsDirectory, "preview-B6.png"), fullPage: true });
