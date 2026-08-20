@@ -1,10 +1,12 @@
 import { expect, test } from "@playwright/test";
 
 async function enterNameRegistration(page: import("@playwright/test").Page) {
-  await expect(page.getByRole("heading", { name: "この街には、いろんな生き方がある。" })).toBeVisible();
-  await page.getByRole("button", { name: "次へ" }).click();
-  await expect(page.getByText("はじめまして。アゲハだよ。", { exact: false })).toBeVisible();
-  await page.getByRole("button", { name: "次へ" }).click();
+  await expect(page.locator('[data-entry-state="WORLD_INFORMATION"]')).toBeVisible();
+  await expect(page.locator('[data-world-stage="4"] .setup-world-tap')).toBeVisible({ timeout: 30_000 });
+  await page.locator(".setup-world-tap").click();
+  await expect(page.locator('[data-entry-state="AGEHA_INTRO"]')).toBeVisible();
+  await page.locator(".setup-ageha-presentation .setup-primary-action").click();
+  await expect(page.locator('[data-entry-state="NAME_INPUT"]')).toBeVisible();
   await expect(page.getByPlaceholder("プレイヤー名を入力")).toBeVisible();
 }
 
@@ -117,7 +119,8 @@ test("name-only initialization is idempotent and resumes the tutorial after relo
   await page.getByPlaceholder("プレイヤー名を入力").fill("新宿太郎");
   await page.getByRole("button", { name: "この名前で始める" }).evaluate((button: HTMLButtonElement) => {
     // Simulate a rapid duplicate submission before React can repaint the
-    // disabled state. The RPC must still create each starter row only once.
+    // disabled state. Initialization must still create one profile/progress row;
+    // characters are granted later by the authoritative tutorial gacha.
     button.click();
     button.click();
   });
@@ -128,7 +131,7 @@ test("name-only initialization is idempotent and resumes the tutorial after relo
     characters: JSON.parse(localStorage.getItem("mock_db_user_characters") || "[]").length,
     progress: JSON.parse(localStorage.getItem("mock_db_tutorial_progress") || "[]").length,
   }));
-  expect(storedCounts).toEqual({ users: 1, characters: 1, progress: 1 });
+  expect(storedCounts).toEqual({ users: 1, characters: 0, progress: 1 });
 
   await page.reload();
   await page.getByText("TAP TO START").waitFor({ state: "visible", timeout: 2_000 }).catch(() => undefined);

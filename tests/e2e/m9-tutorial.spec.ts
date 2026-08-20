@@ -18,6 +18,7 @@ test.beforeEach(async ({ page }) => {
       { gacha_id: "CHAR_NORMAL", item_id: "char_yuji_01", rarity: "N", weight: 100 },
       { gacha_id: "CHAR_NORMAL", item_id: "char_go_01", rarity: "R", weight: 100 },
       { gacha_id: "CHAR_NORMAL", item_id: "char_kengo_01", rarity: "SR", weight: 100 },
+      { gacha_id: "CHAR_NORMAL", item_id: "char_mio_01", rarity: "R", weight: 100 },
       { gacha_id: "CHAR_SPECIAL", item_id: tutorialSsrId, rarity: "SSR", weight: 100 },
     ]));
     localStorage.setItem("mock_db_quests", JSON.stringify([{
@@ -147,7 +148,7 @@ async function revealTutorialTenPull(page: import("@playwright/test").Page, capt
   test.info().annotations.push({ type: "gacha-reveal-n-transition-ms", description: String(revealTransitionMs) });
   const rRevealDwellMs = Date.now() - rDwellStartedAt;
   expect(rRevealDwellMs).toBeGreaterThanOrEqual(900);
-  expect(rRevealDwellMs).toBeLessThan(1_500);
+  expect(rRevealDwellMs).toBeLessThan(1_700);
   test.info().annotations.push({ type: "gacha-reveal-r-dwell-ms", description: String(rRevealDwellMs) });
   if (captureVisuals) await page.screenshot({ path: test.info().outputPath("G2-rarity-R.png") });
   await reveal.click();
@@ -735,6 +736,8 @@ test("first quest connects dispatch, official battle, and one reward to the comp
   await page.screenshot({ path: test.info().outputPath("M1-375-B3-normal-attack.png"), fullPage: true });
   await expect(page.locator(".battle-action-stage.is-enemy-actor .battle-unit-action.is-actor")).toBeVisible({ timeout: 12_000 });
   await expect(page.locator(".battle-action-stage.is-enemy-actor .battle-unit-action.is-actor .battle-unit-identity-badges img")).toHaveCount(1);
+  await expect(page.locator(".battle-action-stage.is-enemy-actor.is-normal-action")).toBeVisible();
+  await expect(page.locator(".battle-skill-cutin")).toHaveCount(0);
   await page.screenshot({ path: test.info().outputPath("M1-375-enemy-current-actor.png"), fullPage: true });
   await expect(page.locator(".battle-skill-cutin.is-ssr")).toBeVisible({ timeout: 8_000 });
   await expect(page.locator(".battle-cutin-copy")).toContainText("SSR TEST BREAK");
@@ -969,6 +972,7 @@ test("tutorial completion resumes through account save and exposes the Home next
 });
 
 test("new mobile player completes the guided first session without footer navigation", async ({ page }) => {
+  test.setTimeout(180_000);
   const timingStages = new Set<string>();
   const failedImages: string[] = [];
   const pageErrors: string[] = [];

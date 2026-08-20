@@ -80,7 +80,7 @@ function getGoogleLinkError(code?: string, fallback?: string) {
 }
 
 export default function TutorialAuthentication() {
-  const { session, onboardingState, setOnboardingState, playCyberSe } = useGame();
+  const { session, onboardingState, setOnboardingState, playCyberSe, navigateTab } = useGame();
   const step = onboardingState?.tutorial_step ?? null;
   const [email, setEmail] = useState(() => readEmailIntent()?.email || "");
   const [googleExternalBrowserUrl, setGoogleExternalBrowserUrl] = useState<string | null>(null);
@@ -128,8 +128,9 @@ export default function TutorialAuthentication() {
       supported_identity_count: 1,
       identity_integrity_valid: true,
     } : current);
+    navigateTab("home");
     return true;
-  }, [session?.user?.id, setOnboardingState]);
+  }, [navigateTab, session?.user?.id, setOnboardingState]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;

@@ -34,6 +34,15 @@ const effectAsset: Record<BattleImpactKind, string> = {
 
 const stringValue = (value: unknown) => typeof value === "string" ? value.trim().toUpperCase() : "";
 
+const isBasicAttackPresentation = (skillId: string, skillName: string) => {
+  const normalizedId = stringValue(skillId).replace(/[\s-]+/g, "_");
+  const normalizedName = stringValue(skillName).replace(/[\s-]+/g, "_");
+  return /(^|_)BASIC_ATTACK($|_)/.test(normalizedId)
+    || /(^|_)NORMAL_ATTACK($|_)/.test(normalizedId)
+    || /^(BASIC_ATTACK|NORMAL_ATTACK|ATTACK)$/.test(normalizedName)
+    || skillName.trim() === "通常攻撃";
+};
+
 function resolveImpactKind(skill: Record<string, unknown> | undefined): BattleImpactKind {
   const explicitType = stringValue(
     skill?.battle_effect
@@ -55,10 +64,7 @@ export function resolveBattleSkillPresentation(
   const skillId = String(skill?.id ?? skill?.skill_card_id ?? skill?.skill_id ?? "");
   const master = SKILLS_MASTER_DATA.find((entry) => entry.id === skillId || entry.name === cutIn.skillName);
   const rarity = stringValue(skill?.rarity ?? master?.rarity);
-  const isBasicAttack = skillId === "BASIC_ATTACK"
-    || skillId === "basic_attack"
-    || /^(BASIC_ATTACK|ATTACK)$/i.test(cutIn.skillName)
-    || cutIn.skillName === "通常攻撃";
+  const isBasicAttack = isBasicAttackPresentation(skillId, cutIn.skillName);
 
   return {
     charName: cutIn.charName,
