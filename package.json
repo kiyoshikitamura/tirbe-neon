@@ -12,6 +12,7 @@
     "test:e2e": "playwright test",
     "verify:asset-gacha": "node scripts/verify_asset_gacha.mjs",
     "verify:mock-asset-gacha": "node --experimental-strip-types scripts/verify_mock_asset_gacha.mjs",
+    "verify:production-creatives": "node --experimental-strip-types scripts/verify_production_creative_integration.mjs",
     "verify:jst-daily-reset": "node --experimental-strip-types scripts/verify_jst_daily_reset.mjs",
     "verify:open-beta-characters": "node --experimental-strip-types scripts/verify_open_beta_character_roster.mjs",
     "verify:canonical-gameplay-foundation": "node --experimental-strip-types scripts/verify_canonical_gameplay_foundation.mjs",

@@ -1,12 +1,14 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import Image from "next/image";
 import { useGame } from "../context/GameContext";
 import { CHARACTERS_MASTER } from "../../utils/game_constants";
 import { CANONICAL_SKILL_VIEW } from "../../utils/skills_master_data";
 import { CANONICAL_EQUIPMENT_VIEW } from "../../utils/equipments_master_data";
 import TutorialNavigator from "./TutorialNavigator";
 import { useImmediateActionLock } from "@/hooks/useImmediateActionLock";
+import { resolveAvailableGachaCreative } from "@/domain/presentation/production_creatives";
 import "./GachaTab.css";
 
 export default function GachaTab() {
@@ -79,6 +81,8 @@ export default function GachaTab() {
   const specialGachaTickets = userItems?.find((i: any) => i.item_id === specialTicketId)?.quantity || 0;
   const normalGacha = gachaMasters?.find((g: any) => g.id === normalGachaId);
   const specialGacha = gachaMasters?.find((g: any) => g.id === specialGachaId);
+  const normalCreative = resolveAvailableGachaCreative(normalGachaId as "CHAR_NORMAL" | "SKILL_NORMAL" | "EQUIP_NORMAL");
+  const specialCreative = resolveAvailableGachaCreative(specialGachaId as "CHAR_SPECIAL" | "SKILL_SPECIAL" | "EQUIP_SPECIAL");
   const formatCost = (value: unknown, pulls = 1) => {
     const numeric = Number(value);
     return Number.isFinite(numeric) ? (numeric * pulls).toLocaleString("ja-JP") : "--";
@@ -240,6 +244,11 @@ export default function GachaTab() {
           <div className="font-size-8 text-gray-400 mt-1">
             {isSpecialGachaOpen ? "R 60% / SR 35% / SSR 5%。無料10連の対象外です。" : "現在は利用できません。開始時はゲーム内でお知らせします。"}
           </div>
+          {specialCreative && (
+            <div className="gacha-promotion-visual" aria-hidden="true">
+              <Image src={specialCreative.assetPath} alt="" fill sizes="(max-width: 430px) 100vw, 398px" />
+            </div>
+          )}
           {isSpecialGachaOpen && specialGacha && (
             <>
               <div className="flex gap-2 mt-3 gacha-btn-layout">
@@ -261,9 +270,15 @@ export default function GachaTab() {
         {/* 3. ノーマルガチャ (毎日10連無料 / N 50%, R 40%, SR 10%) */}
         <div className={`upgrade-card border-cyan gacha-card-normal ${isTutorialScout ? "tutorial-primary-target" : ""}`}>
           <div className="gacha-normal-visual" aria-hidden="true">
-            <span>毎日無料</span>
-            <strong>10</strong>
-            <i>連</i>
+            {normalCreative ? (
+              <Image src={normalCreative.assetPath} alt="" fill sizes="(max-width: 430px) 100vw, 398px" />
+            ) : (
+              <>
+                <span>毎日無料</span>
+                <strong>10</strong>
+                <i>連</i>
+              </>
+            )}
           </div>
           <div className="upgrade-card-title flex items-center justify-between gacha-title-row">
             <span className="text-color-cyan font-weight-bold">

@@ -163,6 +163,25 @@
   border-color: rgba(240, 0, 255, 0.4) !important;
 }
 
+.gacha-promotion-visual {
+  position: relative;
+  width: 100%;
+  height: 96px;
+  margin-top: 8px;
+  overflow: hidden;
+  border-radius: var(--ui-radius-sm);
+  background: rgba(3, 9, 15, .72);
+}
+
+.gacha-promotion-visual img,
+.gacha-normal-visual img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
 .gacha-card-normal {
   position: relative;
   min-height: 262px;

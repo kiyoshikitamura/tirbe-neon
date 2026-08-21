@@ -3,9 +3,12 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useGame } from "../context/GameContext";
 import { supabase } from "@/utils/supabase";
+import { resolveAvailableMyPageCreatives } from "@/domain/presentation/production_creatives";
 
 import { PROFILE_BACKGROUNDS, CHARACTERS_MASTER, PROFILE_INTERIORS } from "@/utils/game_constants";
 import "./HomeTab.css";
+
+const PRODUCTION_MY_PAGE_CREATIVES = resolveAvailableMyPageCreatives();
 
 /**
  * MainMyPage - マイページメイン画面
@@ -56,13 +59,19 @@ function MainMyPage() {
   const [funnelMilestones, setFunnelMilestones] = useState<Set<string>>(new Set());
   const [socialActivities, setSocialActivities] = useState<any[]>([]);
   const lastCtaImpression = useRef<string | null>(null);
-  const fallbackBanners: Array<{ id: string; title: string; img: string; destination: string }> = [
+  const fallbackBanners: Array<{ id: string; title: string; img: string; destination: string | null }> = [
     { id: "pickup_ssr_go", title: "【ピックアップガチャ】SSR「剛」新登場！", img: "/gacha/bg_gacha_sr.png", destination: "gacha" },
     { id: "raid_raijin", title: "【レイドイベント】強敵「雷神」襲来中！", img: "/gacha/bg_gacha_normal.png", destination: "raid" }
   ];
-  const [banners, setBanners] = useState(fallbackBanners);
+  const [banners, setBanners] = useState(() => PRODUCTION_MY_PAGE_CREATIVES?.map((creative) => ({
+    id: creative.id,
+    title: "",
+    img: creative.assetPath,
+    destination: creative.destination
+  })) ?? fallbackBanners);
 
-  const openBanner = (destination: string) => {
+  const openBanner = (destination: string | null) => {
+    if (!destination) return;
     const [tab, subTab] = destination.split(":");
     navigateTab(tab, subTab);
     playCyberSe("click");
@@ -76,6 +85,7 @@ function MainMyPage() {
   }, [banners.length]);
 
   useEffect(() => {
+    if (PRODUCTION_MY_PAGE_CREATIVES) return;
     void supabase.from("home_banner_master").select("id, title, image_url, destination_value").order("priority", { ascending: false }).then(({ data, error }) => {
       const released = (data || []).filter((item) => !["gvg", "shop"].includes(String(item.destination_value || "").split(":")[0]));
       if (!error && released.length) setBanners(released.map((item) => ({ id: item.id, title: item.title, img: item.image_url, destination: item.destination_value || "home" })));
@@ -442,6 +452,7 @@ function MainMyPage() {
             <button
               className={`banner-card${banners[bannerIndex].id === "vip_pass" ? " vip" : ""}`}
               onClick={() => openBanner(banners[bannerIndex].destination)}
+              aria-disabled={!banners[bannerIndex].destination}
             >
               <img src={banners[bannerIndex].img} alt="Banner" className="banner-bg-img" />
               <div className="banner-info-overlay">
