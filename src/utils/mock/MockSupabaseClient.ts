@@ -1,7 +1,8 @@
 ﻿"use client";
 
-import { executeMockRpc } from "./mockRpc";
-import { resolveBattle, type Tactic } from "../../../supabase/functions/resolve-battle/engine";
+import { executeMockRpc } from "./mockRpc.ts";
+import { resolveBattle, type Tactic } from "../../../supabase/functions/resolve-battle/engine.ts";
+import { CANONICAL_MISSIONS } from "../../domain/gameplay/canonical/masters.ts";
 
 const isTactic = (value: unknown): value is Tactic => value === "ATTACK_PRIORITY" || value === "HEAL_PRIORITY" || value === "SKILL_PRIORITY" || value === "BALANCED" || value === "WEAKNESS_FOCUS";
 
@@ -9,7 +10,26 @@ export class MockSupabaseClient {
   public getStorage(key: string, defaultVal: any = []) {
     if (typeof window === "undefined") return defaultVal;
     const data = localStorage.getItem(`mock_db_${key}`);
-    return data ? JSON.parse(data) : defaultVal;
+    if (data) return JSON.parse(data);
+    if (key === "missions" || key === "mission_master") {
+      return CANONICAL_MISSIONS.map((mission) => ({
+        id: mission.id,
+        category: mission.category,
+        trigger_type: mission.triggerType,
+        title: mission.title,
+        description: mission.description,
+        target_value: mission.targetValue,
+        condition_params: { ...mission.conditionParams },
+        reward_item_id: mission.rewardItemId,
+        reward_quantity: mission.rewardQuantity,
+        prerequisite_mission_id: mission.prerequisiteMissionId,
+        display_order: mission.displayOrder,
+        is_enabled: mission.isEnabled,
+        is_repeatable: mission.isRepeatable,
+        is_provisional: mission.isProvisional,
+      }));
+    }
+    return defaultVal;
   }
 
   public setStorage(key: string, val: any) {

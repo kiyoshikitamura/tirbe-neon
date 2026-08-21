@@ -20,3 +20,24 @@ export type CanonicalEquipment = Readonly<{
   exclusive_character_id: string | null;
   random_options: false;
 }>;
+
+export type CanonicalMissionCategory = "DAILY" | "NORMAL";
+export type CanonicalMissionUiStatus = "IN_PROGRESS" | "CLEAR" | "CLAIMED" | "LOCKED";
+
+export type CanonicalMission = Readonly<{
+  id: string;
+  category: CanonicalMissionCategory;
+  triggerType: string;
+  title: string;
+  description: string;
+  targetValue: number;
+  conditionParams: Readonly<Record<string, unknown>>;
+  rewardItemId: string;
+  rewardQuantity: number;
+  prerequisiteMissionId: string | null;
+  displayOrder: number;
+  isEnabled: boolean;
+  isRepeatable: boolean;
+  isProvisional: false;
+  cta: Readonly<{ tab: string | null; action: string | null; label: string }> | null;
+}>;

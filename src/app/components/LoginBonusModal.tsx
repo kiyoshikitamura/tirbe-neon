@@ -83,7 +83,7 @@ export const LoginBonusModal: React.FC<LoginBonusModalProps> = ({
                       ? "Cash"
                       : m.item_id === "DIAMOND"
                       ? "Dia"
-                      : m.item_id === "NORMAL_GACHA_TICKET" || m.item_id === "SPECIAL_GACHA_TICKET"
+                      : m.item_id.includes("GACHA_TICKET") || m.item_id.startsWith("SPECIAL_TICKET_")
                       ? "チケット"
                       : "アイテム"}
                   </div>

@@ -79,22 +79,15 @@ export const ITEMS_MASTER_DATA: ItemMaster[] = [
     iconType: "AWAKEN_BOOK"
   },
   {
-    id: "SKILL_LB_BOOK",
-    name: "限界突破の書 [スキル]",
+    id: "SKILL_MANUAL",
+    name: "スキル指南書",
     category: "LIMIT_BREAK",
     description: "同名カードがない場合に、通常スキルカードを限界突破できる代用書物。",
     iconType: "SKILL_LB"
   },
   {
-    id: "EXCLUSIVE_CONTRACT",
-    name: "限界突破の書 [専用スキル]",
-    category: "LIMIT_BREAK",
-    description: "同名カードがない場合に、専用スキルカードを限界突破できる代用書物。",
-    iconType: "EXCLUSIVE_LB"
-  },
-  {
-    id: "EQUIP_LB_HAMMER",
-    name: "万能カスタムツール [装備]",
+    id: "EQUIP_LB_PART",
+    name: "装備改造パーツ",
     category: "LIMIT_BREAK",
     description: "同名予備装備がない場合に、あらゆる装備品を限界突破できる代用万能工具。",
     iconType: "EQUIP_LB"

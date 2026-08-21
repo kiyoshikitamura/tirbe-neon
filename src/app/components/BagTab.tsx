@@ -37,9 +37,8 @@ export default function BagTab() {
     EQUIP_EXP_M: equipExpM || 0,
     EQUIP_EXP_L: equipExpL || 0,
     LAW_OF_STRIFE: lawsOfStrife || 0,
-    SKILL_LB_BOOK: skillLbBooks || 0,
-    EXCLUSIVE_CONTRACT: exclusiveContracts || 0,
-    EQUIP_LB_HAMMER: equipLbHammers || 0
+    SKILL_MANUAL: skillLbBooks || exclusiveContracts || 0,
+    EQUIP_LB_PART: equipLbHammers || 0
   }), [energyDrinks, charExpS, charExpM, charExpL, equipExpS, equipExpM, equipExpL, lawsOfStrife, skillLbBooks, exclusiveContracts, equipLbHammers]);
 
   // アイテム一覧のフィルタリング

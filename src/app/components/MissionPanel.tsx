@@ -3,6 +3,7 @@ import { useGame } from "../context/GameContext";
 import FullScreenPanel from "./ui/FullScreenPanel";
 import SubTabNav from "./ui/SubTabNav";
 import OutlawButton from "./ui/OutlawButton";
+import { canonicalMissionRewardName } from "@/domain/gameplay/canonical/missions";
 import "./MissionPanel.css";
 
 const MISSION_STATUS_LABELS: Record<string, string> = {
@@ -11,20 +12,6 @@ const MISSION_STATUS_LABELS: Record<string, string> = {
   IN_PROGRESS: "進行中",
   LOCKED: "未達成",
 };
-
-const REWARD_LABELS: Record<string, string> = {
-  CASH: "CASH",
-  キャッシュ: "CASH",
-  DIAMOND: "ダイヤ",
-  CHAR_EXP_S: "経験の書（小）",
-  EQUIP_EXP_S: "装備強化素材（小）",
-  SKILL_LB_BOOK: "スキル強化素材",
-};
-
-function rewardLabel(value: unknown) {
-  const key = String(value || "");
-  return REWARD_LABELS[key] || (key.startsWith("ITEM_") ? "育成アイテム" : "報酬アイテム");
-}
 
 export default function MissionPanel() {
   const {
@@ -107,7 +94,7 @@ export default function MissionPanel() {
                     </div>
                     <div className="mission-desc">{m.description}</div>
                     <div className="mission-reward">
-                      <span>REWARD</span><strong>{rewardLabel(m.reward_item)} × {Number(m.reward_amount || 0).toLocaleString()}</strong>
+                      <span>REWARD</span><strong>{canonicalMissionRewardName(String(m.reward_item || ""))} × {Number(m.reward_amount || 0).toLocaleString()}</strong>
                     </div>
                     
                     <div className="mission-progress-bar-container">
@@ -126,6 +113,8 @@ export default function MissionPanel() {
                       </OutlawButton>
                     ) : m.status === "CLAIMED" ? (
                       <OutlawButton variant="secondary" disabled>受取済</OutlawButton>
+                    ) : m.status === "LOCKED" ? (
+                      <OutlawButton variant="secondary" disabled>未達成</OutlawButton>
                     ) : m.ctaTab || m.ctaAction ? (
                       <OutlawButton variant="primary" onClick={() => handleMissionCta(m)}>
                         {m.ctaLabel || "挑戦する"}

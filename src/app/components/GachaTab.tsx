@@ -49,8 +49,6 @@ export default function GachaTab() {
     }
   };
 
-  const normalGachaTickets = userItems?.find((i: any) => i.item_id === "NORMAL_GACHA_TICKET")?.quantity || 0;
-  const specialGachaTickets = userItems?.find((i: any) => i.item_id === "SPECIAL_GACHA_TICKET")?.quantity || 0;
   const isSpecialGachaOpen = featureOperatingStates?.SPECIAL_GACHA === "OPEN";
 
   const categoryAvailability = {
@@ -71,6 +69,14 @@ export default function GachaTab() {
   const gachaPrefix = activeCategory === "CHARACTER" ? "CHAR" : activeCategory === "EQUIPMENT" ? "EQUIP" : "SKILL";
   const normalGachaId = `${gachaPrefix}_NORMAL`;
   const specialGachaId = `${gachaPrefix}_SPECIAL`;
+  const normalTicketId = activeCategory === "CHARACTER"
+    ? "NORMAL_GACHA_TICKET_CHARACTER"
+    : activeCategory === "SKILL" ? "NORMAL_GACHA_TICKET_SKILL" : "NORMAL_GACHA_TICKET_EQUIPMENT";
+  const specialTicketId = activeCategory === "CHARACTER"
+    ? "SPECIAL_TICKET_CHARACTER"
+    : activeCategory === "SKILL" ? "SPECIAL_TICKET_SKILL" : "SPECIAL_TICKET_EQUIPMENT";
+  const normalGachaTickets = userItems?.find((i: any) => i.item_id === normalTicketId)?.quantity || 0;
+  const specialGachaTickets = userItems?.find((i: any) => i.item_id === specialTicketId)?.quantity || 0;
   const normalGacha = gachaMasters?.find((g: any) => g.id === normalGachaId);
   const specialGacha = gachaMasters?.find((g: any) => g.id === specialGachaId);
   const formatCost = (value: unknown, pulls = 1) => {

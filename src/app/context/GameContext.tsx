@@ -35,6 +35,7 @@ import { beginActionPerformance } from "@/utils/actionPerformance";
 import { useAudio } from "@/audio/AudioProvider";
 import type { SeEvent } from "@/audio/audioContract";
 import { beginAssetTierMetric, finishAssetTierMetric, preloadAssetManifest } from "@/app/lib/screenAssets";
+import { canonicalMissionUiStatus } from "@/domain/gameplay/canonical/missions";
 
 const ONBOARDING_AUTH_INTENT_KEY = "tribe_onboarding_auth_intent";
 const ONBOARDING_AUTH_INTENT_MAX_AGE_MS = 30 * 60 * 1000;
@@ -1472,9 +1473,10 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         setEquipExpM(itemsData.find(i => i.item_id === "EQUIP_EXP_M")?.quantity || 0);
         setEquipExpL(itemsData.find(i => i.item_id === "EQUIP_EXP_L")?.quantity || 0);
         setLawsOfStrife(itemsData.find(i => i.item_id === "LAW_OF_STRIFE")?.quantity || 0);
-        setSkillLbBooks(itemsData.find(i => i.item_id === "SKILL_LB_BOOK")?.quantity || 0);
-        setExclusiveContracts(itemsData.find(i => i.item_id === "EXCLUSIVE_CONTRACT")?.quantity || 0);
-        setEquipLbHammers(itemsData.find(i => i.item_id === "EQUIP_LB_HAMMER")?.quantity || 0);
+        const skillManualQuantity = itemsData.find(i => i.item_id === "SKILL_MANUAL")?.quantity || 0;
+        setSkillLbBooks(skillManualQuantity);
+        setExclusiveContracts(skillManualQuantity);
+        setEquipLbHammers(itemsData.find(i => i.item_id === "EQUIP_LB_PART")?.quantity || 0);
       }
 
       const { data: equipsData } = await supabase
@@ -1677,53 +1679,41 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         }));
       }
 
-      const { data: missionsData } = await supabase
-        .from("user_missions")
-        .select("*, missions!inner(*)")
-        .eq("user_id", userId);
+      const [missionMasterResult, userMissionResult] = await Promise.all([
+        supabase.from("missions").select("*").eq("is_enabled", true),
+        supabase.from("user_missions").select("*").eq("user_id", userId),
+      ]);
 
-      if (missionsData) {
-        setMissions(missionsData.map(um => {
-          const m = (um.missions as any) || {};
-          const missionRewardNames: Record<string, string> = {
-            CASH: "キャッシュ",
-            DIAMOND: "ダイヤ",
-            GACHA_TICKET: "ガチャチケット",
-            NORMAL_GACHA_TICKET: "ノーマルガチャチケット",
-            SPECIAL_GACHA_TICKET: "スペシャルガチャチケット",
-            CHAR_EXP_S: "経験の書 [小]",
-            CHAR_EXP_M: "経験の書 [中]",
-            CHAR_EXP_L: "経験の書 [大]",
-            EQUIP_EXP_S: "カスタムオイル [小]",
-            EQUIP_EXP_M: "カスタムオイル [中]",
-            EQUIP_EXP_L: "カスタムオイル [大]",
-            EQUIP_LB_HAMMER: "万能カスタムツール [装備]",
-            SKILL_LB_BOOK: "限界突破の書 [スキル]"
-          };
-          const rewardItemName = missionRewardNames[m.reward_item_id] || m.reward_item_id || "報酬";
-          const rewardLabel = `${rewardItemName} +${m.reward_quantity || 0}`;
+      if (missionMasterResult.data && userMissionResult.data) {
+        const userMissionById = new Map(userMissionResult.data.map((row: any) => [row.mission_id, row]));
+        const claimedMissionIds = new Set(
+          userMissionResult.data.filter((row: any) => row.status === "CLAIMED").map((row: any) => row.mission_id),
+        );
+        setMissions(missionMasterResult.data.map((m: any) => {
+          const userMission: any = userMissionById.get(m.id);
+          const prerequisiteClaimed = !m.prerequisite_mission_id || claimedMissionIds.has(m.prerequisite_mission_id);
           return {
-            id: um.mission_id,
+            id: m.id,
             title: m.title || "不明なミッション",
             description: m.description || m.desc_text || "",
-            reward: rewardLabel,
-            reward_item: rewardItemName,
+            reward_item: m.reward_item_id || "CASH",
             reward_amount: m.reward_quantity || 0,
             rewardItemId: m.reward_item_id || "CASH",
             rewardQty: m.reward_quantity || 0,
-            current_progress: um.current_progress,
+            current_progress: userMission?.current_progress || 0,
             target_value: m.target_value || 1,
             display_order: m.display_order || 0,
             category: m.category || "DAILY",
             conditionParams: m.condition_params || {},
+            prerequisiteMissionId: m.prerequisite_mission_id || null,
             ctaTab: m.condition_params?.cta_tab || null,
             ctaAction: m.condition_params?.cta_action || null,
             ctaLabel: m.condition_params?.cta_label || null,
-            isProvisional: Boolean(m.is_provisional || m.condition_params?.balance_status === "PROVISIONAL"),
-            status: um.status,
+            isProvisional: Boolean(m.is_provisional),
+            status: canonicalMissionUiStatus(userMission?.status, prerequisiteClaimed),
             loading: false
           };
-        }).sort((left, right) => left.display_order - right.display_order));
+        }).sort((left: any, right: any) => left.display_order - right.display_order));
       }
 
     } catch (err: any) {
