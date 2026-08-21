@@ -1,9 +1,20 @@
 import sharp from "sharp";
-import { mkdir, readdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 const sourceDirectory = path.resolve("public", "characters");
 const outputPath = path.resolve("test-results", "m9x-character-alpha-audit.json");
+const canonicalPath = path.resolve("src", "domain", "gameplay", "canonical", "data", "characters_20260821.json");
+const canonical = JSON.parse(await readFile(canonicalPath, "utf8"));
+const canonicalAssets = canonical.characters.map((character) => {
+  const slug = character.character_id.replace(/^char_/, "").replace(/_01$/, "");
+  const assetSlug = slug === "yuji" ? "yuuji" : slug;
+  return {
+    characterId: character.character_id,
+    characterName: character.name,
+    filename: `${assetSlug}_transparent_asset.png`,
+  };
+});
 const filenames = (await readdir(sourceDirectory))
   .filter((name) => /_transparent_asset\.png$/i.test(name))
   .sort();
@@ -20,6 +31,8 @@ async function inspect(filename) {
   let maxX = -1;
   let maxY = -1;
   let semiTransparentPixels = 0;
+  let fullyTransparentPixels = 0;
+  let opaquePixels = 0;
   let opaqueGreenResiduePixels = 0;
   for (let y = 0; y < height; y += 1) {
     for (let x = 0; x < width; x += 1) {
@@ -29,6 +42,8 @@ async function inspect(filename) {
       const blue = data[offset + 2];
       const value = data[offset + 3];
       alpha[pixelIndex(x, y, width)] = value;
+      if (value === 0) fullyTransparentPixels += 1;
+      if (value >= 240) opaquePixels += 1;
       if (value > 0) {
         minX = Math.min(minX, x);
         minY = Math.min(minY, y);
@@ -89,17 +104,57 @@ async function inspect(filename) {
   }
 
   enclosedComponents.sort((a, b) => b - a);
+  const foregroundVisited = new Uint8Array(width * height);
+  const foregroundComponents = [];
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const start = pixelIndex(x, y, width);
+      if (alpha[start] <= 8 || foregroundVisited[start]) continue;
+      foregroundVisited[start] = 1;
+      const component = [start];
+      let size = 0;
+      for (let cursor = 0; cursor < component.length; cursor += 1) {
+        const index = component[cursor];
+        size += 1;
+        const px = index % width;
+        const py = Math.floor(index / width);
+        for (const [nx, ny] of [[px - 1, py], [px + 1, py], [px, py - 1], [px, py + 1]]) {
+          if (nx < 0 || nx >= width || ny < 0 || ny >= height) continue;
+          const next = pixelIndex(nx, ny, width);
+          if (alpha[next] > 8 && !foregroundVisited[next]) {
+            foregroundVisited[next] = 1;
+            component.push(next);
+          }
+        }
+      }
+      foregroundComponents.push(size);
+    }
+  }
+  foregroundComponents.sort((a, b) => b - a);
   const bboxArea = maxX >= minX && maxY >= minY ? (maxX - minX + 1) * (maxY - minY + 1) : 0;
+  const canonicalEntry = canonicalAssets.find((entry) => entry.filename === filename);
   return {
+    characterId: canonicalEntry?.characterId ?? null,
+    characterName: canonicalEntry?.characterName ?? null,
     character: filename.replace(/_transparent_asset\.png$/i, ""),
     assetPath: `/characters/${filename}`,
     rgba: channels === 4,
     dimensions: `${width}x${height}`,
     alphaBoundingBox: maxX >= 0 ? { x: minX, y: minY, width: maxX - minX + 1, height: maxY - minY + 1 } : null,
+    fullyTransparentPixels,
+    fullyTransparentRatio: Number((fullyTransparentPixels / (width * height)).toFixed(5)),
+    opaquePixels,
+    opaqueRatio: Number((opaquePixels / (width * height)).toFixed(5)),
     semiTransparentPixels,
     semiTransparentRatio: bboxArea ? Number((semiTransparentPixels / bboxArea).toFixed(5)) : 0,
     enclosedTransparentComponents: enclosedComponents.length,
     largestEnclosedTransparentComponent: enclosedComponents[0] || 0,
+    foregroundComponents: foregroundComponents.length,
+    foregroundComponentsAtLeast16Pixels: foregroundComponents.filter((size) => size >= 16).length,
+    largestForegroundComponent: foregroundComponents[0] || 0,
+    largestForegroundComponentRatio: bboxArea
+      ? Number(((foregroundComponents[0] || 0) / bboxArea).toFixed(5))
+      : 0,
     opaqueGreenResiduePixels,
   };
 }
@@ -109,7 +164,11 @@ for (const filename of filenames) characters.push(await inspect(filename));
 const report = {
   generatedAt: new Date().toISOString(),
   sourceDirectory,
+  canonicalPath,
+  canonicalCharacterCount: canonicalAssets.length,
   characterCount: characters.length,
+  missingCanonicalAssets: canonicalAssets.filter((entry) => !filenames.includes(entry.filename)),
+  unexpectedProductionAssets: filenames.filter((filename) => !canonicalAssets.some((entry) => entry.filename === filename)),
   characters,
 };
 await mkdir(path.dirname(outputPath), { recursive: true });
