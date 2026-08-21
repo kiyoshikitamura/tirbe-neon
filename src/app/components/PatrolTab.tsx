@@ -2,10 +2,8 @@
 
 import React from "react";
 import { useGame } from "../context/GameContext";
-import {
-  CHARACTERS_MASTER,
-  CHARACTER_GROWTH_PATTERNS
-} from "@/utils/game_constants";
+import { CHARACTERS_MASTER } from "@/utils/game_constants";
+import { getCharacterBaseStats } from "@/utils/stats_calculator";
 import OutlawCard from "./ui/OutlawCard";
 import OutlawButton from "./ui/OutlawButton";
 import SubTabNav from "./ui/SubTabNav";
@@ -471,8 +469,7 @@ export default function PatrolTab() {
                 
                 const isAlreadyDeployed = activePatrols.some((p: any) => p.characterId === c.id && p.status !== "COMPLETED");
 
-                const pattern = CHARACTER_GROWTH_PATTERNS.find((p: any) => p.pattern_id === c.growthPatternId) || CHARACTER_GROWTH_PATTERNS[0];
-                const baseLuk = pattern.base_luk;
+                const baseLuk = getCharacterBaseStats(c.id, 1, 0).luk;
                 
                 return (
                   <div 

@@ -2,18 +2,21 @@
 
 import { createElement, useRef, useState, useEffect, useCallback } from "react";
 import { supabase } from "@/utils/supabase";
-import { SKILLS_MASTER_DATA } from "@/utils/skills_master_data";
 import {
   CHARACTERS_MASTER,
   ENEMIES_MASTER
 } from "@/utils/game_constants";
-import { getCharacterTotalStats, getCharacterApBonus } from "@/utils/stats_calculator";
+import { getCharacterTotalStats } from "@/utils/stats_calculator";
+import { criticalChanceBp, getAttributeMultiplierBp, productionDamage } from "@/domain/battle/canonical_runtime";
+import { parseCanonicalEffects, skillEffectMultiplierBp } from "@/domain/battle/canonical_effects";
+import { CANONICAL_SKILLS } from "@/domain/gameplay/canonical/masters";
 
 import { CompatibleBattleTacticId, UseBattleOptions, ParticipantState, CardState, SkillLogItem } from "./battle/battleTypes";
 import { selectCharacterSkillByTactic } from "./battle/battleAI";
 import { postNpcYajiMessage, saveBattleSessionState } from "./battle/battleUtils";
 import { RAID_COST_TABLE, RAID_MAX_DAILY } from "../utils/game_constants";
 import { participantsToBattleUnits, toDeterministicTactic } from "./battle/deterministicBattleAdapter";
+import { resolveDeterministicBattle } from "@/lib/battle/deterministicBattle";
 import { gvgDefenseSnapshotToParticipants } from "./battle/gvgSnapshotAdapter";
 import { patrolSnapshotToParticipants, serverBattleEvents, type ServerBattleEvent } from "./battle/patrolReplayAdapter";
 import { beginActionPerformance } from "@/utils/actionPerformance";
@@ -21,6 +24,47 @@ import { traceTutorialJourney } from "@/utils/tutorialJourneyTrace";
 import ModeBattleResultCard from "@/app/components/battle/ModeBattleResultCard";
 
 export type { UseBattleOptions, ParticipantState, CardState, SkillLogItem };
+
+const BASIC_ATTACK_SKILL = {
+  id: "basic_attack",
+  skill_card_id: "basic_attack",
+  name: "通常攻撃",
+  power: 80,
+  effect_type: "ATTACK",
+  plus_val: 0,
+  ownerId: null,
+  activationType: "ACTIVE" as const,
+  cooldown: 0,
+  availableFromRound: 1,
+  target: "ENEMY_SINGLE" as const,
+  effects: ["DAMAGE 80% ATK"],
+  exclusiveCharacterId: null,
+};
+
+function canonicalParticipantSkill(owned: any) {
+  const master = CANONICAL_SKILLS.find((skill) => skill.skill_id === owned?.skill_card_id);
+  if (!master) return null;
+  const plusValue = Math.max(0, Math.min(10, Number(owned?.plus_val || 0)));
+  const effects = parseCanonicalEffects(master.effects);
+  const damage = effects.find((effect) => effect.type === "DAMAGE");
+  const effectType = damage ? "ATTACK" : effects.some((effect) => effect.type === "HEAL" || effect.type === "REGEN") ? "HEAL"
+    : effects.some((effect) => effect.type === "DEBUFF" || ["BLIND", "SILENCE", "STUN", "POISON", "BLEED", "TAUNT"].includes(effect.type)) ? "DEBUFF" : "BUFF";
+  return {
+    id: owned?.id || master.skill_id,
+    skill_card_id: master.skill_id,
+    name: master.name,
+    power: Math.floor(Number(damage?.powerBp ?? 0) * skillEffectMultiplierBp("DAMAGE", plusValue) / 1000000),
+    effect_type: effectType,
+    plus_val: plusValue,
+    ownerId: master.exclusive_character_id,
+    activationType: master.activation_type,
+    cooldown: master.cooldown,
+    availableFromRound: master.available_from_round,
+    target: master.target,
+    effects,
+    exclusiveCharacterId: master.exclusive_character_id,
+  };
+}
 
 const patrolReplayCursorKey = (replayId: string) => `tribe_neon_patrol_replay_cursor_${replayId}`;
 type BattleMode = "PVP" | "PVP_PRACTICE" | "RAID" | "GVG" | "PATROL";
@@ -51,7 +95,6 @@ export function useBattle(options: UseBattleOptions) {
     userCharactersDbList,
     userEquipmentsList,
     userSkillsList,
-    skillLimitBreakMaster,
     selectedMembers,
     selectedLeader,
     userGuild,
@@ -103,8 +146,8 @@ export function useBattle(options: UseBattleOptions) {
   const [tutorialBattleActive, setTutorialBattleActive] = useState(false);
   const [battleOutcome, setBattleOutcome] = useState<"VICTORY" | "DEFEAT" | null>(null);
   const [battleLog, setBattleLog] = useState<string[]>([]);
-  const [ap, setAp] = useState<number>(3);
-  const [maxAp, setMaxAp] = useState<number>(10);
+  const [ap, setAp] = useState<number>(0);
+  const [maxAp, setMaxAp] = useState<number>(0);
   const [tactic, setTactic] = useState<CompatibleBattleTacticId>("ATTACK_PRIORITY");
   const [battleSpeed, setBattleSpeed] = useState<number>(1); // 1 = 1x, 2 = 2x
   const [isAutoPaused, setIsAutoPaused] = useState<boolean>(false);
@@ -119,6 +162,9 @@ export function useBattle(options: UseBattleOptions) {
   const [officialGvgAttackId, setOfficialGvgAttackId] = useState<string | null>(null);
   const [officialGvgReplayId, setOfficialGvgReplayId] = useState<string | null>(null);
   const [officialGvgWinner, setOfficialGvgWinner] = useState<"PLAYER" | "ENEMY" | null>(null);
+  const [canonicalAuxReplayId, setCanonicalAuxReplayId] = useState<string | null>(null);
+  const [canonicalAuxEvents, setCanonicalAuxEvents] = useState<ServerBattleEvent[]>([]);
+  const [canonicalAuxEventIndex, setCanonicalAuxEventIndex] = useState(0);
   const [officialPatrolReplayId, setOfficialPatrolReplayId] = useState<string | null>(null);
   const [officialPatrolWinner, setOfficialPatrolWinner] = useState<"PLAYER" | "ENEMY" | null>(null);
   const officialPatrolReplayIdRef = useRef<string | null>(null);
@@ -197,8 +243,8 @@ export function useBattle(options: UseBattleOptions) {
         setBattleMode(mappedMode);
         setPlayerPartyStates(playerStateData.playerStates || []);
         setEnemyPartyStates(enemyStateData.enemyStates || []);
-        setAp(playerStateData.ap || 3);
-        setMaxAp(playerStateData.maxAp || 5);
+        setAp(0);
+        setMaxAp(0);
         if (playerStateData.tactic) setTactic(playerStateData.tactic);
         if (playerStateData.log) setBattleLog(playerStateData.log);
         if (playerStateData.timelineIndex !== undefined) setTimelineIndex(playerStateData.timelineIndex);
@@ -207,6 +253,9 @@ export function useBattle(options: UseBattleOptions) {
         setOfficialGvgAttackId(playerStateData.officialGvgAttackId || null);
         setOfficialGvgReplayId(playerStateData.officialGvgReplayId || null);
         setOfficialGvgWinner(playerStateData.officialGvgWinner === "PLAYER" ? "PLAYER" : playerStateData.officialGvgWinner === "ENEMY" ? "ENEMY" : null);
+        setCanonicalAuxReplayId(playerStateData.canonicalAuxReplayId || null);
+        setCanonicalAuxEvents(serverBattleEvents(playerStateData.canonicalAuxEvents));
+        setCanonicalAuxEventIndex(savedPatrolReplayCursor(playerStateData.canonicalAuxReplayId, playerStateData.canonicalAuxEventIndex));
         setOfficialPatrolReplayId(playerStateData.officialPatrolReplayId || null);
         setOfficialPatrolWinner(playerStateData.officialPatrolWinner === "PLAYER" ? "PLAYER" : playerStateData.officialPatrolWinner === "ENEMY" ? "ENEMY" : null);
         setOfficialPatrolEvents(serverBattleEvents(playerStateData.officialPatrolEvents));
@@ -295,11 +344,14 @@ export function useBattle(options: UseBattleOptions) {
     setOfficialPvpEvents([]);
     setOfficialPvpEventIndex(0);
     setOfficialPvpResult(null);
+    setCanonicalAuxReplayId(null); setCanonicalAuxEvents([]); setCanonicalAuxEventIndex(0);
     setOfficialRaidReplayId(null); setOfficialRaidWinner(null); setOfficialRaidEvents([]); setOfficialRaidEventIndex(0); setOfficialRaidResult(null);
     let officialGvgDefenseDeck: unknown = null;
     let officialGvgAttackIdForBattle: string | null = null;
     let officialGvgReplayIdForBattle: string | null = null;
     let officialGvgWinnerForBattle: "PLAYER" | "ENEMY" | null = null;
+    let canonicalAuxReplayIdForBattle: string | null = null;
+    let canonicalAuxEventsForBattle: ServerBattleEvent[] = [];
     let officialPatrolReplayIdForBattle: string | null = null;
     let officialPatrolWinnerForBattle: "PLAYER" | "ENEMY" | null = null;
     let officialPatrolEventsForBattle: ServerBattleEvent[] = [];
@@ -323,8 +375,7 @@ export function useBattle(options: UseBattleOptions) {
       spd: 100,
       luk: 5,
       skills: [
-        { id: "e_boss_atk", name: "新宿壊滅撃", ap_cost: 2, power: 180, effect_type: "ATTACK" },
-        { id: "e_boss_def", name: "防弾プロテクト", ap_cost: 1, power: 80, effect_type: "DEFENSE" }
+        { ...BASIC_ATTACK_SKILL, id: "boss_basic_attack" }
       ]
     };
 
@@ -341,9 +392,8 @@ export function useBattle(options: UseBattleOptions) {
           def: enemyData.def || npcMaster.def || 100,
           spd: enemyData.spd || npcMaster.spd || 100,
           luk: enemyData.luk || npcMaster.luk || 10,
-          skills: enemyData.skills || (typeof npcMaster.skills === "string" ? JSON.parse(npcMaster.skills) : npcMaster.skills) || [
-            { id: "npc_attack", name: "攻撃", ap_cost: 1, power: 50, effect_type: "ATTACK" }
-          ]
+          skills: (((enemyData.skills || (typeof npcMaster.skills === "string" ? JSON.parse(npcMaster.skills) : npcMaster.skills) || []) as any[])
+            .map(canonicalParticipantSkill).filter(Boolean) as any[]).concat([{ ...BASIC_ATTACK_SKILL, id: "npc_basic_attack" }])
         };
       }
     }
@@ -455,16 +505,9 @@ export function useBattle(options: UseBattleOptions) {
     const party = selectedMembers.length > 0 ? selectedMembers : userCharactersDbList.slice(0, 5).map(c => c.character_id);
     const userCharRecords = party.map(charId => userCharactersDbList.find(c => c.character_id === charId)).filter(Boolean);
 
-    // 最大AP上限の計算式
-    let totalLevels = 0;
-    let totalApBonus = 0;
-    userCharRecords.forEach(c => {
-      totalLevels += c.level || 1;
-      totalApBonus += getCharacterApBonus(c.id, userEquipmentsList);
-    });
-    const calculatedMaxAp = Math.min(Math.max(5 + Math.floor(totalLevels / 100) + totalApBonus, 5), 15);
-    setMaxAp(calculatedMaxAp);
-    setAp(3);
+    // AP remains presentation compatibility state only; Canonical Gameplay does not consume it.
+    setMaxAp(0);
+    setAp(0);
 
     // 味方部隊の個別ステータス構築
     let initialPlayerParty: ParticipantState[] = userCharRecords.map((charRecord, idx) => {
@@ -493,38 +536,14 @@ export function useBattle(options: UseBattleOptions) {
       // キャラクターごとの装備スキルを取得
       const charSkills = userSkillsList
         .filter(us => us.equipped_character_id === charRecord.id && us.slot_index !== null)
-        .map(us => {
-          const skillMaster = SKILLS_MASTER_DATA.find(s => s.id === us.skill_card_id);
-          const isExclusive = !!skillMaster?.is_exclusive;
-          const masterRec = skillLimitBreakMaster ? skillLimitBreakMaster.find(m => m.plus_val === us.plus_val && m.is_exclusive === isExclusive) : null;
-          const multiplier = masterRec ? Number(masterRec.power_multiplier) : (1.0 + us.plus_val * 0.20);
-          const basePower = skillMaster?.power ?? 100;
-          return {
-            id: us.id,
-            skill_card_id: us.skill_card_id,
-            name: skillMaster?.name || "必殺攻撃",
-            ap_cost: skillMaster?.ap_cost ?? 2,
-            power: Math.floor(basePower * multiplier),
-            effect_type: skillMaster?.effect_type || "ATTACK",
-            plus_val: us.plus_val,
-            ownerId: skillMaster?.exclusive_character_id || null
-          };
-        });
+        .map(canonicalParticipantSkill)
+        .filter(Boolean) as any[];
 
       // Every combatant needs a damage action. Tutorial gacha can award a
       // support-only skill, and an empty/support-only loadout otherwise stalls
       // until the round limit and incorrectly defeats a new player.
       if (!charSkills.some(skill => skill.effect_type === "ATTACK")) {
-        charSkills.push({
-          id: `basic_attack_${charRecord.id}`,
-          skill_card_id: "basic_attack",
-          name: "通常攻撃",
-          ap_cost: 0,
-          power: 50,
-          effect_type: "ATTACK",
-          plus_val: 0,
-          ownerId: charRecord.character_id
-        });
+        charSkills.push({ ...BASIC_ATTACK_SKILL, id: `basic_attack_${charRecord.id}`, ownerId: charRecord.character_id });
       }
 
       return {
@@ -564,9 +583,9 @@ export function useBattle(options: UseBattleOptions) {
         tauntTurns: 0,
         stunTurns: 0,
         stats: supportCharacter.stats || { hp: 1500, atk: 120, def: 90, spd: 100, luk: 10 },
-        skills: supportCharacter.skills || [
-          { id: "sk_sup_1", name: "助っ人必殺撃", ap_cost: 2, power: 130, effect_type: "ATTACK", ownerId: supportCharacter.characterId }
-        ]
+        skills: ((supportCharacter.skills || []).map(canonicalParticipantSkill).filter(Boolean) as any[]).concat(
+          (supportCharacter.skills || []).some((entry: any) => canonicalParticipantSkill(entry)) ? [] : [{ ...BASIC_ATTACK_SKILL, id: "support_basic_attack", ownerId: supportCharacter.characterId }]
+        )
       });
     }
 
@@ -582,25 +601,10 @@ export function useBattle(options: UseBattleOptions) {
           
           const baseStats = getCharacterTotalStats(hChar, hEquips);
           
-          const hSkillsList = hSkills.map((us: any) => {
-            const skillMaster = SKILLS_MASTER_DATA.find(s => s.id === us.skill_card_id);
-            const isExclusive = !!skillMaster?.is_exclusive;
-            const masterRec = skillLimitBreakMaster ? skillLimitBreakMaster.find(m => m.plus_val === us.plus_val && m.is_exclusive === isExclusive) : null;
-            const multiplier = masterRec ? Number(masterRec.power_multiplier) : (1.0 + us.plus_val * 0.20);
-            return {
-              id: us.id,
-              skill_card_id: us.skill_card_id,
-              name: skillMaster?.name || "助っ人攻撃",
-              ap_cost: skillMaster?.ap_cost ?? 2,
-              power: Math.floor((skillMaster?.power ?? 100) * multiplier),
-              effect_type: skillMaster?.effect_type || "ATTACK",
-              plus_val: us.plus_val,
-              ownerId: null // §1: 助っ人は得意スキルボーナス（AP軽減）適用外とする
-            };
-          });
+          const hSkillsList = hSkills.map(canonicalParticipantSkill).filter(Boolean) as any[];
 
           if (hSkillsList.length === 0) {
-            hSkillsList.push({ id: "sk_sup_1", skill_card_id: "sk_sup_1", name: "通常攻撃", ap_cost: 1, power: 100, effect_type: "ATTACK", plus_val: 0, ownerId: null });
+            hSkillsList.push({ ...BASIC_ATTACK_SKILL, id: "support_basic_attack" });
           }
 
           initialPlayerParty.push({
@@ -652,14 +656,9 @@ export function useBattle(options: UseBattleOptions) {
           spd: bossMaster.spd,
           luk: bossMaster.luk
         },
-        skills: bossMaster.skills.map((s: any, idx: number) => ({
-          id: s.id || `e_patrol_skill_${idx}`,
-          name: s.name || "攻撃",
-          ap_cost: s.ap_cost || 1,
-          power: s.power || 50,
-          effect_type: s.effect_type || "ATTACK",
-          ownerId: bossMaster.id
-        }))
+        skills: (bossMaster.skills.map(canonicalParticipantSkill).filter(Boolean) as any[]).concat([
+          { ...BASIC_ATTACK_SKILL, id: "patrol_basic_attack", ownerId: bossMaster.id }
+        ])
       }];
       loadedRealEnemy = true;
     } else if (mode === "PVP" && areaIdOrOpponentUserId && !areaIdOrOpponentUserId.startsWith("npc_dummy_")) {
@@ -708,26 +707,11 @@ export function useBattle(options: UseBattleOptions) {
 
             const charSkills = enemySkills
               .filter((us: any) => us.equipped_character_id === charRecord.id && us.slot_index !== null)
-              .map((us: any) => {
-                const skillMaster = SKILLS_MASTER_DATA.find(s => s.id === us.skill_card_id);
-                const isExclusive = !!skillMaster?.is_exclusive;
-                const masterRec = skillLimitBreakMaster ? skillLimitBreakMaster.find(m => m.plus_val === us.plus_val && m.is_exclusive === isExclusive) : null;
-                const multiplier = masterRec ? Number(masterRec.power_multiplier) : (1.0 + us.plus_val * 0.20);
-                const basePower = skillMaster?.power ?? 100;
-                return {
-                  id: us.id,
-                  skill_card_id: us.skill_card_id,
-                  name: skillMaster?.name || "必殺攻撃",
-                  ap_cost: skillMaster?.ap_cost ?? 2,
-                  power: Math.floor(basePower * multiplier),
-                  effect_type: skillMaster?.effect_type || "ATTACK",
-                  plus_val: us.plus_val,
-                  ownerId: skillMaster?.exclusive_character_id || null
-                };
-              });
+              .map(canonicalParticipantSkill)
+              .filter(Boolean) as any[];
 
             if (charSkills.length === 0) {
-              charSkills.push({ id: `e_skill_${idx}_1`, skill_card_id: `e_skill_${idx}_1`, name: "通常攻撃", ap_cost: 1, power: 45, effect_type: "ATTACK", plus_val: 0, ownerId: charRecord.character_id });
+              charSkills.push({ ...BASIC_ATTACK_SKILL, id: `enemy_basic_attack_${idx}`, ownerId: charRecord.character_id });
             }
 
             return {
@@ -868,26 +852,11 @@ export function useBattle(options: UseBattleOptions) {
 
                   const charSkills = enemySkills
                     .filter((us: any) => us.equipped_character_id === charRecord.id && us.slot_index !== null)
-                    .map((us: any) => {
-                      const skillMaster = SKILLS_MASTER_DATA.find(s => s.id === us.skill_card_id);
-                      const isExclusive = !!skillMaster?.is_exclusive;
-                      const masterRec = skillLimitBreakMaster ? skillLimitBreakMaster.find(m => m.plus_val === us.plus_val && m.is_exclusive === isExclusive) : null;
-                      const multiplier = masterRec ? Number(masterRec.power_multiplier) : (1.0 + us.plus_val * 0.20);
-                      const basePower = skillMaster?.power ?? 100;
-                      return {
-                        id: us.id,
-                        skill_card_id: us.skill_card_id,
-                        name: skillMaster?.name || "必殺攻撃",
-                        ap_cost: skillMaster?.ap_cost ?? 2,
-                        power: Math.floor(basePower * multiplier),
-                        effect_type: skillMaster?.effect_type || "ATTACK",
-                        plus_val: us.plus_val,
-                        ownerId: skillMaster?.exclusive_character_id || null
-                      };
-                    });
+                    .map(canonicalParticipantSkill)
+                    .filter(Boolean) as any[];
 
                   if (charSkills.length === 0) {
-                    charSkills.push({ id: `e_skill_${idx}_1`, skill_card_id: `e_skill_${idx}_1`, name: "通常攻撃", ap_cost: 1, power: 45, effect_type: "ATTACK", plus_val: 0, ownerId: charRecord.character_id });
+                    charSkills.push({ ...BASIC_ATTACK_SKILL, id: `enemy_basic_attack_${idx}`, ownerId: charRecord.character_id });
                   }
 
                   return {
@@ -1014,14 +983,9 @@ export function useBattle(options: UseBattleOptions) {
             spd: bossMaster.spd,
             luk: bossMaster.luk
           },
-          skills: bossMaster.skills.map((s: any, idx: number) => ({
-            id: s.id || `e_boss_skill_${idx}`,
-            name: s.name || "攻撃",
-            ap_cost: s.ap_cost || 1,
-            power: s.power || 50,
-            effect_type: s.effect_type || "ATTACK",
-            ownerId: "BOSS"
-          }))
+          skills: (bossMaster.skills.map(canonicalParticipantSkill).filter(Boolean) as any[]).concat([
+            { ...BASIC_ATTACK_SKILL, id: "raid_basic_attack", ownerId: "BOSS" }
+          ])
         }];
       }
     }
@@ -1119,13 +1083,16 @@ export function useBattle(options: UseBattleOptions) {
       if (replayMode === "RAID" && (!replaySessionId || error)) {
         setBattleLoading(false); setErrorMessage(error?.message || "レイド開始をサーバーで確定できませんでした。"); return;
       }
+      if (replayMode === "GVG" && (!replaySessionId || error) && !officialGvgAttackIdForBattle) {
+        setBattleLoading(false); setErrorMessage(error?.message || "GvGバトルの開始をサーバーで確定できませんでした。"); return;
+      }
       if (officialGvgAttackIdForBattle && (!replaySessionId || error)) {
         await abortOfficialGvgStart("公式GvGのサーバー確定に失敗しました。もう一度お試しください。");
         return;
       }
-      // 公式GvGは begin_gvg_attack が発行した攻撃IDと防衛スナップショットに
-      // 必ず紐付けてから解決する。旧拠点制の導線から孤立したGvG結果を作らない。
-      if (replaySessionId && replayMode === "GVG" && officialGvgAttackIdForBattle) {
+      // GvG gameplay is always resolved by the authoritative server. Official
+      // result settlement additionally requires the begin_gvg_attack reference.
+      if (replaySessionId && replayMode === "GVG") {
         let { data: resolvedReplay, error: resolveError } = await supabase.functions.invoke("resolve-battle", {
           body: { replaySessionId },
         });
@@ -1140,15 +1107,26 @@ export function useBattle(options: UseBattleOptions) {
         }
         if (resolveError) {
           console.warn("Failed to resolve replay on the server:", resolveError.message);
-          await abortOfficialGvgStart("公式GvGのサーバー解決に失敗しました。もう一度お試しください。");
+          if (officialGvgAttackIdForBattle) await abortOfficialGvgStart("公式GvGのサーバー解決に失敗しました。もう一度お試しください。");
+          else { setBattleLoading(false); setErrorMessage("GvGのサーバー解決に失敗しました。もう一度お試しください。"); }
           return;
         }
-        else if (officialGvgAttackIdForBattle) {
-          if (resolvedReplay?.winner !== "PLAYER" && resolvedReplay?.winner !== "ENEMY") {
-            console.warn("Server returned an invalid official GvG replay result");
-            await abortOfficialGvgStart("公式GvGのサーバー確定に失敗しました。もう一度お試しください。");
-            return;
-          }
+        if (resolvedReplay?.winner !== "PLAYER" && resolvedReplay?.winner !== "ENEMY") {
+          if (officialGvgAttackIdForBattle) await abortOfficialGvgStart("公式GvGのサーバー確定に失敗しました。もう一度お試しください。");
+          else { setBattleLoading(false); setErrorMessage("GvGのCanonical結果を取得できませんでした。"); }
+          return;
+        }
+        canonicalAuxEventsForBattle = serverBattleEvents(resolvedReplay.events);
+        if (canonicalAuxEventsForBattle.length === 0) {
+          if (officialGvgAttackIdForBattle) await abortOfficialGvgStart("公式GvGのCanonical Replayを取得できませんでした。もう一度お試しください。");
+          else { setBattleLoading(false); setErrorMessage("GvGのCanonical Replayを取得できませんでした。"); }
+          return;
+        }
+        canonicalAuxReplayIdForBattle = replaySessionId;
+        setCanonicalAuxReplayId(replaySessionId);
+        setCanonicalAuxEvents(canonicalAuxEventsForBattle);
+        setCanonicalAuxEventIndex(0);
+        if (officialGvgAttackIdForBattle) {
           officialGvgReplayIdForBattle = replaySessionId;
           setOfficialGvgReplayId(replaySessionId);
           officialGvgWinnerForBattle = resolvedReplay.winner;
@@ -1280,6 +1258,22 @@ export function useBattle(options: UseBattleOptions) {
       }
     }
 
+    if (mode === "PVP_PRACTICE") {
+      const practiceResult = resolveDeterministicBattle({
+        seed: Math.floor(Math.random() * 2_000_000_000) || 1,
+        tactic: toDeterministicTactic(tactic),
+        maxRounds: 20,
+        player: participantsToBattleUnits(initialPlayerParty),
+        enemy: participantsToBattleUnits(initialEnemyParty),
+      });
+      canonicalAuxReplayIdForBattle = `practice_${Date.now()}`;
+      canonicalAuxEventsForBattle = serverBattleEvents(practiceResult.events);
+      setCanonicalAuxReplayId(canonicalAuxReplayIdForBattle);
+      setCanonicalAuxEvents(canonicalAuxEventsForBattle);
+      setCanonicalAuxEventIndex(0);
+      setOfficialPvpWinner(practiceResult.winner);
+    }
+
     // 旧セッションは中断再開の互換用。再生UI移行後に廃止する。
     if (mode !== "PVP_PRACTICE") try {
       const { data: sessionData } = await supabase.from("battle_sessions").insert({
@@ -1287,11 +1281,14 @@ export function useBattle(options: UseBattleOptions) {
         battle_type: mode,
         target_id: targetName,
         player_state: {
-          playerStates: initialPlayerParty, ap: 3, maxAp: calculatedMaxAp, tactic: "OFFENSIVE", log: startLogs, timelineIndex: 0,
+          playerStates: initialPlayerParty, ap: 0, maxAp: 0, tactic: "OFFENSIVE", log: startLogs, timelineIndex: 0,
           gvgAreaId: (mode === "GVG" ? areaIdOrOpponentUserId : null),
           officialGvgAttackId: officialGvgAttackIdForBattle,
           officialGvgReplayId: officialGvgReplayIdForBattle,
           officialGvgWinner: officialGvgWinnerForBattle,
+          canonicalAuxReplayId: canonicalAuxReplayIdForBattle,
+          canonicalAuxEvents: canonicalAuxEventsForBattle,
+          canonicalAuxEventIndex: 0,
           officialPatrolReplayId: officialPatrolReplayIdForBattle,
           officialPatrolWinner: officialPatrolWinnerForBattle,
           officialPatrolEvents: officialPatrolEventsForBattle,
@@ -1339,41 +1336,17 @@ export function useBattle(options: UseBattleOptions) {
     skillPower: number,
     hasRaidBonus: boolean = false
   ): { damage: number; isCritical: boolean } => {
-    // 基礎火力 = ATK * (1 + power / 100)
-    const basePower = attacker.stats.atk * (skillPower / 100);
-    
-    // 割合防御カット率 = DEF / (DEF + 2000)
-    const cutRate = defender.stats.def / (defender.stats.def + 27000);
-    const basicDmg = basePower * (1 - cutRate);
-
-    // アライメント（属性）相性補正: JUSTICE > EVIL > CHAOS > ORDER > JUSTICE
-    const alignMap: Record<string, string> = {
-      JUSTICE: "EVIL",
-      EVIL: "ORDER",
-      CHAOS: "JUSTICE",
-      ORDER: "CHAOS"
-    };
-    let alignMultiplier = 1.0;
-    if (attacker.alignment && defender.alignment) {
-      if (alignMap[attacker.alignment] === defender.alignment) {
-        alignMultiplier = 1.20; // 有利 +20%
-      } else if (alignMap[defender.alignment] === attacker.alignment) {
-        alignMultiplier = 0.85; // 不利 -15%
-      }
-    }
-
-    // 乱数揺らぎ (0.95 〜 1.05: ±5%)
-    alignMultiplier = alignMap[attacker.alignment || "ORDER"] === defender.alignment ? 1.2 : 1;
-    const variance = 0.95 + (Math.random() * 0.10);
-
-    // LUK連動クリティカル判定
-    const critChance = Math.min(0.35, 0.05 + attacker.stats.luk * 0.002);
-    const isCritical = Math.random() < critChance;
-    const critMultiplier = isCritical ? 1.5 : 1.0;
-
-    // レイド支配ボーナス (+20%)
-    const finalDmg = Math.max(Math.floor(basicDmg * alignMultiplier * variance * critMultiplier), 1);
-    return { damage: finalDmg, isCritical };
+    const attackerAlignment = (attacker.alignment || "ORDER") as "JUSTICE" | "ORDER" | "EVIL" | "CHAOS";
+    const defenderAlignment = (defender.alignment || "ORDER") as "JUSTICE" | "ORDER" | "EVIL" | "CHAOS";
+    const isCritical = Math.floor(Math.random() * 10000) < criticalChanceBp(attacker.stats.luk);
+    const damage = productionDamage({
+      atk: attacker.stats.atk, def: defender.stats.def, powerBp: Math.max(1, Math.round(skillPower * 100)),
+      battleModifierBp: hasRaidBonus ? 12000 : 10000,
+      attributeBp: getAttributeMultiplierBp(attackerAlignment, defenderAlignment),
+      criticalDamageBp: isCritical ? 15000 : 10000,
+      randomBp: 9500 + Math.floor(Math.random() * 1001),
+    });
+    return { damage, isCritical };
   };
 
   // 戦闘オート進行を開始
@@ -1388,12 +1361,8 @@ export function useBattle(options: UseBattleOptions) {
       // opening passives must not mutate its authoritative HP/shield state.
       if ((battleMode === "PATROL" && officialPatrolEvents.length > 0)
         || (battleMode === "PVP" && officialPvpEvents.length > 0)
-        || (battleMode === "RAID" && officialRaidEvents.length > 0)) return p;
-      // 例: ストリートシールドなどの開始時アビリティ持ちのシミュレート
-      if (p.characterId === "11111111-1111-1111-1111-111111111111") {
-        nextLogs.push(`[${p.name}] のパッシブ: 開幕シールド展開！`);
-        return { ...p, shield: Math.floor(p.maxHp * 0.15) };
-      }
+        || (battleMode === "RAID" && officialRaidEvents.length > 0)
+        || ((battleMode === "GVG" || battleMode === "PVP_PRACTICE") && canonicalAuxEvents.length > 0)) return p;
       return p;
     });
 
@@ -1729,14 +1698,17 @@ export function useBattle(options: UseBattleOptions) {
     const authoritativeEvents = battleMode === "PATROL" ? officialPatrolEvents
       : battleMode === "PVP" ? officialPvpEvents
       : battleMode === "RAID" ? officialRaidEvents
+      : battleMode === "GVG" || battleMode === "PVP_PRACTICE" ? canonicalAuxEvents
       : [];
     const authoritativeEventIndex = battleMode === "PATROL" ? officialPatrolEventIndex
       : battleMode === "PVP" ? officialPvpEventIndex
       : battleMode === "RAID" ? officialRaidEventIndex
+      : battleMode === "GVG" || battleMode === "PVP_PRACTICE" ? canonicalAuxEventIndex
       : 0;
     const authoritativeReplayId = battleMode === "PATROL" ? officialPatrolReplayId
       : battleMode === "PVP" ? officialPvpReplayId
       : battleMode === "RAID" ? officialRaidReplayId
+      : battleMode === "GVG" || battleMode === "PVP_PRACTICE" ? canonicalAuxReplayId
       : null;
     if (authoritativeEvents.length > 0) {
       const replayEvent = authoritativeEvents[authoritativeEventIndex];
@@ -1932,6 +1904,7 @@ export function useBattle(options: UseBattleOptions) {
         if (battleMode === "PATROL") setOfficialPatrolEventIndex(advanceReplay);
         else if (battleMode === "PVP") setOfficialPvpEventIndex(advanceReplay);
         else if (battleMode === "RAID") setOfficialRaidEventIndex(advanceReplay);
+        else if (battleMode === "GVG" || battleMode === "PVP_PRACTICE") setCanonicalAuxEventIndex(advanceReplay);
       }, delay / battleSpeed);
 
       return () => clearTimeout(timer);
@@ -1949,7 +1922,7 @@ export function useBattle(options: UseBattleOptions) {
     }, 1500 / battleSpeed);
 
     return () => clearTimeout(timer);
-  }, [battleState, battleMode, timelineIndex, isAutoPaused, battleSpeed, officialPatrolEvents, officialPatrolEventIndex, officialPatrolReplayId, officialPvpEvents, officialPvpEventIndex, officialPvpReplayId, officialRaidEvents, officialRaidEventIndex, officialRaidReplayId]);
+  }, [battleState, battleMode, timelineIndex, isAutoPaused, battleSpeed, officialPatrolEvents, officialPatrolEventIndex, officialPatrolReplayId, officialPvpEvents, officialPvpEventIndex, officialPvpReplayId, officialRaidEvents, officialRaidEventIndex, officialRaidReplayId, canonicalAuxEvents, canonicalAuxEventIndex, canonicalAuxReplayId]);
 
   const endBattleSession = async (result: "VICTORY" | "DEFEAT") => {
     if (!session || battleEndingInFlightRef.current) return;
@@ -1986,7 +1959,9 @@ export function useBattle(options: UseBattleOptions) {
         ? (patrolWinnerTemp === "PLAYER" ? "VICTORY" : "DEFEAT")
         : hasOfficialPvpResult
           ? (pvpWinnerTemp === "PLAYER" ? "VICTORY" : "DEFEAT")
-      : result;
+          : hasOfficialRaidResult
+            ? (raidWinnerTemp === "PLAYER" ? "VICTORY" : "DEFEAT")
+            : result;
     setBattleOutcome(finalResult);
     setBattleState("ENDING");
     setOfficialGvgAttackId(null);
@@ -2001,6 +1976,9 @@ export function useBattle(options: UseBattleOptions) {
     setOfficialPvpEvents([]);
     setOfficialPvpEventIndex(0);
     setOfficialPvpResult(null);
+    setCanonicalAuxReplayId(null);
+    setCanonicalAuxEvents([]);
+    setCanonicalAuxEventIndex(0);
     setOfficialRaidReplayId(null);
     setOfficialRaidWinner(null);
     setOfficialRaidEvents([]);
@@ -2287,6 +2265,9 @@ export function useBattle(options: UseBattleOptions) {
       setOfficialGvgAttackId(pState.officialGvgAttackId || null);
       setOfficialGvgReplayId(pState.officialGvgReplayId || null);
       setOfficialGvgWinner(pState.officialGvgWinner === "PLAYER" ? "PLAYER" : pState.officialGvgWinner === "ENEMY" ? "ENEMY" : null);
+      setCanonicalAuxReplayId(pState.canonicalAuxReplayId || null);
+      setCanonicalAuxEvents(serverBattleEvents(pState.canonicalAuxEvents));
+      setCanonicalAuxEventIndex(savedPatrolReplayCursor(pState.canonicalAuxReplayId, pState.canonicalAuxEventIndex));
       setOfficialPatrolReplayId(pState.officialPatrolReplayId || null);
       setOfficialPatrolWinner(pState.officialPatrolWinner === "PLAYER" ? "PLAYER" : pState.officialPatrolWinner === "ENEMY" ? "ENEMY" : null);
       officialPatrolReplayIdRef.current = pState.officialPatrolReplayId || null;
@@ -2306,8 +2287,8 @@ export function useBattle(options: UseBattleOptions) {
 
       setPlayerPartyStates(pState.playerStates || []);
       setEnemyPartyStates(eState.enemyStates || []);
-      setAp(pState.ap || 3);
-      setMaxAp(pState.maxAp || 10);
+      setAp(0);
+      setMaxAp(0);
       setTactic(pState.tactic || "ATTACK_PRIORITY");
       setBattleLog(pState.log || ["戦闘セッションを安全に復元しました。"]);
 

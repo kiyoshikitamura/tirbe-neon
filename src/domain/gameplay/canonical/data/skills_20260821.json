@@ -1,0 +1,1065 @@
+{
+  "version": "2026-08-21",
+  "status": "PRODUCTION_FROZEN",
+  "authority": "Recovery Export + user FIX decisions in Production Freeze Final Pass.",
+  "cooldown_contract": {
+    "mapping_fixed_initial_cd_to_available_from_round": {
+      "0": 1,
+      "1": 2,
+      "2": 3,
+      "3": 4
+    },
+    "next_use_rule": "If used in round N with cooldown C, next usable round is N+C.",
+    "trigger_skills": {
+      "cooldown": null,
+      "available_from_round": 1
+    }
+  },
+  "exclusive_skill_contract": {
+    "equippable_only_by_exclusive_character": true,
+    "consumes_skill_slot": true,
+    "max_exclusive_skills_per_character": 1
+  },
+  "skills": [
+    {
+      "skill_id": "SKILL_001",
+      "name": "ストリートパンチ",
+      "rarity": "N",
+      "kind": "NORMAL",
+      "exclusive_character_id": null,
+      "activation_type": "ACTIVE",
+      "cooldown": 3,
+      "available_from_round": 1,
+      "target": "ENEMY_SINGLE",
+      "effects": [
+        "DAMAGE 90% ATK"
+      ]
+    },
+    {
+      "skill_id": "SKILL_002",
+      "name": "クイックシールド",
+      "rarity": "N",
+      "kind": "NORMAL",
+      "exclusive_character_id": null,
+      "activation_type": "ACTIVE",
+      "cooldown": 3,
+      "available_from_round": 1,
+      "target": "SELF",
+      "effects": [
+        "SHIELD 10% MaxHP / 2T"
+      ]
+    },
+    {
+      "skill_id": "SKILL_003",
+      "name": "ノイズヒール",
+      "rarity": "N",
+      "kind": "NORMAL",
+      "exclusive_character_id": null,
+      "activation_type": "ACTIVE",
+      "cooldown": 3,
+      "available_from_round": 1,
+      "target": "ALLY_SINGLE",
+      "effects": [
+        "HEAL 10% target MaxHP"
+      ]
+    },
+    {
+      "skill_id": "SKILL_004",
+      "name": "ステップダッシュ",
+      "rarity": "N",
+      "kind": "NORMAL",
+      "exclusive_character_id": null,
+      "activation_type": "ACTIVE",
+      "cooldown": 3,
+      "available_from_round": 1,
+      "target": "SELF",
+      "effects": [
+        "SPD +12% / 2T"
+      ]
+    },
+    {
+      "skill_id": "SKILL_005",
+      "name": "毒針",
+      "rarity": "N",
+      "kind": "NORMAL",
+      "exclusive_character_id": null,
+      "activation_type": "ACTIVE",
+      "cooldown": 3,
+      "available_from_round": 1,
+      "target": "ENEMY_SINGLE",
+      "effects": [
+        "DAMAGE 55% ATK",
+        "POISON 70% / 2T"
+      ]
+    },
+    {
+      "skill_id": "SKILL_006",
+      "name": "アイアンガード",
+      "rarity": "N",
+      "kind": "NORMAL",
+      "exclusive_character_id": null,
+      "activation_type": "ACTIVE",
+      "cooldown": 3,
+      "available_from_round": 1,
+      "target": "SELF",
+      "effects": [
+        "DEF +15% / 2T"
+      ]
+    },
+    {
+      "skill_id": "SKILL_007",
+      "name": "罵詈雑言",
+      "rarity": "N",
+      "kind": "NORMAL",
+      "exclusive_character_id": null,
+      "activation_type": "ACTIVE",
+      "cooldown": 3,
+      "available_from_round": 1,
+      "target": "SELF",
+      "effects": [
+        "TAUNT 80% / 1T"
+      ]
+    },
+    {
+      "skill_id": "SKILL_008",
+      "name": "スマートスナイプ",
+      "rarity": "N",
+      "kind": "NORMAL",
+      "exclusive_character_id": null,
+      "activation_type": "ACTIVE",
+      "cooldown": 3,
+      "available_from_round": 1,
+      "target": "ENEMY_SINGLE",
+      "effects": [
+        "DAMAGE 100% ATK"
+      ]
+    },
+    {
+      "skill_id": "SKILL_009",
+      "name": "ドーピング注射",
+      "rarity": "N",
+      "kind": "NORMAL",
+      "exclusive_character_id": null,
+      "activation_type": "ACTIVE",
+      "cooldown": 3,
+      "available_from_round": 1,
+      "target": "SELF",
+      "effects": [
+        "ATK +15% / 2T"
+      ]
+    },
+    {
+      "skill_id": "SKILL_010",
+      "name": "ライトフラッシュ",
+      "rarity": "N",
+      "kind": "NORMAL",
+      "exclusive_character_id": null,
+      "activation_type": "ACTIVE",
+      "cooldown": 3,
+      "available_from_round": 1,
+      "target": "ENEMY_SINGLE",
+      "effects": [
+        "BLIND 60% / 1T"
+      ]
+    },
+    {
+      "skill_id": "SKILL_011",
+      "name": "チャージスラッシュ",
+      "rarity": "R",
+      "kind": "NORMAL",
+      "exclusive_character_id": null,
+      "activation_type": "ACTIVE",
+      "cooldown": 3,
+      "available_from_round": 1,
+      "target": "ENEMY_SINGLE",
+      "effects": [
+        "DAMAGE 130% ATK"
+      ]
+    },
+    {
+      "skill_id": "SKILL_012",
+      "name": "大旋風パイプ",
+      "rarity": "R",
+      "kind": "NORMAL",
+      "exclusive_character_id": null,
+      "activation_type": "ACTIVE",
+      "cooldown": 3,
+      "available_from_round": 1,
+      "target": "ENEMY_ALL",
+      "effects": [
+        "DAMAGE 75% ATK"
+      ]
+    },
+    {
+      "skill_id": "SKILL_013",
+      "name": "フィールド応急手当",
+      "rarity": "R",
+      "kind": "NORMAL",
+      "exclusive_character_id": null,
+      "activation_type": "ACTIVE",
+      "cooldown": 3,
+      "available_from_round": 1,
+      "target": "ALLY_SINGLE",
+      "effects": [
+        "HEAL 16% target MaxHP",
+        "REMOVE_STATUS 1"
+      ]
+    },
+    {
+      "skill_id": "SKILL_014",
+      "name": "スモークスクリーン",
+      "rarity": "R",
+      "kind": "NORMAL",
+      "exclusive_character_id": null,
+      "activation_type": "ACTIVE",
+      "cooldown": 3,
+      "available_from_round": 2,
+      "target": "ALLY_ALL",
+      "effects": [
+        "DEF +18% / 2T"
+      ]
+    },
+    {
+      "skill_id": "SKILL_015",
+      "name": "強酸アジドスプレー",
+      "rarity": "R",
+      "kind": "NORMAL",
+      "exclusive_character_id": null,
+      "activation_type": "ACTIVE",
+      "cooldown": 3,
+      "available_from_round": 2,
+      "target": "ENEMY_SINGLE",
+      "effects": [
+        "DEF -20% / 2T / chance 85%"
+      ]
+    },
+    {
+      "skill_id": "SKILL_016",
+      "name": "ライオットバリア",
+      "rarity": "R",
+      "kind": "NORMAL",
+      "exclusive_character_id": null,
+      "activation_type": "ACTIVE",
+      "cooldown": 4,
+      "available_from_round": 1,
+      "target": "SELF",
+      "effects": [
+        "SHIELD 16% MaxHP / 2T",
+        "TAUNT 100% / 2T"
+      ]
+    },
+    {
+      "skill_id": "SKILL_017",
+      "name": "不屈の怒号",
+      "rarity": "R",
+      "kind": "NORMAL",
+      "exclusive_character_id": null,
+      "activation_type": "ACTIVE",
+      "cooldown": 3,
+      "available_from_round": 2,
+      "target": "ALLY_ALL",
+      "effects": [
+        "ATK +18% / 2T"
+      ]
+    },
+    {
+      "skill_id": "SKILL_018",
+      "name": "高圧電撃警棒",
+      "rarity": "R",
+      "kind": "NORMAL",
+      "exclusive_character_id": null,
+      "activation_type": "ACTIVE",
+      "cooldown": 4,
+      "available_from_round": 2,
+      "target": "ENEMY_SINGLE",
+      "effects": [
+        "DAMAGE 80% ATK",
+        "STUN 45% / target next action"
+      ]
+    },
+    {
+      "skill_id": "SKILL_019",
+      "name": "バーストラッシュ",
+      "rarity": "R",
+      "kind": "NORMAL",
+      "exclusive_character_id": null,
+      "activation_type": "ACTIVE",
+      "cooldown": 3,
+      "available_from_round": 1,
+      "target": "ENEMY_SINGLE",
+      "effects": [
+        "DAMAGE 115% ATK",
+        "LIFESTEAL 25% of damage"
+      ]
+    },
+    {
+      "skill_id": "SKILL_020",
+      "name": "タクティカルリロード",
+      "rarity": "R",
+      "kind": "NORMAL",
+      "exclusive_character_id": null,
+      "activation_type": "ACTIVE",
+      "cooldown": 3,
+      "available_from_round": 2,
+      "target": "ALLY_ALL",
+      "effects": [
+        "SPD +18% / 2T"
+      ]
+    },
+    {
+      "skill_id": "SKILL_021",
+      "name": "急所撃ち",
+      "rarity": "SR",
+      "kind": "NORMAL",
+      "exclusive_character_id": null,
+      "activation_type": "ACTIVE",
+      "cooldown": 4,
+      "available_from_round": 2,
+      "target": "ENEMY_SINGLE",
+      "effects": [
+        "DAMAGE 190% ATK"
+      ]
+    },
+    {
+      "skill_id": "SKILL_022",
+      "name": "重鉄パイプ大薙ぎ",
+      "rarity": "SR",
+      "kind": "NORMAL",
+      "exclusive_character_id": null,
+      "activation_type": "ACTIVE",
+      "cooldown": 4,
+      "available_from_round": 2,
+      "target": "ENEMY_ALL",
+      "effects": [
+        "DAMAGE 105% ATK",
+        "DEF -20% / 2T / chance 85%"
+      ]
+    },
+    {
+      "skill_id": "SKILL_023",
+      "name": "軍用止血パック",
+      "rarity": "SR",
+      "kind": "NORMAL",
+      "exclusive_character_id": null,
+      "activation_type": "ACTIVE",
+      "cooldown": 4,
+      "available_from_round": 2,
+      "target": "ALLY_ALL",
+      "effects": [
+        "HEAL 18% target MaxHP",
+        "REMOVE_STATUS 1"
+      ]
+    },
+    {
+      "skill_id": "SKILL_024",
+      "name": "機動防犯盾陣形",
+      "rarity": "SR",
+      "kind": "NORMAL",
+      "exclusive_character_id": null,
+      "activation_type": "ACTIVE",
+      "cooldown": 4,
+      "available_from_round": 2,
+      "target": "ALLY_ALL",
+      "effects": [
+        "SHIELD 20% MaxHP / 2T",
+        "DEF +15% / 2T"
+      ]
+    },
+    {
+      "skill_id": "SKILL_025",
+      "name": "催涙ガス噴射",
+      "rarity": "SR",
+      "kind": "NORMAL",
+      "exclusive_character_id": null,
+      "activation_type": "ACTIVE",
+      "cooldown": 4,
+      "available_from_round": 3,
+      "target": "ENEMY_ALL",
+      "effects": [
+        "ATK -20% / 2T",
+        "BLIND 75% / 2T"
+      ]
+    },
+    {
+      "skill_id": "SKILL_026",
+      "name": "決起のシュプレヒコール",
+      "rarity": "SR",
+      "kind": "NORMAL",
+      "exclusive_character_id": null,
+      "activation_type": "ACTIVE",
+      "cooldown": 4,
+      "available_from_round": 2,
+      "target": "ALLY_ALL",
+      "effects": [
+        "ATK +20% / 2T",
+        "DEF +20% / 2T"
+      ]
+    },
+    {
+      "skill_id": "SKILL_027",
+      "name": "血の強襲",
+      "rarity": "SR",
+      "kind": "NORMAL",
+      "exclusive_character_id": null,
+      "activation_type": "ACTIVE",
+      "cooldown": 4,
+      "available_from_round": 2,
+      "target": "ENEMY_SINGLE",
+      "effects": [
+        "DAMAGE 165% ATK",
+        "BLEED 90% / 3T"
+      ]
+    },
+    {
+      "skill_id": "SKILL_028",
+      "name": "シールドクラッシャー",
+      "rarity": "SR",
+      "kind": "NORMAL",
+      "exclusive_character_id": null,
+      "activation_type": "ACTIVE",
+      "cooldown": 4,
+      "available_from_round": 2,
+      "target": "ENEMY_SINGLE",
+      "effects": [
+        "DAMAGE 175% ATK",
+        "IGNORE_DEF 25%"
+      ]
+    },
+    {
+      "skill_id": "SKILL_029",
+      "name": "継続処置薬",
+      "rarity": "SR",
+      "kind": "NORMAL",
+      "exclusive_character_id": null,
+      "activation_type": "ACTIVE",
+      "cooldown": 5,
+      "available_from_round": 3,
+      "target": "ALLY_ALL",
+      "effects": [
+        "HEAL 10% MaxHP immediate",
+        "REGEN 6% MaxHP/Turn ×3"
+      ]
+    },
+    {
+      "skill_id": "SKILL_030",
+      "name": "暗号ジャミング",
+      "rarity": "SR",
+      "kind": "NORMAL",
+      "exclusive_character_id": null,
+      "activation_type": "ACTIVE",
+      "cooldown": 5,
+      "available_from_round": 3,
+      "target": "ENEMY_ALL",
+      "effects": [
+        "SILENCE 60% / 1T (next action)",
+        "SPD -15% / 2T"
+      ]
+    },
+    {
+      "skill_id": "SKILL_031",
+      "name": "カウンタースパイク",
+      "rarity": "SR",
+      "kind": "NORMAL",
+      "exclusive_character_id": null,
+      "activation_type": "ACTIVE",
+      "cooldown": 4,
+      "available_from_round": 2,
+      "target": "SELF",
+      "effects": [
+        "SHIELD 22% MaxHP / 2T",
+        "COUNTER 80% ATK / 2T"
+      ]
+    },
+    {
+      "skill_id": "SKILL_032",
+      "name": "暗器・毒塗りの刃",
+      "rarity": "SR",
+      "kind": "NORMAL",
+      "exclusive_character_id": null,
+      "activation_type": "ACTIVE",
+      "cooldown": 4,
+      "available_from_round": 2,
+      "target": "ENEMY_SINGLE",
+      "effects": [
+        "DAMAGE 150% ATK",
+        "POISON 90% / 3T"
+      ]
+    },
+    {
+      "skill_id": "SKILL_033",
+      "name": "精神統一・明鏡止水",
+      "rarity": "SR",
+      "kind": "NORMAL",
+      "exclusive_character_id": null,
+      "activation_type": "ACTIVE",
+      "cooldown": 4,
+      "available_from_round": 1,
+      "target": "SELF",
+      "effects": [
+        "REMOVE_STATUS all",
+        "SPD +25% / 2T"
+      ]
+    },
+    {
+      "skill_id": "SKILL_034",
+      "name": "フラッシュバン強襲",
+      "rarity": "SR",
+      "kind": "NORMAL",
+      "exclusive_character_id": null,
+      "activation_type": "ACTIVE",
+      "cooldown": 4,
+      "available_from_round": 3,
+      "target": "ENEMY_ALL",
+      "effects": [
+        "DAMAGE 95% ATK",
+        "BLIND 80% / 2T"
+      ]
+    },
+    {
+      "skill_id": "SKILL_035",
+      "name": "アドレナリンフル開花",
+      "rarity": "SR",
+      "kind": "NORMAL",
+      "exclusive_character_id": null,
+      "activation_type": "ACTIVE",
+      "cooldown": 5,
+      "available_from_round": 2,
+      "target": "SELF",
+      "effects": [
+        "ATK +35% / 3T",
+        "DEF -15% / 3T"
+      ]
+    },
+    {
+      "skill_id": "SKILL_036",
+      "name": "一騎当千・無慈悲の一撃",
+      "rarity": "SSR",
+      "kind": "NORMAL",
+      "exclusive_character_id": null,
+      "activation_type": "ACTIVE",
+      "cooldown": 5,
+      "available_from_round": 3,
+      "target": "ENEMY_SINGLE",
+      "effects": [
+        "DAMAGE 290% ATK"
+      ]
+    },
+    {
+      "skill_id": "SKILL_037",
+      "name": "広域アサルトフルバースト",
+      "rarity": "SSR",
+      "kind": "NORMAL",
+      "exclusive_character_id": null,
+      "activation_type": "ACTIVE",
+      "cooldown": 5,
+      "available_from_round": 3,
+      "target": "ENEMY_ALL",
+      "effects": [
+        "DAMAGE 155% ATK"
+      ]
+    },
+    {
+      "skill_id": "SKILL_038",
+      "name": "絶対防御・鉄壁の要塞",
+      "rarity": "SSR",
+      "kind": "NORMAL",
+      "exclusive_character_id": null,
+      "activation_type": "ACTIVE",
+      "cooldown": 5,
+      "available_from_round": 3,
+      "target": "ALLY_ALL",
+      "effects": [
+        "SHIELD 30% MaxHP / 2T",
+        "DEF +25% / 2T"
+      ]
+    },
+    {
+      "skill_id": "SKILL_039",
+      "name": "奇跡の野戦救急執刀",
+      "rarity": "SSR",
+      "kind": "NORMAL",
+      "exclusive_character_id": null,
+      "activation_type": "ACTIVE",
+      "cooldown": 5,
+      "available_from_round": 3,
+      "target": "ALLY_ALL",
+      "effects": [
+        "HEAL 26% MaxHP",
+        "REMOVE_STATUS all"
+      ]
+    },
+    {
+      "skill_id": "SKILL_040",
+      "name": "漆黒の広域強酸大散布",
+      "rarity": "SSR",
+      "kind": "NORMAL",
+      "exclusive_character_id": null,
+      "activation_type": "ACTIVE",
+      "cooldown": 5,
+      "available_from_round": 4,
+      "target": "ENEMY_ALL",
+      "effects": [
+        "ATK -28% / 3T / chance 90%",
+        "DEF -28% / 3T / chance 90%"
+      ]
+    },
+    {
+      "skill_id": "SKILL_041",
+      "name": "王者の決起・天下布武",
+      "rarity": "SSR",
+      "kind": "NORMAL",
+      "exclusive_character_id": null,
+      "activation_type": "ACTIVE",
+      "cooldown": 5,
+      "available_from_round": 3,
+      "target": "ALLY_ALL",
+      "effects": [
+        "ATK +25% / 3T",
+        "DEF +25% / 3T",
+        "SPD +20% / 3T"
+      ]
+    },
+    {
+      "skill_id": "SKILL_042",
+      "name": "血宴の絶影・連撃",
+      "rarity": "SSR",
+      "kind": "NORMAL",
+      "exclusive_character_id": null,
+      "activation_type": "ACTIVE",
+      "cooldown": 5,
+      "available_from_round": 3,
+      "target": "ENEMY_SINGLE",
+      "effects": [
+        "DAMAGE 220% ATK",
+        "LIFESTEAL 40%",
+        "BLEED 95% / 3T"
+      ]
+    },
+    {
+      "skill_id": "SKILL_043",
+      "name": "壊滅のグランドスラム",
+      "rarity": "SSR",
+      "kind": "NORMAL",
+      "exclusive_character_id": null,
+      "activation_type": "ACTIVE",
+      "cooldown": 5,
+      "available_from_round": 4,
+      "target": "ENEMY_ALL",
+      "effects": [
+        "DAMAGE 135% ATK",
+        "STUN 55% / 1T (next action)"
+      ]
+    },
+    {
+      "skill_id": "SKILL_044",
+      "name": "狂犬の血の復讐",
+      "rarity": "SSR",
+      "kind": "NORMAL",
+      "exclusive_character_id": null,
+      "activation_type": "ACTIVE",
+      "cooldown": 5,
+      "available_from_round": 3,
+      "target": "ENEMY_SINGLE",
+      "effects": [
+        "DAMAGE continuous scaling by missing HP: HP100%=230%, HP50%≈275%, HP<=25%=320%"
+      ]
+    },
+    {
+      "skill_id": "SKILL_045",
+      "name": "戦術指揮・総攻撃",
+      "rarity": "SSR",
+      "kind": "NORMAL",
+      "exclusive_character_id": null,
+      "activation_type": "ACTIVE",
+      "cooldown": 4,
+      "available_from_round": 3,
+      "target": "ALLY_ALL",
+      "effects": [
+        "ATK +32% / 3T",
+        "SPD +25% / 3T"
+      ]
+    },
+    {
+      "skill_id": "SKILL_046",
+      "name": "毒蜘蛛の檻",
+      "rarity": "SSR",
+      "kind": "NORMAL",
+      "exclusive_character_id": null,
+      "activation_type": "ACTIVE",
+      "cooldown": 5,
+      "available_from_round": 4,
+      "target": "ENEMY_ALL",
+      "effects": [
+        "DAMAGE 120% ATK",
+        "POISON 95% / 3T",
+        "SPD -20% / 3T"
+      ]
+    },
+    {
+      "skill_id": "SKILL_047",
+      "name": "反撃の装甲要塞",
+      "rarity": "SSR",
+      "kind": "NORMAL",
+      "exclusive_character_id": null,
+      "activation_type": "ACTIVE",
+      "cooldown": 5,
+      "available_from_round": 4,
+      "target": "ALLY_ALL",
+      "effects": [
+        "SHIELD 25% MaxHP / 2T",
+        "DEF +20% / 2T",
+        "COUNTER 100% ATK / 2T"
+      ]
+    },
+    {
+      "skill_id": "SKILL_048",
+      "name": "不屈の生命力",
+      "rarity": "SSR",
+      "kind": "NORMAL",
+      "exclusive_character_id": null,
+      "activation_type": "ACTIVE",
+      "cooldown": 5,
+      "available_from_round": 3,
+      "target": "ALLY_ALL",
+      "effects": [
+        "HEAL 15% MaxHP immediate",
+        "REGEN 8% MaxHP/Turn ×3"
+      ]
+    },
+    {
+      "skill_id": "SKILL_049",
+      "name": "無力化の広域閃光爆弾",
+      "rarity": "SSR",
+      "kind": "NORMAL",
+      "exclusive_character_id": null,
+      "activation_type": "ACTIVE",
+      "cooldown": 5,
+      "available_from_round": 4,
+      "target": "ENEMY_ALL",
+      "effects": [
+        "BLIND 90% / 2T",
+        "SILENCE 70% / 1T (next action)",
+        "SPD -20% / 3T"
+      ]
+    },
+    {
+      "skill_id": "SKILL_050",
+      "name": "決戦の一閃・断罪",
+      "rarity": "SSR",
+      "kind": "NORMAL",
+      "exclusive_character_id": null,
+      "activation_type": "ACTIVE",
+      "cooldown": 5,
+      "available_from_round": 3,
+      "target": "ENEMY_SINGLE",
+      "effects": [
+        "DAMAGE 260% ATK",
+        "IGNORE_DEF 45%"
+      ]
+    },
+    {
+      "skill_id": "SKILL_051",
+      "name": "剛拳・一撃必倒",
+      "rarity": "SSR",
+      "kind": "EXCLUSIVE",
+      "exclusive_character_id": "char_go_01",
+      "activation_type": "ACTIVE",
+      "cooldown": 5,
+      "available_from_round": 3,
+      "target": "ENEMY_SINGLE",
+      "effects": [
+        "DAMAGE 320% ATK",
+        "IGNORE_DEF 55%"
+      ]
+    },
+    {
+      "skill_id": "SKILL_052",
+      "name": "修羅の猛攻",
+      "rarity": "SSR",
+      "kind": "EXCLUSIVE",
+      "exclusive_character_id": "char_kengo_01",
+      "activation_type": "ACTIVE",
+      "cooldown": 5,
+      "available_from_round": 3,
+      "target": "ENEMY_SINGLE",
+      "effects": [
+        "DAMAGE 280% ATK",
+        "LIFESTEAL 45%"
+      ]
+    },
+    {
+      "skill_id": "SKILL_053",
+      "name": "喧嘩上等",
+      "rarity": "SSR",
+      "kind": "EXCLUSIVE",
+      "exclusive_character_id": "char_koharu_01",
+      "activation_type": "ACTIVE",
+      "cooldown": 5,
+      "available_from_round": 2,
+      "target": "SELF",
+      "effects": [
+        "SHIELD 35% MaxHP / 2T",
+        "TAUNT 100% / 2T",
+        "DEF +30% / 2T"
+      ]
+    },
+    {
+      "skill_id": "SKILL_054",
+      "name": "覇王の威圧",
+      "rarity": "SSR",
+      "kind": "EXCLUSIVE",
+      "exclusive_character_id": "char_reiji_01",
+      "activation_type": "ON_DAMAGE_TAKEN",
+      "cooldown": null,
+      "available_from_round": 1,
+      "target": "ATTACKER_WHO_DAMAGED_SELF",
+      "effects": [
+        "TRIGGER ON_DAMAGE_TAKEN",
+        "COUNTER 150% ATK",
+        "MAX 1 activation / round"
+      ]
+    },
+    {
+      "skill_id": "SKILL_055",
+      "name": "ネオン・アクセル",
+      "rarity": "SSR",
+      "kind": "EXCLUSIVE",
+      "exclusive_character_id": "char_ageha_01",
+      "activation_type": "BATTLE_START",
+      "cooldown": null,
+      "available_from_round": 1,
+      "target": "SELF",
+      "effects": [
+        "TRIGGER ON_BATTLE_START / once per battle",
+        "SPD +25% / 3T",
+        "ATK +20% / 3T"
+      ]
+    },
+    {
+      "skill_id": "SKILL_056",
+      "name": "ストリート・フロウ",
+      "rarity": "SSR",
+      "kind": "EXCLUSIVE",
+      "exclusive_character_id": "char_leo_01",
+      "activation_type": "ACTIVE",
+      "cooldown": 5,
+      "available_from_round": 3,
+      "target": "ENEMY_SINGLE",
+      "effects": [
+        "DAMAGE 285% ATK",
+        "SELF SPD +25% / 3T"
+      ]
+    },
+    {
+      "skill_id": "SKILL_057",
+      "name": "運命の悪戯",
+      "rarity": "SSR",
+      "kind": "EXCLUSIVE",
+      "exclusive_character_id": "char_karen_01",
+      "activation_type": "ACTIVE",
+      "cooldown": 5,
+      "available_from_round": 3,
+      "target": "ENEMY_SINGLE",
+      "effects": [
+        "DAMAGE 260% ATK",
+        "BLIND 95% / 2T"
+      ]
+    },
+    {
+      "skill_id": "SKILL_058",
+      "name": "宵闇の幻惑",
+      "rarity": "SSR",
+      "kind": "EXCLUSIVE",
+      "exclusive_character_id": "char_miyabi_01",
+      "activation_type": "ACTIVE",
+      "cooldown": 5,
+      "available_from_round": 4,
+      "target": "ENEMY_ALL",
+      "effects": [
+        "BLIND 95% / 2T",
+        "SILENCE 75% / 1T",
+        "SPD -25% / 2T"
+      ]
+    },
+    {
+      "skill_id": "SKILL_059",
+      "name": "夜の女王",
+      "rarity": "SSR",
+      "kind": "EXCLUSIVE",
+      "exclusive_character_id": "char_kaede_01",
+      "activation_type": "BATTLE_START",
+      "cooldown": null,
+      "available_from_round": 1,
+      "target": "ALLY_ALL",
+      "effects": [
+        "TRIGGER ON_BATTLE_START / once per battle",
+        "ATK +18% / 3T",
+        "DEF +18% / 3T"
+      ]
+    },
+    {
+      "skill_id": "SKILL_060",
+      "name": "歌舞伎町の切り札",
+      "rarity": "SSR",
+      "kind": "EXCLUSIVE",
+      "exclusive_character_id": "char_mio_01",
+      "activation_type": "ACTIVE",
+      "cooldown": 5,
+      "available_from_round": 3,
+      "target": "ALLY_ALL",
+      "effects": [
+        "HEAL 20% MaxHP immediate",
+        "REGEN 7% MaxHP/Turn / 3T"
+      ]
+    },
+    {
+      "skill_id": "SKILL_061",
+      "name": "鉄拳制圧",
+      "rarity": "SR",
+      "kind": "EXCLUSIVE",
+      "exclusive_character_id": "char_tetsu_01",
+      "activation_type": "ACTIVE",
+      "cooldown": 4,
+      "available_from_round": 2,
+      "target": "ENEMY_SINGLE",
+      "effects": [
+        "DAMAGE 210% ATK",
+        "DEF -22% / 2T"
+      ]
+    },
+    {
+      "skill_id": "SKILL_062",
+      "name": "ラスト・ブロー",
+      "rarity": "SR",
+      "kind": "EXCLUSIVE",
+      "exclusive_character_id": "char_lucas_01",
+      "activation_type": "ACTIVE",
+      "cooldown": 4,
+      "available_from_round": 2,
+      "target": "ENEMY_SINGLE",
+      "effects": [
+        "DAMAGE scaling: HP100%=190% ATK; HP50%=215% ATK; HP25%=240% ATK; linear interpolation; HP<=25%=240% ATK"
+      ]
+    },
+    {
+      "skill_id": "SKILL_063",
+      "name": "老獪な構え",
+      "rarity": "SR",
+      "kind": "EXCLUSIVE",
+      "exclusive_character_id": "char_genji_01",
+      "activation_type": "ACTIVE",
+      "cooldown": 4,
+      "available_from_round": 2,
+      "target": "SELF",
+      "effects": [
+        "SHIELD 25% MaxHP",
+        "DEF +22% / 2T"
+      ]
+    },
+    {
+      "skill_id": "SKILL_064",
+      "name": "流水反撃",
+      "rarity": "SR",
+      "kind": "EXCLUSIVE",
+      "exclusive_character_id": "char_long_01",
+      "activation_type": "ACTIVE",
+      "cooldown": 4,
+      "available_from_round": 2,
+      "target": "SELF",
+      "effects": [
+        "SHIELD 20% MaxHP",
+        "COUNTER 100% ATK / 2T"
+      ]
+    },
+    {
+      "skill_id": "SKILL_065",
+      "name": "ストリート・ライド",
+      "rarity": "SR",
+      "kind": "EXCLUSIVE",
+      "exclusive_character_id": "char_sora_01",
+      "activation_type": "BATTLE_START",
+      "cooldown": null,
+      "available_from_round": 1,
+      "target": "SELF",
+      "effects": [
+        "TRIGGER ON_BATTLE_START / once per battle",
+        "SPD +22% / 3T"
+      ]
+    },
+    {
+      "skill_id": "SKILL_066",
+      "name": "ハイスピード・ラッシュ",
+      "rarity": "SR",
+      "kind": "EXCLUSIVE",
+      "exclusive_character_id": "char_reina_01",
+      "activation_type": "ACTIVE",
+      "cooldown": 4,
+      "available_from_round": 2,
+      "target": "ENEMY_SINGLE",
+      "effects": [
+        "DAMAGE 215% ATK",
+        "SELF SPD +20% / 2T"
+      ]
+    },
+    {
+      "skill_id": "SKILL_067",
+      "name": "システム・ジャック",
+      "rarity": "SR",
+      "kind": "EXCLUSIVE",
+      "exclusive_character_id": "char_alice_01",
+      "activation_type": "ACTIVE",
+      "cooldown": 4,
+      "available_from_round": 3,
+      "target": "ENEMY_SINGLE",
+      "effects": [
+        "SILENCE 60% / 1T",
+        "SPD -20% / 2T"
+      ]
+    },
+    {
+      "skill_id": "SKILL_068",
+      "name": "オール・イン",
+      "rarity": "SR",
+      "kind": "EXCLUSIVE",
+      "exclusive_character_id": "char_maya_01",
+      "activation_type": "ACTIVE",
+      "cooldown": 4,
+      "available_from_round": 2,
+      "target": "ENEMY_SINGLE",
+      "effects": [
+        "DAMAGE 200% ATK",
+        "30% chance: DAMAGE 300% ATK"
+      ]
+    },
+    {
+      "skill_id": "SKILL_069",
+      "name": "紅蓮の一撃",
+      "rarity": "SR",
+      "kind": "EXCLUSIVE",
+      "exclusive_character_id": "char_sakura_01",
+      "activation_type": "ACTIVE",
+      "cooldown": 4,
+      "available_from_round": 2,
+      "target": "ENEMY_SINGLE",
+      "effects": [
+        "DAMAGE 205% ATK",
+        "BLEED 95% / 3T"
+      ]
+    },
+    {
+      "skill_id": "SKILL_070",
+      "name": "ミッドナイト・コール",
+      "rarity": "SR",
+      "kind": "EXCLUSIVE",
+      "exclusive_character_id": "char_cecile_01",
+      "activation_type": "ACTIVE",
+      "cooldown": 4,
+      "available_from_round": 3,
+      "target": "ENEMY_SINGLE",
+      "effects": [
+        "ATK -22% / 2T",
+        "BLIND 80% / 2T"
+      ]
+    }
+  ]
+}

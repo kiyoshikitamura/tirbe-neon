@@ -2,8 +2,8 @@
 
 import React, { createContext, useContext, useState, useEffect, useRef } from "react";
 import { supabase } from "@/utils/supabase";
-import { SKILLS_MASTER_DATA } from "@/utils/skills_master_data";
-import { EQUIPMENTS_MASTER_DATA } from "@/utils/equipments_master_data";
+import { CANONICAL_SKILL_VIEW } from "@/utils/skills_master_data";
+import { CANONICAL_EQUIPMENT_VIEW } from "@/utils/equipments_master_data";
 import {
   TEST_SKILL_ID,
   CHARACTERS_MASTER,
@@ -12,8 +12,6 @@ import {
   GEAR_SLOTS_MASTER,
   STORY_EPISODES_MASTER,
   MASTER_AVATARS,
-  CHARACTER_AWAKENING_MASTER,
-  CHARACTER_GROWTH_PATTERNS,
   getCharacterTransparentImg
 } from "@/utils/game_constants";
 import {
@@ -1220,7 +1218,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         def: npc.enemy_data?.def ?? 100,
         spd: npc.enemy_data?.spd ?? 100,
         luk: npc.enemy_data?.luk ?? 10,
-        skills: npc.enemy_data?.skills ?? [{ id: "npc_attack", name: "攻撃", ap_cost: 1, power: 50, effect_type: "ATTACK" }],
+        skills: npc.enemy_data?.skills ?? [{ id: "npc_attack", name: "攻撃", power: 80, effect_type: "ATTACK", activationType: "ACTIVE", cooldown: 0, availableFromRound: 1, target: "ENEMY_SINGLE", effects: ["DAMAGE 80% ATK"] }],
       })));
 
       const { data: userPatrols } = await supabase.from("user_patrols").select("*").eq("user_id", userId);
@@ -2784,10 +2782,6 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         const results = serverResults.map((result: { character_id: string; outcome: string; rarity?: string }) => {
           const character = CHARACTERS_MASTER.find(c => c.id === result.character_id);
           const revealStats = character ? getCharacterBaseStats(character.id, 1, 0) : null;
-          const roleLabels: Record<string, string> = {
-            BALANCED: "バランス", HP_TANK: "タンク", ATTACKER: "アタッカー",
-            DEFENDER: "ディフェンダー", SPEEDSTER: "スピード", LUCKY_STAR: "サポート",
-          };
           const attributeLabels: Record<string, string> = {
             ORDER: "秩序", JUSTICE: "正義", CHAOS: "混沌", EVIL: "悪",
           };
@@ -2798,7 +2792,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
             rarity: result.rarity || character?.rarity || "R",
             imageUrl: character ? getCharacterTransparentImg(character.name) : undefined,
             title: character?.title || "新たな仲間",
-            role: roleLabels[character?.growthPatternId || ""] || "バランス",
+            role: character?.homeTown || "東京",
             attribute: attributeLabels[character?.alignment || ""] || "無所属",
             attributeKey: character?.alignment || null,
             hp: revealStats?.hp,
@@ -2869,7 +2863,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       actionPerformance.mark("response");
       const serverResults = drawResult.data?.results || [];
       const assetResults = serverResults.map((result: { type: string; item_id: string; outcome: string; rarity?: string }) => {
-        const master = result.type === "SKILL" ? SKILLS_MASTER_DATA.find(s => s.id === result.item_id) : EQUIPMENTS_MASTER_DATA.find(e => e.id === result.item_id);
+        const master = result.type === "SKILL" ? CANONICAL_SKILL_VIEW.find(s => s.id === result.item_id) : CANONICAL_EQUIPMENT_VIEW.find(e => e.id === result.item_id);
         return { type: result.type, name: master?.name || result.item_id, rarity: result.rarity || master?.rarity || "R", converted: result.outcome === "converted", convertReward: result.outcome === "converted" ? "育成素材へ変換" : result.outcome === "limit_break" ? "限界突破 +1" : "新規獲得" };
       });
       if (typeof drawResult.data?.cash === "number") setCash(drawResult.data.cash);
@@ -3084,8 +3078,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
             else targetRarity = "R";
           }
 
-          let pool = SKILLS_MASTER_DATA.filter(s => s.rarity === targetRarity);
-          if (pool.length === 0) pool = SKILLS_MASTER_DATA;
+          let pool = CANONICAL_SKILL_VIEW.filter(s => s.rarity === targetRarity);
+          if (pool.length === 0) pool = CANONICAL_SKILL_VIEW;
           const selected = pool[Math.floor(Math.random() * pool.length)];
 
           const existSkill = userSkillsList.find(s => s.skill_card_id === selected.id);
@@ -3121,8 +3115,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
             else targetRarity = "R";
           }
 
-          let pool = EQUIPMENTS_MASTER_DATA.filter(e => e.rarity === targetRarity);
-          if (pool.length === 0) pool = EQUIPMENTS_MASTER_DATA;
+          let pool = CANONICAL_EQUIPMENT_VIEW.filter(e => e.rarity === targetRarity);
+          if (pool.length === 0) pool = CANONICAL_EQUIPMENT_VIEW;
           const selected = pool[Math.floor(Math.random() * pool.length)];
 
           await supabase.from("user_equipments").insert({
@@ -3228,7 +3222,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
           setErrorMessage(`【天井交換】${charMaster.jpName}を獲得しました！`);
         }
       } else if (rewardType === "SKILL") {
-        const skillMaster = SKILLS_MASTER_DATA.find(s => s.id === rewardId) || SKILLS_MASTER_DATA[0];
+        const skillMaster = CANONICAL_SKILL_VIEW.find(s => s.id === rewardId) || CANONICAL_SKILL_VIEW[0];
         const existSkill = userSkillsList.find(s => s.skill_card_id === rewardId);
         if (existSkill) {
           if (existSkill.plus_val >= 10) {
@@ -3244,7 +3238,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
           setErrorMessage(`【天井交換】${skillMaster.name}を獲得しました！`);
         }
       } else {
-        const equipMaster = EQUIPMENTS_MASTER_DATA.find(e => e.id === rewardId) || EQUIPMENTS_MASTER_DATA[0];
+        const equipMaster = CANONICAL_EQUIPMENT_VIEW.find(e => e.id === rewardId) || CANONICAL_EQUIPMENT_VIEW[0];
         await supabase.from("user_equipments").insert({
           user_id: session.user.id,
           equipment_id: rewardId,

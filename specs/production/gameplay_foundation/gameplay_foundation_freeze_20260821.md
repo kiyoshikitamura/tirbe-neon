@@ -2,6 +2,8 @@
 
 Version: 2026-08-21  
 Status: **PRODUCTION FROZEN — DATA PRESERVATION SNAPSHOT**
+Master Production Freeze: **PASS / CLOSED**
+Authority Gap: **0**
 
 ## Authority
 - 2026-08-20〜21にユーザーがFIXした最新仕様のみを正とする。
@@ -77,6 +79,21 @@ Critical:
 - ACCESSORY_049 = フェイト・チャーム
 - ACCESSORY_050 = クイーンズ・シグネット
 - LB = +0〜+10 / +4% flat stat per step / fixed +3,+5,+10 options / Random Optionなし / total cost 25
+
+### Equipment Level / Flat Stat Contract
+
+Status: **RESOLVED — PRODUCTION FROZEN**
+
+- Equipment MasterのFlat StatはLv100 / LB+0を基準値とする。
+- Lv1〜50: `levelScale = 0.50 + ((level - 1) / 49) × 0.25`
+- Lv51〜100: `levelScale = 0.75 + ((level - 50) / 50) × 0.25`
+- Acceptance: Lv1 = 50% / Lv50 = 75% / Lv100 = 100%
+- Final Flat Stat: `floor(Master Lv100/+0 Flat × Level Scale × LB Multiplier)`
+- LB Level Cap: +0=50 / +1=60 / +2=70 / +3=80 / +4=90 / +5〜+10=100
+- Machine Contract: `src/domain/gameplay/canonical/data/equipment_progression_20260821.json`
+- `EQUIPMENT_LEVEL_CURVE_AUTHORITY_UNCONFIRMED` は解消済み。Gameplay Foundation Authority Gapは0件。
+
+Missionは **DEFERRED — MASTER INTEGRATION REQUIRED** を維持し、本Freezeでは変更しない。
 
 ## Repository write status
 GitHub connector write operations returned HTTP 403 during snapshot preservation.

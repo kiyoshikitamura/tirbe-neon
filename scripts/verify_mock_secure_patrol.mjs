@@ -12,22 +12,19 @@ localStorage.setItem("tribe_demo_uuid", userId);
 
 const { executeMockRpc } = await import("../src/utils/mock/mockRpc.ts");
 const { resolveBattle } = await import("../supabase/functions/resolve-battle/engine.ts");
+const { CANONICAL_CHARACTERS, CANONICAL_EQUIPMENTS } = await import("../src/domain/gameplay/canonical/masters.ts");
+const { canonicalCharacterStats, canonicalEquipmentFlatStat } = await import("../src/domain/gameplay/canonical/calculations.ts");
 const client = {
   getStorage: (key) => storage.has(key) ? JSON.parse(storage.get(key)) : [],
   setStorage: (key, value) => storage.set(key, JSON.stringify(value)),
 };
 
 client.setStorage("users", [{ id: userId, vitality: 20, cash: 5000, neon_diamonds: 200, level: 1, xp: 0 }]);
-client.setStorage("user_characters", [{ id: "owned-1", user_id: userId, character_id: "character-1" }]);
-client.setStorage("equipment_battle_master", [{ equipment_id: "WEAPON_001", hp: 0, atk: 5, def: 0, spd: 0, luk: 0, is_exclusive: false }]);
+client.setStorage("user_characters", [{ id: "owned-1", user_id: userId, character_id: "char_reiji_01", level: 1, awakening_level: 0 }]);
 client.setStorage("user_equipments", [{ id: "equip-1", user_id: userId, equipment_id: "WEAPON_001", equipped_character_id: "owned-1", slot_index: 1, level: 2, plus_val: 1 }]);
 client.setStorage("user_skills", [
   { id: "skill-1", user_id: userId, skill_card_id: "SKILL_001", equipped_character_id: "owned-1", slot_index: 1, plus_val: 10 },
   { id: "skill-placeholder", user_id: userId, skill_card_id: "SKILL_051", equipped_character_id: "owned-1", slot_index: 2, plus_val: 0 },
-]);
-client.setStorage("skill_battle_master", [
-  { skill_id: "SKILL_001", display_name: "Street Punch", enabled: true, kind: "ATTACK", target: "ENEMY_SINGLE", power_percent: 50, cooldown: 2, initial_cooldown: 0 },
-  { skill_id: "SKILL_051", display_name: "Placeholder", enabled: false, kind: "ATTACK", target: "ENEMY_SINGLE", power_percent: 180, cooldown: 5, initial_cooldown: 0 },
 ]);
 client.setStorage("quests", [{ id: "quest-1", name: "Mock patrol", duration_seconds: 120, cost_vitality: 7, cash_reward: 250, exp_reward: 40, item_rewards: [] }]);
 
@@ -37,7 +34,7 @@ if (unowned.error?.code !== "23503") throw new Error("Unowned patrol character w
 const started = await executeMockRpc(client, "start_patrol", { p_course_id: "quest-1", p_character_id: "owned-1" });
 const patrol = client.getStorage("user_patrols")[0];
 const user = client.getStorage("users")[0];
-if (started.error || !patrol || patrol.character_id !== "character-1" || started.data.duration_seconds !== 120 || started.data.remaining_vitality !== 13 || user.vitality !== 13) {
+if (started.error || !patrol || patrol.character_id !== "char_reiji_01" || started.data.duration_seconds !== 120 || started.data.remaining_vitality !== 13 || user.vitality !== 13) {
   throw new Error("Secure patrol start did not use authoritative quest and ownership data");
 }
 
@@ -70,11 +67,16 @@ if (!blockedClaim.error) throw new Error("An unresolved mandatory NPC battle did
 client.setStorage("patrol_npcs", [{ id: "npc-quest-1", quest_id: "quest-1", npc_name: "Mock NPC", enemy_data: { hp: 900, atk: 55, def: 35, spd: 75, luk: 3 } }]);
 const replay = await executeMockRpc(client, "create_patrol_battle_replay", { p_patrol_id: patrol.id, p_tactic_id: "ATTACK_PRIORITY" });
 if (replay.error || !replay.data?.replay_session_id) throw new Error("Server-authoritative patrol replay was not created");
-if (replay.data.player_snapshot[0]?.stats?.atk !== 100 + Math.floor(5 * (0.1 + 0.5 / 49 + 0.1))
+const characterMaster = CANONICAL_CHARACTERS.find((entry) => entry.character_id === "char_reiji_01");
+const equipmentMaster = CANONICAL_EQUIPMENTS.find((entry) => entry.equipment_id === "WEAPON_001");
+const baseStats = canonicalCharacterStats(characterMaster.lv1, characterMaster.lv100, 1, 0);
+const equipmentAtk = canonicalEquipmentFlatStat(equipmentMaster.base_stats.atk, 2, 1);
+if (replay.data.player_snapshot[0]?.stats?.atk !== baseStats.atk + equipmentAtk
   || replay.data.player_snapshot[0]?.equipment?.[0]?.equipmentId !== "WEAPON_001"
-  || replay.data.player_snapshot[0]?.equippedSkillRefs?.[0]?.effectScale !== 1.41
+  || replay.data.player_snapshot[0]?.equippedSkillRefs?.[0]?.plusValue !== 10
   || replay.data.player_snapshot[0]?.skills?.[0]?.id !== "SKILL_001"
-  || replay.data.player_snapshot[0]?.skills?.[0]?.powerPercent !== 71
+  || replay.data.player_snapshot[0]?.skills?.[0]?.availableFromRound !== 1
+  || !Array.isArray(replay.data.player_snapshot[0]?.skills?.[0]?.effects)
   || replay.data.player_snapshot[0]?.skills?.some((skill) => skill.id === "SKILL_051")) {
   throw new Error("Patrol replay did not snapshot canonical equipment stats and executable skills");
 }
@@ -108,7 +110,7 @@ const limitPatrol = {
   id: "patrol-cash-limit",
   user_id: userId,
   course_id: "quest-1",
-  character_id: "character-1",
+  character_id: "char_reiji_01",
   status: "ONGOING",
   expires_at: new Date(Date.now() + 120_000).toISOString(),
 };

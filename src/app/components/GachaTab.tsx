@@ -3,8 +3,8 @@
 import React, { useEffect, useState } from "react";
 import { useGame } from "../context/GameContext";
 import { CHARACTERS_MASTER } from "../../utils/game_constants";
-import { SKILLS_MASTER_DATA } from "../../utils/skills_master_data";
-import { EQUIPMENTS_MASTER_DATA } from "../../utils/equipments_master_data";
+import { CANONICAL_SKILL_VIEW } from "../../utils/skills_master_data";
+import { CANONICAL_EQUIPMENT_VIEW } from "../../utils/equipments_master_data";
 import TutorialNavigator from "./TutorialNavigator";
 import { useImmediateActionLock } from "@/hooks/useImmediateActionLock";
 import "./GachaTab.css";
@@ -80,8 +80,8 @@ export default function GachaTab() {
 
   // 天井選択肢リスト（SSRのみ）
   const ssrCharacters = CHARACTERS_MASTER.filter((c: any) => c.rarity === "SSR");
-  const ssrSkills = SKILLS_MASTER_DATA.filter((s: any) => s.rarity === "SSR");
-  const ssrEquipments = EQUIPMENTS_MASTER_DATA.filter((e: any) => e.rarity === "SSR");
+  const ssrSkills = CANONICAL_SKILL_VIEW.filter((s: any) => s.rarity === "SSR");
+  const ssrEquipments = CANONICAL_EQUIPMENT_VIEW.filter((e: any) => e.rarity === "SSR");
 
   const getPityPool = () => {
     if (activeCategory === "CHARACTER") return ssrCharacters;

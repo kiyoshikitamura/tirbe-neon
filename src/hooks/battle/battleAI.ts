@@ -4,7 +4,7 @@ import { CompatibleBattleTacticId, ParticipantState } from "./battleTypes";
 
 /**
  * 作戦AIに基づき、手番キャラクターのスキルおよびターゲットを選択
- * (Rule 1: 得意スキル(ownerId === actor.characterId)は消費APが-1軽減、最低消費APは1)
+ * Canonical active skills are selected without the retired battle AP contract.
  */
 export function selectCharacterSkillByTactic(
   actor: ParticipantState,
@@ -18,7 +18,7 @@ export function selectCharacterSkillByTactic(
     : tactic === "SKILL_PRIORITY" ? "SKILL_PRIORITY"
     : tactic === "WEAKNESS_FOCUS" ? "WEAKNESS_FOCUS"
     : tactic;
-  const basicAttack = { id: "basic_attack", name: "通常攻撃", ap_cost: 0, power: 30, effect_type: "ATTACK", ownerId: "BASIC" };
+  const basicAttack = { id: "basic_attack", name: "通常攻撃", power: 80, effect_type: "ATTACK", ownerId: "BASIC", activationType: "ACTIVE", cooldown: 0, availableFromRound: 1, target: "ENEMY_SINGLE", effects: ["DAMAGE 80% ATK"] };
   // 確定仕様では戦闘内AP・通常防御・得意スキルAP軽減を使用しない。
   const availableSkills = [...(actor.skills || []), basicAttack];
 

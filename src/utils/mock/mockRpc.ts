@@ -1,9 +1,8 @@
 "use client";
 
-const getMockEquipmentLevelScale = (level: number) => {
-  const normalized = Math.min(100, Math.max(1, Math.trunc(Number(level) || 1)));
-  return normalized <= 50 ? 0.1 + ((normalized - 1) * 0.5) / 49 : 0.6 + ((normalized - 50) * 0.4) / 50;
-};
+import { CANONICAL_CHARACTERS, CANONICAL_EQUIPMENTS, CANONICAL_SKILLS } from "../../domain/gameplay/canonical/masters.ts";
+import { canonicalCharacterStats, canonicalEquipmentFlatStat, canonicalEquipmentLevelCap, canonicalSkillSlotCount } from "../../domain/gameplay/canonical/calculations.ts";
+import { parseCanonicalEffects } from "../../domain/battle/canonical_effects.ts";
 
 export async function executeMockRpc(client: any, funcName: string, params: any): Promise<any> {
   console.log(`[Mock DB RPC] Calling ${funcName} with:`, params);
@@ -14,28 +13,28 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     const requested = Array.isArray(params?.p_skill_ids) ? new Set(params.p_skill_ids) : null;
     if (requested && requested.size > 70) return { data: null, error: { message: "too many skill ids", code: "22023" } };
     const owned = (client.getStorage("user_skills") || []).filter((entry: any) => entry.user_id === userId && (!requested || requested.has(entry.skill_card_id)));
-    const battleMasters = client.getStorage("skill_battle_master") || [];
     const grouped = new Map<string, any>();
     for (const skill of owned) {
       const current = grouped.get(skill.skill_card_id);
       if (!current || Number(skill.plus_val || 0) > Number(current.plus_val || 0)) grouped.set(skill.skill_card_id, skill);
     }
     return { data: Array.from(grouped.entries()).map(([skillId, skill]) => {
-      const clientMaster: any = (client.getStorage("skills_master") || []).find((entry: any) => entry.id === skillId);
-      const battleMaster: any = battleMasters.find((entry: any) => entry.skill_id === skillId) || {};
-      const effectType = battleMaster.kind || ({ ATTACK: "ATTACK", HEAL: "HEAL", DEFENSE: "BUFF", SUPPORT: "BUFF", JAMMER: "DEBUFF" } as Record<string, string>)[clientMaster?.effect_type] || "ATTACK";
-      const targetType = battleMaster.target || (effectType === "ATTACK" || effectType === "DEBUFF" ? "ENEMY_SINGLE" : "ALLY_SINGLE");
-      const status = battleMaster.status || null;
+      const master = CANONICAL_SKILLS.find((entry) => entry.skill_id === skillId);
+      const effects = master ? parseCanonicalEffects(master.effects) : [];
+      const effectType = effects.some((effect) => effect.type === "DAMAGE") ? "ATTACK"
+        : effects.some((effect) => effect.type === "HEAL" || effect.type === "REGEN") ? "HEAL"
+          : effects.some((effect) => effect.type === "DEBUFF" || ["BLIND", "SILENCE", "STUN", "POISON", "BLEED", "TAUNT"].includes(effect.type)) ? "DEBUFF" : "BUFF";
+      const status = effects.find((effect) => ["BLIND", "SILENCE", "STUN", "POISON", "BLEED", "TAUNT"].includes(effect.type))?.type || null;
       const displayEffect = effectType === "ATTACK" ? "対象へダメージを与える" : effectType === "HEAL" ? "対象のHPを回復する" : effectType === "BUFF" ? "対象の能力を一定ターン強化する" : "対象の能力を一定ターン低下させる";
       return {
         skill_master_id: skillId,
-        display_name: battleMaster.display_name || clientMaster?.name || "スキル",
-        rarity: clientMaster?.rarity || "N",
+        display_name: master?.name || "スキル",
+        rarity: master?.rarity || "N",
         description: `${displayEffect}${status ? `。追加効果: ${status}` : ""}`,
         display_effect: `${displayEffect}${status ? `。追加効果: ${status}` : ""}`,
         effect_type: effectType,
-        target_type: targetType,
-        cooldown: Number(battleMaster.cooldown ?? ({ N: 2, R: 3, SR: 4, SSR: 5 } as Record<string, number>)[clientMaster?.rarity] ?? 5),
+        target_type: master?.target || "ENEMY_SINGLE",
+        cooldown: master?.cooldown,
         status_effect: status,
         enhancement_level: Number(skill.plus_val || 0),
         max_enhancement_level: 10,
@@ -314,7 +313,7 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     if (!userId) return { data: null, error: { message: "authentication required", code: "42501" } };
     const characters = client.getStorage("user_characters") || [];
     const equipments = client.getStorage("user_equipments") || [];
-    const masters = client.getStorage("equipment_battle_master") || [];
+    const masters = CANONICAL_EQUIPMENTS;
     const slotTypes = ["WEAPON", "WEAPON", "HEAD", "BODY", "LEGS", "ACCESSORY", "ACCESSORY"];
 
     if (funcName === "unequip_character_equipment") {
@@ -350,13 +349,13 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     }
     const requested = requestedIds.map((id: string, index: number) => {
       const equipment = equipments.find((entry: any) => entry.id === id && entry.user_id === userId);
-      const master = equipment && masters.find((entry: any) => (entry.equipment_id || entry.id) === (equipment.equipment_id || equipment.equipment_master_id));
+      const master = equipment && masters.find((entry) => entry.equipment_id === (equipment.equipment_id || equipment.equipment_master_id));
       return { equipment, master, slot: Number(requestedSlots[index]) };
     });
     for (const item of requested) {
       if (!item.equipment || !item.master) return { data: null, error: { message: "owned equipment not found", code: "P0002" } };
-      if (slotTypes[item.slot] !== item.master.slot_type) return { data: null, error: { message: "equipment type does not match slot", code: "23514" } };
-      if (item.master.is_exclusive && item.master.exclusive_character_id !== character.character_id) return { data: null, error: { message: "exclusive equipment cannot be equipped by this character", code: "42501" } };
+      if (slotTypes[item.slot] !== item.master.category) return { data: null, error: { message: "equipment type does not match slot", code: "23514" } };
+      if (item.master.exclusive_character_id && item.master.exclusive_character_id !== character.character_id) return { data: null, error: { message: "exclusive equipment cannot be equipped by this character", code: "42501" } };
       if (item.equipment.equipped_character_id && item.equipment.equipped_character_id !== characterId) return { data: null, error: { message: "equipment is already equipped by another character", code: "23505" } };
     }
     if (funcName === "set_character_equipment_bulk") {
@@ -385,7 +384,7 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     if (!userId) return { data: null, error: { message: "authentication required", code: "42501" } };
     const characters = client.getStorage("user_characters") || [];
     const skills = client.getStorage("user_skills") || [];
-    const masters = client.getStorage("skill_battle_master") || [];
+    const masters = CANONICAL_SKILLS;
 
     if (funcName === "unequip_character_skill") {
       const skill = skills.find((entry: any) => entry.id === params.p_skill_id && entry.user_id === userId);
@@ -404,7 +403,7 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
       || new Set(requestedIds).size !== requestedIds.length || new Set(requestedSlots).size !== requestedSlots.length) {
       return { data: null, error: { message: "invalid skill loadout arrays", code: "22023" } };
     }
-    const maxSlot = Math.min(5, 2 + Math.max(0, Number(character.awakening_level || 0)));
+    const maxSlot = canonicalSkillSlotCount(Math.max(0, Math.min(5, Number(character.awakening_level || 0)))) - 1;
     const requested = requestedIds.map((id: string, index: number) => {
       const skill = skills.find((entry: any) => entry.id === id && entry.user_id === userId);
       const master = skill && masters.find((entry: any) => entry.skill_id === skill.skill_card_id);
@@ -412,11 +411,14 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     });
     for (const item of requested) {
       if (!Number.isInteger(item.slot) || item.slot < 0 || item.slot > maxSlot) return { data: null, error: { message: "skill slot is locked", code: "23514" } };
-      if (!item.skill || !item.master || item.master.enabled !== true) return { data: null, error: { message: "owned executable skill not found", code: "P0002" } };
+      if (!item.skill || !item.master) return { data: null, error: { message: "owned executable skill not found", code: "P0002" } };
       if (item.master.exclusive_character_id && item.master.exclusive_character_id !== character.character_id) {
         return { data: null, error: { message: "exclusive skill character mismatch", code: "23514" } };
       }
     }
+    const requestedExclusiveCount = requested.filter((item) => item.master?.exclusive_character_id).length;
+    const retainedExclusiveCount = funcName === "set_character_skill_loadout" ? 0 : skills.filter((entry: any) => entry.user_id === userId && entry.equipped_character_id === character.id && !requestedIds.includes(entry.id) && CANONICAL_SKILLS.some((master) => master.skill_id === entry.skill_card_id && master.exclusive_character_id)).length;
+    if (requestedExclusiveCount + retainedExclusiveCount > 1) return { data: null, error: { message: "only one exclusive skill may be equipped", code: "23514" } };
     if (funcName === "set_character_skill_loadout") {
       for (const skill of skills) {
         if (skill.user_id === userId && skill.equipped_character_id === character.id) {
@@ -479,7 +481,9 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     const owned = rows.find((entry: any) => entry.id === ownedId && entry.user_id === userId);
     if (!owned) return { data: null, error: { message: `owned ${isCharacter ? "character" : "equipment"} not found`, code: "P0002" } };
     const unlock = Number(isCharacter ? owned.awakening_level : owned.plus_val) || 0;
-    const levelCap = Math.min(100, 50 + Math.min(Math.max(unlock, 0), 5) * 10);
+    const levelCap = isCharacter
+      ? Math.min(100, 50 + Math.min(Math.max(unlock, 0), 5) * 10)
+      : canonicalEquipmentLevelCap(Math.max(0, Math.min(10, unlock)));
     const currentLevel = Number(owned.level || 1);
     const newLevel = Math.min(currentLevel + count, levelCap);
     const levelsGained = newLevel - currentLevel;
@@ -704,48 +708,44 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
       : owned.filter((entry: any) => entry.user_id === userId && entry.character_id === patrol.character_id).slice(0, 1);
     if (!roster.length) return { data: null, error: { message: "battle formation has no supported owned character", code: "23514" } };
     const equipments = client.getStorage("user_equipments") || [];
-    const equipmentBattleMaster = client.getStorage("equipment_battle_master") || [];
     const equippedSkills = client.getStorage("user_skills") || [];
-    const skillBattleMaster = client.getStorage("skill_battle_master") || [];
-    const characterMasters = client.getStorage("characters_master") || [];
     const playerSnapshot = roster.map((character: any) => {
-      const characterMaster = characterMasters.find((entry: any) => entry.id === character.character_id);
+      const characterMaster = CANONICAL_CHARACTERS.find((entry) => entry.character_id === character.character_id);
       const equipmentLoadout = equipments
         .filter((owned: any) => owned.user_id === userId && owned.equipped_character_id === character.id)
-        .map((owned: any) => ({ owned, master: equipmentBattleMaster.find((master: any) => (master.equipment_id || master.id) === (owned.equipment_id || owned.equipment_master_id)) }))
-        .filter(({ master }: any) => master && (!master.is_exclusive || master.exclusive_character_id === character.character_id));
+        .map((owned: any) => ({ owned, master: CANONICAL_EQUIPMENTS.find((master) => master.equipment_id === (owned.equipment_id || owned.equipment_master_id)) }))
+        .filter(({ master }: any) => master && (!master.exclusive_character_id || master.exclusive_character_id === character.character_id));
       const equipmentStats = equipmentLoadout.reduce((total: any, { owned, master }: any) => {
-        const scale = getMockEquipmentLevelScale(owned.level) + Math.max(Number(owned.plus_val || 0), 0) * 0.10;
-        total.hp += Math.floor(master.hp * scale);
-        total.atk += Math.floor(master.atk * scale);
-        total.def += Math.floor(master.def * scale);
-        total.spd += master.spd;
-        total.luk += master.luk;
+        const level = Math.max(1, Math.min(100, Number(owned.level || 1)));
+        const plusValue = Math.max(0, Math.min(10, Number(owned.plus_val || 0)));
+        total.hp += canonicalEquipmentFlatStat(master.base_stats.hp, level, plusValue);
+        total.atk += canonicalEquipmentFlatStat(master.base_stats.atk, level, plusValue);
+        total.def += canonicalEquipmentFlatStat(master.base_stats.def, level, plusValue);
+        total.spd += canonicalEquipmentFlatStat(master.base_stats.spd, level, plusValue);
+        total.luk += canonicalEquipmentFlatStat(master.base_stats.luk, level, plusValue);
         return total;
       }, { hp: 0, atk: 0, def: 0, spd: 0, luk: 0 });
+      const characterStats = characterMaster ? canonicalCharacterStats(characterMaster.lv1, characterMaster.lv100, Math.max(1, Math.min(100, Number(character.level || 1))), Math.max(0, Math.min(5, Number(character.awakening_level || 0)))) : { hp: 1, atk: 0, def: 0, spd: 0, luk: 0 };
       const skillRefs = equippedSkills
         .filter((owned: any) => owned.user_id === userId && owned.equipped_character_id === character.id
-          && Number(owned.slot_index) >= 0 && Number(owned.slot_index) < Math.min(6, 3 + Number(character.awakening_level || 0)))
+          && Number(owned.slot_index) >= 0 && Number(owned.slot_index) < canonicalSkillSlotCount(Math.max(0, Math.min(5, Number(character.awakening_level || 0)))))
         .sort((a: any, b: any) => Number(a.slot_index || 0) - Number(b.slot_index || 0))
         .map((owned: any) => {
-          const master = skillBattleMaster.find((entry: any) => entry.skill_id === owned.skill_card_id && entry.enabled !== false
+          const master = CANONICAL_SKILLS.find((entry) => entry.skill_id === owned.skill_card_id
             && (!entry.exclusive_character_id || entry.exclusive_character_id === character.character_id));
           if (!master) return null;
           const plusValue = Math.max(0, Math.min(Number(owned.plus_val || 0), 10));
-          const effectScale = plusValue <= 3 ? 1 + plusValue * 0.05
-            : plusValue <= 6 ? 1.15 + (plusValue - 3) * 0.04
-              : plusValue <= 9 ? 1.27 + (plusValue - 6) * 0.03 : 1.41;
           return {
             id: master.skill_id,
-            name: master.display_name,
+            name: master.name,
             kind: master.kind,
             target: master.target,
-            powerPercent: Math.round(Number(master.power_percent || 0) * effectScale),
-            cooldown: Number(master.cooldown || 0),
-            initialCooldown: Number(master.initial_cooldown || 0),
-            ...(master.status ? { status: master.status, statusChance: Math.min(95, Math.round(Number(master.status_chance) * effectScale)) } : {}),
-            ...(master.modifier_stat ? { modifier: { stat: master.modifier_stat, percent: Math.min(25, Math.round(Number(master.modifier_percent) * effectScale)), duration: Number(master.modifier_duration) } } : {}),
-            skillId: master.skill_id, slotIndex: owned.slot_index, plusValue, effectScale,
+            activationType: master.activation_type,
+            cooldown: master.cooldown,
+            availableFromRound: master.available_from_round,
+            effects: master.effects,
+            exclusiveCharacterId: master.exclusive_character_id,
+            skillId: master.skill_id, slotIndex: owned.slot_index, plusValue,
           };
         })
         .filter(Boolean);
@@ -753,17 +753,18 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
         id: `ally_${character.character_id}`,
         // Mirror the production snapshot's display-name contract. UUIDs are
         // identifiers, not player-facing battle labels.
-        name: character.display_name || character.name || characterMaster?.jpName || "メンバー",
+        name: character.display_name || character.name || characterMaster?.name || "メンバー",
         team: "PLAYER",
-        alignment: "ORDER",
+        alignment: characterMaster?.attribute || "ORDER",
+        characterId: character.character_id,
         stats: {
-          hp: 1500 + (Number(character.level || 1) - 1) * 50 + equipmentStats.hp,
-          atk: 100 + (Number(character.level || 1) - 1) * 5 + equipmentStats.atk,
-          def: 80 + equipmentStats.def,
-          spd: 100 + equipmentStats.spd,
-          luk: 10 + equipmentStats.luk,
+          hp: characterStats.hp + equipmentStats.hp,
+          atk: characterStats.atk + equipmentStats.atk,
+          def: characterStats.def + equipmentStats.def,
+          spd: characterStats.spd + equipmentStats.spd,
+          luk: characterStats.luk + equipmentStats.luk,
         },
-        equipment: equipmentLoadout.map(({ owned, master }: any) => ({ instanceId: owned.id, equipmentId: master.equipment_id || master.id, slotIndex: owned.slot_index, level: owned.level || 1, plusValue: owned.plus_val || 0 })),
+        equipment: equipmentLoadout.map(({ owned, master }: any) => ({ instanceId: owned.id, equipmentId: master.equipment_id, slotIndex: owned.slot_index, level: owned.level || 1, plusValue: owned.plus_val || 0 })),
         equippedSkillRefs: skillRefs,
         // The battle engine supplies the canonical basic attack as fallback.
         skills: skillRefs,
@@ -774,9 +775,6 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     const enemy = npc?.enemy_data || { hp: 900, atk: 55, def: 35, spd: 75, luk: 3 };
     const tutorialBattle = (client.getStorage("tutorial_progress") || [])
       .some((entry: any) => entry.user_id === userId && entry.step_id === "TUTORIAL_BATTLE");
-    if (tutorialBattle && playerSnapshot[0]?.skills?.length) {
-      playerSnapshot[0].skills.forEach((skill: any) => { skill.initialCooldown = 2; });
-    }
     const tutorialEnemyHp = tutorialBattle
       ? playerSnapshot.reduce((total: number, unit: any) => total + Number(unit.stats?.atk || 0), 0) * 4
       : 0;
@@ -786,7 +784,7 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
       team: "ENEMY",
       alignment: "CHAOS",
       stats: { hp: Math.max(Number(enemy.hp || 900), tutorialEnemyHp), atk: Number(enemy.atk || 55), def: Number(enemy.def || 35), spd: Number(enemy.spd || 75), luk: Number(enemy.luk || 3) },
-      skills: [{ id: "npc_basic_attack", name: "Attack", kind: "ATTACK", target: "ENEMY_SINGLE", powerPercent: 100, cooldown: 0 }],
+      skills: [],
     }];
     const sessions = client.getStorage("battle_replay_sessions") || [];
     const id = `replay_${Date.now()}`;
@@ -1003,26 +1001,23 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     });
     client.setStorage("pvp_defense_decks", defenseDecks);
     const skills = client.getStorage("user_skills") || [];
-    const skillMasters = client.getStorage("skill_battle_master") || [];
     const eligibleOwned = skills
       .filter((skill: any) => skill.user_id === userId)
       .map((skill: any) => ({
         owned: skill,
-        master: skillMasters.find((master: any) => master.skill_id === skill.skill_card_id
-          && master.enabled !== false
+        master: CANONICAL_SKILLS.find((master) => master.skill_id === skill.skill_card_id
           && (!master.exclusive_character_id || master.exclusive_character_id === owned[0].character_id)),
       }))
       .filter((skill: any) => skill.master)
-      .sort((left: any, right: any) => Number(right.master.power_percent || 0) - Number(left.master.power_percent || 0));
+      .sort((left: any, right: any) => {
+        const highestDamage = (master: any) => Math.max(0, ...parseCanonicalEffects(master.effects).map((effect) => Number(effect.powerBp || 0)));
+        return highestDamage(right.master) - highestDamage(left.master) || left.master.skill_id.localeCompare(right.master.skill_id);
+      });
     let recommended = eligibleOwned[0];
     let starterGranted = false;
     if (!recommended) {
-      const starterMaster = skillMasters.find((master: any) => master.skill_id === "SKILL_001" && master.enabled !== false && !master.exclusive_character_id)
-        || { skill_id: "SKILL_001", display_name: "ストリートパンチ", enabled: true, kind: "ATTACK", target: "ENEMY_SINGLE", power_percent: 50, cooldown: 2, initial_cooldown: 0 };
-      if (!skillMasters.some((master: any) => master.skill_id === starterMaster.skill_id)) {
-        skillMasters.push(starterMaster);
-        client.setStorage("skill_battle_master", skillMasters);
-      }
+      const starterMaster = CANONICAL_SKILLS.find((master) => master.skill_id === "SKILL_001" && !master.exclusive_character_id);
+      if (!starterMaster) return { data: null, error: { message: "canonical starter skill missing", code: "P0002" } };
       let starterOwned = skills.find((skill: any) => skill.user_id === userId && skill.skill_card_id === starterMaster.skill_id);
       if (!starterOwned) {
         starterOwned = { id: `tutorial_skill_${userId}`, user_id: userId, skill_card_id: starterMaster.skill_id, plus_val: 0, equipped_character_id: null, slot_index: null, created_at: new Date().toISOString() };
@@ -1053,7 +1048,7 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
         leader_user_character_id: owned[0].id,
         skill_equipped: true,
         skill_id: recommended.master.skill_id,
-        skill_name: recommended.master.display_name,
+        skill_name: recommended.master.name,
         starter_skill_granted: starterGranted,
       },
       error: null,
@@ -1977,7 +1972,7 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
       .filter((u: any) => u.id !== p_user_id)
       .slice(0, 3)
       .map((u: any, idx: number) => {
-        const defenseIds = ["c_reiji", "c_rui", "c_chang"];
+        const defenseIds = ["char_reiji_01", "char_rui_01", "char_chang_01"];
         return ({
         opponent_user_id: u.id,
         opponent_username: u.username || `Player ${idx + 1}`,
@@ -1997,10 +1992,9 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
         total_power: 15000 + idx * 2500,
         defense_character_ids: defenseIds,
         defense_characters: defenseIds.map((id, slot) => {
-          const cleanId = id.replace(/^c_/, "");
-          const characterMasters = client.getStorage("characters_master") || [];
-          const master: any = characterMasters.find((entry: any) => entry.id === cleanId || entry.name === cleanId) || characterMasters[slot];
-          return { slot: slot + 1, character_master_id: master?.id || cleanId, display_name: master?.jpName || master?.name || "キャラクター", rarity: master?.rarity || "N", level: 10 + idx, asset_identifier: master?.img || `/characters/${cleanId}_transparent_asset.png` };
+          const master = CANONICAL_CHARACTERS.find((entry) => entry.character_id === id) || CANONICAL_CHARACTERS[slot];
+          const asset = master.character_id.replace(/^char_/, "").replace(/_01$/, "");
+          return { slot: slot + 1, character_master_id: master.character_id, display_name: master.name, rarity: master.rarity, level: 10 + idx, asset_identifier: `/characters/${asset}_transparent_asset.png` };
         })
       });
       });
@@ -3177,7 +3171,7 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     
     if (p.item_id === "CASH") user.cash = (user.cash || 0) + p.quantity;
     else if (p.item_id === "DIA" || p.item_id === "DIAMOND") user.neon_diamonds = (user.neon_diamonds || 0) + p.quantity;
-    else if ((client.getStorage("equipment_battle_master") || []).some((master: any) => (master.equipment_id || master.id) === p.item_id)) {
+    else if (CANONICAL_EQUIPMENTS.some((master) => master.equipment_id === p.item_id)) {
       const equips = client.getStorage("user_equipments") || [];
       equips.push({
         id: "equip_" + Date.now(),
@@ -3213,7 +3207,7 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     presents.filter((x: any) => x.user_id === p_user_id && x.status === "UNCLAIMED").forEach((p: any) => {
       if (p.item_id === "CASH") user.cash = (user.cash || 0) + p.quantity;
       else if (p.item_id === "DIA" || p.item_id === "DIAMOND") user.neon_diamonds = (user.neon_diamonds || 0) + p.quantity;
-      else if ((client.getStorage("equipment_battle_master") || []).some((master: any) => (master.equipment_id || master.id) === p.item_id)) {
+      else if (CANONICAL_EQUIPMENTS.some((master) => master.equipment_id === p.item_id)) {
         const equips = client.getStorage("user_equipments") || [];
         equips.push({
           id: "equip_" + Date.now() + Math.random(),

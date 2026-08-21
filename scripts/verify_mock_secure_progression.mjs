@@ -40,6 +40,11 @@ if (crossUser.error?.code !== "P0002") throw new Error("Cross-user character pro
 
 const gearLevel = await executeMockRpc(client, "level_up_equipment", { p_equipment_id: "owned-gear", p_exp_item_id: "EQUIP_EXP_S", p_count: 3 });
 if (gearLevel.error || gearLevel.data.level !== 53 || gearLevel.data.level_cap !== 60 || gearLevel.data.cash_spent !== 150) throw new Error("Equipment unlocked level cap failed");
+const cappedGear = client.getStorage("user_equipments");
+cappedGear.find((entry) => entry.id === "owned-gear").level = 60;
+client.setStorage("user_equipments", cappedGear);
+const capReject = await executeMockRpc(client, "level_up_equipment", { p_equipment_id: "owned-gear", p_exp_item_id: "EQUIP_EXP_S", p_count: 1 });
+if (capReject.error?.code !== "23514") throw new Error("Equipment level cap did not reject Lv61 at LB+1");
 const gearBreak = await executeMockRpc(client, "limit_break_equipment", { p_equipment_id: "owned-gear", p_use_wildcard: false, p_dupe_id: "dupe-gear" });
 if (gearBreak.error || gearBreak.data.plus_val !== 2 || gearBreak.data.cash_spent !== 2000 || client.getStorage("user_equipments").some((entry) => entry.id === "dupe-gear")) throw new Error("Equipment duplicate limit break failed");
 

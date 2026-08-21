@@ -86,7 +86,6 @@ export interface CardState {
   id: string; // Unique instance ID in hand
   skillId: string; // Skill Master ID
   name: string;
-  apCost: number;
   description: string;
   targetType: "ENEMY_SINGLE" | "ENEMY_ALL" | "ALLY_SINGLE" | "ALLY_ALL" | "SELF";
   rarity: "N" | "R" | "SR" | "SSR";

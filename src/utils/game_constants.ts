@@ -1,5 +1,25 @@
 export { RAID_BOSS_ID, TEST_SKILL_ID, ENEMIES_MASTER } from "@/constants/enemies";
-export { CHARACTER_GROWTH_PATTERNS, CHARACTER_AWAKENING_MASTER, CHARACTERS_MASTER } from "@/constants/characters";
+import { CANONICAL_CHARACTERS } from "@/domain/gameplay/canonical/masters";
+
+export const CHARACTERS_MASTER = CANONICAL_CHARACTERS.map((character) => ({
+  id: character.character_id,
+  name: character.character_id.replace(/^char_/, "").replace(/_01$/, ""),
+  jpName: character.name,
+  title: "",
+  rarity: character.rarity,
+  alignment: character.attribute,
+  homeTown: character.hometown,
+  img: `/characters/${character.character_id.replace(/^char_/, "").replace(/_01$/, "")}_transparent_asset.png`,
+}));
+
+// Economy-only costs retained for the existing RPC/UI contract. No stat bonuses live here.
+export const CHARACTER_AWAKENING_MASTER = [
+  { awakening_level: 1, required_cash: 5000, dupe_required: 1 },
+  { awakening_level: 2, required_cash: 10000, dupe_required: 1 },
+  { awakening_level: 3, required_cash: 20000, dupe_required: 1 },
+  { awakening_level: 4, required_cash: 30000, dupe_required: 1 },
+  { awakening_level: 5, required_cash: 50000, dupe_required: 1 },
+] as const;
 
 export const VITALITY_MAX = 100;
 export const VITALITY_OVERFLOW_MAX = 200;

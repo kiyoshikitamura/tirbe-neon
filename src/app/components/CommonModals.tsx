@@ -2,8 +2,8 @@
 
 import React, { useEffect, useRef } from "react";
 import { useGame } from "../context/GameContext";
-import { EQUIPMENTS_MASTER_DATA } from "@/utils/equipments_master_data";
-import { SKILLS_MASTER_DATA } from "@/utils/skills_master_data";
+import { CANONICAL_EQUIPMENT_VIEW } from "@/utils/equipments_master_data";
+import { CANONICAL_SKILL_VIEW } from "@/utils/skills_master_data";
 import { CHARACTERS_MASTER } from "@/utils/game_constants";
 import CharacterPresentation from "./character/CharacterPresentation";
 import OutlawButton from "./ui/OutlawButton";
@@ -159,7 +159,7 @@ export default function CommonModals() {
               {userEquipmentsList
                 .filter((eq: any) => eq.equipped_character_id === null)
                 .map((eq: any) => {
-                  const master = EQUIPMENTS_MASTER_DATA.find((m: any) => m.id === eq.equipment_id);
+                  const master = CANONICAL_EQUIPMENT_VIEW.find((m: any) => m.id === eq.equipment_id);
                   return (
                     <div key={eq.id} className="list-item">
                       <div className="item-left">
@@ -201,7 +201,7 @@ export default function CommonModals() {
               {userSkillsList
                 .filter((us: any) => us.equipped_character_id === null)
                 .map((us: any) => {
-                  const master = SKILLS_MASTER_DATA.find((s: any) => s.id === us.skill_card_id);
+                  const master = CANONICAL_SKILL_VIEW.find((s: any) => s.id === us.skill_card_id);
                   return (
                     <div key={us.id} className="list-item">
                       <div className="item-left">

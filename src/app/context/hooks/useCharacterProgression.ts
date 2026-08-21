@@ -3,11 +3,12 @@
 import { useState } from "react";
 import { supabase } from "@/utils/supabase";
 import { CHARACTER_AWAKENING_MASTER } from "@/utils/game_constants";
-import { EQUIPMENTS_MASTER_DATA } from "@/utils/equipments_master_data";
-import { SKILLS_MASTER_DATA } from "@/utils/skills_master_data";
+import { CANONICAL_EQUIPMENT_VIEW } from "@/utils/equipments_master_data";
+import { CANONICAL_SKILL_VIEW } from "@/utils/skills_master_data";
 import { useImmediateActionLock } from "@/hooks/useImmediateActionLock";
 import { getCharacterTotalStats } from "@/utils/stats_calculator";
-import { getEquipmentLevelScale } from "@/utils/equipment_progression";
+import { getEquipmentLevelCap } from "@/utils/equipment_progression";
+import { canonicalEquipmentFlatStat, canonicalSkillSlotCount } from "@/domain/gameplay/canonical/calculations";
 import type { ConfirmDialogConfig } from "@/app/components/ui/ConfirmDialog";
 import { beginActionPerformance } from "@/utils/actionPerformance";
 
@@ -221,7 +222,7 @@ export function useCharacterProgression(
       setActiveGearSlot(null);
       await syncBootstrapData(session.user.id);
       const equipped = userEquipmentsList.find((item: any) => item.id === gearId);
-      const equippedName = EQUIPMENTS_MASTER_DATA.find((item: any) => item.id === equipped?.equipment_id)?.name || "装備品";
+      const equippedName = CANONICAL_EQUIPMENT_VIEW.find((item: any) => item.id === equipped?.equipment_id)?.name || "装備品";
       setConfirmDialogConfig({
         isOpen: true, title: "装備変更結果",
         message: `${equippedName}をスロット${slotIndex + 1}へ装備しました。編成戦力へ反映されます。`,
@@ -278,7 +279,7 @@ export function useCharacterProgression(
       setActiveSkillSlot(null);
       await syncBootstrapData(session.user.id);
       const equipped = userSkillsList.find((item: any) => item.id === skillCardUuid);
-      const equippedName = SKILLS_MASTER_DATA.find((item: any) => item.id === equipped?.skill_card_id)?.name || "スキル";
+      const equippedName = CANONICAL_SKILL_VIEW.find((item: any) => item.id === equipped?.skill_card_id)?.name || "スキル";
       setConfirmDialogConfig({
         isOpen: true, title: "スキル変更結果",
         message: `${equippedName}をスロット${slotIndex + 1}へ装備しました。次回バトルから効果が反映されます。`,
@@ -339,7 +340,7 @@ export function useCharacterProgression(
     try {
       const availableGears = userEquipmentsList.filter((e: any) => {
         if (e.equipped_character_id && e.equipped_character_id !== characterDbId) return false;
-        const master = EQUIPMENTS_MASTER_DATA.find((m: any) => m.id === e.equipment_id);
+        const master = CANONICAL_EQUIPMENT_VIEW.find((m: any) => m.id === e.equipment_id);
         if (!master) return false;
         if (master.is_exclusive && master.exclusive_character_id && master.exclusive_character_id !== masterCharId) return false;
         return true;
@@ -360,11 +361,11 @@ export function useCharacterProgression(
       for (const st of slotTypes) {
         const slots = slotIndexesMap[st];
         const candidates = availableGears.filter((e: any) => {
-          const m = EQUIPMENTS_MASTER_DATA.find((m: any) => m.id === e.equipment_id);
+          const m = CANONICAL_EQUIPMENT_VIEW.find((m: any) => m.id === e.equipment_id);
           return m?.slot_type === st;
         }).sort((a: any, b: any) => {
-          const mA = EQUIPMENTS_MASTER_DATA.find((m: any) => m.id === a.equipment_id);
-          const mB = EQUIPMENTS_MASTER_DATA.find((m: any) => m.id === b.equipment_id);
+          const mA = CANONICAL_EQUIPMENT_VIEW.find((m: any) => m.id === a.equipment_id);
+          const mB = CANONICAL_EQUIPMENT_VIEW.find((m: any) => m.id === b.equipment_id);
           const rarityScore: any = { SSR: 4, SR: 3, R: 2, N: 1 };
           const rDiff = (rarityScore[mB?.rarity || "N"] || 0) - (rarityScore[mA?.rarity || "N"] || 0);
           if (rDiff !== 0) return rDiff;
@@ -436,15 +437,15 @@ export function useCharacterProgression(
     try {
       const availableSkills = userSkillsList.filter((s: any) => {
         if (s.equipped_character_id && s.equipped_character_id !== characterDbId) return false;
-        const master = SKILLS_MASTER_DATA.find((m: any) => m.id === s.skill_card_id);
+        const master = CANONICAL_SKILL_VIEW.find((m: any) => m.id === s.skill_card_id);
         if (!master) return false;
         const skillNumber = Number(s.skill_card_id?.match(/\d+$/)?.[0]);
         if (!Number.isInteger(skillNumber) || skillNumber < 1 || skillNumber > 50) return false;
         if (master.is_exclusive && master.exclusive_character_id && master.exclusive_character_id !== resolvedMasterCharId) return false;
         return true;
       }).sort((a: any, b: any) => {
-        const mA = SKILLS_MASTER_DATA.find((m: any) => m.id === a.skill_card_id);
-        const mB = SKILLS_MASTER_DATA.find((m: any) => m.id === b.skill_card_id);
+        const mA = CANONICAL_SKILL_VIEW.find((m: any) => m.id === a.skill_card_id);
+        const mB = CANONICAL_SKILL_VIEW.find((m: any) => m.id === b.skill_card_id);
         const isSynergyA = mA?.exclusive_character_id === resolvedMasterCharId ? 1 : 0;
         const isSynergyB = mB?.exclusive_character_id === resolvedMasterCharId ? 1 : 0;
         if (isSynergyB !== isSynergyA) return isSynergyB - isSynergyA;
@@ -457,7 +458,7 @@ export function useCharacterProgression(
       const selectedSkillUuids: string[] = [];
       const selectedSlotIndexes: number[] = [];
 
-      const maxSlots = Math.min(6, 3 + Math.max(0, targetCharacter?.awakening_level || 0));
+      const maxSlots = canonicalSkillSlotCount(Math.max(0, Math.min(5, targetCharacter?.awakening_level || 0)));
       for (let i = 0; i < Math.min(availableSkills.length, maxSlots); i++) {
         selectedSkillUuids.push(availableSkills[i].id);
         selectedSlotIndexes.push(i);
@@ -506,7 +507,7 @@ export function useCharacterProgression(
 
   const handleEquipmentLevelUp = async (expItemId: string = "EQUIP_EXP_S", count: number = 1) => {
     if (!session || !selectedEquipment) return;
-    const equipmentLevelCap = Math.min(100, 50 + Math.min(Math.max(selectedEquipment.plus_val || 0, 0), 5) * 10);
+    const equipmentLevelCap = getEquipmentLevelCap(selectedEquipment.plus_val || 0);
     if (equipmentLevel >= equipmentLevelCap) return;
 
     let userItemQty = 0;
@@ -526,7 +527,7 @@ export function useCharacterProgression(
     }
 
     const previousLevel = equipmentLevel;
-    const equipmentName = EQUIPMENTS_MASTER_DATA.find((entry: any) => entry.id === selectedEquipment.equipment_id)?.name || selectedEquipment.equipment_id;
+    const equipmentName = CANONICAL_EQUIPMENT_VIEW.find((entry: any) => entry.id === selectedEquipment.equipment_id)?.name || selectedEquipment.equipment_id;
     if (!beginUpgradeAction()) return;
     playCyberSe("click");
     try {
@@ -546,12 +547,12 @@ export function useCharacterProgression(
       }
 
       const newLevel = Number(res.data?.level ?? previousLevel + count);
-      const master = EQUIPMENTS_MASTER_DATA.find((entry: any) => entry.id === selectedEquipment.equipment_id);
-      const basePower = master ? Number(master.hp || 0) + Number(master.atk || 0) + Number(master.def || 0) : 0;
-      const utilityPower = master ? Number(master.spd || 0) + Number(master.luk || 0) : 0;
-      const plusScale = Number(selectedEquipment.plus_val || 0) * 0.1;
-      const powerBefore = Math.floor(basePower * (getEquipmentLevelScale(previousLevel) + plusScale)) + utilityPower;
-      const powerAfter = Math.floor(basePower * (getEquipmentLevelScale(newLevel) + plusScale)) + utilityPower;
+      const master = CANONICAL_EQUIPMENT_VIEW.find((entry: any) => entry.id === selectedEquipment.equipment_id);
+      const plusValue = Math.max(0, Math.min(10, Number(selectedEquipment.plus_val || 0)));
+      const powerAt = (level: number) => master ? [master.hp, master.atk, master.def]
+        .reduce((sum, flat) => sum + canonicalEquipmentFlatStat(Number(flat || 0), level, plusValue), 0) : 0;
+      const powerBefore = powerAt(previousLevel);
+      const powerAfter = powerAt(newLevel);
       await syncBootstrapData(session.user.id);
       setSelectedEquipment((previous: any) => previous ? { ...previous, level: newLevel } : null);
       setConfirmDialogConfig({
@@ -632,7 +633,7 @@ export function useCharacterProgression(
       return;
     }
 
-    const skillMaster = SKILLS_MASTER_DATA.find(s => s.id === selectedSkill.skill_card_id);
+    const skillMaster = CANONICAL_SKILL_VIEW.find(s => s.id === selectedSkill.skill_card_id);
     if (!skillMaster) return;
 
     const isExclusive = !!skillMaster.is_exclusive;

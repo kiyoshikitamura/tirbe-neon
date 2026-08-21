@@ -164,11 +164,11 @@ begin
     from canonical_base base
     left join lateral (
       select
-        sum(floor(master.hp * ((case when greatest(least(coalesce(owned.level, 1), 100), 1) <= 50 then 0.1 + (greatest(least(coalesce(owned.level, 1), 100), 1) - 1) * 0.5 / 49 else 0.6 + (greatest(least(coalesce(owned.level, 1), 100), 1) - 50) * 0.4 / 50 end) + greatest(coalesce(owned.plus_val, 0), 0) * 0.10))) as hp,
-        sum(floor(master.atk * ((case when greatest(least(coalesce(owned.level, 1), 100), 1) <= 50 then 0.1 + (greatest(least(coalesce(owned.level, 1), 100), 1) - 1) * 0.5 / 49 else 0.6 + (greatest(least(coalesce(owned.level, 1), 100), 1) - 50) * 0.4 / 50 end) + greatest(coalesce(owned.plus_val, 0), 0) * 0.10))) as atk,
-        sum(floor(master.def * ((case when greatest(least(coalesce(owned.level, 1), 100), 1) <= 50 then 0.1 + (greatest(least(coalesce(owned.level, 1), 100), 1) - 1) * 0.5 / 49 else 0.6 + (greatest(least(coalesce(owned.level, 1), 100), 1) - 50) * 0.4 / 50 end) + greatest(coalesce(owned.plus_val, 0), 0) * 0.10))) as def,
-        sum(master.spd) as spd,
-        sum(master.luk) as luk,
+        sum(floor(master.hp * (case when greatest(least(coalesce(owned.level,1),100),1)<=50 then 0.50+(greatest(least(coalesce(owned.level,1),100),1)-1)*0.25/49 else 0.75+(greatest(least(coalesce(owned.level,1),100),1)-50)*0.25/50 end) * (1+greatest(least(coalesce(owned.plus_val,0),10),0)*0.04))) as hp,
+        sum(floor(master.atk * (case when greatest(least(coalesce(owned.level,1),100),1)<=50 then 0.50+(greatest(least(coalesce(owned.level,1),100),1)-1)*0.25/49 else 0.75+(greatest(least(coalesce(owned.level,1),100),1)-50)*0.25/50 end) * (1+greatest(least(coalesce(owned.plus_val,0),10),0)*0.04))) as atk,
+        sum(floor(master.def * (case when greatest(least(coalesce(owned.level,1),100),1)<=50 then 0.50+(greatest(least(coalesce(owned.level,1),100),1)-1)*0.25/49 else 0.75+(greatest(least(coalesce(owned.level,1),100),1)-50)*0.25/50 end) * (1+greatest(least(coalesce(owned.plus_val,0),10),0)*0.04))) as def,
+        sum(floor(master.spd * (case when greatest(least(coalesce(owned.level,1),100),1)<=50 then 0.50+(greatest(least(coalesce(owned.level,1),100),1)-1)*0.25/49 else 0.75+(greatest(least(coalesce(owned.level,1),100),1)-50)*0.25/50 end) * (1+greatest(least(coalesce(owned.plus_val,0),10),0)*0.04))) as spd,
+        sum(floor(master.luk * (case when greatest(least(coalesce(owned.level,1),100),1)<=50 then 0.50+(greatest(least(coalesce(owned.level,1),100),1)-1)*0.25/49 else 0.75+(greatest(least(coalesce(owned.level,1),100),1)-50)*0.25/50 end) * (1+greatest(least(coalesce(owned.plus_val,0),10),0)*0.04))) as luk,
         jsonb_agg(jsonb_build_object(
           'instanceId', owned.id,
           'equipmentId', master.equipment_id,

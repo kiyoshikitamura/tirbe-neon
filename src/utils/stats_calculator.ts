@@ -1,87 +1,30 @@
-import { EQUIPMENTS_MASTER_DATA } from "./equipments_master_data";
-import { CHARACTERS_MASTER, CHARACTER_GROWTH_PATTERNS, CHARACTER_AWAKENING_MASTER } from "./game_constants";
-import { getEquipmentLevelScale } from "./equipment_progression";
+import { CANONICAL_CHARACTERS, CANONICAL_EQUIPMENTS } from "@/domain/gameplay/canonical/masters";
+import { canonicalCharacterStats, canonicalEquipmentFlatStat } from "@/domain/gameplay/canonical/calculations";
+
+export type CharacterRuntimeRecord = { id?: string; character_id: string; level?: number; awakening_level?: number };
+export type EquipmentRuntimeRecord = { equipment_id?: string; equipment_master_id?: string; equipped_character_id?: string | null; level?: number; plus_val?: number };
 
 export function getCharacterBaseStats(characterId: string, level: number, awaken: number) {
-  const charMaster = CHARACTERS_MASTER.find(c => c.id === characterId);
-  const patternId = charMaster?.growthPatternId || "BALANCED";
-
-  const rarity = (charMaster as any)?.rarity || "R";
-  const rarityMultiplier = rarity === "SSR" ? 1.25 : rarity === "SR" ? 1.1 : rarity === "N" ? 0.95 : 1.0;
-
-  const pattern = CHARACTER_GROWTH_PATTERNS.find(p => p.pattern_id === patternId) || CHARACTER_GROWTH_PATTERNS[0];
-  const awakenMaster = CHARACTER_AWAKENING_MASTER.find(a => a.awakening_level === awaken);
-
-  const hpBonus = awakenMaster ? awakenMaster.hp_bonus : 0;
-  const atkBonus = awakenMaster ? awakenMaster.atk_bonus : 0;
-  const defBonus = awakenMaster ? awakenMaster.def_bonus : 0;
-  const spdBonus = awakenMaster ? awakenMaster.spd_bonus : 0;
-  const lukBonus = awakenMaster ? awakenMaster.luk_bonus : 0;
-
-  return {
-    hp: Math.floor((pattern.base_hp + (level - 1) * pattern.hp_gain + hpBonus) * rarityMultiplier),
-    atk: Math.floor((pattern.base_atk + (level - 1) * pattern.atk_gain + atkBonus) * rarityMultiplier),
-    def: Math.floor((pattern.base_def + (level - 1) * pattern.def_gain + defBonus) * rarityMultiplier),
-    spd: Math.floor((pattern.base_spd + Math.floor((level - 1) * pattern.spd_gain) + spdBonus) * rarityMultiplier),
-    luk: Math.floor((pattern.base_luk + Math.floor((level - 1) * pattern.luk_gain) + lukBonus) * rarityMultiplier),
-  };
+  const character = CANONICAL_CHARACTERS.find((entry) => entry.character_id === characterId);
+  if (!character) return { hp: 0, atk: 0, def: 0, spd: 0, luk: 0 };
+  return canonicalCharacterStats(character.lv1, character.lv100, Math.max(1, Math.min(100, Math.trunc(level || 1))), Math.max(0, Math.min(5, Math.trunc(awaken || 0))));
 }
 
-export function getCharacterTotalStats(charRecord: any, equipsList: any[]) {
+export function getCharacterTotalStats(charRecord: CharacterRuntimeRecord | null | undefined, equipsList: EquipmentRuntimeRecord[]) {
   if (!charRecord) return { hp: 0, atk: 0, def: 0, spd: 0, luk: 0 };
-  const base = getCharacterBaseStats(charRecord.character_id, charRecord.level, charRecord.awakening_level);
-  
-  const charEquips = equipsList.filter(eq => eq.equipped_character_id === charRecord.id);
-  
-  let extraHp = 0;
-  let extraAtk = 0;
-  let extraDef = 0;
-  let extraSpd = 0;
-  let extraLuk = 0;
-
-  charEquips.forEach(eq => {
-    const master = EQUIPMENTS_MASTER_DATA.find(m => m.id === eq.equipment_id);
-    if (master) {
-      const scale = getEquipmentLevelScale(eq.level) + (eq.plus_val || 0) * 0.10;
-      extraHp += Math.floor(master.hp * scale);
-      extraAtk += Math.floor(master.atk * scale);
-      extraDef += Math.floor(master.def * scale);
-      // SPD/LUK are utility stats and remain flat across equipment level/+ value.
-      extraSpd += master.spd;
-      extraLuk += master.luk;
-    }
-  });
-
-
-  return {
-    hp: base.hp + extraHp,
-    atk: base.atk + extraAtk,
-    def: base.def + extraDef,
-    spd: base.spd + extraSpd,
-    luk: base.luk + extraLuk
-  };
-}
-
-export function getCharacterApBonus(charRecordId: string, equipsList: any[]) {
-  if (!charRecordId) return 0;
-  const charEquips = equipsList.filter(eq => eq.equipped_character_id === charRecordId);
-  let apBonus = 0;
-  charEquips.forEach(eq => {
-    if (eq.random_options) {
-      let options: any[] = [];
-      try {
-        options = typeof eq.random_options === "string" ? JSON.parse(eq.random_options) : eq.random_options;
-      } catch (e) {
-        options = [];
-      }
-      if (Array.isArray(options)) {
-        options.forEach(opt => {
-          if (opt && (opt.type === "ap_max_up" || opt.type === "ap_max")) {
-            apBonus += Number(opt.value) || 0;
-          }
-        });
-      }
-    }
-  });
-  return apBonus;
+  const base = getCharacterBaseStats(charRecord.character_id, charRecord.level ?? 1, charRecord.awakening_level ?? 0);
+  const equipment = equipsList.filter((entry) => entry.equipped_character_id === charRecord.id).reduce((total, owned) => {
+    const equipmentId = owned.equipment_id || owned.equipment_master_id;
+    const master = CANONICAL_EQUIPMENTS.find((entry) => entry.equipment_id === equipmentId);
+    if (!master || (master.exclusive_character_id && master.exclusive_character_id !== charRecord.character_id)) return total;
+    const plusValue = Math.max(0, Math.min(10, Math.trunc(owned.plus_val ?? 0)));
+    const level = Math.max(1, Math.min(100, Math.trunc(owned.level ?? 1)));
+    total.hp += canonicalEquipmentFlatStat(master.base_stats.hp, level, plusValue);
+    total.atk += canonicalEquipmentFlatStat(master.base_stats.atk, level, plusValue);
+    total.def += canonicalEquipmentFlatStat(master.base_stats.def, level, plusValue);
+    total.spd += canonicalEquipmentFlatStat(master.base_stats.spd, level, plusValue);
+    total.luk += canonicalEquipmentFlatStat(master.base_stats.luk, level, plusValue);
+    return total;
+  }, { hp: 0, atk: 0, def: 0, spd: 0, luk: 0 });
+  return { hp: base.hp + equipment.hp, atk: base.atk + equipment.atk, def: base.def + equipment.def, spd: base.spd + equipment.spd, luk: base.luk + equipment.luk };
 }

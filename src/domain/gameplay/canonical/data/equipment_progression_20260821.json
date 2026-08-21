@@ -1,0 +1,15 @@
+{
+  "version": "2026-08-21",
+  "status": "PRODUCTION_FROZEN",
+  "level_scale": {
+    "minimum_level": 1,
+    "maximum_level": 100,
+    "segments": [
+      { "from": 1, "to": 50, "anchor_level": 1, "base_bp": 5000, "span_bp": 2500, "intervals": 49, "formula": "0.50 + ((level - 1) / 49) * 0.25" },
+      { "from": 51, "to": 100, "anchor_level": 50, "base_bp": 7500, "span_bp": 2500, "intervals": 50, "formula": "0.75 + ((level - 50) / 50) * 0.25" }
+    ]
+  },
+  "limit_break_multiplier_bp_per_step": 400,
+  "level_cap_by_limit_break": [50, 60, 70, 80, 90, 100, 100, 100, 100, 100, 100],
+  "final_flat_stat_formula": "floor(master_lv100_lb0_flat * level_scale * limit_break_multiplier)"
+}

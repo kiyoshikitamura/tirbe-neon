@@ -1,0 +1,3104 @@
+{
+  "version": "2026-08-21",
+  "status": "PRODUCTION_FROZEN",
+  "equipments": [
+    {
+      "equipment_id": "WEAPON_001",
+      "display_name": "ストリートナイフ",
+      "rarity": "N",
+      "category": "WEAPON",
+      "base_stats": {
+        "hp": 0,
+        "atk": 900,
+        "def": 0,
+        "spd": 0,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "—",
+        "—"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "WEAPON_002",
+      "display_name": "9mmハンドガン",
+      "rarity": "N",
+      "category": "WEAPON",
+      "base_stats": {
+        "hp": 0,
+        "atk": 1000,
+        "def": 0,
+        "spd": 0,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "—",
+        "—"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "WEAPON_003",
+      "display_name": "金属バット",
+      "rarity": "N",
+      "category": "WEAPON",
+      "base_stats": {
+        "hp": 0,
+        "atk": 1100,
+        "def": 0,
+        "spd": 0,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "—",
+        "—"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "WEAPON_004",
+      "display_name": "サバイバルマチェテ",
+      "rarity": "N",
+      "category": "WEAPON",
+      "base_stats": {
+        "hp": 0,
+        "atk": 1200,
+        "def": 0,
+        "spd": -15,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "SPD-15",
+        "—"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "WEAPON_005",
+      "display_name": "特殊警棒",
+      "rarity": "N",
+      "category": "WEAPON",
+      "base_stats": {
+        "hp": 0,
+        "atk": 950,
+        "def": 200,
+        "spd": 0,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "DEF+200",
+        "—"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "WEAPON_006",
+      "display_name": "折りたたみカミソリ",
+      "rarity": "N",
+      "category": "WEAPON",
+      "base_stats": {
+        "hp": 0,
+        "atk": 850,
+        "def": 0,
+        "spd": 0,
+        "luk": 3
+      },
+      "fixed_effects": [
+        "LUK+3",
+        "—"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "WEAPON_007",
+      "display_name": "鉄パイプ",
+      "rarity": "N",
+      "category": "WEAPON",
+      "base_stats": {
+        "hp": 0,
+        "atk": 1150,
+        "def": 0,
+        "spd": 0,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "—",
+        "—"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "WEAPON_008",
+      "display_name": "メリケンサック",
+      "rarity": "N",
+      "category": "WEAPON",
+      "base_stats": {
+        "hp": 0,
+        "atk": 900,
+        "def": 0,
+        "spd": 30,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "SPD+30",
+        "—"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "WEAPON_009",
+      "display_name": "錆びたバール",
+      "rarity": "R",
+      "category": "WEAPON",
+      "base_stats": {
+        "hp": 0,
+        "atk": 1500,
+        "def": 0,
+        "spd": -20,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "SPD-20",
+        "—"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "WEAPON_010",
+      "display_name": "バスターマグナム",
+      "rarity": "R",
+      "category": "WEAPON",
+      "base_stats": {
+        "hp": 0,
+        "atk": 1900,
+        "def": 0,
+        "spd": -35,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "SPD-35",
+        "—"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "WEAPON_011",
+      "display_name": "ダガー",
+      "rarity": "R",
+      "category": "WEAPON",
+      "base_stats": {
+        "hp": 0,
+        "atk": 1450,
+        "def": 0,
+        "spd": 0,
+        "luk": 4
+      },
+      "fixed_effects": [
+        "LUK+4",
+        "—"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "WEAPON_012",
+      "display_name": "カスタムピストル",
+      "rarity": "R",
+      "category": "WEAPON",
+      "base_stats": {
+        "hp": 0,
+        "atk": 1550,
+        "def": 0,
+        "spd": 45,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "SPD+45",
+        "—"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "WEAPON_013",
+      "display_name": "ソウドオフ・ショットガン",
+      "rarity": "R",
+      "category": "WEAPON",
+      "base_stats": {
+        "hp": 0,
+        "atk": 1850,
+        "def": 0,
+        "spd": -30,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "SPD-30",
+        "—"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "WEAPON_014",
+      "display_name": "コンバットナイフ",
+      "rarity": "R",
+      "category": "WEAPON",
+      "base_stats": {
+        "hp": 0,
+        "atk": 1400,
+        "def": 0,
+        "spd": 0,
+        "luk": 5
+      },
+      "fixed_effects": [
+        "LUK+5",
+        "—"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "WEAPON_015",
+      "display_name": "電撃警棒",
+      "rarity": "R",
+      "category": "WEAPON",
+      "base_stats": {
+        "hp": 0,
+        "atk": 1350,
+        "def": 0,
+        "spd": 55,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "SPD+55",
+        "—"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "WEAPON_016",
+      "display_name": "消音サブマシンガン",
+      "rarity": "R",
+      "category": "WEAPON",
+      "base_stats": {
+        "hp": 0,
+        "atk": 1650,
+        "def": 0,
+        "spd": 30,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "SPD+30",
+        "—"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "WEAPON_017",
+      "display_name": "ヘヴィスレッジハマー",
+      "rarity": "R",
+      "category": "WEAPON",
+      "base_stats": {
+        "hp": 0,
+        "atk": 2000,
+        "def": 0,
+        "spd": -60,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "SPD-60",
+        "—"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "WEAPON_018",
+      "display_name": "カスタムバタフライ",
+      "rarity": "R",
+      "category": "WEAPON",
+      "base_stats": {
+        "hp": 0,
+        "atk": 1400,
+        "def": 0,
+        "spd": 0,
+        "luk": 6
+      },
+      "fixed_effects": [
+        "LUK+6",
+        "—"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "WEAPON_019",
+      "display_name": "ワイヤーソー",
+      "rarity": "R",
+      "category": "WEAPON",
+      "base_stats": {
+        "hp": 0,
+        "atk": 1500,
+        "def": 0,
+        "spd": 40,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "SPD+40",
+        "—"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "WEAPON_020",
+      "display_name": "競技用コンポジットボウ",
+      "rarity": "R",
+      "category": "WEAPON",
+      "base_stats": {
+        "hp": 0,
+        "atk": 1600,
+        "def": 0,
+        "spd": 0,
+        "luk": 3
+      },
+      "fixed_effects": [
+        "LUK+3",
+        "—"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "WEAPON_021",
+      "display_name": "チタンナックルクロー",
+      "rarity": "R",
+      "category": "WEAPON",
+      "base_stats": {
+        "hp": 0,
+        "atk": 1450,
+        "def": 0,
+        "spd": 60,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "SPD+60",
+        "—"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "WEAPON_022",
+      "display_name": "オートマチックマグナム",
+      "rarity": "R",
+      "category": "WEAPON",
+      "base_stats": {
+        "hp": 0,
+        "atk": 1850,
+        "def": 0,
+        "spd": -35,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "SPD-35",
+        "—"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "WEAPON_023",
+      "display_name": "スタンアサシンダガー",
+      "rarity": "SR",
+      "category": "WEAPON",
+      "base_stats": {
+        "hp": 0,
+        "atk": 2400,
+        "def": 0,
+        "spd": 0,
+        "luk": 7
+      },
+      "fixed_effects": [
+        "LUK+7",
+        "Normal STUN+8%"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "WEAPON_024",
+      "display_name": "消音サプレッサーSMG",
+      "rarity": "SR",
+      "category": "WEAPON",
+      "base_stats": {
+        "hp": 0,
+        "atk": 2500,
+        "def": 0,
+        "spd": 90,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "SPD+90",
+        "SPD+8%"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "WEAPON_025",
+      "display_name": "インダストリアル・デモリッシャー",
+      "rarity": "SR",
+      "category": "WEAPON",
+      "base_stats": {
+        "hp": 0,
+        "atk": 3100,
+        "def": 0,
+        "spd": -50,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "SPD-50",
+        "Ignore DEF12%"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "WEAPON_026",
+      "display_name": "仕込み日本刀『黒曜』",
+      "rarity": "SR",
+      "category": "WEAPON",
+      "base_stats": {
+        "hp": 0,
+        "atk": 2700,
+        "def": 0,
+        "spd": 0,
+        "luk": 8
+      },
+      "fixed_effects": [
+        "LUK+8",
+        "Crit Rate10%"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "WEAPON_027",
+      "display_name": "アサルトライフル",
+      "rarity": "SR",
+      "category": "WEAPON",
+      "base_stats": {
+        "hp": 0,
+        "atk": 2850,
+        "def": 0,
+        "spd": 0,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "—",
+        "ATK+8%"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "WEAPON_028",
+      "display_name": "高周波ブレード",
+      "rarity": "SR",
+      "category": "WEAPON",
+      "base_stats": {
+        "hp": 0,
+        "atk": 2600,
+        "def": 0,
+        "spd": 0,
+        "luk": 9
+      },
+      "fixed_effects": [
+        "LUK+9",
+        "Lifesteal8%"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "WEAPON_029",
+      "display_name": "化学注入式ダガー",
+      "rarity": "SR",
+      "category": "WEAPON",
+      "base_stats": {
+        "hp": 0,
+        "atk": 2350,
+        "def": 0,
+        "spd": 0,
+        "luk": 11
+      },
+      "fixed_effects": [
+        "LUK+11",
+        "Poison chance15%"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "WEAPON_030",
+      "display_name": "散弾銃『レイザー』",
+      "rarity": "SR",
+      "category": "WEAPON",
+      "base_stats": {
+        "hp": 0,
+        "atk": 2800,
+        "def": 0,
+        "spd": -30,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "SPD-30",
+        "DEF DOWN success+10pt"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "WEAPON_031",
+      "display_name": "ヘヴィリボルバー『コフィン』",
+      "rarity": "SR",
+      "category": "WEAPON",
+      "base_stats": {
+        "hp": 0,
+        "atk": 2950,
+        "def": 0,
+        "spd": 0,
+        "luk": 6
+      },
+      "fixed_effects": [
+        "LUK+6",
+        "HP<30% ATK+15%"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "WEAPON_032",
+      "display_name": "デュアルカスタムピストル",
+      "rarity": "SR",
+      "category": "WEAPON",
+      "base_stats": {
+        "hp": 0,
+        "atk": 2500,
+        "def": 0,
+        "spd": 101,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "SPD+100",
+        "SPD+10%"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "WEAPON_033",
+      "display_name": "スタン警棒カスタム",
+      "rarity": "SR",
+      "category": "WEAPON",
+      "base_stats": {
+        "hp": 0,
+        "atk": 2300,
+        "def": 801,
+        "spd": 0,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "DEF+800",
+        "DEF+12%"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "WEAPON_034",
+      "display_name": "アサシンマチェテ",
+      "rarity": "SR",
+      "category": "WEAPON",
+      "base_stats": {
+        "hp": 0,
+        "atk": 2650,
+        "def": 0,
+        "spd": 0,
+        "luk": 9
+      },
+      "fixed_effects": [
+        "LUK+9",
+        "Crit Damage18%"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "WEAPON_035",
+      "display_name": "コンパクトサブピストル",
+      "rarity": "SR",
+      "category": "WEAPON",
+      "base_stats": {
+        "hp": 0,
+        "atk": 2450,
+        "def": 0,
+        "spd": 95,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "SPD+95",
+        "Battle Start SPD12%/2T"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "WEAPON_036",
+      "display_name": "カタナ『影打ち』",
+      "rarity": "SR",
+      "category": "WEAPON",
+      "base_stats": {
+        "hp": 0,
+        "atk": 2700,
+        "def": 0,
+        "spd": 0,
+        "luk": 7
+      },
+      "fixed_effects": [
+        "LUK+7",
+        "Crit Rate8%"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "WEAPON_037",
+      "display_name": "消音スナイパーライフル",
+      "rarity": "SR",
+      "category": "WEAPON",
+      "base_stats": {
+        "hp": 0,
+        "atk": 3050,
+        "def": 0,
+        "spd": -45,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "SPD-45",
+        "Crit Rate12%"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "WEAPON_038",
+      "display_name": "スチールハンドクロー",
+      "rarity": "SR",
+      "category": "WEAPON",
+      "base_stats": {
+        "hp": 0,
+        "atk": 2400,
+        "def": 0,
+        "spd": 85,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "SPD+85",
+        "Normal REMOVE_BUFF12%"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "WEAPON_039",
+      "display_name": "サイレントスチール弓",
+      "rarity": "SR",
+      "category": "WEAPON",
+      "base_stats": {
+        "hp": 0,
+        "atk": 2550,
+        "def": 0,
+        "spd": 0,
+        "luk": 10
+      },
+      "fixed_effects": [
+        "LUK+10",
+        "Normal SILENCE12%"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "WEAPON_040",
+      "display_name": "変形蛇腹刃",
+      "rarity": "SR",
+      "category": "WEAPON",
+      "base_stats": {
+        "hp": 0,
+        "atk": 2750,
+        "def": 0,
+        "spd": 45,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "SPD+45",
+        "Normal Damage10%"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "WEAPON_041",
+      "display_name": "カービンライフル",
+      "rarity": "SSR",
+      "category": "WEAPON",
+      "base_stats": {
+        "hp": 1,
+        "atk": 3600,
+        "def": 1100,
+        "spd": 0,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "DEF+1100",
+        "HP+10%"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "WEAPON_042",
+      "display_name": "アイアンナックル『阿修羅』",
+      "rarity": "SSR",
+      "category": "WEAPON",
+      "base_stats": {
+        "hp": 0,
+        "atk": 3750,
+        "def": 0,
+        "spd": 110,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "SPD+110",
+        "Debuffed ATK+15%"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "WEAPON_043",
+      "display_name": "デス・バイパー",
+      "rarity": "SSR",
+      "category": "WEAPON",
+      "base_stats": {
+        "hp": 0,
+        "atk": 4150,
+        "def": 0,
+        "spd": 0,
+        "luk": 12
+      },
+      "fixed_effects": [
+        "LUK+12",
+        "Crit Damage25%"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "WEAPON_044",
+      "display_name": "サイバー・カタナ『電光石火』",
+      "rarity": "SSR",
+      "category": "WEAPON",
+      "base_stats": {
+        "hp": 0,
+        "atk": 3650,
+        "def": 0,
+        "spd": 161,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "SPD+160",
+        "SPD+12%"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "WEAPON_045",
+      "display_name": "ショットガン『終末の鐘』",
+      "rarity": "SSR",
+      "category": "WEAPON",
+      "base_stats": {
+        "hp": 0,
+        "atk": 4500,
+        "def": 0,
+        "spd": -65,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "SPD-65",
+        "Normal Damage18%"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "WEAPON_046",
+      "display_name": "インゴット・ファング",
+      "rarity": "SSR",
+      "category": "WEAPON",
+      "base_stats": {
+        "hp": 0,
+        "atk": 4000,
+        "def": 0,
+        "spd": 0,
+        "luk": 14
+      },
+      "fixed_effects": [
+        "LUK+14",
+        "Crit Rate15%"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "WEAPON_047",
+      "display_name": "レヴ・イグニッション",
+      "rarity": "SSR",
+      "category": "WEAPON",
+      "base_stats": {
+        "hp": 0,
+        "atk": 4500,
+        "def": 0,
+        "spd": 0,
+        "luk": 8
+      },
+      "fixed_effects": [
+        "LUK+8",
+        "First Kill→ATK18%/3T"
+      ],
+      "exclusive_character_id": "char_go_01",
+      "random_options": false
+    },
+    {
+      "equipment_id": "WEAPON_048",
+      "display_name": "サイバーデッキ・ブレード",
+      "rarity": "SSR",
+      "category": "WEAPON",
+      "base_stats": {
+        "hp": 0,
+        "atk": 3800,
+        "def": 0,
+        "spd": 170,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "SPD+170",
+        "First Skill→SPD18%/3T"
+      ],
+      "exclusive_character_id": "char_leo_01",
+      "random_options": false
+    },
+    {
+      "equipment_id": "WEAPON_049",
+      "display_name": "毒蛇の黒刃",
+      "rarity": "SSR",
+      "category": "WEAPON",
+      "base_stats": {
+        "hp": 0,
+        "atk": 4200,
+        "def": 0,
+        "spd": 0,
+        "luk": 10
+      },
+      "fixed_effects": [
+        "LUK+10",
+        "First Skill→Lifesteal15%/3T"
+      ],
+      "exclusive_character_id": "char_kengo_01",
+      "random_options": false
+    },
+    {
+      "equipment_id": "WEAPON_050",
+      "display_name": "支配者の鉄扇",
+      "rarity": "SSR",
+      "category": "WEAPON",
+      "base_stats": {
+        "hp": 0,
+        "atk": 3600,
+        "def": 1600,
+        "spd": 0,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "DEF+1600",
+        "HP<40%→DEF25%/3T"
+      ],
+      "exclusive_character_id": "char_koharu_01",
+      "random_options": false
+    },
+    {
+      "equipment_id": "HEAD_001",
+      "display_name": "ストリートキャップ",
+      "rarity": "N",
+      "category": "HEAD",
+      "base_stats": {
+        "hp": 3500,
+        "atk": 0,
+        "def": 0,
+        "spd": 0,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "—",
+        "—"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "HEAD_002",
+      "display_name": "パンクバンダナ",
+      "rarity": "N",
+      "category": "HEAD",
+      "base_stats": {
+        "hp": 3200,
+        "atk": 0,
+        "def": 0,
+        "spd": 20,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "SPD+20",
+        "—"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "HEAD_003",
+      "display_name": "ニットキャップ",
+      "rarity": "N",
+      "category": "HEAD",
+      "base_stats": {
+        "hp": 3700,
+        "atk": 0,
+        "def": 150,
+        "spd": 0,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "DEF+150",
+        "—"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "HEAD_004",
+      "display_name": "ワークキャップ",
+      "rarity": "N",
+      "category": "HEAD",
+      "base_stats": {
+        "hp": 4000,
+        "atk": 0,
+        "def": 0,
+        "spd": 0,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "—",
+        "—"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "HEAD_005",
+      "display_name": "サングラス",
+      "rarity": "N",
+      "category": "HEAD",
+      "base_stats": {
+        "hp": 3300,
+        "atk": 0,
+        "def": 0,
+        "spd": 0,
+        "luk": 3
+      },
+      "fixed_effects": [
+        "LUK+3",
+        "—"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "HEAD_006",
+      "display_name": "ハッカーヘッドセット",
+      "rarity": "R",
+      "category": "HEAD",
+      "base_stats": {
+        "hp": 5000,
+        "atk": 0,
+        "def": 0,
+        "spd": 40,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "SPD+40",
+        "—"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "HEAD_007",
+      "display_name": "マフィアフェドラ",
+      "rarity": "R",
+      "category": "HEAD",
+      "base_stats": {
+        "hp": 5400,
+        "atk": 0,
+        "def": 0,
+        "spd": 0,
+        "luk": 4
+      },
+      "fixed_effects": [
+        "LUK+4",
+        "—"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "HEAD_008",
+      "display_name": "防毒マスク",
+      "rarity": "R",
+      "category": "HEAD",
+      "base_stats": {
+        "hp": 6200,
+        "atk": 0,
+        "def": 0,
+        "spd": 0,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "—",
+        "—"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "HEAD_009",
+      "display_name": "カーボンライダーヘルメット",
+      "rarity": "R",
+      "category": "HEAD",
+      "base_stats": {
+        "hp": 6500,
+        "atk": 0,
+        "def": 500,
+        "spd": 0,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "DEF+500",
+        "—"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "HEAD_010",
+      "display_name": "アンティークゴーグル",
+      "rarity": "R",
+      "category": "HEAD",
+      "base_stats": {
+        "hp": 5200,
+        "atk": 0,
+        "def": 0,
+        "spd": 0,
+        "luk": 5
+      },
+      "fixed_effects": [
+        "LUK+5",
+        "—"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "HEAD_011",
+      "display_name": "バリスティックヘルメット",
+      "rarity": "R",
+      "category": "HEAD",
+      "base_stats": {
+        "hp": 7000,
+        "atk": 0,
+        "def": 650,
+        "spd": 0,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "DEF+650",
+        "—"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "HEAD_012",
+      "display_name": "マルチナイトビジョンゴーグル",
+      "rarity": "SR",
+      "category": "HEAD",
+      "base_stats": {
+        "hp": 8500,
+        "atk": 0,
+        "def": 0,
+        "spd": 0,
+        "luk": 7
+      },
+      "fixed_effects": [
+        "LUK+7",
+        "Blind Resist15%"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "HEAD_013",
+      "display_name": "重工業プロテクト溶接マスク",
+      "rarity": "SR",
+      "category": "HEAD",
+      "base_stats": {
+        "hp": 9500,
+        "atk": 0,
+        "def": 700,
+        "spd": 0,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "DEF+700",
+        "Blind Resist25%"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "HEAD_014",
+      "display_name": "バリスティックフェイスシールド",
+      "rarity": "SR",
+      "category": "HEAD",
+      "base_stats": {
+        "hp": 10500,
+        "atk": 0,
+        "def": 1000,
+        "spd": 0,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "DEF+1000",
+        "Status Resist12%"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "HEAD_015",
+      "display_name": "サイバースマートグラス",
+      "rarity": "SR",
+      "category": "HEAD",
+      "base_stats": {
+        "hp": 8200,
+        "atk": 0,
+        "def": 0,
+        "spd": 90,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "SPD+90",
+        "SPD+8%"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "HEAD_016",
+      "display_name": "隠密用アサシンフード",
+      "rarity": "SR",
+      "category": "HEAD",
+      "base_stats": {
+        "hp": 8800,
+        "atk": 0,
+        "def": 0,
+        "spd": 0,
+        "luk": 6
+      },
+      "fixed_effects": [
+        "LUK+6",
+        "Silence Resist15%"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "HEAD_017",
+      "display_name": "サイバー・バイザー『千里眼』",
+      "rarity": "SR",
+      "category": "HEAD",
+      "base_stats": {
+        "hp": 8500,
+        "atk": 0,
+        "def": 0,
+        "spd": 50,
+        "luk": 8
+      },
+      "fixed_effects": [
+        "LUK+8/SPD+50",
+        "Crit Rate10%"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "HEAD_018",
+      "display_name": "ヘルメット『防塁』",
+      "rarity": "SSR",
+      "category": "HEAD",
+      "base_stats": {
+        "hp": 14000,
+        "atk": 0,
+        "def": 1800,
+        "spd": 0,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "DEF+1800",
+        "DR8%"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "HEAD_019",
+      "display_name": "支配者のモノクル",
+      "rarity": "SSR",
+      "category": "HEAD",
+      "base_stats": {
+        "hp": 11500,
+        "atk": 0,
+        "def": 0,
+        "spd": 0,
+        "luk": 12
+      },
+      "fixed_effects": [
+        "LUK+12",
+        "Status Resist18%"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "HEAD_020",
+      "display_name": "艶花の黒簪",
+      "rarity": "SSR",
+      "category": "HEAD",
+      "base_stats": {
+        "hp": 10500,
+        "atk": 0,
+        "def": 0,
+        "spd": 130,
+        "luk": 12
+      },
+      "fixed_effects": [
+        "SPD+130/LUK+12",
+        "First Status→Status Resist25%/3T"
+      ],
+      "exclusive_character_id": "char_miyabi_01",
+      "random_options": false
+    },
+    {
+      "equipment_id": "BODY_001",
+      "display_name": "ウインドブレーカー",
+      "rarity": "N",
+      "category": "BODY",
+      "base_stats": {
+        "hp": 4000,
+        "atk": 0,
+        "def": 500,
+        "spd": 0,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "—"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "BODY_002",
+      "display_name": "デニムベスト",
+      "rarity": "N",
+      "category": "BODY",
+      "base_stats": {
+        "hp": 4400,
+        "atk": 0,
+        "def": 550,
+        "spd": 0,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "—"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "BODY_003",
+      "display_name": "作業用つなぎ",
+      "rarity": "N",
+      "category": "BODY",
+      "base_stats": {
+        "hp": 4600,
+        "atk": 0,
+        "def": 600,
+        "spd": 0,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "—"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "BODY_004",
+      "display_name": "サテンブルゾン",
+      "rarity": "N",
+      "category": "BODY",
+      "base_stats": {
+        "hp": 4200,
+        "atk": 0,
+        "def": 500,
+        "spd": 15,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "SPD+15"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "BODY_005",
+      "display_name": "レザージャケット",
+      "rarity": "N",
+      "category": "BODY",
+      "base_stats": {
+        "hp": 5000,
+        "atk": 0,
+        "def": 700,
+        "spd": 0,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "—"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "BODY_006",
+      "display_name": "ルーズサイズフーディ",
+      "rarity": "N",
+      "category": "BODY",
+      "base_stats": {
+        "hp": 5500,
+        "atk": 0,
+        "def": 450,
+        "spd": 0,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "—"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "BODY_007",
+      "display_name": "ブランドパーカー",
+      "rarity": "R",
+      "category": "BODY",
+      "base_stats": {
+        "hp": 7000,
+        "atk": 0,
+        "def": 950,
+        "spd": 0,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "—"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "BODY_008",
+      "display_name": "ロングレザーコート",
+      "rarity": "R",
+      "category": "BODY",
+      "base_stats": {
+        "hp": 7500,
+        "atk": 0,
+        "def": 1100,
+        "spd": 0,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "—"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "BODY_009",
+      "display_name": "ダブルライダース",
+      "rarity": "R",
+      "category": "BODY",
+      "base_stats": {
+        "hp": 7200,
+        "atk": 0,
+        "def": 1250,
+        "spd": 0,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "—"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "BODY_010",
+      "display_name": "インナーシャツ",
+      "rarity": "R",
+      "category": "BODY",
+      "base_stats": {
+        "hp": 8000,
+        "atk": 0,
+        "def": 850,
+        "spd": 25,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "SPD+25"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "BODY_011",
+      "display_name": "ワークデニムジャケット",
+      "rarity": "R",
+      "category": "BODY",
+      "base_stats": {
+        "hp": 7600,
+        "atk": 0,
+        "def": 1050,
+        "spd": 0,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "—"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "BODY_012",
+      "display_name": "プロテクトパファーベスト",
+      "rarity": "R",
+      "category": "BODY",
+      "base_stats": {
+        "hp": 8300,
+        "atk": 0,
+        "def": 1150,
+        "spd": 0,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "—"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "BODY_013",
+      "display_name": "フライトジャケット",
+      "rarity": "R",
+      "category": "BODY",
+      "base_stats": {
+        "hp": 7800,
+        "atk": 0,
+        "def": 1200,
+        "spd": 0,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "—"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "BODY_014",
+      "display_name": "防弾ベスト",
+      "rarity": "R",
+      "category": "BODY",
+      "base_stats": {
+        "hp": 9000,
+        "atk": 0,
+        "def": 1500,
+        "spd": 0,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "—"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "BODY_015",
+      "display_name": "アサシンテックウェアコート",
+      "rarity": "R",
+      "category": "BODY",
+      "base_stats": {
+        "hp": 7500,
+        "atk": 0,
+        "def": 900,
+        "spd": 50,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "SPD+50"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "BODY_016",
+      "display_name": "強化耐衝撃重装アーマー",
+      "rarity": "SR",
+      "category": "BODY",
+      "base_stats": {
+        "hp": 13500,
+        "atk": 0,
+        "def": 2400,
+        "spd": -50,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "SPD-50 / HP10%"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "BODY_017",
+      "display_name": "ナノファイバー防刃アウター",
+      "rarity": "SR",
+      "category": "BODY",
+      "base_stats": {
+        "hp": 11000,
+        "atk": 0,
+        "def": 1850,
+        "spd": 0,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "Status Resist12%"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "BODY_018",
+      "display_name": "防弾ダブルスーツジャケット",
+      "rarity": "SR",
+      "category": "BODY",
+      "base_stats": {
+        "hp": 10500,
+        "atk": 0,
+        "def": 1700,
+        "spd": 0,
+        "luk": 6
+      },
+      "fixed_effects": [
+        "LUK+6 / DEF10%"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "BODY_019",
+      "display_name": "パンクスタッズレザーライダース",
+      "rarity": "SR",
+      "category": "BODY",
+      "base_stats": {
+        "hp": 10000,
+        "atk": 0,
+        "def": 2000,
+        "spd": 0,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "DR5%"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "BODY_020",
+      "display_name": "重作業用外骨格ベスト",
+      "rarity": "SR",
+      "category": "BODY",
+      "base_stats": {
+        "hp": 10000,
+        "atk": 500,
+        "def": 2150,
+        "spd": 0,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "ATK+500 / ATK8%"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "BODY_021",
+      "display_name": "ウインドブレーカー・カスタム",
+      "rarity": "SR",
+      "category": "BODY",
+      "base_stats": {
+        "hp": 9500,
+        "atk": 0,
+        "def": 1550,
+        "spd": 75,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "SPD+75 / SPD8%"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "BODY_022",
+      "display_name": "高級ウールチェスターコート",
+      "rarity": "SR",
+      "category": "BODY",
+      "base_stats": {
+        "hp": 11500,
+        "atk": 0,
+        "def": 1650,
+        "spd": 0,
+        "luk": 7
+      },
+      "fixed_effects": [
+        "LUK+7 / Status Resist15%"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "BODY_023",
+      "display_name": "サイバーベスト『盾壁』",
+      "rarity": "SR",
+      "category": "BODY",
+      "base_stats": {
+        "hp": 13000,
+        "atk": 0,
+        "def": 2300,
+        "spd": 0,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "DR7%"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "BODY_024",
+      "display_name": "ナノメッシュ・ステルススーツ",
+      "rarity": "SR",
+      "category": "BODY",
+      "base_stats": {
+        "hp": 10000,
+        "atk": 0,
+        "def": 1500,
+        "spd": 90,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "SPD+90 / Silence Resist15%"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "BODY_025",
+      "display_name": "ヴェルヴェット・コート",
+      "rarity": "SR",
+      "category": "BODY",
+      "base_stats": {
+        "hp": 12000,
+        "atk": 0,
+        "def": 1800,
+        "spd": 0,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "Healing Received12%"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "BODY_026",
+      "display_name": "覇王のライダース",
+      "rarity": "SSR",
+      "category": "BODY",
+      "base_stats": {
+        "hp": 16000,
+        "atk": 650,
+        "def": 3000,
+        "spd": 0,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "ATK+650 / DEF15%"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "BODY_027",
+      "display_name": "蛇紋のシルクシャツ",
+      "rarity": "SSR",
+      "category": "BODY",
+      "base_stats": {
+        "hp": 14000,
+        "atk": 0,
+        "def": 2500,
+        "spd": 0,
+        "luk": 12
+      },
+      "fixed_effects": [
+        "LUK+12 / Status Resist20%"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "BODY_028",
+      "display_name": "サイバーミニドレス",
+      "rarity": "SSR",
+      "category": "BODY",
+      "base_stats": {
+        "hp": 13500,
+        "atk": 0,
+        "def": 2300,
+        "spd": 130,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "SPD+130 / Healing Received18%"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "BODY_029",
+      "display_name": "ボルドーホストスーツ",
+      "rarity": "SSR",
+      "category": "BODY",
+      "base_stats": {
+        "hp": 14500,
+        "atk": 0,
+        "def": 2600,
+        "spd": 0,
+        "luk": 12
+      },
+      "fixed_effects": [
+        "LUK+12 / First Status→Cleanse1+DEF15%/3T"
+      ],
+      "exclusive_character_id": "char_mio_01",
+      "random_options": false
+    },
+    {
+      "equipment_id": "BODY_030",
+      "display_name": "般若刺繍のスカジャン",
+      "rarity": "SSR",
+      "category": "BODY",
+      "base_stats": {
+        "hp": 15500,
+        "atk": 700,
+        "def": 2900,
+        "spd": 0,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "ATK+700 / HP<40%→DR10%/3T"
+      ],
+      "exclusive_character_id": "char_reiji_01",
+      "random_options": false
+    },
+    {
+      "equipment_id": "LEGS_001",
+      "display_name": "テックジョガー",
+      "rarity": "N",
+      "category": "LEGS",
+      "base_stats": {
+        "hp": 0,
+        "atk": 0,
+        "def": 400,
+        "spd": 25,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "SPD+25",
+        "—"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "LEGS_002",
+      "display_name": "ダメージジーンズ",
+      "rarity": "N",
+      "category": "LEGS",
+      "base_stats": {
+        "hp": 0,
+        "atk": 0,
+        "def": 450,
+        "spd": 0,
+        "luk": 2
+      },
+      "fixed_effects": [
+        "LUK+2",
+        "—"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "LEGS_003",
+      "display_name": "ワークパンツ",
+      "rarity": "N",
+      "category": "LEGS",
+      "base_stats": {
+        "hp": 2000,
+        "atk": 0,
+        "def": 550,
+        "spd": 0,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "HP+2000",
+        "—"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "LEGS_004",
+      "display_name": "ハイカットスニーカー",
+      "rarity": "N",
+      "category": "LEGS",
+      "base_stats": {
+        "hp": 0,
+        "atk": 0,
+        "def": 350,
+        "spd": 35,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "SPD+35",
+        "—"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "LEGS_005",
+      "display_name": "コンプレッションスパッツ",
+      "rarity": "N",
+      "category": "LEGS",
+      "base_stats": {
+        "hp": 0,
+        "atk": 0,
+        "def": 400,
+        "spd": 30,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "SPD+30",
+        "—"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "LEGS_006",
+      "display_name": "レザーライダーパンツ",
+      "rarity": "R",
+      "category": "LEGS",
+      "base_stats": {
+        "hp": 3500,
+        "atk": 0,
+        "def": 850,
+        "spd": 0,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "HP+3500",
+        "—"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "LEGS_007",
+      "display_name": "強化カーゴパンツ",
+      "rarity": "R",
+      "category": "LEGS",
+      "base_stats": {
+        "hp": 0,
+        "atk": 0,
+        "def": 900,
+        "spd": 45,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "SPD+45",
+        "—"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "LEGS_008",
+      "display_name": "サルエルスウェット",
+      "rarity": "R",
+      "category": "LEGS",
+      "base_stats": {
+        "hp": 0,
+        "atk": 0,
+        "def": 700,
+        "spd": 60,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "SPD+60",
+        "—"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "LEGS_009",
+      "display_name": "ストレッチスキニー",
+      "rarity": "R",
+      "category": "LEGS",
+      "base_stats": {
+        "hp": 0,
+        "atk": 0,
+        "def": 650,
+        "spd": 0,
+        "luk": 5
+      },
+      "fixed_effects": [
+        "LUK+5",
+        "—"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "LEGS_010",
+      "display_name": "作業用オーバーオール",
+      "rarity": "R",
+      "category": "LEGS",
+      "base_stats": {
+        "hp": 3000,
+        "atk": 0,
+        "def": 1000,
+        "spd": 0,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "HP+3000",
+        "—"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "LEGS_011",
+      "display_name": "プロテクト・コンバットパンツ",
+      "rarity": "R",
+      "category": "LEGS",
+      "base_stats": {
+        "hp": 3500,
+        "atk": 0,
+        "def": 1150,
+        "spd": 0,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "HP+3500",
+        "—"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "LEGS_012",
+      "display_name": "強化スチールトゥーブーツ",
+      "rarity": "SR",
+      "category": "LEGS",
+      "base_stats": {
+        "hp": 0,
+        "atk": 0,
+        "def": 1500,
+        "spd": 90,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "SPD+90",
+        "Normal Damage8%"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "LEGS_013",
+      "display_name": "ナノカーボン・ランニングスパッツ",
+      "rarity": "SR",
+      "category": "LEGS",
+      "base_stats": {
+        "hp": 0,
+        "atk": 0,
+        "def": 1300,
+        "spd": 130,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "SPD+130",
+        "SPD8%"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "LEGS_014",
+      "display_name": "ヘヴィタクティカルグリーブ",
+      "rarity": "SR",
+      "category": "LEGS",
+      "base_stats": {
+        "hp": 6000,
+        "atk": 0,
+        "def": 2000,
+        "spd": -30,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "HP+6000/SPD-30",
+        "DEF10%"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "LEGS_015",
+      "display_name": "高通気テックメッシュパンツ",
+      "rarity": "SR",
+      "category": "LEGS",
+      "base_stats": {
+        "hp": 0,
+        "atk": 0,
+        "def": 1400,
+        "spd": 110,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "SPD+110",
+        "Status Resist12%"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "LEGS_016",
+      "display_name": "スパイクスタッズレザーパンツ",
+      "rarity": "SR",
+      "category": "LEGS",
+      "base_stats": {
+        "hp": 0,
+        "atk": 0,
+        "def": 1650,
+        "spd": 0,
+        "luk": 7
+      },
+      "fixed_effects": [
+        "LUK+7",
+        "Crit Resist12%"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "LEGS_017",
+      "display_name": "カーボンファイバー・スニーカー『閃光』",
+      "rarity": "SR",
+      "category": "LEGS",
+      "base_stats": {
+        "hp": 0,
+        "atk": 0,
+        "def": 1250,
+        "spd": 150,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "SPD+150",
+        "SPD10%"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "LEGS_018",
+      "display_name": "アーマードブーツ『防塁』",
+      "rarity": "SSR",
+      "category": "LEGS",
+      "base_stats": {
+        "hp": 8000,
+        "atk": 0,
+        "def": 2800,
+        "spd": -40,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "HP+8000/SPD-40",
+        "DEF15%"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "LEGS_019",
+      "display_name": "スピードスター・スニーカー",
+      "rarity": "SSR",
+      "category": "LEGS",
+      "base_stats": {
+        "hp": 0,
+        "atk": 0,
+        "def": 1800,
+        "spd": 210,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "SPD+210",
+        "Status Resist18%"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "LEGS_020",
+      "display_name": "漆黒のアサシンロングブーツ",
+      "rarity": "SSR",
+      "category": "LEGS",
+      "base_stats": {
+        "hp": 0,
+        "atk": 0,
+        "def": 1700,
+        "spd": 230,
+        "luk": 10
+      },
+      "fixed_effects": [
+        "SPD+230/LUK+10",
+        "Battle Start SPD15%/3T"
+      ],
+      "exclusive_character_id": "char_ageha_01",
+      "random_options": false
+    },
+    {
+      "equipment_id": "ACCESSORY_001",
+      "display_name": "ネオンスタッドピアス",
+      "rarity": "N",
+      "category": "ACCESSORY",
+      "base_stats": {
+        "hp": 0,
+        "atk": 0,
+        "def": 0,
+        "spd": 0,
+        "luk": 2
+      },
+      "fixed_effects": [],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "ACCESSORY_002",
+      "display_name": "スチールフラットリング",
+      "rarity": "N",
+      "category": "ACCESSORY",
+      "base_stats": {
+        "hp": 0,
+        "atk": 0,
+        "def": 0,
+        "spd": 0,
+        "luk": 3
+      },
+      "fixed_effects": [],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "ACCESSORY_003",
+      "display_name": "レザーベルトチョーカー",
+      "rarity": "N",
+      "category": "ACCESSORY",
+      "base_stats": {
+        "hp": 1200,
+        "atk": 0,
+        "def": 0,
+        "spd": 0,
+        "luk": 0
+      },
+      "fixed_effects": [],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "ACCESSORY_004",
+      "display_name": "刻印付きドッグタグ",
+      "rarity": "N",
+      "category": "ACCESSORY",
+      "base_stats": {
+        "hp": 0,
+        "atk": 250,
+        "def": 0,
+        "spd": 0,
+        "luk": 0
+      },
+      "fixed_effects": [],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "ACCESSORY_005",
+      "display_name": "ラバーリストバンド",
+      "rarity": "N",
+      "category": "ACCESSORY",
+      "base_stats": {
+        "hp": 0,
+        "atk": 0,
+        "def": 0,
+        "spd": 20,
+        "luk": 0
+      },
+      "fixed_effects": [],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "ACCESSORY_006",
+      "display_name": "シルバーチェーンネックレス",
+      "rarity": "N",
+      "category": "ACCESSORY",
+      "base_stats": {
+        "hp": 0,
+        "atk": 0,
+        "def": 0,
+        "spd": 0,
+        "luk": 4
+      },
+      "fixed_effects": [],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "ACCESSORY_007",
+      "display_name": "真鍮アームバングル",
+      "rarity": "N",
+      "category": "ACCESSORY",
+      "base_stats": {
+        "hp": 0,
+        "atk": 0,
+        "def": 200,
+        "spd": 0,
+        "luk": 0
+      },
+      "fixed_effects": [],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "ACCESSORY_008",
+      "display_name": "ネオンラバーキーホルダー",
+      "rarity": "N",
+      "category": "ACCESSORY",
+      "base_stats": {
+        "hp": 0,
+        "atk": 0,
+        "def": 0,
+        "spd": 10,
+        "luk": 3
+      },
+      "fixed_effects": [],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "ACCESSORY_009",
+      "display_name": "スカルピンバッジ",
+      "rarity": "N",
+      "category": "ACCESSORY",
+      "base_stats": {
+        "hp": 1600,
+        "atk": 0,
+        "def": 0,
+        "spd": 0,
+        "luk": 0
+      },
+      "fixed_effects": [],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "ACCESSORY_010",
+      "display_name": "編み込み革ブレス",
+      "rarity": "N",
+      "category": "ACCESSORY",
+      "base_stats": {
+        "hp": 0,
+        "atk": 0,
+        "def": 150,
+        "spd": 0,
+        "luk": 2
+      },
+      "fixed_effects": [],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "ACCESSORY_011",
+      "display_name": "ブランドクロノグラフ",
+      "rarity": "N",
+      "category": "ACCESSORY",
+      "base_stats": {
+        "hp": 800,
+        "atk": 0,
+        "def": 0,
+        "spd": 25,
+        "luk": 0
+      },
+      "fixed_effects": [],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "ACCESSORY_012",
+      "display_name": "極太ゴールドチェーン",
+      "rarity": "R",
+      "category": "ACCESSORY",
+      "base_stats": {
+        "hp": 0,
+        "atk": 0,
+        "def": 0,
+        "spd": 0,
+        "luk": 6
+      },
+      "fixed_effects": [],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "ACCESSORY_013",
+      "display_name": "スクエア印台リング",
+      "rarity": "R",
+      "category": "ACCESSORY",
+      "base_stats": {
+        "hp": 0,
+        "atk": 450,
+        "def": 0,
+        "spd": 0,
+        "luk": 4
+      },
+      "fixed_effects": [],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "ACCESSORY_014",
+      "display_name": "チタンチョーカー",
+      "rarity": "R",
+      "category": "ACCESSORY",
+      "base_stats": {
+        "hp": 0,
+        "atk": 0,
+        "def": 400,
+        "spd": 25,
+        "luk": 0
+      },
+      "fixed_effects": [],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "ACCESSORY_015",
+      "display_name": "スパイクスタッズリストバンド",
+      "rarity": "R",
+      "category": "ACCESSORY",
+      "base_stats": {
+        "hp": 0,
+        "atk": 400,
+        "def": 300,
+        "spd": 0,
+        "luk": 0
+      },
+      "fixed_effects": [],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "ACCESSORY_016",
+      "display_name": "カミソリ刃ペンダント",
+      "rarity": "R",
+      "category": "ACCESSORY",
+      "base_stats": {
+        "hp": 0,
+        "atk": 600,
+        "def": 0,
+        "spd": 0,
+        "luk": 0
+      },
+      "fixed_effects": [],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "ACCESSORY_017",
+      "display_name": "ギャンブラーダイス",
+      "rarity": "R",
+      "category": "ACCESSORY",
+      "base_stats": {
+        "hp": 0,
+        "atk": 0,
+        "def": 0,
+        "spd": 0,
+        "luk": 9
+      },
+      "fixed_effects": [],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "ACCESSORY_018",
+      "display_name": "ユーティリティベルト",
+      "rarity": "R",
+      "category": "ACCESSORY",
+      "base_stats": {
+        "hp": 1500,
+        "atk": 0,
+        "def": 550,
+        "spd": 0,
+        "luk": 0
+      },
+      "fixed_effects": [],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "ACCESSORY_019",
+      "display_name": "シルバーゴシックスカルリング",
+      "rarity": "R",
+      "category": "ACCESSORY",
+      "base_stats": {
+        "hp": 0,
+        "atk": 400,
+        "def": 0,
+        "spd": 0,
+        "luk": 6
+      },
+      "fixed_effects": [],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "ACCESSORY_020",
+      "display_name": "スタッドイヤーカフ",
+      "rarity": "R",
+      "category": "ACCESSORY",
+      "base_stats": {
+        "hp": 0,
+        "atk": 0,
+        "def": 0,
+        "spd": 55,
+        "luk": 0
+      },
+      "fixed_effects": [],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "ACCESSORY_021",
+      "display_name": "スチールウォレットチェーン",
+      "rarity": "R",
+      "category": "ACCESSORY",
+      "base_stats": {
+        "hp": 0,
+        "atk": 0,
+        "def": 0,
+        "spd": 0,
+        "luk": 8
+      },
+      "fixed_effects": [],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "ACCESSORY_022",
+      "display_name": "ゴシッククロスペンダント",
+      "rarity": "R",
+      "category": "ACCESSORY",
+      "base_stats": {
+        "hp": 2500,
+        "atk": 0,
+        "def": 250,
+        "spd": 0,
+        "luk": 0
+      },
+      "fixed_effects": [],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "ACCESSORY_023",
+      "display_name": "スマートフィットトラッカー",
+      "rarity": "R",
+      "category": "ACCESSORY",
+      "base_stats": {
+        "hp": 1500,
+        "atk": 0,
+        "def": 0,
+        "spd": 60,
+        "luk": 0
+      },
+      "fixed_effects": [],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "ACCESSORY_024",
+      "display_name": "コブラバングル",
+      "rarity": "R",
+      "category": "ACCESSORY",
+      "base_stats": {
+        "hp": 0,
+        "atk": 450,
+        "def": 0,
+        "spd": 0,
+        "luk": 6
+      },
+      "fixed_effects": [],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "ACCESSORY_025",
+      "display_name": "弾丸シェルネックレス",
+      "rarity": "R",
+      "category": "ACCESSORY",
+      "base_stats": {
+        "hp": 0,
+        "atk": 700,
+        "def": 0,
+        "spd": 0,
+        "luk": 0
+      },
+      "fixed_effects": [],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "ACCESSORY_026",
+      "display_name": "アンティークロケットペンダント",
+      "rarity": "R",
+      "category": "ACCESSORY",
+      "base_stats": {
+        "hp": 3000,
+        "atk": 0,
+        "def": 0,
+        "spd": 0,
+        "luk": 5
+      },
+      "fixed_effects": [],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "ACCESSORY_027",
+      "display_name": "プラチナ印台リング",
+      "rarity": "SR",
+      "category": "ACCESSORY",
+      "base_stats": {
+        "hp": 0,
+        "atk": 850,
+        "def": 0,
+        "spd": 0,
+        "luk": 8
+      },
+      "fixed_effects": [
+        "Healing Received10%"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "ACCESSORY_028",
+      "display_name": "ホルスター",
+      "rarity": "SR",
+      "category": "ACCESSORY",
+      "base_stats": {
+        "hp": 0,
+        "atk": 0,
+        "def": 500,
+        "spd": 80,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "SPD8%"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "ACCESSORY_029",
+      "display_name": "ブルーサファイアリング",
+      "rarity": "SR",
+      "category": "ACCESSORY",
+      "base_stats": {
+        "hp": 0,
+        "atk": 0,
+        "def": 0,
+        "spd": 50,
+        "luk": 12
+      },
+      "fixed_effects": [
+        "Crit Rate8%"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "ACCESSORY_030",
+      "display_name": "極太クロームチェーン",
+      "rarity": "SR",
+      "category": "ACCESSORY",
+      "base_stats": {
+        "hp": 0,
+        "atk": 950,
+        "def": 0,
+        "spd": 0,
+        "luk": 7
+      },
+      "fixed_effects": [
+        "ATK6%"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "ACCESSORY_031",
+      "display_name": "死神のシルバーチャーム",
+      "rarity": "SR",
+      "category": "ACCESSORY",
+      "base_stats": {
+        "hp": 5000,
+        "atk": 0,
+        "def": 0,
+        "spd": 0,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "Crit Resist12%"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "ACCESSORY_032",
+      "display_name": "百合の刻印ネックレス",
+      "rarity": "SR",
+      "category": "ACCESSORY",
+      "base_stats": {
+        "hp": 0,
+        "atk": 1050,
+        "def": 0,
+        "spd": 0,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "Status Chance10%"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "ACCESSORY_033",
+      "display_name": "ヘヴィスパイクチョーカー",
+      "rarity": "SR",
+      "category": "ACCESSORY",
+      "base_stats": {
+        "hp": 0,
+        "atk": 600,
+        "def": 750,
+        "spd": 0,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "DEF8%"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "ACCESSORY_034",
+      "display_name": "ダイヤモンドアンカーリング",
+      "rarity": "SR",
+      "category": "ACCESSORY",
+      "base_stats": {
+        "hp": 3000,
+        "atk": 0,
+        "def": 0,
+        "spd": 0,
+        "luk": 13
+      },
+      "fixed_effects": [
+        "Status Resist12%"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "ACCESSORY_035",
+      "display_name": "原石ターコイズバングル",
+      "rarity": "SR",
+      "category": "ACCESSORY",
+      "base_stats": {
+        "hp": 0,
+        "atk": 0,
+        "def": 900,
+        "spd": 0,
+        "luk": 7
+      },
+      "fixed_effects": [
+        "Healing Received10%"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "ACCESSORY_036",
+      "display_name": "天然水晶チャーム",
+      "rarity": "SR",
+      "category": "ACCESSORY",
+      "base_stats": {
+        "hp": 4500,
+        "atk": 0,
+        "def": 0,
+        "spd": 0,
+        "luk": 7
+      },
+      "fixed_effects": [
+        "Healing Done12%"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "ACCESSORY_037",
+      "display_name": "スマートウォッチPRO",
+      "rarity": "SR",
+      "category": "ACCESSORY",
+      "base_stats": {
+        "hp": 2500,
+        "atk": 0,
+        "def": 0,
+        "spd": 110,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "SPD10%"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "ACCESSORY_038",
+      "display_name": "黒のトライバルシール",
+      "rarity": "SR",
+      "category": "ACCESSORY",
+      "base_stats": {
+        "hp": 0,
+        "atk": 1100,
+        "def": -200,
+        "spd": 0,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "ATK8%"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "ACCESSORY_039",
+      "display_name": "鉄製シャックルブレス",
+      "rarity": "SR",
+      "category": "ACCESSORY",
+      "base_stats": {
+        "hp": 0,
+        "atk": 0,
+        "def": 850,
+        "spd": 0,
+        "luk": 7
+      },
+      "fixed_effects": [
+        "Status Resist10%"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "ACCESSORY_040",
+      "display_name": "ルビーゴールドチャーム",
+      "rarity": "SR",
+      "category": "ACCESSORY",
+      "base_stats": {
+        "hp": 0,
+        "atk": 1000,
+        "def": 0,
+        "spd": 0,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "Crit Damage15%"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "ACCESSORY_041",
+      "display_name": "強化カーボン戦闘グローブ",
+      "rarity": "SR",
+      "category": "ACCESSORY",
+      "base_stats": {
+        "hp": 0,
+        "atk": 700,
+        "def": 650,
+        "spd": 30,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "Normal Damage8%"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "ACCESSORY_042",
+      "display_name": "スネークアンクレット",
+      "rarity": "SSR",
+      "category": "ACCESSORY",
+      "base_stats": {
+        "hp": 0,
+        "atk": 0,
+        "def": 0,
+        "spd": 170,
+        "luk": 12
+      },
+      "fixed_effects": [
+        "SPD12%"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "ACCESSORY_043",
+      "display_name": "スチールスカルキーチェーン",
+      "rarity": "SSR",
+      "category": "ACCESSORY",
+      "base_stats": {
+        "hp": 0,
+        "atk": 0,
+        "def": 0,
+        "spd": 0,
+        "luk": 20
+      },
+      "fixed_effects": [
+        "Crit Rate12%"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "ACCESSORY_044",
+      "display_name": "チタンアスリートバンド",
+      "rarity": "SSR",
+      "category": "ACCESSORY",
+      "base_stats": {
+        "hp": 5000,
+        "atk": 0,
+        "def": 1400,
+        "spd": 0,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "Status Resist18%"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "ACCESSORY_045",
+      "display_name": "オパール襟ピンバッジ",
+      "rarity": "SSR",
+      "category": "ACCESSORY",
+      "base_stats": {
+        "hp": 0,
+        "atk": 0,
+        "def": 0,
+        "spd": 0,
+        "luk": 22
+      },
+      "fixed_effects": [
+        "Status Chance15%"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "ACCESSORY_046",
+      "display_name": "極道幹部の翡翠守り",
+      "rarity": "SSR",
+      "category": "ACCESSORY",
+      "base_stats": {
+        "hp": 5000,
+        "atk": 0,
+        "def": 1000,
+        "spd": 0,
+        "luk": 0
+      },
+      "fixed_effects": [
+        "DR6%"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "ACCESSORY_047",
+      "display_name": "漆塗りの桜根付",
+      "rarity": "SSR",
+      "category": "ACCESSORY",
+      "base_stats": {
+        "hp": 0,
+        "atk": 0,
+        "def": 0,
+        "spd": 130,
+        "luk": 16
+      },
+      "fixed_effects": [
+        "Crit Damage22%"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "ACCESSORY_048",
+      "display_name": "ナイトジュエル",
+      "rarity": "SSR",
+      "category": "ACCESSORY",
+      "base_stats": {
+        "hp": 0,
+        "atk": 1600,
+        "def": 0,
+        "spd": 0,
+        "luk": 12
+      },
+      "fixed_effects": [
+        "ATK10%"
+      ],
+      "exclusive_character_id": null,
+      "random_options": false
+    },
+    {
+      "equipment_id": "ACCESSORY_049",
+      "display_name": "フェイト・チャーム",
+      "rarity": "SSR",
+      "category": "ACCESSORY",
+      "base_stats": {
+        "hp": 0,
+        "atk": 0,
+        "def": 0,
+        "spd": 120,
+        "luk": 25
+      },
+      "fixed_effects": [
+        "First Skill→Status Chance20%/3T"
+      ],
+      "exclusive_character_id": "char_karen_01",
+      "random_options": false
+    },
+    {
+      "equipment_id": "ACCESSORY_050",
+      "display_name": "クイーンズ・シグネット",
+      "rarity": "SSR",
+      "category": "ACCESSORY",
+      "base_stats": {
+        "hp": 6000,
+        "atk": 0,
+        "def": 0,
+        "spd": 0,
+        "luk": 16
+      },
+      "fixed_effects": [
+        "Battle Start Ally-all DEF8%/2T"
+      ],
+      "exclusive_character_id": "char_kaede_01",
+      "random_options": false
+    }
+  ]
+}

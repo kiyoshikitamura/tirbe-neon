@@ -9,9 +9,10 @@ import {
   getCharacterTransparentImg,
   getAlignmentShortJp
 } from "@/utils/game_constants";
-import { SKILLS_MASTER_DATA } from "@/utils/skills_master_data";
-import { EQUIPMENTS_MASTER_DATA } from "@/utils/equipments_master_data";
+import { CANONICAL_SKILL_VIEW } from "@/utils/skills_master_data";
+import { CANONICAL_EQUIPMENT_VIEW } from "@/utils/equipments_master_data";
 import { getCharacterTotalStats } from "@/utils/stats_calculator";
+import { canonicalSkillSlotCount } from "@/domain/gameplay/canonical/calculations";
 import { useImagePreloader } from "../hooks/useImagePreloader";
 import { CHARACTER_LOADOUT_RARITY_ASSETS } from "../lib/screenManifests";
 import TutorialNavigator from "./TutorialNavigator";
@@ -20,14 +21,6 @@ import { getRarityFrameAsset } from "@/utils/rarityAssets";
 import { getCharacterLocationBackground } from "@/utils/characterVisualAssets";
 import "./CharacterTab.css";
 
-const CHARACTER_ROLE_LABELS: Record<string, string> = {
-  BALANCED: "バランス",
-  HP_TANK: "ディフェンダー",
-  ATTACKER: "アタッカー",
-  DEFENDER: "ディフェンダー",
-  SPEEDSTER: "スピード",
-  LUCKY_STAR: "サポート",
-};
 const SKILL_EFFECT_LABELS: Record<string, string> = {
   ATTACK: "ダメージ",
   DEFENSE: "防御",
@@ -35,15 +28,7 @@ const SKILL_EFFECT_LABELS: Record<string, string> = {
   SUPPORT: "強化",
   JAMMER: "妨害",
 };
-const SKILL_TARGET_LABELS: Record<string, string> = {
-  ATTACK: "敵単体",
-  JAMMER: "敵単体",
-  DEFENSE: "味方単体",
-  HEAL: "味方単体",
-  SUPPORT: "味方単体",
-};
-const SKILL_COOLDOWN_BY_RARITY: Record<string, number> = { N: 2, R: 3, SR: 4, SSR: 5 };
-const SKILL_TARGET_DISPLAY: Record<string, string> = { ENEMY_SINGLE: "敵単体", ENEMY_ALL: "敵全体", ALLY_SINGLE: "味方単体", ALLY_ALL: "味方全体" };
+const SKILL_TARGET_DISPLAY: Record<string, string> = { ENEMY_SINGLE: "敵単体", ENEMY_ALL: "敵全体", ALLY_SINGLE: "味方単体", ALLY_ALL: "味方全体", SELF: "自身", ATTACKER_WHO_DAMAGED_SELF: "攻撃者" };
 const SKILL_STATUS_DISPLAY: Record<string, string> = { POISON: "毒", BLIND: "暗闇", SILENCE: "沈黙", STUN: "気絶" };
 
 function equipmentParameter(master: any) {
@@ -165,7 +150,7 @@ export default function CharacterTab() {
   const awakeningLevel = activeCharRecord?.awakening_level || 0;
   const characterRarity = (activeCharMaster?.rarity || "N").toLowerCase();
   const isCurrentLeader = selectedLeader === activeCharMaster?.id;
-  const maxSkillSlots = Math.min(6, 3 + awakeningLevel);
+  const maxSkillSlots = canonicalSkillSlotCount(Math.max(0, Math.min(5, awakeningLevel)));
   const activeCharacterDbId = activeCharRecord?.id;
 
   // 見た目の豪華さは、テストアカウントではなく実際に装着されている編成から判定する。
@@ -198,10 +183,10 @@ export default function CharacterTab() {
       .filter(([slot]) => slot < maxSkillSlots)
       .map(([, item]) => item);
     const isSsrGear = gear.length === GEAR_SLOTS_MASTER.length && gear.every((item) =>
-      EQUIPMENTS_MASTER_DATA.find((master: any) => master.id === item.equipment_id)?.rarity === "SSR"
+      CANONICAL_EQUIPMENT_VIEW.find((master: any) => master.id === item.equipment_id)?.rarity === "SSR"
     );
     const isSsrSkills = skills.length === maxSkillSlots && skills.every((item) =>
-      SKILLS_MASTER_DATA.find((master: any) => master.id === (item.skill_card_id || item.skill_id))?.rarity === "SSR"
+      CANONICAL_SKILL_VIEW.find((master: any) => master.id === (item.skill_card_id || item.skill_id))?.rarity === "SSR"
     );
     const averagePlus = [...gear, ...skills].reduce((total, item) => total + (item.plus_val || 0), 0) / Math.max(1, gear.length + skills.length);
     const isMax = isSsrGear && isSsrSkills && awakeningLevel >= 3 && averagePlus >= 8;
@@ -306,7 +291,7 @@ export default function CharacterTab() {
   const renderEquipSlot = (slotDef: any) => {
     // 比較には DBレコードの UUID (activeCharRecord.id) を使用
     const previewGear = equippedGearBySlot.get(slotDef.index) || null;
-    const gearMaster = previewGear ? EQUIPMENTS_MASTER_DATA.find((m: any) => m.id === previewGear.equipment_id) : null;
+    const gearMaster = previewGear ? CANONICAL_EQUIPMENT_VIEW.find((m: any) => m.id === previewGear.equipment_id) : null;
     const rarity = (gearMaster?.rarity || "N").toUpperCase();
 
     let rarityClass = "slot-n";
@@ -457,7 +442,7 @@ export default function CharacterTab() {
         <div className="char-firstview-skills" aria-label="装着スキル">
           {Array.from({ length: 6 }).map((_, slotIdx) => {
             const skillRecord = equippedSkillsBySlot.get(slotIdx);
-            const skillMaster = skillRecord ? SKILLS_MASTER_DATA.find((item: any) => item.id === (skillRecord.skill_card_id || skillRecord.skill_id)) : null;
+            const skillMaster = skillRecord ? CANONICAL_SKILL_VIEW.find((item: any) => item.id === (skillRecord.skill_card_id || skillRecord.skill_id)) : null;
             const unlocked = slotIdx < maxSkillSlots;
             return (
               <button
@@ -485,7 +470,7 @@ export default function CharacterTab() {
 
       <div className="char-identity-summary" aria-label="キャラクター情報">
         <span><small>RARITY</small><strong>{activeCharMaster.rarity || "N"}</strong></span>
-        <span><small>ROLE</small><strong>{CHARACTER_ROLE_LABELS[activeCharMaster.growthPatternId] || "バランス"}</strong></span>
+        <span><small>ORIGIN</small><strong>{activeCharMaster.homeTown || "東京"}</strong></span>
         <span><small>ATTRIBUTE</small><strong>{alignInfo.label}</strong></span>
         <span><small>AWAKEN</small><strong>+{awakeningLevel} / +5</strong></span>
       </div>
@@ -735,11 +720,10 @@ export default function CharacterTab() {
                   {Array.from({ length: 6 }).map((_, slotIdx) => {
                     const isUnlocked = slotIdx < maxSkillSlots;
                     const previewSkillRecord = equippedSkillsBySlot.get(slotIdx) || null;
-                    const skillMaster = previewSkillRecord ? SKILLS_MASTER_DATA.find((m: any) => m.id === (previewSkillRecord.skill_card_id || previewSkillRecord.skill_id)) : null;
+                    const skillMaster = previewSkillRecord ? CANONICAL_SKILL_VIEW.find((m: any) => m.id === (previewSkillRecord.skill_card_id || previewSkillRecord.skill_id)) : null;
                     const skillDisplay = previewSkillRecord ? skillDisplayById[previewSkillRecord.skill_card_id || previewSkillRecord.skill_id] : null;
                     const skillRarity = (skillMaster?.rarity || "N").toLowerCase();
                     
-                    const isSynergy = skillMaster && (skillMaster as any).exclusive_character_id === activeCharMaster.id;
                     const limitBreakPlus = previewSkillRecord?.plus_val || 0;
 
                     let tierClass = "";
@@ -750,7 +734,7 @@ export default function CharacterTab() {
                     return (
                       <div
                         key={slotIdx}
-                        className={`char-skill-card skill-rarity-${skillRarity} ${isSynergy ? "synergy-ap-reduced" : ""} ${tierClass} ${!isUnlocked ? "char-skill-locked" : ""} ${selectedSkillSlotIdx === slotIdx ? "is-selecting" : ""} active-scale-effect`}
+                        className={`char-skill-card skill-rarity-${skillRarity} ${tierClass} ${!isUnlocked ? "char-skill-locked" : ""} ${selectedSkillSlotIdx === slotIdx ? "is-selecting" : ""} active-scale-effect`}
                         onClick={() => {
                           if (isUnlocked) {
                             setSelectedSkillSlotIdx(slotIdx);
@@ -759,13 +743,12 @@ export default function CharacterTab() {
                         }}
                       >
                         {skillMaster && <img className="production-rarity-item-frame" src={getRarityFrameAsset("skill", skillMaster.rarity)} alt="" aria-hidden="true" />}
-                        {isSynergy && <span className="char-synergy-badge">AP-1</span>}
                         {isUnlocked ? (
                           previewSkillRecord && skillMaster ? (
                             <>
                               <div className="char-skill-name">{skillDisplay?.display_name || skillMaster.name}</div>
                               <div className="char-skill-cost">{skillDisplay?.rarity || skillMaster.rarity} ・ {SKILL_EFFECT_LABELS[skillMaster.effect_type] || "特殊"}</div>
-                              <div className="char-skill-spec"><span>対象 {SKILL_TARGET_DISPLAY[skillDisplay?.target_type] || SKILL_TARGET_LABELS[skillMaster.effect_type] || "特殊"}</span><span>再使用 {skillDisplay?.cooldown ?? SKILL_COOLDOWN_BY_RARITY[skillMaster.rarity] ?? 5}T</span>{skillDisplay?.status_effect && <span>状態効果 {SKILL_STATUS_DISPLAY[skillDisplay.status_effect] || "特殊効果"}</span>}</div>
+                              <div className="char-skill-spec"><span>対象 {SKILL_TARGET_DISPLAY[skillMaster.target] || "特殊"}</span><span>再使用 {skillMaster.cooldown === null ? "—" : `${skillMaster.cooldown}T`}</span>{skillDisplay?.status_effect && <span>状態効果 {SKILL_STATUS_DISPLAY[skillDisplay.status_effect] || "特殊効果"}</span>}</div>
                             </>
                           ) : (
                             <div className="char-skill-empty-label">未装備<small>タップして選択</small></div>
@@ -811,9 +794,8 @@ export default function CharacterTab() {
                         .filter((s: any) => !s.equipped_character_id || s.equipped_character_id === activeCharRecord?.id)
                         .map((sk: any) => {
                           const skillMasterId = sk.skill_card_id || sk.skill_id;
-                          const mData = SKILLS_MASTER_DATA.find((m: any) => m.id === skillMasterId);
+                          const mData = CANONICAL_SKILL_VIEW.find((m: any) => m.id === skillMasterId);
                           const display = skillDisplayById[skillMasterId];
-                          const isOwnerMatch = mData && (mData as any).exclusive_character_id === activeCharMaster.id;
                           return (
                             <div
                               key={sk.id}
@@ -824,9 +806,8 @@ export default function CharacterTab() {
                               }}
                             >
                               {mData && <img className="production-rarity-item-frame" src={getRarityFrameAsset("skill", display?.rarity || mData.rarity)} alt="" aria-hidden="true" />}
-                              {isOwnerMatch && <span className="char-synergy-badge">AP-1</span>}
                               <span className="char-tile-name">{display?.display_name || mData?.name || "スキル"}</span>
-                              {mData && <span className="char-tile-spec">{display?.rarity || mData.rarity} ・ {display?.display_effect || SKILL_EFFECT_LABELS[mData.effect_type] || "特殊"}<br />対象 {SKILL_TARGET_DISPLAY[display?.target_type] || SKILL_TARGET_LABELS[mData.effect_type] || "特殊"} ・ 再使用 {display?.cooldown ?? SKILL_COOLDOWN_BY_RARITY[mData.rarity] ?? 5}T</span>}
+                              {mData && <span className="char-tile-spec">{display?.rarity || mData.rarity} ・ {display?.display_effect || SKILL_EFFECT_LABELS[mData.effect_type] || "特殊"}<br />対象 {SKILL_TARGET_DISPLAY[mData.target] || "特殊"} ・ 再使用 {mData.cooldown === null ? "—" : `${mData.cooldown}T`}</span>}
                               <span className="char-tile-equip-label">
                                 {sk.equipped_character_id === activeCharRecord?.id && Number.isInteger(sk.slot_index)
                                   ? `装備中: 枠${sk.slot_index + 1}`
@@ -870,7 +851,7 @@ export default function CharacterTab() {
                   <div className="char-progression-candidates">
                     {(userSkillsList || []).map((skill: any) => {
                       const skillMasterId = skill.skill_card_id || skill.skill_id;
-                      const master = SKILLS_MASTER_DATA.find((entry: any) => entry.id === skillMasterId);
+                      const master = CANONICAL_SKILL_VIEW.find((entry: any) => entry.id === skillMasterId);
                       return (
                         <button
                           key={skill.id}
@@ -888,7 +869,7 @@ export default function CharacterTab() {
                   </div>
                   {selectedSkill && (() => {
                     const skillMasterId = selectedSkill.skill_card_id || selectedSkill.skill_id;
-                    const master = SKILLS_MASTER_DATA.find((entry: any) => entry.id === skillMasterId);
+                    const master = CANONICAL_SKILL_VIEW.find((entry: any) => entry.id === skillMasterId);
                     const isExclusive = Boolean(master?.is_exclusive);
                     const wildcardCount = isExclusive ? exclusiveContracts : skillLbBooks;
                     const nextPlus = Math.min(10, (selectedSkill.plus_val || 0) + 1);
@@ -940,11 +921,11 @@ export default function CharacterTab() {
                       {(userEquipmentsList || [])
                         .filter((e: any) => !e.equipped_character_id || e.equipped_character_id === activeCharRecord?.id)
                         .filter((e: any) => {
-                          const master = EQUIPMENTS_MASTER_DATA.find((item: any) => item.id === e.equipment_id);
+                          const master = CANONICAL_EQUIPMENT_VIEW.find((item: any) => item.id === e.equipment_id);
                           return master?.slot_type === GEAR_SLOTS_MASTER[selectedEquipSlotIdx]?.type;
                         })
                         .map((eq: any) => {
-                          const gearMaster = EQUIPMENTS_MASTER_DATA.find((m: any) => m.id === eq.equipment_id);
+                          const gearMaster = CANONICAL_EQUIPMENT_VIEW.find((m: any) => m.id === eq.equipment_id);
                           return (
                             <div
                               key={eq.id}
@@ -999,7 +980,7 @@ export default function CharacterTab() {
                   </div>
                   <div className="char-progression-candidates">
                     {(userEquipmentsList || []).map((equipment: any) => {
-                      const master = EQUIPMENTS_MASTER_DATA.find((entry: any) => entry.id === equipment.equipment_id);
+                      const master = CANONICAL_EQUIPMENT_VIEW.find((entry: any) => entry.id === equipment.equipment_id);
                       return (
                         <button
                           key={equipment.id}
