@@ -1,0 +1,82 @@
+{
+  "version": "2026-08-21",
+  "status": "PRODUCTION_FROZEN",
+  "max_level": 10,
+  "flat_stat_rate_per_step": 0.04,
+  "total_equivalent_cost": 25,
+  "cost_curve": [
+    1,
+    1,
+    2,
+    2,
+    2,
+    3,
+    3,
+    3,
+    4,
+    4
+  ],
+  "random_options": false,
+  "unlock_levels": [
+    3,
+    5,
+    10
+  ],
+  "slot_options": {
+    "WEAPON": {
+      "3": {
+        "ATK_RATE": 0.03
+      },
+      "5": {
+        "CRITICAL_DAMAGE_RATE": 0.08
+      },
+      "10": {
+        "DAMAGE_DEALT_RATE": 0.08
+      }
+    },
+    "HEAD": {
+      "3": {
+        "DEF_RATE": 0.03
+      },
+      "5": {
+        "STATUS_RESISTANCE_RATE": 0.08
+      },
+      "10": {
+        "DAMAGE_TAKEN_RATE": -0.06
+      }
+    },
+    "BODY": {
+      "3": {
+        "HP_RATE": 0.03
+      },
+      "5": {
+        "DEF_RATE": 0.05
+      },
+      "10": {
+        "DAMAGE_TAKEN_RATE": -0.08
+      }
+    },
+    "LEGS": {
+      "3": {
+        "SPD_RATE": 0.03
+      },
+      "5": {
+        "SPD_RATE": 0.05
+      },
+      "10": {
+        "SPD_RATE": 0.08
+      }
+    },
+    "ACCESSORY": {
+      "3": {
+        "LUK_RATE": 0.03
+      },
+      "5": {
+        "CRITICAL_RATE": 0.05
+      },
+      "10": {
+        "CRITICAL_DAMAGE_RATE": 0.1
+      }
+    }
+  }
+}

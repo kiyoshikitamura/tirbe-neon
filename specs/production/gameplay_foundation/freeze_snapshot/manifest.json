@@ -1,0 +1,15 @@
+{
+  "version": "2026-08-21",
+  "files": [
+    "TRIBE_NEON_Gameplay_Foundation_Salvage_Final_Recovery_20260821.md",
+    "characters_20260821.json",
+    "equipment_limit_break_20260821.json",
+    "gameplay_foundation_freeze_20260821.md",
+    "skills_20260821.json",
+    "tribe_neon_gameplay_foundation_freeze_addendum_20260821.md"
+  ],
+  "character_count": 60,
+  "skill_count": 70,
+  "equipment_full_master_status": "Authoritative full 170-row source is retained separately as equipment_gameplay_master_20260821.md in the user's File Library; not available as mounted bytes in this runtime.",
+  "github_write_status": "BLOCKED_HTTP_403"
+}
