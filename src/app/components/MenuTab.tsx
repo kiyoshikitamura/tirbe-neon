@@ -16,9 +16,7 @@ export default function MenuTab() {
   const MENU_ITEMS = [
     { label: "クエスト", action: () => navigateTab("patrol"), color: "green" },
     { label: "PvP", action: () => navigateTab("pvp"), color: "blue" },
-    { label: "GvG", action: () => navigateTab("gvg"), color: "red" },
     { label: "レイド", action: () => navigateTab("raid"), color: "orange" },
-    { label: "ショップ", action: () => navigateTab("shop"), color: "gold" },
     { label: "ランキング", action: () => navigateTab("ranking"), color: "silver" },
     { label: "BBS", action: () => navigateTab("bbs"), color: "silver" },
     { label: "所持品", action: () => navigateTab("bag"), color: "silver" },

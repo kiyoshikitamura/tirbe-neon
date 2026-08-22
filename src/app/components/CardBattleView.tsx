@@ -43,9 +43,8 @@ export default function CardBattleView() {
     lastPatrolRewards,
     playCyberSe,
     handleFirstUserInteraction,
-    setShowFriendPanel
-    , playSe
-    , preloadAudio
+    playSe,
+    preloadAudio
   } = useGame();
   const isTutorialBattle = battleMode === "PATROL" && tutorialBattleActive;
 
@@ -253,16 +252,6 @@ export default function CardBattleView() {
                     </div>
                   );
                 })}
-                {!isPvP && !isTutorialBattle && playerPartyStates.length < 6 && (
-                  <div 
-                    className="setup-char-card flex-col items-center justify-center cursor-pointer active-scale-effect border-subtle bg-black-60"
-                    onClick={() => { playCyberSe("click"); setShowFriendPanel(true); }}
-                    style={{ minHeight: "100px" }}
-                  >
-                    <span className="text-color-cyan font-size-8 font-weight-bold">+</span>
-                    <span className="font-size-6 text-secondary mt-1">助っ人</span>
-                  </div>
-                )}
               </div>
             </div>
 

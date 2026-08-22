@@ -4,6 +4,7 @@ import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useGame } from "../context/GameContext";
 import { supabase } from "@/utils/supabase";
 import { resolveAvailableMyPageCreatives } from "@/domain/presentation/production_creatives";
+import { isDestinationAvailable } from "@/domain/operations/operations";
 
 import {
   PROFILE_BACKGROUNDS,
@@ -21,7 +22,6 @@ const PRODUCTION_MY_PAGE_CREATIVES = resolveAvailableMyPageCreatives();
 function MainMyPage() {
   const {
     currentBaseId,
-    gvgBaseControls,
     selectedLeader,
     unreadMissionsCount,
     unclaimedPresentsCount,
@@ -29,9 +29,7 @@ function MainMyPage() {
     chatUnreadCounts,
     bbsUnreadTotal,
     dmUnreadTotal,
-    friendRequests,
     setShowMissionPanel,
-    setShowFriendPanel,
     setShowInboxPanel,
     setInboxPanelTab,
     setShowSettingsPanel,
@@ -51,8 +49,9 @@ function MainMyPage() {
     session,
     activePatrols,
     onboardingState,
-    userGuildMember
-    , fetchPlayerDetail
+    userGuildMember,
+    featureOperatingStates,
+    fetchPlayerDetail
   } = useGame();
 
   const equippedTitleName = ownedTitles.find((title: { id: string }) => title.id === titleEquipped)?.name || titleEquipped;
@@ -73,7 +72,7 @@ function MainMyPage() {
     title: "",
     img: creative.assetPath,
     destination: creative.destination
-  })) ?? fallbackBanners);
+  })).filter((banner) => isDestinationAvailable(banner.destination)) ?? fallbackBanners);
 
   const openBanner = (destination: string | null) => {
     if (!destination) return;
@@ -92,10 +91,14 @@ function MainMyPage() {
   useEffect(() => {
     if (PRODUCTION_MY_PAGE_CREATIVES) return;
     void supabase.from("home_banner_master").select("id, title, image_url, destination_value").order("priority", { ascending: false }).then(({ data, error }) => {
-      const released = (data || []).filter((item) => !["gvg", "shop"].includes(String(item.destination_value || "").split(":")[0]));
+      const released = (data || []).filter((item) => isDestinationAvailable(item.destination_value || "home", featureOperatingStates));
       if (!error && released.length) setBanners(released.map((item) => ({ id: item.id, title: item.title, img: item.image_url, destination: item.destination_value || "home" })));
     });
-  }, []);
+  }, [featureOperatingStates]);
+
+  useEffect(() => {
+    setBanners((current) => current.filter((banner) => isDestinationAvailable(banner.destination, featureOperatingStates)));
+  }, [featureOperatingStates]);
 
   useEffect(() => {
     if (!session?.user?.id) return;
@@ -107,7 +110,9 @@ function MainMyPage() {
     if (!session?.user?.id) return;
     void supabase.from("social_activity_feed").select("id,activity_type,actor_user_id,actor_display_name,guild_id,object_master_id,display_payload,permanent,created_at")
       .order("permanent", { ascending: false }).order("created_at", { ascending: false }).limit(20)
-      .then(({ data, error }) => { if (!error) setSocialActivities(data || []); });
+      .then(({ data, error }) => {
+        if (!error) setSocialActivities((data || []).filter((event: any) => !["FRIEND", "GVG", "SHOP", "PAYMENT"].includes(String(event.activity_type || "").toUpperCase())));
+      });
   }, [session?.user?.id]);
 
   const primaryCta = useMemo<{
@@ -137,10 +142,6 @@ function MainMyPage() {
     else if (primaryCta.tab) navigateTab(primaryCta.tab);
     playCyberSe("click");
   };
-
-  // 拠点支配ギルド名
-  const currentControl = gvgBaseControls?.find((b: any) => b.base_id === currentBaseId);
-  const controllerName = currentControl?.guild_name || "未支配";
 
   // 拠点ID → 表示名・画像ファイル名のマッピング
   const baseMap: { [key: string]: { name: string; file: string } } = {
@@ -186,13 +187,6 @@ function MainMyPage() {
       label: "ランキング",
       icon: "/ui/icon_ranking.png",
       onClick: () => navigateTab("ranking")
-    },
-    {
-      id: "friends",
-      label: "友達",
-      icon: "/ui/icon_friends.png",
-      badge: friendRequests?.length || 0,
-      onClick: () => setShowFriendPanel(true)
     },
     {
       id: "community",
@@ -279,8 +273,6 @@ function MainMyPage() {
           <div className="mypage-base-overlay-info">
             <span className="mypage-base-overlay-label">拠点</span>
             <span className="mypage-base-overlay-name">{baseName}</span>
-            <span className="mypage-base-overlay-sep">｜</span>
-            <span className="mypage-base-overlay-controller">支配: {controllerName}</span>
           </div>
           <button
             className="mypage-base-overlay-move active-scale-effect"
@@ -407,15 +399,6 @@ function MainMyPage() {
           {completedPatrolsCount > 0 && <span className="circle-menu-alert-badge">{completedPatrolsCount}</span>}
         </button>
 
-        <button
-          className="circle-menu-btn war active-scale-effect"
-          onClick={() => playCyberSe("click")}
-          aria-label="GvGは準備中です"
-          disabled
-        >
-          <img src="/menu/menu_war.png" alt="抗争" className="circle-menu-img" />
-          <span className="circle-menu-alert-badge">準備中</span>
-        </button>
       </div>
 
       <div className="mypage-lower-content">
@@ -429,7 +412,7 @@ function MainMyPage() {
               <b>DISCOVERY</b><span>PvP・ランキング</span><small>街の強者を知る</small>
             </button>
             <button onClick={() => { navigateTab("guild"); playCyberSe("click"); }}>
-              <b>COMMUNITY</b><span>TRIBE・フレンド</span><small>仲間とつながる</small>
+              <b>COMMUNITY</b><span>TRIBE</span><small>仲間とつながる</small>
             </button>
           </div>
         </section>

@@ -1,13 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { DEFAULT_OPERATIONS_STATE, type OperationsStateMap } from "@/domain/operations/operations";
 
 export function useGacha() {
-  const [featureOperatingStates, setFeatureOperatingStates] = useState<Record<"SPECIAL_GACHA" | "GVG" | "PAYMENT", "CLOSED" | "OPEN">>({
-    SPECIAL_GACHA: "CLOSED",
-    GVG: "CLOSED",
-    PAYMENT: "CLOSED"
-  });
+  const [featureOperatingStates, setFeatureOperatingStates] = useState<OperationsStateMap>({ ...DEFAULT_OPERATIONS_STATE });
   const [gachaMasters, setGachaMasters] = useState<any[]>([]);
   const [gachaItemsMaster, setGachaItemsMaster] = useState<any[]>([]);
   const [dailyFreeGachaFlags, setDailyFreeGachaFlags] = useState<{ CHARACTER: boolean; SKILL: boolean; EQUIPMENT: boolean }>({

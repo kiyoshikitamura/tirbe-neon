@@ -12,7 +12,7 @@ export default function Footer() {
     { id: "guild", label: "ギルド", icon: "/ui/icon_footer_guild.png" },
     { id: "character", label: "キャラ", icon: "/ui/icon_footer_character.png" },
     { id: "gacha", label: "ガチャ", icon: "/ui/icon_footer_gacha.png" },
-    { id: "shop", label: "ショップ", icon: "/ui/icon_footer_shop.png" }
+    { id: "patrol", label: "クエスト", icon: "/ui/icon_map.png" }
   ];
 
   return (

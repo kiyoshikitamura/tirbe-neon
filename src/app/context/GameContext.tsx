@@ -41,6 +41,12 @@ import {
   CANONICAL_QUEST_REWARD_POOLS,
   CANONICAL_QUESTS,
 } from "@/domain/gameplay/canonical/quests";
+import {
+  isFeatureOpen,
+  isMaintenanceEnabled,
+  mergeServerOperationsState,
+  sanitizeOperationsTab,
+} from "@/domain/operations/operations";
 
 const ONBOARDING_AUTH_INTENT_KEY = "tribe_onboarding_auth_intent";
 const ONBOARDING_AUTH_INTENT_MAX_AGE_MS = 30 * 60 * 1000;
@@ -763,7 +769,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     setRaidFirstEntryFree,
     vitality,
     setVitality,
-    selectedBattleHelper: friends.selectedBattleHelper,
+    selectedBattleHelper: null,
     raidBossHp,
     setRaidBossHp,
     raidBossMaxHp,
@@ -899,10 +905,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         if (gachaRes.data) setGachaMasters(gachaRes.data);
         if (gachaItemsRes.data) setGachaItemsMaster(gachaItemsRes.data);
         if (featureStatesRes.data) {
-          setFeatureOperatingStates(featureStatesRes.data.reduce((states: Record<string, "CLOSED" | "OPEN">, row: any) => {
-            if (row.feature_key in states && (row.state === "CLOSED" || row.state === "OPEN")) states[row.feature_key] = row.state;
-            return states;
-          }, { SPECIAL_GACHA: "CLOSED", GVG: "CLOSED", PAYMENT: "CLOSED" }) as typeof featureOperatingStates);
+          setFeatureOperatingStates(mergeServerOperationsState(featureStatesRes.data));
         }
         if (loginBonusRes.data && loginBonusRes.data.length > 0) setLoginBonusMasters(loginBonusRes.data as LoginBonusMaster[]);
       }).catch(err => {
@@ -913,8 +916,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       void supabase.rpc("record_current_guild_login").then(({ error }) => {
         if (error && error.code !== "PGRST202") console.warn("Failed to record Guild login activity:", error.message);
       });
-      await friends.fetchFriends(userId);
-      await friends.fetchFriendRequests(userId);
+      // Friend/Friend Helper are PRE-OPEN OMIT. Existing relationship data is
+      // retained server-side, but bootstrap does not expose or notify it.
       
       // 00:00 JST mission cycle sync, including unclaimed daily rescue.
       try {
@@ -2971,8 +2974,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         else if (isLimit) reqDia = scoutCount === 10 ? 400 : 40;
 
         if (diamonds < reqDia) {
-          setErrorMessage("ダイヤが不足しています。ショップに遷移します。");
-          setActiveTab("shop");
+          setErrorMessage("ダイヤが不足しています。");
           setUpgradeLoading(false);
           return;
         }
@@ -2990,8 +2992,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         else if (isLimit) reqCash = scoutCount === 10 ? 120000 : 12000;
 
         if (cash < reqCash) {
-          setErrorMessage("キャッシュが不足しています。ショップに遷移します。");
-          setActiveTab("shop");
+          setErrorMessage("キャッシュが不足しています。");
           setUpgradeLoading(false);
           return;
         }
@@ -3125,14 +3126,11 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
           : detail.includes("already claimed")
             ? "本日の無料10連ガチャは使用済みです。"
             : detail.includes("insufficient gacha currency")
-              ? "残高が不足しています。ショップへ移動しました。"
+              ? "残高が不足しています。"
               : detail.includes("insufficient gacha tickets")
                 ? "ガチャチケットが不足しています。"
             : "ガチャの実行に失敗しました。通信状態を確認して、もう一度お試しください。"
       );
-      if (detail.includes("insufficient gacha currency")) {
-        setActiveTab("shop");
-      }
     } finally {
       setUpgradeLoading(false);
     }
@@ -3166,6 +3164,10 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
   const handleBuyNormalProduct = async (productId: string, currencyType: "CASH" | "DIAMOND"): Promise<boolean> => {
     if (!session) return false;
+    if (!isFeatureOpen("SHOP", featureOperatingStates)) {
+      setErrorMessage("ショップは現在利用できません。");
+      return false;
+    }
     const product = SHOP_PRODUCTS_MASTER.find(p => p.id === productId);
     if (!product) return false;
 
@@ -3224,6 +3226,10 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
   const handleBuyStripeProduct = async (productId: string, isSimulatedDuplicate: boolean = false): Promise<boolean> => {
     if (!session) return false;
+    if (!isFeatureOpen("PAYMENT", featureOperatingStates)) {
+      setErrorMessage("決済機能は現在利用できません。");
+      return false;
+    }
     const product = SHOP_PRODUCTS_MASTER.find(p => p.id === productId);
     if (!product) return false;
     if (product.id === "vip_pass_01") {
@@ -3300,6 +3306,10 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
   const handleBuyPack = async (packId: string) => {
     if (!session) return;
+    if (!isFeatureOpen("SHOP", featureOperatingStates)) {
+      setErrorMessage("ショップは現在利用できません。");
+      return;
+    }
     playCyberSe("gacha");
     
     let cost = 0;
@@ -3498,6 +3508,12 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   }, [onboardingState?.tutorial_step, battle.battleState, setActiveTab]);
 
   useEffect(() => {
+    const safeTab = sanitizeOperationsTab(activeTab, featureOperatingStates);
+    if (safeTab !== activeTab) setActiveTab(safeTab);
+    if (!isFeatureOpen("FRIEND", featureOperatingStates)) setShowFriendPanel(false);
+  }, [activeTab, featureOperatingStates, setActiveTab, setShowFriendPanel]);
+
+  useEffect(() => {
     if (chatCooldown <= 0) return;
     const timer = setTimeout(() => {
       setChatCooldown(prev => prev - 1);
@@ -3507,6 +3523,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
   const handlePurchaseMonthlyPass = async () => {
     if (!session?.user?.id) return { success: false, message: "Not logged in" };
+    if (!isFeatureOpen("PAYMENT", featureOperatingStates)) return { success: false, message: "Payment is closed" };
     try {
       const res = await supabase.rpc("purchase_monthly_pass", { p_user_id: session.user.id });
       if (res.error) throw res.error;
@@ -3522,6 +3539,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
   const handleClaimDailyPassReward = async () => {
     if (!session?.user?.id || monthlyPassClaimedToday) return { success: false, message: "Already claimed" };
+    if (!isFeatureOpen("PAYMENT", featureOperatingStates)) return { success: false, message: "Payment is closed" };
     try {
       const res = await supabase.rpc("claim_daily_pass_reward", { p_user_id: session.user.id });
       if (res.error) throw res.error;
@@ -3552,6 +3570,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     vitality, setVitality, vitalityNextRecoveryAt,
     pvpPoints, setPvpPoints,
     activeTab, setActiveTab,
+    maintenanceEnabled: isMaintenanceEnabled(featureOperatingStates),
     showInboxPanel, setShowInboxPanel,
     showMissionPanel, setShowMissionPanel,
     showFriendPanel, setShowFriendPanel,

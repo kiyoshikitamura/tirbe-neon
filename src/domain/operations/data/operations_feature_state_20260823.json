@@ -1,0 +1,33 @@
+{
+  "version": "2026-08-23",
+  "status": "FROZEN",
+  "features": [
+    { "featureKey": "PRE_OPEN", "state": "OPEN", "visibility": false, "mutationAllowed": true, "navigationAllowed": false, "deepLinkAllowed": false, "reasonCode": "PREOPEN_RUNTIME_COMPATIBILITY" },
+    { "featureKey": "HOME", "state": "OPEN", "visibility": true, "mutationAllowed": true, "navigationAllowed": true, "deepLinkAllowed": true, "reasonCode": "PREOPEN_OPEN" },
+    { "featureKey": "TUTORIAL", "state": "OPEN", "visibility": true, "mutationAllowed": true, "navigationAllowed": true, "deepLinkAllowed": true, "reasonCode": "PREOPEN_OPEN" },
+    { "featureKey": "CHARACTER", "state": "OPEN", "visibility": true, "mutationAllowed": true, "navigationAllowed": true, "deepLinkAllowed": true, "reasonCode": "PREOPEN_OPEN" },
+    { "featureKey": "SKILL", "state": "OPEN", "visibility": true, "mutationAllowed": true, "navigationAllowed": true, "deepLinkAllowed": true, "reasonCode": "PREOPEN_OPEN" },
+    { "featureKey": "EQUIPMENT", "state": "OPEN", "visibility": true, "mutationAllowed": true, "navigationAllowed": true, "deepLinkAllowed": true, "reasonCode": "PREOPEN_OPEN" },
+    { "featureKey": "FORMATION", "state": "OPEN", "visibility": true, "mutationAllowed": true, "navigationAllowed": true, "deepLinkAllowed": true, "reasonCode": "PREOPEN_OPEN" },
+    { "featureKey": "BAG", "state": "OPEN", "visibility": true, "mutationAllowed": true, "navigationAllowed": true, "deepLinkAllowed": true, "reasonCode": "PREOPEN_OPEN" },
+    { "featureKey": "QUEST", "state": "OPEN", "visibility": true, "mutationAllowed": true, "navigationAllowed": true, "deepLinkAllowed": true, "reasonCode": "PREOPEN_OPEN" },
+    { "featureKey": "PVP", "state": "OPEN", "visibility": true, "mutationAllowed": true, "navigationAllowed": true, "deepLinkAllowed": true, "reasonCode": "PREOPEN_OPEN" },
+    { "featureKey": "RAID", "state": "OPEN", "visibility": true, "mutationAllowed": true, "navigationAllowed": true, "deepLinkAllowed": true, "reasonCode": "PREOPEN_OPEN" },
+    { "featureKey": "RANKING", "state": "OPEN", "visibility": true, "mutationAllowed": false, "navigationAllowed": true, "deepLinkAllowed": true, "reasonCode": "PREOPEN_OPEN" },
+    { "featureKey": "MISSION", "state": "OPEN", "visibility": true, "mutationAllowed": true, "navigationAllowed": true, "deepLinkAllowed": true, "reasonCode": "PREOPEN_OPEN" },
+    { "featureKey": "GUILD", "state": "OPEN", "visibility": true, "mutationAllowed": true, "navigationAllowed": true, "deepLinkAllowed": true, "reasonCode": "PREOPEN_OPEN" },
+    { "featureKey": "GUILD_CHAT", "state": "OPEN", "visibility": true, "mutationAllowed": true, "navigationAllowed": true, "deepLinkAllowed": true, "reasonCode": "PREOPEN_OPEN" },
+    { "featureKey": "INVITE", "state": "OPEN", "visibility": true, "mutationAllowed": true, "navigationAllowed": true, "deepLinkAllowed": true, "reasonCode": "PREOPEN_OPEN" },
+    { "featureKey": "PRESENT", "state": "OPEN", "visibility": true, "mutationAllowed": true, "navigationAllowed": true, "deepLinkAllowed": true, "reasonCode": "PREOPEN_OPEN" },
+    { "featureKey": "NORMAL_GACHA", "state": "OPEN", "visibility": true, "mutationAllowed": true, "navigationAllowed": true, "deepLinkAllowed": true, "reasonCode": "PREOPEN_OPEN" },
+    { "featureKey": "FRIEND", "state": "CLOSED", "visibility": false, "mutationAllowed": false, "navigationAllowed": false, "deepLinkAllowed": false, "reasonCode": "PREOPEN_OMIT" },
+    { "featureKey": "FRIEND_HELPER", "state": "CLOSED", "visibility": false, "mutationAllowed": false, "navigationAllowed": false, "deepLinkAllowed": false, "reasonCode": "PREOPEN_OMIT" },
+    { "featureKey": "SHOP", "state": "CLOSED", "visibility": false, "mutationAllowed": false, "navigationAllowed": false, "deepLinkAllowed": false, "reasonCode": "PREOPEN_CLOSED" },
+    { "featureKey": "PAYMENT", "state": "CLOSED", "visibility": false, "mutationAllowed": false, "navigationAllowed": false, "deepLinkAllowed": false, "reasonCode": "PREOPEN_CLOSED" },
+    { "featureKey": "SPECIAL_GACHA", "state": "CLOSED", "visibility": false, "mutationAllowed": false, "navigationAllowed": false, "deepLinkAllowed": false, "reasonCode": "PREOPEN_CLOSED" },
+    { "featureKey": "GVG", "state": "CLOSED", "visibility": false, "mutationAllowed": false, "navigationAllowed": false, "deepLinkAllowed": false, "reasonCode": "PREOPEN_CLOSED" },
+    { "featureKey": "GUILD_COMBAT_BUFF", "state": "CLOSED", "visibility": false, "mutationAllowed": false, "navigationAllowed": false, "deepLinkAllowed": false, "reasonCode": "PREOPEN_OMIT" },
+    { "featureKey": "MAINTENANCE", "state": "CLOSED", "visibility": false, "mutationAllowed": false, "navigationAllowed": false, "deepLinkAllowed": false, "reasonCode": "MANUAL_OPERATIONS" }
+  ],
+  "maintenance": { "maintenanceEnabled": false, "message": "現在メンテナンス中です。しばらくしてからもう一度お試しください。", "startedAt": null, "endsAt": null }
+}

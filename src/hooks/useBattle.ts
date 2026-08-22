@@ -290,7 +290,7 @@ export function useBattle(options: UseBattleOptions) {
     opponentMainAlign?: string,
     opponentSubAlign?: string,
     opponentDefenseCharIds?: string[],
-    supportCharacter?: any,
+    _supportCharacter?: any,
     patrolNpcOverride?: any,
     patrolIdOverride?: string
   ) => {
@@ -567,67 +567,6 @@ export function useBattle(options: UseBattleOptions) {
         skills: charSkills
       };
     });
-
-    if (supportCharacter) {
-      initialPlayerParty.push({
-        id: `support_${supportCharacter.id || supportCharacter.characterId || "0"}`,
-        name: `[助っ人] ${supportCharacter.jpName || supportCharacter.name || "助っ人"}`,
-        characterId: supportCharacter.characterId || supportCharacter.id || "char_reiji_01",
-        alignment: supportCharacter.alignment || "ORDER",
-        level: supportCharacter.level || 50,
-        hp: supportCharacter.hp || 1500,
-        maxHp: supportCharacter.hp || 1500,
-        shield: 0,
-        isDead: false,
-        isEnemy: false,
-        tauntTurns: 0,
-        stunTurns: 0,
-        stats: supportCharacter.stats || { hp: 1500, atk: 120, def: 90, spd: 100, luk: 10 },
-        skills: ((supportCharacter.skills || []).map(canonicalParticipantSkill).filter(Boolean) as any[]).concat(
-          (supportCharacter.skills || []).some((entry: any) => canonicalParticipantSkill(entry)) ? [] : [{ ...BASIC_ATTACK_SKILL, id: "support_basic_attack", ownerId: supportCharacter.characterId }]
-        )
-      });
-    }
-
-    if (options.selectedBattleHelper && !supportCharacter) {
-      try {
-        const { data: loadout, error: loadoutError } = await supabase.rpc("get_friend_helper_loadout", { p_friend_user_id: options.selectedBattleHelper });
-        const hUser = loadout?.username ? { username: loadout.username } : null;
-        const hChar = loadout?.character;
-        const hEquips = loadout?.equipments || [];
-        const hSkills = loadout?.skills || [];
-        if (!loadoutError && hUser && hChar) {
-          const hMaster = CHARACTERS_MASTER.find(c => c.id === hChar.character_id);
-          
-          const baseStats = getCharacterTotalStats(hChar, hEquips);
-          
-          const hSkillsList = hSkills.map(canonicalParticipantSkill).filter(Boolean) as any[];
-
-          if (hSkillsList.length === 0) {
-            hSkillsList.push({ ...BASIC_ATTACK_SKILL, id: "support_basic_attack" });
-          }
-
-          initialPlayerParty.push({
-            id: `support_${hChar.character_id}`,
-            name: `[助っ人] ${hUser.username || "フレンド"}`,
-            characterId: hChar.character_id,
-            alignment: hMaster?.alignment || "ORDER",
-            level: hChar.level,
-            hp: baseStats.hp,
-            maxHp: baseStats.hp,
-            shield: 0,
-            isDead: false,
-            isEnemy: false,
-            tauntTurns: 0,
-            stunTurns: 0,
-            stats: baseStats,
-            skills: hSkillsList
-          });
-        }
-      } catch (err) {
-        console.warn("Failed to fetch helper:", err);
-      }
-    }
 
     setPlayerPartyStates(initialPlayerParty);
 

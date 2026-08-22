@@ -6,6 +6,7 @@ import { applyCharacterAwakeningCopyEquivalent } from "../../domain/gameplay/can
 import { applyFrozenUserXp, canUseEnergyDrink, recoverCanonicalResource } from "../../domain/gameplay/canonical/action_resources.ts";
 import { CANONICAL_QUEST_ENCOUNTERS, canonicalQuestById, rollCanonicalQuestItems } from "../../domain/gameplay/canonical/quests.ts";
 import { parseCanonicalEffects } from "../../domain/battle/canonical_effects.ts";
+import { DEFAULT_OPERATIONS_STATE, type OperationsFeatureKey } from "../../domain/operations/operations.ts";
 import {
   evaluateCanonicalMissionProgress,
   FUNNEL_TRIGGER_BY_MILESTONE,
@@ -102,6 +103,21 @@ const applyMockCharacterAwakeningEquivalent = (character: any) => {
 
 export async function executeMockRpc(client: any, funcName: string, params: any): Promise<any> {
   console.log(`[Mock DB RPC] Calling ${funcName} with:`, params);
+
+  const operationState = (featureKey: OperationsFeatureKey) => (
+    (client.getStorage("feature_operating_states") || []).find((entry: any) => entry.feature_key === featureKey)?.state
+    || DEFAULT_OPERATIONS_STATE[featureKey]
+  );
+  const closedError = (featureKey: OperationsFeatureKey) => ({ data: null, error: { message: `${featureKey.toLowerCase()} is closed`, code: "P0001" } });
+  const mutationPattern = /^(initialize|create|update|delete|set|claim|start|finalize|execute|send|accept|reject|remove|buy|process|purchase|donate|awaken|limit|record|apply|join|leave|transfer|kick|equip|save|use_)/;
+  if (operationState("MAINTENANCE") === "MAINTENANCE" && mutationPattern.test(funcName)) {
+    return { data: null, error: { message: "maintenance is active", code: "P0001" } };
+  }
+  if (["search_user_by_name", "send_friend_request", "accept_friend_request", "reject_friend_request", "remove_friend"].includes(funcName) && operationState("FRIEND") !== "OPEN") return closedError("FRIEND");
+  if (funcName === "get_friend_helper_loadout" && operationState("FRIEND_HELPER") !== "OPEN") return closedError("FRIEND_HELPER");
+  if (funcName === "buy_normal_shop_product" && operationState("SHOP") !== "OPEN") return closedError("SHOP");
+  if (["process_stripe_shop_purchase", "purchase_monthly_pass", "claim_daily_pass_reward"].includes(funcName) && operationState("PAYMENT") !== "OPEN") return closedError("PAYMENT");
+  if (["begin_gvg_attack", "resolve_gvg_attack", "cancel_unresolved_gvg_attack", "process_gvg_battle_result_v2"].includes(funcName) && operationState("GVG") !== "OPEN") return closedError("GVG");
 
   if (funcName === "sync_current_missions") {
     const userId = typeof window === "undefined" ? null : localStorage.getItem("tribe_demo_uuid");

@@ -51,8 +51,7 @@ test("shared shell preserves footer navigation", async ({ page }) => {
 test("Open Beta home prioritizes the next action and keeps unreleased GvG unavailable", async ({ page }) => {
   await enterGame(page);
   await expect(page.locator(".mypage-primary-cta")).toBeVisible();
-  await expect(page.locator(".circle-menu-btn.war")).toBeDisabled();
-  await expect(page.locator(".circle-menu-btn.war")).toContainText("準備中");
+  await expect(page.locator(".circle-menu-btn.war")).toHaveCount(0);
 });
 
 test("stage two hubs share a mobile-safe page frame", async ({ page }) => {

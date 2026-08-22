@@ -14,12 +14,10 @@ import HomeTab from "./components/HomeTab";
 const TabLoading = () => <div className="app-loading-screen app-loading-screen--transition"><BrandedLoading label="画面を準備中" /></div>;
 const PatrolTab = dynamic(() => import("./components/PatrolTab"), { loading: TabLoading });
 const PvpTab = dynamic(() => import("./components/PvpTab"), { loading: TabLoading });
-const GvgTab = dynamic(() => import("./components/GvgTab"), { loading: TabLoading });
 const RaidTab = dynamic(() => import("./components/RaidTab"), { loading: TabLoading });
 const GachaTab = dynamic(() => import("./components/GachaTab"), { loading: TabLoading });
 const GuildTab = dynamic(() => import("./components/GuildTab"), { loading: TabLoading });
 const CharacterTab = dynamic(() => import("./components/CharacterTab"), { loading: TabLoading });
-const ShopTab = dynamic(() => import("./components/ShopTab"), { loading: TabLoading });
 const MenuTab = dynamic(() => import("./components/MenuTab"), { loading: TabLoading });
 const RankingTab = dynamic(() => import("./components/RankingTab"), { loading: TabLoading });
 const AvatarTab = dynamic(() => import("./components/AvatarTab"), { loading: TabLoading });
@@ -31,7 +29,6 @@ import CommonModals from "./components/CommonModals";
 import TribeChatModal from "./components/TribeChatModal";
 import InboxPanel from "./components/InboxPanel";
 import MissionPanel from "./components/MissionPanel";
-import FriendPanel from "./components/FriendPanel";
 import SettingsPanel from "./components/SettingsPanel";
 import LegalPanel from "./components/LegalPanel";
 import ConfirmDialog from "./components/ui/ConfirmDialog";
@@ -48,7 +45,8 @@ function AppContent() {
   const { session, authLoading, isSetupRequired, onboardingState, activeTab, showTitleView, battleState,
     handleLogout,
     confirmDialogConfig,
-    globalInteractionBlocking
+    globalInteractionBlocking,
+    maintenanceEnabled
   } = useGame();
   const { playBgm } = useAudio();
   const tutorialStep = onboardingState?.tutorial_step;
@@ -126,6 +124,18 @@ function AppContent() {
     );
   }
 
+  if (maintenanceEnabled) {
+    return (
+      <div className="app-container">
+        <div className="app-loading-screen app-loading-screen--boot" role="status" aria-live="polite">
+          <strong>メンテナンス中</strong>
+          <span>現在メンテナンス中です。しばらくしてからもう一度お試しください。</span>
+          <button className="semantic-cta semantic-cta--secondary" onClick={() => window.location.reload()}>再読み込み</button>
+        </div>
+      </div>
+    );
+  }
+
   // 3. 組織設立・初期セットアップ画面
   if (isSetupRequired) {
     return (
@@ -170,7 +180,6 @@ function AppContent() {
             <TribeChatModal />
             <InboxPanel />
             <MissionPanel />
-            <FriendPanel />
             <SettingsPanel />
             <LegalPanel />
 
@@ -190,12 +199,10 @@ function AppContent() {
         {activeTab === "home" && <HomeTab />}
         {(activeTab === "patrol" || activeTab === "quest") && <PatrolTab />}
         {activeTab === "pvp" && <PvpTab />}
-        {activeTab === "gvg" && <GvgTab />}
         {activeTab === "raid" && <RaidTab />}
         {activeTab === "gacha" && <GachaTab />}
         {activeTab === "guild" && <GuildTab />}
         {activeTab === "character" && <CharacterTab />}
-        {activeTab === "shop" && <ShopTab />}
 
         {activeTab === "menu" && <MenuTab />}
         {activeTab === "bag" && <BagTab />}

@@ -12,7 +12,6 @@ export default function TribeChatModal() {
     session,
     userGuild,
     guildMembersList,
-    userFriends,
     chatChannel,
     setChatChannel,
     chatUnreadCounts,
@@ -38,12 +37,10 @@ export default function TribeChatModal() {
   const hasProfileSelectedRecipient = Boolean(
     dmRecipientId
       && !guildMembersList?.some((member: any) => member.user_id === dmRecipientId)
-      && !userFriends?.some((friend: any) => friend.id === dmRecipientId)
   );
   const unreadOnlyRecipients = (dmUnreadConversations || []).filter((conversation: any) => (
     conversation.sender_id !== session?.user?.id
       && !guildMembersList?.some((member: any) => member.user_id === conversation.sender_id)
-      && !userFriends?.some((friend: any) => friend.id === conversation.sender_id)
       && conversation.sender_id !== dmRecipientId
   ));
   const getDmUnreadCount = (userId: string) => Number(
@@ -150,15 +147,6 @@ export default function TribeChatModal() {
                       </option>
                     )
                   ))}
-                  {userFriends?.length > 0 && (
-                    <optgroup label="フレンド">
-                      {userFriends.map((friend: any) => (
-                        <option key={friend.id} value={friend.id}>
-                          {friend.username || "プレイヤー"} (Lv.{friend.level || 1}){getDmUnreadCount(friend.id) ? `（未読${getDmUnreadCount(friend.id)}）` : ""}
-                        </option>
-                      ))}
-                    </optgroup>
-                  )}
                 </select>
               )}
             </div>

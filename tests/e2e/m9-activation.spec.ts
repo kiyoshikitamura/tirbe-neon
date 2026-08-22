@@ -104,3 +104,21 @@ test("Guild Home omits closed GvG combat projection on mobile", async ({ page })
     expect(frame.scrollWidth).toBeLessThanOrEqual(frame.clientWidth + 1);
   }
 });
+
+test("Pre-open operations hides closed surfaces and rejects closed deep links", async ({ page }) => {
+  await page.goto("/?tab=friend");
+  const tapToStart = page.getByRole("button", { name: "TAP TO START" });
+  const header = page.locator(".header-mobile");
+  await expect(tapToStart.or(header)).toBeVisible();
+  if (await tapToStart.isVisible()) await tapToStart.click();
+  await expect(header).toBeVisible();
+  await expect(page.getByText(/フレンド一覧|フレンドを探/)).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /ショップ|GvG|フレンド/ })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /ギルド/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /制圧|パトロール/ })).toBeVisible();
+
+  await page.goto("/?tab=shop");
+  await expect(page.locator(".header-mobile")).toBeVisible();
+  await expect(page.getByText(/通常ショップ|月額パス/)).toHaveCount(0);
+  await expect.poll(()=>page.evaluate(()=>new URL(location.href).searchParams.get("tab"))).toBe("home");
+});

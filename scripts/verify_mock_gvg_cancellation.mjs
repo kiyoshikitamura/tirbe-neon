@@ -15,6 +15,10 @@ const client = {
   setStorage: (key, value) => storage.set(key, JSON.stringify(value)),
 };
 
+// This unit exercises the retained future GvG cancellation core. Pre-open
+// integration tests separately assert that the default CLOSED state rejects it.
+client.setStorage("feature_operating_states", [{ feature_key: "GVG", state: "OPEN" }]);
+
 client.setStorage("gvg_attack_logs", [{ id: "attack-pending", attacker_user_id: "mock-gvg-user", battle_result: "PENDING" }]);
 client.setStorage("battle_replay_sessions", [{
   id: "replay-pending", requester_user_id: "mock-gvg-user", battle_mode: "GVG", source_reference_id: "attack-pending", status: "PENDING",
