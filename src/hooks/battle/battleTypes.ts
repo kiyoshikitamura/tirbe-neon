@@ -23,8 +23,9 @@ export interface UseBattleOptions {
   setUserXp: React.Dispatch<React.SetStateAction<number>>;
   vitality: number;
   setVitality: React.Dispatch<React.SetStateAction<number>>;
-  raidAttemptsToday?: number;
-  setRaidAttemptsToday?: React.Dispatch<React.SetStateAction<number>>;
+  raidPoints?: number;
+  setRaidPoints?: React.Dispatch<React.SetStateAction<number>>;
+  setRaidFirstEntryFree?: React.Dispatch<React.SetStateAction<boolean>>;
   cash?: number;
   setCash?: React.Dispatch<React.SetStateAction<number>>;
   diamonds?: number;

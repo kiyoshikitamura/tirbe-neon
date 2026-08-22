@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { supabase, usingMockSupabase } from "@/utils/supabase";
 import { VITALITY_OVERFLOW_MAX } from "@/utils/game_constants";
+import { canUseEnergyDrink } from "@/domain/gameplay/canonical/action_resources";
 import { useImmediateActionLock } from "@/hooks/useImmediateActionLock";
 
 export function useInventory(
@@ -67,8 +68,8 @@ export function useInventory(
     if (!session) return;
     
     if (itemId === "ENERGY_DRINK") {
-      if (vitality >= 100) {
-        setConfirmDialogConfig({ isOpen: true, title: "使用不可", message: "スタミナが100以上の場合はエナジードリンクを使用できません。", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
+      if (!canUseEnergyDrink(vitality)) {
+        setConfirmDialogConfig({ isOpen: true, title: "使用不可", message: "使用後のスタミナが上限500を超えるため使用できません。", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
         return;
       }
       
@@ -89,6 +90,17 @@ export function useInventory(
       } catch (err: any) {
         setEnergyDrinks(prevQuantity);
         setVitality(prevVitality);
+        setConfirmDialogConfig({ isOpen: true, title: "使用失敗", message: "使用に失敗しました: " + err.message, onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
+      }
+    } else if (itemId === "PVP_POINT_TICKET" || itemId === "RAID_POINT_TICKET") {
+      try {
+        const res = await supabase.rpc("use_action_resource_ticket", { p_item_id: itemId });
+        if (res.error) throw res.error;
+        if (res.data?.error) throw new Error(res.data.error);
+        await syncBootstrapData(session.user.id);
+        const resourceName = itemId === "PVP_POINT_TICKET" ? "PvPポイント" : "レイドポイント";
+        setConfirmDialogConfig({ isOpen: true, title: "アイテム使用", message: `${resourceName}が1回復しました。`, onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
+      } catch (err: any) {
         setConfirmDialogConfig({ isOpen: true, title: "使用失敗", message: "使用に失敗しました: " + err.message, onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
       }
     } else {

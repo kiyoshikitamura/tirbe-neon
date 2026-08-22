@@ -1,0 +1,18 @@
+{
+  "version": "2026-08-22",
+  "status": "PRODUCTION_REFERENCE",
+  "targetLevel": 8,
+  "requiredCumulativeExp": 1750,
+  "targetActiveMinutes": { "minimum": 45, "maximum": 60 },
+  "steps": [
+    { "key": "TUTORIAL_COMPLETE", "userExp": 100 },
+    { "key": "FREE_GACHA_FIRST_GROWTH", "userExp": 200 },
+    { "key": "FIRST_QUEST_BATTLE", "userExp": 250 },
+    { "key": "FIRST_PVP", "userExp": 300 },
+    { "key": "FIRST_RAID", "userExp": 350 },
+    { "key": "GUILD_SOCIAL_ACTIVATION", "userExp": 250 },
+    { "key": "REMAINING_INITIAL_ACTIVATION_SECOND_RAID", "userExp": 300 }
+  ],
+  "omittedDependencies": ["FRIEND", "FRIEND_HELPER"],
+  "finalAcceptancePhase": "PHASE_B3_QUEST_FREEZE"
+}

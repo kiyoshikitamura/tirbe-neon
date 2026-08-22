@@ -11,14 +11,14 @@ test.beforeEach(async ({ page }) => {
     localStorage.setItem("tribe_demo_uuid", me);
     localStorage.setItem("mock_auth_mode", "EMAIL");
     localStorage.setItem("mock_db_users", JSON.stringify([
-      { id: me, username: "V0確認", current_base_id: "shinjuku", favorite_character_id: "11111111-1111-1111-1111-111111111111", level: 10, cash: 50000, pvp_points: 5 },
+      { id: me, username: "V0確認", current_base_id: "shinjuku", favorite_character_id: "char_reiji_01", level: 10, cash: 50000, pvp_points: 5 },
       { id: rivals[0], username: "街の強敵A", level: 12, total_power: 23500 },
       { id: rivals[1], username: "街の強敵B", level: 11, total_power: 21000 },
     ]));
     localStorage.setItem("mock_db_user_characters", JSON.stringify([
-      { id: "10000000-0000-4000-8000-000000000001", user_id: me, character_id: "11111111-1111-1111-1111-111111111111", level: 12, awakening_level: 2, created_at: now },
-      { id: "10000000-0000-4000-8000-000000000002", user_id: me, character_id: "33333333-3333-3333-3333-333333333333", level: 10, awakening_level: 1, created_at: now },
-      { id: "10000000-0000-4000-8000-000000000003", user_id: me, character_id: "22222222-2222-2222-2222-222222222222", level: 9, awakening_level: 0, created_at: now },
+      { id: "10000000-0000-4000-8000-000000000001", user_id: me, character_id: "char_reiji_01", level: 12, awakening_level: 2, created_at: now },
+      { id: "10000000-0000-4000-8000-000000000002", user_id: me, character_id: "char_rui_01", level: 10, awakening_level: 1, created_at: now },
+      { id: "10000000-0000-4000-8000-000000000003", user_id: me, character_id: "char_chang_01", level: 9, awakening_level: 0, created_at: now },
     ]));
     localStorage.setItem("mock_db_user_skills", JSON.stringify([
       { id: "skill-owned-1", user_id: me, skill_card_id: "SKILL_001", plus_val: 3, equipped_character_id: "10000000-0000-4000-8000-000000000001", slot_index: 0 },
@@ -49,8 +49,10 @@ test.beforeEach(async ({ page }) => {
       { id: "30000000-0000-4000-8000-000000000003", name: "CYAN EDGE", level: 5, member_count: 4, member_limit: 10, approval_required: false, description: "初心者歓迎" },
     ]));
     localStorage.setItem("mock_db_guild_members", JSON.stringify([]));
-    localStorage.setItem("mock_db_missions", JSON.stringify([{ id: "mission-v0", title: "PvPに1回挑戦", description: "PvPで街の相手と戦おう", category: "DAILY", target_value: 1, reward_item_id: "CASH", reward_quantity: 1000, condition_params: { cta_tab: "pvp", cta_label: "PvPへ" }, display_order: 1 }]));
-    localStorage.setItem("mock_db_user_missions", JSON.stringify([{ id: "user-mission-v0", user_id: me, mission_id: "mission-v0", current_progress: 1, status: "CLEAR", missions: { id: "mission-v0", title: "PvPに1回挑戦", description: "PvPで街の相手と戦おう", category: "DAILY", target_value: 1, reward_item_id: "CASH", reward_quantity: 1000, condition_params: { cta_tab: "pvp", cta_label: "PvPへ" }, display_order: 1 } }]));
+    const mission = { id: "ob_daily_patrol_01", title: "本日のシノギ", description: "クエスト派遣を1回完了する", category: "DAILY", trigger_type: "PATROL_CLEAR", target_value: 1, reward_item_id: "CASH", reward_quantity: 1000, condition_params: { cta_tab: "patrol", cta_label: "クエストへ" }, display_order: 20, is_enabled: true, is_provisional: false };
+    localStorage.setItem("mock_db_missions", JSON.stringify([mission]));
+    const cycleDate = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Tokyo" });
+    localStorage.setItem("mock_db_user_missions", JSON.stringify([{ id: "user-ob-daily-patrol", user_id: me, mission_id: mission.id, cycle_date: cycleDate, current_progress: 1, status: "CLEAR", claimed_at: null, missions: mission }]));
   });
 });
 
@@ -77,7 +79,7 @@ test("M9-V0 main cycle presents growth, mission, PvP, ranking, raid and guild di
   await expect(page.locator(".char-layer-character .character-presentation-portrait")).toBeVisible();
   await page.getByRole("button", { name: "強化", exact: true }).click();
   await page.getByRole("button", { name: "スキル", exact: true }).click();
-  await expect(page.locator(".char-skill-spec").first()).toContainText("再使用 2T");
+  await expect(page.locator(".char-skill-spec").first()).toContainText("再使用 3T");
   await page.getByRole("button", { name: "装備", exact: true }).click();
   await expect(page.getByText("装備強化・限界突破")).toBeVisible();
   await mobileFramePass(page, ".char-tab-container", "character-skill-equipment");

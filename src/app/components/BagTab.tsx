@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo } from "react";
 import { useGame } from "../context/GameContext";
+import { canUseEnergyDrink } from "@/domain/gameplay/canonical/action_resources";
 import { ITEMS_MASTER_DATA, ItemMaster } from "@/utils/items_master_data";
 import "./BagTab.css";
 
@@ -62,10 +63,12 @@ export default function BagTab() {
     }
 
     if (item.id === "ENERGY_DRINK") {
-      if (vitality >= 100) {
-        setConfirmDialogConfig({ isOpen: true, title: "使用不可", message: "スタミナが100以上の場合は使用できません。", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
+      if (!canUseEnergyDrink(vitality)) {
+        setConfirmDialogConfig({ isOpen: true, title: "使用不可", message: "使用後のスタミナが上限500を超えるため使用できません。", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
         return;
       }
+      await handleUseItem(item.id);
+    } else if (item.id === "PVP_POINT_TICKET" || item.id === "RAID_POINT_TICKET") {
       await handleUseItem(item.id);
     }
   };
@@ -115,7 +118,7 @@ export default function BagTab() {
         {filteredItems.map(item => {
           const qty = itemQuantities[item.id] || 0;
           const isConsumable = item.category === "CONSUMABLE";
-          const isEnergyDrinkDisabled = item.id === "ENERGY_DRINK" && (vitality >= 100 || qty <= 0);
+          const isEnergyDrinkDisabled = item.id === "ENERGY_DRINK" && (!canUseEnergyDrink(vitality) || qty <= 0);
 
           return (
             <div
@@ -185,7 +188,7 @@ export default function BagTab() {
                       setSelectedItem(null);
                       handleUseButtonClick(item);
                     }}
-                    disabled={selectedItem.id === "ENERGY_DRINK" && (vitality >= 100 || (itemQuantities[selectedItem.id] || 0) <= 0)}
+                    disabled={selectedItem.id === "ENERGY_DRINK" && (!canUseEnergyDrink(vitality) || (itemQuantities[selectedItem.id] || 0) <= 0)}
                   >
                     使用する
                   </button>

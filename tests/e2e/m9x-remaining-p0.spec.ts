@@ -36,8 +36,8 @@ async function seedAuthenticatedPlayer(page: Page, asMaster = false) {
     localStorage.setItem("mock_db_user_account_auth_methods", JSON.stringify([{ user_id: me, auth_method: "EMAIL" }]));
     localStorage.setItem("mock_db_user_funnel_milestones", JSON.stringify([{ user_id: me, milestone: "tutorial_complete", occurrence_count: 1 }]));
     localStorage.setItem("mock_db_user_characters", JSON.stringify([
-      { id: `starter_${me}`, user_id: me, character_id: "11111111-1111-1111-1111-111111111111", level: 10, awakening_level: 0 },
-      { id: `second_${me}`, user_id: me, character_id: "22222222-2222-2222-2222-222222222222", level: 8, awakening_level: 0 },
+      { id: `starter_${me}`, user_id: me, character_id: "char_reiji_01", level: 10, awakening_level: 0 },
+      { id: `second_${me}`, user_id: me, character_id: "char_chang_01", level: 8, awakening_level: 0 },
     ]));
     localStorage.setItem("mock_db_user_main_formations", JSON.stringify([
       { user_id: me, slot: 1, user_character_id: `starter_${me}` },

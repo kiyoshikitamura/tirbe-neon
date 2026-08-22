@@ -518,11 +518,7 @@ export default function GvgTab() {
                 {(userCharactersDbList as UserCharacterView[]).map((char) => {
                   const master = CHARACTERS_MASTER.find(c => c.id === char.character_id);
                   const isSelected = tempSelectedChars.includes(char.id);
-                  const avatarUrl = char.character_id === "11111111-1111-1111-1111-111111111111" 
-                    ? "/reiji_transparent_asset.png" 
-                    : char.character_id === "33333333-3333-3333-3333-333333333333" 
-                    ? "/rui_transparent_asset.png" 
-                    : "/chang_transparent_asset.png";
+                  const avatarUrl = master?.img || "/characters/reiji_transparent_asset.png";
 
                   return (
                     <div

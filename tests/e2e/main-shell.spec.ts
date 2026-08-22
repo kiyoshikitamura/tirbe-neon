@@ -11,7 +11,7 @@ test.beforeEach(async ({ page }) => {
       id: userId,
       username: "検証ユーザー",
       current_base_id: "shinjuku",
-      favorite_character_id: "11111111-1111-1111-1111-111111111111",
+      favorite_character_id: "char_reiji_01",
     }]));
   });
 });

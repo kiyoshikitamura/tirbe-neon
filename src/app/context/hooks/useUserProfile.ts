@@ -108,8 +108,8 @@ export function useUserProfile(
     });
   }, [session?.user?.id]);
 
-  const [selectedLeader, setSelectedLeader] = useState<string>("11111111-1111-1111-1111-111111111111");
-  const [upgradeSelectedCharId, setUpgradeSelectedCharId] = useState<string>("11111111-1111-1111-1111-111111111111");
+  const [selectedLeader, setSelectedLeader] = useState<string>("char_reiji_01");
+  const [upgradeSelectedCharId, setUpgradeSelectedCharId] = useState<string>("char_reiji_01");
 
   const handleUpdateProfile = async () => {
     if (!session) return;

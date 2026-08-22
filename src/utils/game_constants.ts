@@ -9,7 +9,7 @@ export const CHARACTERS_MASTER = CANONICAL_CHARACTERS.map((character) => ({
   rarity: character.rarity,
   alignment: character.attribute,
   homeTown: character.hometown,
-  img: `/characters/${character.character_id.replace(/^char_/, "").replace(/_01$/, "")}_transparent_asset.png`,
+  img: getCharacterTransparentImg(character.character_id.replace(/^char_/, "").replace(/_01$/, "")),
 }));
 
 // Economy-only costs retained for the existing RPC/UI contract. No stat bonuses live here.
@@ -22,8 +22,8 @@ export const CHARACTER_AWAKENING_MASTER = [
 ] as const;
 
 export const VITALITY_MAX = 100;
-export const VITALITY_OVERFLOW_MAX = 200;
-export const VITALITY_RECOVERY_INTERVAL_SEC = 300; // 5分 = 300秒
+export const VITALITY_OVERFLOW_MAX = 500;
+export const VITALITY_RECOVERY_INTERVAL_SEC = 360; // 6分 = 360秒
 export const VITALITY_RECOVERY_AMOUNT = 1;
 export const GVG_ATTACK_COST = 20;
 
@@ -33,20 +33,8 @@ export const GVG_DAILY_SESSIONS = [
   { id: 3, startHour: 23, startMin: 0, durationMin: 30 },
 ];
 
-export const RAID_FREE_ATTEMPTS = 3;
-export const RAID_MAX_DAILY = 10;
-export const RAID_COST_TABLE = [
-  { attempt: 1, type: "FREE", cost: 0 },
-  { attempt: 2, type: "FREE", cost: 0 },
-  { attempt: 3, type: "FREE", cost: 0 },
-  { attempt: 4, type: "CASH", cost: 2000 },
-  { attempt: 5, type: "CASH", cost: 4000 },
-  { attempt: 6, type: "CASH", cost: 8000 },
-  { attempt: 7, type: "DIAMOND", cost: 50 },
-  { attempt: 8, type: "DIAMOND", cost: 50 },
-  { attempt: 9, type: "DIAMOND", cost: 100 },
-  { attempt: 10, type: "DIAMOND", cost: 100 },
-];
+export const RAID_POINT_MAX = 5;
+export const RAID_POINT_RECOVERY_INTERVAL_SEC = 7200;
 export const DISPATCH_COURSES = [
   // 新宿
   { id: "q_shinjuku_short", townId: "shinjuku", name: "新宿: 見回り (短期)", duration: 30, stamina: 10, rewardCash: 800, rewardItem: "CHAR_EXP_S", chance: 0.8, xpReward: 120 },
@@ -219,7 +207,7 @@ export const GACHA_EXCHANGE_ITEMS_MASTER = [
     id: "ex_c_reiji_01",
     pity_master_id: "pity_gacha_standard_01",
     reward_type: "CHARACTER",
-    reward_id: "11111111-1111-1111-1111-111111111111",
+    reward_id: "char_reiji_01",
     reward_name: "[SSR] 狂犬のレイジ",
     required_points: 200,
     limit_per_user: 1
@@ -228,7 +216,7 @@ export const GACHA_EXCHANGE_ITEMS_MASTER = [
     id: "ex_c_rui_01",
     pity_master_id: "pity_gacha_standard_01",
     reward_type: "CHARACTER",
-    reward_id: "33333333-3333-3333-3333-333333333333",
+    reward_id: "char_rui_01",
     reward_name: "[SSR] 女王のルイ",
     required_points: 200,
     limit_per_user: 1
@@ -237,7 +225,7 @@ export const GACHA_EXCHANGE_ITEMS_MASTER = [
     id: "ex_c_chang_01",
     pity_master_id: "pity_gacha_standard_01",
     reward_type: "CHARACTER",
-    reward_id: "22222222-2222-2222-2222-222222222222",
+    reward_id: "char_chang_01",
     reward_name: "[SSR] 毒蛇のチャン",
     required_points: 200,
     limit_per_user: 1

@@ -9,6 +9,9 @@ export default defineConfig({
   timeout: 30_000,
   expect: { timeout: 12_000 },
   fullyParallel: false,
+  // The suite shares one Next.js dev server. Bounding browser concurrency keeps
+  // compilation and cold asset loading deterministic on GitHub's 2-core runner.
+  workers: 2,
   use: {
     baseURL: testBaseUrl,
     headless: true,

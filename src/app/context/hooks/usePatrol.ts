@@ -2,7 +2,6 @@
 
 import { useRef, useState } from "react";
 import { supabase } from "@/utils/supabase";
-import { DISPATCH_COURSES } from "@/utils/game_constants";
 import { beginActionPerformance } from "@/utils/actionPerformance";
 import { traceTutorialJourney } from "@/utils/tutorialJourneyTrace";
 
@@ -41,19 +40,9 @@ export function usePatrol(
     expires_at?: string;
   }>>([]);
   const [patrolLogs, setPatrolLogs] = useState<Array<{ time: string; text: string }>>([]);
-  const mappedCourses = DISPATCH_COURSES.map(c => ({
-    ...c,
-    town_id: c.townId,
-    duration_seconds: c.duration * 60,
-    cost_vitality: c.stamina,
-    battle_trigger_chance: c.chance,
-    reward_cash: c.rewardCash,
-    reward_xp: c.xpReward,
-    reward_item_chance: c.chance,
-    reward_item_id: c.rewardItem,
-    battle_npc_id: "npc_thug_01"
-  }));
-  const [patrolCourses, setPatrolCourses] = useState<any[]>(mappedCourses);
+  // Production Quest rows are server masters; do not render the retired local
+  // stamina/reward fallback while bootstrap is still loading.
+  const [patrolCourses, setPatrolCourses] = useState<any[]>([]);
   const [patrolNpcs, setPatrolNpcs] = useState<any[]>([]);
   const [hasActivePatrolBattle, setHasActivePatrolBattle] = useState<boolean>(false);
   const [lastPatrolRewards, setLastPatrolRewards] = useState<any | null>(null);

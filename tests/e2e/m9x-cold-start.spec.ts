@@ -23,7 +23,7 @@ test("tutorial ten-pull guarantees slot 10 SSR and formation advances without Gr
     localStorage.setItem("mock_db_gacha_items_master", JSON.stringify([
       { gacha_id:"CHAR_NORMAL",item_id:"char_go_01",rarity:"R" },
       { gacha_id:"CHAR_NORMAL",item_id:"char_kengo_01",rarity:"SR" },
-      { gacha_id:"CHAR_SPECIAL",item_id:"11111111-1111-1111-1111-111111111111",rarity:"SSR" },
+      { gacha_id:"CHAR_SPECIAL",item_id:"char_reiji_01",rarity:"SSR" },
     ]));
     localStorage.setItem("mock_db_user_characters", "[]");
     localStorage.setItem("mock_db_user_skills", "[]");
@@ -57,7 +57,9 @@ test("tutorial ten-pull guarantees slot 10 SSR and formation advances without Gr
       capturedRarities.add(rarityClass);
       await page.screenshot({ path: test.info().outputPath(`gacha-reveal-${rarityClass}.png`) });
     }
+    const currentLabel = await reveal.getAttribute("aria-label");
     await reveal.click();
+    await expect(reveal).not.toHaveAttribute("aria-label", currentLabel || "");
   }
   await expect(reveal).toHaveClass(/is-guaranteed/);
   await expect(reveal).toHaveAttribute("data-presentation-state", "SSR_OMEN");
@@ -126,7 +128,7 @@ test("M9-X entry and Mission Hub remain mobile-safe", async ({ page }) => {
   test.info().annotations.push({ type: "cold-title-ready-ms", description: String(coldStartMs) });
   console.log("M9X_COLD_START", JSON.stringify({ coldStartMs, boot: bootMetrics?.tiers.BOOT_CRITICAL }));
 
-  await expect.poll(() => page.evaluate(() => window.__TRIBE_ASSET_METRICS__?.tiers.TUTORIAL_CRITICAL?.failed)).toEqual([]);
+  await expect.poll(() => page.evaluate(() => window.__TRIBE_ASSET_METRICS__?.tiers.TUTORIAL_CRITICAL?.failed ?? [])).toEqual([]);
   for (const width of [375,390,430]) {
     await page.setViewportSize({ width,height:844 });
     const title = page.locator(".title-view-overlay");

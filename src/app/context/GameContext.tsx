@@ -7,7 +7,6 @@ import { CANONICAL_EQUIPMENT_VIEW } from "@/utils/equipments_master_data";
 import {
   TEST_SKILL_ID,
   CHARACTERS_MASTER,
-  DISPATCH_COURSES,
   BASE_MAP_MASTER,
   GEAR_SLOTS_MASTER,
   STORY_EPISODES_MASTER,
@@ -168,12 +167,12 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const [hasShownGuildDialog, setHasShownGuildDialog] = useState<boolean>(false);
   const [activeBanners, setActiveBanners] = useState<any[]>([]);
   const [userXp, setUserXp] = useState<number>(0);
-  const [raidAttemptsToday, setRaidAttemptsToday] = useState<number>(0);
-  const [raidAttemptConfig, setRaidAttemptConfig] = useState<Array<{ attempt: number; type: "FREE" | "CASH" | "DIAMOND"; cost: number }>>([]);
-  const [raidMaxDaily, setRaidMaxDaily] = useState<number>(0);
+  const [raidPoints, setRaidPoints] = useState<number>(5);
+  const [raidFirstEntryFree, setRaidFirstEntryFree] = useState<boolean>(true);
   const [cash, setCash] = useState<number>(10000);
   const [diamonds, setDiamonds] = useState<number>(200);
   const [vitality, setVitality] = useState<number>(100);
+  const [vitalityNextRecoveryAt, setVitalityNextRecoveryAt] = useState<string | null>(null);
   const [monthlyPassActive, setMonthlyPassActive] = useState<boolean>(false);
   const [monthlyPassClaimedToday, setMonthlyPassClaimedToday] = useState<boolean>(false);
 
@@ -761,8 +760,9 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     setUserLevel,
     userXp,
     setUserXp,
-    raidAttemptsToday,
-    setRaidAttemptsToday,
+    raidPoints,
+    setRaidPoints,
+    setRaidFirstEntryFree,
     vitality,
     setVitality,
     selectedBattleHelper: friends.selectedBattleHelper,
@@ -951,7 +951,10 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       if (recovered) {
         const row = Array.isArray(recovered) ? recovered[0] : recovered;
         setVitality(row.out_vitality);
+        setVitalityNextRecoveryAt(row.vitality_next_recovery_at ?? null);
         setPvpPoints(row.out_pvp_points);
+        setRaidPoints(Number(row.out_raid_points ?? 0));
+        setRaidFirstEntryFree(Boolean(row.raid_first_entry_free));
         setCash(Number(row.out_cash));
         setDiamonds(row.out_diamonds);
       }
@@ -1205,9 +1208,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
       const { data: raidAttemptState, error: raidAttemptStateError } = await supabase.rpc("get_current_raid_attempt_state");
       if (!raidAttemptStateError && raidAttemptState) {
-        setRaidAttemptsToday(Number(raidAttemptState.attemptCount || 0));
-        setRaidAttemptConfig(Array.isArray(raidAttemptState.costs) ? raidAttemptState.costs : []);
-        setRaidMaxDaily(Number(raidAttemptState.maxAttempts || 0));
+        setRaidPoints(Number(raidAttemptState.raidPoints ?? 0));
+        setRaidFirstEntryFree(Boolean(raidAttemptState.firstEntryFree));
       }
 
       const { data: npcsData } = await supabase.from("patrol_npcs").select("*");
@@ -1735,7 +1737,10 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         if (recovered) {
           const row = Array.isArray(recovered) ? recovered[0] : recovered;
           setVitality(row.out_vitality);
+          setVitalityNextRecoveryAt(row.vitality_next_recovery_at ?? null);
           setPvpPoints(row.out_pvp_points);
+          setRaidPoints(Number(row.out_raid_points ?? 0));
+          setRaidFirstEntryFree(Boolean(row.raid_first_entry_free));
           setCash(Number(row.out_cash));
           setDiamonds(row.out_diamonds);
         }
@@ -3485,7 +3490,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     password, setPassword,
     cash, setCash,
     diamonds, setDiamonds,
-    vitality, setVitality,
+    vitality, setVitality, vitalityNextRecoveryAt,
     pvpPoints, setPvpPoints,
     activeTab, setActiveTab,
     showInboxPanel, setShowInboxPanel,
@@ -3852,7 +3857,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     setGlobalInteractionBlocking,
     activeBanners, setActiveBanners,
     userItems, setUserItems,
-    raidAttemptsToday, setRaidAttemptsToday, raidAttemptConfig, raidMaxDaily,
+    raidPoints, setRaidPoints, raidFirstEntryFree,
     monthlyPassActive, setMonthlyPassActive,
     monthlyPassClaimedToday, setMonthlyPassClaimedToday,
     handlePurchaseMonthlyPass, handleClaimDailyPassReward,

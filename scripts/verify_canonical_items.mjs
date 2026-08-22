@@ -20,6 +20,8 @@ assert.equal(items.filter((item) => legacyIds.includes(item.id)).length, 0);
 assert.deepEqual(items.filter((item) => item.id.startsWith("CHAR_EXP_")).map((item) => item.runtimeUsage.effectValue), [100, 500, 2000]);
 assert.deepEqual(items.filter((item) => item.id.startsWith("EQUIP_EXP_")).map((item) => item.runtimeUsage.effectValue), [100, 500, 2500]);
 assert.equal(items.find((item) => item.id === "ENERGY_DRINK").runtimeUsage.effectValue, 50);
+assert.equal(items.find((item) => item.id === "PVP_POINT_TICKET").runtimeUsage.effectValue, 1);
+assert.equal(items.find((item) => item.id === "RAID_POINT_TICKET").runtimeUsage.effectValue, 1);
 assert.deepEqual(items.find((item) => item.id === "AWAKENING_BOOK").runtimeUsage, {
   copyEquivalentValue: 1,
   manualAwakeningCost: 1,

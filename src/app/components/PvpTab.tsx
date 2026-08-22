@@ -28,11 +28,6 @@ const tacticNames: { [key: string]: string } = {
   TACTICAL: "弱点集中"
 };
 
-function formatRemaining(milliseconds: number) {
-  const seconds = Math.max(0, Math.floor(milliseconds / 1000));
-  return `${String(Math.floor(seconds / 3600)).padStart(2, "0")}:${String(Math.floor((seconds % 3600) / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
-}
-
 export default function PvpTab() {
   const {
     session,
@@ -62,7 +57,6 @@ export default function PvpTab() {
 
   const [selectedDefense, setSelectedDefense] = React.useState<string[]>([]);
   const [selectedTactic, setSelectedTactic] = React.useState<string>("ATTACK_PRIORITY");
-  const [clock, setClock] = React.useState(() => new Date());
   const isInitialOpponentLoad = pvpSubView === "opponents" && opponentsLoading && pvpOpponents.length === 0;
   const readiness = useScreenReadiness({
     assets: SCREEN_ASSET_MANIFESTS.pvp,
@@ -82,15 +76,6 @@ export default function PvpTab() {
       setSelectedTactic(myPvpDefenseDeck.tactic || "ATTACK_PRIORITY");
     }
   }, [myPvpDefenseDeck]);
-
-  React.useEffect(() => {
-    const timer = window.setInterval(() => setClock(new Date()), 1000);
-    return () => window.clearInterval(timer);
-  }, []);
-
-  const jstNow = new Date(clock.getTime() + 9 * 60 * 60 * 1000);
-  const dailyReset = new Date(Date.UTC(jstNow.getUTCFullYear(), jstNow.getUTCMonth(), jstNow.getUTCDate(), 0) - 9 * 60 * 60 * 1000);
-  if (dailyReset.getTime() <= clock.getTime()) dailyReset.setUTCDate(dailyReset.getUTCDate() + 1);
 
   const handleToggleDefenseMember = (charId: string) => {
     setSelectedDefense(prev => {
@@ -153,16 +138,16 @@ export default function PvpTab() {
           <div className="pvp-status-heading">PvPランクポイント</div>
           <div className="pvp-status-rate">{pvpRate.toLocaleString()} <small>pt</small></div>
           <div className="pvp-status-meta">
-            <Badge tone={pvpPoints > 0 ? "cyan" : "warning"}>挑戦 {pvpPoints}/5</Badge>
-            <span>1時間ごとに1回復</span>
+            <Badge tone={pvpPoints > 0 ? "cyan" : "warning"}>PvP Point {pvpPoints}/5</Badge>
+            <span>2時間ごとに1回復</span>
           </div>
         </HeroPanel>
 
         <PeriodStatus
-          label="デイリー挑戦"
-          range="毎日 00:00 更新"
-          remaining={formatRemaining(dailyReset.getTime() - clock.getTime())}
-          cadence="対戦相手は更新ボタンで再抽選"
+          label="PvP Point"
+          range="最大5 / 公式戦で1消費"
+          remaining="時間経過制"
+          cadence="2時間ごとに1回復・模擬戦は消費なし"
         />
 
         <SubTabNav

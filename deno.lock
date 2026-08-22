@@ -1,0 +1,28 @@
+{
+  "version": "5",
+  "redirects": {
+    "https://esm.sh/@supabase/supabase-js@2": "https://esm.sh/@supabase/supabase-js@2.112.2"
+  },
+  "remote": {
+    "https://esm.sh/@supabase/supabase-js@2.112.2": "ea8a8dc3bcfe3cd929a9f6f83a5c266ad3f9d8101c34f71d465dd73f7ff1b796"
+  },
+  "workspace": {
+    "packageJson": {
+      "dependencies": [
+        "npm:@playwright/test@^1.62.1",
+        "npm:@supabase/supabase-js@^2.110.2",
+        "npm:@types/node@20",
+        "npm:@types/react-dom@19",
+        "npm:@types/react@19",
+        "npm:eslint-config-next@16.2.10",
+        "npm:eslint@9",
+        "npm:jimp@^1.6.1",
+        "npm:next@16.2.10",
+        "npm:pngjs@7",
+        "npm:react-dom@19.2.4",
+        "npm:react@19.2.4",
+        "npm:typescript@5"
+      ]
+    }
+  }
+}

@@ -5,7 +5,12 @@ import { useGame } from "../context/GameContext";
 import { supabase } from "@/utils/supabase";
 import { resolveAvailableMyPageCreatives } from "@/domain/presentation/production_creatives";
 
-import { PROFILE_BACKGROUNDS, CHARACTERS_MASTER, PROFILE_INTERIORS } from "@/utils/game_constants";
+import {
+  PROFILE_BACKGROUNDS,
+  CHARACTERS_MASTER,
+  PROFILE_INTERIORS,
+  getCharacterTransparentImg,
+} from "@/utils/game_constants";
 import "./HomeTab.css";
 
 const PRODUCTION_MY_PAGE_CREATIVES = resolveAvailableMyPageCreatives();
@@ -153,7 +158,7 @@ function MainMyPage() {
 
   // リーダーキャラクター立ち絵URL
   const leaderMaster = CHARACTERS_MASTER.find((c) => c.id === selectedLeader) || CHARACTERS_MASTER[0];
-  const leaderImgUrl = `/characters/${leaderMaster?.name || "reiji"}_transparent_asset.png`;
+  const leaderImgUrl = getCharacterTransparentImg(leaderMaster?.name || "reiji");
 
   // 選択中背景URL
   let bgUrl = `/bg/bg_base_${currentBase.file}.png`;

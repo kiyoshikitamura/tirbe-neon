@@ -35,7 +35,10 @@ test.beforeEach(async ({ page }) => {
 
 async function enterGame(page: import("@playwright/test").Page) {
   await page.goto("/");
-  await page.getByRole("button", { name: "TAP TO START" }).click();
+  const tapToStart = page.getByRole("button", { name: "TAP TO START" });
+  const header = page.locator(".header-mobile");
+  await expect(tapToStart.or(header)).toBeVisible();
+  if (await tapToStart.isVisible()) await tapToStart.click();
   await expect(page.locator(".header-mobile")).toBeVisible();
 }
 

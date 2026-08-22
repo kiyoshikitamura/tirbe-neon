@@ -22,12 +22,12 @@ async function seedCompletedAnonymous(page: import("@playwright/test").Page, con
       id: userId,
       username: "認証待ち",
       current_base_id: "neon_tower",
-      favorite_character_id: "11111111-1111-1111-1111-111111111111",
+      favorite_character_id: "char_reiji_01",
     }]));
     localStorage.setItem("mock_db_user_characters", JSON.stringify([{
       id: `starter_${userId}`,
       user_id: userId,
-      character_id: "11111111-1111-1111-1111-111111111111",
+      character_id: "char_reiji_01",
       level: 1,
       awakening_level: 0,
     }]));
@@ -281,7 +281,7 @@ test("existing Google login returns directly to the game without the war-entry d
       id: userId,
       username: "Google Player",
       current_base_id: "neon_tower",
-      favorite_character_id: "11111111-1111-1111-1111-111111111111",
+      favorite_character_id: "char_reiji_01",
     }]));
     localStorage.setItem("mock_db_tutorial_progress", JSON.stringify([{
       user_id: userId,

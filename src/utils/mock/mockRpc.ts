@@ -3,6 +3,7 @@
 import { CANONICAL_CHARACTERS, CANONICAL_EQUIPMENTS, CANONICAL_MISSIONS, CANONICAL_SKILLS } from "../../domain/gameplay/canonical/masters.ts";
 import { canonicalCharacterStats, canonicalEquipmentFlatStat, canonicalEquipmentLevelCap, canonicalSkillSlotCount } from "../../domain/gameplay/canonical/calculations.ts";
 import { applyCharacterAwakeningCopyEquivalent } from "../../domain/gameplay/canonical/awakening.ts";
+import { applyFrozenUserXp, canUseEnergyDrink, recoverCanonicalResource } from "../../domain/gameplay/canonical/action_resources.ts";
 import { parseCanonicalEffects } from "../../domain/battle/canonical_effects.ts";
 import {
   evaluateCanonicalMissionProgress,
@@ -881,7 +882,7 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
       const seeded = await executeMockRpc(client, "initialize_new_user", {
         p_user_id: userId,
         p_username: `検証${shortId}`,
-        p_character_id: "11111111-1111-1111-1111-111111111111",
+        p_character_id: "char_reiji_01",
         p_area_id: "shinjuku",
         p_gift_code: null,
       });
@@ -1441,16 +1442,49 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
   }
 
   if (funcName === "get_current_raid_attempt_state") {
+    const currentUserId = typeof window === "undefined" ? params.p_user_id : localStorage.getItem("tribe_demo_uuid");
+    const users = client.getStorage("users") || [];
+    const user = users.find((entry: any) => entry.id === currentUserId);
+    if (!user) return { data: null, error: { message: "User not found" } };
+    const now = Date.now();
+    const recovered = recoverCanonicalResource(Number(user.raid_points ?? 5), new Date(user.raid_points_last_recovered_at ?? now).getTime(), now, "RAID_POINT");
+    user.raid_points = recovered.value;
+    user.raid_points_last_recovered_at = new Date(recovered.lastRecoveredAtMs).toISOString();
+    client.setStorage("users", users);
     return { data: {
-      attemptDate: new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date()),
-      attemptCount: 0,
-      maxAttempts: 10,
-      costs: [
-        { attempt: 1, type: "FREE", cost: 0 }, { attempt: 2, type: "FREE", cost: 0 }, { attempt: 3, type: "FREE", cost: 0 },
-        { attempt: 4, type: "CASH", cost: 2000 }, { attempt: 5, type: "CASH", cost: 4000 }, { attempt: 6, type: "CASH", cost: 8000 },
-        { attempt: 7, type: "DIAMOND", cost: 50 }, { attempt: 8, type: "DIAMOND", cost: 50 },
-        { attempt: 9, type: "DIAMOND", cost: 100 }, { attempt: 10, type: "DIAMOND", cost: 100 }
-      ]
+      raidPoints: recovered.value,
+      maxRaidPoints: 5,
+      firstEntryFree: !Boolean(user.raid_free_entry_consumed),
+      recoveryIntervalSeconds: 7200,
+    }, error: null };
+  }
+
+  if (funcName === "sync_and_recover_vitality_and_pvp_points") {
+    const currentUserId = params.p_user_id || (typeof window === "undefined" ? null : localStorage.getItem("tribe_demo_uuid"));
+    const users = client.getStorage("users") || [];
+    const user = users.find((entry: any) => entry.id === currentUserId);
+    if (!user) return { data: null, error: { message: "User not found" } };
+    const now = Date.now();
+    const vitality = recoverCanonicalResource(Number(user.vitality ?? 100), new Date(user.vitality_last_recovered_at ?? now).getTime(), now, "VITALITY");
+    const pvp = recoverCanonicalResource(Number(user.pvp_points ?? 5), new Date(user.pvp_points_last_recovered_at ?? now).getTime(), now, "PVP_POINT");
+    const raid = recoverCanonicalResource(Number(user.raid_points ?? 5), new Date(user.raid_points_last_recovered_at ?? now).getTime(), now, "RAID_POINT");
+    user.vitality = vitality.value;
+    user.pvp_points = pvp.value;
+    user.raid_points = raid.value;
+    user.vitality_last_recovered_at = new Date(vitality.lastRecoveredAtMs).toISOString();
+    user.pvp_points_last_recovered_at = new Date(pvp.lastRecoveredAtMs).toISOString();
+    user.raid_points_last_recovered_at = new Date(raid.lastRecoveredAtMs).toISOString();
+    client.setStorage("users", users);
+    return { data: {
+      out_vitality: vitality.value,
+      out_pvp_points: pvp.value,
+      out_raid_points: raid.value,
+      out_cash: Number(user.cash || 0),
+      out_diamonds: Number(user.neon_diamonds || user.diamonds || 0),
+      raid_first_entry_free: !Boolean(user.raid_free_entry_consumed),
+      vitality_next_recovery_at: vitality.value < 100 ? new Date(vitality.lastRecoveredAtMs + 360_000).toISOString() : null,
+      pvp_next_recovery_at: pvp.value < 5 ? new Date(pvp.lastRecoveredAtMs + 7_200_000).toISOString() : null,
+      raid_next_recovery_at: raid.value < 5 ? new Date(raid.lastRecoveredAtMs + 7_200_000).toISOString() : null,
     }, error: null };
   }
 
@@ -1464,11 +1498,6 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
       
       if (user.last_login_date !== today) {
         user.last_login_date = today;
-        user.raid_attempts_today = 0;
-        if (user.vitality < 100) {
-          user.vitality = 100;
-        }
-        
         client.setStorage("users", users);
       }
     }
@@ -1580,31 +1609,18 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     return { data: { success: true }, error: null };
   }
   if (funcName === "consume_raid_attempt") {
-    const { p_user_id, p_cost_type, p_cost_amount } = params;
+    const { p_user_id } = params;
     const users = client.getStorage("users") || [];
     const idx = users.findIndex((u: any) => u.id === p_user_id);
     if (idx !== -1) {
-      if (p_cost_type === "CASH" && users[idx].cash < p_cost_amount) {
-        return { data: null, error: { message: "Cashが不足しています。" } };
-      }
-      if (p_cost_type === "DIAMOND" && users[idx].neon_diamonds < p_cost_amount) {
-        return { data: null, error: { message: "ダイヤが不足しています。" } };
-      }
-      
-      if (p_cost_type === "CASH") users[idx].cash -= p_cost_amount;
-      if (p_cost_type === "DIAMOND") users[idx].neon_diamonds -= p_cost_amount;
-      
-      const today = new Date().toISOString().split("T")[0];
-      const resetAt = users[idx].raid_attempts_reset_at ? new Date(users[idx].raid_attempts_reset_at).toISOString().split("T")[0] : null;
-      if (resetAt !== today) {
-        users[idx].raid_attempts_today = 1;
-        users[idx].raid_attempts_reset_at = new Date().toISOString();
+      if (!users[idx].raid_free_entry_consumed) {
+        users[idx].raid_free_entry_consumed = true;
       } else {
-        users[idx].raid_attempts_today = (users[idx].raid_attempts_today || 0) + 1;
+        if (Number(users[idx].raid_points || 0) < 1) return { data: null, error: { message: "レイドポイントが不足しています。" } };
+        users[idx].raid_points -= 1;
       }
-      
       client.setStorage("users", users);
-      return { data: { success: true }, error: null };
+      return { data: { success: true, remaining_raid_points: Number(users[idx].raid_points || 0) }, error: null };
     }
     return { data: null, error: { message: "ユーザーが見つかりません。" } };
   }
@@ -1631,41 +1647,17 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
       return { error: { message: "ユーザーが存在しません。" } };
     }
 
-    let level = user.level || 1;
-    let xp = user.xp || 0;
-    let leveledUp = false;
+    const { level, xp, leveledUp } = applyFrozenUserXp(Number(user.level || 1), Number(user.xp || 0), Number(p_xp_amount || 0));
+    user.level = level;
+    user.xp = xp;
+    client.setStorage("users", users);
 
-    if (level < 99) {
-      xp += p_xp_amount;
-      const levelMaster = client.getStorage("user_level_master");
-
-      while (level < 99) {
-        const lvRec = levelMaster.find((l: any) => l.level === level) || { next_xp: level * 100 };
-        const nextXp = lvRec.next_xp;
-        if (nextXp === 0 || xp < nextXp) {
-          break;
-        }
-        xp -= nextXp;
-        level += 1;
-        leveledUp = true;
-
-        if (level === 99) {
-          xp = 0;
-          break;
-        }
-      }
-
-      user.level = level;
-      user.xp = xp;
-      client.setStorage("users", users);
-
-      if (leveledUp) {
-        executeMockRpc(client, "evaluate_mission_progress", {
-          p_user_id: p_user_id,
-          p_trigger_type: "USER_LEVEL_UP",
-          p_progress_increment: level
-        });
-      }
+    if (leveledUp) {
+      executeMockRpc(client, "evaluate_mission_progress", {
+        p_user_id,
+        p_trigger_type: "USER_LEVEL_UP",
+        p_progress_increment: level
+      });
     }
 
     return {
@@ -1719,7 +1711,7 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
       username: p_username,
       gift_code: null,
       bio: "歌舞伎町の覇権を握るため立ち上がる。",
-      avatar_url: p_character_id === "11111111-1111-1111-1111-111111111111" ? "/reiji_transparent_asset.png" : p_character_id === "33333333-3333-3333-3333-333333333333" ? "/rui_transparent_asset.png" : p_character_id === "22222222-2222-2222-2222-222222222222" ? "/chang_transparent_asset.png" : "/reiji_transparent_asset.png",
+      avatar_url: p_character_id === "char_reiji_01" ? "/characters/reiji_transparent_asset.png" : p_character_id === "char_rui_01" ? "/characters/rui_transparent_asset.png" : p_character_id === "char_chang_01" ? "/characters/chang_transparent_asset.png" : "/characters/reiji_transparent_asset.png",
       cash: 10000,
       neon_diamonds: 200,
       vitality: 100,
@@ -1780,6 +1772,28 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     const { p_user_id, p_trigger_type, p_progress_increment } = params;
     evaluateMockMissionProgress(client, p_user_id, p_trigger_type, Number(p_progress_increment || 0));
     return { data: { status: "success" }, error: null };
+  }
+  if (funcName === "use_action_resource_ticket") {
+    const currentUserId = typeof window === "undefined" ? null : localStorage.getItem("tribe_demo_uuid");
+    const itemId = params.p_item_id;
+    if (!currentUserId) return { data: null, error: { message: "authentication required" } };
+    if (itemId !== "PVP_POINT_TICKET" && itemId !== "RAID_POINT_TICKET") {
+      return { data: null, error: { message: "unsupported action resource ticket" } };
+    }
+    await executeMockRpc(client, "sync_and_recover_vitality_and_pvp_points", { p_user_id: currentUserId });
+    const users = client.getStorage("users") || [];
+    const user = users.find((entry: any) => entry.id === currentUserId);
+    if (!user) return { data: null, error: { message: "player profile is not initialized" } };
+    const pointKey = itemId === "PVP_POINT_TICKET" ? "pvp_points" : "raid_points";
+    if (Number(user[pointKey] ?? 5) >= 5) return { data: null, error: { message: "action resource is already at maximum" } };
+    const items = client.getStorage("user_items") || [];
+    const item = items.find((entry: any) => entry.user_id === currentUserId && entry.item_id === itemId);
+    if (!item || Number(item.quantity) < 1) return { data: null, error: { message: "action resource ticket is not available" } };
+    item.quantity -= 1;
+    user[pointKey] = Number(user[pointKey] ?? 0) + 1;
+    client.setStorage("users", users);
+    client.setStorage("user_items", items);
+    return { data: { status: "success", item_id: itemId, quantity: item.quantity, points: user[pointKey] }, error: null };
   }
 
   if (funcName === "donate_to_guild") {
@@ -2354,17 +2368,17 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     const item = items.find((i: any) => i.user_id === p_user_id && i.item_id === p_item_id);
     if (!item || item.quantity < p_quantity) return { error: { message: "アイテムが不足しています。" } };
     
-    item.quantity -= p_quantity;
-    client.setStorage("user_items", items);
-    
     if (p_vitality_gain > 0) {
       const users = client.getStorage("users");
       const user = users.find((u: any) => u.id === p_user_id);
       if (user) {
-        user.vitality = Math.min(100, (user.vitality || 0) + p_vitality_gain);
+        if (Number(user.vitality || 0) + p_vitality_gain > 500) return { error: { message: "スタミナ上限を超えるため使用できません。" } };
+        user.vitality = Number(user.vitality || 0) + p_vitality_gain;
         client.setStorage("users", users);
       }
     }
+    item.quantity -= p_quantity;
+    client.setStorage("user_items", items);
     
     return { data: { status: "success" }, error: null };
   }
@@ -3138,19 +3152,20 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
 
 
   if (funcName === "use_energy_drink") {
-    const { p_user_id } = params;
+    const p_user_id = params.p_user_id || (typeof window === "undefined" ? null : localStorage.getItem("tribe_demo_uuid"));
     const items = client.getStorage("user_items") || [];
     const drink = items.find((i: any) => i.user_id === p_user_id && i.item_id === "ENERGY_DRINK");
     if (!drink || drink.quantity < 1) return { error: { message: "エナジードリンクを所持していません。" } };
-    drink.quantity -= 1;
-    
     const users = client.getStorage("users") || [];
     const user = users.find((u: any) => u.id === p_user_id);
-    if (user) user.vitality = 100;
+    if (!user) return { error: { message: "ユーザーが存在しません。" } };
+    if (!canUseEnergyDrink(Number(user.vitality || 0))) return { error: { message: "スタミナ上限を超えるため使用できません。" } };
+    drink.quantity -= 1;
+    user.vitality = Number(user.vitality || 0) + 50;
     
     client.setStorage("user_items", items);
     client.setStorage("users", users);
-    return { data: { status: "success" }, error: null };
+    return { data: { status: "success", quantity: drink.quantity, vitality: user.vitality }, error: null };
   }
 
   if (funcName === "add_test_diamonds") {
@@ -3600,7 +3615,7 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     const { p_user_id, p_amount } = params;
     const users = client.getStorage("users") || [];
     const user = users.find((u: any) => u.id === p_user_id);
-    if (user) user.vitality = Math.min((user.vitality || 0) + (p_amount || 100), 200);
+    if (user) user.vitality = Math.min((user.vitality || 0) + (p_amount || 100), 500);
     client.setStorage("users", users);
     return { data: { status: "success" }, error: null };
   }

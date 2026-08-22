@@ -9,10 +9,11 @@ const player = [{
   skills: [{
     id: "player-strike",
     name: "Strike",
-    kind: "ATTACK" as const,
+    activationType: "ACTIVE" as const,
     target: "ENEMY_SINGLE" as const,
-    powerPercent: 160,
+    effects: ["DAMAGE 160% ATK"],
     cooldown: 0,
+    availableFromRound: 1,
   }],
 }];
 

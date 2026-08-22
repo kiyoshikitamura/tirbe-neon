@@ -26,9 +26,8 @@ export default function RaidTab() {
     raidBossName,
     navigateTab,
     userLevel,
-    raidAttemptsToday,
-    raidAttemptConfig,
-    raidMaxDaily,
+    raidPoints,
+    raidFirstEntryFree,
     setConfirmDialogConfig,
     userGuildMember,
     fetchGuildDetail,
@@ -119,32 +118,23 @@ export default function RaidTab() {
                 fullWidth
                 onClick={() => {
                   playCyberSe("click");
-                  const nextAttempt = raidAttemptsToday + 1;
-                  const costEntry = raidAttemptConfig.find((entry: any) => entry.attempt === nextAttempt);
-                  if (!costEntry) return;
-                  
-                  if (costEntry.type !== "FREE") {
-                    setConfirmDialogConfig({
-                      isOpen: true,
-                      title: "レイド挑戦",
-                      message: `${costEntry.type === "CASH" ? "Cash" : "Diamond"} ${costEntry.cost.toLocaleString()} を消費してレイドに挑戦しますか？（本日 ${nextAttempt}/${raidMaxDaily} 回目）`,
-                      confirmText: "挑戦する",
-                      cancelText: "キャンセル",
-                      onConfirm: () => { startCardBattle("RAID", displayName, selectedRaid?.id); setConfirmDialogConfig(null); },
-                      onCancel: () => setConfirmDialogConfig(null),
-                    });
-                  } else {
-                    startCardBattle("RAID", displayName, selectedRaid?.id);
-                  }
+                  setConfirmDialogConfig({
+                    isOpen: true,
+                    title: "レイド挑戦",
+                    message: raidFirstEntryFree ? "初回無料でレイドに挑戦しますか？" : "レイドポイントを1消費して挑戦しますか？",
+                    confirmText: "挑戦する",
+                    cancelText: "キャンセル",
+                    onConfirm: () => { startCardBattle("RAID", displayName, selectedRaid?.id); setConfirmDialogConfig(null); },
+                    onCancel: () => setConfirmDialogConfig(null),
+                  });
                 }}
-                disabled={!selectedRaid?.id || displayHp <= 0 || displaySeconds <= 0 || userLevel < 5 || raidMaxDaily === 0 || raidAttemptsToday >= raidMaxDaily}
+                disabled={!selectedRaid?.id || displayHp <= 0 || displaySeconds <= 0 || userLevel < 5 || (!raidFirstEntryFree && raidPoints <= 0)}
               >
-                {userLevel < 5 ? "プレイヤーLv5以上で解放" : raidMaxDaily === 0 ? "挑戦条件を取得中" : raidAttemptsToday >= raidMaxDaily ? "本日の挑戦回数上限" : "強敵に挑む (バトル開始)"}
+                {userLevel < 5 ? "プレイヤーLv5以上で解放" : (!raidFirstEntryFree && raidPoints <= 0) ? "レイドポイント回復待ち" : "強敵に挑む (バトル開始)"}
               </OutlawButton>
               {userLevel >= 5 && (
                 <div className="text-center font-size-8 text-secondary">
-                  本日挑戦: {raidAttemptsToday}/{raidMaxDaily} 回
-                  {raidAttemptConfig[raidAttemptsToday] && ` (次回コスト: ${raidAttemptConfig[raidAttemptsToday].type === "FREE" ? "無料" : `${raidAttemptConfig[raidAttemptsToday].cost} ${raidAttemptConfig[raidAttemptsToday].type}`})`}
+                  レイドポイント: {raidPoints}/5 {raidFirstEntryFree && "（初回無料）"}・2時間ごとに1回復
                 </div>
               )}
             </div>

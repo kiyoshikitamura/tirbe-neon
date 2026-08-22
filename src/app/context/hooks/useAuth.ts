@@ -32,7 +32,7 @@ export function useAuth(
   const [isSetupRequired, setIsSetupRequired] = useState<boolean>(false);
   const [onboardingState, setOnboardingState] = useState<OnboardingState | null>(null);
   const [setupUsername, setSetupUsername] = useState<string>("");
-  const [setupCharacterId, setSetupCharacterId] = useState<string>("11111111-1111-1111-1111-111111111111");
+  const [setupCharacterId, setSetupCharacterId] = useState<string>("char_reiji_01");
   const [setupAreaId, setSetupAreaId] = useState<string>("shinjuku");
   const [setupGiftCode, setSetupGiftCode] = useState<string>("");
   const [giftCode, setGiftCode] = useState<string | null>(null);

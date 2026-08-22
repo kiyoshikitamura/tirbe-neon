@@ -14,7 +14,6 @@ import { CANONICAL_SKILLS } from "@/domain/gameplay/canonical/masters";
 import { CompatibleBattleTacticId, UseBattleOptions, ParticipantState, CardState, SkillLogItem } from "./battle/battleTypes";
 import { selectCharacterSkillByTactic } from "./battle/battleAI";
 import { postNpcYajiMessage, saveBattleSessionState } from "./battle/battleUtils";
-import { RAID_COST_TABLE, RAID_MAX_DAILY } from "../utils/game_constants";
 import { participantsToBattleUnits, toDeterministicTactic } from "./battle/deterministicBattleAdapter";
 import { resolveDeterministicBattle } from "@/lib/battle/deterministicBattle";
 import { gvgDefenseSnapshotToParticipants } from "./battle/gvgSnapshotAdapter";
@@ -115,8 +114,9 @@ export function useBattle(options: UseBattleOptions) {
     pvpRate,
     setPvpRate,
     pvpRankings,
-    raidAttemptsToday,
-    setRaidAttemptsToday,
+    raidPoints,
+    setRaidPoints,
+    setRaidFirstEntryFree,
     cash,
     setCash,
     diamonds,
@@ -572,7 +572,7 @@ export function useBattle(options: UseBattleOptions) {
       initialPlayerParty.push({
         id: `support_${supportCharacter.id || supportCharacter.characterId || "0"}`,
         name: `[助っ人] ${supportCharacter.jpName || supportCharacter.name || "助っ人"}`,
-        characterId: supportCharacter.characterId || supportCharacter.id || "11111111-1111-1111-1111-111111111111",
+        characterId: supportCharacter.characterId || supportCharacter.id || "char_reiji_01",
         alignment: supportCharacter.alignment || "ORDER",
         level: supportCharacter.level || 50,
         hp: supportCharacter.hp || 1500,
@@ -1244,7 +1244,8 @@ export function useBattle(options: UseBattleOptions) {
         setTimeline([...canonicalPlayers.map(p=>({id:p.id,name:p.name,isEnemy:false,spd:p.stats.spd})),...canonicalEnemies.map(p=>({id:p.id,name:p.name,isEnemy:true,spd:p.stats.spd}))].sort((a,b)=>b.spd-a.spd));
         officialRaidReplayIdForBattle=replaySessionId; officialRaidWinnerForBattle=resolvedReplay.winner; officialRaidEventsForBattle=events; officialRaidResultForBattle=resolvedReplay;
         setOfficialRaidReplayId(replaySessionId);setOfficialRaidWinner(resolvedReplay.winner);setOfficialRaidEvents(events);setOfficialRaidEventIndex(0);setOfficialRaidResult(resolvedReplay);
-        setRaidAttemptsToday?.(Number(replayCreation.data?.attempt_number ?? (raidAttemptsToday ?? 0) + 1));
+        setRaidPoints?.(Number(replayCreation.data?.remaining_raid_points ?? Math.max(0, (raidPoints ?? 0) - 1)));
+        setRaidFirstEntryFree?.(false);
       }
     } catch (err) {
       console.warn("Failed to create replay snapshot:", err);
