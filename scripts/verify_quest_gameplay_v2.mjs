@@ -70,5 +70,5 @@ for (const profile of Object.values(summary)) for (const result of Object.values
 const migration = fs.readFileSync("supabase/migrations/20260822000185_quest_gameplay_v2.sql","utf8");
 for (const token of ["canonical_quest_is_unlocked","get_canonical_quest_progression","enemy_tactic_id","canonical_skill_master","expected_members","FIRST_CLEAR:"]) assert(migration.includes(token),token);
 const ui = fs.readFileSync("src/app/components/PatrolTab.tsx","utf8");
-for (const token of ["LOCKED","enemy_member_count","recommended_level","Character Growth / Skill / Formation","enemy_tactic"]) assert(ui.includes(token),token);
+for (const token of ["LOCKED","Town Clear","CLEAR","Enemy Preview","enemy_member_count","recommended_level","recommended_power","enemy_attributes","Character Growth / Skill / Formation","enemy_tactic"]) assert(ui.includes(token),token);
 console.log(JSON.stringify({status:"PASS",characterExposure:"60/60",skillExposure:"70/70",summary},null,2));

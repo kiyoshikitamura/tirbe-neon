@@ -442,6 +442,9 @@ export default function PatrolTab() {
 
         {/* コース選択 */}
         {!isTutorialQuestStep && <div className="patrol-courses-grid mb-3">
+          <div className="patrol-town-clear-progress" aria-label="街のクエストクリア進捗">
+            Town Clear {patrolCourses.filter((course: any) => course.town_id === selectedTown && course.is_first_cleared).length} / 3
+          </div>
           {patrolCourses.filter((c: any) => c.town_id === selectedTown).map((c: any) => (
             <div 
               key={c.id} 
@@ -453,6 +456,7 @@ export default function PatrolTab() {
                 {c.level_type === "EASY" ? "初級" : c.level_type === "NORMAL" ? "中級" : c.level_type === "HARD" ? "上級" : c.level_type}
               </div>
               {c.is_unlocked === false && <div className="course-lock">LOCKED — 同じ街の前難易度を初回クリア</div>}
+              {c.is_first_cleared && <div className="course-clear">CLEAR</div>}
             </div>
           ))}
         </div>}
@@ -469,6 +473,7 @@ export default function PatrolTab() {
                 <div><dt>主要ドロップ</dt><dd>{formatRewardItems(activeCourse.reward_items) || "なし"}</dd></div>
                 <div><dt>初回クリア</dt><dd>User EXP +{Number(activeCourse.first_clear_user_exp || 0).toLocaleString()} / {formatRewardItems(activeCourse.first_clear_items) || "なし"}</dd></div>
                 <div><dt>敵編成</dt><dd>{activeCourse.enemy_member_count || "-"}人 / 推奨Lv {activeCourse.recommended_level || "-"}</dd></div>
+                <div><dt>Enemy Preview</dt><dd>{(activeCourse.enemy_members || []).map((member: any) => member.characterId).join(" / ") || "-"}</dd></div>
                 <div><dt>推奨Power</dt><dd>{Number(activeCourse.recommended_power || 0).toLocaleString()}</dd></div>
                 <div><dt>Attribute</dt><dd>{(activeCourse.enemy_attributes || []).join(" / ") || "-"}</dd></div>
                 <div><dt>敵方針</dt><dd>{activeCourse.enemy_tactic || "-"}</dd></div>
