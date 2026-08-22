@@ -26,10 +26,10 @@ const originalRandom = Math.random;
 Math.random = () => 0;
 try {
   const replay = await executeMockRpc(client, "create_patrol_battle_replay", { p_patrol_id: "battle", p_tactic_id: "ATTACK_PRIORITY" });
-  if (replay.error || replay.data.enemy_snapshot.length !== 5) throw new Error("Canonical Quest NPC party snapshot mismatch");
+  if (replay.error || replay.data.enemy_snapshot.length !== 3) throw new Error("Canonical Quest NPC party snapshot mismatch");
   for (const enemy of replay.data.enemy_snapshot) {
-    if (enemy.level !== 5 || enemy.awakeningLevel !== 0 || enemy.equipment.length !== 0 || enemy.equippedSkillRefs.length !== 0) throw new Error("Canonical Quest NPC progression mismatch");
-    if (enemy.skills[0]?.effects?.[0] !== "DAMAGE 80% ATK") throw new Error("Canonical Quest normal attack is not 80% ATK");
+    if (enemy.level !== 5 || enemy.awakeningLevel !== 0 || enemy.equipment.length !== 0 || enemy.equippedSkillRefs.length < 1) throw new Error("Canonical Quest NPC progression mismatch");
+    if (!enemy.skills.length || enemy.skills.some((skill) => !String(skill.id).startsWith("SKILL_"))) throw new Error("Canonical Quest Skill projection mismatch");
   }
 
   const first = await executeMockRpc(client, "claim_patrol_rewards", { p_patrol_id: "first" });

@@ -1200,11 +1200,12 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       }
 
       // 見回り関連データとマスタデータの同期
-      const [{ data: questsData }, { data: canonicalQuestData }, { data: questPoolData }, { data: encounterData }] = await Promise.all([
+      const [{ data: questsData }, { data: canonicalQuestData }, { data: questPoolData }, { data: encounterData }, { data: questProgressionData }] = await Promise.all([
         supabase.from("quests").select("*"),
         supabase.from("canonical_quest_master").select("*"),
         supabase.from("canonical_quest_reward_pool_items").select("*"),
         supabase.from("canonical_quest_encounter_master").select("*"),
+        supabase.rpc("get_canonical_quest_progression"),
       ]);
       if (questsData) {
         const canonicalRows = canonicalQuestData?.length ? canonicalQuestData : CANONICAL_QUESTS.map((quest) => ({
@@ -1223,8 +1224,10 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
           probability_bp: item.probabilityBp,
         })));
         const canonicalByQuest = new Map(canonicalRows.map((quest: any) => [quest.quest_id, quest]));
+        const progressionByQuest = new Map(((questProgressionData as any[]) || []).map((quest: any) => [quest.quest_id, quest]));
         setPatrolCourses(questsData.map((quest: any) => {
           const canonical: any = canonicalByQuest.get(quest.id);
+          const progression: any = progressionByQuest.get(quest.id);
           const rewardPoolItems = poolRows.filter((item: any) => item.reward_pool_id === canonical?.reward_pool_id);
           const firstClearItems = poolRows.filter((item: any) => item.reward_pool_id === canonical?.first_clear_reward_pool_id);
           return {
@@ -1237,6 +1240,15 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
             reward_item_id: rewardPoolItems[0]?.item_id ?? null,
             reward_item_chance: Number(rewardPoolItems[0]?.probability_bp ?? 0) / 100,
             battle_trigger_chance: quest.battle_trigger_chance ?? 0.2,
+            is_unlocked: progression?.is_unlocked ?? (typeof canonical?.unlock_condition === "object" ? canonical.unlock_condition.type === "OPEN" : canonical?.unlock_condition === "OPEN"),
+            unlock_condition: progression?.unlock_condition ?? canonical?.unlock_condition ?? "OPEN",
+            is_first_cleared: progression?.is_first_cleared ?? false,
+            enemy_tactic: progression?.enemy_tactic ?? null,
+            enemy_member_count: progression?.enemy_member_count ?? 0,
+            enemy_members: progression?.enemy_members ?? [],
+            recommended_level: progression?.recommended_level ?? null,
+            recommended_power: progression?.recommended_power ?? null,
+            enemy_attributes: progression?.enemy_attributes ?? [],
           };
         }));
       }

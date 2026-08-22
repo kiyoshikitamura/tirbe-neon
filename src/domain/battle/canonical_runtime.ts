@@ -62,7 +62,7 @@ export interface BattleReplayEvent {
 }
 
 export interface DeterministicBattleInput {
-  seed: number; tactic: BattleTactic; maxRounds: number; player: BattleUnitInput[]; enemy: BattleUnitInput[];
+  seed: number; tactic: BattleTactic; enemyTactic?: BattleTactic; maxRounds: number; player: BattleUnitInput[]; enemy: BattleUnitInput[];
 }
 
 type ModifierInstance = { type: "BUFF" | "DEBUFF"; stat: CanonicalStat; magnitudeBp: number; remainingDuration: number; appliedAction: number; applicationSequence: number };
@@ -391,9 +391,10 @@ export function resolveCanonicalBattle(input: DeterministicBattleInput): Determi
       if (hasStatus(actor, "STUN")) emit(events, round, "ACTION", { actorId: actor.id, action: "STUN_SKIP" });
       else {
         const allies = actor.team === "PLAYER" ? players : enemies; const foes = actor.team === "PLAYER" ? enemies : players;
-        const skill = chooseSkill(actor, allies, input.tactic, round);
+        const activeTactic = actor.team === "ENEMY" ? (input.enemyTactic ?? input.tactic) : input.tactic;
+        const skill = chooseSkill(actor, allies, activeTactic, round);
         const chosen = skill ?? normalizeSkill({ id: "BASIC_ATTACK", name: "通常攻撃", activationType: "ACTIVE", target: "ENEMY_SINGLE", cooldown: 0, availableFromRound: 1, effects: [`DAMAGE ${DAMAGE_CONTRACT.NORMAL_ATTACK_POWER_BP / 100}% ATK`] });
-        const targets = actionTargets(actor, chosen, allies, foes, input.tactic);
+        const targets = actionTargets(actor, chosen, allies, foes, activeTactic);
         emit(events, round, "ACTION", { actorId: actor.id, skillId: chosen.id, target: chosen.target }); executeEffects(actor, targets, chosen, context);
         if (skill && skill.cooldown !== null) actor.nextAvailableRound[skill.id] = round + skill.cooldown;
       }

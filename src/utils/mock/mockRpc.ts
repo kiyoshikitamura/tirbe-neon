@@ -44,17 +44,12 @@ const canonicalQuestEnemySnapshot = (questId: string) => {
       awakeningLevel: member.awakening,
       stats,
       equipment: [],
-      equippedSkillRefs: [],
-      skills: [{
-        id: "BASIC_ATTACK",
-        name: "通常攻撃",
-        kind: "ACTIVE",
-        target: "ENEMY_SINGLE",
-        activationType: "ACTIVE",
-        cooldown: 0,
-        availableFromRound: 1,
-        effects: ["DAMAGE 80% ATK"],
-      }],
+      equippedSkillRefs: member.skillLoadout,
+      skills: member.skillLoadout.map((skillId) => {
+        const skill = CANONICAL_SKILLS.find((entry) => entry.skill_id === skillId);
+        if (!skill) throw new Error(`Canonical Quest encounter references unknown Skill: ${skillId}`);
+        return { id:skill.skill_id, name:skill.name, kind:skill.kind, target:skill.target, activationType:skill.activation_type, cooldown:skill.cooldown, availableFromRound:skill.available_from_round, effects:skill.effects, exclusiveCharacterId:skill.exclusive_character_id };
+      }),
     };
   });
 };
@@ -888,9 +883,10 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     })();
     const sessions = client.getStorage("battle_replay_sessions") || [];
     const id = `replay_${Date.now()}`;
-    sessions.push({ id, requester_user_id: userId, battle_mode: "QUEST", tactic_id: params.p_tactic_id, random_seed: Date.now(), source_reference_id: patrol.id, resolution_authority: "PATROL_SERVER", status: "PENDING", player_snapshot: playerSnapshot, enemy_snapshot: enemySnapshot });
+    const encounter = CANONICAL_QUEST_ENCOUNTERS.find((entry) => entry.questId === patrol.course_id);
+    sessions.push({ id, requester_user_id: userId, battle_mode: "QUEST", tactic_id: params.p_tactic_id, enemy_tactic_id: encounter?.enemyTactic ?? null, random_seed: Date.now(), source_reference_id: patrol.id, resolution_authority: "PATROL_SERVER", status: "PENDING", player_snapshot: playerSnapshot, enemy_snapshot: enemySnapshot });
     client.setStorage("battle_replay_sessions", sessions);
-    return { data: { replay_session_id: id, player_snapshot: playerSnapshot, enemy_snapshot: enemySnapshot }, error: null };
+    return { data: { replay_session_id: id, player_snapshot: playerSnapshot, enemy_snapshot: enemySnapshot, enemy_tactic: encounter?.enemyTactic ?? null }, error: null };
   }
 
   if (funcName === "resolve_gvg_attack") {
@@ -3387,6 +3383,19 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
   }
 
 
+  if (funcName === "get_canonical_quest_progression") {
+    const userId = typeof window === "undefined" ? null : localStorage.getItem("tribe_demo_uuid");
+    const firstClears = client.getStorage("user_quest_first_clears") || [];
+    return { data: CANONICAL_QUEST_ENCOUNTERS.map((encounter) => {
+      const quest = canonicalQuestById(encounter.questId)!;
+      const condition = quest.unlockCondition;
+      const prerequisite = condition.type === "FIRST_CLEAR" ? condition.questId : null;
+      const memberCharacters = encounter.members.map((member) => CANONICAL_CHARACTERS.find((entry) => entry.character_id === member.characterId)!);
+      const recommendedPower = encounter.members.reduce((total,member,index) => { const stats=canonicalCharacterStats(memberCharacters[index].lv1,memberCharacters[index].lv100,member.level,member.awakening); return total+stats.hp+stats.atk+stats.def; },0);
+      return { quest_id:encounter.questId, unlock_condition:condition.type === "OPEN" ? "OPEN" : `FIRST_CLEAR:${prerequisite}`, is_unlocked:condition.type === "OPEN" || firstClears.some((entry:any)=>entry.user_id===userId&&entry.quest_id===prerequisite), is_first_cleared:firstClears.some((entry:any)=>entry.user_id===userId&&entry.quest_id===encounter.questId), enemy_tactic:encounter.enemyTactic, enemy_member_count:encounter.members.length, enemy_members:encounter.members, enemy_attributes:[...new Set(memberCharacters.map((entry)=>entry.attribute))], recommended_level:encounter.members[0]?.level ?? null, recommended_power:recommendedPower };
+    }), error:null };
+  }
+
   if (funcName === "start_patrol") {
     const { p_course_id, p_character_id } = params;
     const currentUserId = typeof window === "undefined" ? null : localStorage.getItem("tribe_demo_uuid");
@@ -3398,6 +3407,9 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
 
     const quests = client.getStorage("quests") || [];
     const quest = quests.find((entry: any) => entry.id === p_course_id);
+    const canonicalQuest = canonicalQuestById(p_course_id);
+    const firstClears = client.getStorage("user_quest_first_clears") || [];
+    if (canonicalQuest?.unlockCondition.type === "FIRST_CLEAR" && !firstClears.some((entry: any) => entry.user_id === currentUserId && entry.quest_id === canonicalQuest.unlockCondition.questId)) return { data:null, error:{ message:"Quest is locked", code:"23514" } };
     const level = String(p_course_id).match(/_(\d)$/)?.[1];
     const durationSeconds = Number(quest?.duration_seconds ?? (level === "1" ? 60 : level === "2" ? 180 : 300));
     const costVitality = Number(quest?.cost_vitality ?? (level === "1" ? 5 : level === "2" ? 10 : 15));

@@ -240,7 +240,9 @@
       ],
       "rewardPoolId": "QUEST_EASY",
       "enemyEncounterId": "encounter_q_shinjuku_1",
-      "unlockCondition": "NONE",
+      "unlockCondition": {
+        "type": "OPEN"
+      },
       "isProductionEnabled": true
     },
     {
@@ -268,7 +270,10 @@
       ],
       "rewardPoolId": "QUEST_NORMAL",
       "enemyEncounterId": "encounter_q_shinjuku_2",
-      "unlockCondition": "NONE",
+      "unlockCondition": {
+        "type": "FIRST_CLEAR",
+        "questId": "q_shinjuku_1"
+      },
       "isProductionEnabled": true
     },
     {
@@ -301,7 +306,10 @@
       ],
       "rewardPoolId": "QUEST_HARD",
       "enemyEncounterId": "encounter_q_shinjuku_3",
-      "unlockCondition": "NONE",
+      "unlockCondition": {
+        "type": "FIRST_CLEAR",
+        "questId": "q_shinjuku_2"
+      },
       "isProductionEnabled": true
     },
     {
@@ -329,7 +337,9 @@
       ],
       "rewardPoolId": "QUEST_EASY",
       "enemyEncounterId": "encounter_q_shibuya_1",
-      "unlockCondition": "NONE",
+      "unlockCondition": {
+        "type": "OPEN"
+      },
       "isProductionEnabled": true
     },
     {
@@ -357,7 +367,10 @@
       ],
       "rewardPoolId": "QUEST_NORMAL",
       "enemyEncounterId": "encounter_q_shibuya_2",
-      "unlockCondition": "NONE",
+      "unlockCondition": {
+        "type": "FIRST_CLEAR",
+        "questId": "q_shibuya_1"
+      },
       "isProductionEnabled": true
     },
     {
@@ -390,7 +403,10 @@
       ],
       "rewardPoolId": "QUEST_HARD",
       "enemyEncounterId": "encounter_q_shibuya_3",
-      "unlockCondition": "NONE",
+      "unlockCondition": {
+        "type": "FIRST_CLEAR",
+        "questId": "q_shibuya_2"
+      },
       "isProductionEnabled": true
     },
     {
@@ -418,7 +434,9 @@
       ],
       "rewardPoolId": "QUEST_EASY",
       "enemyEncounterId": "encounter_q_ikebukuro_1",
-      "unlockCondition": "NONE",
+      "unlockCondition": {
+        "type": "OPEN"
+      },
       "isProductionEnabled": true
     },
     {
@@ -446,7 +464,10 @@
       ],
       "rewardPoolId": "QUEST_NORMAL",
       "enemyEncounterId": "encounter_q_ikebukuro_2",
-      "unlockCondition": "NONE",
+      "unlockCondition": {
+        "type": "FIRST_CLEAR",
+        "questId": "q_ikebukuro_1"
+      },
       "isProductionEnabled": true
     },
     {
@@ -479,7 +500,10 @@
       ],
       "rewardPoolId": "QUEST_HARD",
       "enemyEncounterId": "encounter_q_ikebukuro_3",
-      "unlockCondition": "NONE",
+      "unlockCondition": {
+        "type": "FIRST_CLEAR",
+        "questId": "q_ikebukuro_2"
+      },
       "isProductionEnabled": true
     },
     {
@@ -507,7 +531,9 @@
       ],
       "rewardPoolId": "QUEST_EASY",
       "enemyEncounterId": "encounter_q_roppongi_1",
-      "unlockCondition": "NONE",
+      "unlockCondition": {
+        "type": "OPEN"
+      },
       "isProductionEnabled": true
     },
     {
@@ -535,7 +561,10 @@
       ],
       "rewardPoolId": "QUEST_NORMAL",
       "enemyEncounterId": "encounter_q_roppongi_2",
-      "unlockCondition": "NONE",
+      "unlockCondition": {
+        "type": "FIRST_CLEAR",
+        "questId": "q_roppongi_1"
+      },
       "isProductionEnabled": true
     },
     {
@@ -568,7 +597,10 @@
       ],
       "rewardPoolId": "QUEST_HARD",
       "enemyEncounterId": "encounter_q_roppongi_3",
-      "unlockCondition": "NONE",
+      "unlockCondition": {
+        "type": "FIRST_CLEAR",
+        "questId": "q_roppongi_2"
+      },
       "isProductionEnabled": true
     },
     {
@@ -596,7 +628,9 @@
       ],
       "rewardPoolId": "QUEST_EASY",
       "enemyEncounterId": "encounter_q_akihabara_1",
-      "unlockCondition": "NONE",
+      "unlockCondition": {
+        "type": "OPEN"
+      },
       "isProductionEnabled": true
     },
     {
@@ -624,7 +658,10 @@
       ],
       "rewardPoolId": "QUEST_NORMAL",
       "enemyEncounterId": "encounter_q_akihabara_2",
-      "unlockCondition": "NONE",
+      "unlockCondition": {
+        "type": "FIRST_CLEAR",
+        "questId": "q_akihabara_1"
+      },
       "isProductionEnabled": true
     },
     {
@@ -657,7 +694,10 @@
       ],
       "rewardPoolId": "QUEST_HARD",
       "enemyEncounterId": "encounter_q_akihabara_3",
-      "unlockCondition": "NONE",
+      "unlockCondition": {
+        "type": "FIRST_CLEAR",
+        "questId": "q_akihabara_2"
+      },
       "isProductionEnabled": true
     },
     {
@@ -685,7 +725,9 @@
       ],
       "rewardPoolId": "QUEST_EASY",
       "enemyEncounterId": "encounter_q_kawasaki_1",
-      "unlockCondition": "NONE",
+      "unlockCondition": {
+        "type": "OPEN"
+      },
       "isProductionEnabled": true
     },
     {
@@ -713,7 +755,10 @@
       ],
       "rewardPoolId": "QUEST_NORMAL",
       "enemyEncounterId": "encounter_q_kawasaki_2",
-      "unlockCondition": "NONE",
+      "unlockCondition": {
+        "type": "FIRST_CLEAR",
+        "questId": "q_kawasaki_1"
+      },
       "isProductionEnabled": true
     },
     {
@@ -746,7 +791,10 @@
       ],
       "rewardPoolId": "QUEST_HARD",
       "enemyEncounterId": "encounter_q_kawasaki_3",
-      "unlockCondition": "NONE",
+      "unlockCondition": {
+        "type": "FIRST_CLEAR",
+        "questId": "q_kawasaki_2"
+      },
       "isProductionEnabled": true
     },
     {
@@ -774,7 +822,9 @@
       ],
       "rewardPoolId": "QUEST_EASY",
       "enemyEncounterId": "encounter_q_yokohama_1",
-      "unlockCondition": "NONE",
+      "unlockCondition": {
+        "type": "OPEN"
+      },
       "isProductionEnabled": true
     },
     {
@@ -802,7 +852,10 @@
       ],
       "rewardPoolId": "QUEST_NORMAL",
       "enemyEncounterId": "encounter_q_yokohama_2",
-      "unlockCondition": "NONE",
+      "unlockCondition": {
+        "type": "FIRST_CLEAR",
+        "questId": "q_yokohama_1"
+      },
       "isProductionEnabled": true
     },
     {
@@ -835,7 +888,10 @@
       ],
       "rewardPoolId": "QUEST_HARD",
       "enemyEncounterId": "encounter_q_yokohama_3",
-      "unlockCondition": "NONE",
+      "unlockCondition": {
+        "type": "FIRST_CLEAR",
+        "questId": "q_yokohama_2"
+      },
       "isProductionEnabled": true
     }
   ],

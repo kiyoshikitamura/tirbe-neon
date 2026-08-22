@@ -1,61 +1,62 @@
 {
-  "version": "2026-08-22",
-  "authority": "Phase B3 Final Authority Resolution",
-  "selectionContract": "hometown match, Canonical Character ID stable ascending, first five",
-  "difficultyLevels": {
-    "EASY": 5,
-    "NORMAL": 10,
-    "HARD": 15
+  "version": "2026-08-22-v2",
+  "authority": "Phase B3-R2 Quest Gameplay v2 Production Authority",
+  "partySize": {
+    "EASY": 3,
+    "NORMAL": 5,
+    "HARD": 5
   },
-  "awakening": 0,
   "equipment": "NONE",
-  "skillLoadout": "NORMAL_ATTACK_ONLY",
   "normalAttackPowerBp": 8000,
+  "tuningStatus": "P0_TUNABLE",
+  "tactics": {
+    "shinjuku": "BALANCED",
+    "shibuya": "ATTACK_PRIORITY",
+    "ikebukuro": "BALANCED",
+    "roppongi": "SKILL_PRIORITY",
+    "akihabara": "SKILL_PRIORITY",
+    "kawasaki": "ATTACK_PRIORITY",
+    "yokohama": "BALANCED"
+  },
+  "characterExposure": 60,
+  "skillExposure": 70,
   "encounters": [
     {
       "encounterId": "encounter_q_shinjuku_1",
       "questId": "q_shinjuku_1",
       "townId": "shinjuku",
       "difficulty": "EASY",
+      "enemyTactic": "BALANCED",
       "members": [
         {
           "slot": 1,
-          "characterId": "char_jihoon_01",
+          "characterId": "char_tomoya_01",
           "level": 5,
           "awakening": 0,
-          "skillLoadout": [],
+          "skillLoadout": [
+            "SKILL_001"
+          ],
           "equipmentLoadout": []
         },
         {
           "slot": 2,
-          "characterId": "char_kageyama_01",
+          "characterId": "char_jihoon_01",
           "level": 5,
           "awakening": 0,
-          "skillLoadout": [],
+          "skillLoadout": [
+            "SKILL_004"
+          ],
           "equipmentLoadout": []
         },
         {
           "slot": 3,
-          "characterId": "char_leon_01",
+          "characterId": "char_shin_01",
           "level": 5,
           "awakening": 0,
-          "skillLoadout": [],
-          "equipmentLoadout": []
-        },
-        {
-          "slot": 4,
-          "characterId": "char_mio_01",
-          "level": 5,
-          "awakening": 0,
-          "skillLoadout": [],
-          "equipmentLoadout": []
-        },
-        {
-          "slot": 5,
-          "characterId": "char_reiji_01",
-          "level": 5,
-          "awakening": 0,
-          "skillLoadout": [],
+          "skillLoadout": [
+            "SKILL_002",
+            "SKILL_003"
+          ],
           "equipmentLoadout": []
         }
       ],
@@ -68,45 +69,61 @@
       "questId": "q_shinjuku_2",
       "townId": "shinjuku",
       "difficulty": "NORMAL",
+      "enemyTactic": "BALANCED",
       "members": [
         {
           "slot": 1,
-          "characterId": "char_jihoon_01",
-          "level": 10,
+          "characterId": "char_yuki_01",
+          "level": 12,
           "awakening": 0,
-          "skillLoadout": [],
+          "skillLoadout": [
+            "SKILL_016",
+            "SKILL_006"
+          ],
           "equipmentLoadout": []
         },
         {
           "slot": 2,
           "characterId": "char_kageyama_01",
-          "level": 10,
+          "level": 12,
           "awakening": 0,
-          "skillLoadout": [],
+          "skillLoadout": [
+            "SKILL_014",
+            "SKILL_017"
+          ],
           "equipmentLoadout": []
         },
         {
           "slot": 3,
           "characterId": "char_leon_01",
-          "level": 10,
+          "level": 12,
           "awakening": 0,
-          "skillLoadout": [],
+          "skillLoadout": [
+            "SKILL_021",
+            "SKILL_019"
+          ],
           "equipmentLoadout": []
         },
         {
           "slot": 4,
-          "characterId": "char_mio_01",
-          "level": 10,
+          "characterId": "char_serika_01",
+          "level": 12,
           "awakening": 0,
-          "skillLoadout": [],
+          "skillLoadout": [
+            "SKILL_010",
+            "SKILL_015"
+          ],
           "equipmentLoadout": []
         },
         {
           "slot": 5,
-          "characterId": "char_reiji_01",
-          "level": 10,
+          "characterId": "char_mio_01",
+          "level": 12,
           "awakening": 0,
-          "skillLoadout": [],
+          "skillLoadout": [
+            "SKILL_023",
+            "SKILL_029"
+          ],
           "equipmentLoadout": []
         }
       ],
@@ -119,45 +136,66 @@
       "questId": "q_shinjuku_3",
       "townId": "shinjuku",
       "difficulty": "HARD",
+      "enemyTactic": "BALANCED",
       "members": [
         {
           "slot": 1,
-          "characterId": "char_jihoon_01",
-          "level": 15,
+          "characterId": "char_reiji_01",
+          "level": 19,
           "awakening": 0,
-          "skillLoadout": [],
+          "skillLoadout": [
+            "SKILL_054",
+            "SKILL_047",
+            "SKILL_036"
+          ],
           "equipmentLoadout": []
         },
         {
           "slot": 2,
-          "characterId": "char_kageyama_01",
-          "level": 15,
+          "characterId": "char_mio_01",
+          "level": 19,
           "awakening": 0,
-          "skillLoadout": [],
+          "skillLoadout": [
+            "SKILL_060",
+            "SKILL_048",
+            "SKILL_039"
+          ],
           "equipmentLoadout": []
         },
         {
           "slot": 3,
-          "characterId": "char_leon_01",
-          "level": 15,
+          "characterId": "char_takuro_01",
+          "level": 19,
           "awakening": 0,
-          "skillLoadout": [],
+          "skillLoadout": [
+            "SKILL_044",
+            "SKILL_035",
+            "SKILL_021"
+          ],
           "equipmentLoadout": []
         },
         {
           "slot": 4,
-          "characterId": "char_mio_01",
-          "level": 15,
+          "characterId": "char_leon_01",
+          "level": 19,
           "awakening": 0,
-          "skillLoadout": [],
+          "skillLoadout": [
+            "SKILL_042",
+            "SKILL_027",
+            "SKILL_019"
+          ],
           "equipmentLoadout": []
         },
         {
           "slot": 5,
-          "characterId": "char_reiji_01",
-          "level": 15,
+          "characterId": "char_kageyama_01",
+          "level": 19,
           "awakening": 0,
-          "skillLoadout": [],
+          "skillLoadout": [
+            "SKILL_041",
+            "SKILL_024",
+            "SKILL_026"
+          ],
           "equipmentLoadout": []
         }
       ],
@@ -170,45 +208,36 @@
       "questId": "q_shibuya_1",
       "townId": "shibuya",
       "difficulty": "EASY",
+      "enemyTactic": "ATTACK_PRIORITY",
       "members": [
         {
           "slot": 1,
-          "characterId": "char_ageha_01",
+          "characterId": "char_naoto_01",
           "level": 5,
           "awakening": 0,
-          "skillLoadout": [],
+          "skillLoadout": [
+            "SKILL_008"
+          ],
           "equipmentLoadout": []
         },
         {
           "slot": 2,
-          "characterId": "char_leo_01",
+          "characterId": "char_minami_01",
           "level": 5,
           "awakening": 0,
-          "skillLoadout": [],
+          "skillLoadout": [
+            "SKILL_004"
+          ],
           "equipmentLoadout": []
         },
         {
           "slot": 3,
-          "characterId": "char_martina_01",
+          "characterId": "char_ren_male_01",
           "level": 5,
           "awakening": 0,
-          "skillLoadout": [],
-          "equipmentLoadout": []
-        },
-        {
-          "slot": 4,
-          "characterId": "char_minami_01",
-          "level": 5,
-          "awakening": 0,
-          "skillLoadout": [],
-          "equipmentLoadout": []
-        },
-        {
-          "slot": 5,
-          "characterId": "char_naoto_01",
-          "level": 5,
-          "awakening": 0,
-          "skillLoadout": [],
+          "skillLoadout": [
+            "SKILL_011"
+          ],
           "equipmentLoadout": []
         }
       ],
@@ -221,45 +250,61 @@
       "questId": "q_shibuya_2",
       "townId": "shibuya",
       "difficulty": "NORMAL",
+      "enemyTactic": "ATTACK_PRIORITY",
       "members": [
         {
           "slot": 1,
-          "characterId": "char_ageha_01",
-          "level": 10,
+          "characterId": "char_noa_01",
+          "level": 12,
           "awakening": 0,
-          "skillLoadout": [],
+          "skillLoadout": [
+            "SKILL_020",
+            "SKILL_011"
+          ],
           "equipmentLoadout": []
         },
         {
           "slot": 2,
-          "characterId": "char_leo_01",
-          "level": 10,
+          "characterId": "char_yukina_01",
+          "level": 12,
           "awakening": 0,
-          "skillLoadout": [],
+          "skillLoadout": [
+            "SKILL_034",
+            "SKILL_008"
+          ],
           "equipmentLoadout": []
         },
         {
           "slot": 3,
           "characterId": "char_martina_01",
-          "level": 10,
+          "level": 12,
           "awakening": 0,
-          "skillLoadout": [],
+          "skillLoadout": [
+            "SKILL_024",
+            "SKILL_023"
+          ],
           "equipmentLoadout": []
         },
         {
           "slot": 4,
-          "characterId": "char_minami_01",
-          "level": 10,
+          "characterId": "char_sora_01",
+          "level": 12,
           "awakening": 0,
-          "skillLoadout": [],
+          "skillLoadout": [
+            "SKILL_065",
+            "SKILL_021"
+          ],
           "equipmentLoadout": []
         },
         {
           "slot": 5,
-          "characterId": "char_naoto_01",
-          "level": 10,
+          "characterId": "char_reina_01",
+          "level": 12,
           "awakening": 0,
-          "skillLoadout": [],
+          "skillLoadout": [
+            "SKILL_066",
+            "SKILL_020"
+          ],
           "equipmentLoadout": []
         }
       ],
@@ -272,45 +317,66 @@
       "questId": "q_shibuya_3",
       "townId": "shibuya",
       "difficulty": "HARD",
+      "enemyTactic": "ATTACK_PRIORITY",
       "members": [
         {
           "slot": 1,
           "characterId": "char_ageha_01",
-          "level": 15,
-          "awakening": 0,
-          "skillLoadout": [],
+          "level": 24,
+          "awakening": 1,
+          "skillLoadout": [
+            "SKILL_055",
+            "SKILL_045",
+            "SKILL_037"
+          ],
           "equipmentLoadout": []
         },
         {
           "slot": 2,
           "characterId": "char_leo_01",
-          "level": 15,
-          "awakening": 0,
-          "skillLoadout": [],
+          "level": 24,
+          "awakening": 1,
+          "skillLoadout": [
+            "SKILL_056",
+            "SKILL_042",
+            "SKILL_021"
+          ],
           "equipmentLoadout": []
         },
         {
           "slot": 3,
-          "characterId": "char_martina_01",
-          "level": 15,
-          "awakening": 0,
-          "skillLoadout": [],
+          "characterId": "char_sora_01",
+          "level": 24,
+          "awakening": 1,
+          "skillLoadout": [
+            "SKILL_065",
+            "SKILL_046",
+            "SKILL_034"
+          ],
           "equipmentLoadout": []
         },
         {
           "slot": 4,
-          "characterId": "char_minami_01",
-          "level": 15,
-          "awakening": 0,
-          "skillLoadout": [],
+          "characterId": "char_reina_01",
+          "level": 24,
+          "awakening": 1,
+          "skillLoadout": [
+            "SKILL_066",
+            "SKILL_020",
+            "SKILL_027"
+          ],
           "equipmentLoadout": []
         },
         {
           "slot": 5,
-          "characterId": "char_naoto_01",
-          "level": 15,
-          "awakening": 0,
-          "skillLoadout": [],
+          "characterId": "char_martina_01",
+          "level": 24,
+          "awakening": 1,
+          "skillLoadout": [
+            "SKILL_048",
+            "SKILL_024",
+            "SKILL_023"
+          ],
           "equipmentLoadout": []
         }
       ],
@@ -323,45 +389,36 @@
       "questId": "q_ikebukuro_1",
       "townId": "ikebukuro",
       "difficulty": "EASY",
+      "enemyTactic": "BALANCED",
       "members": [
         {
           "slot": 1,
-          "characterId": "char_chang_01",
+          "characterId": "char_kenji_01",
           "level": 5,
           "awakening": 0,
-          "skillLoadout": [],
+          "skillLoadout": [
+            "SKILL_001"
+          ],
           "equipmentLoadout": []
         },
         {
           "slot": 2,
-          "characterId": "char_kenji_01",
+          "characterId": "char_momoko_01",
           "level": 5,
           "awakening": 0,
-          "skillLoadout": [],
+          "skillLoadout": [
+            "SKILL_007"
+          ],
           "equipmentLoadout": []
         },
         {
           "slot": 3,
-          "characterId": "char_koharu_01",
-          "level": 5,
-          "awakening": 0,
-          "skillLoadout": [],
-          "equipmentLoadout": []
-        },
-        {
-          "slot": 4,
-          "characterId": "char_momoko_01",
-          "level": 5,
-          "awakening": 0,
-          "skillLoadout": [],
-          "equipmentLoadout": []
-        },
-        {
-          "slot": 5,
           "characterId": "char_shun_01",
           "level": 5,
           "awakening": 0,
-          "skillLoadout": [],
+          "skillLoadout": [
+            "SKILL_002"
+          ],
           "equipmentLoadout": []
         }
       ],
@@ -374,45 +431,61 @@
       "questId": "q_ikebukuro_2",
       "townId": "ikebukuro",
       "difficulty": "NORMAL",
+      "enemyTactic": "BALANCED",
       "members": [
         {
           "slot": 1,
           "characterId": "char_chang_01",
-          "level": 10,
+          "level": 11,
           "awakening": 0,
-          "skillLoadout": [],
+          "skillLoadout": [
+            "SKILL_027",
+            "SKILL_011"
+          ],
           "equipmentLoadout": []
         },
         {
           "slot": 2,
-          "characterId": "char_kenji_01",
-          "level": 10,
+          "characterId": "char_takeshi_01",
+          "level": 11,
           "awakening": 0,
-          "skillLoadout": [],
+          "skillLoadout": [
+            "SKILL_016",
+            "SKILL_006"
+          ],
           "equipmentLoadout": []
         },
         {
           "slot": 3,
           "characterId": "char_koharu_01",
-          "level": 10,
+          "level": 11,
           "awakening": 0,
-          "skillLoadout": [],
+          "skillLoadout": [
+            "SKILL_053",
+            "SKILL_006"
+          ],
           "equipmentLoadout": []
         },
         {
           "slot": 4,
           "characterId": "char_momoko_01",
-          "level": 10,
+          "level": 11,
           "awakening": 0,
-          "skillLoadout": [],
+          "skillLoadout": [
+            "SKILL_013",
+            "SKILL_029"
+          ],
           "equipmentLoadout": []
         },
         {
           "slot": 5,
-          "characterId": "char_shun_01",
-          "level": 10,
+          "characterId": "char_kenji_01",
+          "level": 11,
           "awakening": 0,
-          "skillLoadout": [],
+          "skillLoadout": [
+            "SKILL_028",
+            "SKILL_011"
+          ],
           "equipmentLoadout": []
         }
       ],
@@ -425,45 +498,66 @@
       "questId": "q_ikebukuro_3",
       "townId": "ikebukuro",
       "difficulty": "HARD",
+      "enemyTactic": "BALANCED",
       "members": [
         {
           "slot": 1,
-          "characterId": "char_chang_01",
-          "level": 15,
+          "characterId": "char_koharu_01",
+          "level": 16,
           "awakening": 0,
-          "skillLoadout": [],
+          "skillLoadout": [
+            "SKILL_053",
+            "SKILL_028",
+            "SKILL_006"
+          ],
           "equipmentLoadout": []
         },
         {
           "slot": 2,
-          "characterId": "char_kenji_01",
-          "level": 15,
+          "characterId": "char_takeshi_01",
+          "level": 16,
           "awakening": 0,
-          "skillLoadout": [],
+          "skillLoadout": [
+            "SKILL_031",
+            "SKILL_006",
+            "SKILL_011"
+          ],
           "equipmentLoadout": []
         },
         {
           "slot": 3,
-          "characterId": "char_koharu_01",
-          "level": 15,
+          "characterId": "char_chang_01",
+          "level": 16,
           "awakening": 0,
-          "skillLoadout": [],
+          "skillLoadout": [
+            "SKILL_042",
+            "SKILL_027",
+            "SKILL_036"
+          ],
           "equipmentLoadout": []
         },
         {
           "slot": 4,
           "characterId": "char_momoko_01",
-          "level": 15,
+          "level": 16,
           "awakening": 0,
-          "skillLoadout": [],
+          "skillLoadout": [
+            "SKILL_039",
+            "SKILL_029",
+            "SKILL_013"
+          ],
           "equipmentLoadout": []
         },
         {
           "slot": 5,
           "characterId": "char_shun_01",
-          "level": 15,
+          "level": 16,
           "awakening": 0,
-          "skillLoadout": [],
+          "skillLoadout": [
+            "SKILL_022",
+            "SKILL_017",
+            "SKILL_012"
+          ],
           "equipmentLoadout": []
         }
       ],
@@ -476,45 +570,36 @@
       "questId": "q_roppongi_1",
       "townId": "roppongi",
       "difficulty": "EASY",
+      "enemyTactic": "SKILL_PRIORITY",
       "members": [
         {
           "slot": 1,
-          "characterId": "char_cecile_01",
+          "characterId": "char_tatsuya_01",
           "level": 5,
           "awakening": 0,
-          "skillLoadout": [],
+          "skillLoadout": [
+            "SKILL_001"
+          ],
           "equipmentLoadout": []
         },
         {
           "slot": 2,
-          "characterId": "char_kaede_01",
+          "characterId": "char_makoto_01",
           "level": 5,
           "awakening": 0,
-          "skillLoadout": [],
+          "skillLoadout": [
+            "SKILL_009"
+          ],
           "equipmentLoadout": []
         },
         {
           "slot": 3,
-          "characterId": "char_kaito_01",
+          "characterId": "char_rin_01",
           "level": 5,
           "awakening": 0,
-          "skillLoadout": [],
-          "equipmentLoadout": []
-        },
-        {
-          "slot": 4,
-          "characterId": "char_makoto_01",
-          "level": 5,
-          "awakening": 0,
-          "skillLoadout": [],
-          "equipmentLoadout": []
-        },
-        {
-          "slot": 5,
-          "characterId": "char_maya_01",
-          "level": 5,
-          "awakening": 0,
-          "skillLoadout": [],
+          "skillLoadout": [
+            "SKILL_015"
+          ],
           "equipmentLoadout": []
         }
       ],
@@ -527,45 +612,61 @@
       "questId": "q_roppongi_2",
       "townId": "roppongi",
       "difficulty": "NORMAL",
+      "enemyTactic": "SKILL_PRIORITY",
       "members": [
         {
           "slot": 1,
-          "characterId": "char_cecile_01",
-          "level": 10,
+          "characterId": "char_shion_01",
+          "level": 12,
           "awakening": 0,
-          "skillLoadout": [],
+          "skillLoadout": [
+            "SKILL_015",
+            "SKILL_030"
+          ],
           "equipmentLoadout": []
         },
         {
           "slot": 2,
-          "characterId": "char_kaede_01",
-          "level": 10,
+          "characterId": "char_kaito_01",
+          "level": 12,
           "awakening": 0,
-          "skillLoadout": [],
+          "skillLoadout": [
+            "SKILL_034",
+            "SKILL_021"
+          ],
           "equipmentLoadout": []
         },
         {
           "slot": 3,
-          "characterId": "char_kaito_01",
-          "level": 10,
+          "characterId": "char_seiya_01",
+          "level": 12,
           "awakening": 0,
-          "skillLoadout": [],
+          "skillLoadout": [
+            "SKILL_026",
+            "SKILL_011"
+          ],
           "equipmentLoadout": []
         },
         {
           "slot": 4,
-          "characterId": "char_makoto_01",
-          "level": 10,
+          "characterId": "char_cecile_01",
+          "level": 12,
           "awakening": 0,
-          "skillLoadout": [],
+          "skillLoadout": [
+            "SKILL_070",
+            "SKILL_025"
+          ],
           "equipmentLoadout": []
         },
         {
           "slot": 5,
           "characterId": "char_maya_01",
-          "level": 10,
+          "level": 12,
           "awakening": 0,
-          "skillLoadout": [],
+          "skillLoadout": [
+            "SKILL_068",
+            "SKILL_019"
+          ],
           "equipmentLoadout": []
         }
       ],
@@ -578,45 +679,66 @@
       "questId": "q_roppongi_3",
       "townId": "roppongi",
       "difficulty": "HARD",
+      "enemyTactic": "SKILL_PRIORITY",
       "members": [
         {
           "slot": 1,
-          "characterId": "char_cecile_01",
-          "level": 15,
-          "awakening": 0,
-          "skillLoadout": [],
+          "characterId": "char_kaede_01",
+          "level": 20,
+          "awakening": 1,
+          "skillLoadout": [
+            "SKILL_059",
+            "SKILL_041",
+            "SKILL_045"
+          ],
           "equipmentLoadout": []
         },
         {
           "slot": 2,
-          "characterId": "char_kaede_01",
-          "level": 15,
-          "awakening": 0,
-          "skillLoadout": [],
+          "characterId": "char_taiga_01",
+          "level": 20,
+          "awakening": 1,
+          "skillLoadout": [
+            "SKILL_043",
+            "SKILL_037",
+            "SKILL_034"
+          ],
           "equipmentLoadout": []
         },
         {
           "slot": 3,
-          "characterId": "char_kaito_01",
-          "level": 15,
-          "awakening": 0,
-          "skillLoadout": [],
+          "characterId": "char_maya_01",
+          "level": 20,
+          "awakening": 1,
+          "skillLoadout": [
+            "SKILL_068",
+            "SKILL_044",
+            "SKILL_042"
+          ],
           "equipmentLoadout": []
         },
         {
           "slot": 4,
-          "characterId": "char_makoto_01",
-          "level": 15,
-          "awakening": 0,
-          "skillLoadout": [],
+          "characterId": "char_cecile_01",
+          "level": 20,
+          "awakening": 1,
+          "skillLoadout": [
+            "SKILL_070",
+            "SKILL_049",
+            "SKILL_040"
+          ],
           "equipmentLoadout": []
         },
         {
           "slot": 5,
-          "characterId": "char_maya_01",
-          "level": 15,
-          "awakening": 0,
-          "skillLoadout": [],
+          "characterId": "char_seiya_01",
+          "level": 20,
+          "awakening": 1,
+          "skillLoadout": [
+            "SKILL_038",
+            "SKILL_024",
+            "SKILL_023"
+          ],
           "equipmentLoadout": []
         }
       ],
@@ -629,45 +751,36 @@
       "questId": "q_akihabara_1",
       "townId": "akihabara",
       "difficulty": "EASY",
+      "enemyTactic": "SKILL_PRIORITY",
       "members": [
         {
           "slot": 1,
-          "characterId": "char_alice_01",
+          "characterId": "char_masato_01",
           "level": 5,
           "awakening": 0,
-          "skillLoadout": [],
+          "skillLoadout": [
+            "SKILL_008"
+          ],
           "equipmentLoadout": []
         },
         {
           "slot": 2,
-          "characterId": "char_aoi_01",
+          "characterId": "char_yoshihiko_01",
           "level": 5,
           "awakening": 0,
-          "skillLoadout": [],
+          "skillLoadout": [
+            "SKILL_010"
+          ],
           "equipmentLoadout": []
         },
         {
           "slot": 3,
-          "characterId": "char_karen_01",
+          "characterId": "char_souta_01",
           "level": 5,
           "awakening": 0,
-          "skillLoadout": [],
-          "equipmentLoadout": []
-        },
-        {
-          "slot": 4,
-          "characterId": "char_masato_01",
-          "level": 5,
-          "awakening": 0,
-          "skillLoadout": [],
-          "equipmentLoadout": []
-        },
-        {
-          "slot": 5,
-          "characterId": "char_mei_01",
-          "level": 5,
-          "awakening": 0,
-          "skillLoadout": [],
+          "skillLoadout": [
+            "SKILL_004"
+          ],
           "equipmentLoadout": []
         }
       ],
@@ -680,45 +793,61 @@
       "questId": "q_akihabara_2",
       "townId": "akihabara",
       "difficulty": "NORMAL",
+      "enemyTactic": "SKILL_PRIORITY",
       "members": [
         {
           "slot": 1,
-          "characterId": "char_alice_01",
-          "level": 10,
+          "characterId": "char_aoi_01",
+          "level": 12,
           "awakening": 0,
-          "skillLoadout": [],
+          "skillLoadout": [
+            "SKILL_032",
+            "SKILL_005"
+          ],
           "equipmentLoadout": []
         },
         {
           "slot": 2,
-          "characterId": "char_aoi_01",
-          "level": 10,
+          "characterId": "char_mei_01",
+          "level": 12,
           "awakening": 0,
-          "skillLoadout": [],
+          "skillLoadout": [
+            "SKILL_010",
+            "SKILL_030"
+          ],
           "equipmentLoadout": []
         },
         {
           "slot": 3,
-          "characterId": "char_karen_01",
-          "level": 10,
+          "characterId": "char_ren_01",
+          "level": 12,
           "awakening": 0,
-          "skillLoadout": [],
+          "skillLoadout": [
+            "SKILL_025",
+            "SKILL_015"
+          ],
           "equipmentLoadout": []
         },
         {
           "slot": 4,
-          "characterId": "char_masato_01",
-          "level": 10,
+          "characterId": "char_alice_01",
+          "level": 12,
           "awakening": 0,
-          "skillLoadout": [],
+          "skillLoadout": [
+            "SKILL_067",
+            "SKILL_033"
+          ],
           "equipmentLoadout": []
         },
         {
           "slot": 5,
-          "characterId": "char_mei_01",
-          "level": 10,
+          "characterId": "char_rui_01",
+          "level": 12,
           "awakening": 0,
-          "skillLoadout": [],
+          "skillLoadout": [
+            "SKILL_034",
+            "SKILL_012"
+          ],
           "equipmentLoadout": []
         }
       ],
@@ -731,45 +860,66 @@
       "questId": "q_akihabara_3",
       "townId": "akihabara",
       "difficulty": "HARD",
+      "enemyTactic": "SKILL_PRIORITY",
       "members": [
         {
           "slot": 1,
-          "characterId": "char_alice_01",
-          "level": 15,
-          "awakening": 0,
-          "skillLoadout": [],
+          "characterId": "char_karen_01",
+          "level": 20,
+          "awakening": 1,
+          "skillLoadout": [
+            "SKILL_057",
+            "SKILL_050",
+            "SKILL_042"
+          ],
           "equipmentLoadout": []
         },
         {
           "slot": 2,
-          "characterId": "char_aoi_01",
-          "level": 15,
-          "awakening": 0,
-          "skillLoadout": [],
+          "characterId": "char_miyabi_01",
+          "level": 20,
+          "awakening": 1,
+          "skillLoadout": [
+            "SKILL_058",
+            "SKILL_049",
+            "SKILL_046"
+          ],
           "equipmentLoadout": []
         },
         {
           "slot": 3,
-          "characterId": "char_karen_01",
-          "level": 15,
-          "awakening": 0,
-          "skillLoadout": [],
+          "characterId": "char_alice_01",
+          "level": 20,
+          "awakening": 1,
+          "skillLoadout": [
+            "SKILL_067",
+            "SKILL_030",
+            "SKILL_025"
+          ],
           "equipmentLoadout": []
         },
         {
           "slot": 4,
-          "characterId": "char_masato_01",
-          "level": 15,
-          "awakening": 0,
-          "skillLoadout": [],
+          "characterId": "char_rui_01",
+          "level": 20,
+          "awakening": 1,
+          "skillLoadout": [
+            "SKILL_043",
+            "SKILL_037",
+            "SKILL_034"
+          ],
           "equipmentLoadout": []
         },
         {
           "slot": 5,
-          "characterId": "char_mei_01",
-          "level": 15,
-          "awakening": 0,
-          "skillLoadout": [],
+          "characterId": "char_aoi_01",
+          "level": 20,
+          "awakening": 1,
+          "skillLoadout": [
+            "SKILL_039",
+            "SKILL_048",
+            "SKILL_023"
+          ],
           "equipmentLoadout": []
         }
       ],
@@ -782,45 +932,36 @@
       "questId": "q_kawasaki_1",
       "townId": "kawasaki",
       "difficulty": "EASY",
+      "enemyTactic": "ATTACK_PRIORITY",
       "members": [
         {
           "slot": 1,
-          "characterId": "char_daimon_01",
+          "characterId": "char_gou_01",
           "level": 5,
           "awakening": 0,
-          "skillLoadout": [],
+          "skillLoadout": [
+            "SKILL_011"
+          ],
           "equipmentLoadout": []
         },
         {
           "slot": 2,
-          "characterId": "char_go_01",
+          "characterId": "char_daimon_01",
           "level": 5,
           "awakening": 0,
-          "skillLoadout": [],
+          "skillLoadout": [
+            "SKILL_001"
+          ],
           "equipmentLoadout": []
         },
         {
           "slot": 3,
-          "characterId": "char_gou_01",
-          "level": 5,
-          "awakening": 0,
-          "skillLoadout": [],
-          "equipmentLoadout": []
-        },
-        {
-          "slot": 4,
           "characterId": "char_joe_01",
           "level": 5,
           "awakening": 0,
-          "skillLoadout": [],
-          "equipmentLoadout": []
-        },
-        {
-          "slot": 5,
-          "characterId": "char_kengo_01",
-          "level": 5,
-          "awakening": 0,
-          "skillLoadout": [],
+          "skillLoadout": [
+            "SKILL_006"
+          ],
           "equipmentLoadout": []
         }
       ],
@@ -833,45 +974,61 @@
       "questId": "q_kawasaki_2",
       "townId": "kawasaki",
       "difficulty": "NORMAL",
+      "enemyTactic": "ATTACK_PRIORITY",
       "members": [
         {
           "slot": 1,
-          "characterId": "char_daimon_01",
-          "level": 10,
+          "characterId": "char_mark_01",
+          "level": 12,
           "awakening": 0,
-          "skillLoadout": [],
+          "skillLoadout": [
+            "SKILL_027",
+            "SKILL_022"
+          ],
           "equipmentLoadout": []
         },
         {
           "slot": 2,
-          "characterId": "char_go_01",
-          "level": 10,
+          "characterId": "char_riki_01",
+          "level": 12,
           "awakening": 0,
-          "skillLoadout": [],
+          "skillLoadout": [
+            "SKILL_016",
+            "SKILL_006"
+          ],
           "equipmentLoadout": []
         },
         {
           "slot": 3,
-          "characterId": "char_gou_01",
-          "level": 10,
+          "characterId": "char_tetsu_01",
+          "level": 12,
           "awakening": 0,
-          "skillLoadout": [],
+          "skillLoadout": [
+            "SKILL_061",
+            "SKILL_028"
+          ],
           "equipmentLoadout": []
         },
         {
           "slot": 4,
-          "characterId": "char_joe_01",
-          "level": 10,
+          "characterId": "char_lucas_01",
+          "level": 12,
           "awakening": 0,
-          "skillLoadout": [],
+          "skillLoadout": [
+            "SKILL_062",
+            "SKILL_019"
+          ],
           "equipmentLoadout": []
         },
         {
           "slot": 5,
-          "characterId": "char_kengo_01",
-          "level": 10,
+          "characterId": "char_daimon_01",
+          "level": 12,
           "awakening": 0,
-          "skillLoadout": [],
+          "skillLoadout": [
+            "SKILL_035",
+            "SKILL_011"
+          ],
           "equipmentLoadout": []
         }
       ],
@@ -884,45 +1041,66 @@
       "questId": "q_kawasaki_3",
       "townId": "kawasaki",
       "difficulty": "HARD",
+      "enemyTactic": "ATTACK_PRIORITY",
       "members": [
         {
           "slot": 1,
-          "characterId": "char_daimon_01",
-          "level": 15,
+          "characterId": "char_go_01",
+          "level": 19,
           "awakening": 0,
-          "skillLoadout": [],
+          "skillLoadout": [
+            "SKILL_051",
+            "SKILL_050",
+            "SKILL_036"
+          ],
           "equipmentLoadout": []
         },
         {
           "slot": 2,
-          "characterId": "char_go_01",
-          "level": 15,
+          "characterId": "char_kengo_01",
+          "level": 19,
           "awakening": 0,
-          "skillLoadout": [],
+          "skillLoadout": [
+            "SKILL_052",
+            "SKILL_042",
+            "SKILL_035"
+          ],
           "equipmentLoadout": []
         },
         {
           "slot": 3,
-          "characterId": "char_gou_01",
-          "level": 15,
+          "characterId": "char_tetsu_01",
+          "level": 19,
           "awakening": 0,
-          "skillLoadout": [],
+          "skillLoadout": [
+            "SKILL_061",
+            "SKILL_028",
+            "SKILL_027"
+          ],
           "equipmentLoadout": []
         },
         {
           "slot": 4,
-          "characterId": "char_joe_01",
-          "level": 15,
+          "characterId": "char_lucas_01",
+          "level": 19,
           "awakening": 0,
-          "skillLoadout": [],
+          "skillLoadout": [
+            "SKILL_062",
+            "SKILL_044",
+            "SKILL_019"
+          ],
           "equipmentLoadout": []
         },
         {
           "slot": 5,
-          "characterId": "char_kengo_01",
-          "level": 15,
+          "characterId": "char_riki_01",
+          "level": 19,
           "awakening": 0,
-          "skillLoadout": [],
+          "skillLoadout": [
+            "SKILL_038",
+            "SKILL_047",
+            "SKILL_016"
+          ],
           "equipmentLoadout": []
         }
       ],
@@ -935,21 +1113,26 @@
       "questId": "q_yokohama_1",
       "townId": "yokohama",
       "difficulty": "EASY",
+      "enemyTactic": "BALANCED",
       "members": [
         {
           "slot": 1,
-          "characterId": "char_genji_01",
+          "characterId": "char_sawat_01",
           "level": 5,
           "awakening": 0,
-          "skillLoadout": [],
+          "skillLoadout": [
+            "SKILL_004"
+          ],
           "equipmentLoadout": []
         },
         {
           "slot": 2,
-          "characterId": "char_long_01",
+          "characterId": "char_yuji_01",
           "level": 5,
           "awakening": 0,
-          "skillLoadout": [],
+          "skillLoadout": [
+            "SKILL_011"
+          ],
           "equipmentLoadout": []
         },
         {
@@ -957,23 +1140,9 @@
           "characterId": "char_sakura_01",
           "level": 5,
           "awakening": 0,
-          "skillLoadout": [],
-          "equipmentLoadout": []
-        },
-        {
-          "slot": 4,
-          "characterId": "char_sawat_01",
-          "level": 5,
-          "awakening": 0,
-          "skillLoadout": [],
-          "equipmentLoadout": []
-        },
-        {
-          "slot": 5,
-          "characterId": "char_yuji_01",
-          "level": 5,
-          "awakening": 0,
-          "skillLoadout": [],
+          "skillLoadout": [
+            "SKILL_005"
+          ],
           "equipmentLoadout": []
         }
       ],
@@ -986,45 +1155,61 @@
       "questId": "q_yokohama_2",
       "townId": "yokohama",
       "difficulty": "NORMAL",
+      "enemyTactic": "BALANCED",
       "members": [
         {
           "slot": 1,
           "characterId": "char_genji_01",
-          "level": 10,
+          "level": 12,
           "awakening": 0,
-          "skillLoadout": [],
+          "skillLoadout": [
+            "SKILL_063",
+            "SKILL_006"
+          ],
           "equipmentLoadout": []
         },
         {
           "slot": 2,
           "characterId": "char_long_01",
-          "level": 10,
+          "level": 12,
           "awakening": 0,
-          "skillLoadout": [],
+          "skillLoadout": [
+            "SKILL_064",
+            "SKILL_031"
+          ],
           "equipmentLoadout": []
         },
         {
           "slot": 3,
           "characterId": "char_sakura_01",
-          "level": 10,
+          "level": 12,
           "awakening": 0,
-          "skillLoadout": [],
+          "skillLoadout": [
+            "SKILL_069",
+            "SKILL_027"
+          ],
           "equipmentLoadout": []
         },
         {
           "slot": 4,
-          "characterId": "char_sawat_01",
-          "level": 10,
+          "characterId": "char_yuji_01",
+          "level": 12,
           "awakening": 0,
-          "skillLoadout": [],
+          "skillLoadout": [
+            "SKILL_028",
+            "SKILL_011"
+          ],
           "equipmentLoadout": []
         },
         {
           "slot": 5,
-          "characterId": "char_yuji_01",
-          "level": 10,
+          "characterId": "char_sawat_01",
+          "level": 12,
           "awakening": 0,
-          "skillLoadout": [],
+          "skillLoadout": [
+            "SKILL_020",
+            "SKILL_018"
+          ],
           "equipmentLoadout": []
         }
       ],
@@ -1037,45 +1222,66 @@
       "questId": "q_yokohama_3",
       "townId": "yokohama",
       "difficulty": "HARD",
+      "enemyTactic": "BALANCED",
       "members": [
         {
           "slot": 1,
           "characterId": "char_genji_01",
-          "level": 15,
-          "awakening": 0,
-          "skillLoadout": [],
+          "level": 23,
+          "awakening": 1,
+          "skillLoadout": [
+            "SKILL_063",
+            "SKILL_038",
+            "SKILL_006"
+          ],
           "equipmentLoadout": []
         },
         {
           "slot": 2,
           "characterId": "char_long_01",
-          "level": 15,
-          "awakening": 0,
-          "skillLoadout": [],
+          "level": 23,
+          "awakening": 1,
+          "skillLoadout": [
+            "SKILL_064",
+            "SKILL_047",
+            "SKILL_031"
+          ],
           "equipmentLoadout": []
         },
         {
           "slot": 3,
           "characterId": "char_sakura_01",
-          "level": 15,
-          "awakening": 0,
-          "skillLoadout": [],
+          "level": 23,
+          "awakening": 1,
+          "skillLoadout": [
+            "SKILL_069",
+            "SKILL_042",
+            "SKILL_027"
+          ],
           "equipmentLoadout": []
         },
         {
           "slot": 4,
-          "characterId": "char_sawat_01",
-          "level": 15,
-          "awakening": 0,
-          "skillLoadout": [],
+          "characterId": "char_yuji_01",
+          "level": 23,
+          "awakening": 1,
+          "skillLoadout": [
+            "SKILL_050",
+            "SKILL_028",
+            "SKILL_036"
+          ],
           "equipmentLoadout": []
         },
         {
           "slot": 5,
-          "characterId": "char_yuji_01",
-          "level": 15,
-          "awakening": 0,
-          "skillLoadout": [],
+          "characterId": "char_sawat_01",
+          "level": 23,
+          "awakening": 1,
+          "skillLoadout": [
+            "SKILL_049",
+            "SKILL_030",
+            "SKILL_020"
+          ],
           "equipmentLoadout": []
         }
       ],

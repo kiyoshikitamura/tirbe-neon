@@ -152,6 +152,26 @@
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
+.patrol-course-item.locked {
+  opacity: .58;
+  cursor: not-allowed;
+}
+
+.course-lock {
+  margin-top: .35rem;
+  color: var(--color-warning, #ffca5c);
+  font-size: .65rem;
+  line-height: 1.3;
+}
+
+.quest-hard-recovery-actions {
+  flex-wrap: wrap;
+}
+
+.quest-hard-recovery-actions button {
+  flex: 1 1 8rem;
+}
+
 .patrol-course-item:hover {
   background: rgba(40, 40, 45, 0.85);
   border-color: rgba(255, 255, 255, 0.15);

@@ -52,7 +52,8 @@ export default function PatrolTab() {
     setShowPatrolRewardModal,
     setGlobalInteractionBlocking,
     onboardingState,
-    setOnboardingState
+    setOnboardingState,
+    setActiveTab
   } = useGame();
   const tutorialStep = onboardingState?.tutorial_step;
   const isTutorialQuestStep = ["DISPATCH", "FREE_INSTANT", "TUTORIAL_BATTLE"].includes(tutorialStep || "");
@@ -71,7 +72,7 @@ export default function PatrolTab() {
   // コースが未選択のときに初期選択を設定
   React.useEffect(() => {
     if (patrolCourses.length > 0 && (!selectedCourse || selectedCourse === "e1e1e1e1-e1e1-e1e1-e1e1-e1e1e1e1e1e1")) {
-      const firstCourse = patrolCourses.find((c: any) => c.town_id === selectedTown);
+      const firstCourse = patrolCourses.find((c: any) => c.town_id === selectedTown && c.is_unlocked !== false);
       if (firstCourse) {
         setSelectedCourse(firstCourse.id);
       }
@@ -431,7 +432,7 @@ export default function PatrolTab() {
             onSelect={(tabId) => {
               if (isTutorialQuestStep) return;
               setSelectedTown(tabId);
-              const firstCourse = patrolCourses.find((c: any) => c.town_id === tabId);
+              const firstCourse = patrolCourses.find((c: any) => c.town_id === tabId && c.is_unlocked !== false);
               if (firstCourse) setSelectedCourse(firstCourse.id);
               else setSelectedCourse("");
               playCyberSe("click");
@@ -444,13 +445,14 @@ export default function PatrolTab() {
           {patrolCourses.filter((c: any) => c.town_id === selectedTown).map((c: any) => (
             <div 
               key={c.id} 
-              className={`patrol-course-item ${selectedCourse === c.id ? "active" : ""}`}
-              onClick={() => { if (!isTutorialQuestStep) { setSelectedCourse(c.id); playCyberSe("click"); } }}
+              className={`patrol-course-item ${selectedCourse === c.id ? "active" : ""} ${c.is_unlocked === false ? "locked" : ""}`}
+              onClick={() => { if (!isTutorialQuestStep && c.is_unlocked !== false) { setSelectedCourse(c.id); playCyberSe("click"); } else if (c.is_unlocked === false) playCyberSe("error"); }}
             >
               <div className="course-name">{c.name}</div>
               <div className={`course-badge badge-${String(c.level_type || "").toLowerCase()}`}>
                 {c.level_type === "EASY" ? "初級" : c.level_type === "NORMAL" ? "中級" : c.level_type === "HARD" ? "上級" : c.level_type}
               </div>
+              {c.is_unlocked === false && <div className="course-lock">LOCKED — 同じ街の前難易度を初回クリア</div>}
             </div>
           ))}
         </div>}
@@ -466,6 +468,12 @@ export default function PatrolTab() {
                 <div><dt>基本報酬</dt><dd>{activeCourse.reward_cash.toLocaleString()} CASH / User EXP {activeCourse.reward_xp.toLocaleString()}</dd></div>
                 <div><dt>主要ドロップ</dt><dd>{formatRewardItems(activeCourse.reward_items) || "なし"}</dd></div>
                 <div><dt>初回クリア</dt><dd>User EXP +{Number(activeCourse.first_clear_user_exp || 0).toLocaleString()} / {formatRewardItems(activeCourse.first_clear_items) || "なし"}</dd></div>
+                <div><dt>敵編成</dt><dd>{activeCourse.enemy_member_count || "-"}人 / 推奨Lv {activeCourse.recommended_level || "-"}</dd></div>
+                <div><dt>推奨Power</dt><dd>{Number(activeCourse.recommended_power || 0).toLocaleString()}</dd></div>
+                <div><dt>Attribute</dt><dd>{(activeCourse.enemy_attributes || []).join(" / ") || "-"}</dd></div>
+                <div><dt>敵方針</dt><dd>{activeCourse.enemy_tactic || "-"}</dd></div>
+                <div><dt>代表Skill</dt><dd>{(activeCourse.enemy_members || []).flatMap((member: any) => member.skillLoadout || []).slice(0, 3).join(" / ") || "-"}</dd></div>
+                {activeCourse.level_type === "HARD" && <div><dt>敗北時</dt><dd>Character Growth / Skill / Formationを見直してRetry</dd></div>}
                 <div><dt>時短</dt><dd>{tutorialStep === "DISPATCH" ? "今回無料" : "利用可"}</dd></div>
               </dl>
             </div>
@@ -520,7 +528,7 @@ export default function PatrolTab() {
             </div>}
             <OutlawButton 
               onClick={handleStart}
-              disabled={dispatchLoading || tutorialStep !== "DISPATCH" || !selectedCourse || !selectedPatrolMember || activePatrols.length >= 5}
+              disabled={dispatchLoading || tutorialStep !== "DISPATCH" || !selectedCourse || !selectedPatrolMember || activePatrols.length >= 5 || activeCourse.is_unlocked === false}
               fullWidth
               variant="primary"
             >
@@ -718,7 +726,15 @@ export default function PatrolTab() {
                       )}
                     </div>
                   ) : (
-                    <div className="font-size-7 text-color-gray pl-2 mt-1">敗北したため、追加報酬はありません。</div>
+                    <div className="font-size-7 text-color-gray pl-2 mt-1">
+                      <div>敗北したため、追加報酬はありません。</div>
+                      {activeCourse?.level_type === "HARD" && <div className="flex-row-gap-2 mt-2 quest-hard-recovery-actions">
+                        <OutlawButton onClick={() => setActiveTab("character")} variant="secondary">Character Growth</OutlawButton>
+                        <OutlawButton onClick={() => setActiveTab("character")} variant="secondary">Skill</OutlawButton>
+                        <OutlawButton onClick={() => setActiveTab("character")} variant="secondary">Formation</OutlawButton>
+                        <OutlawButton onClick={() => void closeRewardResult()} variant="primary">Retry</OutlawButton>
+                      </div>}
+                    </div>
                   )}
                 </div>
               )}

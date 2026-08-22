@@ -102,7 +102,7 @@ Deno.serve(async (request) => {
       .eq("status", "CLAIMABLE").eq("has_battle_event", true).eq("battle_resolved", false).maybeSingle();
     if (patrolError || !patrol) return json({ error: "The official patrol encounter is not resolvable" }, { status: 409 });
   }
-  const result = resolveBattle(Number(session.random_seed), session.tactic_id, session.battle_mode === "RAID" ? 30 : session.battle_mode === "PVP" || session.battle_mode === "GVG" ? 20 : 15, session.player_snapshot, session.enemy_snapshot);
+  const result = resolveBattle(Number(session.random_seed), session.tactic_id, session.battle_mode === "RAID" ? 30 : session.battle_mode === "PVP" || session.battle_mode === "GVG" ? 20 : 15, session.player_snapshot, session.enemy_snapshot, session.enemy_tactic_id ?? undefined);
   if (isOfficialPvp) {
     const { data: finalized, error: finalizeError } = await admin.rpc("finalize_pvp_battle", {
       p_replay_id: session.id,

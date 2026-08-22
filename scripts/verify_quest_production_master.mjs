@@ -61,23 +61,28 @@ assert.deepEqual([rare("QUEST_EASY", "EQUIP_LB_PART"), rare("QUEST_NORMAL", "EQU
 assert.equal(master.rewardPools.flatMap((pool) => pool.items).filter((item) => item.itemId === "AWAKENING_BOOK").length, 0);
 
 assert.deepEqual(master.unresolvedContracts, []);
-assert.equal(master.quests.filter((quest) => !quest.isProductionEnabled || quest.unlockCondition !== "NONE" || !quest.enemyEncounterId).length, 0);
+assert.equal(master.quests.filter((quest) => !quest.isProductionEnabled || !["OPEN","FIRST_CLEAR"].includes(quest.unlockCondition?.type) || !quest.enemyEncounterId).length, 0);
+assert.equal(master.quests.filter((quest) => quest.unlockCondition.type === "OPEN").length, 7);
+assert.equal(master.quests.filter((quest) => quest.unlockCondition.type === "FIRST_CLEAR").length, 14);
 assert.equal(encounterMaster.encounters.length, 21);
 const characterIds = new Set(characters.map((character) => character.character_id));
 const hometownById = new Map(characters.map((character) => [character.character_id, character.hometown]));
 const townNameById = new Map(master.towns.map((town) => [town.townId, town.name]));
 for (const encounter of encounterMaster.encounters) {
-  assert.equal(encounter.members.length, 5, `${encounter.encounterId} member count`);
+  assert.equal(encounter.members.length, encounter.difficulty === "EASY" ? 3 : 5, `${encounter.encounterId} member count`);
   assert.equal(encounter.normalAttackPowerBp, 8000);
   assert.equal(encounter.isProductionEnabled, true);
-  assert.equal(new Set(encounter.members.map((member) => member.characterId)).size, 5);
+  assert.equal(new Set(encounter.members.map((member) => member.characterId)).size, encounter.members.length);
   for (const member of encounter.members) {
     assert(characterIds.has(member.characterId), `${encounter.encounterId} Character ref`);
     assert.equal(hometownById.get(member.characterId), townNameById.get(encounter.townId), `${member.characterId} hometown`);
-    assert.equal(member.level, { EASY: 5, NORMAL: 10, HARD: 15 }[encounter.difficulty]);
-    assert.equal(member.awakening, 0);
-    assert.deepEqual(member.skillLoadout, []);
+    assert(member.level >= { EASY: 5, NORMAL: 11, HARD: 16 }[encounter.difficulty]);
+    assert(member.level <= { EASY: 5, NORMAL: 12, HARD: 24 }[encounter.difficulty]);
+    assert(member.awakening >= 0 && member.awakening <= (encounter.difficulty === "HARD" ? 1 : 0));
+    assert(member.skillLoadout.length >= 1 && member.skillLoadout.length <= (encounter.difficulty === "HARD" ? 3 : 2));
     assert.deepEqual(member.equipmentLoadout, []);
   }
 }
+assert.equal(new Set(encounterMaster.encounters.flatMap((encounter) => encounter.members.map((member) => member.characterId))).size, 60);
+assert.equal(new Set(encounterMaster.encounters.flatMap((encounter) => encounter.members.flatMap((member) => member.skillLoadout))).size, 70);
 console.log("Quest Production Machine Master verification passed: 21 Quests, 21 Canonical encounters, Authority Gap 0.")

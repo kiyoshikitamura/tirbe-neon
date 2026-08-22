@@ -219,7 +219,7 @@ export class MockSupabaseClient {
       if (!isTactic(session.tactic_id) || !Array.isArray(session.player_snapshot) || !Array.isArray(session.enemy_snapshot)) {
         return { data: null, error: { message: "Replay session is not resolvable" } };
       }
-      const result = resolveBattle(Number(session.random_seed) || 1, session.tactic_id, isOfficialGvg ? 20 : 15, session.player_snapshot, session.enemy_snapshot);
+      const result = resolveBattle(Number(session.random_seed) || 1, session.tactic_id, isOfficialGvg ? 20 : 15, session.player_snapshot, session.enemy_snapshot, session.enemy_tactic_id ?? undefined);
       session.status = "RESOLVED";
       session.result = result;
       this.setStorage("battle_replay_sessions", sessions);
