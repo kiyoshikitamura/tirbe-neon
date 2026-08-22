@@ -1,0 +1,27 @@
+{
+  "version": "2026-08-22",
+  "status": "PRODUCTION_FROZEN",
+  "activeTownCount": 2,
+  "durationHours": 24,
+  "rotationTimezone": "Asia/Tokyo",
+  "rotationHour": 0,
+  "referenceLevel": 30,
+  "referenceParticipants": 20,
+  "referenceBattlesPerParticipant": 2,
+  "bossHpBattleMultiplier": 40,
+  "raidTowns": [
+    { "townId": "shinjuku", "displayName": "新宿", "profile": "HIGH_ATK" },
+    { "townId": "shibuya", "displayName": "渋谷", "profile": "HIGH_DEF" },
+    { "townId": "ikebukuro", "displayName": "池袋", "profile": "HIGH_SPD" },
+    { "townId": "roppongi", "displayName": "六本木", "profile": "DEBUFF" },
+    { "townId": "akihabara", "displayName": "秋葉原", "profile": "AOE" }
+  ],
+  "profileMultipliersBp": {
+    "HIGH_ATK": { "hp": 10000, "atk": 13500, "def": 9000, "spd": 10000, "luk": 10000 },
+    "HIGH_DEF": { "hp": 10000, "atk": 9000, "def": 14000, "spd": 10000, "luk": 10000 },
+    "HIGH_SPD": { "hp": 10000, "atk": 10000, "def": 10000, "spd": 13000, "luk": 10000 },
+    "DEBUFF": { "hp": 10000, "atk": 10000, "def": 10000, "spd": 10000, "luk": 10000 },
+    "AOE": { "hp": 10000, "atk": 10000, "def": 10000, "spd": 10000, "luk": 10000 }
+  },
+  "tuningStatus": "P0_TUNABLE"
+}

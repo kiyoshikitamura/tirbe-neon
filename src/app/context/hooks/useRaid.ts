@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { supabase } from "@/utils/supabase";
+import { CANONICAL_RAID_BOSSES } from "@/domain/gameplay/canonical/combat_production";
 
 export function useRaid(
   session: any,
@@ -9,12 +10,13 @@ export function useRaid(
   playCyberSe: (type: string) => void,
   syncBootstrapData: (userId: string) => Promise<void>
 ) {
-  const [raidBossHp, setRaidBossHp] = useState<number>(9452100);
-  const [raidBossMaxHp, setRaidBossMaxHp] = useState<number>(9999999);
+  const fallbackBoss = CANONICAL_RAID_BOSSES.bosses[0];
+  const [raidBossHp, setRaidBossHp] = useState<number>(fallbackBoss.maxHp);
+  const [raidBossMaxHp, setRaidBossMaxHp] = useState<number>(fallbackBoss.maxHp);
   const [raidBossSecondsLeft, setRaidBossSecondsLeft] = useState<number>(86400);
   const [raidTotalDamage, setRaidTotalDamage] = useState<number>(0);
   const [raidBossBaseId, setRaidBossBaseId] = useState<string>("shinjuku");
-  const [raidBossName, setRaidBossName] = useState<string>("極道連合組長");
+  const [raidBossName, setRaidBossName] = useState<string>(fallbackBoss.displayName);
 
   const [raidDamageLogs, setRaidDamageLogs] = useState<any[]>([]);
   const [raidSeasonRankings, setRaidSeasonRankings] = useState<any[]>([]);

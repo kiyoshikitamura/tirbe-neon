@@ -4,6 +4,7 @@ import equipmentSource from "./data/equipment_20260821.json" with { type: "json"
 import equipmentLimitBreakSource from "./data/equipment_limit_break_20260821.json" with { type: "json" };
 import equipmentProgressionSource from "./data/equipment_progression_20260821.json" with { type: "json" };
 import missionSource from "./data/missions_20260821.json" with { type: "json" };
+export * from "./combat_production.ts";
 import type { CanonicalCharacter, CanonicalEquipment, CanonicalMission } from "./types";
 
 export const CANONICAL_CHARACTERS: readonly CanonicalCharacter[] = characterSource.characters.map((character) => ({

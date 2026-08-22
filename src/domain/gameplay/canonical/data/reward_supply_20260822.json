@@ -6,8 +6,8 @@
     { "source": "GACHA", "status": "FROZEN", "authority": "gacha_production_master.md", "notes": "Character duplicate adds one target-specific copy-equivalent; max-awakened duplicate converts atomically to Awakening Book x1" },
     { "source": "ITEM_IDENTITY", "status": "FROZEN", "authority": "items_20260822.json", "notes": "Currencies remain outside the item inventory master" },
     { "source": "QUEST", "status": "FROZEN", "authority": "quests_20260822.json + quest_encounters_20260822.json", "notes": "21 public Quests, Canonical reward pools, First Clear, and Character-snapshot NPC encounters frozen" },
-    { "source": "PVP", "status": "PENDING_FREEZE", "authority": "reward_supply_master.md", "notes": "No reward quantities frozen by Phase B1" },
-    { "source": "RAID", "status": "PENDING_FREEZE", "authority": "reward_supply_master.md", "notes": "No reward quantities frozen by Phase B1" },
-    { "source": "RANKING", "status": "PENDING_FREEZE", "authority": "reward_supply_master.md", "notes": "No reward quantities frozen by Phase B1" }
+    { "source": "PVP", "status": "FROZEN", "authority": "pvp_production_20260822.json", "notes": "Official win/loss CASH 500/250; Practice has no reward" },
+    { "source": "RAID", "status": "FROZEN", "authority": "raid_rewards_20260822.json", "notes": "Participation, active participation, five-point participation, and clear rewards frozen" },
+    { "source": "RANKING", "status": "FROZEN", "authority": "pvp_ranking_rewards_20260822.json + raid_rewards_20260822.json", "notes": "PvP monthly and Raid instance personal/guild ranking rewards frozen" }
   ]
 }

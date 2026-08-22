@@ -2077,7 +2077,9 @@ export function useBattle(options: UseBattleOptions) {
       }
       const pointsDiff = Number(pvpResultTemp.rankDelta ?? 0);
       const rewardCash = Number(pvpResultTemp.rewards?.cash ?? 0);
-      setPvpRate?.(Number(pvpResultTemp.newRankPoints ?? pvpRate));
+      const oldRating = Number(pvpResultTemp.oldRating ?? pvpRate);
+      const newRating = Number(pvpResultTemp.newRankPoints ?? pvpRate);
+      setPvpRate?.(newRating);
       setPvpPoints(Number(pvpResultTemp.remainingPvpPoints ?? pvpPoints));
       postNpcYajiMessage(session, username, "GLOBAL", currentBaseId, "PVP_WIN");
       await syncBootstrapData(session.user.id);
@@ -2088,7 +2090,7 @@ export function useBattle(options: UseBattleOptions) {
         setConfirmDialogConfig({
           isOpen: true,
           title: "PvP結果",
-          message: createElement(ModeBattleResultCard, { mode: "PVP", victory: finalResult === "VICTORY", opponent: opponentNameTemp, stats: [{ label: "RANK CHANGE", value: `${pointsDiff >= 0 ? "+" : ""}${pointsDiff} pt` }, { label: "PVP POINT", value: `${Number(pvpResultTemp.remainingPvpPoints ?? 0)}/5` }], reward: `CASH +${rewardCash.toLocaleString()}`, note: isFirstOfficialPvp ? "初戦の順位を確認して、次のレイドへ進もう。" : "PvPへ戻って次の対戦相手を選べます。" }),
+          message: createElement(ModeBattleResultCard, { mode: "PVP", victory: finalResult === "VICTORY", opponent: opponentNameTemp, stats: [{ label: "RATING", value: `${oldRating.toLocaleString()} → ${newRating.toLocaleString()}` }, { label: "RANK CHANGE", value: `${pointsDiff >= 0 ? "+" : ""}${pointsDiff} pt` }, { label: "PVP POINT", value: `${Number(pvpResultTemp.remainingPvpPoints ?? 0)}/5` }], reward: `CASH +${rewardCash.toLocaleString()}`, note: isFirstOfficialPvp ? "初戦の順位を確認して、次のレイドへ進もう。" : "PvPへ戻って次の対戦相手を選べます。" }),
           confirmText: isFirstOfficialPvp ? "ランキングを確認" : "PvPへ戻る", cancelText: "Homeへ",
           onConfirm: () => { setConfirmDialogConfig(null); navigateTab?.(isFirstOfficialPvp ? "ranking" : "pvp"); },
           onCancel: () => { setConfirmDialogConfig(null); navigateTab?.("home"); }

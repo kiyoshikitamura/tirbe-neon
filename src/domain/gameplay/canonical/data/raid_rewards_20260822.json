@@ -1,0 +1,22 @@
+{
+  "version": "2026-08-22",
+  "status": "PRODUCTION_FROZEN",
+  "delivery": "PRESENT_EXACTLY_ONCE",
+  "progressRewards": [
+    { "rewardId": "PARTICIPATION_1", "finalizedBattles": 1, "raidPointsConsumed": null, "rewards": [{ "itemId": "CASH", "quantity": 300 }] },
+    { "rewardId": "ACTIVE_3", "finalizedBattles": 3, "raidPointsConsumed": null, "rewards": [{ "itemId": "CHAR_EXP_M", "quantity": 1 }] },
+    { "rewardId": "FULL_POINTS_5", "finalizedBattles": null, "raidPointsConsumed": 5, "rewards": [{ "itemId": "EQUIP_EXP_M", "quantity": 1 }] }
+  ],
+  "clearRewards": [{ "itemId": "CASH", "quantity": 1000 }, { "itemId": "EQUIP_LB_PART", "quantity": 1 }],
+  "personalRanking": [
+    { "rankMin": 1, "rankMax": 1, "rewards": [{ "itemId": "CASH", "quantity": 5000 }, { "itemId": "NORMAL_GACHA_TICKET_CHARACTER", "quantity": 1 }] },
+    { "rankMin": 2, "rankMax": 3, "rewards": [{ "itemId": "CASH", "quantity": 3000 }] },
+    { "rankMin": 4, "rankMax": 10, "rewards": [{ "itemId": "CASH", "quantity": 1500 }] }
+  ],
+  "guildRanking": [
+    { "rankMin": 1, "rankMax": 1, "rewards": [{ "itemId": "CASH", "quantity": 3000 }] },
+    { "rankMin": 2, "rankMax": 3, "rewards": [{ "itemId": "CASH", "quantity": 2000 }] },
+    { "rankMin": 4, "rankMax": 10, "rewards": [{ "itemId": "CASH", "quantity": 1000 }] }
+  ],
+  "guildEligibility": { "memberAtInstanceEnd": true, "contributedToSameGuild": true }
+}

@@ -150,6 +150,16 @@ export default function PvpTab() {
           cadence="2時間ごとに1回復・模擬戦は消費なし"
         />
 
+        <OutlawCard>
+          <div className="upgrade-card-title">対戦モード</div>
+          <div className="pvp-opponent-meta">
+            <Badge tone="cyan">OFFICIAL</Badge><span>PvP Point 1・勝利 CASH 500・敗北 CASH 250・Rating変動あり</span>
+          </div>
+          <div className="pvp-opponent-meta mt-2">
+            <Badge tone="neutral">PRACTICE</Badge><span>消費・報酬・Rating・Mission進捗なし</span>
+          </div>
+        </OutlawCard>
+
         <SubTabNav
           tabs={[
             { id: "opponents", label: "対戦相手" },
@@ -197,6 +207,8 @@ export default function PvpTab() {
                           <div className="pvp-opponent-meta">
                             <Badge tone="cyan">{op.opponent_points} pt</Badge>
                             <span className="pvp-opponent-power">戦力 {Number(op.opponent_power || 0).toLocaleString()}</span>
+                            <Badge tone={op.opponent_class === "STRONGER" ? "warning" : op.opponent_class === "WEAKER" ? "neutral" : "cyan"}>{op.opponent_class === "STRONGER" ? "格上" : op.opponent_class === "WEAKER" ? "格下" : "同格"}</Badge>
+                            <span>WIN +{Number(op.win_rating_delta || 0)} / LOSE {Number(op.loss_rating_delta || 0)}</span>
                             <span>作戦 {tacticNames[op.tactic] || "攻撃優先"}</span>
                           </div>
                         </div>

@@ -1,0 +1,234 @@
+{
+  "version": "2026-08-22",
+  "status": "PRODUCTION_FROZEN",
+  "derivation": {
+    "referenceLevel": 30,
+    "awakening": 0,
+    "equipment": "NONE",
+    "populationMedian": {
+      "hp": 62777,
+      "atk": 6455,
+      "def": 5740,
+      "spd": 358,
+      "luk": 28
+    },
+    "referenceCharacterIds": [
+      "char_go_01",
+      "char_lucas_01",
+      "char_maya_01",
+      "char_shin_01",
+      "char_rin_01"
+    ],
+    "simulationSeeds": 20,
+    "targetFinalizedBattles": 40,
+    "roundingUnit": 100000
+  },
+  "bosses": [
+    {
+      "bossId": "RAID_BOSS_001",
+      "townId": "shinjuku",
+      "displayName": "新宿・剛腕頭領",
+      "profileType": "HIGH_ATK",
+      "attribute": "EVIL",
+      "referenceLevel": 30,
+      "maxHp": 22500000,
+      "atk": 8714,
+      "def": 5166,
+      "spd": 358,
+      "luk": 28,
+      "skillLoadout": [
+        {
+          "id": "BASIC_ATTACK",
+          "name": "通常攻撃",
+          "target": "ENEMY_SINGLE",
+          "cooldown": 0,
+          "availableFromRound": 1,
+          "effects": [
+            "DAMAGE 80% ATK"
+          ]
+        },
+        {
+          "id": "RAID_SKILL_HIGH_ATK",
+          "name": "強襲",
+          "activationType": "ACTIVE",
+          "target": "ENEMY_SINGLE",
+          "cooldown": 3,
+          "availableFromRound": 1,
+          "effects": [
+            "DAMAGE 180% ATK"
+          ]
+        }
+      ],
+      "averageReferenceBattleDamage": 563318,
+      "referenceSeeds": 20,
+      "targetFinalizedBattles": 40,
+      "tuningStatus": "P0_TUNABLE",
+      "isProductionEnabled": true
+    },
+    {
+      "bossId": "RAID_BOSS_002",
+      "townId": "shibuya",
+      "displayName": "渋谷・鉄壁頭領",
+      "profileType": "HIGH_DEF",
+      "attribute": "ORDER",
+      "referenceLevel": 30,
+      "maxHp": 31900000,
+      "atk": 5809,
+      "def": 8036,
+      "spd": 358,
+      "luk": 28,
+      "skillLoadout": [
+        {
+          "id": "BASIC_ATTACK",
+          "name": "通常攻撃",
+          "target": "ENEMY_SINGLE",
+          "cooldown": 0,
+          "availableFromRound": 1,
+          "effects": [
+            "DAMAGE 80% ATK"
+          ]
+        },
+        {
+          "id": "RAID_SKILL_HIGH_DEF",
+          "name": "鉄壁",
+          "activationType": "ACTIVE",
+          "target": "SELF",
+          "cooldown": 3,
+          "availableFromRound": 1,
+          "effects": [
+            "DEF +30% / 2T"
+          ]
+        }
+      ],
+      "averageReferenceBattleDamage": 797136,
+      "referenceSeeds": 20,
+      "targetFinalizedBattles": 40,
+      "tuningStatus": "P0_TUNABLE",
+      "isProductionEnabled": true
+    },
+    {
+      "bossId": "RAID_BOSS_003",
+      "townId": "ikebukuro",
+      "displayName": "池袋・疾風頭領",
+      "profileType": "HIGH_SPD",
+      "attribute": "CHAOS",
+      "referenceLevel": 30,
+      "maxHp": 27600000,
+      "atk": 6455,
+      "def": 5740,
+      "spd": 465,
+      "luk": 28,
+      "skillLoadout": [
+        {
+          "id": "BASIC_ATTACK",
+          "name": "通常攻撃",
+          "target": "ENEMY_SINGLE",
+          "cooldown": 0,
+          "availableFromRound": 1,
+          "effects": [
+            "DAMAGE 80% ATK"
+          ]
+        },
+        {
+          "id": "RAID_SKILL_HIGH_SPD",
+          "name": "迅撃",
+          "activationType": "ACTIVE",
+          "target": "ENEMY_SINGLE",
+          "cooldown": 3,
+          "availableFromRound": 1,
+          "effects": [
+            "DAMAGE 145% ATK"
+          ]
+        }
+      ],
+      "averageReferenceBattleDamage": 690070,
+      "referenceSeeds": 20,
+      "targetFinalizedBattles": 40,
+      "tuningStatus": "P0_TUNABLE",
+      "isProductionEnabled": true
+    },
+    {
+      "bossId": "RAID_BOSS_004",
+      "townId": "roppongi",
+      "displayName": "六本木・幻惑頭領",
+      "profileType": "DEBUFF",
+      "attribute": "JUSTICE",
+      "referenceLevel": 30,
+      "maxHp": 22200000,
+      "atk": 6455,
+      "def": 5740,
+      "spd": 358,
+      "luk": 28,
+      "skillLoadout": [
+        {
+          "id": "BASIC_ATTACK",
+          "name": "通常攻撃",
+          "target": "ENEMY_SINGLE",
+          "cooldown": 0,
+          "availableFromRound": 1,
+          "effects": [
+            "DAMAGE 80% ATK"
+          ]
+        },
+        {
+          "id": "RAID_SKILL_DEBUFF",
+          "name": "威圧",
+          "activationType": "ACTIVE",
+          "target": "ENEMY_ALL",
+          "cooldown": 4,
+          "availableFromRound": 2,
+          "effects": [
+            "DAMAGE 110% ATK",
+            "ATK -20% / 2T"
+          ]
+        }
+      ],
+      "averageReferenceBattleDamage": 554405,
+      "referenceSeeds": 20,
+      "targetFinalizedBattles": 40,
+      "tuningStatus": "P0_TUNABLE",
+      "isProductionEnabled": true
+    },
+    {
+      "bossId": "RAID_BOSS_005",
+      "townId": "akihabara",
+      "displayName": "秋葉原・殲滅頭領",
+      "profileType": "AOE",
+      "attribute": "EVIL",
+      "referenceLevel": 30,
+      "maxHp": 25600000,
+      "atk": 6455,
+      "def": 5740,
+      "spd": 358,
+      "luk": 28,
+      "skillLoadout": [
+        {
+          "id": "BASIC_ATTACK",
+          "name": "通常攻撃",
+          "target": "ENEMY_SINGLE",
+          "cooldown": 0,
+          "availableFromRound": 1,
+          "effects": [
+            "DAMAGE 80% ATK"
+          ]
+        },
+        {
+          "id": "RAID_SKILL_AOE",
+          "name": "一斉制圧",
+          "activationType": "ACTIVE",
+          "target": "ENEMY_ALL",
+          "cooldown": 4,
+          "availableFromRound": 2,
+          "effects": [
+            "DAMAGE 135% ATK"
+          ]
+        }
+      ],
+      "averageReferenceBattleDamage": 640580,
+      "referenceSeeds": 20,
+      "targetFinalizedBattles": 40,
+      "tuningStatus": "P0_TUNABLE",
+      "isProductionEnabled": true
+    }
+  ]
+}

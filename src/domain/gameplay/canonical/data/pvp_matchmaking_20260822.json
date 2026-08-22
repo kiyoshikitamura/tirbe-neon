@@ -1,0 +1,15 @@
+{
+  "version": "2026-08-22",
+  "status": "PRODUCTION_FROZEN",
+  "candidateLimit": 5,
+  "tiers": [
+    { "tier": 1, "ratingRange": 300, "powerMinBp": 7000, "powerMaxBp": 14000 },
+    { "tier": 2, "ratingRange": 500, "powerMinBp": 5000, "powerMaxBp": 18000 },
+    { "tier": 3, "ratingRange": null, "powerMinBp": null, "powerMaxBp": null }
+  ],
+  "selfExcluded": true,
+  "validDefenseRequired": true,
+  "botFallback": false,
+  "sameOpponentRecurrence": true,
+  "refreshAllowed": true
+}

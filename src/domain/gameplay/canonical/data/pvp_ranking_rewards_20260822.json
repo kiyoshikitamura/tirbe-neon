@@ -1,0 +1,12 @@
+{
+  "version": "2026-08-22",
+  "status": "PRODUCTION_FROZEN",
+  "period": "MONTHLY",
+  "delivery": "PRESENT_EXACTLY_ONCE",
+  "tiers": [
+    { "rankMin": 1, "rankMax": 1, "rewards": [{ "itemId": "CASH", "quantity": 30000 }, { "itemId": "NORMAL_GACHA_TICKET_CHARACTER", "quantity": 3 }] },
+    { "rankMin": 2, "rankMax": 3, "rewards": [{ "itemId": "CASH", "quantity": 20000 }, { "itemId": "NORMAL_GACHA_TICKET_CHARACTER", "quantity": 2 }] },
+    { "rankMin": 4, "rankMax": 10, "rewards": [{ "itemId": "CASH", "quantity": 10000 }, { "itemId": "NORMAL_GACHA_TICKET_CHARACTER", "quantity": 1 }] },
+    { "rankMin": 11, "rankMax": 50, "rewards": [{ "itemId": "CASH", "quantity": 5000 }] }
+  ]
+}

@@ -90,7 +90,7 @@ export default function RaidTab() {
         <HeroPanel className={`raid-boss-hero ${displayHp <= 0 || displaySeconds <= 0 ? "raid-boss-ended" : ""}`}>
           <div className="raid-boss-stage" aria-label={`${displayName} レベル${selectedRaid?.level || 1}`}>
             <div className="raid-boss-emblem"><img src="/menu/raid.png" alt="レイドボス" /></div>
-            <div><span>RAID BOSS</span><strong>{displayName}</strong><small>Lv.{selectedRaid?.level || 1} ・ {baseName}</small></div>
+            <div><span>RAID BOSS</span><strong>{displayName}</strong><small>Lv.{selectedRaid?.level || 1} ・ {baseName} ・ {selectedRaid?.profileType || "BOSS"}</small></div>
           </div>
           <div className="flex-row-space-between align-center mb-2" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <span className="font-size-10 font-weight-bold text-color-magenta">BOSS HP</span>
@@ -155,8 +155,15 @@ export default function RaidTab() {
             <span className="text-color-cyan font-weight-bold">{raidTotalDamage.toLocaleString()} Dmg</span>
           </div>
           <div className="raid-contribution-progress"><span style={{ width: `${Math.min(100, raidTotalDamage / 1000)}%` }} /></div>
-          <p className="font-size-7 text-secondary mt-1">報酬獲得ライン: 100,000 Dmg (現在 {raidTotalDamage >= 100000 ? "達成済み" : "未達成"})</p>
+          <p className="font-size-7 text-secondary mt-1">参加1回: CASH 300 / 3回: CHAR EXP M / Raid Point 5消費: EQUIP EXP M</p>
           <div className="raid-contribution-grid"><span><small>今回の成果</small><strong>バトル結果で確定</strong></span><span><small>所属価値</small><strong>{userGuildMember ? "TRIBE Contribution対象" : "個人Contribution"}</strong></span></div>
+        </OutlawCard>
+
+        <OutlawCard>
+          <div className="upgrade-card-title mb-2">討伐・ランキング報酬</div>
+          <p className="font-size-8 text-secondary">討伐参加者: CASH 1,000 + 装備限界突破パーツ×1</p>
+          <p className="font-size-8 text-secondary">個人1位: CASH 5,000 + ノーマルキャラガチャチケット×1</p>
+          <p className="font-size-8 text-secondary">Guild 1位: 対象メンバー各 CASH 3,000</p>
         </OutlawCard>
 
         {/* ランキング画面への遷移 */}

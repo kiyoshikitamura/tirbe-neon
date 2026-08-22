@@ -1,6 +1,6 @@
 "use client";
 
-import { CANONICAL_CHARACTERS, CANONICAL_EQUIPMENTS, CANONICAL_MISSIONS, CANONICAL_SKILLS } from "../../domain/gameplay/canonical/masters.ts";
+import { CANONICAL_CHARACTERS, CANONICAL_EQUIPMENTS, CANONICAL_MISSIONS, CANONICAL_RAID_BOSSES, CANONICAL_SKILLS } from "../../domain/gameplay/canonical/masters.ts";
 import { canonicalCharacterStats, canonicalEquipmentFlatStat, canonicalEquipmentLevelCap, canonicalSkillSlotCount } from "../../domain/gameplay/canonical/calculations.ts";
 import { applyCharacterAwakeningCopyEquivalent } from "../../domain/gameplay/canonical/awakening.ts";
 import { applyFrozenUserXp, canUseEnergyDrink, recoverCanonicalResource } from "../../domain/gameplay/canonical/action_resources.ts";
@@ -174,13 +174,15 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
 
   if (funcName === "get_active_raids") {
     const raids = client.getStorage("raid_bosses") || [];
+    const fallbackBoss = CANONICAL_RAID_BOSSES.bosses[0];
     return { data: raids.map((raid: any) => ({
       id: raid.id,
-      bossMasterId: raid.boss_master_id || raid.boss_id || "BOSS_001",
-      bossName: raid.boss_name || raid.name || "極道連合組長",
-      level: Number(raid.level || 99),
-      currentHp: Number(raid.current_hp ?? 7_500_000),
-      maxHp: Number(raid.max_hp ?? 10_000_000),
+      bossMasterId: raid.boss_master_id || raid.boss_id || fallbackBoss.bossId,
+      bossName: raid.boss_name || raid.name || fallbackBoss.displayName,
+      level: Number(raid.level || fallbackBoss.referenceLevel),
+      currentHp: Number(raid.current_hp ?? fallbackBoss.maxHp),
+      maxHp: Number(raid.max_hp ?? fallbackBoss.maxHp),
+      profileType: raid.profile_type || fallbackBoss.profileType,
       baseId: raid.base_id || "shinjuku",
       spawnedAt: raid.spawned_at || new Date().toISOString(),
       expiresAt: raid.expires_at || new Date(Date.now() + 86_400_000).toISOString(),

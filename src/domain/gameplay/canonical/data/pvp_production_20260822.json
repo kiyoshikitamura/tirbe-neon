@@ -1,0 +1,11 @@
+{
+  "version": "2026-08-22",
+  "status": "PRODUCTION_FROZEN",
+  "modes": {
+    "PRACTICE": { "cost": 0, "cashReward": 0, "ratingImpact": false, "rankingImpact": false, "missionProgress": false },
+    "OFFICIAL": { "cost": 1, "winCash": 500, "lossCash": 250, "ratingImpact": true, "rankingImpact": true, "missionProgress": true }
+  },
+  "rating": { "initial": 1000, "minimum": 0, "maximum": null, "scale": 400, "winK": 32, "lossK": 16 },
+  "season": { "period": "JST_CALENDAR_MONTH", "softResetAnchor": 1000, "softResetBp": 5000 },
+  "opponentClass": { "strongerMinDifference": 101, "equalMinDifference": -100, "equalMaxDifference": 100, "weakerMaxDifference": -101 }
+}

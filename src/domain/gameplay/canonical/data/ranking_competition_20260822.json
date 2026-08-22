@@ -1,0 +1,10 @@
+{
+  "version": "2026-08-22",
+  "status": "PRODUCTION_FROZEN",
+  "rankingTypes": ["PVP", "RAID_PERSONAL", "RAID_GUILD"],
+  "displayRank": "COMPETITION",
+  "scoreTieSharesRank": true,
+  "stableOrder": ["SCORE_DESC", "ACHIEVED_AT_ASC", "STABLE_ID_ASC"],
+  "pagination": { "limit": true, "offset": true, "selfRank": true },
+  "rewardDelivery": "SERVER_PRESENT_EXACTLY_ONCE"
+}
