@@ -188,16 +188,30 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
   if (funcName === "get_recommended_guilds") {
     const guilds = client.getStorage("guilds") || [];
     const memberships = client.getStorage("guild_members") || [];
-    return { data: guilds.slice(0, Math.min(5, Math.max(3, Number(params?.p_limit || 5)))).map((guild: any, index: number) => {
+    const users = client.getStorage("users") || [];
+    const eligible = guilds.filter((guild: any) => {
+      const mode = guild.recruitment_mode || (guild.approval_required ? "APPLICATION_REQUIRED" : "OPEN_JOIN");
       const members = memberships.filter((member: any) => member.guild_id === guild.id);
-      return { guild_id: guild.id, name: guild.name, description: guild.description || "活動中のTRIBE", level: guild.level || 1, approval_required: Boolean(guild.approval_required), member_count: Number(guild.member_count ?? members.length), member_limit: Number(guild.member_limit || 10), active_members_7d: Math.max(1, members.length), raid_participants_7d: members.length, raid_contribution_7d: 250000 - index * 25000, chatters_7d: members.length, activity_contributors_7d: members.length, guild_power: 50000 - index * 5000, recommendation_score: 100 - index };
-    }), error: null };
+      const cap = Number(guild.member_limit || (guild.level >= 5 ? 20 : guild.level === 4 ? 17 : guild.level === 3 ? 14 : guild.level === 2 ? 12 : 10));
+      return !guild.is_disbanded && mode !== "CLOSED" && members.length < cap;
+    });
+    return { data: eligible.map((guild: any, index: number) => {
+      const members = memberships.filter((member: any) => member.guild_id === guild.id);
+      const activeMembers = members.filter((member: any) => users.find((user: any) => user.id === member.user_id)?.last_active_at).length;
+      const mode = guild.recruitment_mode || (guild.approval_required ? "APPLICATION_REQUIRED" : "OPEN_JOIN");
+      const cap = Number(guild.member_limit || (guild.level >= 5 ? 20 : guild.level === 4 ? 17 : guild.level === 3 ? 14 : guild.level === 2 ? 12 : 10));
+      const fillRatio = members.length / cap;
+      const recommendationScore = activeMembers * 18 + members.length * 16 + members.length * 10 + members.length * 12
+        + (fillRatio >= 0.5 && fillRatio <= 0.8 ? 45 : 0) + (mode === "OPEN_JOIN" ? 12 : 0)
+        + Math.log(Math.max(1, 250000 - index * 25000)) * 4 + Math.log(Math.max(1, 50000 - index * 5000)) * 2;
+      return { guild_id: guild.id, name: guild.name, description: guild.description || "活動中のTRIBE", level: guild.level || 1, approval_required: Boolean(guild.approval_required), recruitment_mode: mode, member_count: Number(guild.member_count ?? members.length), member_limit: cap, active_members_7d: activeMembers, raid_participants_7d: members.length, raid_contribution_7d: 250000 - index * 25000, chatters_7d: members.length, activity_contributors_7d: members.length, guild_power: 50000 - index * 5000, recommendation_score: recommendationScore };
+    }).sort((a: any, b: any) => b.recommendation_score - a.recommendation_score || String(a.guild_id).localeCompare(String(b.guild_id))).slice(0, Math.min(5, Math.max(3, Number(params?.p_limit || 5)))), error: null };
   }
 
   if (funcName === "set_current_guild_welcome_message") {
     const userId = typeof window === "undefined" ? null : localStorage.getItem("tribe_demo_uuid");
     const membership = (client.getStorage("guild_members") || [])
-      .find((entry: any) => entry.user_id === userId && entry.role === "MASTER");
+      .find((entry: any) => entry.user_id === userId && ["MASTER", "SUB_MASTER"].includes(entry.role));
     const clean = String(params?.p_message || "").trim();
     if (!membership) return { data: null, error: { message: "guild master required", code: "42501" } };
     if (clean.length > 120) return { data: null, error: { message: "welcome message is too long", code: "22023" } };
@@ -224,8 +238,8 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     const activeSince = Date.now() - 7 * 24 * 60 * 60 * 1000;
     return { data: {
       guild_id: guild.id, name: guild.name, level: Number(guild.level || 1), xp: Number(guild.xp || 0),
-      description: guild.description || "", approval_required: Boolean(guild.approval_required),
-      member_count: members.length, member_limit: Number(guild.member_limit || 10),
+      description: guild.description || "", approval_required: Boolean(guild.approval_required), recruitment_mode: guild.recruitment_mode || (guild.approval_required ? "APPLICATION_REQUIRED" : "OPEN_JOIN"),
+      member_count: members.length, member_limit: Number(guild.member_limit || (guild.level >= 5 ? 20 : guild.level === 4 ? 17 : guild.level === 3 ? 14 : guild.level === 2 ? 12 : 10)),
       main_alignment: guild.main_alignment || "NEUTRAL", sub_alignment: guild.sub_alignment || "NEUTRAL",
       emblem_url: guild.logo_icon || null, leader_name: leader?.username || "不在", controlled_base_ids: controls,
       active_members_7d: members.filter((member: any) => {
@@ -1834,16 +1848,10 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
 
   if (funcName === "donate_to_guild") {
     const { p_user_id, p_guild_id, p_amount } = params;
-    const donationRewards: Record<number, { xp: number; contribution: number }> = {
-      1000: { xp: 20, contribution: 10 },
-      5000: { xp: 120, contribution: 60 },
-      10000: { xp: 300, contribution: 150 }
-    };
-    const reward = donationRewards[p_amount];
     const currentUserId = typeof window === "undefined" ? null : localStorage.getItem("tribe_demo_uuid");
     const members = client.getStorage("guild_members") || [];
     const member = members.find((entry: any) => entry.guild_id === p_guild_id && entry.user_id === p_user_id);
-    if (currentUserId !== p_user_id || !reward || !member) {
+    if (currentUserId !== p_user_id || p_amount !== 5000 || !member) {
       return { data: null, error: { message: "Invalid guild donation" } };
     }
     const users = client.getStorage("users");
@@ -1858,17 +1866,31 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
       return { error: { message: "ギルドが存在しません。" } };
     }
 
+    const jstDate = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Tokyo" }).format(new Date());
+    const ledger = client.getStorage("guild_exp_daily_ledger") || [];
+    if (ledger.some((entry: any) => entry.guild_id === p_guild_id && entry.user_id === p_user_id && entry.source === "DONATION" && entry.jst_date === jstDate)) {
+      return { data: null, error: { message: "Guild donation already completed today" } };
+    }
+    ledger.push({ guild_id: p_guild_id, user_id: p_user_id, source: "DONATION", jst_date: jstDate, exp_granted: 20 });
+
     user.cash = (user.cash || 0) - p_amount;
     guild.funds = Number(guild.funds || 0) + p_amount;
-    guild.xp = Number(guild.xp || 0) + reward.xp;
-    member.weekly_contribution = Number(member.weekly_contribution || 0) + reward.contribution;
-    member.total_contribution = Number(member.total_contribution || 0) + reward.contribution;
-    member.contribution_points = Number(member.contribution_points || 0) + reward.contribution;
+    guild.xp = Number(guild.xp || 0) + 20;
+    const curve = [1000, 2500, 6000, 12000];
+    while (Number(guild.level || 1) < 5 && guild.xp >= curve[Number(guild.level || 1) - 1]) {
+      guild.xp -= curve[Number(guild.level || 1) - 1];
+      guild.level = Number(guild.level || 1) + 1;
+    }
 
     client.setStorage("users", users);
     client.setStorage("guilds", guilds);
     client.setStorage("guild_members", members);
-    return { data: { status: "success", next_cash: user.cash, next_funds: guild.funds, xp_gained: reward.xp, contribution_gained: reward.contribution }, error: null };
+    client.setStorage("guild_exp_daily_ledger", ledger);
+    return { data: { status: "success", next_cash: user.cash, next_funds: guild.funds, xp_gained: 20 }, error: null };
+  }
+
+  if (funcName === "record_current_guild_login") {
+    return { data: { status: "recorded" }, error: null };
   }
 
   if (funcName === "initialize_current_player") {
@@ -2901,21 +2923,24 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     const { p_user_id, p_guild_name, p_creation_cost } = params;
     const users = client.getStorage("users");
     const user = users.find((u: any) => u.id === p_user_id);
-    if (!user || user.cash < p_creation_cost) return { error: { message: "キャッシュが不足しています。" } };
+    const cleanName = String(p_guild_name || "").trim();
+    if (!user || Number(user.level || 1) < 8 || user.cash < p_creation_cost || p_creation_cost !== 5000 || Array.from(cleanName).length < 1 || Array.from(cleanName).length > 12) return { error: { message: "Guild creation requirements are not met" } };
     
     const guilds = client.getStorage("guilds") || [];
-    if (guilds.some((g: any) => g.name === p_guild_name)) {
+    if (guilds.some((g: any) => !g.is_disbanded && String(g.name).trim().toLocaleLowerCase() === cleanName.toLocaleLowerCase())) {
        return { error: { message: "このギルド名は既に登録されています。" } };
     }
     
     const newGuildId = "guild_" + Date.now();
     const newGuild = {
       id: newGuildId,
-      name: p_guild_name,
+      name: cleanName,
       leader_id: p_user_id,
       level: 1,
       xp: 0,
       funds: 0,
+      recruitment_mode: "OPEN_JOIN",
+      approval_required: false,
       created_at: new Date().toISOString()
     };
     guilds.push(newGuild);
@@ -2948,9 +2973,9 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     const guilds = client.getStorage("guilds") || [];
     const guild = guilds.find((entry: any) => entry.id === p_guild_id);
     const members = client.getStorage("guild_members") || [];
-    const memberLimit = guild?.member_limit || (guild?.level >= 5 ? 20 : guild?.level === 4 ? 18 : guild?.level === 3 ? 15 : guild?.level === 2 ? 12 : 10);
+    const memberLimit = guild?.member_limit || (guild?.level >= 5 ? 20 : guild?.level === 4 ? 17 : guild?.level === 3 ? 14 : guild?.level === 2 ? 12 : 10);
     const leftAt = user?.last_guild_left_at ? new Date(user.last_guild_left_at).getTime() : 0;
-    if (!user || user.level < 3 || !guild || guild.approval_required || members.some((entry: any) => entry.user_id === currentUserId)
+    if (!user || user.level < 3 || !guild || guild.is_disbanded || (guild.recruitment_mode || (guild.approval_required ? "APPLICATION_REQUIRED" : "OPEN_JOIN")) !== "OPEN_JOIN" || members.some((entry: any) => entry.user_id === currentUserId)
       || (leftAt > 0 && Date.now() - leftAt < 24 * 60 * 60 * 1000) || members.filter((entry: any) => entry.guild_id === p_guild_id).length >= memberLimit) {
       return { data: null, error: { message: "Guild joining requirements are not met" } };
     }
@@ -3135,6 +3160,23 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
       client.setStorage("guilds", guilds);
     }
     return { data: { status: "success" }, error: null };
+  }
+  if (funcName === "update_guild_recruitment") {
+    const { p_guild_id, p_description, p_mode } = params;
+    const currentUserId = typeof window === "undefined" ? null : localStorage.getItem("tribe_demo_uuid");
+    const members = client.getStorage("guild_members") || [];
+    const actor = members.find((member: any) => member.guild_id === p_guild_id && member.user_id === currentUserId);
+    if (!actor || !["MASTER", "SUB_MASTER"].includes(actor.role) || !["OPEN_JOIN", "APPLICATION_REQUIRED", "CLOSED"].includes(p_mode)) {
+      return { data: null, error: { message: "Guild setting permission required" } };
+    }
+    const guilds = client.getStorage("guilds") || [];
+    const guild = guilds.find((entry: any) => entry.id === p_guild_id);
+    if (!guild) return { data: null, error: { message: "Guild not found" } };
+    guild.description = String(p_description || "").trim();
+    guild.recruitment_mode = p_mode;
+    guild.approval_required = p_mode === "APPLICATION_REQUIRED";
+    client.setStorage("guilds", guilds);
+    return { data: { status: "success", mode: p_mode }, error: null };
   }
   if (funcName === "equip_guild_decoration") {
     const { p_guild_id, p_type, p_item_id } = params;

@@ -23,6 +23,9 @@ jobs:
       - run: npm run verify:mock-asset-gacha
       - run: npm run verify:mock-direct-message-read
       - run: npm run verify:mock-gvg-cancellation
+      - run: npm run verify:guild-production
+      - run: npm run verify:guild-db-migration
+      - run: npm run verify:mock-guild-production
       - run: npm run build
 
   edge-function-check:

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/utils/supabase";
+import { guildMemberCap, guildRecruitmentMode, canEditGuildSettings, canManageGuildApplications, GUILD_PRODUCTION, type GuildRecruitmentMode } from "@/domain/gameplay/canonical/guild_production";
 
 export function useGuild(
   session: any,
@@ -108,6 +109,10 @@ export function useGuild(
     }
     if (!newGuildName.trim()) {
       setErrorMessage("ギルド名は空欄にできません。");
+      return;
+    }
+    if (Array.from(newGuildName.trim()).length > GUILD_PRODUCTION.creation.nameMax) {
+      setErrorMessage("ギルド名は12文字以内で入力してください。");
       return;
     }
     if (cash < 5000) {
@@ -246,15 +251,16 @@ export function useGuild(
     playCyberSe("click");
     try {
       const targetGuild = allGuildsDbList.find((guild: any) => guild.id === targetGuildId);
-      const targetGuildCap = Number(targetGuild?.member_limit
-        ?? (targetGuild?.level >= 5 ? 20 : targetGuild?.level === 4 ? 18 : targetGuild?.level === 3 ? 15 : targetGuild?.level === 2 ? 12 : 10));
+      const targetGuildCap = Number(targetGuild?.member_limit ?? guildMemberCap(Number(targetGuild?.level || 1)));
       if (Number(targetGuild?.member_count || 0) >= targetGuildCap) {
         setConfirmDialogConfig({ isOpen: true, title: "加入失敗", message: `対象ギルドは上限人数（${targetGuildCap}名）に達しています。`, onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
         setGvgResetLoading(false);
         return;
       }
 
-      const requiresApproval = approvalRequiredOverride ?? Boolean(targetGuild?.approval_required);
+      const mode = guildRecruitmentMode(targetGuild?.recruitment_mode, approvalRequiredOverride ?? Boolean(targetGuild?.approval_required));
+      if (mode === "CLOSED") throw new Error("このギルドは現在募集を停止しています。");
+      const requiresApproval = mode === "APPLICATION_REQUIRED";
       const { error } = requiresApproval
         ? await supabase.rpc("request_guild_join", { p_guild_id: targetGuildId })
         : await supabase.rpc("join_guild", { p_guild_id: targetGuildId });
@@ -311,15 +317,15 @@ export function useGuild(
     });
   };
 
-  const handleUpdateGuildSettings = async (description: string, approvalRequired: boolean) => {
-    if (!session || !userGuild || userGuildMember?.role !== "MASTER") return;
+  const handleUpdateGuildSettings = async (description: string, mode: GuildRecruitmentMode | boolean) => {
+    if (!session || !userGuild || !canEditGuildSettings(userGuildMember?.role)) return;
+    const recruitmentMode = typeof mode === "boolean" ? (mode ? "APPLICATION_REQUIRED" : "OPEN_JOIN") : mode;
     setGvgResetLoading(true);
     try {
-      const { error } = await supabase.rpc("update_guild_settings", {
+      const { error } = await supabase.rpc("update_guild_recruitment", {
         p_guild_id: userGuild.id,
-        p_desc: description.trim(),
-        p_approval: approvalRequired,
-        p_kick_days: Number(userGuild.auto_kick_days ?? 7),
+        p_description: description.trim(),
+        p_mode: recruitmentMode,
       });
       if (error) throw error;
       await syncBootstrapData(session.user.id);
@@ -362,7 +368,7 @@ export function useGuild(
   };
 
   const handleReviewGuildJoinRequest = async (requestId: string, approve: boolean) => {
-    if (!session || userGuildMember?.role !== "MASTER") return;
+    if (!session || !canManageGuildApplications(userGuildMember?.role)) return;
     setGvgResetLoading(true);
     try {
       const { error } = await supabase.rpc("review_guild_join_request", {
@@ -454,8 +460,9 @@ export function useGuild(
     });
   };
 
-  const handleDonateToGuild = async (amount: number) => {
+  const handleDonateToGuild = async (_amount: number = GUILD_PRODUCTION.donation.cashCost) => {
     if (!session || !userGuild || !userGuildMember) return;
+    const amount = GUILD_PRODUCTION.donation.cashCost;
     if (cash < amount) {
       setConfirmDialogConfig({ isOpen: true, title: "キャッシュ不足", message: "所持キャッシュが不足しています。", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
       return;
@@ -465,14 +472,6 @@ export function useGuild(
     playCyberSe("click");
 
     try {
-      const actionType = amount === 1000 ? "DONATE_SMALL" : amount === 5000 ? "DONATE_MEDIUM" : "DONATE_LARGE";
-      const fallbackActionMaster = { xp_gain: amount === 1000 ? 20 : amount === 5000 ? 120 : 300, contribution_gain: amount === 1000 ? 10 : amount === 5000 ? 60 : 150 };
-      const actionMasterRecord = guildXpActionMaster.find(a => a.action_type === actionType);
-      const actionMaster = {
-        xp_gain: actionMasterRecord?.xp_grant ?? actionMasterRecord?.xp_gain ?? fallbackActionMaster.xp_gain,
-        contribution_gain: actionMasterRecord?.contribution_grant ?? actionMasterRecord?.contribution_gain ?? fallbackActionMaster.contribution_gain
-      };
-
       const { data: rpcRes, error: gErr } = await supabase.rpc("donate_to_guild", {
         p_user_id: session.user.id,
         p_guild_id: userGuild.id,
@@ -484,7 +483,7 @@ export function useGuild(
       const nextCash = rpcRes?.next_cash ?? (cash - amount);
       setCash(nextCash);
 
-      setConfirmDialogConfig({ isOpen: true, title: "献金完了", message: `ギルドに ${amount.toLocaleString()} キャッシュを献金しました！\n(ギルド資金 +${amount.toLocaleString()} / ギルドXP +${actionMaster.xp_gain} / 貢献度 +${actionMaster.contribution_gain})`, onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
+      setConfirmDialogConfig({ isOpen: true, title: "献金完了", message: `ギルドに ${amount.toLocaleString()} キャッシュを献金しました！\n(ギルド資金 +${amount.toLocaleString()} / ギルドXP +${GUILD_PRODUCTION.donation.guildExp})`, onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
     } catch (e: any) {
       console.warn("Donation failed:", e.message);
       setConfirmDialogConfig({ isOpen: true, title: "献金失敗", message: "献金に失敗しました。", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });

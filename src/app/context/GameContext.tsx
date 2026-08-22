@@ -723,17 +723,10 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   // 3.5 ギルドへのXPおよび貢献度付与の共通処理
   // ==========================================
   const addGuildXpAndContributionByAction = async (actionType: string, sourceId?: string) => {
-    if (!session || !userGuildMember || !userGuild || !sourceId) return;
-    try {
-      const { error } = await supabase.rpc("record_guild_activity", {
-        p_action_type: actionType,
-        p_source_id: sourceId,
-      });
-      if (error) throw error;
-      await syncBootstrapData(session.user.id);
-    } catch (err) {
-      console.warn("Failed to update guild xp via action:", err);
-    }
+    // Canonical Guild EXP is granted by authoritative DB triggers/ledger.
+    // This compatibility callback remains for older hooks but must not grant XP.
+    void actionType;
+    void sourceId;
   };
 
   // ==========================================
@@ -917,6 +910,9 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       });
 
       await syncActiveUsers(userId);
+      void supabase.rpc("record_current_guild_login").then(({ error }) => {
+        if (error && error.code !== "PGRST202") console.warn("Failed to record Guild login activity:", error.message);
+      });
       await friends.fetchFriends(userId);
       await friends.fetchFriendRequests(userId);
       
@@ -2424,6 +2420,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       leaderName: "取得中",
       description: "公開情報を取得しています。",
       approval_required: false,
+      recruitment_mode: "OPEN_JOIN",
       controlledBases: []
     });
     try {
@@ -2448,6 +2445,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         leaderName: publicGuild.leader_name,
         description: publicGuild.description || "紹介文はまだ登録されていません。",
         approval_required: Boolean(publicGuild.approval_required),
+        recruitment_mode: publicGuild.recruitment_mode || (publicGuild.approval_required ? "APPLICATION_REQUIRED" : "OPEN_JOIN"),
         controlledBases: publicControlledBases,
         active_members_7d: publicGuild.active_members_7d,
         raid_contribution_7d: publicGuild.raid_contribution_7d,
@@ -2492,7 +2490,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         name: guild.name,
         level: guild.level,
         xp: guild.xp,
-        member_limit: guild.member_limit || (guild.level <= 1 ? 10 : guild.level === 2 ? 12 : guild.level === 3 ? 15 : guild.level === 4 ? 18 : 20),
+        member_limit: guild.member_limit || (guild.level <= 1 ? 10 : guild.level === 2 ? 12 : guild.level === 3 ? 14 : guild.level === 4 ? 17 : 20),
         member_count: count || 0,
         main_alignment: guild.main_alignment,
         sub_alignment: guild.sub_alignment,
@@ -2500,6 +2498,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         leaderName,
         description: guild.description || "紹介文はまだ登録されていません。",
         approval_required: Boolean(guild.approval_required),
+        recruitment_mode: guild.recruitment_mode || (guild.approval_required ? "APPLICATION_REQUIRED" : "OPEN_JOIN"),
         controlledBases
       });
     } catch (e: any) {

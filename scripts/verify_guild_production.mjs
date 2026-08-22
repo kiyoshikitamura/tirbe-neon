@@ -1,0 +1,27 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+
+const master = JSON.parse(readFileSync(new URL("../src/domain/gameplay/canonical/data/guild_production_20260823.json", import.meta.url), "utf8"));
+assert.equal(master.status, "FROZEN");
+assert.deepEqual(master.levels.map((x) => x.requiredExp), [1000, 2500, 6000, 12000, 0]);
+assert.deepEqual(master.levels.map((x) => x.cumulativeExp), [0, 1000, 3500, 9500, 21500]);
+assert.deepEqual(master.levels.map((x) => x.memberCap), [10, 12, 14, 17, 20]);
+assert.equal(master.expSources.filter((x) => x.enabled !== false).reduce((sum, x) => sum + x.exp, 0), 75);
+assert.deepEqual(master.recruitmentModes, ["OPEN_JOIN", "APPLICATION_REQUIRED", "CLOSED"]);
+assert.equal(master.donation.cashCost, 5000);
+assert.equal(master.donation.guildExp, 20);
+assert.equal(Object.keys(master.recommendation.weights).length, 11);
+assert.equal(master.combatBuffEnabled, false);
+assert.equal(master.gvgState, "CLOSED");
+assert.equal(master.friendState, "OMIT");
+const guildUi = readFileSync(new URL("../src/app/components/GuildTab.tsx", import.meta.url), "utf8");
+const rankingUi = readFileSync(new URL("../src/app/components/RankingTab.tsx", import.meta.url), "utf8");
+const context = readFileSync(new URL("../src/app/context/GameContext.tsx", import.meta.url), "utf8");
+assert.ok(guildUi.includes('value="OPEN_JOIN"') && guildUi.includes('value="APPLICATION_REQUIRED"') && guildUi.includes('value="CLOSED"'));
+assert.ok(guildUi.includes("5,000 CASHを献金してTRIBE XPを20"));
+assert.ok(!guildUi.includes("GvG / PRE-OPEN"));
+assert.ok(!guildUi.includes("HP +20% / ATK +20% ボーナス"));
+assert.ok(!guildUi.includes("友達") && !guildUi.includes("Friend"));
+assert.ok(!rankingUi.includes('{ id: "gvg", label: "GvG" }'));
+assert.ok(!context.includes('supabase.rpc("record_guild_activity"'));
+console.log("Guild production master verification PASS");

@@ -80,7 +80,7 @@ test("Guild recommendations are visible before Lv3 while server join remains loc
   await expect(page.getByText(/レベル3/)).toBeVisible();
 });
 
-test("Guild Home exposes pre-open GvG schedule on mobile", async ({ page }) => {
+test("Guild Home omits closed GvG combat projection on mobile", async ({ page }) => {
   await page.addInitScript(() => {
     const me = localStorage.getItem("tribe_demo_uuid");
     const guildId = "30000000-0000-4000-8000-000000000901";
@@ -96,8 +96,8 @@ test("Guild Home exposes pre-open GvG schedule on mobile", async ({ page }) => {
   });
   await enterGame(page);
   await page.getByRole("button", { name: /ギルド/ }).click();
-  await expect(page.locator(".guild-gvg-coming-soon")).toContainText("COMING SOON");
-  await expect(page.locator(".guild-gvg-coming-soon")).toContainText("12:00 / 20:00 / 23:00");
+  await expect(page.locator(".guild-gvg-coming-soon")).toHaveCount(0);
+  await expect(page.getByText(/HP \+20%|ATK \+20%|GvGの攻撃力/)).toHaveCount(0);
   for (const width of [375, 390, 430]) {
     await page.setViewportSize({ width, height: 844 });
     const frame = await page.locator(".guild-main-container").evaluate((node) => ({ scrollWidth: node.scrollWidth, clientWidth: node.clientWidth }));

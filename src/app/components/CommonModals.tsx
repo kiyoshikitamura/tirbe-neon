@@ -495,9 +495,8 @@ export default function CommonModals() {
               </div>
 
               <div className="guild-public-status-grid">
-                <span><small>RECRUITMENT</small><strong>{Number(activeGuildDetail.member_count || 0) >= Number(activeGuildDetail.member_limit || 0) ? "満員" : activeGuildDetail.approval_required ? "承認制・募集中" : "即時加入可能"}</strong></span>
+                <span><small>RECRUITMENT</small><strong>{Number(activeGuildDetail.member_count || 0) >= Number(activeGuildDetail.member_limit || 0) ? "満員" : activeGuildDetail.recruitment_mode === "CLOSED" ? "募集停止" : activeGuildDetail.recruitment_mode === "APPLICATION_REQUIRED" || activeGuildDetail.approval_required ? "承認制・募集中" : "即時加入可能"}</strong></span>
                 <span><small>OPEN SLOTS</small><strong>{Math.max(0, Number(activeGuildDetail.member_limit || 0) - Number(activeGuildDetail.member_count || 0))}枠</strong></span>
-                <span><small>GvG</small><strong>{activeGuildDetail.controlledBases?.length ? `${activeGuildDetail.controlledBases.length}拠点制圧` : "参戦可能"}</strong></span>
                 <span><small>ACTIVE / 7D</small><strong>{Number(activeGuildDetail.active_members_7d || 0)}人</strong></span>
                 <span><small>RAID / 7D</small><strong>{Number(activeGuildDetail.raid_contribution_7d || 0).toLocaleString()}</strong></span>
                 <span><small>POWER</small><strong>{Number(activeGuildDetail.guild_power || 0).toLocaleString()}</strong></span>
@@ -507,30 +506,16 @@ export default function CommonModals() {
                 {activeGuildDetail.description}
               </div>
 
-              <div className="guild-control-section">
-                <span className="section-subtitle font-size-7 text-secondary block mb-1">支配エリア</span>
-                <div className="flex-row-gap-2 flex-wrap">
-                  {activeGuildDetail.controlledBases && activeGuildDetail.controlledBases.length > 0 ? (
-                    activeGuildDetail.controlledBases.map((baseName: string, idx: number) => (
-                      <span key={idx} className="base-control-badge font-size-7 px-2 py-0.5 font-weight-bold text-color-cyan rounded">
-                        {baseName}
-                      </span>
-                    ))
-                  ) : (
-                    <span className="font-size-7 text-secondary block py-1">支配中のエリアはありません。</span>
-                  )}
-                </div>
-              </div>
               {!userGuildMember && (
-                <OutlawButton variant="primary" fullWidth className="mt-3" disabled={Number(activeGuildDetail.member_count || 0) >= Number(activeGuildDetail.member_limit || 0)} onClick={() => {
+                <OutlawButton variant="primary" fullWidth className="mt-3" disabled={activeGuildDetail.recruitment_mode === "CLOSED" || Number(activeGuildDetail.member_count || 0) >= Number(activeGuildDetail.member_limit || 0)} onClick={() => {
                   void import("../../utils/supabase").then(({ supabase }) => supabase.rpc("record_client_funnel_event", {
                     p_event_name: "guild_detail_join_click", p_source_screen: "guild_detail",
-                    p_source_cta: activeGuildDetail.approval_required ? "apply" : "join",
+                    p_source_cta: activeGuildDetail.recruitment_mode === "APPLICATION_REQUIRED" || activeGuildDetail.approval_required ? "apply" : "join",
                     p_object_id: activeGuildDetail.id, p_metadata: {}
                   }));
-                  void handleDemoJoinGuild(activeGuildDetail.id, activeGuildDetail.name, activeGuildDetail.approval_required);
+                  void handleDemoJoinGuild(activeGuildDetail.id, activeGuildDetail.name, activeGuildDetail.recruitment_mode === "APPLICATION_REQUIRED" || activeGuildDetail.approval_required);
                 }}>
-                  {activeGuildDetail.approval_required ? "加入申請する" : "このTRIBEに加入する"}
+                  {activeGuildDetail.recruitment_mode === "CLOSED" ? "募集停止" : activeGuildDetail.recruitment_mode === "APPLICATION_REQUIRED" || activeGuildDetail.approval_required ? "加入申請する" : "このTRIBEに加入する"}
                 </OutlawButton>
               )}
             </div>

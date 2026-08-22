@@ -20,7 +20,6 @@ const RANKING_TABS = [
   { id: "power", label: "総合力" },
   { id: "guild_power", label: "TRIBE総合力" },
   { id: "pvp", label: "PvP" },
-  { id: "gvg", label: "GvG" },
   { id: "raid", label: "レイド" },
 ] as const;
 

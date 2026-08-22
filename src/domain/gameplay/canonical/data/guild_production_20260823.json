@@ -1,0 +1,51 @@
+{
+  "version": "2026-08-23",
+  "status": "FROZEN",
+  "levels": [
+    { "level": 1, "requiredExp": 1000, "cumulativeExp": 0, "memberCap": 10 },
+    { "level": 2, "requiredExp": 2500, "cumulativeExp": 1000, "memberCap": 12 },
+    { "level": 3, "requiredExp": 6000, "cumulativeExp": 3500, "memberCap": 14 },
+    { "level": 4, "requiredExp": 12000, "cumulativeExp": 9500, "memberCap": 17 },
+    { "level": 5, "requiredExp": 0, "cumulativeExp": 21500, "memberCap": 20 }
+  ],
+  "expSources": [
+    { "source": "LOGIN", "exp": 10, "dailyPerMember": 1 },
+    { "source": "FIRST_GUILD_CHAT", "exp": 10, "dailyPerMember": 1 },
+    { "source": "QUEST_3_CLEAR", "exp": 10, "dailyPerMember": 1, "threshold": 3 },
+    { "source": "PVP_FINALIZED", "exp": 10, "dailyPerMember": 1 },
+    { "source": "RAID_FINALIZED", "exp": 15, "dailyPerMember": 1 },
+    { "source": "DONATION", "exp": 20, "dailyPerMember": 1 },
+    { "source": "GVG", "exp": 0, "dailyPerMember": 0, "enabled": false }
+  ],
+  "recruitmentModes": ["OPEN_JOIN", "APPLICATION_REQUIRED", "CLOSED"],
+  "roles": {
+    "MASTER": ["APPLICATION_APPROVE", "APPLICATION_REJECT", "MEMBER_KICK", "SUB_MASTER_KICK", "ROLE_ASSIGNMENT", "RECRUITMENT_EDIT", "DESCRIPTION_EDIT", "WELCOME_EDIT", "GUILD_SHOP", "LEADER_TRANSFER", "DISBAND"],
+    "SUB_MASTER": ["APPLICATION_APPROVE", "APPLICATION_REJECT", "MEMBER_KICK", "RECRUITMENT_EDIT", "DESCRIPTION_EDIT", "WELCOME_EDIT", "GUILD_SHOP"],
+    "MEMBER": ["GUILD_CHAT", "DONATION", "GUILD_CONTENT"]
+  },
+  "donation": { "cashCost": 5000, "guildExp": 20, "dailyPerMember": 1, "personalReward": null },
+  "recommendation": {
+    "algorithmVersion": "1.1",
+    "status": "FROZEN",
+    "weightsStatus": "P0_TUNABLE",
+    "minResults": 3,
+    "maxResults": 5,
+    "weights": {
+      "active_member_7d": 18,
+      "raid_participant_7d": 16,
+      "chat_member_7d": 10,
+      "activity_contributor_7d": 12,
+      "target_fill_bonus": 45,
+      "instant_join_bonus": 12,
+      "raid_contribution_scale": 4,
+      "guild_power_scale": 2,
+      "inactive_14d_penalty": 60,
+      "stale_request_penalty": 8,
+      "rotation_range": 9
+    }
+  },
+  "creation": { "userLevel": 8, "cashCost": 5000, "nameMin": 1, "nameMax": 12 },
+  "combatBuffEnabled": false,
+  "gvgState": "CLOSED",
+  "friendState": "OMIT"
+}
