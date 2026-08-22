@@ -36,6 +36,11 @@ import type { SeEvent } from "@/audio/audioContract";
 import { beginAssetTierMetric, finishAssetTierMetric, preloadAssetManifest } from "@/app/lib/screenAssets";
 import { canonicalMissionUiStatus } from "@/domain/gameplay/canonical/missions";
 import { canonicalItemName } from "@/domain/gameplay/canonical/items";
+import {
+  CANONICAL_QUEST_ENCOUNTERS,
+  CANONICAL_QUEST_REWARD_POOLS,
+  CANONICAL_QUESTS,
+} from "@/domain/gameplay/canonical/quests";
 
 const ONBOARDING_AUTH_INTENT_KEY = "tribe_onboarding_auth_intent";
 const ONBOARDING_AUTH_INTENT_MAX_AGE_MS = 30 * 60 * 1000;
@@ -387,7 +392,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     selectedCourse, setSelectedCourse,
     selectedMembers, setSelectedMembers,
     selectedPatrolMember, setSelectedPatrolMember,
-    dailyCashSkips, setDailyCashSkips,
+    dailyCashSkips, setDailyCashSkips, dailyPaidSkips, setDailyPaidSkips,
     dailyCashSkipsResetDate, setDailyCashSkipsResetDate,
     activePatrols, setActivePatrols,
     patrolLogs, setPatrolLogs,
@@ -961,7 +966,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
       const { data: userProfile } = await supabase
         .from("users")
-        .select("username, favorite_character_id, bio, avatar_url, sound_settings, current_base_id, daily_cash_skips_count, daily_cash_skips_reset_date, last_guild_left_at, gift_code, title_equipped, equipped_background, equipped_front_effect, selected_bg_mode, interior_item, level, xp, created_at")
+        .select("username, favorite_character_id, bio, avatar_url, sound_settings, current_base_id, daily_cash_skips_count, daily_cash_skips_reset_date, quest_free_skips_count, quest_paid_skips_count, quest_skips_reset_date, last_guild_left_at, gift_code, title_equipped, equipped_background, equipped_front_effect, selected_bg_mode, interior_item, level, xp, created_at")
         .eq("id", userId)
         .single();
       
@@ -972,8 +977,9 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         }
         setBio(userProfile.bio || "歌舞伎町の覇権を握る。");
         setAvatarUrl(userProfile.avatar_url || "/reiji_transparent_asset.png");
-        setDailyCashSkips(userProfile.daily_cash_skips_count);
-        setDailyCashSkipsResetDate(userProfile.daily_cash_skips_reset_date || null);
+        setDailyCashSkips(userProfile.quest_free_skips_count ?? userProfile.daily_cash_skips_count ?? 0);
+        setDailyPaidSkips(userProfile.quest_paid_skips_count ?? 0);
+        setDailyCashSkipsResetDate(userProfile.quest_skips_reset_date || userProfile.daily_cash_skips_reset_date || null);
         setCurrentBaseId(userProfile.current_base_id || "shinjuku");
         setLastGuildLeftAt(userProfile.last_guild_left_at);
         setGiftCode(userProfile.gift_code || null);
@@ -1194,16 +1200,45 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       }
 
       // 見回り関連データとマスタデータの同期
-      const { data: questsData } = await supabase.from("quests").select("*");
+      const [{ data: questsData }, { data: canonicalQuestData }, { data: questPoolData }, { data: encounterData }] = await Promise.all([
+        supabase.from("quests").select("*"),
+        supabase.from("canonical_quest_master").select("*"),
+        supabase.from("canonical_quest_reward_pool_items").select("*"),
+        supabase.from("canonical_quest_encounter_master").select("*"),
+      ]);
       if (questsData) {
-        setPatrolCourses(questsData.map((quest: any) => ({
-          ...quest,
-          reward_cash: quest.cash_reward ?? quest.reward_cash ?? 0,
-          reward_xp: quest.exp_reward ?? quest.reward_xp ?? 0,
-          reward_item_id: quest.item_rewards?.[0]?.item_id ?? null,
-          reward_item_chance: quest.item_rewards?.[0]?.chance ?? 0,
-          battle_trigger_chance: quest.battle_trigger_chance ?? 0.2,
+        const canonicalRows = canonicalQuestData?.length ? canonicalQuestData : CANONICAL_QUESTS.map((quest) => ({
+          quest_id: quest.questId,
+          cash_reward: quest.cashReward,
+          user_exp: quest.userExp,
+          first_clear_user_exp: quest.firstClearUserExp,
+          reward_pool_id: quest.rewardPoolId,
+          first_clear_reward_pool_id: quest.firstClearRewardPoolId,
+        }));
+        const poolRows = questPoolData?.length ? questPoolData : CANONICAL_QUEST_REWARD_POOLS.flatMap((pool) => pool.items.map((item, rollIndex) => ({
+          reward_pool_id: pool.rewardPoolId,
+          roll_index: rollIndex + 1,
+          item_id: item.itemId,
+          quantity: item.quantity,
+          probability_bp: item.probabilityBp,
         })));
+        const canonicalByQuest = new Map(canonicalRows.map((quest: any) => [quest.quest_id, quest]));
+        setPatrolCourses(questsData.map((quest: any) => {
+          const canonical: any = canonicalByQuest.get(quest.id);
+          const rewardPoolItems = poolRows.filter((item: any) => item.reward_pool_id === canonical?.reward_pool_id);
+          const firstClearItems = poolRows.filter((item: any) => item.reward_pool_id === canonical?.first_clear_reward_pool_id);
+          return {
+            ...quest,
+            reward_cash: canonical?.cash_reward ?? quest.cash_reward ?? quest.reward_cash ?? 0,
+            reward_xp: canonical?.user_exp ?? quest.exp_reward ?? quest.reward_xp ?? 0,
+            reward_items: rewardPoolItems,
+            first_clear_user_exp: canonical?.first_clear_user_exp ?? 0,
+            first_clear_items: firstClearItems,
+            reward_item_id: rewardPoolItems[0]?.item_id ?? null,
+            reward_item_chance: Number(rewardPoolItems[0]?.probability_bp ?? 0) / 100,
+            battle_trigger_chance: quest.battle_trigger_chance ?? 0.2,
+          };
+        }));
       }
 
       const { data: raidAttemptState, error: raidAttemptStateError } = await supabase.rpc("get_current_raid_attempt_state");
@@ -1212,17 +1247,30 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         setRaidFirstEntryFree(Boolean(raidAttemptState.firstEntryFree));
       }
 
-      const { data: npcsData } = await supabase.from("patrol_npcs").select("*");
-      if (npcsData) setPatrolNpcs(npcsData.map((npc: any) => ({
-        ...npc,
-        level: npc.npc_level ?? 1,
-        hp: npc.enemy_data?.hp ?? 1000,
-        atk: npc.enemy_data?.atk ?? 100,
-        def: npc.enemy_data?.def ?? 100,
-        spd: npc.enemy_data?.spd ?? 100,
-        luk: npc.enemy_data?.luk ?? 10,
-        skills: npc.enemy_data?.skills ?? [{ id: "npc_attack", name: "攻撃", power: 80, effect_type: "ATTACK", activationType: "ACTIVE", cooldown: 0, availableFromRound: 1, target: "ENEMY_SINGLE", effects: ["DAMAGE 80% ATK"] }],
-      })));
+      const encounterRows = encounterData?.length ? encounterData : CANONICAL_QUEST_ENCOUNTERS.map((encounter) => ({
+        encounter_id: encounter.encounterId,
+        quest_id: encounter.questId,
+        town_id: encounter.townId,
+        difficulty: encounter.difficulty,
+        members: encounter.members,
+      }));
+      const canonicalEncounterProjection = encounterRows.map((encounter: any) => ({
+        id: encounter.encounter_id,
+        quest_id: encounter.quest_id,
+        town_id: encounter.town_id,
+        difficulty: encounter.difficulty,
+        npc_name: "Canonical NPC Party",
+        members: encounter.members,
+      }));
+      // M9-X presentation fixtures intentionally use non-Production quest IDs.
+      // Keep their tiny visual-test encounter isolated to the mock build; real
+      // Runtime never reads the retired patrol_npcs Gameplay master.
+      const mockFixtureEncounters = process.env.NEXT_PUBLIC_USE_MOCK_DB === "true"
+        ? ((await supabase.from("patrol_npcs").select("*")).data || []).filter((npc: any) => (
+          !canonicalEncounterProjection.some((encounter: any) => encounter.quest_id === npc.quest_id)
+        ))
+        : [];
+      setPatrolNpcs([...canonicalEncounterProjection, ...mockFixtureEncounters]);
 
       const { data: userPatrols } = await supabase.from("user_patrols").select("*").eq("user_id", userId);
       
@@ -3564,7 +3612,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     selectedCourse, setSelectedCourse,
     selectedMembers, setSelectedMembers,
     selectedPatrolMember, setSelectedPatrolMember,
-    dailyCashSkips, setDailyCashSkips,
+    dailyCashSkips, setDailyCashSkips, dailyPaidSkips, setDailyPaidSkips,
     dailyCashSkipsResetDate, setDailyCashSkipsResetDate,
     activePatrols, setActivePatrols,
     patrolLogs, setPatrolLogs,

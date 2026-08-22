@@ -1,0 +1,843 @@
+{
+  "version": "2026-08-22",
+  "authority": "specs/production/gameplay_foundation/quest_reward_progression_master.md",
+  "towns": [
+    {
+      "townId": "shinjuku",
+      "name": "新宿",
+      "displayOrder": 1
+    },
+    {
+      "townId": "shibuya",
+      "name": "渋谷",
+      "displayOrder": 2
+    },
+    {
+      "townId": "ikebukuro",
+      "name": "池袋",
+      "displayOrder": 3
+    },
+    {
+      "townId": "roppongi",
+      "name": "六本木",
+      "displayOrder": 4
+    },
+    {
+      "townId": "akihabara",
+      "name": "秋葉原",
+      "displayOrder": 5
+    },
+    {
+      "townId": "kawasaki",
+      "name": "川崎",
+      "displayOrder": 6
+    },
+    {
+      "townId": "yokohama",
+      "name": "横浜",
+      "displayOrder": 7
+    }
+  ],
+  "difficultyContracts": {
+    "EASY": {
+      "durationSec": 60,
+      "vitalityCost": 5,
+      "userExp": 100,
+      "cashReward": 300,
+      "firstClearUserExp": 100,
+      "rewardPoolId": "QUEST_EASY",
+      "firstClearRewardPoolId": "QUEST_FIRST_EASY"
+    },
+    "NORMAL": {
+      "durationSec": 180,
+      "vitalityCost": 10,
+      "userExp": 180,
+      "cashReward": 700,
+      "firstClearUserExp": 120,
+      "rewardPoolId": "QUEST_NORMAL",
+      "firstClearRewardPoolId": "QUEST_FIRST_NORMAL"
+    },
+    "HARD": {
+      "durationSec": 300,
+      "vitalityCost": 15,
+      "userExp": 300,
+      "cashReward": 1300,
+      "firstClearUserExp": 200,
+      "rewardPoolId": "QUEST_HARD",
+      "firstClearRewardPoolId": "QUEST_FIRST_HARD"
+    }
+  },
+  "rewardPools": [
+    {
+      "rewardPoolId": "QUEST_EASY",
+      "items": [
+        {
+          "itemId": "CHAR_EXP_S",
+          "quantity": 5,
+          "probabilityBp": 10000
+        },
+        {
+          "itemId": "CHAR_EXP_S",
+          "quantity": 3,
+          "probabilityBp": 3000
+        },
+        {
+          "itemId": "EQUIP_EXP_S",
+          "quantity": 6,
+          "probabilityBp": 10000
+        },
+        {
+          "itemId": "EQUIP_EXP_S",
+          "quantity": 4,
+          "probabilityBp": 3000
+        }
+      ]
+    },
+    {
+      "rewardPoolId": "QUEST_NORMAL",
+      "items": [
+        {
+          "itemId": "CHAR_EXP_M",
+          "quantity": 2,
+          "probabilityBp": 10000
+        },
+        {
+          "itemId": "CHAR_EXP_M",
+          "quantity": 1,
+          "probabilityBp": 4000
+        },
+        {
+          "itemId": "EQUIP_EXP_M",
+          "quantity": 3,
+          "probabilityBp": 10000
+        },
+        {
+          "itemId": "EQUIP_EXP_M",
+          "quantity": 2,
+          "probabilityBp": 4000
+        },
+        {
+          "itemId": "SKILL_MANUAL",
+          "quantity": 1,
+          "probabilityBp": 100
+        },
+        {
+          "itemId": "EQUIP_LB_PART",
+          "quantity": 1,
+          "probabilityBp": 200
+        }
+      ]
+    },
+    {
+      "rewardPoolId": "QUEST_HARD",
+      "items": [
+        {
+          "itemId": "CHAR_EXP_L",
+          "quantity": 1,
+          "probabilityBp": 10000
+        },
+        {
+          "itemId": "CHAR_EXP_L",
+          "quantity": 1,
+          "probabilityBp": 5000
+        },
+        {
+          "itemId": "EQUIP_EXP_L",
+          "quantity": 1,
+          "probabilityBp": 10000
+        },
+        {
+          "itemId": "EQUIP_EXP_L",
+          "quantity": 1,
+          "probabilityBp": 5000
+        },
+        {
+          "itemId": "SKILL_MANUAL",
+          "quantity": 1,
+          "probabilityBp": 300
+        },
+        {
+          "itemId": "EQUIP_LB_PART",
+          "quantity": 1,
+          "probabilityBp": 500
+        }
+      ]
+    },
+    {
+      "rewardPoolId": "QUEST_FIRST_EASY",
+      "items": [
+        {
+          "itemId": "CHAR_EXP_M",
+          "quantity": 1,
+          "probabilityBp": 10000
+        },
+        {
+          "itemId": "EQUIP_EXP_M",
+          "quantity": 1,
+          "probabilityBp": 10000
+        }
+      ]
+    },
+    {
+      "rewardPoolId": "QUEST_FIRST_NORMAL",
+      "items": [
+        {
+          "itemId": "CHAR_EXP_L",
+          "quantity": 1,
+          "probabilityBp": 10000
+        },
+        {
+          "itemId": "EQUIP_EXP_L",
+          "quantity": 1,
+          "probabilityBp": 10000
+        }
+      ]
+    },
+    {
+      "rewardPoolId": "QUEST_FIRST_HARD",
+      "items": [
+        {
+          "itemId": "CHAR_EXP_L",
+          "quantity": 2,
+          "probabilityBp": 10000
+        },
+        {
+          "itemId": "EQUIP_EXP_L",
+          "quantity": 2,
+          "probabilityBp": 10000
+        },
+        {
+          "itemId": "EQUIP_LB_PART",
+          "quantity": 1,
+          "probabilityBp": 10000
+        }
+      ]
+    }
+  ],
+  "quests": [
+    {
+      "questId": "q_shinjuku_1",
+      "townId": "shinjuku",
+      "difficulty": "EASY",
+      "name": "歌舞伎町 夜間見回り",
+      "displayOrder": 1,
+      "durationSec": 60,
+      "vitalityCost": 5,
+      "userExp": 100,
+      "cashReward": 300,
+      "firstClearUserExp": 100,
+      "firstClearRewards": [
+        {
+          "itemId": "CHAR_EXP_M",
+          "quantity": 1,
+          "probabilityBp": 10000
+        },
+        {
+          "itemId": "EQUIP_EXP_M",
+          "quantity": 1,
+          "probabilityBp": 10000
+        }
+      ],
+      "rewardPoolId": "QUEST_EASY",
+      "enemyEncounterId": "encounter_q_shinjuku_1",
+      "unlockCondition": "NONE",
+      "isProductionEnabled": true
+    },
+    {
+      "questId": "q_shinjuku_2",
+      "townId": "shinjuku",
+      "difficulty": "NORMAL",
+      "name": "闇取引ルートの警護",
+      "displayOrder": 2,
+      "durationSec": 180,
+      "vitalityCost": 10,
+      "userExp": 180,
+      "cashReward": 700,
+      "firstClearUserExp": 120,
+      "firstClearRewards": [
+        {
+          "itemId": "CHAR_EXP_L",
+          "quantity": 1,
+          "probabilityBp": 10000
+        },
+        {
+          "itemId": "EQUIP_EXP_L",
+          "quantity": 1,
+          "probabilityBp": 10000
+        }
+      ],
+      "rewardPoolId": "QUEST_NORMAL",
+      "enemyEncounterId": "encounter_q_shinjuku_2",
+      "unlockCondition": "NONE",
+      "isProductionEnabled": true
+    },
+    {
+      "questId": "q_shinjuku_3",
+      "townId": "shinjuku",
+      "difficulty": "HARD",
+      "name": "敵対組織アジト強襲",
+      "displayOrder": 3,
+      "durationSec": 300,
+      "vitalityCost": 15,
+      "userExp": 300,
+      "cashReward": 1300,
+      "firstClearUserExp": 200,
+      "firstClearRewards": [
+        {
+          "itemId": "CHAR_EXP_L",
+          "quantity": 2,
+          "probabilityBp": 10000
+        },
+        {
+          "itemId": "EQUIP_EXP_L",
+          "quantity": 2,
+          "probabilityBp": 10000
+        },
+        {
+          "itemId": "EQUIP_LB_PART",
+          "quantity": 1,
+          "probabilityBp": 10000
+        }
+      ],
+      "rewardPoolId": "QUEST_HARD",
+      "enemyEncounterId": "encounter_q_shinjuku_3",
+      "unlockCondition": "NONE",
+      "isProductionEnabled": true
+    },
+    {
+      "questId": "q_shibuya_1",
+      "townId": "shibuya",
+      "difficulty": "EASY",
+      "name": "センター街 情報収集",
+      "displayOrder": 4,
+      "durationSec": 60,
+      "vitalityCost": 5,
+      "userExp": 100,
+      "cashReward": 300,
+      "firstClearUserExp": 100,
+      "firstClearRewards": [
+        {
+          "itemId": "CHAR_EXP_M",
+          "quantity": 1,
+          "probabilityBp": 10000
+        },
+        {
+          "itemId": "EQUIP_EXP_M",
+          "quantity": 1,
+          "probabilityBp": 10000
+        }
+      ],
+      "rewardPoolId": "QUEST_EASY",
+      "enemyEncounterId": "encounter_q_shibuya_1",
+      "unlockCondition": "NONE",
+      "isProductionEnabled": true
+    },
+    {
+      "questId": "q_shibuya_2",
+      "townId": "shibuya",
+      "difficulty": "NORMAL",
+      "name": "違法クラブのみかじめ回収",
+      "displayOrder": 5,
+      "durationSec": 180,
+      "vitalityCost": 10,
+      "userExp": 180,
+      "cashReward": 700,
+      "firstClearUserExp": 120,
+      "firstClearRewards": [
+        {
+          "itemId": "CHAR_EXP_L",
+          "quantity": 1,
+          "probabilityBp": 10000
+        },
+        {
+          "itemId": "EQUIP_EXP_L",
+          "quantity": 1,
+          "probabilityBp": 10000
+        }
+      ],
+      "rewardPoolId": "QUEST_NORMAL",
+      "enemyEncounterId": "encounter_q_shibuya_2",
+      "unlockCondition": "NONE",
+      "isProductionEnabled": true
+    },
+    {
+      "questId": "q_shibuya_3",
+      "townId": "shibuya",
+      "difficulty": "HARD",
+      "name": "スカウト狩り撃退戦",
+      "displayOrder": 6,
+      "durationSec": 300,
+      "vitalityCost": 15,
+      "userExp": 300,
+      "cashReward": 1300,
+      "firstClearUserExp": 200,
+      "firstClearRewards": [
+        {
+          "itemId": "CHAR_EXP_L",
+          "quantity": 2,
+          "probabilityBp": 10000
+        },
+        {
+          "itemId": "EQUIP_EXP_L",
+          "quantity": 2,
+          "probabilityBp": 10000
+        },
+        {
+          "itemId": "EQUIP_LB_PART",
+          "quantity": 1,
+          "probabilityBp": 10000
+        }
+      ],
+      "rewardPoolId": "QUEST_HARD",
+      "enemyEncounterId": "encounter_q_shibuya_3",
+      "unlockCondition": "NONE",
+      "isProductionEnabled": true
+    },
+    {
+      "questId": "q_ikebukuro_1",
+      "townId": "ikebukuro",
+      "difficulty": "EASY",
+      "name": "西口公園 の警戒",
+      "displayOrder": 7,
+      "durationSec": 60,
+      "vitalityCost": 5,
+      "userExp": 100,
+      "cashReward": 300,
+      "firstClearUserExp": 100,
+      "firstClearRewards": [
+        {
+          "itemId": "CHAR_EXP_M",
+          "quantity": 1,
+          "probabilityBp": 10000
+        },
+        {
+          "itemId": "EQUIP_EXP_M",
+          "quantity": 1,
+          "probabilityBp": 10000
+        }
+      ],
+      "rewardPoolId": "QUEST_EASY",
+      "enemyEncounterId": "encounter_q_ikebukuro_1",
+      "unlockCondition": "NONE",
+      "isProductionEnabled": true
+    },
+    {
+      "questId": "q_ikebukuro_2",
+      "townId": "ikebukuro",
+      "difficulty": "NORMAL",
+      "name": "闇金融の取り立て補助",
+      "displayOrder": 8,
+      "durationSec": 180,
+      "vitalityCost": 10,
+      "userExp": 180,
+      "cashReward": 700,
+      "firstClearUserExp": 120,
+      "firstClearRewards": [
+        {
+          "itemId": "CHAR_EXP_L",
+          "quantity": 1,
+          "probabilityBp": 10000
+        },
+        {
+          "itemId": "EQUIP_EXP_L",
+          "quantity": 1,
+          "probabilityBp": 10000
+        }
+      ],
+      "rewardPoolId": "QUEST_NORMAL",
+      "enemyEncounterId": "encounter_q_ikebukuro_2",
+      "unlockCondition": "NONE",
+      "isProductionEnabled": true
+    },
+    {
+      "questId": "q_ikebukuro_3",
+      "townId": "ikebukuro",
+      "difficulty": "HARD",
+      "name": "中華街ルートの奪還",
+      "displayOrder": 9,
+      "durationSec": 300,
+      "vitalityCost": 15,
+      "userExp": 300,
+      "cashReward": 1300,
+      "firstClearUserExp": 200,
+      "firstClearRewards": [
+        {
+          "itemId": "CHAR_EXP_L",
+          "quantity": 2,
+          "probabilityBp": 10000
+        },
+        {
+          "itemId": "EQUIP_EXP_L",
+          "quantity": 2,
+          "probabilityBp": 10000
+        },
+        {
+          "itemId": "EQUIP_LB_PART",
+          "quantity": 1,
+          "probabilityBp": 10000
+        }
+      ],
+      "rewardPoolId": "QUEST_HARD",
+      "enemyEncounterId": "encounter_q_ikebukuro_3",
+      "unlockCondition": "NONE",
+      "isProductionEnabled": true
+    },
+    {
+      "questId": "q_roppongi_1",
+      "townId": "roppongi",
+      "difficulty": "EASY",
+      "name": "VIPクラブのボディーガード",
+      "displayOrder": 10,
+      "durationSec": 60,
+      "vitalityCost": 5,
+      "userExp": 100,
+      "cashReward": 300,
+      "firstClearUserExp": 100,
+      "firstClearRewards": [
+        {
+          "itemId": "CHAR_EXP_M",
+          "quantity": 1,
+          "probabilityBp": 10000
+        },
+        {
+          "itemId": "EQUIP_EXP_M",
+          "quantity": 1,
+          "probabilityBp": 10000
+        }
+      ],
+      "rewardPoolId": "QUEST_EASY",
+      "enemyEncounterId": "encounter_q_roppongi_1",
+      "unlockCondition": "NONE",
+      "isProductionEnabled": true
+    },
+    {
+      "questId": "q_roppongi_2",
+      "townId": "roppongi",
+      "difficulty": "NORMAL",
+      "name": "外資シンジケートとの取引警護",
+      "displayOrder": 11,
+      "durationSec": 180,
+      "vitalityCost": 10,
+      "userExp": 180,
+      "cashReward": 700,
+      "firstClearUserExp": 120,
+      "firstClearRewards": [
+        {
+          "itemId": "CHAR_EXP_L",
+          "quantity": 1,
+          "probabilityBp": 10000
+        },
+        {
+          "itemId": "EQUIP_EXP_L",
+          "quantity": 1,
+          "probabilityBp": 10000
+        }
+      ],
+      "rewardPoolId": "QUEST_NORMAL",
+      "enemyEncounterId": "encounter_q_roppongi_2",
+      "unlockCondition": "NONE",
+      "isProductionEnabled": true
+    },
+    {
+      "questId": "q_roppongi_3",
+      "townId": "roppongi",
+      "difficulty": "HARD",
+      "name": "ヒルズ裏ルート制圧",
+      "displayOrder": 12,
+      "durationSec": 300,
+      "vitalityCost": 15,
+      "userExp": 300,
+      "cashReward": 1300,
+      "firstClearUserExp": 200,
+      "firstClearRewards": [
+        {
+          "itemId": "CHAR_EXP_L",
+          "quantity": 2,
+          "probabilityBp": 10000
+        },
+        {
+          "itemId": "EQUIP_EXP_L",
+          "quantity": 2,
+          "probabilityBp": 10000
+        },
+        {
+          "itemId": "EQUIP_LB_PART",
+          "quantity": 1,
+          "probabilityBp": 10000
+        }
+      ],
+      "rewardPoolId": "QUEST_HARD",
+      "enemyEncounterId": "encounter_q_roppongi_3",
+      "unlockCondition": "NONE",
+      "isProductionEnabled": true
+    },
+    {
+      "questId": "q_akihabara_1",
+      "townId": "akihabara",
+      "difficulty": "EASY",
+      "name": "ジャンク街の密売ルート確認",
+      "displayOrder": 13,
+      "durationSec": 60,
+      "vitalityCost": 5,
+      "userExp": 100,
+      "cashReward": 300,
+      "firstClearUserExp": 100,
+      "firstClearRewards": [
+        {
+          "itemId": "CHAR_EXP_M",
+          "quantity": 1,
+          "probabilityBp": 10000
+        },
+        {
+          "itemId": "EQUIP_EXP_M",
+          "quantity": 1,
+          "probabilityBp": 10000
+        }
+      ],
+      "rewardPoolId": "QUEST_EASY",
+      "enemyEncounterId": "encounter_q_akihabara_1",
+      "unlockCondition": "NONE",
+      "isProductionEnabled": true
+    },
+    {
+      "questId": "q_akihabara_2",
+      "townId": "akihabara",
+      "difficulty": "NORMAL",
+      "name": "不正パーツルートの解体",
+      "displayOrder": 14,
+      "durationSec": 180,
+      "vitalityCost": 10,
+      "userExp": 180,
+      "cashReward": 700,
+      "firstClearUserExp": 120,
+      "firstClearRewards": [
+        {
+          "itemId": "CHAR_EXP_L",
+          "quantity": 1,
+          "probabilityBp": 10000
+        },
+        {
+          "itemId": "EQUIP_EXP_L",
+          "quantity": 1,
+          "probabilityBp": 10000
+        }
+      ],
+      "rewardPoolId": "QUEST_NORMAL",
+      "enemyEncounterId": "encounter_q_akihabara_2",
+      "unlockCondition": "NONE",
+      "isProductionEnabled": true
+    },
+    {
+      "questId": "q_akihabara_3",
+      "townId": "akihabara",
+      "difficulty": "HARD",
+      "name": "ハッカー集団のアジト摘発",
+      "displayOrder": 15,
+      "durationSec": 300,
+      "vitalityCost": 15,
+      "userExp": 300,
+      "cashReward": 1300,
+      "firstClearUserExp": 200,
+      "firstClearRewards": [
+        {
+          "itemId": "CHAR_EXP_L",
+          "quantity": 2,
+          "probabilityBp": 10000
+        },
+        {
+          "itemId": "EQUIP_EXP_L",
+          "quantity": 2,
+          "probabilityBp": 10000
+        },
+        {
+          "itemId": "EQUIP_LB_PART",
+          "quantity": 1,
+          "probabilityBp": 10000
+        }
+      ],
+      "rewardPoolId": "QUEST_HARD",
+      "enemyEncounterId": "encounter_q_akihabara_3",
+      "unlockCondition": "NONE",
+      "isProductionEnabled": true
+    },
+    {
+      "questId": "q_kawasaki_1",
+      "townId": "kawasaki",
+      "difficulty": "EASY",
+      "name": "工場地帯の夜間哨戒",
+      "displayOrder": 16,
+      "durationSec": 60,
+      "vitalityCost": 5,
+      "userExp": 100,
+      "cashReward": 300,
+      "firstClearUserExp": 100,
+      "firstClearRewards": [
+        {
+          "itemId": "CHAR_EXP_M",
+          "quantity": 1,
+          "probabilityBp": 10000
+        },
+        {
+          "itemId": "EQUIP_EXP_M",
+          "quantity": 1,
+          "probabilityBp": 10000
+        }
+      ],
+      "rewardPoolId": "QUEST_EASY",
+      "enemyEncounterId": "encounter_q_kawasaki_1",
+      "unlockCondition": "NONE",
+      "isProductionEnabled": true
+    },
+    {
+      "questId": "q_kawasaki_2",
+      "townId": "kawasaki",
+      "difficulty": "NORMAL",
+      "name": "湾岸ルートの密輸防衛",
+      "displayOrder": 17,
+      "durationSec": 180,
+      "vitalityCost": 10,
+      "userExp": 180,
+      "cashReward": 700,
+      "firstClearUserExp": 120,
+      "firstClearRewards": [
+        {
+          "itemId": "CHAR_EXP_L",
+          "quantity": 1,
+          "probabilityBp": 10000
+        },
+        {
+          "itemId": "EQUIP_EXP_L",
+          "quantity": 1,
+          "probabilityBp": 10000
+        }
+      ],
+      "rewardPoolId": "QUEST_NORMAL",
+      "enemyEncounterId": "encounter_q_kawasaki_2",
+      "unlockCondition": "NONE",
+      "isProductionEnabled": true
+    },
+    {
+      "questId": "q_kawasaki_3",
+      "townId": "kawasaki",
+      "difficulty": "HARD",
+      "name": "暴走グループ総長とのタイマン",
+      "displayOrder": 18,
+      "durationSec": 300,
+      "vitalityCost": 15,
+      "userExp": 300,
+      "cashReward": 1300,
+      "firstClearUserExp": 200,
+      "firstClearRewards": [
+        {
+          "itemId": "CHAR_EXP_L",
+          "quantity": 2,
+          "probabilityBp": 10000
+        },
+        {
+          "itemId": "EQUIP_EXP_L",
+          "quantity": 2,
+          "probabilityBp": 10000
+        },
+        {
+          "itemId": "EQUIP_LB_PART",
+          "quantity": 1,
+          "probabilityBp": 10000
+        }
+      ],
+      "rewardPoolId": "QUEST_HARD",
+      "enemyEncounterId": "encounter_q_kawasaki_3",
+      "unlockCondition": "NONE",
+      "isProductionEnabled": true
+    },
+    {
+      "questId": "q_yokohama_1",
+      "townId": "yokohama",
+      "difficulty": "EASY",
+      "name": "元町通り の見張り",
+      "displayOrder": 19,
+      "durationSec": 60,
+      "vitalityCost": 5,
+      "userExp": 100,
+      "cashReward": 300,
+      "firstClearUserExp": 100,
+      "firstClearRewards": [
+        {
+          "itemId": "CHAR_EXP_M",
+          "quantity": 1,
+          "probabilityBp": 10000
+        },
+        {
+          "itemId": "EQUIP_EXP_M",
+          "quantity": 1,
+          "probabilityBp": 10000
+        }
+      ],
+      "rewardPoolId": "QUEST_EASY",
+      "enemyEncounterId": "encounter_q_yokohama_1",
+      "unlockCondition": "NONE",
+      "isProductionEnabled": true
+    },
+    {
+      "questId": "q_yokohama_2",
+      "townId": "yokohama",
+      "difficulty": "NORMAL",
+      "name": "コンテナ埠頭の荷揚げ警戒",
+      "displayOrder": 20,
+      "durationSec": 180,
+      "vitalityCost": 10,
+      "userExp": 180,
+      "cashReward": 700,
+      "firstClearUserExp": 120,
+      "firstClearRewards": [
+        {
+          "itemId": "CHAR_EXP_L",
+          "quantity": 1,
+          "probabilityBp": 10000
+        },
+        {
+          "itemId": "EQUIP_EXP_L",
+          "quantity": 1,
+          "probabilityBp": 10000
+        }
+      ],
+      "rewardPoolId": "QUEST_NORMAL",
+      "enemyEncounterId": "encounter_q_yokohama_2",
+      "unlockCondition": "NONE",
+      "isProductionEnabled": true
+    },
+    {
+      "questId": "q_yokohama_3",
+      "townId": "yokohama",
+      "difficulty": "HARD",
+      "name": "国際マフィア船上防衛",
+      "displayOrder": 21,
+      "durationSec": 300,
+      "vitalityCost": 15,
+      "userExp": 300,
+      "cashReward": 1300,
+      "firstClearUserExp": 200,
+      "firstClearRewards": [
+        {
+          "itemId": "CHAR_EXP_L",
+          "quantity": 2,
+          "probabilityBp": 10000
+        },
+        {
+          "itemId": "EQUIP_EXP_L",
+          "quantity": 2,
+          "probabilityBp": 10000
+        },
+        {
+          "itemId": "EQUIP_LB_PART",
+          "quantity": 1,
+          "probabilityBp": 10000
+        }
+      ],
+      "rewardPoolId": "QUEST_HARD",
+      "enemyEncounterId": "encounter_q_yokohama_3",
+      "unlockCondition": "NONE",
+      "isProductionEnabled": true
+    }
+  ],
+  "unresolvedContracts": []
+}

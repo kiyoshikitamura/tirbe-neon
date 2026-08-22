@@ -36,6 +36,7 @@ export default function PatrolTab() {
     handleInstantComplete,
     handleClaimRewards,
     dailyCashSkips,
+    dailyPaidSkips,
     dailyCashSkipsResetDate,
     playCyberSe,
     patrolCourses,
@@ -51,9 +52,7 @@ export default function PatrolTab() {
     setShowPatrolRewardModal,
     setGlobalInteractionBlocking,
     onboardingState,
-    setOnboardingState,
-    userLevel,
-    featureOperatingStates
+    setOnboardingState
   } = useGame();
   const tutorialStep = onboardingState?.tutorial_step;
   const isTutorialQuestStep = ["DISPATCH", "FREE_INSTANT", "TUTORIAL_BATTLE"].includes(tutorialStep || "");
@@ -137,6 +136,9 @@ export default function PatrolTab() {
   }, [activePatrols, patrolNpcs, tutorialStep, userCharactersDbList]);
 
   const activeCourse = patrolCourses.find((c: any) => c.id === selectedCourse);
+  const formatRewardItems = (items: any[] = []) => items
+    .map((item) => `${item.item_id} ×${item.quantity}${Number(item.probability_bp) < 10000 ? ` (${Number(item.probability_bp) / 100}%)` : ""}`)
+    .join(" / ");
   const townTabs = [
     { id: "shinjuku", label: "新宿" },
     { id: "shibuya", label: "渋谷" },
@@ -446,8 +448,8 @@ export default function PatrolTab() {
               onClick={() => { if (!isTutorialQuestStep) { setSelectedCourse(c.id); playCyberSe("click"); } }}
             >
               <div className="course-name">{c.name}</div>
-              <div className={`course-badge badge-${c.id.split('_').pop()}`}>
-                {c.id.includes('short') ? '短期' : c.id.includes('medium') ? '中期' : c.id.includes('long') ? '長期' : '放置'}
+              <div className={`course-badge badge-${String(c.level_type || "").toLowerCase()}`}>
+                {c.level_type === "EASY" ? "初級" : c.level_type === "NORMAL" ? "中級" : c.level_type === "HARD" ? "上級" : c.level_type}
               </div>
             </div>
           ))}
@@ -458,7 +460,14 @@ export default function PatrolTab() {
           <OutlawCard className={`mb-4 ${tutorialStep === "DISPATCH" ? "tutorial-primary-target" : ""}`}>
             <div className="quest-v0-summary">
               <div><span>派遣先</span><strong>{activeCourse.name}</strong></div>
-              <dl><div><dt>所要</dt><dd>{activeCourse.duration_seconds >= 60 ? String(activeCourse.duration_seconds / 60) + "分" : String(activeCourse.duration_seconds) + "秒"}</dd></div><div><dt>報酬</dt><dd>{activeCourse.reward_cash.toLocaleString()} CASH</dd></div><div><dt>時短</dt><dd>{tutorialStep === "DISPATCH" ? "今回無料" : "利用可"}</dd></div></dl>
+              <dl>
+                <div><dt>所要</dt><dd>{activeCourse.duration_seconds >= 60 ? String(activeCourse.duration_seconds / 60) + "分" : String(activeCourse.duration_seconds) + "秒"}</dd></div>
+                <div><dt>消費</dt><dd>Vitality {activeCourse.cost_vitality}</dd></div>
+                <div><dt>基本報酬</dt><dd>{activeCourse.reward_cash.toLocaleString()} CASH / User EXP {activeCourse.reward_xp.toLocaleString()}</dd></div>
+                <div><dt>主要ドロップ</dt><dd>{formatRewardItems(activeCourse.reward_items) || "なし"}</dd></div>
+                <div><dt>初回クリア</dt><dd>User EXP +{Number(activeCourse.first_clear_user_exp || 0).toLocaleString()} / {formatRewardItems(activeCourse.first_clear_items) || "なし"}</dd></div>
+                <div><dt>時短</dt><dd>{tutorialStep === "DISPATCH" ? "今回無料" : "利用可"}</dd></div>
+              </dl>
             </div>
             <div className="quest-v0-section-label">派遣する仲間 <b>1名</b></div>
             <div className="patrol-char-grid mb-3">
@@ -559,11 +568,11 @@ export default function PatrolTab() {
               const isTutorialReward = tutorialStep === "TUTORIAL_BATTLE" && p.battle_resolved;
               const isComplete = p.secondsLeft <= 0 && !isTutorialInstant;
               const hasUnresolvedBattle = p.has_battle_event && !p.battle_resolved && Boolean(battleNpc);
-              const cashSkipCost = Math.ceil(Math.max(p.secondsLeft, 0) / 60) * 100;
-              const diamondSkipCost = Math.ceil(Math.max(p.secondsLeft, 0) / 3600) * 10;
+              const diamondSkipCost = 30;
               const todayJst = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
               const cashSkipsToday = dailyCashSkipsResetDate === todayJst ? Number(dailyCashSkips || 0) : 0;
-              const remainingCashSkips = Math.max(3 - cashSkipsToday, 0);
+              const remainingFreeSkips = Math.max(5 - cashSkipsToday, 0);
+              const remainingPaidSkips = Math.max(10 - Number(dailyPaidSkips || 0), 0);
 
               return (
                 <OutlawCard key={p.id} className={`active-patrol-card ${isTutorialInstant || isTutorialReward ? "tutorial-primary-target" : ""}`}>
@@ -620,14 +629,14 @@ export default function PatrolTab() {
                         ) : (
                           <>
                             <OutlawButton
-                              onClick={() => handleInstant(featureOperatingStates?.PRE_OPEN === "OPEN" && userLevel < 8 ? "FREE_PREOPEN" : "CASH", p.id)}
-                              disabled={dispatchLoading || remainingCashSkips === 0}
+                              onClick={() => handleInstant("FREE_PREOPEN", p.id)}
+                              disabled={dispatchLoading || remainingFreeSkips === 0}
                               fullWidth
                             >
-                              {featureOperatingStates?.PRE_OPEN === "OPEN" && userLevel < 8 ? "Pre-Open無料時短" : `CASH時短 (${cashSkipCost.toLocaleString()} / 残り${remainingCashSkips}回)`}
+                              {`無料時短（残り${remainingFreeSkips}回）`}
                             </OutlawButton>
-                            <OutlawButton onClick={() => handleInstant("DIAMOND", p.id)} disabled={dispatchLoading} variant="primary" fullWidth>
-                              DIA時短 ({diamondSkipCost.toLocaleString()})
+                            <OutlawButton onClick={() => handleInstant("DIAMOND", p.id)} disabled={dispatchLoading || remainingPaidSkips === 0} variant="primary" fullWidth>
+                              DIA時短 ({diamondSkipCost} / 残り{remainingPaidSkips}回)
                             </OutlawButton>
                           </>
                         )}

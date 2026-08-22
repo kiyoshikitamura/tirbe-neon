@@ -393,7 +393,7 @@ export function useBattle(options: UseBattleOptions) {
           spd: enemyData.spd || npcMaster.spd || 100,
           luk: enemyData.luk || npcMaster.luk || 10,
           skills: (((enemyData.skills || (typeof npcMaster.skills === "string" ? JSON.parse(npcMaster.skills) : npcMaster.skills) || []) as any[])
-            .map(canonicalParticipantSkill).filter(Boolean) as any[]).concat([{ ...BASIC_ATTACK_SKILL, id: "npc_basic_attack" }])
+            .map(canonicalParticipantSkill).filter(Boolean) as any[]).concat([{ ...BASIC_ATTACK_SKILL, id: "quest_canonical_basic_attack" }])
         };
       }
     }
@@ -657,7 +657,7 @@ export function useBattle(options: UseBattleOptions) {
           luk: bossMaster.luk
         },
         skills: (bossMaster.skills.map(canonicalParticipantSkill).filter(Boolean) as any[]).concat([
-          { ...BASIC_ATTACK_SKILL, id: "patrol_basic_attack", ownerId: bossMaster.id }
+          { ...BASIC_ATTACK_SKILL, id: "quest_canonical_basic_attack", ownerId: bossMaster.id }
         ])
       }];
       loadedRealEnemy = true;

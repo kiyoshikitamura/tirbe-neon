@@ -24,6 +24,7 @@ export function usePatrol(
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
   const [selectedPatrolMember, setSelectedPatrolMember] = useState<string | null>(null);
   const [dailyCashSkips, setDailyCashSkips] = useState<number>(0);
+  const [dailyPaidSkips, setDailyPaidSkips] = useState<number>(0);
   const [dailyCashSkipsResetDate, setDailyCashSkipsResetDate] = useState<string | null>(null);
   const [activePatrols, setActivePatrols] = useState<Array<{
     id: string;
@@ -185,9 +186,7 @@ export function usePatrol(
         dispatchedCharacterId: targetPatrol.characterId,
         dispatchedUserCharacterId,
       });
-      const { data, error } = currency === "FREE_PREOPEN"
-        ? await supabase.rpc("complete_patrol_preopen", { p_patrol_id: patrolId })
-        : await supabase.rpc("complete_patrol_instantly", {
+      const { data, error } = await supabase.rpc("complete_patrol_instantly", {
             p_user_id: session.user.id,
             p_patrol_id: patrolId,
             p_use_currency: currency
@@ -215,10 +214,8 @@ export function usePatrol(
       }
 
       if (data && data.status === "success") {
-        if (currency === "CASH" && Number.isFinite(Number(data.daily_cash_skips_count))) {
-          setDailyCashSkips(Number(data.daily_cash_skips_count));
-          setDailyCashSkipsResetDate(data.daily_cash_skips_reset_date || null);
-        }
+        if (Number.isFinite(Number(data.free_skips_remaining))) setDailyCashSkips(5 - Number(data.free_skips_remaining));
+        if (Number.isFinite(Number(data.paid_skips_remaining))) setDailyPaidSkips(10 - Number(data.paid_skips_remaining));
         let nextTutorialStep = data.tutorial_step;
         if (currency === "FREE_TUTORIAL") {
           if (!nextTutorialStep) {
@@ -335,7 +332,7 @@ export function usePatrol(
     selectedCourse, setSelectedCourse,
     selectedMembers, setSelectedMembers,
     selectedPatrolMember, setSelectedPatrolMember,
-    dailyCashSkips, setDailyCashSkips,
+    dailyCashSkips, setDailyCashSkips, dailyPaidSkips, setDailyPaidSkips,
     dailyCashSkipsResetDate, setDailyCashSkipsResetDate,
     activePatrols, setActivePatrols,
     patrolLogs, setPatrolLogs,

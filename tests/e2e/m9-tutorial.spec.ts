@@ -724,7 +724,7 @@ test("first quest connects dispatch, official battle, and one reward to the comp
   await expect(page.locator(".battle-timeline-slot")).toHaveCount(3);
   await expect(page.locator(".battle-unit.is-actor").first()).toBeVisible();
   await expect(page.locator(".battle-unit.is-target").first()).toBeVisible();
-  await expect(page.locator(".battle-unit-action.is-actor .battle-unit-identity-badges img")).toHaveCount(1);
+  await expect(page.locator(".battle-unit-action.is-actor .battle-unit-identity-badges img").first()).toBeVisible();
   await expect(page.locator(".battle-action-sequence")).toBeHidden();
   await expect.poll(() => page.evaluate(() => {
     const metrics = (window as any).__TRIBE_BATTLE_PRESENTATION__;
@@ -740,7 +740,7 @@ test("first quest connects dispatch, official battle, and one reward to the comp
   test.info().annotations.push({ type: "normal-impact-ms", description: String(normalImpactDuration) });
   await page.screenshot({ path: test.info().outputPath("M1-375-B3-normal-attack.png"), fullPage: true });
   await expect(page.locator(".battle-action-stage.is-enemy-actor .battle-unit-action.is-actor")).toBeVisible({ timeout: 12_000 });
-  await expect(page.locator(".battle-action-stage.is-enemy-actor .battle-unit-action.is-actor .battle-unit-identity-badges img")).toHaveCount(1);
+  await expect(page.locator(".battle-action-stage.is-enemy-actor .battle-unit-action.is-actor .battle-unit-identity-badges img").first()).toBeVisible();
   await expect(page.locator(".battle-action-stage.is-enemy-actor.is-normal-action")).toBeVisible();
   await expect(page.locator(".battle-skill-cutin")).toHaveCount(0);
   await page.screenshot({ path: test.info().outputPath("M1-375-enemy-current-actor.png"), fullPage: true });

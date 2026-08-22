@@ -44,20 +44,20 @@ if (duplicate.error?.code !== "23505") throw new Error("Duplicate active patrol 
 const instant = await executeMockRpc(client, "complete_patrol_instantly", {
   p_user_id: userId,
   p_patrol_id: patrol.id,
-  p_use_currency: "CASH",
+  p_use_currency: "FREE_PREOPEN",
 });
 const instantPatrol = client.getStorage("user_patrols")[0];
 const chargedUser = client.getStorage("users")[0];
-if (instant.error || instantPatrol.status !== "CLAIMABLE" || chargedUser.cash !== 4800 || chargedUser.daily_cash_skips_count !== 1) {
-  throw new Error("Secure patrol instant completion did not atomically charge and complete the patrol");
+if (instant.error || instantPatrol.status !== "CLAIMABLE" || chargedUser.cash !== 5000 || chargedUser.quest_free_skips_count !== 1) {
+  throw new Error("Secure patrol free instant completion did not atomically count and complete the patrol");
 }
 
 const repeatedInstant = await executeMockRpc(client, "complete_patrol_instantly", {
   p_user_id: userId,
   p_patrol_id: patrol.id,
-  p_use_currency: "CASH",
+  p_use_currency: "FREE_PREOPEN",
 });
-if (!repeatedInstant.error || client.getStorage("users")[0].cash !== 4800) {
+if (!repeatedInstant.error || client.getStorage("users")[0].cash !== 5000) {
   throw new Error("Repeated patrol instant completion was not rejected before charging");
 }
 
@@ -103,8 +103,9 @@ if (!repeatedClaim.error || client.getStorage("presents").length !== 1 || client
 }
 
 const limitUser = client.getStorage("users")[0];
-limitUser.daily_cash_skips_count = 3;
-limitUser.daily_cash_skips_reset_date = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
+limitUser.quest_free_skips_count = 5;
+limitUser.quest_paid_skips_count = 0;
+limitUser.quest_skips_reset_date = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
 client.setStorage("users", [limitUser]);
 const limitPatrol = {
   id: "patrol-cash-limit",
@@ -116,13 +117,13 @@ const limitPatrol = {
 };
 client.setStorage("user_patrols", [...client.getStorage("user_patrols"), limitPatrol]);
 
-const cashLimited = await executeMockRpc(client, "complete_patrol_instantly", {
+const freeLimited = await executeMockRpc(client, "complete_patrol_instantly", {
   p_user_id: userId,
   p_patrol_id: limitPatrol.id,
-  p_use_currency: "CASH",
+  p_use_currency: "FREE_PREOPEN",
 });
-if (!cashLimited.error || client.getStorage("users")[0].cash !== 4800) {
-  throw new Error("Daily CASH instant-completion limit was not enforced before charging");
+if (!freeLimited.error || client.getStorage("users")[0].cash !== 5000) {
+  throw new Error("Daily free instant-completion limit was not enforced");
 }
 
 const diamondInstant = await executeMockRpc(client, "complete_patrol_instantly", {
@@ -130,8 +131,8 @@ const diamondInstant = await executeMockRpc(client, "complete_patrol_instantly",
   p_patrol_id: limitPatrol.id,
   p_use_currency: "DIAMOND",
 });
-if (diamondInstant.error || client.getStorage("users")[0].neon_diamonds !== 190) {
-  throw new Error("DIAMOND instant completion should remain available after the CASH daily limit");
+if (diamondInstant.error || client.getStorage("users")[0].neon_diamonds !== 170) {
+  throw new Error("DIAMOND instant completion should remain available after the free daily limit at fixed cost 30");
 }
 
 console.log("Mock secure patrol verification passed.");

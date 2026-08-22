@@ -4,6 +4,7 @@ import { CANONICAL_CHARACTERS, CANONICAL_EQUIPMENTS, CANONICAL_MISSIONS, CANONIC
 import { canonicalCharacterStats, canonicalEquipmentFlatStat, canonicalEquipmentLevelCap, canonicalSkillSlotCount } from "../../domain/gameplay/canonical/calculations.ts";
 import { applyCharacterAwakeningCopyEquivalent } from "../../domain/gameplay/canonical/awakening.ts";
 import { applyFrozenUserXp, canUseEnergyDrink, recoverCanonicalResource } from "../../domain/gameplay/canonical/action_resources.ts";
+import { CANONICAL_QUEST_ENCOUNTERS, canonicalQuestById, rollCanonicalQuestItems } from "../../domain/gameplay/canonical/quests.ts";
 import { parseCanonicalEffects } from "../../domain/battle/canonical_effects.ts";
 import {
   evaluateCanonicalMissionProgress,
@@ -25,6 +26,38 @@ const canonicalMissionRows = (): MissionMasterRow[] => CANONICAL_MISSIONS.map((m
   reward_item_id: mission.rewardItemId,
   reward_quantity: mission.rewardQuantity,
 }));
+
+const canonicalQuestEnemySnapshot = (questId: string) => {
+  const encounter = CANONICAL_QUEST_ENCOUNTERS.find((entry) => entry.questId === questId && entry.isProductionEnabled);
+  if (!encounter) return null;
+  return encounter.members.map((member) => {
+    const character = CANONICAL_CHARACTERS.find((entry) => entry.character_id === member.characterId);
+    if (!character) throw new Error(`Canonical Quest encounter references unknown Character: ${member.characterId}`);
+    const stats = canonicalCharacterStats(character.lv1, character.lv100, member.level, member.awakening);
+    return {
+      id: `${encounter.encounterId}_${member.slot}`,
+      name: character.name,
+      team: "ENEMY",
+      alignment: character.attribute,
+      characterId: character.character_id,
+      level: member.level,
+      awakeningLevel: member.awakening,
+      stats,
+      equipment: [],
+      equippedSkillRefs: [],
+      skills: [{
+        id: "BASIC_ATTACK",
+        name: "通常攻撃",
+        kind: "ACTIVE",
+        target: "ENEMY_SINGLE",
+        activationType: "ACTIVE",
+        cooldown: 0,
+        availableFromRound: 1,
+        effects: ["DAMAGE 80% ATK"],
+      }],
+    };
+  });
+};
 
 const achievedFunnelTriggers = (client: any, userId: string): Set<string> => new Set(
   (client.getStorage("user_funnel_milestones") || [])
@@ -830,22 +863,27 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
         skills: skillRefs,
       };
     });
-    const npcs = client.getStorage("patrol_npcs") || [];
-    const npc = npcs.find((entry: any) => entry.quest_id === patrol.course_id);
-    const enemy = npc?.enemy_data || { hp: 900, atk: 55, def: 35, spd: 75, luk: 3 };
-    const tutorialBattle = (client.getStorage("tutorial_progress") || [])
-      .some((entry: any) => entry.user_id === userId && entry.step_id === "TUTORIAL_BATTLE");
-    const tutorialEnemyHp = tutorialBattle
-      ? playerSnapshot.reduce((total: number, unit: any) => total + Number(unit.stats?.atk || 0), 0) * 4
-      : 0;
-    const enemySnapshot = [{
-      id: `enemy_${npc?.id || patrol.course_id}`,
-      name: npc?.npc_name || "Street Outlaw",
-      team: "ENEMY",
-      alignment: "CHAOS",
-      stats: { hp: Math.max(Number(enemy.hp || 900), tutorialEnemyHp), atk: Number(enemy.atk || 55), def: Number(enemy.def || 35), spd: Number(enemy.spd || 75), luk: Number(enemy.luk || 3) },
-      skills: [],
-    }];
+    const canonicalEnemySnapshot = canonicalQuestEnemySnapshot(patrol.course_id);
+    // Non-Production mock fixtures may still exercise historical arbitrary
+    // quest IDs. Every Canonical Quest takes the shared Character snapshot path.
+    const enemySnapshot = canonicalEnemySnapshot || (() => {
+      const npcs = client.getStorage("patrol_npcs") || [];
+      const npc = npcs.find((entry: any) => entry.quest_id === patrol.course_id);
+      const enemy = npc?.enemy_data || { hp: 900, atk: 55, def: 35, spd: 75, luk: 3 };
+      const isPresentationFixture = (client.getStorage("tutorial_progress") || [])
+        .some((entry: any) => entry.user_id === userId && entry.step_id === "TUTORIAL_BATTLE");
+      const presentationHp = isPresentationFixture
+        ? playerSnapshot.reduce((total: number, unit: any) => total + Number(unit.stats?.atk || 0), 0) * 4
+        : 0;
+      return [{
+        id: `enemy_${npc?.id || patrol.course_id}`,
+        name: npc?.npc_name || "Mock Enemy",
+        team: "ENEMY",
+        alignment: "CHAOS",
+        stats: { hp: Math.max(Number(enemy.hp || 900), presentationHp), atk: Number(enemy.atk || 55), def: Number(enemy.def || 35), spd: Number(enemy.spd || 75), luk: Number(enemy.luk || 3) },
+        skills: [],
+      }];
+    })();
     const sessions = client.getStorage("battle_replay_sessions") || [];
     const id = `replay_${Date.now()}`;
     sessions.push({ id, requester_user_id: userId, battle_mode: "QUEST", tactic_id: params.p_tactic_id, random_seed: Date.now(), source_reference_id: patrol.id, resolution_authority: "PATROL_SERVER", status: "PENDING", player_snapshot: playerSnapshot, enemy_snapshot: enemySnapshot });
@@ -2383,17 +2421,6 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     return { data: { status: "success" }, error: null };
   }
 
-  if (funcName === "complete_patrol_preopen") {
-    const userId = typeof window === "undefined" ? null : localStorage.getItem("tribe_demo_uuid");
-    const user = (client.getStorage("users") || []).find((row: any) => row.id === userId);
-    const patrols = client.getStorage("user_patrols") || [];
-    const patrol = patrols.find((row: any) => row.id === params.p_patrol_id && row.user_id === userId);
-    if (!userId || !patrol || patrol.status !== "ONGOING" || Number(user?.level || 1) >= 8) return { data: null, error: { message: "pre-open speed-up is unavailable" } };
-    patrol.status = "CLAIMABLE"; patrol.expires_at = new Date().toISOString();
-    client.setStorage("user_patrols", patrols);
-    return { data: { status: "success", patrol_id: patrol.id, currency: "FREE_PREOPEN", cash_cost: 0 }, error: null };
-  }
-
   if (funcName === "complete_patrol_instantly") {
     const { p_user_id, p_patrol_id, p_use_currency } = params;
     const patrols = client.getStorage("user_patrols") || [];
@@ -2406,23 +2433,20 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     if (p_use_currency === "FREE_TUTORIAL") {
       const progress = (client.getStorage("tutorial_progress") || []).find((entry: any) => entry.user_id === p_user_id);
       if (progress?.step_id !== "FREE_INSTANT") return { data: null, error: { message: "Free completion is unavailable" } };
-    } else if (p_use_currency === "CASH") {
-      const remainingSeconds = Math.max(0, Math.ceil((new Date(patrol.expires_at).getTime() - Date.now()) / 1000));
-      const cashCost = Math.ceil(remainingSeconds / 60) * 100;
+    } else if (p_use_currency === "FREE_PREOPEN" || p_use_currency === "FREE") {
       const todayJst = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
-      if (user.daily_cash_skips_reset_date !== todayJst) user.daily_cash_skips_count = 0;
-      if (remainingSeconds > 0 && Number(user.daily_cash_skips_count || 0) >= 3) {
-        return { data: null, error: { message: "Daily cash instant completion limit reached" } };
-      }
-      if ((user.cash || 0) < cashCost) return { data: null, error: { message: "Cash insufficient" } };
-      user.cash -= cashCost;
-      if (remainingSeconds > 0) user.daily_cash_skips_count = Number(user.daily_cash_skips_count || 0) + 1;
-      user.daily_cash_skips_reset_date = todayJst;
+      if (user.quest_skips_reset_date !== todayJst) { user.quest_free_skips_count = 0; user.quest_paid_skips_count = 0; }
+      if (Number(user.quest_free_skips_count || 0) >= 5) return { data: null, error: { message: "Daily free instant completion limit reached" } };
+      user.quest_free_skips_count = Number(user.quest_free_skips_count || 0) + 1;
+      user.quest_skips_reset_date = todayJst;
     } else if (p_use_currency === "DIAMOND") {
-      const remainingSeconds = Math.max(0, Math.ceil((new Date(patrol.expires_at).getTime() - Date.now()) / 1000));
-      const diamondCost = Math.ceil(remainingSeconds / 3600) * 10;
-      if ((user.neon_diamonds || 0) < diamondCost) return { data: null, error: { message: "Diamond insufficient" } };
-      user.neon_diamonds -= diamondCost;
+      const todayJst = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
+      if (user.quest_skips_reset_date !== todayJst) { user.quest_free_skips_count = 0; user.quest_paid_skips_count = 0; }
+      if (Number(user.quest_paid_skips_count || 0) >= 10) return { data: null, error: { message: "Daily paid instant completion limit reached" } };
+      if ((user.neon_diamonds || 0) < 30) return { data: null, error: { message: "Diamond insufficient" } };
+      user.neon_diamonds -= 30;
+      user.quest_paid_skips_count = Number(user.quest_paid_skips_count || 0) + 1;
+      user.quest_skips_reset_date = todayJst;
     } else {
       return { data: null, error: { message: "Invalid patrol instant completion currency" } };
     }
@@ -2434,8 +2458,8 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
       data: {
         status: "success",
         currency: p_use_currency,
-        daily_cash_skips_count: p_use_currency === "CASH" ? Number(user.daily_cash_skips_count || 0) : null,
-        daily_cash_skips_reset_date: p_use_currency === "CASH" ? user.daily_cash_skips_reset_date : null,
+        free_skips_remaining: p_use_currency === "FREE_PREOPEN" || p_use_currency === "FREE" ? 5 - Number(user.quest_free_skips_count || 0) : null,
+        paid_skips_remaining: p_use_currency === "DIAMOND" ? 10 - Number(user.quest_paid_skips_count || 0) : null,
       },
       error: null,
     };
@@ -2462,25 +2486,52 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     const users = client.getStorage("users") || [];
     const user = users.find((entry: any) => entry.id === userId);
     if (!user) return { data: null, error: { message: "User not found" } };
-    const rewardXp = Math.max(0, Number(quest.exp_reward || 0));
+    const canonicalQuest = canonicalQuestById(quest.id);
+    const firstClears = client.getStorage("user_quest_first_clears") || [];
+    const isFirstClear = Boolean(canonicalQuest) && !firstClears.some((entry: any) => entry.user_id === userId && entry.quest_id === quest.id);
+    const rewardXp = canonicalQuest
+      ? canonicalQuest.userExp + (isFirstClear ? canonicalQuest.firstClearUserExp : 0)
+      : Math.max(0, Number(quest.exp_reward || 0));
+    const cashReward = canonicalQuest ? canonicalQuest.cashReward : Math.max(0, Number(quest.cash_reward || 0));
+    const awardedItems = canonicalQuest
+      ? [...rollCanonicalQuestItems(canonicalQuest.rewardPoolId), ...(isFirstClear ? rollCanonicalQuestItems(canonicalQuest.firstClearRewardPoolId) : [])]
+      : [];
     user.level = user.level || 1;
-    user.xp = Math.max(0, Number(user.xp || 0)) + rewardXp;
+    const progression = applyFrozenUserXp(user.level, Math.max(0, Number(user.xp || 0)), rewardXp);
+    user.level = progression.level;
+    user.xp = progression.xp;
 
     const presents = client.getStorage("presents") || [];
     presents.push({
       id: `patrol_reward_${p_patrol_id}`,
       user_id: userId,
       item_id: "CASH",
-      quantity: Math.max(0, Number(quest.cash_reward || 0)),
+      quantity: cashReward,
       message: `クエスト報酬: ${quest.name}`,
       status: "UNCLAIMED",
       sent_at: new Date().toISOString(),
       expire_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
     });
+    for (const item of awardedItems) {
+      presents.push({
+        id: `patrol_item_${p_patrol_id}_${presents.length}`,
+        user_id: userId,
+        item_id: item.item_id,
+        quantity: item.quantity,
+        message: `クエストドロップ: ${quest.name}`,
+        status: "UNCLAIMED",
+        sent_at: new Date().toISOString(),
+        expire_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      });
+    }
+    if (isFirstClear) {
+      firstClears.push({ user_id: userId, quest_id: quest.id, cleared_at: new Date().toISOString() });
+      client.setStorage("user_quest_first_clears", firstClears);
+    }
     patrol.status = "COMPLETED";
     patrol.has_battle_event = false;
     patrol.battle_resolved = true;
-    patrol.rewards_accrued = { course_name: quest.name, cash: quest.cash_reward, xp: rewardXp, items: [] };
+    patrol.rewards_accrued = { course_name: quest.name, cash: cashReward, xp: rewardXp, items: awardedItems, first_clear: isFirstClear };
     client.setStorage("users", users);
     client.setStorage("presents", presents);
     client.setStorage("user_patrols", patrols);
@@ -2491,12 +2542,13 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
         status: "success",
         patrol_id: p_patrol_id,
         course_name: quest.name,
-        cash: Math.max(0, Number(quest.cash_reward || 0)),
+        cash: cashReward,
         xp: rewardXp,
-        items: [],
+        items: awardedItems,
+        first_clear: isFirstClear,
         level: user.level,
         current_xp: user.xp,
-        leveled_up: false,
+        leveled_up: progression.leveledUp,
       },
       error: null,
     };

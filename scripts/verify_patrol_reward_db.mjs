@@ -44,7 +44,7 @@ if (startError || started?.status !== "success" || started?.has_battle !== true)
 const { data: completed, error: completeError } = await owner.client.rpc("complete_patrol_instantly", {
   p_user_id: owner.userId,
   p_patrol_id: started.patrol_id,
-  p_use_currency: "CASH",
+  p_use_currency: "FREE_PREOPEN",
 });
 if (completeError || completed?.status !== "success") throw completeError || new Error("Instant completion failed.");
 

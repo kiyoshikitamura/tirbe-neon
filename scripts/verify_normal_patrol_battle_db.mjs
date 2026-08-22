@@ -35,7 +35,7 @@ if (startError || !started?.patrol_id || started.has_battle !== true) {
 const { error: instantError } = await client.rpc("complete_patrol_instantly", {
   p_user_id: userId,
   p_patrol_id: started.patrol_id,
-  p_use_currency: "CASH",
+  p_use_currency: "FREE_PREOPEN",
 });
 if (instantError) throw instantError;
 
