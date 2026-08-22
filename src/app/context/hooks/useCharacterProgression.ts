@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { supabase } from "@/utils/supabase";
-import { CHARACTER_AWAKENING_MASTER } from "@/utils/game_constants";
 import { CANONICAL_EQUIPMENT_VIEW } from "@/utils/equipments_master_data";
 import { CANONICAL_SKILL_VIEW } from "@/utils/skills_master_data";
 import { useImmediateActionLock } from "@/hooks/useImmediateActionLock";
@@ -25,10 +24,8 @@ export function useCharacterProgression(
   equipExpS: number,
   equipExpM: number,
   equipExpL: number,
-  lawsOfStrife: number,
-  equipLbHammers: number,
-  skillLbBooks: number,
-  exclusiveContracts: number,
+  equipLbParts: number,
+  skillManuals: number,
   upgradeSelectedCharId: string,
   setErrorMessage: (msg: string | null) => void,
   playCyberSe: (type: string) => void,
@@ -158,17 +155,6 @@ export function useCharacterProgression(
 
   const handleCharacterAwaken = async () => {
     if (!session || characterAwaken >= 5) return;
-    if (lawsOfStrife < 1) {
-      setErrorMessage("覚醒の書が不足しています。");
-      return;
-    }
-    const awakenMaster = CHARACTER_AWAKENING_MASTER.find(a => a.awakening_level === characterAwaken + 1);
-    const cost = awakenMaster ? awakenMaster.required_cash : (characterAwaken + 1) * 3000;
-    if (cash < cost) {
-      setErrorMessage("キャッシュ不足。");
-      return;
-    }
-
     if (!beginUpgradeAction()) return;
     playCyberSe("click");
     try {
@@ -187,7 +173,18 @@ export function useCharacterProgression(
         setErrorMessage(res.data.error);
         return;
       }
-
+      const level = Number(res.data?.awakening_level ?? character.awakening_level ?? 0);
+      const progress = Number(res.data?.awakening_progress ?? character.awakening_progress ?? 0);
+      const required = Number(res.data?.awakening_required ?? 0);
+      setConfirmDialogConfig({
+        isOpen: true,
+        title: "覚醒進捗",
+        message: res.data?.outcome === "awakening"
+          ? `覚醒 +${level} になりました。次の進捗 ${progress}/${required}`
+          : `覚醒進捗が ${progress}/${required} になりました。`,
+        onConfirm: () => setConfirmDialogConfig(null),
+        onCancel: () => setConfirmDialogConfig(null),
+      });
       await syncBootstrapData(session.user.id);
     } catch (err) {
       console.warn(err);
@@ -580,7 +577,7 @@ export function useCharacterProgression(
     }
 
     if (useWildcard) {
-      if (equipLbHammers < 1) {
+      if (equipLbParts < 1) {
         setErrorMessage("代用素材「万能カスタムツール [装備]」が不足しています。");
         return;
       }
@@ -645,7 +642,7 @@ export function useCharacterProgression(
     }
 
     if (useWildcard) {
-      const wildcardQty = isExclusive ? exclusiveContracts : skillLbBooks;
+      const wildcardQty = skillManuals;
       if (wildcardQty < 1) {
         setErrorMessage(`代用素材「${isExclusive ? "限界突破の書 [専用スキル]" : "限界突破の書 [スキル]"}」が不足しています。`);
         return;

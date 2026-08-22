@@ -1,95 +1,44 @@
+import { CANONICAL_ITEMS } from "@/domain/gameplay/canonical/items";
+
 export interface ItemMaster {
   id: string;
   name: string;
-  category: "CONSUMABLE" | "CHAR_EXP" | "EQUIP_EXP" | "AWAKEN" | "LIMIT_BREAK";
+  category: "CONSUMABLE" | "CHAR_EXP" | "EQUIP_EXP" | "AWAKEN" | "LIMIT_BREAK" | "TICKET";
   description: string;
   iconType: string;
   effectValue?: number;
 }
 
-export const ITEMS_MASTER_DATA: ItemMaster[] = [
-  // --- 回復・消耗品 ---
-  {
-    id: "ENERGY_DRINK",
-    name: "エナジードリンク",
-    category: "CONSUMABLE",
-    description: "歓楽街で出回る極限カフェイン炭酸。スタミナを 50 回復 (現在値100未満で使用可)。",
-    iconType: "ENERGY_DRINK",
-    effectValue: 50
-  },
+const CATEGORY_MAP: Readonly<Record<string, ItemMaster["category"]>> = Object.freeze({
+  CHARACTER_EXP: "CHAR_EXP",
+  EQUIPMENT_EXP: "EQUIP_EXP",
+  CHARACTER_AWAKENING: "AWAKEN",
+  SKILL_AWAKENING: "LIMIT_BREAK",
+  EQUIPMENT_LIMIT_BREAK: "LIMIT_BREAK",
+  RESOURCE_RECOVERY: "CONSUMABLE",
+  GACHA_TICKET: "TICKET",
+});
 
-  // --- キャラクター強化素材 (EXP) ---
-  {
-    id: "CHAR_EXP_S",
-    name: "経験の書 [小]",
-    category: "CHAR_EXP",
-    description: "喧嘩のコツや路地裏の噂が記されたメモ。キャラEXP +500。",
-    iconType: "BOOK_S",
-    effectValue: 500
-  },
-  {
-    id: "CHAR_EXP_M",
-    name: "経験の書 [中]",
-    category: "CHAR_EXP",
-    description: "組織戦の駆け引きと交渉術が記されたノート。キャラEXP +2,000。",
-    iconType: "BOOK_M",
-    effectValue: 2000
-  },
-  {
-    id: "CHAR_EXP_L",
-    name: "経験の書 [大]",
-    category: "CHAR_EXP",
-    description: "裏社会の生き残りと統率の極意が記された秘伝書。キャラEXP +10,000。",
-    iconType: "BOOK_L",
-    effectValue: 10000
-  },
+const ICON_TYPE_MAP: Readonly<Record<string, string>> = Object.freeze({
+  ENERGY_DRINK: "ENERGY_DRINK",
+  CHAR_EXP_S: "BOOK_S",
+  CHAR_EXP_M: "BOOK_M",
+  CHAR_EXP_L: "BOOK_L",
+  EQUIP_EXP_S: "OIL_S",
+  EQUIP_EXP_M: "OIL_M",
+  EQUIP_EXP_L: "OIL_L",
+  AWAKENING_BOOK: "AWAKEN_BOOK",
+  SKILL_MANUAL: "SKILL_LB",
+  EQUIP_LB_PART: "EQUIP_LB",
+});
 
-  // --- 装備品強化素材 (EXP) ---
-  {
-    id: "EQUIP_EXP_S",
-    name: "カスタムオイル [小]",
-    category: "EQUIP_EXP",
-    description: "標準的な装備手入れ用オイル。装備EXP +100。",
-    iconType: "OIL_S",
-    effectValue: 100
-  },
-  {
-    id: "EQUIP_EXP_M",
-    name: "カスタムオイル [中]",
-    category: "EQUIP_EXP",
-    description: "金属の耐摩耗性と切れ味を高める高純度オイル。装備EXP +500。",
-    iconType: "OIL_M",
-    effectValue: 500
-  },
-  {
-    id: "EQUIP_EXP_L",
-    name: "カスタムオイル [大]",
-    category: "EQUIP_EXP",
-    description: "軍用規格の最高級金属コーティング材。装備EXP +2,500。",
-    iconType: "OIL_L",
-    effectValue: 2500
-  },
-
-  // --- 覚醒・限界突破素材 ---
-  {
-    id: "LAW_OF_STRIFE",
-    name: "覚醒の書",
-    category: "AWAKEN",
-    description: "組織への絶対の忠誠と誓約が刻まれた書物。キャラクターの「覚醒」（レベル上限解放）に使用。",
-    iconType: "AWAKEN_BOOK"
-  },
-  {
-    id: "SKILL_MANUAL",
-    name: "スキル指南書",
-    category: "LIMIT_BREAK",
-    description: "同名カードがない場合に、通常スキルカードを限界突破できる代用書物。",
-    iconType: "SKILL_LB"
-  },
-  {
-    id: "EQUIP_LB_PART",
-    name: "装備改造パーツ",
-    category: "LIMIT_BREAK",
-    description: "同名予備装備がない場合に、あらゆる装備品を限界突破できる代用万能工具。",
-    iconType: "EQUIP_LB"
-  }
-];
+export const ITEMS_MASTER_DATA: readonly ItemMaster[] = CANONICAL_ITEMS.map((item) => ({
+  id: item.id,
+  name: item.name,
+  category: CATEGORY_MAP[item.category],
+  description: item.description,
+  iconType: ICON_TYPE_MAP[item.id] ?? (item.category === "GACHA_TICKET" ? "TICKET" : "RESOURCE"),
+  effectValue: "effectValue" in item.runtimeUsage && typeof item.runtimeUsage.effectValue === "number"
+    ? item.runtimeUsage.effectValue
+    : undefined,
+}));

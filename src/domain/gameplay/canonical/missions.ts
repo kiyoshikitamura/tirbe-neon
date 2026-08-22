@@ -1,18 +1,19 @@
 import { CANONICAL_MISSIONS } from "./masters.ts";
+import { canonicalItemName } from "./items.ts";
 import type { CanonicalMissionUiStatus } from "./types.ts";
 
 export const CANONICAL_MISSION_REWARD_NAMES: Readonly<Record<string, string>> = Object.freeze({
   CASH: "CASH",
   DIAMOND: "ダイヤ",
-  CHAR_EXP_S: "経験の書 [小]",
-  CHAR_EXP_M: "経験の書 [中]",
-  CHAR_EXP_L: "経験の書 [大]",
-  EQUIP_EXP_S: "カスタムオイル [小]",
-  EQUIP_EXP_M: "カスタムオイル [中]",
-  EQUIP_EXP_L: "カスタムオイル [大]",
-  EQUIP_LB_PART: "装備改造パーツ",
-  SKILL_MANUAL: "スキル指南書",
-  NORMAL_GACHA_TICKET_CHARACTER: "キャラクターガチャチケット",
+  CHAR_EXP_S: canonicalItemName("CHAR_EXP_S"),
+  CHAR_EXP_M: canonicalItemName("CHAR_EXP_M"),
+  CHAR_EXP_L: canonicalItemName("CHAR_EXP_L"),
+  EQUIP_EXP_S: canonicalItemName("EQUIP_EXP_S"),
+  EQUIP_EXP_M: canonicalItemName("EQUIP_EXP_M"),
+  EQUIP_EXP_L: canonicalItemName("EQUIP_EXP_L"),
+  EQUIP_LB_PART: canonicalItemName("EQUIP_LB_PART"),
+  SKILL_MANUAL: canonicalItemName("SKILL_MANUAL"),
+  NORMAL_GACHA_TICKET_CHARACTER: canonicalItemName("NORMAL_GACHA_TICKET_CHARACTER"),
 });
 
 export const CANONICAL_MISSION_REWARD_IDS = Object.freeze(Object.keys(CANONICAL_MISSION_REWARD_NAMES));

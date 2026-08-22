@@ -12,6 +12,7 @@ import {
 import { CANONICAL_SKILL_VIEW } from "@/utils/skills_master_data";
 import { CANONICAL_EQUIPMENT_VIEW } from "@/utils/equipments_master_data";
 import { getCharacterTotalStats } from "@/utils/stats_calculator";
+import { canonicalCharacterAwakeningRequired } from "@/domain/gameplay/canonical/awakening";
 import { canonicalSkillSlotCount } from "@/domain/gameplay/canonical/calculations";
 import { useImagePreloader } from "../hooks/useImagePreloader";
 import { CHARACTER_LOADOUT_RARITY_ASSETS } from "../lib/screenManifests";
@@ -56,9 +57,8 @@ export default function CharacterTab() {
     cash,
     charExpS,
     equipExpS,
-    equipLbHammers,
-    skillLbBooks,
-    exclusiveContracts,
+    equipLbParts,
+    skillManuals,
     upgradeLoading,
     setActiveGearSlot,
     handleEquipGear,
@@ -684,14 +684,18 @@ export default function CharacterTab() {
                   </button>
                   <button
                     className="char-upgrade-btn awaken active-scale-effect"
-                    disabled={upgradeLoading}
+                    disabled={upgradeLoading || awakeningLevel >= 5}
                     onClick={() => {
                       if (activeCharRecord) void handleCharacterAwaken(activeCharRecord.id);
                       playCyberSe("click");
                     }}
                   >
-                    <span>覚醒限界突破</span>
-                    <span className="char-upgrade-sub">掟消費 (+{awakeningLevel} → +{Math.min(5, awakeningLevel + 1)})</span>
+                    <span>覚醒進捗</span>
+                    <span className="char-upgrade-sub">
+                      {awakeningLevel >= 5
+                        ? "覚醒 MAX"
+                        : `覚醒の書 ×1 / +${awakeningLevel} ・ ${Number(activeCharRecord.awakening_progress || 0)}/${canonicalCharacterAwakeningRequired(awakeningLevel)}`}
+                    </span>
                   </button>
                 </div>
               </div>
@@ -871,7 +875,7 @@ export default function CharacterTab() {
                     const skillMasterId = selectedSkill.skill_card_id || selectedSkill.skill_id;
                     const master = CANONICAL_SKILL_VIEW.find((entry: any) => entry.id === skillMasterId);
                     const isExclusive = Boolean(master?.is_exclusive);
-                    const wildcardCount = isExclusive ? exclusiveContracts : skillLbBooks;
+                    const wildcardCount = skillManuals;
                     const nextPlus = Math.min(10, (selectedSkill.plus_val || 0) + 1);
                     return (
                       <div className="char-progression-actions">
@@ -998,10 +1002,10 @@ export default function CharacterTab() {
                   </div>
                   {selectedEquipment && (
                     <div className="char-progression-actions">
-                      <span>経験素材(S) {equipExpS} / ハンマー {equipLbHammers}</span>
+                      <span>カスタムオイル・小 {equipExpS} / 改造パーツ {equipLbParts}</span>
                       <button onClick={() => void handleEquipmentLevelUp("EQUIP_EXP_S", 1)} disabled={upgradeLoading || equipExpS < 1}>Lv +1</button>
                       <button onClick={() => void handleEquipmentLimitBreak(false)} disabled={upgradeLoading || (selectedEquipment.plus_val || 0) >= 10}>同名装備</button>
-                      <button onClick={() => void handleEquipmentLimitBreak(true)} disabled={upgradeLoading || equipLbHammers < 1 || (selectedEquipment.plus_val || 0) >= 10}>ハンマー</button>
+                      <button onClick={() => void handleEquipmentLimitBreak(true)} disabled={upgradeLoading || equipLbParts < 1 || (selectedEquipment.plus_val || 0) >= 10}>改造パーツ</button>
                     </div>
                   )}
                 </section>

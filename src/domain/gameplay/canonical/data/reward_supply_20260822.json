@@ -1,0 +1,13 @@
+{
+  "version": "2026-08-22",
+  "sources": [
+    { "source": "MISSION", "status": "FROZEN", "authority": "missions_20260821.json", "notes": "37 missions: DAILY 4, NORMAL 33, WEEKLY 0" },
+    { "source": "LOGIN_BONUS", "status": "FROZEN", "authority": "login_bonus_20260822.json", "notes": "30-day fixed supply: Character/Skill/Equipment Special Tickets 2/1/1 and Awakening Book 1" },
+    { "source": "GACHA", "status": "FROZEN", "authority": "gacha_production_master.md", "notes": "Character duplicate adds one target-specific copy-equivalent; max-awakened duplicate converts atomically to Awakening Book x1" },
+    { "source": "ITEM_IDENTITY", "status": "FROZEN", "authority": "items_20260822.json", "notes": "Currencies remain outside the item inventory master" },
+    { "source": "QUEST", "status": "PENDING_FREEZE", "authority": "quest_reward_progression_master.md", "notes": "No reward quantities frozen by Phase B1" },
+    { "source": "PVP", "status": "PENDING_FREEZE", "authority": "reward_supply_master.md", "notes": "No reward quantities frozen by Phase B1" },
+    { "source": "RAID", "status": "PENDING_FREEZE", "authority": "reward_supply_master.md", "notes": "No reward quantities frozen by Phase B1" },
+    { "source": "RANKING", "status": "PENDING_FREEZE", "authority": "reward_supply_master.md", "notes": "No reward quantities frozen by Phase B1" }
+  ]
+}

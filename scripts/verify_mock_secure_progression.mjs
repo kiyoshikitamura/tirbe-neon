@@ -17,8 +17,8 @@ client.setStorage("users", [{ id: userId, cash: 100000 }, { id: "other", cash: 1
 client.setStorage("user_items", [
   { user_id: userId, item_id: "CHAR_EXP_S", quantity: 10 },
   { user_id: userId, item_id: "EQUIP_EXP_S", quantity: 10 },
-  { user_id: userId, item_id: "EQUIP_LB_HAMMER", quantity: 2 },
-  { user_id: userId, item_id: "EXCLUSIVE_CONTRACT", quantity: 2 },
+  { user_id: userId, item_id: "EQUIP_LB_PART", quantity: 2 },
+  { user_id: userId, item_id: "SKILL_MANUAL", quantity: 2 },
 ]);
 client.setStorage("user_characters", [
   { id: "owned-char", user_id: userId, character_id: "CHAR_001", level: 49, awakening_level: 0 },
@@ -49,7 +49,7 @@ const gearBreak = await executeMockRpc(client, "limit_break_equipment", { p_equi
 if (gearBreak.error || gearBreak.data.plus_val !== 2 || gearBreak.data.cash_spent !== 2000 || client.getStorage("user_equipments").some((entry) => entry.id === "dupe-gear")) throw new Error("Equipment duplicate limit break failed");
 
 const skillBreak = await executeMockRpc(client, "limit_break_skill", { p_skill_id: "owned-skill", p_use_wildcard: true, p_dupe_id: null });
-const contract = client.getStorage("user_items").find((entry) => entry.item_id === "EXCLUSIVE_CONTRACT");
-if (skillBreak.error || skillBreak.data.plus_val !== 1 || skillBreak.data.cash_spent !== 1000 || contract.quantity !== 1) throw new Error("Exclusive skill wildcard limit break failed");
+const manual = client.getStorage("user_items").find((entry) => entry.item_id === "SKILL_MANUAL");
+if (skillBreak.error || skillBreak.data.plus_val !== 1 || skillBreak.data.cash_spent !== 1000 || manual.quantity !== 1) throw new Error("Canonical skill wildcard limit break failed");
 
 console.log("Mock secure provisional progression verification passed.");

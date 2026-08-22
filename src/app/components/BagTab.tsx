@@ -14,10 +14,7 @@ export default function BagTab() {
     equipExpS,
     equipExpM,
     equipExpL,
-    lawsOfStrife,
-    skillLbBooks,
-    exclusiveContracts,
-    equipLbHammers,
+    userItems,
     handleUseItem,
     vitality,
     playCyberSe,
@@ -36,10 +33,8 @@ export default function BagTab() {
     EQUIP_EXP_S: equipExpS || 0,
     EQUIP_EXP_M: equipExpM || 0,
     EQUIP_EXP_L: equipExpL || 0,
-    LAW_OF_STRIFE: lawsOfStrife || 0,
-    SKILL_MANUAL: skillLbBooks || exclusiveContracts || 0,
-    EQUIP_LB_PART: equipLbHammers || 0
-  }), [energyDrinks, charExpS, charExpM, charExpL, equipExpS, equipExpM, equipExpL, lawsOfStrife, skillLbBooks, exclusiveContracts, equipLbHammers]);
+    ...Object.fromEntries((userItems || []).map((item: { item_id: string; quantity: number }) => [item.item_id, Number(item.quantity || 0)])),
+  }), [energyDrinks, charExpS, charExpM, charExpL, equipExpS, equipExpM, equipExpL, userItems]);
 
   // アイテム一覧のフィルタリング
   const filteredItems = useMemo(() => {
@@ -137,6 +132,8 @@ export default function BagTab() {
                   {item.iconType === "AWAKEN_BOOK" && <span className="icon-text text-red-500">覚醒</span>}
                   {item.iconType.includes("LB") && <span className="icon-text text-purple-400">突破</span>}
                   {item.iconType === "EQUIP_LB" && <span className="icon-text text-yellow-400">万能</span>}
+                  {item.iconType === "TICKET" && <span className="icon-text text-color-cyan">券</span>}
+                  {item.iconType === "RESOURCE" && <span className="icon-text text-color-cyan">回復</span>}
                 </div>
               </div>
 

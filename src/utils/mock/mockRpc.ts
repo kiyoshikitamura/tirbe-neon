@@ -2,6 +2,7 @@
 
 import { CANONICAL_CHARACTERS, CANONICAL_EQUIPMENTS, CANONICAL_MISSIONS, CANONICAL_SKILLS } from "../../domain/gameplay/canonical/masters.ts";
 import { canonicalCharacterStats, canonicalEquipmentFlatStat, canonicalEquipmentLevelCap, canonicalSkillSlotCount } from "../../domain/gameplay/canonical/calculations.ts";
+import { applyCharacterAwakeningCopyEquivalent } from "../../domain/gameplay/canonical/awakening.ts";
 import { parseCanonicalEffects } from "../../domain/battle/canonical_effects.ts";
 import {
   evaluateCanonicalMissionProgress,
@@ -51,6 +52,23 @@ const recordMockFunnelMilestone = (client: any, userId: string, milestone: strin
   client.setStorage("user_funnel_milestones", milestones);
   const trigger = FUNNEL_TRIGGER_BY_MILESTONE[milestone];
   if (trigger) evaluateMockMissionProgress(client, userId, trigger, 1);
+};
+
+const applyMockCharacterAwakeningEquivalent = (character: any) => {
+  const result = applyCharacterAwakeningCopyEquivalent(
+    Number(character.awakening_level || 0),
+    Number(character.awakening_progress || 0),
+    1,
+  );
+  character.awakening_level = result.awakeningLevel;
+  character.awakening_progress = result.awakeningProgress;
+  return {
+    outcome: result.levelsAdvanced > 0 ? "awakening" : "awakening_progress",
+    awakening_progress_added: 1,
+    awakening_level: result.awakeningLevel,
+    awakening_progress: result.awakeningProgress,
+    awakening_required: result.nextRequired,
+  };
 };
 
 export async function executeMockRpc(client: any, funcName: string, params: any): Promise<any> {
@@ -514,22 +532,14 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     if (!character) return { data: null, error: { message: "owned character not found", code: "P0002" } };
     const currentLevel = Number(character.awakening_level || 0);
     if (currentLevel >= 5) return { data: null, error: { message: "character awakening is already at maximum", code: "23514" } };
-    const nextLevel = currentLevel + 1;
-    const master = (client.getStorage("character_awakening_master") || []).find((entry: any) => entry.awakening_level === nextLevel);
-    if (!master) return { data: null, error: { message: "character awakening master is incomplete", code: "P0002" } };
-    const users = client.getStorage("users") || [];
-    const user = users.find((entry: any) => entry.id === userId);
     const items = client.getStorage("user_items") || [];
-    const material = items.find((entry: any) => entry.user_id === userId && entry.item_id === "LAW_OF_STRIFE");
-    if (!user || Number(user.cash || 0) < Number(master.required_cash)) return { data: null, error: { message: "insufficient cash", code: "23514" } };
-    if (!material || Number(material.quantity || 0) < 1) return { data: null, error: { message: "insufficient awakening material", code: "23514" } };
-    user.cash -= Number(master.required_cash);
-    material.quantity -= 1;
-    character.awakening_level = nextLevel;
-    client.setStorage("users", users);
+    const book = items.find((entry: any) => entry.user_id === userId && entry.item_id === "AWAKENING_BOOK");
+    if (!book || Number(book.quantity || 0) < 1) return { data: null, error: { message: "insufficient Awakening Book", code: "23514" } };
+    book.quantity = Number(book.quantity) - 1;
+    const result = applyMockCharacterAwakeningEquivalent(character);
     client.setStorage("user_items", items);
     client.setStorage("user_characters", characters);
-    return { data: { status: "success", awakening_level: nextLevel, cash_spent: Number(master.required_cash), remaining_cash: user.cash }, error: null };
+    return { data: { status: "success", consumed_item_id: "AWAKENING_BOOK", consumed_quantity: 1, ...result }, error: null };
   }
 
   if (funcName === "level_up_character" || funcName === "level_up_equipment") {
@@ -2196,30 +2206,6 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     return { data: { status: "success" }, error: null };
   }
 
-  if (funcName === "character_awaken") {
-    const { p_user_id, p_character_id, p_cash_cost } = params;
-    const users = client.getStorage("users");
-    const user = users.find((u: any) => u.id === p_user_id);
-    if (!user || user.cash < p_cash_cost) return { error: { message: "キャッシュが不足しています。" } };
-    
-    const items = client.getStorage("user_items");
-    const awakenItem = items.find((i: any) => i.user_id === p_user_id && i.item_id === "LAW_OF_STRIFE");
-    if (!awakenItem || awakenItem.quantity < 1) return { error: { message: "覚醒の書が不足しています。" } };
-    
-    const chars = client.getStorage("user_characters");
-    const char = chars.find((c: any) => c.user_id === p_user_id && c.character_id === p_character_id);
-    if (!char || (char.awakening_level || 0) >= 5) return { error: { message: "キャラクターが存在しないか、覚醒上限です。" } };
-    
-    user.cash -= p_cash_cost;
-    awakenItem.quantity -= 1;
-    char.awakening_level = (char.awakening_level || 0) + 1;
-    
-    client.setStorage("users", users);
-    client.setStorage("user_items", items);
-    client.setStorage("user_characters", chars);
-    return { data: { status: "success" }, error: null };
-  }
-
   if (funcName === "upgrade_gear") {
     const { p_user_id, p_equipment_id, p_exp_item_id, p_count, p_cash_cost } = params;
     const users = client.getStorage("users");
@@ -2572,10 +2558,19 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
       // deterministic while preserving the production RPC response shape.
       const picked = index === 9 ? ssr[0] : normal[index % normal.length];
       const existing = characters.find((row: any) => row.user_id === userId && row.character_id === picked.item_id);
-      const outcome = existing ? "awakening" : "new";
-      if (existing) existing.awakening_level = Math.min(5, Number(existing.awakening_level || 0) + 1);
-      else characters.push({ id: `mock_character_${Date.now()}_${index}`, user_id: userId, character_id: picked.item_id, level: 1, awakening_level: 0, created_at: new Date().toISOString() });
-      return { type: "CHARACTER", character_id: picked.item_id, rarity: index === 9 ? "SSR" : picked.rarity, outcome, tutorial_slot: index + 1 };
+      if (!existing) {
+        characters.push({ id: `mock_character_${Date.now()}_${index}`, user_id: userId, character_id: picked.item_id, level: 1, awakening_level: 0, awakening_progress: 0, created_at: new Date().toISOString() });
+        return { type: "CHARACTER", character_id: picked.item_id, rarity: index === 9 ? "SSR" : picked.rarity, outcome: "new", tutorial_slot: index + 1 };
+      }
+      if (Number(existing.awakening_level || 0) >= 5) {
+        const inventory = client.getStorage("user_items") || [];
+        const book = inventory.find((row: any) => row.user_id === userId && row.item_id === "AWAKENING_BOOK");
+        if (book) book.quantity = Number(book.quantity || 0) + 1;
+        else inventory.push({ user_id: userId, item_id: "AWAKENING_BOOK", quantity: 1 });
+        client.setStorage("user_items", inventory);
+        return { type: "CHARACTER", character_id: picked.item_id, rarity: index === 9 ? "SSR" : picked.rarity, outcome: "converted", converted_item_id: "AWAKENING_BOOK", converted_quantity: 1, tutorial_slot: index + 1 };
+      }
+      return { type: "CHARACTER", character_id: picked.item_id, rarity: index === 9 ? "SSR" : picked.rarity, ...applyMockCharacterAwakeningEquivalent(existing), tutorial_slot: index + 1 };
     });
     const response = { status: "success", request_id: params.p_request_id, results, tutorial: true, guaranteed_ssr_slot: 10 };
     histories.push({ user_id: userId, request_id: params.p_request_id, gacha_id: "CHAR_NORMAL", payment_source: "free", pull_count: 10, status: "COMPLETED", result_payload: response });
@@ -2634,7 +2629,7 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
       let roll = Math.random() * 100;
       return (rates.find(entry => (roll -= entry.weight) <= 0) || rates[rates.length - 1]).rarity;
     };
-    const results: Array<{ type: "CHARACTER"; character_id: string; rarity: string; outcome: "new" | "awakening" | "converted" }> = [];
+    const results: Array<Record<string, unknown> & { type: "CHARACTER"; character_id: string; rarity: string; outcome: string }> = [];
     for (let index = 0; index < p_pull_count; index += 1) {
       const rarity = pickRarity();
       const bucket = pool.filter((entry: any) => entry.rarity === rarity);
@@ -2642,16 +2637,15 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
       const picked = bucket[Math.floor(Math.random() * bucket.length)].item_id;
       const existing = characters.find((entry: any) => entry.user_id === p_user_id && entry.character_id === picked);
       if (!existing) {
-        characters.push({ id: `mock_character_${Date.now()}_${index}`, user_id: p_user_id, character_id: picked, level: 1, awakening_level: 0, created_at: new Date().toISOString() });
+        characters.push({ id: `mock_character_${Date.now()}_${index}`, user_id: p_user_id, character_id: picked, level: 1, awakening_level: 0, awakening_progress: 0, created_at: new Date().toISOString() });
         results.push({ type: "CHARACTER", character_id: picked, rarity, outcome: "new" });
       } else if (Number(existing.awakening_level || 0) < 5) {
-        existing.awakening_level = Number(existing.awakening_level || 0) + 1;
-        results.push({ type: "CHARACTER", character_id: picked, rarity, outcome: "awakening" });
+        results.push({ type: "CHARACTER", character_id: picked, rarity, ...applyMockCharacterAwakeningEquivalent(existing) });
       } else {
-        const material = inventory.find((entry: any) => entry.user_id === p_user_id && entry.item_id === "LAW_OF_STRIFE");
+        const material = inventory.find((entry: any) => entry.user_id === p_user_id && entry.item_id === "AWAKENING_BOOK");
         if (material) material.quantity = Number(material.quantity || 0) + 1;
-        else inventory.push({ user_id: p_user_id, item_id: "LAW_OF_STRIFE", quantity: 1 });
-        results.push({ type: "CHARACTER", character_id: picked, rarity, outcome: "converted" });
+        else inventory.push({ user_id: p_user_id, item_id: "AWAKENING_BOOK", quantity: 1 });
+        results.push({ type: "CHARACTER", character_id: picked, rarity, outcome: "converted", converted_item_id: "AWAKENING_BOOK", converted_quantity: 1 });
       }
     }
     recordMockFunnelMilestone(client, p_user_id, "first_gacha", { source: "character_gacha" });
@@ -2741,9 +2735,9 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
           existing.plus_val = Number(existing.plus_val || 0) + 1;
           results.push({ type: "SKILL", item_id: picked.item_id, rarity, outcome: "limit_break" });
         } else {
-          const manual = items.find((entry: any) => entry.user_id === p_user_id && entry.item_id === "TRAINING_MANUAL");
+          const manual = items.find((entry: any) => entry.user_id === p_user_id && entry.item_id === "SKILL_MANUAL");
           if (manual) manual.quantity = Number(manual.quantity || 0) + 2;
-          else items.push({ user_id: p_user_id, item_id: "TRAINING_MANUAL", quantity: 2 });
+          else items.push({ user_id: p_user_id, item_id: "SKILL_MANUAL", quantity: 2 });
           results.push({ type: "SKILL", item_id: picked.item_id, rarity, outcome: "converted" });
         }
       } else {
@@ -2755,7 +2749,6 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     client.setStorage("user_daily_gacha_claims", claims);
     client.setStorage("user_skills", skills);
     client.setStorage("user_equipments", equipments);
-    client.setStorage("user_items", items);
     recordMockFunnelMilestone(client, p_user_id, "first_gacha", { source: gacha.gacha_type === "SKILL" ? "skill_gacha" : "equipment_gacha" });
     if (p_currency_type !== "free" && (p_gacha_id === "SKILL_SPECIAL" || p_gacha_id === "EQUIP_SPECIAL")) {
       const pityPoints = client.getStorage("user_gacha_pity_points") || [];

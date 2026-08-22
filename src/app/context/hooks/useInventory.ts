@@ -27,10 +27,9 @@ export function useInventory(
   const [equipExpS, setEquipExpS] = useState<number>(0);
   const [equipExpM, setEquipExpM] = useState<number>(0);
   const [equipExpL, setEquipExpL] = useState<number>(0);
-  const [lawsOfStrife, setLawsOfStrife] = useState<number>(0);
-  const [skillLbBooks, setSkillLbBooks] = useState<number>(0);
-  const [exclusiveContracts, setExclusiveContracts] = useState<number>(0);
-  const [equipLbHammers, setEquipLbHammers] = useState<number>(0);
+  const [awakeningBooks, setAwakeningBooks] = useState<number>(0);
+  const [skillManuals, setSkillManuals] = useState<number>(0);
+  const [equipLbParts, setEquipLbParts] = useState<number>(0);
 
   // 互換エイリアス
   const healPotions = 0;
@@ -227,10 +226,9 @@ export function useInventory(
     equipExpS, setEquipExpS,
     equipExpM, setEquipExpM,
     equipExpL, setEquipExpL,
-    lawsOfStrife, setLawsOfStrife,
-    skillLbBooks, setSkillLbBooks,
-    exclusiveContracts, setExclusiveContracts,
-    equipLbHammers, setEquipLbHammers,
+    awakeningBooks, setAwakeningBooks,
+    skillManuals, setSkillManuals,
+    equipLbParts, setEquipLbParts,
     healPotions,
     doctorSprays,
     pvpVipPasses,

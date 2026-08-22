@@ -36,6 +36,7 @@ import { useAudio } from "@/audio/AudioProvider";
 import type { SeEvent } from "@/audio/audioContract";
 import { beginAssetTierMetric, finishAssetTierMetric, preloadAssetManifest } from "@/app/lib/screenAssets";
 import { canonicalMissionUiStatus } from "@/domain/gameplay/canonical/missions";
+import { canonicalItemName } from "@/domain/gameplay/canonical/items";
 
 const ONBOARDING_AUTH_INTENT_KEY = "tribe_onboarding_auth_intent";
 const ONBOARDING_AUTH_INTENT_MAX_AGE_MS = 30 * 60 * 1000;
@@ -195,10 +196,9 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     equipExpS, setEquipExpS,
     equipExpM, setEquipExpM,
     equipExpL, setEquipExpL,
-    lawsOfStrife, setLawsOfStrife,
-    skillLbBooks, setSkillLbBooks,
-    exclusiveContracts, setExclusiveContracts,
-    equipLbHammers, setEquipLbHammers,
+    awakeningBooks, setAwakeningBooks,
+    skillManuals, setSkillManuals,
+    equipLbParts, setEquipLbParts,
     healPotions,
     doctorSprays,
     pvpVipPasses,
@@ -446,7 +446,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     cash, setCash,
     charExpS, charExpM, charExpL,
     equipExpS, equipExpM, equipExpL,
-    lawsOfStrife, equipLbHammers, skillLbBooks, exclusiveContracts,
+    equipLbParts, skillManuals,
     upgradeSelectedCharId,
     setErrorMessage,
     (type: string) => playCyberSe(type as any),
@@ -1472,11 +1472,10 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         setEquipExpS(itemsData.find(i => i.item_id === "EQUIP_EXP_S")?.quantity || 0);
         setEquipExpM(itemsData.find(i => i.item_id === "EQUIP_EXP_M")?.quantity || 0);
         setEquipExpL(itemsData.find(i => i.item_id === "EQUIP_EXP_L")?.quantity || 0);
-        setLawsOfStrife(itemsData.find(i => i.item_id === "LAW_OF_STRIFE")?.quantity || 0);
+        setAwakeningBooks(itemsData.find(i => i.item_id === "AWAKENING_BOOK")?.quantity || 0);
         const skillManualQuantity = itemsData.find(i => i.item_id === "SKILL_MANUAL")?.quantity || 0;
-        setSkillLbBooks(skillManualQuantity);
-        setExclusiveContracts(skillManualQuantity);
-        setEquipLbHammers(itemsData.find(i => i.item_id === "EQUIP_LB_PART")?.quantity || 0);
+        setSkillManuals(skillManualQuantity);
+        setEquipLbParts(itemsData.find(i => i.item_id === "EQUIP_LB_PART")?.quantity || 0);
       }
 
       const { data: equipsData } = await supabase
@@ -1669,7 +1668,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
             id: p.id.toString(),
             title: p.message ? p.message.split(":")[0] : "配布アイテム",
             desc: p.message ? p.message.split(":")[1] || p.message : "",
-            reward: `${p.item_id === "CASH" ? "キャッシュ" : "ダイヤ"} +${p.quantity}`,
+            reward: `${canonicalItemName(p.item_id)} +${p.quantity}`,
             itemId: p.item_id,
             qty: p.quantity,
             expireText,
@@ -2756,20 +2755,20 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
         const serverResults = drawResult.data?.results || [];
         const awakenedCharacterIds = Array.from(new Set(serverResults
-          .filter((result: { outcome?: string }) => result.outcome === "awakening")
+          .filter((result: { outcome?: string }) => result.outcome === "awakening" || result.outcome === "awakening_progress")
           .map((result: { character_id: string }) => result.character_id)));
         const authoritativeAwakeningByCharacter = new Map<string, number>();
         if (awakenedCharacterIds.length > 0) {
           const { data: awakenedRows, error: awakenedRowsError } = await supabase
             .from("user_characters")
-            .select("character_id,awakening_level")
+            .select("character_id,awakening_level,awakening_progress")
             .in("character_id", awakenedCharacterIds);
           if (awakenedRowsError) console.warn("Authoritative gacha awakening display state is unavailable:", awakenedRowsError);
           for (const row of awakenedRows || []) {
             authoritativeAwakeningByCharacter.set(String(row.character_id), Number(row.awakening_level));
           }
         }
-        const results = serverResults.map((result: { character_id: string; outcome: string; rarity?: string }) => {
+        const results = serverResults.map((result: { character_id: string; outcome: string; rarity?: string; awakening_level?: number; awakening_progress?: number; awakening_required?: number }) => {
           const character = CHARACTERS_MASTER.find(c => c.id === result.character_id);
           const revealStats = character ? getCharacterBaseStats(character.id, 1, 0) : null;
           const attributeLabels: Record<string, string> = {
@@ -2789,11 +2788,13 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
             atk: revealStats?.atk,
             def: revealStats?.def,
             initialLevel: 1,
-            awakeningLevel: authoritativeAwakeningByCharacter.get(result.character_id),
+            awakeningLevel: result.awakening_level ?? authoritativeAwakeningByCharacter.get(result.character_id),
             converted: result.outcome === "converted",
             convertReward: result.outcome === "awakening"
-              ? (authoritativeAwakeningByCharacter.has(result.character_id) ? `覚醒 +${authoritativeAwakeningByCharacter.get(result.character_id)}` : "覚醒")
-              : result.outcome === "converted" ? "抗争の掟 x1" : "新規獲得"
+              ? `覚醒 +${result.awakening_level ?? authoritativeAwakeningByCharacter.get(result.character_id) ?? ""}`
+              : result.outcome === "awakening_progress"
+                ? `覚醒進捗 +1（${result.awakening_progress}/${result.awakening_required}）`
+                : result.outcome === "converted" ? "覚醒の書 x1" : "新規獲得"
           };
         });
         if (typeof drawResult.data?.cash === "number") setCash(drawResult.data.cash);
@@ -2966,95 +2967,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       const results: any[] = [];
       let highestRarity: "BLUE" | "PURPLE" | "GOLD" = "BLUE";
 
-      if ((category as string) === "CHARACTER") {
-        const localUserCharList = [...userCharactersDbList];
-        let isFirstCharAllocated = localUserCharList.length > 0;
-
-        let pool = gachaItemsMaster.filter((item: any) => item.gacha_id === scoutType);
-        if (pool.length === 0) {
-          pool = gachaItemsMaster.filter((item: any) => item.gacha_id === "CHAR_SPECIAL");
-        }
-        const totalWeight = pool.reduce((sum: number, item: any) => sum + item.weight, 0) || 100;
-
-        for (let i = 0; i < scoutCount; i++) {
-          let randVal = Math.random() * totalWeight;
-          let selectedItem = pool[0];
-          for (const item of pool) {
-            randVal -= item.weight;
-            if (randVal <= 0) {
-              selectedItem = item;
-              break;
-            }
-          }
-
-          const selectedChar = CHARACTERS_MASTER.find(c => c.id === selectedItem?.item_id) || CHARACTERS_MASTER[0];
-          const existCharIdx = localUserCharList.findIndex(c => c.character_id === selectedChar.id);
-
-          if (existCharIdx !== -1) {
-            const existChar = localUserCharList[existCharIdx];
-            if (existChar.awakening_level >= 5) {
-              const { data: itemData } = await supabase.from("user_items").select("quantity").eq("user_id", session.user.id).eq("item_id", "LAW_OF_STRIFE").maybeSingle();
-              await supabase.from("user_items").upsert({ user_id: session.user.id, item_id: "LAW_OF_STRIFE", quantity: (itemData?.quantity || 0) + 1 });
-              results.push({ type: "CHARACTER", name: selectedChar.jpName, rarity: selectedChar.rarity || "SSR", converted: true, convertReward: "抗争の掟 x1" });
-            } else {
-              const newAwake = (existChar.awakening_level || 0) + 1;
-              await supabase.from("user_characters").update({ awakening_level: newAwake }).eq("id", existChar.id);
-              localUserCharList[existCharIdx].awakening_level = newAwake;
-              results.push({ type: "CHARACTER", name: selectedChar.jpName, rarity: selectedChar.rarity || "SSR", converted: false, convertReward: "覚醒段階+1" });
-            }
-          } else {
-            const { data: insertData } = await supabase.from("user_characters").insert({
-              user_id: session.user.id,
-              character_id: selectedChar.id,
-              level: 1,
-              awakening_level: 0
-            }).select().single();
-
-            const newCharRec = insertData || { id: `c_${selectedChar.id}`, user_id: session.user.id, character_id: selectedChar.id, level: 1, awakening_level: 0 };
-            localUserCharList.push(newCharRec);
-            results.push({ type: "CHARACTER", name: selectedChar.jpName, rarity: selectedChar.rarity || "SSR", converted: false, convertReward: "新規獲得" });
-
-            if (!isFirstCharAllocated) {
-              await supabase.rpc("update_favorite_character", { p_user_id: session.user.id, p_character_id: selectedChar.id });
-              const skillId = selectedChar.id === "11111111-1111-1111-1111-111111111111" ? "SKILL_037" : selectedChar.id === "33333333-3333-3333-3333-333333333333" ? "SKILL_039" : "SKILL_038";
-              await supabase.from("user_skills").insert({
-                user_id: session.user.id,
-                skill_card_id: skillId,
-                plus_val: 0,
-                slot_index: 0,
-                equipped_character_id: newCharRec.id
-              });
-
-              const starterGears = [
-                { equipment_id: "WEAPON_001", slot_index: 0 },
-                { equipment_id: "HEAD_001", slot_index: 2 },
-                { equipment_id: "BODY_001", slot_index: 3 },
-                { equipment_id: "LEGS_001", slot_index: 4 },
-                { equipment_id: "ACCESSORY_001", slot_index: 5 }
-              ];
-              for (const gear of starterGears) {
-                await supabase.from("user_equipments").insert({
-                  user_id: session.user.id,
-                  equipment_id: gear.equipment_id,
-                  level: 1,
-                  plus_val: 0,
-                  equipped_character_id: newCharRec.id,
-                  slot_index: gear.slot_index,
-                  random_options: [
-                    { name: "クリティカル率", val: "+5%", unlocked: true },
-                    { name: "命中率", val: "+8%", unlocked: false },
-                    { name: "回避率", val: "+6%", unlocked: false },
-                    { name: "防御貫通力", val: "+12%", unlocked: false }
-                  ]
-                });
-              }
-              isFirstCharAllocated = true;
-            }
-          }
-          if (selectedChar.rarity === "SSR") highestRarity = "GOLD";
-          else if (selectedChar.rarity === "SR" && highestRarity !== "GOLD") highestRarity = "PURPLE";
-        }
-      } else if (category === "SKILL") {
+      if (category === "SKILL") {
         for (let i = 0; i < scoutCount; i++) {
           const rand = Math.random();
           let targetRarity = "R";
@@ -3075,8 +2988,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
           const existSkill = userSkillsList.find(s => s.skill_card_id === selected.id);
           if (existSkill) {
             if (existSkill.plus_val >= 10) {
-              const { data: itemData } = await supabase.from("user_items").select("quantity").eq("user_id", session.user.id).eq("item_id", "TRAINING_MANUAL").maybeSingle();
-              await supabase.from("user_items").upsert({ user_id: session.user.id, item_id: "TRAINING_MANUAL", quantity: (itemData?.quantity || 0) + 2 });
+              const { data: itemData } = await supabase.from("user_items").select("quantity").eq("user_id", session.user.id).eq("item_id", "SKILL_MANUAL").maybeSingle();
+              await supabase.from("user_items").upsert({ user_id: session.user.id, item_id: "SKILL_MANUAL", quantity: (itemData?.quantity || 0) + 2 });
               results.push({ type: "SKILL", name: selected.name, rarity: selected.rarity, converted: true, convertReward: "指南書 x2" });
             } else {
               await supabase.from("user_skills").update({ plus_val: existSkill.plus_val + 1 }).eq("id", existSkill.id);
@@ -3179,72 +3092,6 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       setSpecialPityPoints((pityResult?.current_points ?? Math.max(0, specialPityPoints - 200)) as number);
       await syncBootstrapData(session.user.id);
       return;
-
-      const nextPts = specialPityPoints - 200;
-      await supabase.from("user_gacha_pity_points").upsert({
-        user_id: session.user.id,
-        pity_master_id: "pity_special_common",
-        current_points: nextPts,
-        updated_at: new Date().toISOString()
-      }, { onConflict: "user_id,pity_master_id" });
-      setSpecialPityPoints(nextPts);
-
-      if (rewardType === "CHARACTER") {
-        const charMaster = CHARACTERS_MASTER.find(c => c.id === rewardId) || CHARACTERS_MASTER[0];
-        const existChar = userCharactersDbList.find(c => c.character_id === rewardId);
-        if (existChar) {
-          if (existChar.awakening_level >= 5) {
-            const { data: itemData } = await supabase.from("user_items").select("quantity").eq("user_id", session.user.id).eq("item_id", "LAW_OF_STRIFE").maybeSingle();
-            await supabase.from("user_items").upsert({ user_id: session.user.id, item_id: "LAW_OF_STRIFE", quantity: (itemData?.quantity || 0) + 1 });
-            setErrorMessage(`【天井交換】${charMaster.jpName}を交換！（所持上限につき「抗争の掟 x1」へ変換）`);
-          } else {
-            const newAwake = (existChar.awakening_level || 0) + 1;
-            await supabase.from("user_characters").update({ awakening_level: newAwake }).eq("id", existChar.id);
-            setErrorMessage(`【天井交換】${charMaster.jpName}を覚醒段階+${newAwake}に強化しました！`);
-          }
-        } else {
-          await supabase.from("user_characters").insert({
-            user_id: session.user.id,
-            character_id: rewardId,
-            level: 1,
-            awakening_level: 0
-          });
-          setErrorMessage(`【天井交換】${charMaster.jpName}を獲得しました！`);
-        }
-      } else if (rewardType === "SKILL") {
-        const skillMaster = CANONICAL_SKILL_VIEW.find(s => s.id === rewardId) || CANONICAL_SKILL_VIEW[0];
-        const existSkill = userSkillsList.find(s => s.skill_card_id === rewardId);
-        if (existSkill) {
-          if (existSkill.plus_val >= 10) {
-            const { data: itemData } = await supabase.from("user_items").select("quantity").eq("user_id", session.user.id).eq("item_id", "TRAINING_MANUAL").maybeSingle();
-            await supabase.from("user_items").upsert({ user_id: session.user.id, item_id: "TRAINING_MANUAL", quantity: (itemData?.quantity || 0) + 2 });
-            setErrorMessage(`【天井交換】${skillMaster.name}を交換！（「指南書 x2」へ変換）`);
-          } else {
-            await supabase.from("user_skills").update({ plus_val: existSkill.plus_val + 1 }).eq("id", existSkill.id);
-            setErrorMessage(`【天井交換】${skillMaster.name}を限界突破+${existSkill.plus_val + 1}に強化しました！`);
-          }
-        } else {
-          await supabase.from("user_skills").insert({ user_id: session.user.id, skill_card_id: rewardId, plus_val: 0 });
-          setErrorMessage(`【天井交換】${skillMaster.name}を獲得しました！`);
-        }
-      } else {
-        const equipMaster = CANONICAL_EQUIPMENT_VIEW.find(e => e.id === rewardId) || CANONICAL_EQUIPMENT_VIEW[0];
-        await supabase.from("user_equipments").insert({
-          user_id: session.user.id,
-          equipment_id: rewardId,
-          level: 1,
-          plus_val: 0,
-          random_options: [
-            { name: "クリティカル率", val: "+5%", unlocked: true },
-            { name: "命中率", val: "+8%", unlocked: false },
-            { name: "回避率", val: "+6%", unlocked: false },
-            { name: "防御貫通力", val: "+12%", unlocked: false }
-          ]
-        });
-        setErrorMessage(`【天井交換】${equipMaster.name}を獲得しました！`);
-      }
-
-      await syncBootstrapData(session.user.id);
     } catch (err: unknown) {
       console.error("Exchange pity error:", err);
       setErrorMessage("天井交換に失敗しました。");
@@ -3406,11 +3253,11 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     } else if (packId === "strife") {
       cost = 50;
       if (diamonds >= cost) {
-        setLawsOfStrife(prev => prev + 1);
-        const { data: itemData } = await supabase.from("user_items").select("quantity").eq("user_id", session.user.id).eq("item_id", "LAW_OF_STRIFE").single();
-        await supabase.from("user_items").upsert({ user_id: session.user.id, item_id: "LAW_OF_STRIFE", quantity: (itemData?.quantity || 0) + 1 });
+        setAwakeningBooks(prev => prev + 1);
+        const { data: itemData } = await supabase.from("user_items").select("quantity").eq("user_id", session.user.id).eq("item_id", "AWAKENING_BOOK").single();
+        await supabase.from("user_items").upsert({ user_id: session.user.id, item_id: "AWAKENING_BOOK", quantity: (itemData?.quantity || 0) + 1 });
         success = true;
-        message = "抗争覚醒パックを購入しました！抗争の掟+1を獲得しました。";
+        message = "覚醒パックを購入しました！覚醒の書+1を獲得しました。";
       }
     } else if (packId === "polish") {
       cost = 15;
@@ -3695,7 +3542,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     userCharactersDbList, setUserCharactersDbList,
     trainingManuals,
     polishingStones,
-    lawsOfStrife, setLawsOfStrife,
+    awakeningBooks, setAwakeningBooks,
     userEquipmentsList, setUserEquipmentsList,
     selectedEquipment, setSelectedEquipment,
     equipmentLevel, setEquipmentLevel,
@@ -3929,7 +3776,6 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     selectedSkill,
     setSelectedSkill,
     skillLimitBreakMaster,
-    exclusiveContracts,
     handleScout,
     featureOperatingStates,
     dailyFreeGachaFlags,
@@ -3973,15 +3819,14 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     energyDrinks,
     setEnergyDrinks,
     pvpVipPasses,
-    setExclusiveContracts,
     charExpS,
     charExpM,
     charExpL,
     equipExpS,
     equipExpM,
     equipExpL,
-    skillLbBooks,
-    equipLbHammers,
+    skillManuals,
+    equipLbParts,
     handleUseItem,
     userShopPurchases,
     userCreatedAt,

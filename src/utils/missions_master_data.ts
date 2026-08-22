@@ -5,7 +5,7 @@ export const MISSIONS_MASTER_DATA = [
     title: "ギルドに加入する",
     description: "ギルドに加入して仲間と協力しよう",
     target_count: 1,
-    reward_type: "NORMAL_GACHA_TICKET",
+    reward_type: "NORMAL_GACHA_TICKET_CHARACTER",
     reward_amount: 3
   },
   {
@@ -23,7 +23,7 @@ export const MISSIONS_MASTER_DATA = [
     title: "レイドに参加 (5回)",
     description: "レイドボスとの戦闘に5回参加する",
     target_count: 5,
-    reward_type: "NORMAL_GACHA_TICKET",
+    reward_type: "NORMAL_GACHA_TICKET_CHARACTER",
     reward_amount: 1
   },
   {
