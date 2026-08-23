@@ -127,17 +127,7 @@ export default function BagTab() {
               onClick={() => handleItemCardClick(item)}
             >
               <div className="bag-item-icon-area">
-                {/* 共通アイコン描画 */}
-                <div className="item-icon-badge">
-                  {item.iconType === "ENERGY_DRINK" && <span className="icon-text text-color-cyan">ST</span>}
-                  {item.iconType.startsWith("BOOK") && <span className="icon-text text-color-magenta">EXP</span>}
-                  {item.iconType.startsWith("OIL") && <span className="icon-text text-amber-400">EQ</span>}
-                  {item.iconType === "AWAKEN_BOOK" && <span className="icon-text text-red-500">覚醒</span>}
-                  {item.iconType.includes("LB") && <span className="icon-text text-purple-400">突破</span>}
-                  {item.iconType === "EQUIP_LB" && <span className="icon-text text-yellow-400">万能</span>}
-                  {item.iconType === "TICKET" && <span className="icon-text text-color-cyan">券</span>}
-                  {item.iconType === "RESOURCE" && <span className="icon-text text-color-cyan">回復</span>}
-                </div>
+                <img className="item-production-art" src={item.assetPath} alt="" aria-hidden="true" />
               </div>
 
               <div className="bag-item-info-area">
@@ -175,6 +165,7 @@ export default function BagTab() {
               <h3>{selectedItem.name}</h3>
             </div>
             <div className="recover-modal-body p-3 text-center">
+              <img className="item-production-art item-production-art--detail" src={selectedItem.assetPath} alt="" aria-hidden="true" />
               <p className="text-gray-300 font-size-8 mb-3">{selectedItem.description}</p>
               <div className="font-size-8 text-cyan-400 font-bold mb-4">
                 所持数: {itemQuantities[selectedItem.id] || 0} 個

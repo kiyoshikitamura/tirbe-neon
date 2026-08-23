@@ -4,6 +4,7 @@ import FullScreenPanel from "./ui/FullScreenPanel";
 import SubTabNav from "./ui/SubTabNav";
 import OutlawButton from "./ui/OutlawButton";
 import { canonicalMissionRewardName } from "@/domain/gameplay/canonical/missions";
+import CanonicalItemIcon from "./ui/CanonicalItemIcon";
 import "./MissionPanel.css";
 
 const MISSION_STATUS_LABELS: Record<string, string> = {
@@ -96,7 +97,7 @@ export default function MissionPanel() {
                     </div>
                     <div className="mission-desc">{m.description}</div>
                     <div className="mission-reward">
-                      <span>REWARD</span><strong>{canonicalMissionRewardName(String(m.reward_item || ""))} × {Number(m.reward_amount || 0).toLocaleString()}</strong>
+                      <span>REWARD</span><CanonicalItemIcon itemId={m.reward_item} alt="" className="mission-reward-art" /><strong>{canonicalMissionRewardName(String(m.reward_item || ""))} × {Number(m.reward_amount || 0).toLocaleString()}</strong>
                     </div>
                     
                     <div className="mission-progress-bar-container">

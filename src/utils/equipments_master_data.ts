@@ -7,6 +7,15 @@ export interface EquipmentMaster {
   atk: number; def: number; hp: number; spd: number; luk: number;
   is_exclusive: boolean; exclusive_character_id: string | null;
   effect_description: string | null; description: string;
+  assetPath: string;
+}
+
+export function canonicalEquipmentAssetPath(equipmentId: string, slotType?: EquipmentMaster["slot_type"]): string {
+  const master = slotType ? null : CANONICAL_EQUIPMENTS.find((equipment) => equipment.equipment_id === equipmentId);
+  const category = String(slotType ?? master?.category ?? "").toLowerCase();
+  const sequence = equipmentId.match(/_(\d{3})$/)?.[1];
+  if (!category || !sequence) return "";
+  return `/equipments/${category}_${sequence}.png`;
 }
 
 export const CANONICAL_EQUIPMENT_VIEW: EquipmentMaster[] = CANONICAL_EQUIPMENTS.map((equipment) => ({
@@ -16,6 +25,7 @@ export const CANONICAL_EQUIPMENT_VIEW: EquipmentMaster[] = CANONICAL_EQUIPMENTS.
   exclusive_character_id: equipment.exclusive_character_id,
   effect_description: equipment.fixed_effects.filter((effect) => effect !== "—").join(" / ") || null,
   description: equipment.fixed_effects.filter((effect) => effect !== "—").join(" / ") || equipment.display_name,
+  assetPath: canonicalEquipmentAssetPath(equipment.equipment_id, equipment.category),
 }));
 
 /** @deprecated Canonical compatibility alias retained while old imports are retired. */

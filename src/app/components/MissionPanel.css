@@ -126,3 +126,4 @@
   padding: 40px 0;
   font-size: 14px;
 }
+.mission-reward-art { flex: 0 0 auto; width: 28px; height: 28px; object-fit: contain; }

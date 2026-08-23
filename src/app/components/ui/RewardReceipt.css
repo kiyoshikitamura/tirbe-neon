@@ -1,7 +1,7 @@
 .reward-receipt { display: grid; gap: 12px; }
 .reward-receipt-list { display: grid; gap: 8px; }
 .reward-receipt-item { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 8px; min-height: 46px; padding: 9px 11px; border: 1px solid rgba(247, 196, 72, .36); border-radius: var(--ui-radius-sm); background: linear-gradient(135deg, rgba(247, 196, 72, .10), rgba(0, 240, 255, .045)); }
-.reward-receipt-mark { color: var(--neon-gold); filter: drop-shadow(0 0 5px rgba(247, 196, 72, .42)); }
+.reward-receipt-mark { width: 30px; height: 30px; object-fit: contain; color: var(--neon-gold); filter: drop-shadow(0 0 5px rgba(247, 196, 72, .42)); }
 .reward-receipt-name { min-width: 0; overflow-wrap: anywhere; color: var(--ui-text-primary); font-weight: 800; }
 .reward-receipt-quantity { color: var(--neon-gold); white-space: nowrap; }
 .reward-receipt-note { margin: 0; color: var(--ui-text-secondary); font-size: 11px; line-height: 1.6; text-align: center; }

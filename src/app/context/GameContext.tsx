@@ -2957,7 +2957,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       const serverResults = drawResult.data?.results || [];
       const assetResults = serverResults.map((result: { type: string; item_id: string; outcome: string; rarity?: string }) => {
         const master = result.type === "SKILL" ? CANONICAL_SKILL_VIEW.find(s => s.id === result.item_id) : CANONICAL_EQUIPMENT_VIEW.find(e => e.id === result.item_id);
-        return { type: result.type, name: master?.name || result.item_id, rarity: result.rarity || master?.rarity || "R", converted: result.outcome === "converted", convertReward: result.outcome === "converted" ? "育成素材へ変換" : result.outcome === "limit_break" ? "限界突破 +1" : "新規獲得" };
+        return { type: result.type, itemId: result.item_id, name: master?.name || result.item_id, rarity: result.rarity || master?.rarity || "R", converted: result.outcome === "converted", convertReward: result.outcome === "converted" ? "育成素材へ変換" : result.outcome === "limit_break" ? "限界突破 +1" : "新規獲得" };
       });
       if (typeof drawResult.data?.cash === "number") setCash(drawResult.data.cash);
       if (typeof drawResult.data?.diamonds === "number") setDiamonds(drawResult.data.diamonds);

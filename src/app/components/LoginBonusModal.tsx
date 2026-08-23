@@ -3,6 +3,7 @@
 import React from "react";
 import "./LoginBonusModal.css";
 import { LoginBonusMaster, LoginBonusClaimResult } from "../../utils/login_bonus_master_data";
+import CanonicalItemIcon from "./ui/CanonicalItemIcon";
 
 interface LoginBonusModalProps {
   masters: LoginBonusMaster[];
@@ -83,9 +84,7 @@ export const LoginBonusModal: React.FC<LoginBonusModalProps> = ({
                       ? "Cash"
                       : m.item_id === "DIAMOND"
                       ? "Dia"
-                      : m.item_id.includes("GACHA_TICKET") || m.item_id.startsWith("SPECIAL_TICKET_")
-                      ? "チケット"
-                      : "アイテム"}
+                      : <CanonicalItemIcon itemId={m.item_id} alt="" className="login-bonus-item-art" />}
                   </div>
 
                   <div className="login-bonus-cell-qty">

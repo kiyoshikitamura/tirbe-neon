@@ -163,6 +163,7 @@ export default function CommonModals() {
                   const master = CANONICAL_EQUIPMENT_VIEW.find((m: any) => m.id === eq.equipment_id);
                   return (
                     <div key={eq.id} className="list-item">
+                      {master && <img className="equipment-list-art" src={master.assetPath} alt="" aria-hidden="true" />}
                       <div className="item-left">
                         <span className="item-title">{master?.name || eq.equipment_id}</span>
                         <span className="item-desc">Lv.{eq.level} ｜ Rarity: {master?.rarity}</span>
@@ -334,7 +335,9 @@ export default function CommonModals() {
                         attributeBadge
                       />
                     ) : (
-                      <div className="gacha-result-asset-placeholder"><span>{res.type === "SKILL" ? "スキル" : "装備"}</span><strong>{res.name}</strong></div>
+                      res.type === "EQUIPMENT" && CANONICAL_EQUIPMENT_VIEW.find((item) => item.id === (res.equipmentId || res.itemId)) ? (
+                        <div className="gacha-result-equipment-art"><img src={CANONICAL_EQUIPMENT_VIEW.find((item) => item.id === (res.equipmentId || res.itemId))?.assetPath} alt={res.name} /></div>
+                      ) : <div className="gacha-result-asset-placeholder"><span>{res.type === "SKILL" ? "スキル" : "装備"}</span><strong>{res.name}</strong></div>
                     )}
                     {res.type === "CHARACTER" && getAcquisitionBadgeAsset(res.convertReward === "新規獲得" ? "NEW" : "AWAKENING", res.awakeningLevel) && (
                       <img className="gacha-result-acquisition-badge" src={getAcquisitionBadgeAsset(res.convertReward === "新規獲得" ? "NEW" : "AWAKENING", res.awakeningLevel) || ""} alt={compactGachaOutcome(res)} />

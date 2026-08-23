@@ -4,6 +4,7 @@
 }
 
 .tutorial-gacha-reveal.is-advancing .tutorial-gacha-reveal-body { animation: tutorial-reveal-out .24s ease-in both; }
+.equipment-list-art{width:44px;height:44px;object-fit:contain;flex:0 0 auto}.gacha-result-equipment-art{display:grid;width:100%;height:100%;place-items:center;background:radial-gradient(circle,rgba(0,240,255,.16),rgba(3,7,14,.92) 70%)}.gacha-result-equipment-art img{width:78%;height:78%;object-fit:contain;filter:drop-shadow(0 4px 12px rgba(0,0,0,.62))}
 @keyframes tutorial-reveal-out { to { opacity:0; transform:translateY(-8px) scale(.975); filter:brightness(1.5) blur(2px); } }
 
 .max-h-300 {

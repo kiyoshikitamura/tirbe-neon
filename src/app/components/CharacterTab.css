@@ -784,6 +784,8 @@
   box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.5), 0 2px 6px rgba(0, 0, 0, 0.6);
 }
 .production-rarity-item-frame{position:absolute;z-index:1;inset:0;width:100%;height:100%;object-fit:fill;pointer-events:none}
+.production-equipment-art{position:relative;z-index:2;width:42px;height:42px;object-fit:contain;flex:0 0 auto;filter:drop-shadow(0 3px 7px rgba(0,0,0,.55))}
+.char-material-copy{display:inline-flex;flex-wrap:wrap;align-items:center;gap:4px}.char-material-art{width:22px;height:22px;object-fit:contain}
 .char-equip-slot>*:not(.production-rarity-item-frame),
 .char-skill-card>*:not(.production-rarity-item-frame),
 .char-tile-item>*:not(.production-rarity-item-frame),

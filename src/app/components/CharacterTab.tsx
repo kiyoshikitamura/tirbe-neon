@@ -20,6 +20,7 @@ import TutorialNavigator from "./TutorialNavigator";
 import CharacterPresentation from "./character/CharacterPresentation";
 import { getRarityFrameAsset } from "@/utils/rarityAssets";
 import { getCharacterLocationBackground } from "@/utils/characterVisualAssets";
+import CanonicalItemIcon from "./ui/CanonicalItemIcon";
 import "./CharacterTab.css";
 
 const SKILL_EFFECT_LABELS: Record<string, string> = {
@@ -347,6 +348,7 @@ export default function CharacterTab() {
         }}
       >
         {previewGear && <img className="production-rarity-item-frame" src={getRarityFrameAsset("equipment", rarity)} alt="" aria-hidden="true" />}
+        {gearMaster && <img className="production-equipment-art" src={gearMaster.assetPath} alt="" aria-hidden="true" />}
         <div className="slot-header-row">
           <span className="slot-label">{slotDef.label}</span>
           {previewGear && (
@@ -407,7 +409,7 @@ export default function CharacterTab() {
                   <span>CHARACTER GROWTH</span>
                   <strong>{activeCharMaster.jpName}</strong>
                   <p>Lv.{Number(activeCharRecord.level || 1)} → Lv.{Number(tutorialGrowth?.required_level || 7)}</p>
-                  <small>経験の書(S) ×{Number(tutorialGrowth?.required_quantity || 0)} / CASH {Number(tutorialGrowth?.cash_cost || 0).toLocaleString()}</small>
+                  <small className="char-material-copy"><CanonicalItemIcon itemId="CHAR_EXP_S" alt="" className="char-material-art" />強化ドリンク・小 ×{Number(tutorialGrowth?.required_quantity || 0)} / CASH {Number(tutorialGrowth?.cash_cost || 0).toLocaleString()}</small>
                 </div>
                 <button
                   className="semantic-cta semantic-cta--primary tutorial-primary-target"
@@ -751,7 +753,7 @@ export default function CharacterTab() {
                     }}
                   >
                     <span>{upgradeLoading ? "強化中..." : "レベルアップ"}</span>
-                    <span className="char-upgrade-sub">経験の書(S) {Math.max(0, Number(charExpS) || 0)} / CASH {safeCash.toLocaleString()}</span>
+                    <span className="char-upgrade-sub char-material-copy"><CanonicalItemIcon itemId="CHAR_EXP_S" alt="" className="char-material-art" />強化ドリンク・小 {Math.max(0, Number(charExpS) || 0)} / CASH {safeCash.toLocaleString()}</span>
                   </button>
                   <button
                     className="char-upgrade-btn awaken active-scale-effect"
@@ -1013,6 +1015,7 @@ export default function CharacterTab() {
                               }}
                             >
                               {gearMaster && <img className="production-rarity-item-frame" src={getRarityFrameAsset("equipment", gearMaster.rarity)} alt="" aria-hidden="true" />}
+                              {gearMaster && <img className="production-equipment-art" src={gearMaster.assetPath} alt="" aria-hidden="true" />}
                               <span className="char-tile-name">{gearMaster?.name || eq.equipment_id}</span>
                               <span className="char-tile-spec">{gearMaster?.rarity || "N"} ・ {equipmentParameter(gearMaster)}</span>
                               <span className="char-tile-lv-label">Lv.{eq.level} ・ {eq.equipped_character_id ? "装備中" : "未装備"}</span>
@@ -1064,6 +1067,7 @@ export default function CharacterTab() {
                           disabled={upgradeLoading}
                         >
                           {master && <img className="production-rarity-item-frame" src={getRarityFrameAsset("equipment", master.rarity)} alt="" aria-hidden="true" />}
+                          {master && <img className="production-equipment-art" src={master.assetPath} alt="" aria-hidden="true" />}
                           <span>{master?.name || equipment.equipment_id}</span>
                           <small>{master ? `${master.rarity} ・ ${equipmentParameter(master)}` : "詳細未取得"}</small>
                           <b>Lv.{equipment.level || 1} / +{equipment.plus_val || 0}</b>
@@ -1073,7 +1077,7 @@ export default function CharacterTab() {
                   </div>
                   {selectedEquipment && (
                     <div className="char-progression-actions">
-                      <span>カスタムオイル・小 {equipExpS} / 改造パーツ {equipLbParts}</span>
+                      <span className="char-material-copy"><CanonicalItemIcon itemId="EQUIP_EXP_S" alt="" className="char-material-art" />カスタムオイル・小 {equipExpS} / <CanonicalItemIcon itemId="EQUIP_LB_PART" alt="" className="char-material-art" />改造パーツ {equipLbParts}</span>
                       <button onClick={() => void handleEquipmentLevelUp("EQUIP_EXP_S", 1)} disabled={upgradeLoading || equipExpS < 1}>Lv +1</button>
                       <button onClick={() => void handleEquipmentLimitBreak(false)} disabled={upgradeLoading || (selectedEquipment.plus_val || 0) >= 10}>同名装備</button>
                       <button onClick={() => void handleEquipmentLimitBreak(true)} disabled={upgradeLoading || equipLbParts < 1 || (selectedEquipment.plus_val || 0) >= 10}>改造パーツ</button>

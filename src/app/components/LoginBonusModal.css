@@ -295,3 +295,4 @@
 .login-bonus-btn-primary:hover {
   background: linear-gradient(135deg, #4299e1 0%, #3182ce 100%);
 }
+.login-bonus-item-art { width: 40px; height: 40px; object-fit: contain; }

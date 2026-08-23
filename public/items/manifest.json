@@ -1,0 +1,228 @@
+{
+  "spec": {
+    "count": 18,
+    "master": "512x512",
+    "format": "PNG",
+    "background": "transparent",
+    "safe_object_max_side_px": 460,
+    "target_directory": "public/items/"
+  },
+  "files": {
+    "char_exp_s.png": {
+      "size": [
+        512,
+        512
+      ],
+      "content_bbox": [
+        33,
+        34,
+        474,
+        472
+      ]
+    },
+    "char_exp_m.png": {
+      "size": [
+        512,
+        512
+      ],
+      "content_bbox": [
+        50,
+        26,
+        470,
+        486
+      ]
+    },
+    "char_exp_l.png": {
+      "size": [
+        512,
+        512
+      ],
+      "content_bbox": [
+        59,
+        28,
+        486,
+        484
+      ]
+    },
+    "equip_exp_s.png": {
+      "size": [
+        512,
+        512
+      ],
+      "content_bbox": [
+        48,
+        26,
+        459,
+        483
+      ]
+    },
+    "equip_exp_m.png": {
+      "size": [
+        512,
+        512
+      ],
+      "content_bbox": [
+        37,
+        26,
+        470,
+        486
+      ]
+    },
+    "equip_exp_l.png": {
+      "size": [
+        512,
+        512
+      ],
+      "content_bbox": [
+        66,
+        26,
+        482,
+        486
+      ]
+    },
+    "awakening_book.png": {
+      "size": [
+        512,
+        512
+      ],
+      "content_bbox": [
+        60,
+        26,
+        475,
+        486
+      ]
+    },
+    "skill_manual.png": {
+      "size": [
+        512,
+        512
+      ],
+      "content_bbox": [
+        26,
+        31,
+        486,
+        480
+      ]
+    },
+    "equip_lb_part.png": {
+      "size": [
+        512,
+        512
+      ],
+      "content_bbox": [
+        26,
+        100,
+        481,
+        419
+      ]
+    },
+    "energy_drink.png": {
+      "size": [
+        512,
+        512
+      ],
+      "content_bbox": [
+        147,
+        26,
+        365,
+        486
+      ]
+    },
+    "pvp_point_ticket.png": {
+      "size": [
+        512,
+        512
+      ],
+      "content_bbox": [
+        31,
+        127,
+        486,
+        383
+      ]
+    },
+    "raid_point_ticket.png": {
+      "size": [
+        512,
+        512
+      ],
+      "content_bbox": [
+        26,
+        127,
+        486,
+        385
+      ]
+    },
+    "normal_gacha_ticket_character.png": {
+      "size": [
+        512,
+        512
+      ],
+      "content_bbox": [
+        26,
+        126,
+        486,
+        382
+      ]
+    },
+    "normal_gacha_ticket_skill.png": {
+      "size": [
+        512,
+        512
+      ],
+      "content_bbox": [
+        26,
+        133,
+        486,
+        380
+      ]
+    },
+    "normal_gacha_ticket_equipment.png": {
+      "size": [
+        512,
+        512
+      ],
+      "content_bbox": [
+        28,
+        129,
+        485,
+        382
+      ]
+    },
+    "special_ticket_character.png": {
+      "size": [
+        512,
+        512
+      ],
+      "content_bbox": [
+        26,
+        129,
+        486,
+        383
+      ]
+    },
+    "special_ticket_skill.png": {
+      "size": [
+        512,
+        512
+      ],
+      "content_bbox": [
+        26,
+        132,
+        486,
+        379
+      ]
+    },
+    "special_ticket_equipment.png": {
+      "size": [
+        512,
+        512
+      ],
+      "content_bbox": [
+        26,
+        129,
+        486,
+        383
+      ]
+    }
+  }
+}

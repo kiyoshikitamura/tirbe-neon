@@ -1,4 +1,5 @@
 import React from "react";
+import CanonicalItemIcon from "./CanonicalItemIcon";
 import "./RewardReceipt.css";
 
 export interface RewardReceiptItem {
@@ -19,7 +20,7 @@ export default function RewardReceipt({ items, delivery = "INVENTORY", note }: R
       <div className="reward-receipt-list" aria-label="獲得報酬">
         {items.map((item, index) => (
           <div className="reward-receipt-item" key={`${item.id || item.name}-${index}`}>
-            <span className="reward-receipt-mark" aria-hidden="true">◆</span>
+            <CanonicalItemIcon itemId={item.id} alt="" className="reward-receipt-mark" />
             <span className="reward-receipt-name">{item.name}</span>
             <strong className="reward-receipt-quantity">× {Number(item.quantity).toLocaleString()}</strong>
           </div>

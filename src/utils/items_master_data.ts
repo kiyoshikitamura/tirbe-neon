@@ -6,6 +6,7 @@ export interface ItemMaster {
   category: "CONSUMABLE" | "CHAR_EXP" | "EQUIP_EXP" | "AWAKEN" | "LIMIT_BREAK" | "TICKET";
   description: string;
   iconType: string;
+  assetPath: string;
   effectValue?: number;
 }
 
@@ -38,6 +39,7 @@ export const ITEMS_MASTER_DATA: readonly ItemMaster[] = CANONICAL_ITEMS.map((ite
   category: CATEGORY_MAP[item.category],
   description: item.description,
   iconType: ICON_TYPE_MAP[item.id] ?? (item.category === "GACHA_TICKET" ? "TICKET" : "RESOURCE"),
+  assetPath: item.assetPath,
   effectValue: "effectValue" in item.runtimeUsage && typeof item.runtimeUsage.effectValue === "number"
     ? item.runtimeUsage.effectValue
     : undefined,

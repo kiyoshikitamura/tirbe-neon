@@ -202,7 +202,7 @@ async function completeVisibleTutorialGrowth(page: import("@playwright/test").Pa
   const growth = page.locator('[data-acceptance-state="TUTORIAL_GROWTH_STEP"]');
   await expect(growth).toBeVisible();
   await expect(growth).toContainText("Lv.1 → Lv.7");
-  await expect(growth).toContainText("経験の書(S) ×6 / CASH 600");
+  await expect(growth).toContainText("強化ドリンク・小 ×6 / CASH 600");
   await page.getByRole("button", { name: "Lv.7まで強化" }).click();
   await expect(page.getByRole("heading", { name: "レベルアップ結果" })).toBeVisible();
   await expect(page.locator(".confirm-body")).toContainText("Lv.1 → Lv.7");
