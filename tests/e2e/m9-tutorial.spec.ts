@@ -148,9 +148,15 @@ async function revealTutorialTenPull(page: import("@playwright/test").Page, capt
   expect(revealTransitionMs).toBeLessThan(1_000);
   test.info().annotations.push({ type: "gacha-reveal-n-transition-ms", description: String(revealTransitionMs) });
   const rRevealDwellMs = Date.now() - rDwellStartedAt;
-  expect(rRevealDwellMs).toBeGreaterThanOrEqual(900);
+  // The R dwell timer starts when React commits the next reveal, before the
+  // aria-label observer above sees that commit. Validate the complete N -> R
+  // pacing so CI polling latency cannot subtract time from the dwell contract.
+  const rRevealReadyFromTapMs = revealTransitionMs + rRevealDwellMs;
+  expect(rRevealReadyFromTapMs).toBeGreaterThanOrEqual(1_200);
+  expect(rRevealReadyFromTapMs).toBeLessThan(2_200);
   expect(rRevealDwellMs).toBeLessThan(1_700);
   test.info().annotations.push({ type: "gacha-reveal-r-dwell-ms", description: String(rRevealDwellMs) });
+  test.info().annotations.push({ type: "gacha-reveal-r-ready-from-tap-ms", description: String(rRevealReadyFromTapMs) });
   if (captureVisuals) await page.screenshot({ path: test.info().outputPath("G2-rarity-R.png") });
   await reveal.click();
   await expect(reveal).toHaveAttribute("aria-label", /^3/);
