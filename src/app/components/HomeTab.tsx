@@ -165,6 +165,7 @@ function MainMyPage() {
     ? CHARACTERS_MASTER.find((c) => c.id === leaderCharacterId)
     : undefined;
   const leaderImgUrl = leaderMaster ? getCharacterTransparentImg(leaderMaster.name) : null;
+  const isSsrLeader = leaderMaster?.rarity === "SSR";
 
   // 選択中背景URL
   let bgUrl = `/bg/bg_street_${currentBase.file}.png`;
@@ -272,6 +273,11 @@ function MainMyPage() {
       <div key={bgUrl} className={`mypage-visual-area mypage-background-enter mypage-event-${homeEventState}`} style={{ backgroundImage: `url(${bgUrl})` }}>
         {/* 背景グラデーションオーバーレイ */}
         <div className="mypage-visual-overlay" />
+        <button className={`mypage-live-ticker mypage-live-ticker--visual ${homeEventState} active-scale-effect`} onClick={() => { latestTicker.onClick(); playCyberSe("click"); }}>
+          <span className="mypage-live-ticker-icon" aria-hidden="true">{latestTicker.icon}</span>
+          <span className="mypage-live-ticker-text">{latestTicker.text}</span>
+          <span className="mypage-live-ticker-arrow" aria-hidden="true">›</span>
+        </button>
 
         {/* 最上段HUD (拠点情報オーバーレイ) */}
         <div className="mypage-base-overlay">
@@ -360,7 +366,7 @@ function MainMyPage() {
 
         {/* 層構造装飾: z-3 リーダー立ち絵キャラクター */}
         {leaderMaster && leaderImgUrl && <>
-          <div className="mypage-leader-layer">
+          <div className={`mypage-leader-layer ${isSsrLeader ? "is-ssr" : ""}`}>
             <img src={leaderImgUrl} alt={leaderMaster.name} className="mypage-leader-img" />
           </div>
           <button className="mypage-leader-tap-target" onClick={handleLeaderTap} aria-label="リーダーに話しかける" />
@@ -391,6 +397,10 @@ function MainMyPage() {
           <img src="/menu/menu_allies.png" alt="連合" className="circle-menu-img" />
         </button>
 
+        <button className="circle-menu-btn upcoming" disabled aria-label="抗争は準備中です">
+          <span className="circle-menu-upcoming-mark">抗争<small>準備中</small></span>
+        </button>
+
         <button
           className="circle-menu-btn fight active-scale-effect"
           onClick={() => { navigateTab("pvp"); playCyberSe("click"); }}
@@ -409,30 +419,11 @@ function MainMyPage() {
       </div>
 
       <div className="mypage-lower-content">
-        <section className="mission-hub" aria-label="ミッションハブ">
-          <header><span>ミッション</span><h2>次の一歩を選ぶ</h2></header>
-          <div className="mission-hub-grid">
-            <button onClick={() => { navigateTab("character"); playCyberSe("click"); }}>
-              <b>POWER</b><span>編成・強化</span><small>仲間を強くする</small>
-            </button>
-            <button onClick={() => { navigateTab("pvp"); playCyberSe("click"); }}>
-              <b>DISCOVERY</b><span>PvP・ランキング</span><small>街の強者を知る</small>
-            </button>
-            <button onClick={() => { navigateTab("guild"); playCyberSe("click"); }}>
-              <b>COMMUNITY</b><span>TRIBE</span><small>仲間とつながる</small>
-            </button>
-          </div>
-        </section>
         <button className="mypage-primary-cta semantic-cta semantic-cta--primary active-scale-effect" onClick={openPrimaryCta}>
           <span className="mypage-primary-cta-eyebrow">{primaryCta.eyebrow}</span>
           <strong>{primaryCta.title}</strong>
           <span>{primaryCta.detail}</span>
           <b aria-hidden="true">›</b>
-        </button>
-        <button className={`mypage-live-ticker ${homeEventState} active-scale-effect`} onClick={() => { latestTicker.onClick(); playCyberSe("click"); }}>
-          <span className="mypage-live-ticker-icon" aria-hidden="true">{latestTicker.icon}</span>
-          <span className="mypage-live-ticker-text">{latestTicker.text}</span>
-          <span className="mypage-live-ticker-arrow" aria-hidden="true">›</span>
         </button>
         {/* 月額VIPパスバナー */}
         {/* 3. イベントバナーエリア (大ボタン直下) */}

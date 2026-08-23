@@ -9,7 +9,9 @@ assert.equal(master.status,"FROZEN");
 assert.equal(master.features.length,26);
 assert.equal(new Set(master.features.map((row)=>row.featureKey)).size,26);
 for(const key of open){const row=byKey.get(key);assert.equal(row?.state,"OPEN",`${key} must be OPEN`);assert.equal(row?.visibility,true);assert.equal(row?.navigationAllowed,true);}
-for(const key of closed){const row=byKey.get(key);assert.equal(row?.state,"CLOSED",`${key} must be CLOSED`);assert.equal(row?.visibility,false);assert.equal(row?.mutationAllowed,false);assert.equal(row?.navigationAllowed,false);assert.equal(row?.deepLinkAllowed,false);}
+for(const key of closed){const row=byKey.get(key);assert.equal(row?.state,"CLOSED",`${key} must be CLOSED`);assert.equal(row?.mutationAllowed,false);assert.equal(row?.navigationAllowed,false);assert.equal(row?.deepLinkAllowed,false);}
+for(const key of ["SHOP","GVG"]){const row=byKey.get(key);assert.equal(row?.uiExposure,"UPCOMING");assert.equal(row?.visibility,false);}
+for(const key of closed.filter((key)=>!["SHOP","GVG"].includes(key))){assert.equal(byKey.get(key)?.visibility,false);}
 assert.equal(byKey.get("MAINTENANCE")?.state,"CLOSED");
 assert.equal(master.maintenance.maintenanceEnabled,false);
 console.log("Operations feature state verification PASS");

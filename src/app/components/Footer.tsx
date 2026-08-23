@@ -12,7 +12,8 @@ export default function Footer() {
     { id: "guild", label: "ギルド", icon: "/ui/icon_footer_guild.png" },
     { id: "character", label: "キャラ", icon: "/ui/icon_footer_character.png" },
     { id: "gacha", label: "ガチャ", icon: "/ui/icon_footer_gacha.png" },
-    { id: "patrol", label: "クエスト", icon: "/ui/icon_map.png" }
+    { id: "patrol", label: "クエスト", icon: "/ui/icon_map.png" },
+    { id: "shop-upcoming", label: "ショップ\n準備中", icon: "/ui/icon_footer_shop.png", upcoming: true },
   ];
 
   return (
@@ -22,14 +23,17 @@ export default function Footer() {
         return (
           <button
             key={item.id}
-            className={`footer-item active-scale-effect ${isActive ? "active" : ""}`}
+            className={`footer-item active-scale-effect ${isActive ? "active" : ""} ${item.upcoming ? "upcoming" : ""}`}
+            disabled={item.upcoming}
+            aria-label={item.upcoming ? "ショップは準備中です" : item.label}
             onClick={() => {
+              if (item.upcoming) return;
               navigateTab(item.id);
               playCyberSe("click");
             }}
           >
             <img src={item.icon} alt={item.label} className="footer-icon" />
-            <span className="footer-label">{item.label}</span>
+            <span className="footer-label">{item.label.split("\n").map((line) => <React.Fragment key={line}><span>{line}</span></React.Fragment>)}</span>
           </button>
         );
       })}

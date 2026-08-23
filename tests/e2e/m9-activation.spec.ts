@@ -113,7 +113,9 @@ test("Pre-open operations hides closed surfaces and rejects closed deep links", 
   if (await tapToStart.isVisible()) await tapToStart.click();
   await expect(header).toBeVisible();
   await expect(page.getByText(/フレンド一覧|フレンドを探/)).toHaveCount(0);
-  await expect(page.getByRole("button", { name: /ショップ|GvG|フレンド/ })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "ショップは準備中です" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "抗争は準備中です" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: /フレンド/ })).toHaveCount(0);
   await expect(page.getByRole("button", { name: /ギルド/ })).toBeVisible();
   await expect(page.getByRole("button", { name: /制圧|パトロール/ })).toBeVisible();
 

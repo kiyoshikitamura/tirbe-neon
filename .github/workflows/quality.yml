@@ -32,6 +32,9 @@ jobs:
       - run: npm run verify:preopen-ux
       - run: npm run verify:tutorial-first-home
       - run: npm run verify:tutorial-first-home-db-migration
+      - run: npm run verify:production-item-equipment-assets
+      - run: npm run verify:character-ssr-candidates
+      - run: npm run verify:character-ssr-candidate-db-migration
       - run: npm run build
 
   edge-function-check:

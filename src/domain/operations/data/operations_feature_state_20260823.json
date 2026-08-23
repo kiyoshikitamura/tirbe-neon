@@ -22,10 +22,10 @@
     { "featureKey": "NORMAL_GACHA", "state": "OPEN", "visibility": true, "mutationAllowed": true, "navigationAllowed": true, "deepLinkAllowed": true, "reasonCode": "PREOPEN_OPEN" },
     { "featureKey": "FRIEND", "state": "CLOSED", "visibility": false, "mutationAllowed": false, "navigationAllowed": false, "deepLinkAllowed": false, "reasonCode": "PREOPEN_OMIT" },
     { "featureKey": "FRIEND_HELPER", "state": "CLOSED", "visibility": false, "mutationAllowed": false, "navigationAllowed": false, "deepLinkAllowed": false, "reasonCode": "PREOPEN_OMIT" },
-    { "featureKey": "SHOP", "state": "CLOSED", "visibility": false, "mutationAllowed": false, "navigationAllowed": false, "deepLinkAllowed": false, "reasonCode": "PREOPEN_CLOSED" },
+    { "featureKey": "SHOP", "state": "CLOSED", "uiExposure": "UPCOMING", "visibility": false, "mutationAllowed": false, "navigationAllowed": false, "deepLinkAllowed": false, "reasonCode": "PREOPEN_UPCOMING" },
     { "featureKey": "PAYMENT", "state": "CLOSED", "visibility": false, "mutationAllowed": false, "navigationAllowed": false, "deepLinkAllowed": false, "reasonCode": "PREOPEN_CLOSED" },
     { "featureKey": "SPECIAL_GACHA", "state": "CLOSED", "visibility": false, "mutationAllowed": false, "navigationAllowed": false, "deepLinkAllowed": false, "reasonCode": "PREOPEN_CLOSED" },
-    { "featureKey": "GVG", "state": "CLOSED", "visibility": false, "mutationAllowed": false, "navigationAllowed": false, "deepLinkAllowed": false, "reasonCode": "PREOPEN_CLOSED" },
+    { "featureKey": "GVG", "state": "CLOSED", "uiExposure": "UPCOMING", "visibility": false, "mutationAllowed": false, "navigationAllowed": false, "deepLinkAllowed": false, "reasonCode": "PREOPEN_UPCOMING" },
     { "featureKey": "GUILD_COMBAT_BUFF", "state": "CLOSED", "visibility": false, "mutationAllowed": false, "navigationAllowed": false, "deepLinkAllowed": false, "reasonCode": "PREOPEN_OMIT" },
     { "featureKey": "MAINTENANCE", "state": "CLOSED", "visibility": false, "mutationAllowed": false, "navigationAllowed": false, "deepLinkAllowed": false, "reasonCode": "MANUAL_OPERATIONS" }
   ],

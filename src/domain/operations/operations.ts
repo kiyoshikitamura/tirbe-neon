@@ -1,6 +1,7 @@
 import source from "./data/operations_feature_state_20260823.json" with { type: "json" };
 
 export type OperationsFeatureState = "OPEN" | "CLOSED" | "MAINTENANCE";
+export type OperationsUiExposure = "ACTIVE" | "UPCOMING" | "HIDDEN";
 export type OperationsFeatureKey = typeof source.features[number]["featureKey"];
 export type OperationsStateMap = Record<OperationsFeatureKey, OperationsFeatureState>;
 
@@ -22,6 +23,13 @@ export function featureState(featureKey: OperationsFeatureKey, states: Partial<O
 
 export function isFeatureOpen(featureKey: OperationsFeatureKey, states: Partial<OperationsStateMap> = DEFAULT_OPERATIONS_STATE) {
   return featureState(featureKey, states) === "OPEN";
+}
+
+export function featureUiExposure(featureKey: OperationsFeatureKey): OperationsUiExposure {
+  const feature = source.features.find((row) => row.featureKey === featureKey);
+  if (!feature) return "HIDDEN";
+  if ("uiExposure" in feature) return feature.uiExposure as OperationsUiExposure;
+  return feature.state === "OPEN" && feature.visibility ? "ACTIVE" : "HIDDEN";
 }
 
 export function isMaintenanceEnabled(states: Partial<OperationsStateMap> = DEFAULT_OPERATIONS_STATE) {

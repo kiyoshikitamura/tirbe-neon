@@ -1,4 +1,4 @@
-/* 全端末共通 5項目フッター (下部セーフエリア全自動フィッティング) */
+/* 全端末共通フッター (下部セーフエリア全自動フィッティング) */
 .footer-mobile {
   display: flex;
   align-items: center;
@@ -28,6 +28,9 @@
 .footer-item.active {
   opacity: 1;
 }
+.footer-item.upcoming { opacity: .42; cursor: default; }
+.footer-item.upcoming .footer-label { color: #b5bac4; font-size: 8px; line-height: 1.05; }
+.footer-item.upcoming .footer-label span { display: block; }
 
 .footer-icon {
   width: 22px;
