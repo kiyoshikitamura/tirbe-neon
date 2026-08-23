@@ -69,9 +69,11 @@ export default function MissionPanel() {
           <OutlawButton
             variant="primary"
             disabled={clearMissionsCount === 0 || missionClaimLoading}
-            onClick={() => handleClaimAllMissions()}
+            isLoading={missionClaimLoading}
+            loadingLabel="一括受取中…"
+            onClick={handleClaimAllMissions}
           >
-            {missionClaimLoading ? "受取処理中..." : "一括受け取り"}
+            一括受け取り
           </OutlawButton>
         </div>
 
@@ -107,9 +109,11 @@ export default function MissionPanel() {
                       <OutlawButton
                         variant="primary"
                         disabled={missionClaimLoading || m.loading}
+                        isLoading={Boolean(m.loading)}
+                        loadingLabel="受取中…"
                         onClick={() => handleClaimMission(m.id)}
                       >
-                        {m.loading ? "受取中..." : "受け取る"}
+                        受け取る
                       </OutlawButton>
                     ) : m.status === "CLAIMED" ? (
                       <OutlawButton variant="secondary" disabled>受取済</OutlawButton>

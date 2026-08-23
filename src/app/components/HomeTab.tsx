@@ -116,7 +116,7 @@ function MainMyPage() {
   }, [session?.user?.id]);
 
   const primaryCta = useMemo<{
-    key: string; eyebrow: string; title: string; detail: string; tab?: string; action?: "guild_chat";
+    key: string; eyebrow: string; title: string; detail: string; tab?: string; action?: "guild_chat" | "mission";
   }>(() => {
     const tutorialStep = onboardingState?.tutorial_step;
     if (tutorialStep && tutorialStep !== "AUTHENTICATION") return { key: "tutorial", eyebrow: "次にすること", title: "チュートリアルを続ける", detail: "最初の成功体験を完了しよう。", tab: tutorialStep === "FREE_GACHA" ? "gacha" : tutorialStep === "AUTO_FORMATION" ? "character" : "patrol" };
@@ -125,10 +125,11 @@ function MainMyPage() {
     if (!funnelMilestones.has("first_raid")) return { key: "first_raid", eyebrow: "次にすること", title: "開催中レイドへ", detail: "全プレイヤーで強敵へ挑み、貢献を残そう。", tab: "raid" };
     if (!userGuildMember) return { key: "guild_discovery", eyebrow: "SOCIAL", title: "おすすめTRIBEを見る", detail: "活動中の仲間と出会い、レイド貢献を共有しよう。", tab: "guild" };
     if (!funnelMilestones.has("guild_activation")) return { key: "guild_home", eyebrow: "SOCIAL", title: "所属TRIBEへ", detail: "加入したTRIBEの仲間と次の行動を確認しよう。", tab: "guild" };
+    if (unreadMissionsCount > 0) return { key: "mission_reward", eyebrow: "報酬", title: "達成報酬を受け取る", detail: `受取可能なミッションが ${unreadMissionsCount} 件あります。`, action: "mission" };
     return isRaidActive
       ? { key: "active_raid", eyebrow: "開催中", title: "レイドへ参加", detail: "出現中の強敵へ挑戦できます。", tab: "raid" }
       : { key: "normal_play", eyebrow: "FREE PLAY", title: "クエストへ派遣", detail: "育成素材と報酬を集めよう。", tab: "patrol" };
-  }, [funnelMilestones, onboardingState?.tutorial_step, userGuildMember, isRaidActive]);
+  }, [funnelMilestones, onboardingState?.tutorial_step, unreadMissionsCount, userGuildMember, isRaidActive]);
 
   useEffect(() => {
     if (!session?.user?.id || lastCtaImpression.current === primaryCta.key) return;
@@ -139,6 +140,7 @@ function MainMyPage() {
   const openPrimaryCta = () => {
     void supabase.rpc("record_client_funnel_event", { p_event_name: "home_primary_cta_click", p_source_screen: "home", p_source_cta: primaryCta.key, p_object_id: null, p_metadata: {} });
     if (primaryCta.action === "guild_chat") setShowTribeChatPanel(true);
+    else if (primaryCta.action === "mission") setShowMissionPanel(true);
     else if (primaryCta.tab) navigateTab(primaryCta.tab);
     playCyberSe("click");
   };

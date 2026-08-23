@@ -5,6 +5,8 @@ import { supabase, usingMockSupabase } from "@/utils/supabase";
 import { VITALITY_OVERFLOW_MAX } from "@/utils/game_constants";
 import { canUseEnergyDrink } from "@/domain/gameplay/canonical/action_resources";
 import { useImmediateActionLock } from "@/hooks/useImmediateActionLock";
+import { canonicalItemName } from "@/domain/gameplay/canonical/items";
+import { canonicalMissionRewardName } from "@/domain/gameplay/canonical/missions";
 
 export function useInventory(
   session: any,
@@ -64,6 +66,16 @@ export function useInventory(
     else endMissionClaim();
   };
 
+  const showActionError = (title: string, error: unknown) => {
+    const detail = error instanceof Error ? error.message : String(error || "");
+    const message = /network|fetch|timeout/i.test(detail)
+      ? "通信を確認して、もう一度お試しください。"
+      : /already|claimed/i.test(detail)
+        ? "すでに処理済みです。最新の状態へ更新します。"
+        : "処理を完了できませんでした。時間をおいて再度お試しください。";
+    setConfirmDialogConfig({ isOpen: true, title, message, confirmText: "閉じる", cancelText: "", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null), isDanger: true });
+  };
+
   const handleUseItem = async (itemId: string) => {
     if (!session) return;
     
@@ -115,6 +127,7 @@ export function useInventory(
     playCyberSe("click");
 
     try {
+      const targetPresent = presents.find(p => p.id === id);
       if (usingMockSupabase && id === "p_swr") {
         setDiamonds(d => d + 50);
         const res = await supabase.rpc("add_test_diamonds", { p_user_id: session.user.id });
@@ -131,9 +144,23 @@ export function useInventory(
 
       setPresents(prev => prev.filter(p => p.id !== id));
       await syncBootstrapData(session.user.id);
+      if (targetPresent) {
+        setConfirmDialogConfig({
+          isOpen: true,
+          title: "報酬獲得",
+          message: "プレゼントを受け取りました。",
+          kind: "reward",
+          rewards: [{ id: targetPresent.itemId || targetPresent.item_id, name: canonicalItemName(String(targetPresent.itemId || targetPresent.item_id || "")), quantity: Number(targetPresent.qty || targetPresent.quantity || 0) }],
+          confirmText: "閉じる",
+          cancelText: "",
+          onConfirm: () => setConfirmDialogConfig(null),
+          onCancel: () => setConfirmDialogConfig(null),
+        });
+      }
     } catch (err: any) {
       console.warn(err.message);
       setPresents(prev => prev.map(p => p.id === id ? { ...p, loading: false } : p));
+      showActionError("受け取りに失敗しました", err);
     } finally {
       endPresentClaim();
     }
@@ -165,9 +192,16 @@ export function useInventory(
 
       setPresents(prev => prev.filter(p => p.status !== "UNCLAIMED"));
       await syncBootstrapData(session.user.id);
-      setConfirmDialogConfig({ isOpen: true, title: "受取完了", message: "プレゼント一括受取完了。", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
+      const rewardByItem = new Map<string, number>();
+      unclaimed.forEach((present) => {
+        const itemId = String(present.itemId || present.item_id || "");
+        rewardByItem.set(itemId, (rewardByItem.get(itemId) || 0) + Number(present.qty || present.quantity || 0));
+      });
+      setConfirmDialogConfig({ isOpen: true, title: "報酬獲得", message: "プレゼントを一括で受け取りました。", kind: "reward", rewards: Array.from(rewardByItem, ([id, quantity]) => ({ id, name: canonicalItemName(id), quantity })), confirmText: "閉じる", cancelText: "", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
     } catch (err: any) {
       console.warn(err.message);
+      setPresents(prev => prev.map(p => ({ ...p, loading: false })));
+      showActionError("一括受け取りに失敗しました", err);
     } finally {
       endPresentClaim();
     }
@@ -192,10 +226,11 @@ export function useInventory(
       setMissions(prev => prev.filter(m => m.id !== id));
       playCyberSe("MISSION_REWARD");
       await syncBootstrapData(session.user.id);
-      setConfirmDialogConfig({ isOpen: true, title: "報酬獲得", message: "報酬がプレゼントへ転送されました。", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
+      setConfirmDialogConfig({ isOpen: true, title: "報酬獲得", message: "報酬はプレゼントへ送られました。", kind: "reward", delivery: "PRESENT", rewards: [{ id: targetMission.reward_item || targetMission.rewardItemId, name: canonicalMissionRewardName(String(targetMission.reward_item || targetMission.rewardItemId || "")), quantity: Number(targetMission.reward_amount || targetMission.rewardQty || 0) }], confirmText: "プレゼントを確認", cancelText: "閉じる", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
     } catch (err) {
       console.warn(err);
       setMissions(prev => prev.map(m => m.id === id ? { ...m, loading: false } : m));
+      showActionError("報酬を受け取れませんでした", err);
     } finally {
       endMissionClaim();
     }
@@ -221,9 +256,16 @@ export function useInventory(
       setMissions(prev => prev.filter(m => !(m.status === "CLEAR" && m.category === missionTab)));
       playCyberSe("MISSION_REWARD");
       await syncBootstrapData(session.user.id);
-      setConfirmDialogConfig({ isOpen: true, title: "クリア報酬", message: "全クリア報酬をプレゼントへ転送しました。", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
+      const rewardByItem = new Map<string, number>();
+      clearMissions.forEach((mission) => {
+        const itemId = String(mission.reward_item || mission.rewardItemId || "");
+        rewardByItem.set(itemId, (rewardByItem.get(itemId) || 0) + Number(mission.reward_amount || mission.rewardQty || 0));
+      });
+      setConfirmDialogConfig({ isOpen: true, title: "クリア報酬", message: "すべての報酬はプレゼントへ送られました。", kind: "reward", delivery: "PRESENT", rewards: Array.from(rewardByItem, ([id, quantity]) => ({ id, name: canonicalMissionRewardName(id), quantity })), confirmText: "閉じる", cancelText: "", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
     } catch (err: any) {
       console.warn(err.message);
+      setMissions(prev => prev.map(m => ({ ...m, loading: false })));
+      showActionError("一括受け取りに失敗しました", err);
     } finally {
       endMissionClaim();
     }

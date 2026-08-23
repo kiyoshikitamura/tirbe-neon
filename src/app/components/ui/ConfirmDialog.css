@@ -31,6 +31,8 @@
   color: var(--ui-text-primary);
   text-shadow: none;
 }
+.outlaw-confirm-dialog.kind-reward { border-color: rgba(247, 196, 72, .66); box-shadow: 0 8px 32px rgba(0, 0, 0, .78), 0 0 22px rgba(247, 196, 72, .12); }
+.outlaw-confirm-dialog.kind-reward .confirm-title { color: var(--neon-gold); }
 
 /* 危険モード（赤など） */
 .outlaw-confirm-dialog.danger-mode {
@@ -75,6 +77,13 @@
 
 .confirm-btn {
   flex: 1;
+}
+
+@media (max-width: 412px) {
+  .outlaw-confirm-overlay { align-items: flex-end; padding: 16px 12px calc(16px + env(safe-area-inset-bottom)); }
+  .outlaw-confirm-dialog { width: 100%; max-height: min(78dvh, 620px); overflow-y: auto; }
+  .confirm-content-wrapper { padding: 24px 18px 18px; gap: 16px; }
+  .confirm-actions { position: sticky; bottom: 0; }
 }
 
 @keyframes fadeIn {

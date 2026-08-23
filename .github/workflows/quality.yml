@@ -29,6 +29,7 @@ jobs:
       - run: npm run verify:operations-feature-state
       - run: npm run verify:operations-db-migration
       - run: npm run verify:operations-exposure
+      - run: npm run verify:preopen-ux
       - run: npm run build
 
   edge-function-check:

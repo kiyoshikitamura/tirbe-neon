@@ -92,6 +92,14 @@
 
 .inbox-present-info {
   flex: 1;
+  min-width: 0;
+}
+
+@media (max-width: 412px) {
+  .inbox-presents-actions { position: sticky; top: -16px; z-index: 3; gap: 8px; padding-block: 10px; background: var(--ui-surface-base); }
+  .inbox-present-item { align-items: stretch; flex-direction: column; }
+  .inbox-present-item .outlaw-button { width: 100%; }
+  .inbox-present-title, .inbox-present-reward { overflow-wrap: anywhere; }
 }
 .inbox-present-title {
   font-size: 14px;

@@ -189,6 +189,39 @@
   border: 2px solid rgba(0, 240, 255, 0.3);
 }
 
+.guild-recommendation-reason {
+  display: inline-flex;
+  width: fit-content;
+  max-width: 100%;
+  margin-top: 4px;
+  padding: 3px 7px;
+  border: 1px solid rgba(247, 196, 72, .38);
+  border-radius: 999px;
+  color: var(--neon-gold);
+  background: rgba(247, 196, 72, .08);
+  font-size: 9px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.guild-lobby-empty {
+  display: grid;
+  gap: 5px;
+  padding: 24px 14px;
+  border: 1px dashed var(--ui-border);
+  border-radius: var(--ui-radius-sm);
+  text-align: center;
+}
+.guild-lobby-empty strong { color: var(--ui-text-primary); }
+.guild-lobby-empty span { color: var(--ui-text-secondary); font-size: 11px; line-height: 1.6; }
+
+@media (max-width: 412px) {
+  .guild-lobby-guild-card { align-items: stretch; }
+  .guild-lobby-guild-info { min-width: 0; }
+  .guild-lobby-guild-info strong,
+  .guild-lobby-guild-info span { overflow-wrap: anywhere; }
+}
+
 .party-slot-avatar {
   background: rgba(0, 0, 0, 0.4);
   border: 1px solid rgba(255, 255, 255, 0.04);

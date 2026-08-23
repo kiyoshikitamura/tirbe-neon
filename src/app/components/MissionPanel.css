@@ -113,6 +113,13 @@
   .mission-action .outlaw-button { width: 100%; min-height: 44px; }
 }
 
+@media (max-width: 412px) {
+  .mission-panel-container-inner { min-width: 0; max-width: 100%; overflow-x: hidden; }
+  .mission-actions { position: sticky; top: -16px; z-index: 3; width: 100%; min-width: 0; gap: 8px; padding: 10px 0; background: var(--ui-surface-base); }
+  .mission-actions .outlaw-button { min-width: 132px; }
+  .mission-title, .mission-desc, .mission-reward strong { overflow-wrap: anywhere; }
+}
+
 .mission-empty {
   text-align: center;
   color: var(--text-secondary);

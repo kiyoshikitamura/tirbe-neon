@@ -13,6 +13,7 @@ import { GACHA_RARITY_ASSETS } from "../lib/screenManifests";
 import { preloadAssetManifest } from "../lib/screenAssets";
 import { getCharacterLocationBackground } from "@/utils/characterVisualAssets";
 import "./CommonModals.css";
+import { userFacingErrorMessage } from "../lib/userFacingError";
 
 function gachaLocationBackground(result: any): string {
   const master = CHARACTERS_MASTER.find((character: any) => character.id === result?.characterId);
@@ -365,7 +366,7 @@ export default function CommonModals() {
         <div className="modal-overlay">
           <div className="modal-card border-danger">
             <div className="modal-title text-color-danger">エラー</div>
-            <div className="modal-desc">{errorMessage}</div>
+            <div className="modal-desc">{userFacingErrorMessage(errorMessage)}</div>
             <button className="semantic-cta semantic-cta--danger width-100 active-scale-effect" onClick={() => setErrorMessage(null)}>
               閉じる
             </button>

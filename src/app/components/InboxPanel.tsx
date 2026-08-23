@@ -59,9 +59,11 @@ export default function InboxPanel() {
         <OutlawButton
           variant="primary"
           disabled={unclaimedPresents.length === 0 || presentClaimLoading}
-          onClick={() => { handleClaimAllPresents(); }}
+          isLoading={presentClaimLoading}
+          loadingLabel="一括受取中…"
+          onClick={handleClaimAllPresents}
         >
-          {presentClaimLoading ? <div className="spinner" /> : "一括受け取り"}
+          一括受け取り
         </OutlawButton>
       </div>
       <div className="inbox-presents-list">
@@ -78,7 +80,9 @@ export default function InboxPanel() {
               <OutlawButton
                 variant="primary"
                 disabled={presentClaimLoading}
-                onClick={() => { handleClaimPresent(p.id); }}
+                isLoading={Boolean(p.loading)}
+                loadingLabel="受取中…"
+                onClick={() => handleClaimPresent(p.id)}
               >
                 受け取る
               </OutlawButton>

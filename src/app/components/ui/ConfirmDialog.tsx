@@ -3,6 +3,7 @@ import { flushSync } from "react-dom";
 import "./ConfirmDialog.css";
 import OutlawButton from "./OutlawButton";
 import BattleResultSummary from "../battle/BattleResultSummary";
+import RewardReceipt, { type RewardReceiptItem } from "./RewardReceipt";
 
 export interface ConfirmDialogConfig {
   isOpen: boolean;
@@ -14,6 +15,9 @@ export interface ConfirmDialogConfig {
   onConfirm: () => void;
   onCancel: () => void;
   isDanger?: boolean;
+  kind?: "confirm" | "reward" | "result";
+  rewards?: RewardReceiptItem[];
+  delivery?: "PRESENT" | "INVENTORY";
 }
 
 export default function ConfirmDialog({
@@ -26,6 +30,9 @@ export default function ConfirmDialog({
   onConfirm,
   onCancel,
   isDanger = false,
+  kind = "confirm",
+  rewards = [],
+  delivery = "INVENTORY",
 }: ConfirmDialogConfig) {
   const [dismissed, setDismissed] = useState(false);
   const actionStartedRef = useRef(false);
@@ -59,11 +66,13 @@ export default function ConfirmDialog({
 
   return (
     <div className="outlaw-confirm-overlay">
-      <div className={`outlaw-confirm-dialog ${isDanger ? "danger-mode" : "neon-mode"}`}>
+      <div className={`outlaw-confirm-dialog ${isDanger ? "danger-mode" : "neon-mode"} kind-${kind}`}>
         <div className="confirm-content-wrapper">
           <h3 className="confirm-title">{title}</h3>
           <div className="confirm-body">
-            {message}
+            {kind === "reward" && rewards.length > 0
+              ? <RewardReceipt items={rewards} delivery={delivery} note={typeof message === "string" ? message : undefined} />
+              : message}
           </div>
 
           <div className="confirm-actions">

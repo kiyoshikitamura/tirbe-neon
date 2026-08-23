@@ -245,13 +245,16 @@ export default function TribeChatModal() {
               }}
               onKeyDown={handleKeyDown}
               maxLength={140}
-              disabled={chatCooldown > 0}
+              disabled={chatCooldown > 0 || chatSending}
+              aria-describedby="tribe-chat-action-status"
               className="tribe-modal-input form-input"
               style={{ flex: 1 }}
             />
             <OutlawButton
               variant="primary"
               onClick={handleSend}
+              isLoading={chatSending}
+              loadingLabel="送信中…"
               disabled={
                 chatSending ||
                 chatCooldown > 0 ||
@@ -259,9 +262,12 @@ export default function TribeChatModal() {
               }
               style={{ width: '80px' }}
             >
-              {chatSending ? <div className="spinner" /> : "送信"}
+              送信
             </OutlawButton>
           </div>
+          <span id="tribe-chat-action-status" className="tribe-chat-action-status" role="status" aria-live="polite">
+            {chatSending ? "メッセージを送信しています" : chatCooldown > 0 ? `次の送信まで${chatCooldown}秒` : ""}
+          </span>
         </div>
       </div>
     </FullScreenPanel>

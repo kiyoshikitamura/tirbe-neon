@@ -19,6 +19,16 @@ const DECORATIONS_SHOP = [
   { id: "banner_kabukicho_king", name: "歌舞伎町キング称号バナー", cost: 8000, type: "BANNER", desc: "鈍い光沢を放つ金のバナー" }
 ];
 
+function recommendationReason(recommendation: any, guild: any): string {
+  const active = Number(recommendation?.active_members_7d || 0);
+  const members = Number(guild?.member_count || 0);
+  const cap = Number(guild?.member_limit || 10);
+  if (Number(recommendation?.raid_participants_7d || 0) >= 3) return "レイド参加が活発";
+  if (active >= Math.max(3, Math.ceil(members * 0.6))) return "活動中のメンバーが多い";
+  if (cap - members >= 3) return "空きがあり参加しやすい";
+  return "現在メンバー募集中";
+}
+
 export default function GuildTab() {
   const {
     userLevel,
@@ -196,10 +206,11 @@ export default function GuildTab() {
                     <strong>{g.name}</strong>
                     <span>Lv.{g.level} ・ {g.member_count || 0}/{g.member_limit || guildMemberCap(Number(g.level || 1))}名 ・ {guildRecruitmentMode(g.recruitment_mode, g.approval_required) === "OPEN_JOIN" ? "即時加入" : guildRecruitmentMode(g.recruitment_mode, g.approval_required) === "APPLICATION_REQUIRED" ? "承認制" : "募集停止"}</span>
                     <span className="guild-activity-line">活動 {activity?.active_members_7d ?? "-"}人 ・ Raid {Number(activity?.raid_contribution_7d || 0).toLocaleString()} ・ 戦力 {Number(activity?.guild_power || 0).toLocaleString()}</span>
+                    {activity && <span className="guild-recommendation-reason">おすすめ理由：{recommendationReason(activity, g)}</span>}
                     <small>詳細・実績を見る ›</small>
                   </button>
                   {pendingRequest ? (
-                    <OutlawButton variant="secondary" className="font-size-8 px-3" disabled={gvgResetLoading} onClick={() => void handleCancelGuildJoinRequest(pendingRequest.id)}>
+                    <OutlawButton variant="secondary" className="font-size-8 px-3" disabled={gvgResetLoading} loadingLabel="取消中…" onClick={() => handleCancelGuildJoinRequest(pendingRequest.id)}>
                       申請取消
                     </OutlawButton>
                   ) : (
@@ -215,8 +226,8 @@ export default function GuildTab() {
                 </div>
                 );
               })}
-              {allGuildsDbList.length === 0 && (
-                <div className="font-size-8 text-secondary text-center py-4">条件に一致するギルドはありません。</div>
+              {displayGuilds.length === 0 && (
+                <div className="guild-lobby-empty"><strong>参加できるTRIBEが見つかりません</strong><span>検索条件を変えるか、時間をおいてもう一度確認してください。</span></div>
               )}
             </div>
           </section>
@@ -348,8 +359,8 @@ export default function GuildTab() {
                         <div className="font-size-7 text-secondary">Lv.{request.user?.level || 1}</div>
                       </div>
                       <div className="flex gap-2">
-                        <OutlawButton variant="primary" disabled={gvgResetLoading} onClick={() => void handleReviewGuildJoinRequest(request.id, true)}>承認</OutlawButton>
-                        <OutlawButton variant="danger" disabled={gvgResetLoading} onClick={() => void handleReviewGuildJoinRequest(request.id, false)}>却下</OutlawButton>
+                        <OutlawButton variant="primary" disabled={gvgResetLoading} loadingLabel="承認中…" onClick={() => handleReviewGuildJoinRequest(request.id, true)}>承認</OutlawButton>
+                        <OutlawButton variant="danger" disabled={gvgResetLoading} loadingLabel="処理中…" onClick={() => handleReviewGuildJoinRequest(request.id, false)}>却下</OutlawButton>
                       </div>
                     </div>
                   ))}

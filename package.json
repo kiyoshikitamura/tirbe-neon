@@ -59,6 +59,7 @@
     "verify:operations-db-migration": "node scripts/verify_operations_db_migration.mjs",
     "verify:operations-exposure": "node scripts/verify_operations_exposure.mjs",
     "verify:operations:development": "node scripts/verify_operations_development.mjs",
+    "verify:preopen-ux": "node scripts/verify_preopen_ux.mjs",
     "verify:mock-user-resources": "node --experimental-strip-types scripts/verify_mock_user_resources.mjs",
     "verify:canonical-mission-db-migration": "node scripts/verify_canonical_mission_db_migration.mjs",
     "verify:mock-canonical-missions": "node --experimental-strip-types scripts/verify_mock_canonical_missions.mjs",
