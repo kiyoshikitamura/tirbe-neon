@@ -10,6 +10,7 @@ const allowedMigrations = new Set([
   "20260823000191_remove_noncanonical_character_gacha_pool_rows.sql",
   "20260823000192_tutorial_canonical_growth_before_formation.sql",
   "20260823000193_tutorial_growth_milestone_authority.sql",
+  "20260824000194_reconcile_character_ssr_candidate_pool.sql",
 ]);
 if (!allowedMigrations.has(migrationName)) throw new Error(`Migration is not approved by this Development guard: ${migrationName}`);
 const migration = resolve("supabase/migrations", migrationName);

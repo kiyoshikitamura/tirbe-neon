@@ -19,6 +19,9 @@ select json_build_object(
   'rarityMismatchByPool',(select coalesce(json_object_agg(grouped.gacha_id,grouped.count),'{}'::json) from (select pool.gacha_id,count(*) from public.gacha_items_master pool join public.canonical_character_master master on master.version='2026-08-21' and master.character_id=pool.item_id where pool.item_type='CHARACTER' and pool.rarity<>master.rarity group by pool.gacha_id order by pool.gacha_id) grouped),
   'missingCanonicalPoolCount',(select count(*) from public.gacha_items_master pool left join public.canonical_character_master master on master.version='2026-08-21' and master.character_id=pool.item_id where pool.item_type='CHARACTER' and master.character_id is null),
   'missingCanonicalPoolSample',(select coalesce(json_agg(sample),'[]'::json) from (select pool.gacha_id,pool.item_id,pool.rarity from public.gacha_items_master pool left join public.canonical_character_master master on master.version='2026-08-21' and master.character_id=pool.item_id where pool.item_type='CHARACTER' and master.character_id is null order by pool.gacha_id,pool.item_id limit 20) sample),
+  'canonicalSsrSet',(select coalesce(json_agg(character_id order by character_id),'[]'::json) from public.canonical_character_master where version='2026-08-21' and rarity='SSR'),
+  'tutorialSsrSet',(select coalesce(json_agg(pool.item_id order by pool.item_id),'[]'::json) from public.gacha_items_master pool join public.canonical_character_master master on master.version='2026-08-21' and master.character_id=pool.item_id where pool.gacha_id='CHAR_SPECIAL' and pool.item_type='CHARACTER' and master.rarity='SSR'),
+  'normalCharacterGuaranteedSsrSet',(select coalesce(json_agg(pool.item_id order by pool.item_id),'[]'::json) from public.gacha_items_master pool join public.canonical_character_master master on master.version='2026-08-21' and master.character_id=pool.item_id where pool.gacha_id='CHAR_SPECIAL' and pool.item_type='CHARACTER' and pool.rarity='SSR'),
   'legacyTownUsers',(select count(*) from public.users where current_base_id in ('neon_tower','neontower')),
   'usersWithoutLeader',(select count(*) from public.users where favorite_character_id is null),
   'usersWithLeader',(select count(*) from public.users where favorite_character_id is not null),
@@ -47,6 +50,9 @@ if (result.status !== 0) throw new Error(result.stderr || `psql exited ${result.
 const audit = JSON.parse(result.stdout.trim());
 const pass = audit.rarityMismatchCount === 0
   && audit.missingCanonicalPoolCount === 0
+  && audit.canonicalSsrSet.length === 10
+  && JSON.stringify(audit.canonicalSsrSet) === JSON.stringify(audit.tutorialSsrSet)
+  && JSON.stringify(audit.canonicalSsrSet) === JSON.stringify(audit.normalCharacterGuaranteedSsrSet)
   && audit.changCanonicalRarity === "R"
   && audit.freshInitializerUsesShinjuku
   && audit.tutorialGachaUsesCanonicalRarity
