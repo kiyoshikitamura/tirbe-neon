@@ -12,17 +12,18 @@ async function advanceEntryToName(page: import("@playwright/test").Page) {
   await expect(page.locator('[data-entry-state="NAME_INPUT"]')).toBeVisible();
 }
 
-test("tutorial ten-pull guarantees slot 10 SSR and formation advances without Growth", async ({ page }) => {
+test("tutorial ten-pull guarantees slot 10 SSR and visible Growth precedes formation", async ({ page }) => {
   const userId = "00000000-0000-4000-8000-000000009901";
   await page.addInitScript(({ userId }) => {
     localStorage.setItem("tribe_demo_uuid", userId);
     localStorage.setItem("mock_auth_mode", "ANONYMOUS");
-    localStorage.setItem("mock_db_users", JSON.stringify([{ id:userId,username:"M9X QA",level:1,cash:0,neon_diamonds:0,vitality:100,current_base_id:"shinjuku" }]));
+    localStorage.setItem("mock_db_users", JSON.stringify([{ id:userId,username:"M9X QA",level:1,cash:10000,neon_diamonds:0,vitality:100,current_base_id:"shinjuku" }]));
     localStorage.setItem("mock_db_tutorial_progress", JSON.stringify([{ user_id:userId,step_id:"FREE_GACHA" }]));
     localStorage.setItem("mock_db_gacha_masters", JSON.stringify([{ id:"CHAR_NORMAL",gacha_type:"CHARACTER",cost_cash:1000,cost_diamond:100,is_active:true }]));
     localStorage.setItem("mock_db_gacha_items_master", JSON.stringify([
-      { gacha_id:"CHAR_NORMAL",item_id:"char_go_01",rarity:"R" },
-      { gacha_id:"CHAR_NORMAL",item_id:"char_kengo_01",rarity:"SR" },
+      { gacha_id:"CHAR_NORMAL",item_id:"char_gou_01",rarity:"N" },
+      { gacha_id:"CHAR_NORMAL",item_id:"char_chang_01",rarity:"R" },
+      { gacha_id:"CHAR_NORMAL",item_id:"char_tetsu_01",rarity:"SR" },
       { gacha_id:"CHAR_SPECIAL",item_id:"char_reiji_01",rarity:"SSR" },
     ]));
     localStorage.setItem("mock_db_user_characters", "[]");
@@ -99,14 +100,17 @@ test("tutorial ten-pull guarantees slot 10 SSR and formation advances without Gr
   expect(payload.guaranteed_ssr_slot).toBe(10);
 
   await page.locator(".gacha-result-next").click();
+  await expect(page.locator('[data-acceptance-state="TUTORIAL_SKILL_STEP"]')).toContainText("ストリートパンチ");
+  await page.getByRole("button", { name: "育成へ進む" }).click();
+  await expect(page.locator('[data-acceptance-state="TUTORIAL_GROWTH_STEP"]')).toContainText("Lv.1 → Lv.7");
+  await page.getByRole("button", { name: "Lv.7まで強化" }).click();
+  await expect(page.getByRole("heading", { name: "レベルアップ結果" })).toBeVisible();
+  await page.getByRole("button", { name: "OK" }).click();
   const formation = page.locator(".char-party-auto-btn");
   await expect(formation).toBeVisible();
   await page.screenshot({ path: test.info().outputPath("formation-owned-roster.png"), fullPage: true });
   await formation.click();
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem("mock_db_tutorial_progress") || "[]")[0]?.step_id)).toBe("DISPATCH");
-  const skillReady = page.locator('[data-acceptance-state="FORMATION_SKILL_READY"]');
-  await expect(skillReady).toBeVisible();
-  await skillReady.getByRole("button", { name: "クエストへ進む" }).click();
   await expect(page.locator(".tutorial-character-step")).toHaveCount(0);
   await expect(page.locator(".patrol-container")).toBeVisible();
 });

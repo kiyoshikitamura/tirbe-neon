@@ -1461,6 +1461,31 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         console.warn("Failed to sync GvG states:", err.message);
       }
 
+      const { data: activeRaidData, error: activeRaidError } = await supabase.rpc("get_active_raids");
+      if (activeRaidError) {
+        console.warn("Failed to project active Raid state:", activeRaidError.message);
+        setRaidBossHp(0);
+        setRaidBossMaxHp(0);
+        setRaidBossSecondsLeft(0);
+      } else {
+        const activeRaid = Array.isArray(activeRaidData)
+          ? activeRaidData.find((entry: any) => String(entry.status || "ACTIVE") === "ACTIVE"
+            && Number(entry.currentHp ?? 0) > 0
+            && new Date(entry.expiresAt).getTime() > Date.now())
+          : null;
+        if (activeRaid) {
+          setRaidBossHp(Number(activeRaid.currentHp));
+          setRaidBossMaxHp(Number(activeRaid.maxHp));
+          setRaidBossSecondsLeft(Math.max(0, Math.floor((new Date(activeRaid.expiresAt).getTime() - Date.now()) / 1000)));
+          setRaidBossBaseId(String(activeRaid.baseId || "shinjuku"));
+          setRaidBossName(String(activeRaid.bossName || "Raid Boss"));
+        } else {
+          setRaidBossHp(0);
+          setRaidBossMaxHp(0);
+          setRaidBossSecondsLeft(0);
+        }
+      }
+
       const { data: raidSeasonData } = await supabase.rpc("get_raid_season_rankings", { p_limit: 100, p_offset: 0 });
       const seasonIndividuals = (raidSeasonData?.individual || []).map((row: any) => ({
         user_id: row.user_id, damage_dealt: row.contribution, users: { username: row.username }, guild_id: null, guilds: null,
@@ -1479,18 +1504,6 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         const charIds = charsData.map(c => c.character_id);
         localCharIds = charIds;
         
-        let targetLeader = selectedLeader;
-        if (!targetLeader || !charIds.includes(targetLeader)) {
-          targetLeader = charIds[0];
-          setSelectedLeader(targetLeader);
-        }
-
-        const leaderData = charsData.find(c => c.character_id === targetLeader);
-        if (leaderData) {
-          setCharacterLevel(leaderData.level);
-          setCharacterAwaken(leaderData.awakening_level);
-        }
-
         // 🛡️ PvP防衛デッキ（＝出撃パーティ）の取得
         const { data: mainFormation } = await supabase.rpc("get_current_main_formation");
 
@@ -1502,6 +1515,17 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
           const fallbackDeck = charsData.slice(0, 5).map(c => c.character_id);
           setSelectedMembers(fallbackDeck);
           localDeck = fallbackDeck;
+        }
+
+        const explicitLeader = userProfile?.favorite_character_id;
+        const targetLeader = explicitLeader && charIds.includes(explicitLeader)
+          ? explicitLeader
+          : localDeck[0] || charIds[0];
+        if (targetLeader) setSelectedLeader(targetLeader);
+        const leaderData = charsData.find(c => c.character_id === targetLeader);
+        if (leaderData) {
+          setCharacterLevel(leaderData.level);
+          setCharacterAwaken(leaderData.awakening_level);
         }
       }
 
@@ -2837,6 +2861,14 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         }
         const results = serverResults.map((result: { character_id: string; outcome: string; rarity?: string; awakening_level?: number; awakening_progress?: number; awakening_required?: number }) => {
           const character = CHARACTERS_MASTER.find(c => c.id === result.character_id);
+          if (!character) throw new Error(`Canonical Character is missing for gacha result: ${result.character_id}`);
+          if (result.rarity && result.rarity !== character.rarity) {
+            console.warn("Gacha rarity projection mismatch; Character Master wins.", {
+              characterId: result.character_id,
+              rpcRarity: result.rarity,
+              canonicalRarity: character.rarity,
+            });
+          }
           const revealStats = character ? getCharacterBaseStats(character.id, 1, 0) : null;
           const attributeLabels: Record<string, string> = {
             ORDER: "秩序", JUSTICE: "正義", CHAOS: "混沌", EVIL: "悪",
@@ -2845,7 +2877,10 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
             type: "CHARACTER",
             characterId: result.character_id,
             name: character?.jpName || result.character_id,
-            rarity: result.rarity || character?.rarity || "R",
+            // Character Master is the sole rarity authority. The RPC value is
+            // retained only as a transport diagnostic and must never drive the
+            // frame, label or reveal tier.
+            rarity: character.rarity,
             imageUrl: character ? getCharacterTransparentImg(character.name) : undefined,
             title: character?.title || "新たな仲間",
             role: character?.homeTown || "東京",
@@ -3450,6 +3485,9 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         // Reflect the authoritative formation before leaving the tutorial page so
         // the player can see which five members and recommended skill were set.
         setSelectedMembers(committedParty);
+        if (tutorialFormation?.leader_character_id) {
+          setSelectedLeader(String(tutorialFormation.leader_character_id));
+        }
         setUpgradeSelectedCharId(committedParty[0]);
         onPreviewReady?.();
         if (presentationDelayMs > 0) {

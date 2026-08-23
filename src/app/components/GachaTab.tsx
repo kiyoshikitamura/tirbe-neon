@@ -112,11 +112,13 @@ export default function GachaTab() {
         <TutorialNavigator message={<>ここでは、ガチャで仲間を増やせるよ。<br />まずは10連、引いてみよ。</>} />
         <section className="tutorial-gacha-hero" aria-labelledby="tutorial-gacha-title">
           <img className="tutorial-gacha-banner" src="/gacha/bg_gacha_ssr.png" alt="" />
-          <h2 id="tutorial-gacha-title">無料10連ガチャ</h2>
+          <h2 id="tutorial-gacha-title">チュートリアル限定 キャラクター無料10連</h2>
         </section>
         <section className="tutorial-gacha-offer" aria-label="チュートリアル無料10連">
           <div className="tutorial-gacha-benefits">
-            <span><b>10連</b>無料</span>
+            <span><b>10連無料</b></span>
+            <span>10人目はSSR確定</span>
+            <span>通貨・チケット消費なし</span>
           </div>
           <button
             className="semantic-cta semantic-cta--primary gacha-free-btn"

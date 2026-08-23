@@ -1066,6 +1066,12 @@
 .tutorial-formation-skill-confirmation::before { position:absolute;inset:-30% -70%;content:"";background:linear-gradient(110deg,transparent 42%,rgba(255,255,255,.26) 50%,transparent 58%);animation:tutorial-skill-sweep 1.1s .15s ease-out both; }
 .tutorial-formation-skill-confirmation span { color:var(--ui-accent);font-size:var(--ui-font-caption);font-weight:950;letter-spacing:.16em; }
 .tutorial-formation-skill-confirmation strong { color:#fff;font-size:clamp(21px,6vw,27px);text-shadow:0 0 16px rgba(0,240,255,.42); }
+.tutorial-formation-skill-icon { width:72px;height:72px;border:1px solid rgba(0,240,255,.5);border-radius:10px;object-fit:cover;box-shadow:0 0 18px rgba(0,240,255,.2); }
+.tutorial-formation-skill-details { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;width:100%;margin:4px 0 0; }
+.tutorial-formation-skill-details div { min-width:0;padding:7px;border:1px solid rgba(255,255,255,.1);border-radius:5px;background:rgba(255,255,255,.035); }
+.tutorial-formation-skill-details dt { color:var(--ui-text-secondary);font-size:8px;font-weight:800;letter-spacing:.08em; }
+.tutorial-formation-skill-details dd { margin:2px 0 0;color:#fff;font-size:10px;font-weight:800;overflow-wrap:anywhere; }
+.tutorial-formation-skill-confirmation p { position:relative;margin:0;color:var(--ui-text-primary);font-size:var(--ui-font-body);line-height:1.55;text-align:center; }
 .tutorial-formation-skill-confirmation small { color:var(--ui-text-secondary);font-size:var(--ui-font-body); }
 .tutorial-formation-skill-dialogue>.semantic-cta { width:100%;min-height:52px; }
 .char-party-candidates button.is-guaranteed-ssr { border-color:rgba(242,201,95,.62); }
@@ -1784,3 +1790,22 @@
   opacity: .5;
   cursor: wait;
 }
+.tutorial-learning-step {
+  min-height: 0;
+  padding-bottom: max(20px, env(safe-area-inset-bottom));
+}
+
+.tutorial-growth-contract {
+  display: grid;
+  gap: 8px;
+  margin: 18px 0;
+  padding: 18px;
+  border: 1px solid rgba(0, 229, 255, 0.45);
+  border-radius: 12px;
+  background: rgba(5, 15, 28, 0.92);
+  text-align: center;
+}
+
+.tutorial-growth-contract strong { font-size: 1.2rem; }
+.tutorial-growth-contract p { margin: 0; font-size: 1.35rem; font-weight: 800; }
+.tutorial-growth-contract small { overflow-wrap: anywhere; }

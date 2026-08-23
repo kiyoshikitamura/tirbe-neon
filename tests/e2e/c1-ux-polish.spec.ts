@@ -73,7 +73,7 @@ test("Guild recommendation explains why and keeps join feedback actionable", asy
 test("Present claim uses the shared reward result and mobile-safe layout", async ({ page }) => {
   await page.setViewportSize({ width: 412, height: 915 });
   await enterGame(page);
-  await page.getByRole("button", { name: /プレゼント/ }).click();
+  await page.locator(".sub-icon-unit").filter({ hasText: "プレゼント" }).click();
   await expect(page.locator(".inbox-present-item")).toBeVisible();
   await expectNoHorizontalOverflow(page, ".inbox-panel-container-inner");
   await page.getByRole("button", { name: "受け取る", exact: true }).click();

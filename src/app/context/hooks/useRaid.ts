@@ -11,9 +11,11 @@ export function useRaid(
   syncBootstrapData: (userId: string) => Promise<void>
 ) {
   const fallbackBoss = CANONICAL_RAID_BOSSES.bosses[0];
-  const [raidBossHp, setRaidBossHp] = useState<number>(fallbackBoss.maxHp);
-  const [raidBossMaxHp, setRaidBossMaxHp] = useState<number>(fallbackBoss.maxHp);
-  const [raidBossSecondsLeft, setRaidBossSecondsLeft] = useState<number>(86400);
+  // Boss master data is not evidence that an instance is active. Bootstrap
+  // replaces these zero values only from get_active_raids().
+  const [raidBossHp, setRaidBossHp] = useState<number>(0);
+  const [raidBossMaxHp, setRaidBossMaxHp] = useState<number>(0);
+  const [raidBossSecondsLeft, setRaidBossSecondsLeft] = useState<number>(0);
   const [raidTotalDamage, setRaidTotalDamage] = useState<number>(0);
   const [raidBossBaseId, setRaidBossBaseId] = useState<string>("shinjuku");
   const [raidBossName, setRaidBossName] = useState<string>(fallbackBoss.displayName);

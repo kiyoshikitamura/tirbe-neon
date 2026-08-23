@@ -1047,22 +1047,39 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     if (entry.step_id !== "AUTO_FORMATION") {
       return { data: null, error: { message: "tutorial formation is not active", code: "23514" } };
     }
-    const deck = (client.getStorage("pvp_defense_decks") || []).find((value: any) =>
-      value.user_id === userId && [1, 2, 3, 4, 5].some((slot) => Boolean(value[`character_${slot}_id`]))
-    );
-    if (!deck) return { data: null, error: { message: "saved formation is required", code: "23514" } };
+    const tutorialHistory = (client.getStorage("gacha_execution_history") || [])
+      .filter((row: any) => row.user_id === userId && row.result_payload?.tutorial)
+      .slice(-1)[0];
+    const targetCharacterId = tutorialHistory?.result_payload?.results
+      ?.find((result: any) => Number(result.tutorial_slot) === 10)?.character_id;
+    const target = (client.getStorage("user_characters") || [])
+      .find((row: any) => row.user_id === userId && row.character_id === targetCharacterId);
+    if (!target) return { data: null, error: { message: "guaranteed tutorial Character is required", code: "23514" } };
+    const requiredLevel = 7;
+    const requiredQuantity = Math.max(requiredLevel - Number(target.level || 1), 0);
     const items = client.getStorage("user_items") || [];
     let item = items.find((value: any) => value.user_id === userId && value.item_id === "CHAR_EXP_S");
     const before = Number(item?.quantity || 0);
     if (!item) {
-      item = { user_id: userId, item_id: "CHAR_EXP_S", quantity: 1 };
+      item = { user_id: userId, item_id: "CHAR_EXP_S", quantity: requiredQuantity };
       items.push(item);
-    } else if (before < 1) {
-      item.quantity = 1;
+    } else if (before < requiredQuantity) {
+      item.quantity = requiredQuantity;
     }
     client.setStorage("user_items", items);
     return {
-      data: { status: "ready", tutorial_step: entry.step_id, quantity: Number(item.quantity), granted_quantity: Math.max(Number(item.quantity) - before, 0) },
+      data: {
+        status: Number(target.level || 1) >= requiredLevel ? "growth_complete" : "ready",
+        tutorial_step: entry.step_id,
+        target_character_id: targetCharacterId,
+        target_user_character_id: target.id,
+        current_level: Number(target.level || 1),
+        required_level: requiredLevel,
+        required_quantity: requiredQuantity,
+        quantity: Number(item.quantity),
+        granted_quantity: Math.max(Number(item.quantity) - before, 0),
+        cash_cost: requiredQuantity * 100,
+      },
       error: null,
     };
   }
@@ -1084,10 +1101,15 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
       value.user_id === userId && value.milestone === "first_growth"
     );
     if (!hasGrowth) return { data: null, error: { message: "character growth is required", code: "23514" } };
-    entry.step_id = "DISPATCH";
-    entry.updated_at = new Date().toISOString();
-    client.setStorage("tutorial_progress", progress);
-    return { data: { status: "advanced", tutorial_step: "DISPATCH" }, error: null };
+    const tutorialHistory = (client.getStorage("gacha_execution_history") || [])
+      .filter((row: any) => row.user_id === userId && row.result_payload?.tutorial)
+      .slice(-1)[0];
+    const targetCharacterId = tutorialHistory?.result_payload?.results
+      ?.find((result: any) => Number(result.tutorial_slot) === 10)?.character_id;
+    const target = (client.getStorage("user_characters") || [])
+      .find((row: any) => row.user_id === userId && row.character_id === targetCharacterId);
+    if (Number(target?.level || 0) < 7) return { data: null, error: { message: "tutorial Character must reach level 7", code: "23514" } };
+    return { data: { status: "ready_for_formation", tutorial_step: "AUTO_FORMATION", target_character_id: targetCharacterId, level: Number(target.level) }, error: null };
   }
 
   if (funcName === "complete_current_tutorial_formation") {
@@ -1106,6 +1128,9 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     const guaranteedMasterId = tutorialHistory?.result_payload?.results
       ?.find((result: any) => Number(result.tutorial_slot) === 10)?.character_id;
     const guaranteedOwned = allOwned.find((row: any) => row.character_id === guaranteedMasterId);
+    const hasGrowth = (client.getStorage("user_funnel_milestones") || []).some((value: any) => value.user_id === userId && value.milestone === "first_growth");
+    if (!hasGrowth) return { data: null, error: { message: "character growth is required before formation", code: "23514" } };
+    if (Number(guaranteedOwned?.level || 0) < 7) return { data: null, error: { message: "tutorial Character must reach level 7 before formation", code: "23514" } };
     const owned = [
       ...(guaranteedOwned ? [guaranteedOwned] : []),
       ...allOwned.filter((row: any) => row !== guaranteedOwned).slice().reverse(),
@@ -1163,6 +1188,10 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
       }
     });
     client.setStorage("user_skills", skills);
+    const users = client.getStorage("users") || [];
+    const user = users.find((row: any) => row.id === userId);
+    if (user) user.favorite_character_id = owned[0].character_id;
+    client.setStorage("users", users);
     entry.step_id = "DISPATCH";
     client.setStorage("tutorial_progress", progress);
     return {
@@ -1944,7 +1973,7 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
       neon_diamonds: 200,
       vitality: 100,
       pvp_points: 5,
-      current_base_id: "neon_tower",
+      current_base_id: "shinjuku",
       favorite_character_id: null,
       level: 1,
       xp: 0,
@@ -2651,18 +2680,21 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     const prior = histories.find((row: any) => row.user_id === userId && row.request_id === params.p_request_id);
     if (prior?.result_payload) return { data: prior.result_payload, error: null };
     const pool = client.getStorage("gacha_items_master") || [];
-    const normal = pool.filter((row: any) => row.gacha_id === "CHAR_NORMAL");
-    const ssr = pool.filter((row: any) => row.gacha_id === "CHAR_SPECIAL" && row.rarity === "SSR");
+    const canonicalById = new Map(CANONICAL_CHARACTERS.map((character) => [character.character_id, character]));
+    const normal = pool.filter((row: any) => row.gacha_id === "CHAR_NORMAL" && canonicalById.has(row.item_id));
+    const ssr = pool.filter((row: any) => row.gacha_id === "CHAR_SPECIAL"
+      && canonicalById.get(row.item_id)?.rarity === "SSR");
     if (!normal.length || !ssr.length) return { data: null, error: { message: "canonical tutorial gacha bucket is empty" } };
     const characters = client.getStorage("user_characters") || [];
     const results = Array.from({ length: 10 }, (_, index) => {
       // Stable tutorial fixture order keeps N/R/SR visual contract assertions
       // deterministic while preserving the production RPC response shape.
       const picked = index === 9 ? ssr[0] : normal[index % normal.length];
+      const canonicalCharacter = canonicalById.get(picked.item_id)!;
       const existing = characters.find((row: any) => row.user_id === userId && row.character_id === picked.item_id);
       if (!existing) {
         characters.push({ id: `mock_character_${Date.now()}_${index}`, user_id: userId, character_id: picked.item_id, level: 1, awakening_level: 0, awakening_progress: 0, created_at: new Date().toISOString() });
-        return { type: "CHARACTER", character_id: picked.item_id, rarity: index === 9 ? "SSR" : picked.rarity, outcome: "new", tutorial_slot: index + 1 };
+        return { type: "CHARACTER", character_id: picked.item_id, rarity: canonicalCharacter.rarity, outcome: "new", tutorial_slot: index + 1 };
       }
       if (Number(existing.awakening_level || 0) >= 5) {
         const inventory = client.getStorage("user_items") || [];
@@ -2670,9 +2702,9 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
         if (book) book.quantity = Number(book.quantity || 0) + 1;
         else inventory.push({ user_id: userId, item_id: "AWAKENING_BOOK", quantity: 1 });
         client.setStorage("user_items", inventory);
-        return { type: "CHARACTER", character_id: picked.item_id, rarity: index === 9 ? "SSR" : picked.rarity, outcome: "converted", converted_item_id: "AWAKENING_BOOK", converted_quantity: 1, tutorial_slot: index + 1 };
+        return { type: "CHARACTER", character_id: picked.item_id, rarity: canonicalCharacter.rarity, outcome: "converted", converted_item_id: "AWAKENING_BOOK", converted_quantity: 1, tutorial_slot: index + 1 };
       }
-      return { type: "CHARACTER", character_id: picked.item_id, rarity: index === 9 ? "SSR" : picked.rarity, ...applyMockCharacterAwakeningEquivalent(existing), tutorial_slot: index + 1 };
+      return { type: "CHARACTER", character_id: picked.item_id, rarity: canonicalCharacter.rarity, ...applyMockCharacterAwakeningEquivalent(existing), tutorial_slot: index + 1 };
     });
     const response = { status: "success", request_id: params.p_request_id, results, tutorial: true, guaranteed_ssr_slot: 10 };
     histories.push({ user_id: userId, request_id: params.p_request_id, gacha_id: "CHAR_NORMAL", payment_source: "free", pull_count: 10, status: "COMPLETED", result_payload: response });

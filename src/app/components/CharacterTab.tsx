@@ -81,7 +81,8 @@ export default function CharacterTab() {
     playCyberSe,
     currentBaseId,
     session,
-    onboardingState
+    onboardingState,
+    syncBootstrapData
   } = useGame();
 
   // ボトムシートモーダル状態: null (閉じ) | "STATUS" | "SKILL" | "GEAR"
@@ -96,11 +97,18 @@ export default function CharacterTab() {
   const [formationEditMode, setFormationEditMode] = useState(false);
   const [formationSubmitting, setFormationSubmitting] = useState(false);
   const [tutorialFormationPreviewReady, setTutorialFormationPreviewReady] = useState(false);
-  const [tutorialSkillDialogue, setTutorialSkillDialogue] = useState<{ skillName: string } | null>(null);
+  const [tutorialLearningPhase, setTutorialLearningPhase] = useState<"SKILL" | "GROWTH" | "FORMATION" | null>(null);
+  const [tutorialGrowth, setTutorialGrowth] = useState<any>(null);
+  const [tutorialGrowthPending, setTutorialGrowthPending] = useState(false);
   const [skillDisplayById, setSkillDisplayById] = useState<Record<string, any>>({});
   const formationSubmittingRef = useRef(false);
-  const tutorialContinueRef = useRef<(() => void) | null>(null);
-  const isTutorialFormation = onboardingState?.tutorial_step === "AUTO_FORMATION" && formationEditMode;
+  const tutorialGrowthPreparedRef = useRef(false);
+  const isTutorialStep = onboardingState?.tutorial_step === "AUTO_FORMATION";
+  const isTutorialFormation = isTutorialStep && formationEditMode;
+  const tutorialSkillMaster = useMemo(
+    () => CANONICAL_SKILL_VIEW.find((skill) => skill.id === "SKILL_001") ?? null,
+    []
+  );
 
   const ownedSkillMasterIds = useMemo(() => Array.from(new Set((userSkillsList || []).map((skill: any) => skill.skill_card_id || skill.skill_id).filter(Boolean))).sort(), [userSkillsList]);
 
@@ -118,10 +126,37 @@ export default function CharacterTab() {
   }, [session?.user?.id, ownedSkillMasterIds.join("|")]);
 
   useEffect(() => {
-    if (onboardingState?.tutorial_step === "AUTO_FORMATION") {
-      setFormationEditMode(true);
+    if (onboardingState?.tutorial_step !== "AUTO_FORMATION") {
+      tutorialGrowthPreparedRef.current = false;
+      setTutorialLearningPhase(null);
+      return;
     }
-  }, [onboardingState?.tutorial_step]);
+    if (!session?.user?.id || tutorialGrowthPreparedRef.current) return;
+    tutorialGrowthPreparedRef.current = true;
+    void supabase.rpc("prepare_current_tutorial_growth").then(async ({ data, error }) => {
+      if (error) {
+        tutorialGrowthPreparedRef.current = false;
+        console.warn("Tutorial Growth preparation failed:", error);
+        return;
+      }
+      setTutorialGrowth(data);
+      if (data?.target_character_id) setUpgradeSelectedCharId(String(data.target_character_id));
+      await syncBootstrapData(session.user.id);
+      if (data?.status === "growth_complete") {
+        void supabase.rpc("advance_current_tutorial_after_growth").then(({ error: advanceError }) => {
+          if (advanceError) {
+            console.warn("Tutorial Growth continuation failed:", advanceError);
+            return;
+          }
+          setTutorialLearningPhase("FORMATION");
+          setFormationEditMode(true);
+        });
+      } else {
+        setFormationEditMode(false);
+        setTutorialLearningPhase("SKILL");
+      }
+    });
+  }, [onboardingState?.tutorial_step, session?.user?.id, setUpgradeSelectedCharId, syncBootstrapData]);
 
   // 選択中キャラクター情報の取得
   const ownedCharIds = useMemo(() => {
@@ -344,6 +379,64 @@ export default function CharacterTab() {
 
   return (
     <div className="char-tab-container">
+      {isTutorialStep && tutorialLearningPhase !== null && tutorialLearningPhase !== "FORMATION" && (
+        <div className="char-party-modal-backdrop">
+          <section className="char-party-modal tutorial-character-step tutorial-learning-step" aria-label="チュートリアル育成">
+            {tutorialLearningPhase === "SKILL" ? (
+              <div data-acceptance-state="TUTORIAL_SKILL_STEP">
+                <TutorialNavigator message={<>キャラクターはスキルで戦い方が変わるよ。<br />まずは基本スキルを確認しよう。</>} />
+                <div className="tutorial-formation-skill-confirmation">
+                  <span>CANONICAL SKILL</span>
+                  <img src="/skills/skill_001_street_punch.png" alt="ストリートパンチ" className="tutorial-formation-skill-icon" />
+                  <strong>{tutorialSkillMaster?.name || "ストリートパンチ"}</strong>
+                  {tutorialSkillMaster && <dl className="tutorial-formation-skill-details">
+                    <div><dt>TYPE</dt><dd>{tutorialSkillMaster.activationType}</dd></div>
+                    <div><dt>TARGET</dt><dd>{tutorialSkillMaster.target}</dd></div>
+                    <div><dt>POWER</dt><dd>{tutorialSkillMaster.power}% ATK</dd></div>
+                    <div><dt>COOLDOWN</dt><dd>{tutorialSkillMaster.cooldown} rounds</dd></div>
+                    <div><dt>AVAILABLE</dt><dd>Round {tutorialSkillMaster.availableFromRound}</dd></div>
+                  </dl>}
+                  <p>{tutorialSkillMaster ? tutorialSkillMaster.description : "敵単体へダメージを与える基本スキル。"}</p>
+                </div>
+                <button className="semantic-cta semantic-cta--primary tutorial-primary-target" onClick={() => setTutorialLearningPhase("GROWTH")}>育成へ進む</button>
+              </div>
+            ) : (
+              <div data-acceptance-state="TUTORIAL_GROWTH_STEP">
+                <TutorialNavigator message={<>ガチャで仲間になったリーダーを育成しよう。<br />強くなった能力は、そのままバトルで使われるよ。</>} />
+                <div className="tutorial-growth-contract" aria-live="polite">
+                  <span>CHARACTER GROWTH</span>
+                  <strong>{activeCharMaster.jpName}</strong>
+                  <p>Lv.{Number(activeCharRecord.level || 1)} → Lv.{Number(tutorialGrowth?.required_level || 7)}</p>
+                  <small>経験の書(S) ×{Number(tutorialGrowth?.required_quantity || 0)} / CASH {Number(tutorialGrowth?.cash_cost || 0).toLocaleString()}</small>
+                </div>
+                <button
+                  className="semantic-cta semantic-cta--primary tutorial-primary-target"
+                  disabled={tutorialGrowthPending || upgradeLoading}
+                  aria-busy={tutorialGrowthPending || upgradeLoading}
+                  onClick={() => void (async () => {
+                    if (tutorialGrowthPending) return;
+                    setTutorialGrowthPending(true);
+                    try {
+                      const completed = await handleCharacterLevelUp("CHAR_EXP_S", Number(tutorialGrowth?.required_quantity || 0));
+                      if (!completed) return;
+                      const { data, error } = await supabase.rpc("advance_current_tutorial_after_growth");
+                      if (error || data?.status !== "ready_for_formation") {
+                        console.warn("Tutorial Growth did not unlock formation:", error || data);
+                        return;
+                      }
+                      setTutorialGrowth((current: any) => ({ ...current, status: "growth_complete", current_level: data.level }));
+                      setTutorialLearningPhase("FORMATION");
+                      setFormationEditMode(true);
+                    } finally {
+                      setTutorialGrowthPending(false);
+                    }
+                  })()}
+                >{tutorialGrowthPending || upgradeLoading ? "強化中..." : "Lv.7まで強化"}</button>
+              </div>
+            )}
+          </section>
+        </div>
+      )}
       {/* 1. 上部: 所持キャラクター丸型スライダー */}
       <div className="char-slider-header">
         <button className="char-slider-arrow" onClick={handlePrevChar}>◀</button>
@@ -490,24 +583,6 @@ export default function CharacterTab() {
       {formationEditMode && (
         <div className="char-party-modal-backdrop" onClick={() => { if (!isTutorialFormation) setFormationEditMode(false); }}>
           <section className={`char-party-modal ${isTutorialFormation ? "tutorial-character-step" : ""}`} onClick={(event) => event.stopPropagation()} aria-label="出撃パーティ編集">
-            {tutorialSkillDialogue ? (
-              <div className="tutorial-formation-skill-dialogue" data-acceptance-state="FORMATION_SKILL_READY">
-                <TutorialNavigator message={<>今回は特別に、おすすめのスキルを装備させておいたよ。<br />バトルで使うところ、見ててね。</>} />
-                <div className="tutorial-formation-skill-confirmation">
-                  <span>RECOMMENDED SKILL</span>
-                  <strong>{tutorialSkillDialogue.skillName}</strong>
-                  <small>おすすめスキルをスキル枠1へ装備済み</small>
-                </div>
-                <button
-                  className="semantic-cta semantic-cta--primary tutorial-primary-target"
-                  onClick={() => {
-                    const continueTutorial = tutorialContinueRef.current;
-                    tutorialContinueRef.current = null;
-                    continueTutorial?.();
-                  }}
-                >クエストへ進む</button>
-              </div>
-            ) : <>
             {isTutorialFormation && (
               <TutorialNavigator message={<>バトルに出るメンバーはここで決めるよ。<br />まずは今いるメンバーで編成してみて。</>} />
             )}
@@ -581,10 +656,7 @@ export default function CharacterTab() {
                     navigateAfter: false,
                     presentationDelayMs: isTutorialFormation ? 900 : 0,
                     onPreviewReady: isTutorialFormation ? () => setTutorialFormationPreviewReady(true) : undefined,
-                    waitForTutorialContinue: isTutorialFormation ? (result: any) => new Promise<void>((resolve) => {
-                      tutorialContinueRef.current = resolve;
-                      setTutorialSkillDialogue({ skillName: String(result?.skill_name || "おすすめスキル") });
-                    }) : undefined,
+                    waitForTutorialContinue: undefined,
                   });
                   if (completed) playCyberSe("FORMATION_CONFIRM");
                   if (completed && onboardingState?.tutorial_step === "AUTO_FORMATION") {
@@ -599,7 +671,6 @@ export default function CharacterTab() {
             >
               {tutorialFormationPreviewReady ? "編成完了" : formationSubmitting ? "編成中..." : isTutorialFormation ? "おすすめ編成にする" : "戦力順でおまかせ編成"}
             </button>
-            </>}
           </section>
         </div>
       )}

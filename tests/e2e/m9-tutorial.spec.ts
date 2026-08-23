@@ -15,10 +15,10 @@ test.beforeEach(async ({ page }) => {
     }]));
     const tutorialSsrId = sessionStorage.getItem("m9x_tutorial_ssr_override") || "char_reiji_01";
     localStorage.setItem("mock_db_gacha_items_master", JSON.stringify([
-      { gacha_id: "CHAR_NORMAL", item_id: "char_yuji_01", rarity: "N", weight: 100 },
-      { gacha_id: "CHAR_NORMAL", item_id: "char_go_01", rarity: "R", weight: 100 },
-      { gacha_id: "CHAR_NORMAL", item_id: "char_kengo_01", rarity: "SR", weight: 100 },
-      { gacha_id: "CHAR_NORMAL", item_id: "char_mio_01", rarity: "R", weight: 100 },
+      { gacha_id: "CHAR_NORMAL", item_id: "char_yuji_01", rarity: "R", weight: 100 },
+      { gacha_id: "CHAR_NORMAL", item_id: "char_go_01", rarity: "SSR", weight: 100 },
+      { gacha_id: "CHAR_NORMAL", item_id: "char_kengo_01", rarity: "SSR", weight: 100 },
+      { gacha_id: "CHAR_NORMAL", item_id: "char_mio_01", rarity: "SSR", weight: 100 },
       { gacha_id: "CHAR_SPECIAL", item_id: tutorialSsrId, rarity: "SSR", weight: 100 },
     ]));
     localStorage.setItem("mock_db_quests", JSON.stringify([{
@@ -187,6 +187,21 @@ async function revealTutorialTenPull(page: import("@playwright/test").Page, capt
   }
   await reveal.click();
   return finalCharacterId;
+}
+
+async function completeVisibleTutorialGrowth(page: import("@playwright/test").Page) {
+  await expect(page.locator('[data-acceptance-state="TUTORIAL_SKILL_STEP"]')).toBeVisible();
+  await expect(page.locator('[data-acceptance-state="TUTORIAL_SKILL_STEP"]')).toContainText("ストリートパンチ");
+  await page.getByRole("button", { name: "育成へ進む" }).click();
+  const growth = page.locator('[data-acceptance-state="TUTORIAL_GROWTH_STEP"]');
+  await expect(growth).toBeVisible();
+  await expect(growth).toContainText("Lv.1 → Lv.7");
+  await expect(growth).toContainText("経験の書(S) ×6 / CASH 600");
+  await page.getByRole("button", { name: "Lv.7まで強化" }).click();
+  await expect(page.getByRole("heading", { name: "レベルアップ結果" })).toBeVisible();
+  await expect(page.locator(".confirm-body")).toContainText("Lv.1 → Lv.7");
+  await page.getByRole("button", { name: "OK" }).click();
+  await expect(page.getByRole("button", { name: "おすすめ編成にする" })).toBeVisible();
 }
 
 async function completeRuleGuide(page: import("@playwright/test").Page) {
@@ -455,8 +470,7 @@ test("free gacha presents one CTA, feedback, result assets, and formation connec
   expect(resultBounds.bottom).toBeLessThanOrEqual(resultBounds.viewportHeight);
   await page.screenshot({ path: test.info().outputPath("m9-0c-result-430.png"), fullPage: true });
   await page.getByRole("button", { name: "編成へ進む" }).click();
-
-  await expect(page.getByRole("button", { name: "おすすめ編成にする" })).toBeVisible();
+  await completeVisibleTutorialGrowth(page);
   await expect(page.locator(".char-party-candidates .character-presentation-card").first()).toBeVisible();
   await page.screenshot({ path: test.info().outputPath("m9-0c-formation-430.png"), fullPage: true });
   await expect.poll(async () => page.evaluate(() => {
@@ -482,7 +496,7 @@ test("formation advances directly to the quest boundary and resumes there", asyn
   await revealTutorialTenPull(page);
   await expect(page.getByText("ガチャ結果")).toBeVisible({ timeout: 15_000 });
   await page.getByRole("button", { name: "編成へ進む" }).click();
-
+  await completeVisibleTutorialGrowth(page);
   const formationAction = page.getByRole("button", { name: "おすすめ編成にする" });
   await expect(formationAction).toBeVisible();
   await expect(page.locator(".char-party-modal button:enabled")).toHaveCount(1);
@@ -503,8 +517,7 @@ test("formation advances directly to the quest boundary and resumes there", asyn
     button.click();
     button.click();
   });
-  await expect(page.locator('[data-acceptance-state="FORMATION_SKILL_READY"]')).toBeVisible();
-  await expect(page.locator(".tutorial-formation-skill-confirmation")).toContainText("ストリートパンチ");
+  await expect(page.locator('[data-acceptance-state="Q1"]')).toBeVisible();
   const starterSkillContract = await page.evaluate(() => {
     const userId = localStorage.getItem("tribe_demo_uuid");
     const skills = JSON.parse(localStorage.getItem("mock_db_user_skills") || "[]")
@@ -512,9 +525,6 @@ test("formation advances directly to the quest boundary and resumes there", asyn
     return { count: skills.length, plusValue: skills[0]?.plus_val, slot: skills[0]?.slot_index };
   });
   expect(starterSkillContract).toEqual({ count: 1, plusValue: 0, slot: 0 });
-  await page.getByRole("button", { name: "クエストへ進む" }).click();
-
-  await expect(page.locator('[data-acceptance-state="Q1"]')).toBeVisible();
   await expect.poll(async () => page.evaluate(() => {
     const userId = localStorage.getItem("tribe_demo_uuid");
     return JSON.parse(localStorage.getItem("mock_db_tutorial_progress") || "[]")
@@ -533,8 +543,8 @@ test("three random tutorial SSRs remain the same owned character through result 
   test.setTimeout(420_000);
   const cases = [
     { id: "char_reiji_01", name: "レイジ" },
-    { id: "char_rui_01", name: "ルイ" },
-    { id: "char_chang_01", name: "チャン" },
+    { id: "char_ageha_01", name: "アゲハ" },
+    { id: "char_karen_01", name: "カレン" },
   ].filter((entry) => !process.env.M9X_SSR_CASE || entry.name === process.env.M9X_SSR_CASE);
 
   for (const [caseIndex, tutorialSsr] of cases.entries()) {
@@ -564,6 +574,7 @@ test("three random tutorial SSRs remain the same owned character through result 
     expect(ownedId).toBeTruthy();
 
     await page.getByRole("button", { name: "編成へ進む" }).click();
+    await completeVisibleTutorialGrowth(page);
     const guaranteedCandidate = page.locator(`.char-party-candidates [data-user-character-id="${ownedId}"]`);
     await expect(guaranteedCandidate).toHaveAttribute("data-character-id", tutorialSsr.id);
     await expect(guaranteedCandidate).toHaveClass(/is-selected/);
@@ -571,9 +582,6 @@ test("three random tutorial SSRs remain the same owned character through result 
     if (await page.getByText("TAP TO START").isVisible()) await page.getByText("TAP TO START").click();
     await expect(page.getByRole("button", { name: "おすすめ編成にする" })).toBeVisible();
     await page.getByRole("button", { name: "おすすめ編成にする" }).click();
-    await expect(page.locator('[data-acceptance-state="FORMATION_SKILL_READY"]')).toBeVisible();
-    await page.getByRole("button", { name: "クエストへ進む" }).click();
-
     await expect(page.locator('[data-acceptance-state="Q1"]')).toBeVisible();
     await expect(page.locator(`.tutorial-wire-member[data-user-character-id="${ownedId}"]`)).toHaveAttribute("data-character-id", tutorialSsr.id);
     const formationContract = await page.evaluate(() => {
@@ -1017,14 +1025,10 @@ test("new mobile player completes the guided first session without footer naviga
   await expect(page.getByText("ガチャ結果")).toBeVisible({ timeout: 15_000 });
   await expect(page.getByRole("button", { name: "編成へ進む" })).toHaveClass(/semantic-cta--primary/);
   await page.getByRole("button", { name: "編成へ進む" }).click();
-
-  await expect(page.getByRole("button", { name: "おすすめ編成にする" })).toBeVisible();
+  await completeVisibleTutorialGrowth(page);
   await assertCenteredGameCanvas(page, ".char-party-modal-backdrop");
   await expect(page.getByRole("button", { name: "おすすめ編成にする" })).toHaveClass(/semantic-cta--primary/);
   await page.getByRole("button", { name: "おすすめ編成にする" }).click();
-  await expect(page.locator('[data-acceptance-state="FORMATION_SKILL_READY"]')).toBeVisible();
-  await page.screenshot({ path: test.info().outputPath("formation-skill-equipped.png"), fullPage: true });
-  await page.getByRole("button", { name: "クエストへ進む" }).click();
   await expect(page.locator('[data-acceptance-state="Q1"]')).toBeVisible();
   await assertCenteredGameCanvas(page, ".patrol-container");
   await page.screenshot({ path: test.info().outputPath("Q1-dispatch-before.png"), fullPage: true });
@@ -1122,25 +1126,23 @@ test("new mobile player completes the guided first session without footer naviga
   expect(pageErrors).toEqual([]);
 });
 
-test("formation remains the only post-gacha tutorial action and resumes idempotently", async ({ page }) => {
+test("visible growth remains the post-gacha gate and resumes idempotently", async ({ page }) => {
   const userId = "00000000-0000-4000-8000-000000000909";
   await page.addInitScript(({ userId }) => {
     localStorage.setItem("tribe_demo_uuid", userId);
     localStorage.setItem("mock_auth_mode", "ANONYMOUS");
     localStorage.setItem("mock_db_users", JSON.stringify([{ id: userId, username: "再開確認", cash: 10000, vitality: 100, current_base_id: "shinjuku" }]));
-    localStorage.setItem("mock_db_user_characters", JSON.stringify([{ id: `starter_${userId}`, user_id: userId, character_id: "char_reiji_01", level: 2, awakening_level: 0 }]));
-    localStorage.setItem("mock_db_pvp_defense_decks", JSON.stringify([{ id: `deck_${userId}`, user_id: userId, character_1_id: `starter_${userId}` }]));
+    localStorage.setItem("mock_db_user_characters", JSON.stringify([{ id: `starter_${userId}`, user_id: userId, character_id: "char_reiji_01", level: 1, awakening_level: 0 }]));
     localStorage.setItem("mock_db_tutorial_progress", JSON.stringify([{ user_id: userId, step_id: "AUTO_FORMATION" }]));
     localStorage.setItem("mock_db_user_items", JSON.stringify([{ user_id: userId, item_id: "CHAR_EXP_S", quantity: 0 }]));
+    localStorage.setItem("mock_db_gacha_execution_history", JSON.stringify([{ user_id: userId, gacha_id: "CHAR_NORMAL", pull_count: 10, result_payload: { tutorial: true, results: [{ character_id: "char_reiji_01", tutorial_slot: 10 }] } }]));
   }, { userId });
 
   await page.goto("/");
-  await expect(page.getByRole("button", { name: "おすすめ編成にする" })).toBeVisible();
+  await expect(page.locator('[data-acceptance-state="TUTORIAL_SKILL_STEP"]')).toBeVisible();
   await page.reload();
-  await expect(page.getByRole("button", { name: "おすすめ編成にする" })).toBeVisible();
+  await completeVisibleTutorialGrowth(page);
   await page.getByRole("button", { name: "おすすめ編成にする" }).click();
-  await expect(page.locator('[data-acceptance-state="FORMATION_SKILL_READY"]')).toBeVisible();
-  await page.getByRole("button", { name: "クエストへ進む" }).click();
   await expect(page.locator('[data-acceptance-state="Q1"]')).toBeVisible();
   const result = await page.evaluate(() => ({
     step: JSON.parse(localStorage.getItem("mock_db_tutorial_progress") || "[]")[0]?.step_id,

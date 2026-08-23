@@ -20,7 +20,7 @@ export function useUserProfile(
   setConfirmDialogConfig: React.Dispatch<React.SetStateAction<import("@/app/components/ui/ConfirmDialog").ConfirmDialogConfig | null>>
 ) {
   const [ownedTitles, setOwnedTitles] = useState<Array<{ id: string; name: string }>>([]);
-  const [username, setUsername] = useState<string>("半グレの首領");
+  const [username, setUsername] = useState<string>("");
   const [bio, setBio] = useState<string>("歌舞伎町の覇権を握るため立ち上がる。");
   const [avatarUrl, setAvatarUrl] = useState<string>("/reiji_transparent_asset.png");
   const [currentBaseId, setCurrentBaseId] = useState<string>("shinjuku");
@@ -108,8 +108,8 @@ export function useUserProfile(
     });
   }, [session?.user?.id]);
 
-  const [selectedLeader, setSelectedLeader] = useState<string>("char_reiji_01");
-  const [upgradeSelectedCharId, setUpgradeSelectedCharId] = useState<string>("char_reiji_01");
+  const [selectedLeader, setSelectedLeader] = useState<string>("");
+  const [upgradeSelectedCharId, setUpgradeSelectedCharId] = useState<string>("");
 
   const handleUpdateProfile = async () => {
     if (!session) return;

@@ -23,6 +23,7 @@ function MainMyPage() {
   const {
     currentBaseId,
     selectedLeader,
+    selectedMembers,
     unreadMissionsCount,
     unclaimedPresentsCount,
     guildChats,
@@ -147,24 +148,26 @@ function MainMyPage() {
 
   // 拠点ID → 表示名・画像ファイル名のマッピング
   const baseMap: { [key: string]: { name: string; file: string } } = {
-    "shinjuku": { name: "新宿", file: "neontower" },
-    "neontower": { name: "ネオンタワー", file: "neontower" },
-    "shibuya": { name: "渋谷", file: "deepdock" },
-    "deepdock": { name: "ディープドック", file: "deepdock" },
-    "ikebukuro": { name: "池袋", file: "junkbazaar" },
-    "junkbazaar": { name: "ジャンクバザール", file: "junkbazaar" },
-    "roppongi": { name: "六本木", file: "kitakuragate" }, "akihabara": { name: "秋葉原", file: "junkbazaar" },
-    "kitakuragate": { name: "キタクラゲート", file: "kitakuragate" },
+    shinjuku: { name: "新宿", file: "shinjuku" },
+    shibuya: { name: "渋谷", file: "shibuya" },
+    ikebukuro: { name: "池袋", file: "ikebukuro" },
+    roppongi: { name: "六本木", file: "roppongi" },
+    akihabara: { name: "秋葉原", file: "akihabara" },
+    kawasaki: { name: "川崎", file: "kawasaki" },
+    yokohama: { name: "横浜", file: "yokohama" },
   };
   const currentBase = baseMap[currentBaseId || "shinjuku"] || baseMap["shinjuku"];
   const baseName = currentBase.name;
 
   // リーダーキャラクター立ち絵URL
-  const leaderMaster = CHARACTERS_MASTER.find((c) => c.id === selectedLeader) || CHARACTERS_MASTER[0];
-  const leaderImgUrl = getCharacterTransparentImg(leaderMaster?.name || "reiji");
+  const leaderCharacterId = selectedLeader || selectedMembers?.[0] || null;
+  const leaderMaster = leaderCharacterId
+    ? CHARACTERS_MASTER.find((c) => c.id === leaderCharacterId)
+    : undefined;
+  const leaderImgUrl = leaderMaster ? getCharacterTransparentImg(leaderMaster.name) : null;
 
   // 選択中背景URL
-  let bgUrl = `/bg/bg_base_${currentBase.file}.png`;
+  let bgUrl = `/bg/bg_street_${currentBase.file}.png`;
   if (selectedBgMode && selectedBgMode !== "auto") {
     const foundBg = PROFILE_BACKGROUNDS.find((b) => b.id === selectedBgMode);
     if (foundBg?.img) bgUrl = foundBg.img;
@@ -356,10 +359,12 @@ function MainMyPage() {
         )}
 
         {/* 層構造装飾: z-3 リーダー立ち絵キャラクター */}
-        <div className="mypage-leader-layer">
-          <img src={leaderImgUrl} alt={leaderMaster.name} className="mypage-leader-img" />
-        </div>
-        <button className="mypage-leader-tap-target" onClick={handleLeaderTap} aria-label="リーダーに話しかける" />
+        {leaderMaster && leaderImgUrl && <>
+          <div className="mypage-leader-layer">
+            <img src={leaderImgUrl} alt={leaderMaster.name} className="mypage-leader-img" />
+          </div>
+          <button className="mypage-leader-tap-target" onClick={handleLeaderTap} aria-label="リーダーに話しかける" />
+        </>}
         {leaderLine && <div className="mypage-leader-line">{leaderLine}</div>}
 
         {/* 層構造装飾: z-4 称号プレートバナー */}
