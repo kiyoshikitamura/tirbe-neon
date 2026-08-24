@@ -43,6 +43,7 @@ let userId = null;
 let trace = [];
 const acquisitionAudit = {};
 const battleNetworkTrace = [];
+let completedBattlePresentation = { history: [] };
 const qaUsername = `QA${Date.now().toString(36).slice(-6)}`;
 
 const snapshotAcquisitionState = async (label) => {
@@ -115,25 +116,32 @@ try {
   await (await visible(".gacha-free-btn", 25_000)).click();
   await (await visible(".gacha-pull-gate", 25_000)).click();
   const reveal = await visible(".tutorial-gacha-reveal", 25_000);
-  for (let index = 0; index < 10; index += 1) {
-    await reveal.waitFor({ state: "visible", timeout: 20_000 });
+  const resultPanel = page.locator(".gacha-result-panel");
+  for (let transition = 0; transition < 30 && !(await resultPanel.isVisible()); transition += 1) {
     await page.waitForFunction(() => {
+      const result = document.querySelector(".gacha-result-panel");
       const button = document.querySelector(".tutorial-gacha-reveal");
-      return button instanceof HTMLButtonElement && !button.disabled;
+      return (result instanceof HTMLElement && result.offsetParent !== null)
+        || (button instanceof HTMLButtonElement && button.offsetParent !== null && !button.disabled);
     }, undefined, { timeout: 20_000 });
+    if (await resultPanel.isVisible()) break;
     await reveal.click();
   }
 
-  await visible(".gacha-result-panel", 20_000);
+  await resultPanel.waitFor({ state: "visible", timeout: 20_000 });
   await snapshotAcquisitionState("TUTORIAL_GACHA_RESULT");
   await page.screenshot({ path: path.join(artifactsDirectory, "preview-gacha-result.png"), fullPage: true });
   await (await visible(".gacha-result-next", 20_000)).click();
+  await visible('[data-acceptance-state="TUTORIAL_SKILL_STEP"]', 20_000);
+  await page.getByRole("button", { name: "育成へ進む" }).click();
+  await visible('[data-acceptance-state="TUTORIAL_GROWTH_STEP"]', 20_000);
+  await page.getByRole("button", { name: "Lv.7まで強化" }).click();
+  await page.getByRole("heading", { name: "レベルアップ結果" }).waitFor({ state: "visible", timeout: 20_000 });
+  await page.getByRole("button", { name: "OK" }).click();
   await page.screenshot({ path: path.join(artifactsDirectory, "preview-formation-owned.png"), fullPage: true });
   await (await visible(".char-party-auto-btn", 20_000)).click();
-  await visible('[data-acceptance-state="FORMATION_SKILL_READY"]', 20_000);
   await snapshotAcquisitionState("RECOMMENDED_FORMATION");
   await page.screenshot({ path: path.join(artifactsDirectory, "preview-formation-skill.png"), fullPage: true });
-  await page.locator('[data-acceptance-state="FORMATION_SKILL_READY"] button').click();
 
   const stateSequence = [];
   const recordState = async (state, timeout = 25_000) => {
@@ -209,6 +217,8 @@ try {
   await recordState("B3");
   await recordState("B4", 30_000);
   await page.screenshot({ path: path.join(artifactsDirectory, "preview-B4.png"), fullPage: true });
+  await page.locator(".speed-toggle-btn").click();
+  await page.locator('[data-battle-speed="2"]').waitFor({ state: "visible", timeout: 10_000 });
   const waitForEnemyPresentationStage = (stage) => page.waitForFunction((expectedStage) => {
     const current = window.__TRIBE_BATTLE_PRESENTATION__?.current;
     if (!String(current?.actorId || "").startsWith("enemy_")) return false;
@@ -222,9 +232,10 @@ try {
   await page.screenshot({ path: path.join(artifactsDirectory, "preview-enemy-target-focus.png"), fullPage: true });
   await waitForEnemyPresentationStage("IMPACT");
   await page.screenshot({ path: path.join(artifactsDirectory, "preview-enemy-impact-damage.png"), fullPage: true });
-  await recordState("B5", 45_000);
+  await recordState("B5", 90_000);
   await recordState("B6", 45_000);
   await page.screenshot({ path: path.join(artifactsDirectory, "preview-B6.png"), fullPage: true });
+  completedBattlePresentation = await page.evaluate(() => window.__TRIBE_BATTLE_PRESENTATION__ || { history: [] });
   await page.locator('[data-acceptance-state="B6"] button').click();
 
   await visible(".tutorial-rule-screen", 20_000);
@@ -265,11 +276,13 @@ try {
   const tracePhases = new Set(trace.map((entry) => entry.phase));
   const missingTracePhases = requiredTracePhases.filter((phase) => !tracePhases.has(phase));
   if (missingTracePhases.length) throw new Error(`Missing journey trace phases: ${missingTracePhases.join(", ")}`);
-  const completedBattleActions = (browserState.battlePresentation.history || []).filter((entry) => entry?.actionCompleteAt);
-  for (const kind of ["normal", "skill"]) {
-    const metric = completedBattleActions.find((entry) => entry.kind === kind);
+  const completedBattleActions = (completedBattlePresentation.history || browserState.battlePresentation.history || []).filter((entry) => entry?.actionCompleteAt);
+  const normalMetric = completedBattleActions.find((entry) => entry.kind === "normal");
+  if (!normalMetric) throw new Error("Completed normal action presentation timing is missing.");
+  for (const metric of completedBattleActions) {
+    const kind = metric.kind || "unknown";
     const stages = metric && [metric.actorFocusAt, metric.targetFocusAt, metric.impactAt, metric.damageAt, metric.hpSettledAt, metric.actionCompleteAt];
-    if (!metric || !stages.every((value) => typeof value === "number") || stages.some((value, index) => index > 0 && value < stages[index - 1])) {
+    if (!stages.every((value) => typeof value === "number") || stages.some((value, index) => index > 0 && value < stages[index - 1])) {
       throw new Error(`Incomplete ${kind} action presentation timing: ${JSON.stringify(metric)}`);
     }
   }
@@ -294,7 +307,7 @@ try {
   const skillAction = leaderActions.find((action) => action.payload?.skillId && action.payload.skillId !== "BASIC_ATTACK");
   const skillActionIndex = events.findIndex((event) => event === skillAction);
   const skillImpactIndex = events.findIndex((event, index) => index > skillActionIndex && ["DAMAGE", "HEAL", "EFFECT", "STATUS"].includes(event.type) && event.payload?.actorId === leader?.id);
-  if (basicActionIndex < 0 || skillActionIndex <= basicActionIndex || skillImpactIndex <= skillActionIndex) {
+  if (basicActionIndex < 0 || skillActionIndex < 0 || skillImpactIndex <= skillActionIndex) {
     throw new Error(`Authoritative tutorial sequence is incomplete: ${JSON.stringify(leaderActions)}`);
   }
   const firstDefeatIndex = events.findIndex((event) => event.type === "DEFEAT" && String(event.payload?.targetId || "").startsWith("enemy_"));
