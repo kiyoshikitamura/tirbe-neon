@@ -136,24 +136,23 @@
 .tutorial-gacha-reveal.rarity-r { --reveal-accent: #27c8ff; border-color: rgba(39,200,255,.82); background:linear-gradient(180deg,rgba(0,18,35,.18),rgba(1,7,16,.9)),radial-gradient(circle at 50% 32%,rgba(39,200,255,.3),transparent 48%),url('/bg/bg_street_shinjuku.png') center/cover no-repeat; box-shadow:0 0 48px rgba(39,200,255,.28),inset 0 0 60px rgba(0,30,54,.5); }
 .tutorial-gacha-reveal.rarity-sr { --reveal-accent: #c66dff; border-color: rgba(198,109,255,.92); background:linear-gradient(180deg,rgba(35,0,54,.14),rgba(9,1,17,.9)),radial-gradient(circle at 50% 32%,rgba(198,109,255,.38),transparent 50%),url('/bg/bg_street_shibuya.png') center/cover no-repeat; box-shadow:0 0 58px rgba(198,109,255,.34),inset 0 0 70px rgba(64,0,90,.34); }
 .tutorial-gacha-reveal.rarity-ssr { --reveal-accent: #f2c95f; border-color:#f2c95f; background:linear-gradient(180deg,rgba(48,28,0,.12),rgba(9,4,0,.88)),radial-gradient(circle at 50% 30%,rgba(242,201,95,.48),transparent 52%),url('/bg/bg_street_roppongi.png') center/cover no-repeat; box-shadow:0 0 72px rgba(242,201,95,.42),inset 0 0 82px rgba(108,63,0,.3); }
-.tutorial-gacha-reveal:not(.is-ssr-omen)::before { position:absolute; inset:0; z-index:1; content:""; pointer-events:none; background:linear-gradient(118deg,transparent 30%,color-mix(in srgb,var(--reveal-accent) 22%,transparent) 48%,transparent 66%); animation:tutorial-reveal-light .32s ease-out both; }
+.tutorial-gacha-reveal:not(.is-ssr-quote)::before { position:absolute; inset:0; z-index:1; content:""; pointer-events:none; background:linear-gradient(118deg,transparent 30%,color-mix(in srgb,var(--reveal-accent) 22%,transparent) 48%,transparent 66%); animation:tutorial-reveal-light .32s ease-out both; }
 .tutorial-gacha-reveal-copy { border-color:var(--reveal-accent,var(--ui-accent)); }
 .tutorial-gacha-reveal-copy b { color:var(--reveal-accent,#f2c95f); text-shadow:0 0 12px color-mix(in srgb,var(--reveal-accent) 45%,transparent); }
 .tutorial-gacha-reveal-copy h3 { color:#fff; font-size:26px; line-height:1.1; text-shadow:0 0 16px color-mix(in srgb,var(--reveal-accent) 44%,transparent); }
-.tutorial-gacha-reveal.is-ssr-omen { background: #010101; animation: tutorial-ssr-blackout .24s ease-out both; }
-.tutorial-gacha-reveal.is-guaranteed:not(.is-ssr-reveal):not(.is-ssr-omen) { background:#010101; }
-.tutorial-gacha-reveal.is-ssr-omen::before { position: absolute; inset: 0; content: ""; background: radial-gradient(circle, rgba(242,201,95,.13), transparent 48%); animation: tutorial-ssr-premonition .9s ease-in-out infinite alternate; }
-.tutorial-ssr-omen { position: relative; z-index: 4; display: flex; min-height: 520px; flex-direction: column; align-items: center; justify-content: center; gap: 13px; text-align: center; }
-.tutorial-ssr-omen > span { color: #f2c95f; font-size: 10px; font-weight: 900; letter-spacing: .34em; text-indent: .34em; }
-.tutorial-ssr-omen i { width: 116px; height: 2px; background: linear-gradient(90deg, transparent, #fff2aa, transparent); box-shadow: 0 0 24px #f2c95f; animation: tutorial-ssr-signal .65s ease-in-out infinite alternate; }
-.tutorial-ssr-omen strong { color: #fff; font-size: 21px; letter-spacing: .12em; text-shadow: 0 0 18px rgba(242,201,95,.55); }
-.tutorial-ssr-omen p { max-width: 250px; margin: 0; color: #d4c99e; font-size: 11px; line-height: 1.7; }
-.tutorial-ssr-omen small { color: rgba(255,255,255,.58); font-size: 9px; letter-spacing: .12em; }
+.tutorial-gacha-reveal.is-ssr-quote { background:#010101; animation:tutorial-ssr-blackout .24s ease-out both; }
+.tutorial-gacha-reveal.is-ssr-quote::before { position:absolute; inset:0; content:""; background:radial-gradient(circle at 50% 42%,rgba(242,201,95,.2),transparent 48%),linear-gradient(135deg,transparent 25%,rgba(242,201,95,.06),transparent 72%); animation:tutorial-ssr-premonition 1.3s ease-in-out infinite alternate; }
+.tutorial-ssr-quote { position:relative; z-index:4; display:flex; min-height:520px; padding:36px 18px; flex-direction:column; align-items:center; justify-content:center; gap:13px; text-align:center; }
+.tutorial-ssr-quote > span { color:#bba869; font-size:8px; font-weight:900; letter-spacing:.25em; text-indent:.25em; }
+.tutorial-ssr-quote > strong { color:#fff2aa; font-size:52px; line-height:1; letter-spacing:.08em; text-indent:.08em; text-shadow:0 0 26px rgba(242,201,95,.72); }
+.tutorial-ssr-quote h3 { margin:5px 0 2px; color:#fff; font-size:30px; letter-spacing:.08em; text-indent:.08em; }
+.tutorial-ssr-quote blockquote { width:100%; max-width:310px; margin:8px 0 18px; padding:18px 13px; border-block:1px solid rgba(242,201,95,.45); color:#fff8d4; font-size:15px; font-weight:800; line-height:1.8; text-wrap:balance; }
+.tutorial-ssr-quote small { color:rgba(255,255,255,.66); font-size:9px; font-weight:800; letter-spacing:.16em; }
 .tutorial-gacha-reveal.is-ssr-reveal::after { position: absolute; inset: -30%; z-index: 2; content: ""; pointer-events: none; background: conic-gradient(from 0deg, transparent, rgba(255,242,170,.34), transparent 18%, rgba(0,240,255,.2), transparent 38%); animation: tutorial-ssr-burst .72s ease-out both; }
 .tutorial-gacha-reveal.is-ssr-reveal .character-presentation { z-index: 3; animation: tutorial-ssr-character-in .48s cubic-bezier(.2,.85,.25,1) both; }
 .tutorial-gacha-reveal.is-ssr-reveal .tutorial-gacha-reveal-copy { animation: tutorial-ssr-copy-in .34s .18s ease-out both; }
 @keyframes tutorial-ssr-blackout { from { opacity: .2; } to { opacity: 1; } }
-@keyframes tutorial-ssr-premonition { from { opacity: .35; transform: scale(.84); } to { opacity: 1; transform: scale(1.08); } }
+@keyframes tutorial-ssr-premonition { from { opacity: .35; transform: scale(.88); } to { opacity: 1; transform: scale(1); } }
 @keyframes tutorial-ssr-signal { from { opacity: .35; transform: scaleX(.35); } to { opacity: 1; transform: scaleX(1); } }
 @keyframes tutorial-ssr-burst { from { opacity: 1; transform: rotate(0) scale(.25); } to { opacity: 0; transform: rotate(34deg) scale(1); } }
 @keyframes tutorial-ssr-character-in { from { opacity: 0; transform: translateY(24px) scale(.92); filter: brightness(3); } to { opacity: 1; transform: translateY(0) scale(1); filter: brightness(1); } }

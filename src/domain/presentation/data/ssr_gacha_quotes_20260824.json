@@ -1,0 +1,15 @@
+{
+  "version": "2026-08-24",
+  "quotes": [
+    { "characterId": "char_ageha_01", "quote": "退屈してる暇ある？　夜はこれからでしょ。", "enabled": true },
+    { "characterId": "char_go_01", "quote": "邪魔するなら、まとめてぶっ潰す。", "enabled": true },
+    { "characterId": "char_kaede_01", "quote": "この街で上に立つなら、覚悟を見せなさい。", "enabled": true },
+    { "characterId": "char_karen_01", "quote": "運命なんて退屈。私が面白くしてあげる。", "enabled": true },
+    { "characterId": "char_kengo_01", "quote": "やるなら最後まで来い。途中で逃げんなよ。", "enabled": true },
+    { "characterId": "char_koharu_01", "quote": "仲間に手ぇ出すなら、ウチが相手になる。", "enabled": true },
+    { "characterId": "char_leo_01", "quote": "ノロノロしてたら、置いてくぜ。", "enabled": true },
+    { "characterId": "char_mio_01", "quote": "無茶せずに俺のそばにいろ…！", "enabled": true },
+    { "characterId": "char_miyabi_01", "quote": "見えているものだけが、真実とは限りません。", "enabled": true },
+    { "characterId": "char_reiji_01", "quote": "俺の前に立つなら、覚悟くらい決めてこい。", "enabled": true }
+  ]
+}
