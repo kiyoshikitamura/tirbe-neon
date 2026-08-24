@@ -130,7 +130,7 @@ export function useAuth(
       // A stale OAuth callback/session must never turn the name-registration
       // route into authenticated pre-registration. New-game onboarding always
       // starts from a fresh anonymous identity.
-      await supabase.auth.signOut();
+      if (session) await supabase.auth.signOut();
       const { data, error } = await supabase.auth.signInAnonymously();
       if (error || !data.session) throw error || new Error("匿名セッションを作成できませんでした。");
       if (!data.session.user.is_anonymous) {
@@ -232,9 +232,23 @@ export function useAuth(
         throw new Error("Unexpected initialization response");
       }
       actionPerformance.mark("response");
+      const tutorialStep = typeof data?.tutorial_step === "string" ? data.tutorial_step : "WORLD_INTRO";
+      // The successful initialization response is authoritative. Project the
+      // next tutorial state atomically so the generic game shell cannot flash
+      // between the name screen and the world-introduction overlay.
+      setOnboardingState({
+        user_id: session.user.id,
+        is_anonymous: true,
+        has_profile: true,
+        tutorial_step: tutorialStep,
+        auth_method: null,
+        is_legacy_authenticated: false,
+        identity_integrity_valid: true,
+        gameplay_authorized: false,
+      });
       setSetupGiftCode("");
       setIsSetupRequired(false);
-      await checkIfSetupRequired(session.user.id);
+      void checkIfSetupRequired(session.user.id);
       actionPerformance.mark("state_update");
       actionPerformance.markVisualReady();
     } catch (err: any) {

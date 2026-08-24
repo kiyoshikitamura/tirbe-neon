@@ -2673,6 +2673,9 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
   }
   
   if (funcName === "execute_tutorial_character_gacha") {
+    if (typeof window !== "undefined" && localStorage.getItem("mock_tutorial_gacha_error") === "true") {
+      return { data: null, error: { message: "mock tutorial gacha unavailable", code: "P0001" } };
+    }
     const userId = typeof window === "undefined" ? null : localStorage.getItem("tribe_demo_uuid");
     const progress = (client.getStorage("tutorial_progress") || []).find((row: any) => row.user_id === userId);
     if (!userId || progress?.step_id !== "FREE_GACHA") return { data: null, error: { message: "tutorial gacha is unavailable", code: "42501" } };

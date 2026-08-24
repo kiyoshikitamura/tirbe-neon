@@ -35,9 +35,8 @@
   border-radius: var(--ui-radius-md);
   background: var(--ui-bg-surface);
 }
-.tutorial-gacha-benefits { display: grid; grid-template-columns: 1fr; gap: 6px; }
-.tutorial-gacha-benefits span { display: flex; min-height: 47px; flex-direction: column; align-items: center; justify-content: center; padding: 6px 3px; border: 1px solid rgba(0, 240, 255, .2); background: rgba(0, 240, 255, .05); color: var(--ui-text-primary); font-size: 9px; text-align: center; }
-.tutorial-gacha-benefits b { color: #f2c95f; font-family: var(--font-outfit); font-size: 15px; line-height: 1.1; }
+.tutorial-gacha-benefits { margin:0; color:var(--ui-text-secondary); font-size:var(--ui-font-body); font-weight:800; text-align:center; letter-spacing:.035em; }
+.tutorial-gacha-benefits b { color:#f2c95f; font-family:var(--font-display); font-size:1.08em; }
 .tutorial-gacha-offer .gacha-free-btn { width: 100%; margin-top:9px }
 
 .gacha-v0-header {

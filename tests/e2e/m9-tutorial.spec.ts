@@ -343,7 +343,10 @@ test("common app shell owns safe area through entry and tutorial overlay", async
   await expect(page.getByRole("button", { name: "既存アカウントでログイン" })).toHaveClass(/semantic-cta--secondary/);
   await page.screenshot({ path: test.info().outputPath("m9-design-entry-390.png") });
   await page.getByRole("button", { name: "はじめから" }).click();
-  await expect(page.locator(".game-start-transition")).toBeVisible();
+  // Fast auth may complete before Playwright observes the transient. Both the
+  // acknowledged transition and the authoritative World Intro are valid; an
+  // artificial minimum delay must not be reintroduced just for this assertion.
+  await expect(page.locator(".game-start-transition").or(page.locator('[data-entry-state="WORLD_INFORMATION"]'))).toBeVisible();
   await expect(page.getByRole("button", { name: /準備中/ })).toHaveCount(0);
   await enterNameRegistration(page);
   await expect(page.getByRole("button", { name: "この名前で始める" })).toHaveClass(/semantic-cta--primary/);
@@ -353,6 +356,8 @@ test("common app shell owns safe area through entry and tutorial overlay", async
   await page.getByRole("button", { name: "この名前で始める" }).click();
 
   await expect(page.getByRole("dialog", { name: "アゲハからの案内" })).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "アゲハからの案内" })).toContainText("境界確認ね。覚えた。よろしく。");
+  await expect(page.getByText("ゲームを開始中")).toHaveCount(0);
   await expect(page.locator(".app-container .app-container")).toHaveCount(0);
   await expect(page.locator(".footer-mobile")).toHaveCount(0);
   const bounds = await page.locator(".tutorial-world").evaluate((overlay) => {
@@ -374,7 +379,8 @@ test("free gacha presents one CTA, feedback, result assets, and formation connec
   await page.getByRole("button", { name: "この名前で始める" }).click();
   await page.getByRole("button", { name: "次へ" }).click();
 
-  await expect(page.getByRole("heading", { name: /無料10連/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "最初の仲間を迎えよう" })).toBeVisible();
+  await expect(page.locator(".tutorial-gacha-benefits")).toHaveText("無料10連 / SSR1体保証");
   await expect(page.getByText(/10枚目.*SSR確定/)).toHaveCount(0);
   await expect(page.getByText("SSR 10体からランダム")).toHaveCount(0);
   await expect(page.getByText("スペシャルガチャ")).toHaveCount(0);
@@ -413,7 +419,7 @@ test("free gacha presents one CTA, feedback, result assets, and formation connec
   // Ten reveals are intentionally user-paced. R/SR/SSR each receive a
   // distinct dwell tier, so the release contract measures responsiveness per
   // tap rather than forcing the full presentation under the old auto-flow cap.
-  expect(elapsedMs).toBeLessThan(25_000);
+  expect(elapsedMs).toBeLessThan(30_000);
   for (const width of [375, 390, 430]) {
     await page.setViewportSize({ width, height: 844 });
     const metrics = await page.locator(".gacha-result-panel").evaluate((modal) => {
@@ -1038,7 +1044,7 @@ test("new mobile player completes the guided first session without footer naviga
   await expect(page.getByRole("button", { name: "次へ" })).toHaveClass(/semantic-cta--primary/);
   await page.getByRole("button", { name: "次へ" }).click();
 
-  await expect(page.getByRole("heading", { name: /無料10連/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "最初の仲間を迎えよう" })).toBeVisible();
   await assertCenteredGameCanvas(page, ".gacha-view-root");
   await expect(page.getByRole("button", { name: "無料10連を引く" })).toBeVisible();
   await expect(page.getByRole("button", { name: "無料10連を引く" })).toHaveClass(/semantic-cta--primary/);

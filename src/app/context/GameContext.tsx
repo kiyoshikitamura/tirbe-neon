@@ -92,6 +92,7 @@ const GameContext = createContext<any>(null);
 
 export function GameProvider({ children }: { children: React.ReactNode }) {
   const lastValidatedAuthUserIdRef = useRef<string | null>(null);
+  const onboardingCheckRef = useRef<Map<string, Promise<void>>>(new Map());
   const tutorialResultCommitRef = useRef(false);
   const patrolStateRevisionRef = useRef(0);
   const audio = useAudio();
@@ -639,8 +640,10 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   }, [session]);
 
   const checkIfSetupRequired = async (userId: string) => {
-    setAuthLoading(true);
-    try {
+    const runningCheck = onboardingCheckRef.current.get(userId);
+    if (runningCheck) return runningCheck;
+    const checkPromise = (async () => {
+      try {
       const { data, error } = await supabase.rpc("get_current_onboarding_state");
       if (error) throw error;
       let nextState = data as import("./hooks/useAuth").OnboardingState;
@@ -705,13 +708,26 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         if (nextState.tutorial_step === "FREE_GACHA") setActiveTab("gacha");
         else if (nextState.tutorial_step === "AUTO_FORMATION") setActiveTab("character");
         else if (["DISPATCH", "FREE_INSTANT", "TUTORIAL_BATTLE"].includes(nextState.tutorial_step || "")) setActiveTab("patrol");
-        await syncBootstrapData(userId);
+        // Routing needs the compact onboarding projection, not the entire
+        // gameplay bootstrap. Keep the valid tutorial/game screen visible and
+        // hydrate secondary data in the background.
+        void syncBootstrapData(userId).catch((bootstrapError) => {
+          console.warn("Background bootstrap failed:", bootstrapError);
+          setTotalPowerLoading(false);
+        });
       }
-    } catch (err) {
-      console.warn("Check setup required failed:", err);
-      setTotalPowerLoading(false);
+      } catch (err) {
+        console.warn("Check setup required failed:", err);
+        setTotalPowerLoading(false);
+      } finally {
+        setAuthLoading(false);
+      }
+    })();
+    onboardingCheckRef.current.set(userId, checkPromise);
+    try {
+      await checkPromise;
     } finally {
-      setAuthLoading(false);
+      if (onboardingCheckRef.current.get(userId) === checkPromise) onboardingCheckRef.current.delete(userId);
     }
   };
 
@@ -2903,7 +2919,29 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         if (typeof drawResult.data?.diamonds === "number") setDiamonds(drawResult.data.diamonds);
         if (useCurrency === "FREE") setDailyFreeGachaFlags(prev => ({ ...prev, CHARACTER: false }));
         reportScoutTiming("result_confirmed", { resultCount: results.length });
-        const bootstrapPromise = syncBootstrapData(session.user.id).then(() => reportScoutTiming("bootstrap_complete"));
+        if (isTutorialTenPull) {
+          // The next mandatory screen needs only ownership and Growth items.
+          // Project those independently of the much wider Home bootstrap so a
+          // slow or unrelated feature query cannot strand the tutorial result.
+          void Promise.all([
+            supabase.from("user_characters").select("*").eq("user_id", session.user.id),
+            supabase.from("user_items").select("*").eq("user_id", session.user.id),
+          ]).then(([charactersResult, itemsResult]) => {
+            if (charactersResult.error) throw charactersResult.error;
+            if (itemsResult.error) throw itemsResult.error;
+            const ownedCharacters = charactersResult.data || [];
+            const ownedItems = itemsResult.data || [];
+            setUserCharactersDbList(ownedCharacters);
+            setUserItems(ownedItems);
+            setCharExpS(ownedItems.find((item: any) => item.item_id === "CHAR_EXP_S")?.quantity || 0);
+            setCharExpM(ownedItems.find((item: any) => item.item_id === "CHAR_EXP_M")?.quantity || 0);
+            setCharExpL(ownedItems.find((item: any) => item.item_id === "CHAR_EXP_L")?.quantity || 0);
+            setAwakeningBooks(ownedItems.find((item: any) => item.item_id === "AWAKENING_BOOK")?.quantity || 0);
+          }).catch((projectionError) => console.warn("Tutorial acquisition projection failed:", projectionError));
+        }
+        const bootstrapPromise = syncBootstrapData(session.user.id)
+          .then(() => reportScoutTiming("bootstrap_complete"))
+          .catch((bootstrapError) => console.warn("Post-gacha bootstrap failed:", bootstrapError));
         if (useCurrency === "FREE" && scoutType === "CHAR_NORMAL" && scoutCount === 10) {
           const { data: nextTutorialStep, error: tutorialAdvanceError } = await supabase.rpc("advance_tutorial_progress", {
             p_expected_step: "FREE_GACHA",
@@ -2940,7 +2978,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
           reportScoutTiming("result_display");
           setScoutAnimationState(isTutorialTenPull ? "READY" : "SHOW_RESULTS");
         });
-        await bootstrapPromise;
+        void bootstrapPromise;
         return;
       }
 

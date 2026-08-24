@@ -31,11 +31,7 @@ export default function TitleView() {
     if (gameStartRef.current) return;
     gameStartRef.current = true;
     setIsGameStartTransition(true);
-    const startedAt = performance.now();
     const succeeded = await handleStartNewGame();
-    const minimumTransitionMs = 650;
-    const remainingMs = Math.max(0, minimumTransitionMs - (performance.now() - startedAt));
-    if (remainingMs > 0) await new Promise((resolve) => window.setTimeout(resolve, remainingMs));
     if (succeeded) {
       setShowTitleView(false);
       return;
@@ -55,7 +51,7 @@ export default function TitleView() {
       <div className="title-view-container">
         {/* 背景画像 (CSSで指定) */}
         
-        {(authLoading || isGameStartTransition) ? (
+        {isGameStartTransition ? (
           <div className="game-start-transition" role="status" aria-live="polite" aria-label="ゲーム開始中">
             <img src="/branding/tribe-neon-logo.png" alt="TRIBE NEON" />
             <div className="game-start-signal" aria-hidden="true"><i /><i /><i /></div>
@@ -70,7 +66,9 @@ export default function TitleView() {
                 {errorMessage && <div className="title-entry-error" role="alert">{errorMessage}</div>}
               </div>
             ) : (
-              <button className="semantic-cta semantic-cta--primary title-tap-text blink-animation" onClick={handleStart}>TAP TO START</button>
+              <button className="semantic-cta semantic-cta--primary title-tap-text blink-animation" onClick={handleStart} disabled={authLoading} aria-busy={authLoading}>
+                {authLoading ? "セッション確認中" : "TAP TO START"}
+              </button>
             )}
           </div>
         </div>}

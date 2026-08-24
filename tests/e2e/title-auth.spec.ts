@@ -157,6 +157,26 @@ test("name-only initialization rejects a normalized duplicate username", async (
   await page.getByRole("button", { name: "この名前で始める" }).click();
 
   await expect(page.getByText("このユーザー名は既に使用されています。")).toBeVisible();
+  await expect(page.locator('[data-entry-state="NAME_INPUT"]')).toBeVisible();
+  await expect(page.getByPlaceholder("プレイヤー名を入力")).toHaveValue(" neon ");
+});
+
+test("tutorial gacha failure overlays the intact offer and remains retryable", async ({ page }) => {
+  await page.goto("/");
+  await page.getByText("TAP TO START").click();
+  await page.getByRole("button", { name: "はじめから" }).click();
+  await enterNameRegistration(page);
+  await page.getByPlaceholder("プレイヤー名を入力").fill("失敗確認");
+  await page.getByRole("button", { name: "この名前で始める" }).click();
+  await page.getByRole("button", { name: "次へ" }).click();
+  await page.evaluate(() => localStorage.setItem("mock_tutorial_gacha_error", "true"));
+  await page.getByRole("button", { name: "無料10連を引く" }).click();
+
+  await expect(page.getByText("ガチャの実行に失敗しました。通信状態を確認して、もう一度お試しください。")).toBeVisible();
+  await expect(page.locator(".tutorial-gacha-page")).toBeVisible();
+  await expect(page.locator(".gacha-presentation-stage, .tutorial-gacha-reveal")).toHaveCount(0);
+  await page.getByRole("button", { name: "閉じる" }).click();
+  await expect(page.getByRole("button", { name: "無料10連を引く" })).toBeEnabled();
 });
 
 test("email linking keeps the anonymous user id and completes onboarding once", async ({ page }) => {

@@ -4,7 +4,6 @@ import React, { useEffect, useRef, useState } from "react";
 import { useGame } from "../context/GameContext";
 import CharacterPresentation from "./character/CharacterPresentation";
 import TypewriterText from "./tutorial/TypewriterText";
-import BrandedLoading from "./ui/BrandedLoading";
 import "./SetupView.css";
 
 type EntryPresentationState = "WORLD_INFORMATION" | "WORLD_TO_AGEHA" | "AGEHA_INTRO" | "NAME_INPUT";
@@ -115,10 +114,6 @@ export default function SetupView() {
           <input id="setup-player-name" type="text" autoComplete="nickname" placeholder="プレイヤー名を入力" value={setupUsername} onChange={event=>setSetupUsername(event.target.value)} maxLength={8} className="setup-name-input width-100" />
           <button onClick={()=>void submitName()} aria-busy={setupLoading} disabled={setupLoading||!setupUsername.trim()} className="semantic-cta semantic-cta--primary setup-primary-action">{setupLoading ? "登録中..." : "この名前で始める"}</button>
         </div>
-      )}
-
-      {presentationState === "NAME_INPUT" && setupLoading && (
-        <div className="setup-branded-loading"><BrandedLoading label="ゲームを開始中" /></div>
       )}
 
       {errorMessage && <div className="modal-overlay"><div className="modal-card border-danger"><div className="modal-title text-color-danger">エラー</div><div className="modal-desc">{errorMessage}</div><button className="semantic-cta semantic-cta--danger" onClick={()=>setErrorMessage(null)}>閉じる</button></div></div>}

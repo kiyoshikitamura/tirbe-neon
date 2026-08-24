@@ -23,7 +23,6 @@ export default function GachaTab() {
     activeBanners,
     upgradeLoading,
     onboardingState,
-    setScoutAnimationState,
     playSe
   } = useGame();
   const isTutorialScout = onboardingState?.tutorial_step === "FREE_GACHA";
@@ -42,8 +41,6 @@ export default function GachaTab() {
   ) => {
     if (!beginAction()) return;
     playSe("GACHA_START");
-    // Lock and acknowledge the tap before waiting for the authoritative result.
-    setScoutAnimationState("FLASHING");
     try {
       await handleScout(gachaId, count, currency);
     } finally {
@@ -112,22 +109,18 @@ export default function GachaTab() {
         <TutorialNavigator message={<>ここでは、ガチャで仲間を増やせるよ。<br />まずは10連、引いてみよ。</>} />
         <section className="tutorial-gacha-hero" aria-labelledby="tutorial-gacha-title">
           <img className="tutorial-gacha-banner" src="/gacha/bg_gacha_ssr.png" alt="" />
-          <h2 id="tutorial-gacha-title">チュートリアル限定 キャラクター無料10連</h2>
+          <h2 id="tutorial-gacha-title">最初の仲間を迎えよう</h2>
         </section>
         <section className="tutorial-gacha-offer" aria-label="チュートリアル無料10連">
-          <div className="tutorial-gacha-benefits">
-            <span><b>10連無料</b></span>
-            <span>10人目はSSR確定</span>
-            <span>通貨・チケット消費なし</span>
-          </div>
+          <p className="tutorial-gacha-benefits"><b>無料10連</b><span aria-hidden="true"> / </span>SSR1体保証</p>
           <button
             className="semantic-cta semantic-cta--primary gacha-free-btn"
             aria-label="無料10連を引く"
             onClick={() => void runScout(normalGachaId, 10, "FREE")}
-            disabled={!normalGacha || !hasDailyFree || isGachaActionLocked}
+            disabled={!hasDailyFree || isGachaActionLocked}
             aria-busy={isGachaActionLocked}
           >
-            <span>無料10連を引く</span>
+            <span>{isGachaActionLocked ? "抽選中..." : "無料10連を引く"}</span>
           </button>
         </section>
       </fieldset>
