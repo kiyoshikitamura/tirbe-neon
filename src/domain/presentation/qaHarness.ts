@@ -1,0 +1,46 @@
+export const QA_PRESENTATION_SCENARIOS = [
+  ["world-introduction", "World Introduction"],
+  ["name-input-error", "Name Input / Error"],
+  ["gacha-page", "Gacha Page"],
+  ["gacha-standard-reveal", "Gacha R/SR Reveal"],
+  ["gacha-ssr-reveal", "Gacha SSR Quote → Reveal"],
+  ["skill-tutorial", "Skill Tutorial"],
+  ["growth-before", "Growth Before"],
+  ["growth-result", "Growth Result"],
+  ["formation", "Formation"],
+  ["quest-encounter", "Quest Encounter"],
+  ["battle-5v3", "Battle 5v3"],
+  ["battle-5v5", "Battle 5v5"],
+  ["battle-2x", "Battle 2x"],
+  ["battle-ssr-skill", "Battle SSR Skill"],
+  ["battle-result-win", "Battle Result WIN"],
+  ["battle-result-lose", "Battle Result LOSE"],
+  ["first-home", "First Home"],
+] as const;
+
+export type QaPresentationScenarioId = typeof QA_PRESENTATION_SCENARIOS[number][0];
+export type VisualComplianceStatus = "PASS" | "PARTIAL" | "FAIL" | "HUMAN_REQUIRED";
+
+export const VISUAL_COMPLIANCE_GATE: ReadonlyArray<Readonly<{
+  id: string;
+  specification: string;
+  status: VisualComplianceStatus;
+  automatedPrecheck: "PASS" | "PARTIAL";
+  evidence: string;
+}>> = Object.freeze([
+  { id: "world-intro", specification: "World IntroがCinematicに見える", status: "HUMAN_REQUIRED", automatedPrecheck: "PASS", evidence: "4 scene、motion layer、logo、copy transitionをHarnessで再生" },
+  { id: "ssr-reveal", specification: "SSR identity先出しなし / Quote → Tap → Reveal", status: "PASS", automatedPrecheck: "PASS", evidence: "Quote段階はcharacter id/nameなし。Tap後のみcanonical characterを投影" },
+  { id: "growth", specification: "Lv1→Lv7と総合力上昇が明確", status: "HUMAN_REQUIRED", automatedPrecheck: "PASS", evidence: "Before/Resultの成果要素をHarnessへ固定表示" },
+  { id: "battle-start", specification: "Battle StartがMatch-upとして見える", status: "HUMAN_REQUIRED", automatedPrecheck: "PASS", evidence: "Production BattleMatchupPresentationを直接使用" },
+  { id: "variable-roster", specification: "5v3 / 5v5で戦況を理解できる", status: "HUMAN_REQUIRED", automatedPrecheck: "PASS", evidence: "Production QuestBattleViewerで実参加人数のみ表示" },
+  { id: "skill-2x", specification: "2xでもSkillが通常攻撃に埋没しない", status: "HUMAN_REQUIRED", automatedPrecheck: "PASS", evidence: "Production skill cut-inをspeed=2 fixtureで表示" },
+  { id: "ssr-skill", specification: "SSR SkillにPremium感がある", status: "HUMAN_REQUIRED", automatedPrecheck: "PASS", evidence: "SSR actor + production premium tierをHarnessで表示" },
+  { id: "battle-result", specification: "VS → WIN/LOSE → 左MVP → Score → Comparison", status: "HUMAN_REQUIRED", automatedPrecheck: "PASS", evidence: "Production BattleResultSummaryとauthoritative-shaped replay fixtureを使用" },
+]);
+
+export function isQaHarnessAvailable(appEnvironment: string | undefined, nodeEnvironment: string | undefined) {
+  const appEnv = appEnvironment?.trim().toLowerCase();
+  if (appEnv === "production") return false;
+  if (appEnv === "preview" || appEnv === "development" || appEnv === "test") return true;
+  return nodeEnvironment === "development";
+}

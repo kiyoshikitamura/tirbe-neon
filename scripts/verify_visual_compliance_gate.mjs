@@ -1,0 +1,28 @@
+import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import { QA_PRESENTATION_SCENARIOS, VISUAL_COMPLIANCE_GATE, isQaHarnessAvailable } from "../src/domain/presentation/qaHarness.ts";
+
+const requiredScenarios = [
+  "world-introduction", "name-input-error", "gacha-page", "gacha-standard-reveal", "gacha-ssr-reveal",
+  "skill-tutorial", "growth-before", "growth-result", "formation", "quest-encounter", "battle-5v3",
+  "battle-5v5", "battle-2x", "battle-ssr-skill", "battle-result-win", "battle-result-lose", "first-home",
+];
+assert.deepEqual(QA_PRESENTATION_SCENARIOS.map(([id]) => id), requiredScenarios, "QA launcher scenario contract drifted");
+assert.equal(isQaHarnessAvailable("production", "development"), false, "Production must never expose QA harness");
+assert.equal(isQaHarnessAvailable(undefined, "production"), false, "Unknown production build must fail closed");
+for (const environment of ["preview", "development", "test"]) assert.equal(isQaHarnessAvailable(environment, "production"), true);
+
+const allowed = new Set(["PASS", "PARTIAL", "FAIL", "HUMAN_REQUIRED"]);
+assert.equal(VISUAL_COMPLIANCE_GATE.length, 8);
+for (const item of VISUAL_COMPLIANCE_GATE) {
+  assert.ok(allowed.has(item.status), `${item.id}: invalid status`);
+  assert.ok(item.evidence.trim(), `${item.id}: missing evidence`);
+}
+for (const subjective of ["world-intro", "growth", "battle-start", "variable-roster", "skill-2x", "ssr-skill", "battle-result"]) {
+  assert.equal(VISUAL_COMPLIANCE_GATE.find((entry) => entry.id === subjective)?.status, "HUMAN_REQUIRED", `${subjective} must not be auto-PASSed`);
+}
+
+const page = await readFile(new URL("../src/app/qa/presentation/page.tsx", import.meta.url), "utf8");
+assert.match(page, /notFound\(\)/, "QA route must fail closed");
+assert.match(page, /isQaHarnessAvailable/, "QA route must use canonical environment gate");
+console.log(`Visual compliance gate PASS (${requiredScenarios.length} scenarios, ${VISUAL_COMPLIANCE_GATE.length} checks)`);

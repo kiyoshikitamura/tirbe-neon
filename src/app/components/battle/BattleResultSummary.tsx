@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, type ReactNode } from "react";
 import { useAudio } from "@/audio/AudioProvider";
 import { analyzeBattleResult, type BattleResultParticipant, type BattleResultReplayEvent } from "@/domain/presentation/battleResultScoring";
 import { CHARACTERS_MASTER, getCharacterTransparentImg } from "@/utils/game_constants";
@@ -20,6 +20,7 @@ type Props = {
   presentationContext?: BattlePresentationContext | null;
   modeResult?: BattleModeResultDetail | null;
   onContinue: () => void | Promise<void>;
+  continueControl?: ReactNode;
 };
 
 const toParticipant = (entry: any, isEnemy: boolean): BattleResultParticipant => ({
@@ -29,7 +30,7 @@ const toParticipant = (entry: any, isEnemy: boolean): BattleResultParticipant =>
   isEnemy,
 });
 
-export default function BattleResultSummary({ victory, tutorial = false, rewards, replayEvents = [], playerParticipants = [], enemyParticipants = [], presentationContext, modeResult, onContinue }: Props) {
+export default function BattleResultSummary({ victory, tutorial = false, rewards, replayEvents = [], playerParticipants = [], enemyParticipants = [], presentationContext, modeResult, onContinue, continueControl }: Props) {
   const { playSe } = useAudio();
   const announcedRef = useRef(false);
   const analysis = useMemo(() => analyzeBattleResult(
@@ -93,9 +94,9 @@ export default function BattleResultSummary({ victory, tutorial = false, rewards
       ) : (
         <div className="battle-result-mode-reward"><strong>{modeResult?.reward || (victory ? "勝利" : "敗北")}</strong>{modeResult?.note && <p>{modeResult.note}</p>}</div>
       )}
-      <OutlawButton variant={victory ? "primary" : "secondary"} onClick={onContinue} className="battle-result-continue" disabled={victory && (tutorial || presentationContext?.mode === "PATROL") && !rewards}>
+      {continueControl ?? <OutlawButton variant={victory ? "primary" : "secondary"} onClick={onContinue} className="battle-result-continue" disabled={victory && (tutorial || presentationContext?.mode === "PATROL") && !rewards}>
         {victory && (tutorial || presentationContext?.mode === "PATROL") ? (rewards ? "次へ" : "報酬確定中…") : modeResult?.continueLabel || "次へ"}
-      </OutlawButton>
+      </OutlawButton>}
     </section>
   );
 }

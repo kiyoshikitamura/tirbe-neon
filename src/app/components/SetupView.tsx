@@ -9,7 +9,7 @@ import "./SetupView.css";
 
 type EntryPresentationState = "WORLD_INFORMATION" | "WORLD_TO_AGEHA" | "AGEHA_INTRO" | "NAME_INPUT";
 
-const WORLD_STAGES = [
+export const WORLD_STAGES = [
   { text: "ここは、誰のルールも\n通用しない街。\n\n力を持つ奴が、\nすべてを決める。", highlights: ["力を持つ奴が"] },
   { text: "ここで生き残るために、\nTRIBE\nを作れ。\n\n誰とつるむか。", highlights: ["TRIBE"] },
   { text: "仲間を信じ、裏切りを見抜き、\nこの街の頂点を目指せ。\n\nどこまで上へ行くか。\nすべては、お前の選択だ。", highlights: ["どこまで上へ行くか。"] },
