@@ -107,6 +107,17 @@ export default function QuestBattleViewer(props: Props) {
   const skillPresentation = resolveBattleSkillPresentation(props.skillCutIn, activeParticipant ? { ...activeParticipant, rarity: activeVisual.rarity } : undefined);
   const lastSkillCueRef = useRef<unknown>(null);
   const lastDamageCueRef = useRef<unknown>(null);
+  const tutorialPaceRef = useRef({ normalSeen: false, skillSeen: false, advanced: false });
+  useEffect(() => {
+    if (!props.tutorial || props.presentationPhase !== "ACTION_HOLD") return;
+    if (isSkillAction) tutorialPaceRef.current.skillSeen = true;
+    else tutorialPaceRef.current.normalSeen = true;
+    const pace = tutorialPaceRef.current;
+    if (!pace.advanced && pace.normalSeen && pace.skillSeen) {
+      pace.advanced = true;
+      props.onSpeedChange(2);
+    }
+  }, [isSkillAction, props.onSpeedChange, props.presentationPhase, props.tutorial]);
   useEffect(() => {
     if (!props.skillCutIn || lastSkillCueRef.current === props.skillCutIn) return;
     lastSkillCueRef.current = props.skillCutIn;
@@ -154,11 +165,12 @@ export default function QuestBattleViewer(props: Props) {
           </div>
           {props.damagePopup && props.damagePopup.type === "dmg" && <BattleImpactEffect kind={(skillPresentation?.impact || "impact") as BattleImpactKind} speed={props.speed} />}
           {props.damagePopup && <div className={`battle-impact-burst is-${props.damagePopup.type}`} aria-hidden="true"><i /><i /><i /></div>}
-          <BattleSkillCutIn presentation={skillPresentation} participant={activeParticipant ? { ...activeParticipant, rarity: activeVisual.rarity } : undefined} imageSrc={activeVisual.src} speed={props.speed} />
           {props.skillCutIn && isSkillAction && !skillPresentation?.tier && <div className="battle-skill-flash"><small>SKILL</small><strong>{props.skillCutIn.skillName}</strong></div>}
         </section>
         <PartyZone side="enemy" label={props.opponentName} party={props.enemyParty} activeId={activeParticipant?.id} targetId={targetParticipant?.id} shakingId={props.shakingId} visualOf={visualOf} popupFor={popupFor} hasAdvantage={hasAdvantage} tutorial={props.tutorial} />
       </main>
+
+      <BattleSkillCutIn presentation={skillPresentation} participant={activeParticipant ? { ...activeParticipant, rarity: activeVisual.rarity } : undefined} imageSrc={activeVisual.src} speed={props.speed} />
 
       <footer className="battle-viewer-controls">
         <span className="battle-tactic-label">{tacticLabel[props.tactic] || tacticLabel.BALANCED}</span>

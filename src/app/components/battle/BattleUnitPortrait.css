@@ -78,7 +78,7 @@
 .battle-unit-party .battle-unit-identity-badges img{height:14px;max-width:30px}
 .battle-unit-growth{grid-column:2;grid-row:2;display:flex;align-items:center;justify-content:space-between;padding:0 4px;color:#c5ccd3;font-family:var(--font-display);font-size:8px;font-weight:700}
 .battle-unit-growth b{color:#f1d98f}
-.battle-unit-party .battle-unit-hp{grid-column:2;grid-row:3;height:5px;margin:0 3px 2px}
+.battle-unit-party .battle-unit-hp{grid-column:2;grid-row:3;min-width:0;width:auto;max-width:none;height:5px;margin:0 3px 2px;box-sizing:border-box}
 .battle-unit-party .battle-unit-hp-copy{display:none}
 .battle-unit-party .battle-unit-statuses{right:2px;bottom:8px;left:48px;justify-content:flex-start;flex-wrap:nowrap;overflow:visible}
 .battle-unit-party .battle-unit-statuses span{min-width:17px;padding:1px 2px;font-size:6px;text-align:center}

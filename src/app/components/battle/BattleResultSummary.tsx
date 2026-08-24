@@ -41,7 +41,11 @@ export default function BattleResultSummary({ victory, tutorial = false, rewards
   const mvpMaster = CHARACTERS_MASTER.find((entry: any) => entry.id === mvp?.participant.characterId);
   const mvpImage = mvpMaster ? getCharacterTransparentImg(mvpMaster.name) : undefined;
   const opponentLeader = enemyParticipants.find((entry: any) => String(entry.characterId ?? entry.id) === presentationContext?.opponentLeaderCharacterId) || enemyParticipants[0];
-  const opponentLabel = presentationContext?.encounterLabel || presentationContext?.opponentLabel || opponentLeader?.name || "OPPONENT";
+  const rawOpponentLabel = presentationContext?.encounterLabel || presentationContext?.opponentLabel || opponentLeader?.name || "対戦相手";
+  const opponentLabel = rawOpponentLabel === "Canonical NPC Party" ? "新宿・初級" : rawOpponentLabel;
+  const localizedResultLabel = tutorial
+    ? (victory ? "クエストクリア" : "クエスト失敗")
+    : modeResult?.resultLabel;
   useEffect(() => {
     if (announcedRef.current) return;
     announcedRef.current = true;
@@ -50,13 +54,13 @@ export default function BattleResultSummary({ victory, tutorial = false, rewards
   return (
     <section className={`battle-result-summary ${victory ? "is-victory" : "is-defeat"}`} aria-label={victory ? "バトル勝利" : "バトル敗北"}>
       <header className="battle-result-opponent">
-        <small>{tutorial ? "QUEST COMPLETE · VS OPPONENT" : "VS OPPONENT"}</small>
+        <small>{tutorial ? "クエストクリア · VS" : "VS 対戦相手"}</small>
         <strong>{opponentLabel}</strong>
-        {presentationContext?.opponentLeaderName && <span>OPPONENT LEADER　{presentationContext.opponentLeaderName}</span>}
+        {presentationContext?.opponentLeaderName && <span>敵リーダー　{presentationContext.opponentLeaderName}</span>}
         {presentationContext?.opponentTotalPower ? <b>POWER {presentationContext.opponentTotalPower.toLocaleString()}</b> : presentationContext?.opponentProfile ? <b>{presentationContext.opponentProfile}</b> : null}
       </header>
       <div className="battle-result-outcome-label">{victory ? "WIN" : "LOSE"}</div>
-      {modeResult?.resultLabel && <strong className="battle-result-mode-label">{modeResult.resultLabel}</strong>}
+      {localizedResultLabel && <strong className="battle-result-mode-label">{localizedResultLabel}</strong>}
       {mvp && (
         <section className="battle-result-mvp" aria-label={`MVP ${mvp.participant.name} ${mvp.score.total}ポイント`}>
           <div className="battle-result-mvp-hero">
@@ -77,7 +81,7 @@ export default function BattleResultSummary({ victory, tutorial = false, rewards
       </section> : null}
       {mvp && (
         <section className="battle-result-comparison" aria-label="チーム戦果比較">
-          <header><span>TEAM</span><b>戦果比較</b><span>ENEMY</span></header>
+          <header><span>味方</span><b>戦果比較</b><span>敵</span></header>
           <div><b>{analysis.player.damage.toLocaleString()}</b><span>総ダメージ</span><b>{analysis.enemy.damage.toLocaleString()}</b></div>
           <div><b>{analysis.player.kills}</b><span>撃破数</span><b>{analysis.enemy.kills}</b></div>
           <div><b>{analysis.player.survivors}</b><span>生存人数</span><b>{analysis.enemy.survivors}</b></div>

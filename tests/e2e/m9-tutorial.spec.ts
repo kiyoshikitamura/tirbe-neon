@@ -630,7 +630,7 @@ test("three random tutorial SSRs remain the same owned character through result 
 
     await page.getByRole("button", { name: "バトルスタート" }).click();
     await expect(page.locator('[data-acceptance-state="B6"]')).toBeVisible({ timeout: 70_000 });
-    await expect(page.locator(".battle-result-summary")).toContainText("QUEST COMPLETE");
+    await expect(page.locator(".battle-result-summary")).toContainText("クエストクリア");
     await expect(page.locator(".battle-result-mvp")).toBeVisible();
     await expect(page.locator(".battle-result-score-grid > div")).toHaveCount(5);
     await expect(page.locator(".battle-result-comparison > div")).toHaveCount(3);
@@ -915,9 +915,9 @@ test("first quest connects dispatch, official battle, and one reward to the comp
   await expect(page.locator('[data-acceptance-state="B6"]')).toBeVisible({ timeout: 35_000 });
   const rewardStartedAt = Date.now();
   await expect(page.locator(".battle-result-rewards")).toBeVisible();
-  await expect(page.locator(".battle-result-summary")).toContainText("QUEST COMPLETE");
+  await expect(page.locator(".battle-result-summary")).toContainText("クエストクリア");
   await expect(page.locator(".battle-result-mvp")).toContainText("MVP");
-  await expect(page.locator(".battle-result-opponent")).toContainText("VS OPPONENT");
+  await expect(page.locator(".battle-result-opponent")).toContainText("クエストクリア · VS");
   await expect(page.locator(".battle-result-mvp-hero b")).toContainText("PT");
   await expect(page.locator(".battle-result-score-grid > div")).toHaveCount(5);
   await expect(page.locator(".battle-result-comparison > div")).toHaveCount(3);

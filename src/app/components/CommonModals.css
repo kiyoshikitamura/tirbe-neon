@@ -149,7 +149,7 @@
 .tutorial-ssr-quote blockquote { width:100%; max-width:310px; margin:8px 0 18px; padding:18px 13px; border-block:1px solid rgba(242,201,95,.45); color:#fff8d4; font-size:15px; font-weight:800; line-height:1.8; text-wrap:balance; }
 .tutorial-ssr-quote small { color:rgba(255,255,255,.66); font-size:9px; font-weight:800; letter-spacing:.16em; }
 .tutorial-ssr-quote .tutorial-typewriter { display:block; min-height:5.4em; }
-.tutorial-ssr-flash { position:absolute; z-index:8; inset:0; display:grid; place-items:center; overflow:hidden; background:#000; }
+.tutorial-ssr-flash { position:fixed; z-index:21000; inset:0; display:grid; width:100vw; height:100dvh; place-items:center; overflow:hidden; background:#000; pointer-events:none; }
 .tutorial-ssr-flash::before,.tutorial-ssr-flash::after { position:absolute; content:""; }
 .tutorial-ssr-flash::before { width:14vmax; height:14vmax; border-radius:50%; background:#fffbe1; box-shadow:0 0 44px #fff,0 0 110px rgba(242,201,95,.94); animation:tutorial-ssr-screen-flash .42s ease-out both; }
 .tutorial-ssr-flash::after { inset:-40%; background:conic-gradient(from 10deg,transparent,rgba(255,255,255,.9),transparent 9%,rgba(242,201,95,.48),transparent 22%); animation:tutorial-ssr-light-turn .42s ease-out both; }

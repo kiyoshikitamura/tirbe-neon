@@ -56,9 +56,9 @@
 .battle-result-mvp-copy strong{font-size:clamp(21px,6vw,28px)}
 .battle-result-mvp-copy b{font-family:var(--font-display);font-size:clamp(38px,12vw,54px)}
 .battle-result-mvp-copy b i{font-size:12px}
-.battle-result-score-grid{position:relative;z-index:2;grid-template-columns:repeat(2,minmax(0,1fr));margin-left:34%;animation:battle-result-stage-in .32s ease-out .8s both}
-.battle-result-score-grid>div{grid-template-columns:minmax(0,1fr) auto;align-items:center;padding:4px 5px;text-align:left}
-.battle-result-score-grid>div:last-child{grid-column:1/-1}
+.battle-result-score-grid{position:relative;z-index:2;grid-template-columns:minmax(0,1fr);gap:2px;margin-left:43%;animation:battle-result-stage-in .32s ease-out .8s both}
+.battle-result-score-grid>div{grid-template-columns:minmax(0,1fr) auto;align-items:center;padding:2px 0;border:0;background:transparent;text-align:left}
+.battle-result-score-grid>div:last-child{grid-column:auto}
 .battle-result-score-grid dt{font-size:7px}.battle-result-score-grid dd{text-align:right}.battle-result-score-grid dd small{font-size:6px}
 .battle-result-comparison{animation:battle-result-stage-in .32s ease-out 1.05s both}
 .battle-result-mode-stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;animation:battle-result-stage-in .3s ease-out 1.12s both}

@@ -51,9 +51,20 @@ const replayEvents = [
 ] as const;
 
 function BattleFixture({ size = 3, speed = 1, ssrSkill = false }: { size?: 3 | 5; speed?: number; ssrSkill?: boolean }) {
+  const paceDemo = speed === 2;
+  const [liveSpeed, setLiveSpeed] = useState(paceDemo ? 1 : speed);
+  const [paceSkillVisible, setPaceSkillVisible] = useState(ssrSkill);
+  useEffect(() => {
+    if (!paceDemo) setPaceSkillVisible(ssrSkill);
+  }, [paceDemo, ssrSkill]);
+  useEffect(() => {
+    if (!paceDemo) return;
+    const timer = window.setTimeout(() => setPaceSkillVisible(true), 160);
+    return () => window.clearTimeout(timer);
+  }, [paceDemo]);
   const enemies = enemyParty.slice(0, size);
   const timeline = [...playerParty, ...enemies].map(({ id, name, isEnemy }) => ({ id, name, isEnemy }));
-  return <QuestBattleViewer battleMode="PATROL" opponentName="新宿・初級" playerParty={playerParty} enemyParty={enemies} timeline={timeline} timelineIndex={0} authoritativeTimeline={timeline.slice(0, 3)} presentationPhase="DAMAGE" round={4} skillCutIn={ssrSkill || speed === 2 ? { charName: playerParty[0].name, skillName: "ストリートパンチ" } : null} targetLine={{ fromId: "player-1", toId: "enemy-1" }} shakingId="enemy-1" damagePopup={{ charId: "enemy-1", val: ssrSkill ? 2940 : 1284, type: "dmg", isCritical: ssrSkill }} tactic="BALANCED" speed={speed} monthlyPassActive={false} paused={false} tutorial={size === 3} onSpeedChange={() => undefined} onPauseChange={() => undefined} canSkip={size === 5} skipPending={false} onSkip={() => undefined} onRetreat={() => undefined} onSound={() => undefined} />;
+  return <QuestBattleViewer battleMode="PATROL" opponentName="新宿・初級" playerParty={playerParty} enemyParty={enemies} timeline={timeline} timelineIndex={0} authoritativeTimeline={timeline.slice(0, 3)} presentationPhase={paceDemo ? "ACTION_HOLD" : "DAMAGE"} round={4} skillCutIn={paceSkillVisible ? { charName: playerParty[0].name, skillName: "ストリートパンチ" } : null} targetLine={{ fromId: "player-1", toId: "enemy-1" }} shakingId="enemy-1" damagePopup={{ charId: "enemy-1", val: ssrSkill ? 2940 : 1284, type: "dmg", isCritical: ssrSkill }} tactic="BALANCED" speed={liveSpeed} monthlyPassActive={false} paused={false} tutorial={size === 3 || paceDemo} onSpeedChange={setLiveSpeed} onPauseChange={() => undefined} canSkip={size === 5} skipPending={false} onSkip={() => undefined} onRetreat={() => undefined} onSound={() => undefined} />;
 }
 
 function SsrRevealFixture() {
