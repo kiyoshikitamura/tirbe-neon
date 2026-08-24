@@ -145,7 +145,8 @@ async function revealTutorialTenPull(page: import("@playwright/test").Page, capt
       ssrQuoteCount += 1;
       await expect(reveal.locator(".tutorial-ssr-quote")).toContainText("SSR");
       await expect(reveal.locator(".tutorial-ssr-quote blockquote")).not.toBeEmpty();
-      await expect(reveal).toHaveAttribute("aria-label", /SSR紹介を確認/);
+      await expect(reveal).toHaveAttribute("aria-label", /SSRの特別紹介を確認/);
+      await expect(reveal).not.toHaveAttribute("data-character-id", /.+/);
       if (captureVisuals && index === 9) {
         for (const viewport of c2AcceptanceViewports) {
           await page.setViewportSize(viewport);
@@ -183,6 +184,10 @@ async function revealTutorialTenPull(page: import("@playwright/test").Page, capt
 async function completeVisibleTutorialGrowth(page: import("@playwright/test").Page) {
   await expect(page.locator('[data-acceptance-state="TUTORIAL_SKILL_STEP"]')).toBeVisible();
   await expect(page.locator('[data-acceptance-state="TUTORIAL_SKILL_STEP"]')).toContainText("ストリートパンチ");
+  await expect(page.locator('[data-acceptance-state="TUTORIAL_SKILL_STEP"]')).toContainText("タイプ");
+  await expect(page.locator('[data-acceptance-state="TUTORIAL_SKILL_STEP"]')).toContainText("敵単体");
+  await expect(page.locator('[data-acceptance-state="TUTORIAL_SKILL_STEP"]')).not.toContainText("ENEMY_SINGLE");
+  await expect(page.locator('[data-acceptance-state="TUTORIAL_SKILL_STEP"]')).not.toContainText("DAMAGE 90% ATK");
   await page.getByRole("button", { name: "育成へ進む" }).click();
   const growth = page.locator('[data-acceptance-state="TUTORIAL_GROWTH_STEP"]');
   await expect(growth).toBeVisible();
@@ -191,7 +196,8 @@ async function completeVisibleTutorialGrowth(page: import("@playwright/test").Pa
   await page.getByRole("button", { name: "Lv.7まで強化" }).click();
   await expect(page.getByRole("heading", { name: "レベルアップ結果" })).toBeVisible();
   await expect(page.locator(".confirm-body")).toContainText("Lv.1 → Lv.7");
-  await page.getByRole("button", { name: "OK" }).click();
+  await expect(page.locator('[data-growth-result="level-up"]')).toContainText("総合力");
+  await page.getByRole("button", { name: "編成へ進む" }).click();
   await expect(page.getByRole("button", { name: "おすすめ編成にする" })).toBeVisible();
 }
 
@@ -693,9 +699,12 @@ test("first quest connects dispatch, official battle, and one reward to the comp
 
   await page.reload();
   await expect(page.locator('[data-acceptance-state="Q5"]')).toBeVisible();
-  await page.getByRole("button", { name: "次へ" }).click();
+  const nextToEncounter = page.getByRole("button", { name: "次へ" });
+  await expect(nextToEncounter).toBeEnabled({ timeout: 15_000 });
+  await nextToEncounter.click();
   const battlePromptAction = page.getByRole("button", { name: "バトルへ" });
   await expect(battlePromptAction).toBeVisible();
+  await expect(page.locator('[data-acceptance-state="Q6"] [data-encounter-projection]')).toHaveAttribute("data-encounter-projection", "ready");
   await page.screenshot({ path: test.info().outputPath("Q6-battle-encounter-initial.png"), fullPage: true });
   await page.waitForTimeout(320);
   await page.screenshot({ path: test.info().outputPath("Q6-battle-encounter-impact.png"), fullPage: true });

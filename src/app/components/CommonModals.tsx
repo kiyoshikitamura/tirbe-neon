@@ -274,16 +274,15 @@ export default function CommonModals() {
               aria-disabled={!tutorialRevealCanAdvance}
               aria-busy={tutorialRevealAdvancing}
               data-can-advance={tutorialRevealCanAdvance}
-              aria-label={tutorialSsrStage === "QUOTE" ? `${tutorialRevealResult?.name}のSSR紹介を確認` : `${tutorialRevealIndex + 1}人目を確認`}
-              data-character-id={tutorialRevealResult?.characterId || undefined}
+              aria-label={tutorialSsrStage === "QUOTE" ? "SSRの特別紹介を確認" : `${tutorialRevealIndex + 1}人目を確認`}
+              data-character-id={tutorialSsrStage === "QUOTE" ? undefined : tutorialRevealResult?.characterId || undefined}
               data-presentation-state={tutorialRevealRarity === "SSR" ? `SSR_${tutorialSsrStage}` : "STANDARD_REVEAL"}
             >
               <span className="tutorial-gacha-count">{tutorialRevealIndex + 1} / {scoutResults.length}</span>
               {tutorialSsrStage === "QUOTE" ? (
-                <div className="tutorial-ssr-quote" role="status" data-character-id={tutorialRevealResult?.characterId}>
+                <div className="tutorial-ssr-quote" role="status">
                   <span>SSR SPECIAL INTRODUCTION</span>
                   <strong>SSR</strong>
-                  <h3>{tutorialRevealResult?.name}</h3>
                   <blockquote>{tutorialRevealQuote}</blockquote>
                   <small>TAP TO CONTINUE</small>
                 </div>

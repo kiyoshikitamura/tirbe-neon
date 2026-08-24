@@ -312,6 +312,12 @@ export default function PatrolTab() {
     const tutorialCharacter = CHARACTERS_MASTER.find((character: any) => character.id === (tutorialPatrol?.characterId || selectedPatrolMember));
     const tutorialOwnedCharacter = userCharactersDbList.find((character: any) => character.character_id === tutorialCharacter?.id);
     const tutorialNpc = patrolNpcs.find((npc: any) => npc.quest_id === tutorialPatrol?.courseId);
+    const tutorialEncounterProjectionReady = Boolean(
+      tutorialPatrol
+      && tutorialNpc
+      && tutorialPatrol.has_battle_event
+      && !tutorialPatrol.battle_resolved
+    );
     const remaining = Math.max(0, Number(tutorialPatrol?.secondsLeft || 0));
     const total = Math.max(1, Number(tutorialPatrol?.secondsTotal || tutorialCourse?.duration_seconds || 1));
     const progress = Math.max(4, Math.min(100, ((total - remaining) / total) * 100));
@@ -352,6 +358,7 @@ export default function PatrolTab() {
             <strong className="tutorial-wire-course">新宿・初級</strong>
             <div className="tutorial-wire-rewards is-return" aria-label="獲得報酬"><span>PLAYER XP<br />+{Number(tutorialCourse?.reward_xp || 0).toLocaleString()}</span><span>キャラEXP<br />+{Number(tutorialCourse?.reward_xp || 0).toLocaleString()}</span><span>CASH<br />+{Number(tutorialCourse?.reward_cash || 0).toLocaleString()}</span><span>アイテム<br />抽選</span></div>
             <OutlawButton onClick={() => {
+              if (!tutorialEncounterProjectionReady) return;
               traceTutorialJourney("quest_return_confirmed", {
                 tutorialStepBefore: tutorialStep,
                 tutorialStepAfter: tutorialStep,
@@ -368,12 +375,15 @@ export default function PatrolTab() {
               });
               setTutorialEncounterReady(false);
               setTutorialEncounterPresentation("ENCOUNTER");
-            }} fullWidth variant="primary">次へ</OutlawButton>
+            }} disabled={!tutorialEncounterProjectionReady} aria-busy={!tutorialEncounterProjectionReady} fullWidth variant="primary">
+              {tutorialEncounterProjectionReady ? "次へ" : "遭遇情報を確認中…"}
+            </OutlawButton>
+            {!tutorialEncounterProjectionReady && <small className="tutorial-wire-sync" role="status">クエスト結果とバトル情報を同期しています。</small>}
           </>}
 
-          {acceptanceState === "Q6" && <div className={`tutorial-wire-encounter ${tutorialEncounterReady ? "is-ready" : ""}`} data-encounter-ready={tutorialEncounterReady ? "true" : "false"}>
+          {acceptanceState === "Q6" && <div className={`tutorial-wire-encounter ${tutorialEncounterReady ? "is-ready" : ""}`} data-encounter-ready={tutorialEncounterReady ? "true" : "false"} data-encounter-projection={tutorialEncounterProjectionReady ? "ready" : "loading"}>
             <div className="tutorial-wire-glitch" aria-hidden="true">⚔</div><h2>バトル発生</h2><small>BATTLE ENCOUNTER</small>
-            <OutlawButton onClick={() => tutorialPatrol && void handleBattleStart(tutorialPatrol, tutorialNpc)} disabled={!tutorialEncounterReady || !tutorialPatrol || !tutorialNpc || battleStartingId === tutorialPatrol?.id || battleEncounterLocked} fullWidth variant="primary">{battleStartingId ? "バトル準備中…" : "バトルへ"}</OutlawButton>
+            <OutlawButton onClick={() => tutorialPatrol && void handleBattleStart(tutorialPatrol, tutorialNpc)} disabled={!tutorialEncounterReady || !tutorialEncounterProjectionReady || battleStartingId === tutorialPatrol?.id || battleEncounterLocked} fullWidth variant="primary">{battleStartingId ? "バトル準備中…" : "バトルへ"}</OutlawButton>
           </div>}
         </section>
       </HubPage>

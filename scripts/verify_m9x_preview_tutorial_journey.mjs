@@ -137,9 +137,10 @@ try {
   await visible('[data-acceptance-state="TUTORIAL_GROWTH_STEP"]', 20_000);
   await page.getByRole("button", { name: "Lv.7まで強化" }).click();
   await page.getByRole("heading", { name: "レベルアップ結果" }).waitFor({ state: "visible", timeout: 20_000 });
-  await page.getByRole("button", { name: "OK" }).click();
+  await page.getByRole("button", { name: "編成へ進む" }).click();
   await page.screenshot({ path: path.join(artifactsDirectory, "preview-formation-owned.png"), fullPage: true });
   await (await visible(".char-party-auto-btn", 20_000)).click();
+  await visible('[data-acceptance-state="Q1"]', 30_000);
   await snapshotAcquisitionState("RECOMMENDED_FORMATION");
   await page.screenshot({ path: path.join(artifactsDirectory, "preview-formation-skill.png"), fullPage: true });
 
@@ -162,6 +163,10 @@ try {
   trace.push(...await page.evaluate(() => window.__TRIBE_TUTORIAL_JOURNEY_TRACE__ || []));
   await page.reload({ waitUntil: "domcontentloaded" });
   await visible('[data-acceptance-state="Q5"]', 30_000);
+  await page.waitForFunction(() => {
+    const button = document.querySelector('[data-acceptance-state="Q5"] button');
+    return button instanceof HTMLButtonElement && !button.disabled;
+  }, undefined, { timeout: 20_000 });
   await page.locator('[data-acceptance-state="Q5"] button').click();
   await recordState("Q6");
   await page.reload({ waitUntil: "domcontentloaded" });

@@ -83,7 +83,8 @@ export default function CharacterTab() {
     currentBaseId,
     session,
     onboardingState,
-    syncBootstrapData
+    syncBootstrapData,
+    setConfirmDialogConfig
   } = useGame();
 
   // ボトムシートモーダル状態: null (閉じ) | "STATUS" | "SKILL" | "GEAR"
@@ -388,17 +389,17 @@ export default function CharacterTab() {
               <div data-acceptance-state="TUTORIAL_SKILL_STEP">
                 <TutorialNavigator message={<>キャラクターはスキルで戦い方が変わるよ。<br />まずは基本スキルを確認しよう。</>} />
                 <div className="tutorial-formation-skill-confirmation">
-                  <span>CANONICAL SKILL</span>
+                  <span>基本スキル</span>
                   <img src="/skills/skill_001_street_punch.png" alt="ストリートパンチ" className="tutorial-formation-skill-icon" />
                   <strong>{tutorialSkillMaster?.name || "ストリートパンチ"}</strong>
                   {tutorialSkillMaster && <dl className="tutorial-formation-skill-details">
-                    <div><dt>TYPE</dt><dd>{tutorialSkillMaster.activationType}</dd></div>
-                    <div><dt>TARGET</dt><dd>{tutorialSkillMaster.target}</dd></div>
-                    <div><dt>POWER</dt><dd>{tutorialSkillMaster.power}% ATK</dd></div>
-                    <div><dt>COOLDOWN</dt><dd>{tutorialSkillMaster.cooldown} rounds</dd></div>
-                    <div><dt>AVAILABLE</dt><dd>Round {tutorialSkillMaster.availableFromRound}</dd></div>
+                    <div><dt>タイプ</dt><dd>{SKILL_EFFECT_LABELS[tutorialSkillMaster.effect_type] || "ダメージ"}</dd></div>
+                    <div><dt>対象</dt><dd>{SKILL_TARGET_DISPLAY[tutorialSkillMaster.target] || "特殊"}</dd></div>
+                    <div><dt>威力</dt><dd>ATKの{tutorialSkillMaster.power}%</dd></div>
+                    <div><dt>再使用</dt><dd>{tutorialSkillMaster.cooldown}ラウンド</dd></div>
+                    <div><dt>使用可能</dt><dd>{tutorialSkillMaster.availableFromRound}ラウンド目から</dd></div>
                   </dl>}
-                  <p>{tutorialSkillMaster ? tutorialSkillMaster.description : "敵単体へダメージを与える基本スキル。"}</p>
+                  <p>{tutorialSkillMaster ? `敵単体にATKの${tutorialSkillMaster.power}%ダメージ。` : "敵単体へダメージを与える基本スキル。"}</p>
                 </div>
                 <button className="semantic-cta semantic-cta--primary tutorial-primary-target" onClick={() => setTutorialLearningPhase("GROWTH")}>育成へ進む</button>
               </div>
@@ -419,7 +420,12 @@ export default function CharacterTab() {
                     if (tutorialGrowthPending) return;
                     setTutorialGrowthPending(true);
                     try {
-                      const completed = await handleCharacterLevelUp("CHAR_EXP_S", Number(tutorialGrowth?.required_quantity || 0));
+                      let resultDialog: any = null;
+                      const completed = await handleCharacterLevelUp(
+                        "CHAR_EXP_S",
+                        Number(tutorialGrowth?.required_quantity || 0),
+                        (config: any) => { resultDialog = config; }
+                      );
                       if (!completed) return;
                       const { data, error } = await supabase.rpc("advance_current_tutorial_after_growth");
                       if (error || data?.status !== "ready_for_formation") {
@@ -427,8 +433,22 @@ export default function CharacterTab() {
                         return;
                       }
                       setTutorialGrowth((current: any) => ({ ...current, status: "growth_complete", current_level: data.level }));
-                      setTutorialLearningPhase("FORMATION");
-                      setFormationEditMode(true);
+                      if (resultDialog) {
+                        setConfirmDialogConfig({
+                          ...resultDialog,
+                          cancelText: "",
+                          confirmText: "編成へ進む",
+                          onConfirm: () => {
+                            setConfirmDialogConfig(null);
+                            setTutorialLearningPhase("FORMATION");
+                            setFormationEditMode(true);
+                          },
+                          onCancel: () => setConfirmDialogConfig(null),
+                        });
+                      } else {
+                        setTutorialLearningPhase("FORMATION");
+                        setFormationEditMode(true);
+                      }
                     } finally {
                       setTutorialGrowthPending(false);
                     }

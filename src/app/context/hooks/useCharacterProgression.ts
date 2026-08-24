@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { createElement, useState } from "react";
 import { supabase } from "@/utils/supabase";
 import { CANONICAL_EQUIPMENT_VIEW } from "@/utils/equipments_master_data";
 import { CANONICAL_SKILL_VIEW } from "@/utils/skills_master_data";
@@ -10,6 +10,7 @@ import { getEquipmentLevelCap } from "@/utils/equipment_progression";
 import { canonicalEquipmentFlatStat, canonicalSkillSlotCount } from "@/domain/gameplay/canonical/calculations";
 import type { ConfirmDialogConfig } from "@/app/components/ui/ConfirmDialog";
 import { beginActionPerformance } from "@/utils/actionPerformance";
+import { CHARACTERS_MASTER } from "@/utils/game_constants";
 
 const sumPower = (stats: { hp: number; atk: number; def: number; spd: number; luk: number }) =>
   stats.hp + stats.atk + stats.def;
@@ -129,10 +130,16 @@ export function useCharacterProgression(
       playCyberSe("LEVEL_UP");
       const powerBefore = sumPower(getCharacterTotalStats(character, userEquipmentsList));
       const powerAfter = sumPower(getCharacterTotalStats({ ...character, level: newLevel }, userEquipmentsList));
+      const characterName = CHARACTERS_MASTER.find((entry) => entry.id === character.character_id)?.jpName || "キャラクター";
       const resultConfig: ConfirmDialogConfig = {
         isOpen: true,
         title: "レベルアップ結果",
-        message: `キャラクターが Lv.${previousLevel} → Lv.${newLevel} になりました。\n戦力 ${powerBefore.toLocaleString()} → ${powerAfter.toLocaleString()}（+${Math.max(0, powerAfter - powerBefore).toLocaleString()}）`,
+        message: createElement("div", { className: "growth-result-v0", "data-growth-result": "level-up" },
+          createElement("span", null, "CHARACTER GROWTH"),
+          createElement("strong", null, characterName),
+          createElement("p", null, `Lv.${previousLevel} → Lv.${newLevel}`),
+          createElement("small", null, `総合力 ${powerBefore.toLocaleString()} → ${powerAfter.toLocaleString()}（+${Math.max(0, powerAfter - powerBefore).toLocaleString()}）`),
+        ),
         onConfirm: () => setConfirmDialogConfig(null),
         onCancel: () => setConfirmDialogConfig(null)
       };

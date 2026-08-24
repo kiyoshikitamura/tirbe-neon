@@ -420,3 +420,4 @@
 .progress-bar-container.full .progress-bar-fill {
   background: linear-gradient(90deg, #ff8800 0%, #ffd700 100%);
 }
+.tutorial-wire-sync{display:block;margin-top:8px;color:var(--ui-text-secondary);font-size:10px;text-align:center}

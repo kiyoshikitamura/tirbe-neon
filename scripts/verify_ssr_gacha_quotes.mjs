@@ -34,5 +34,7 @@ assert.match(modal, /resolveSsrGachaQuote\(tutorialRevealResult\?\.characterId\)
 assert.match(modal, /scoutResults\.every\(\(result: any\) => result\?\.type === "CHARACTER"/, "Tutorial and Normal Character pulls must share reveal flow");
 assert.match(modal, /tutorialSsrStage === "QUOTE"/, "SSR Quote gate is missing");
 assert.match(modal, /setTutorialSsrStage\("REVEAL"\)/, "SSR Quote tap must enter reveal state");
+assert.doesNotMatch(modal, /tutorial-ssr-quote[^>]*data-character-id/, "SSR identity must not be projected before reveal");
+assert.doesNotMatch(modal, /tutorial-ssr-quote[\s\S]{0,240}<h3>\{tutorialRevealResult\?\.name\}/, "SSR Character name must not appear before reveal");
 
 console.log(JSON.stringify({ status: "PASS", productionSsr: productionSsr.length, enabledQuotes: enabled.length, duplicate: 0, missing: 0, unknown: 0 }, null, 2));

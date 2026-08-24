@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { useGame } from "../context/GameContext";
 import CharacterPresentation from "./character/CharacterPresentation";
 import TypewriterText from "./tutorial/TypewriterText";
+import { userFacingErrorMessage } from "../lib/userFacingError";
 import "./SetupView.css";
 
 type EntryPresentationState = "WORLD_INFORMATION" | "WORLD_TO_AGEHA" | "AGEHA_INTRO" | "NAME_INPUT";
@@ -73,7 +74,7 @@ export default function SetupView() {
       <div className="setup-world-shade" aria-hidden="true" />
       {presentationState === "WORLD_INFORMATION" ? (
         <section className={`setup-world-presentation is-stage-${worldStage + 1}`} aria-label="TRIBE NEON プロローグ" data-world-stage={worldStage + 1}>
-          <div className="setup-world-motion" aria-hidden="true"><i /><i /></div>
+          <div key={`world-motion-${worldStage}`} className="setup-world-motion" aria-hidden="true"><i /><i /></div>
           <div className="setup-world-brand">TRIBE NEON <small>PROLOGUE</small></div>
           <img className="setup-world-emblem" src="/branding/tribe-neon-logo.png" alt="" aria-hidden="true" />
           <div className="setup-world-copy" key={worldStage}>
@@ -116,7 +117,7 @@ export default function SetupView() {
         </div>
       )}
 
-      {errorMessage && <div className="modal-overlay"><div className="modal-card border-danger"><div className="modal-title text-color-danger">エラー</div><div className="modal-desc">{errorMessage}</div><button className="semantic-cta semantic-cta--danger" onClick={()=>setErrorMessage(null)}>閉じる</button></div></div>}
+      {errorMessage && <div className="modal-overlay" role="presentation"><div className="modal-card border-danger" role="alertdialog" aria-modal="true" aria-labelledby="setup-error-title"><div id="setup-error-title" className="modal-title text-color-danger">エラー</div><div className="modal-desc">{userFacingErrorMessage(errorMessage)}</div><button className="semantic-cta semantic-cta--danger" onClick={()=>setErrorMessage(null)}>閉じる</button></div></div>}
     </div>
   );
 }

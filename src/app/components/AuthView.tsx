@@ -67,9 +67,6 @@ export default function AuthView() {
           </div>
         </div>
 
-        {errorMessage && (
-          <p className="auth-error-text mt-4">{errorMessage}</p>
-        )}
       </div>
 
       {errorMessage && (

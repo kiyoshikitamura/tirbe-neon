@@ -131,12 +131,12 @@
 .setup-world-presentation{isolation:isolate;overflow:hidden}
 .setup-world-presentation::after{position:absolute;z-index:2;inset:-20%;content:"";pointer-events:none;background:linear-gradient(112deg,transparent 38%,rgba(0,240,255,.12) 49%,rgba(255,0,127,.09) 51%,transparent 62%);transform:translateX(-70%);animation:world-scene-sweep 1.15s cubic-bezier(.2,.72,.2,1) both}
 .setup-world-motion{position:absolute;inset:-8%;z-index:-1;overflow:hidden;pointer-events:none;animation:world-camera-drift 12s ease-in-out both}
-.setup-world-motion::before{position:absolute;inset:0;content:"";background:url('/bg/bg_street_shinjuku.png') center/cover no-repeat;filter:saturate(.88) contrast(1.08);transform:scale(1.08)}
+.setup-world-motion::before{position:absolute;inset:-3%;content:"";background:url('/bg/bg_street_shinjuku.png') center/cover no-repeat;filter:saturate(1.02) contrast(1.14);transform:scale(1.1);animation:world-background-push 4.6s cubic-bezier(.18,.72,.2,1) both}
 .setup-world-motion::after{position:absolute;inset:0;content:"";background:linear-gradient(180deg,rgba(2,4,8,.16),rgba(2,4,8,.76)),linear-gradient(90deg,rgba(8,34,41,.2),transparent 52%,rgba(68,24,31,.16))}
 .setup-world-motion i{position:absolute;z-index:1;right:-20%;left:-20%;height:1px;background:linear-gradient(90deg,transparent,rgba(221,224,226,.35),transparent);filter:blur(.4px);animation:world-reflection-pass 3.6s ease-in-out infinite}
 .setup-world-motion i:first-child{top:32%}.setup-world-motion i:last-child{top:68%;animation-delay:1.7s}
 .setup-world-brand{position:relative;z-index:3;font-family:var(--font-display);animation:world-brand-reveal .7s ease-out both}
-.setup-world-copy{animation:world-copy-cinematic .58s cubic-bezier(.2,.8,.2,1) both}
+.setup-world-copy{animation:world-copy-cinematic .78s cubic-bezier(.16,.82,.2,1) both}
 .setup-world-copy .tutorial-typewriter{font-family:var(--font-ui)}
 .setup-world-presentation.is-stage-2 .setup-world-copy,.setup-world-presentation.is-stage-4 .setup-world-copy{transform-origin:center}
 .setup-world-presentation.is-stage-2 .setup-world-copy .tutorial-typewriter,.setup-world-presentation.is-stage-4 .setup-world-copy .tutorial-typewriter{font-family:var(--font-display);letter-spacing:.045em}
@@ -144,20 +144,21 @@
 .setup-world-presentation.is-stage-2 .setup-world-motion{animation-name:world-camera-stage-2}
 .setup-world-presentation.is-stage-3 .setup-world-motion{animation-name:world-camera-stage-3}
 .setup-world-presentation.is-stage-4 .setup-world-motion{animation-name:world-camera-stage-4}
-.setup-world-presentation.is-stage-4 .setup-world-emblem{opacity:.18;filter:drop-shadow(0 0 30px rgba(0,240,255,.34));animation:world-logo-finale 1.25s cubic-bezier(.16,.8,.2,1) both}
+.setup-world-presentation.is-stage-4 .setup-world-emblem{opacity:.32;filter:drop-shadow(0 0 34px rgba(0,240,255,.48));animation:world-logo-finale 1.25s cubic-bezier(.16,.8,.2,1) both}
 .setup-world-presentation.is-stage-4 .setup-world-copy{animation:world-copy-finale .72s cubic-bezier(.16,.8,.2,1) both}
 .setup-world-emblem{animation:world-emblem-reveal 2.4s ease-out both}
 @keyframes world-camera-drift{from{transform:scale(1.02) translate3d(-1.5%,1%,0)}to{transform:scale(1.09) translate3d(1.5%,-1%,0)}}
-@keyframes world-camera-stage-1{from{transform:scale(1.04) translate3d(-2%,1%,0)}to{transform:scale(1.12) translate3d(1%,-1%,0)}}
-@keyframes world-camera-stage-2{from{transform:scale(1.13) translate3d(2%,-1%,0)}to{transform:scale(1.06) translate3d(-1%,1%,0)}}
-@keyframes world-camera-stage-3{from{transform:scale(1.06) translate3d(-1.5%,-1%,0)}to{transform:scale(1.14) translate3d(1.5%,1%,0)}}
-@keyframes world-camera-stage-4{from{transform:scale(1.14);filter:brightness(.72) saturate(.75)}to{transform:scale(1.04);filter:brightness(1) saturate(1.05)}}
+@keyframes world-camera-stage-1{from{transform:scale(1.03) translate3d(-5%,2%,0)}to{transform:scale(1.17) translate3d(3%,-2%,0)}}
+@keyframes world-camera-stage-2{from{transform:scale(1.17) translate3d(5%,-2%,0)}to{transform:scale(1.05) translate3d(-4%,2%,0)}}
+@keyframes world-camera-stage-3{from{transform:scale(1.05) translate3d(-4%,-2%,0)}to{transform:scale(1.18) translate3d(4%,2%,0)}}
+@keyframes world-camera-stage-4{from{transform:scale(1.2);filter:brightness(.52) saturate(.68) blur(2px)}to{transform:scale(1.03);filter:brightness(1) saturate(1.08) blur(0)}}
+@keyframes world-background-push{from{transform:scale(1.02) translate3d(-2%,1%,0)}to{transform:scale(1.15) translate3d(2%,-1%,0)}}
 @keyframes world-scene-sweep{0%{opacity:0;transform:translateX(-70%)}32%{opacity:1}100%{opacity:0;transform:translateX(70%)}}
 @keyframes world-reflection-pass{0%,100%{opacity:0;transform:translateX(-35%)}45%{opacity:.55}70%{opacity:0;transform:translateX(35%)}}
 @keyframes world-brand-reveal{from{opacity:0;transform:translateY(-8px);letter-spacing:.5em}to{opacity:1;transform:none}}
-@keyframes world-copy-cinematic{from{opacity:0;filter:blur(5px);transform:translateY(14px) scale(.97)}to{opacity:1;filter:none;transform:none}}
+@keyframes world-copy-cinematic{from{opacity:0;filter:blur(9px);transform:translateY(28px) scale(.92)}55%{opacity:1;filter:blur(1px)}to{opacity:1;filter:none;transform:none}}
 @keyframes world-emblem-reveal{from{opacity:0;transform:translateX(-50%) scale(.82)}to{opacity:.055;transform:translateX(-50%) scale(1)}}
-@keyframes world-logo-finale{from{opacity:0;transform:translateX(-50%) scale(.72);filter:blur(7px)}to{opacity:.18;transform:translateX(-50%) scale(1.08);filter:drop-shadow(0 0 30px rgba(0,240,255,.34))}}
+@keyframes world-logo-finale{from{opacity:0;transform:translateX(-50%) scale(.62);filter:blur(10px)}to{opacity:.32;transform:translateX(-50%) scale(1.12);filter:drop-shadow(0 0 34px rgba(0,240,255,.48))}}
 @keyframes world-copy-finale{from{opacity:0;filter:blur(8px);transform:scale(1.12)}to{opacity:1;filter:none;transform:scale(1)}}
 @media(max-width:390px){.setup-world-copy{padding-right:12px;padding-left:12px}.setup-world-copy .tutorial-typewriter{font-size:clamp(17px,4.8vw,21px);line-height:1.62}}
-@media(prefers-reduced-motion:reduce){.setup-world-presentation::after,.setup-world-motion,.setup-world-motion i,.setup-world-brand,.setup-world-copy,.setup-world-emblem{animation:none}}
+@media(prefers-reduced-motion:reduce){.setup-world-presentation::after,.setup-world-motion,.setup-world-motion::before,.setup-world-motion i,.setup-world-brand,.setup-world-copy,.setup-world-emblem{animation:none}}
