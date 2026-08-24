@@ -1,0 +1,23 @@
+.battle-matchup{position:relative;display:grid;grid-template-columns:minmax(0,1fr) 84px minmax(0,1fr);align-items:stretch;width:100%;height:100%;min-height:100dvh;overflow:hidden;background:linear-gradient(145deg,#080a0f,#151319 48%,#07090d);isolation:isolate}
+.battle-matchup-shade{position:absolute;inset:0;z-index:-1;background:linear-gradient(90deg,rgba(30,74,88,.34),transparent 42%,rgba(102,35,45,.3)),repeating-linear-gradient(132deg,transparent 0 24px,rgba(255,255,255,.025) 25px 26px);animation:battle-matchup-shade-in .28s ease-out both}
+.battle-matchup-leader{position:relative;min-width:0;overflow:hidden;filter:brightness(.86) saturate(.92)}
+.battle-matchup-leader.is-player{animation:battle-matchup-player-in .52s cubic-bezier(.2,.8,.2,1) .08s both}
+.battle-matchup-leader.is-enemy{animation:battle-matchup-enemy-in .52s cubic-bezier(.2,.8,.2,1) .14s both}
+.battle-matchup-leader .character-presentation{width:145%;height:100%;border:0;background:transparent;box-shadow:none}
+.battle-matchup-leader.is-player .character-presentation{margin-left:-22%}
+.battle-matchup-leader.is-enemy .character-presentation{margin-left:-24%}
+.battle-matchup-leader>div{position:absolute;right:6px;bottom:calc(12% + env(safe-area-inset-bottom));left:6px;display:grid;gap:2px;padding:8px;background:linear-gradient(90deg,rgba(3,6,10,.88),rgba(3,6,10,.3));text-shadow:0 2px 7px #000}
+.battle-matchup-leader.is-enemy>div{text-align:right;background:linear-gradient(270deg,rgba(3,6,10,.9),rgba(3,6,10,.28))}
+.battle-matchup-leader small,.battle-matchup-leader span{color:var(--ui-text-secondary);font-family:var(--font-display);font-size:9px;font-weight:700;letter-spacing:.12em}
+.battle-matchup-leader strong{overflow:hidden;color:#fff;font-size:clamp(14px,4.2vw,20px);text-overflow:ellipsis;white-space:nowrap}
+.battle-matchup-center{position:relative;z-index:3;display:grid;align-content:center;justify-items:center;gap:10px;margin:-5vh -22px;transform:skewX(-8deg);background:linear-gradient(180deg,transparent,rgba(87,77,76,.78),transparent);box-shadow:0 0 34px rgba(0,0,0,.65);animation:battle-matchup-center-in .42s cubic-bezier(.2,.85,.25,1) .28s both}
+.battle-matchup-center>*{transform:skewX(8deg)}
+.battle-matchup-center span{color:#fff;font-family:var(--font-display);font-size:clamp(42px,14vw,70px);font-weight:700;line-height:.9;letter-spacing:.03em;text-shadow:0 3px 18px #000}
+.battle-matchup-center strong{color:#f3e4b0;font-family:var(--font-display);font-size:12px;letter-spacing:.14em;white-space:nowrap;animation:battle-matchup-start-in .28s ease-out .62s both}
+.battle-matchup-center small{max-width:112px;overflow:hidden;color:#d5d8dd;font-size:8px;text-overflow:ellipsis;white-space:nowrap;animation:battle-matchup-start-in .24s ease-out .42s both}
+@keyframes battle-matchup-shade-in{from{opacity:0}to{opacity:1}}
+@keyframes battle-matchup-player-in{from{opacity:0;transform:translateX(-34px)}to{opacity:1;transform:none}}
+@keyframes battle-matchup-enemy-in{from{opacity:0;transform:translateX(34px)}to{opacity:1;transform:none}}
+@keyframes battle-matchup-center-in{from{opacity:0;filter:blur(5px);transform:skewX(-8deg) scale(.7)}to{opacity:1;filter:none;transform:skewX(-8deg) scale(1)}}
+@keyframes battle-matchup-start-in{from{opacity:0;transform:skewX(8deg) scale(1.25)}to{opacity:1;transform:skewX(8deg) scale(1)}}
+@media(prefers-reduced-motion:reduce){.battle-matchup-shade,.battle-matchup-leader,.battle-matchup-center,.battle-matchup-center strong,.battle-matchup-center small{animation:none}}

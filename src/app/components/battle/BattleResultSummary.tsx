@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef } from "react";
 import { useAudio } from "@/audio/AudioProvider";
 import { analyzeBattleResult, type BattleResultParticipant, type BattleResultReplayEvent } from "@/domain/presentation/battleResultScoring";
 import { CHARACTERS_MASTER, getCharacterTransparentImg } from "@/utils/game_constants";
+import type { BattleModeResultDetail, BattlePresentationContext } from "@/hooks/useBattle";
 
 import OutlawButton from "../ui/OutlawButton";
 import CharacterPresentation from "../character/CharacterPresentation";
@@ -16,6 +17,8 @@ type Props = {
   replayEvents?: readonly BattleResultReplayEvent[];
   playerParticipants?: readonly any[];
   enemyParticipants?: readonly any[];
+  presentationContext?: BattlePresentationContext | null;
+  modeResult?: BattleModeResultDetail | null;
   onContinue: () => void | Promise<void>;
 };
 
@@ -26,7 +29,7 @@ const toParticipant = (entry: any, isEnemy: boolean): BattleResultParticipant =>
   isEnemy,
 });
 
-export default function BattleResultSummary({ victory, tutorial = false, rewards, replayEvents = [], playerParticipants = [], enemyParticipants = [], onContinue }: Props) {
+export default function BattleResultSummary({ victory, tutorial = false, rewards, replayEvents = [], playerParticipants = [], enemyParticipants = [], presentationContext, modeResult, onContinue }: Props) {
   const { playSe } = useAudio();
   const announcedRef = useRef(false);
   const analysis = useMemo(() => analyzeBattleResult(
@@ -36,6 +39,8 @@ export default function BattleResultSummary({ victory, tutorial = false, rewards
   const mvp = analysis.mvp;
   const mvpMaster = CHARACTERS_MASTER.find((entry: any) => entry.id === mvp?.participant.characterId);
   const mvpImage = mvpMaster ? getCharacterTransparentImg(mvpMaster.name) : undefined;
+  const opponentLeader = enemyParticipants.find((entry: any) => String(entry.characterId ?? entry.id) === presentationContext?.opponentLeaderCharacterId) || enemyParticipants[0];
+  const opponentLabel = presentationContext?.encounterLabel || presentationContext?.opponentLabel || opponentLeader?.name || "OPPONENT";
   useEffect(() => {
     if (announcedRef.current) return;
     announcedRef.current = true;
@@ -43,15 +48,19 @@ export default function BattleResultSummary({ victory, tutorial = false, rewards
   }, [playSe, victory]);
   return (
     <section className={`battle-result-summary ${victory ? "is-victory" : "is-defeat"}`} aria-label={victory ? "バトル勝利" : "バトル敗北"}>
-      <small>{tutorial ? "QUEST COMPLETE" : "BATTLE COMPLETE"}</small>
-      <strong>{tutorial ? "クエスト結果" : "バトル結果"}</strong>
+      <header className="battle-result-opponent">
+        <small>{tutorial ? "QUEST COMPLETE · VS OPPONENT" : "VS OPPONENT"}</small>
+        <strong>{opponentLabel}</strong>
+        {presentationContext?.opponentLeaderName && <span>OPPONENT LEADER　{presentationContext.opponentLeaderName}</span>}
+        {presentationContext?.opponentTotalPower ? <b>POWER {presentationContext.opponentTotalPower.toLocaleString()}</b> : presentationContext?.opponentProfile ? <b>{presentationContext.opponentProfile}</b> : null}
+      </header>
       <div className="battle-result-outcome-label">{victory ? "WIN" : "LOSE"}</div>
-      <span>{tutorial ? rewards?.courseName || "新宿・初級" : victory ? "勝利" : "敗北"}</span>
+      {modeResult?.resultLabel && <strong className="battle-result-mode-label">{modeResult.resultLabel}</strong>}
       {mvp && (
         <section className="battle-result-mvp" aria-label={`MVP ${mvp.participant.name} ${mvp.score.total}ポイント`}>
           <div className="battle-result-mvp-hero">
             {mvpImage && <CharacterPresentation src={mvpImage} alt={mvp.participant.name} variant="battle" />}
-            <div><small>MVP</small><strong>{mvp.participant.name}</strong><b>{mvp.score.total}<i>pt</i></b></div>
+            <div className="battle-result-mvp-copy"><small>MVP</small><strong>{mvp.participant.name}</strong><b>{mvp.score.total}<i>PT</i></b></div>
           </div>
           <dl className="battle-result-score-grid" aria-label="MVPスコア内訳">
             <div><dt>与ダメージ</dt><dd><b>{mvp.score.damage}</b> / 40<small>{mvp.raw.damage.toLocaleString()}</small></dd></div>
@@ -62,6 +71,9 @@ export default function BattleResultSummary({ victory, tutorial = false, rewards
           </dl>
         </section>
       )}
+      {modeResult?.stats?.length ? <section className="battle-result-mode-stats" aria-label="モード戦績">
+        {modeResult.stats.map((stat) => <div key={stat.label}><small>{stat.label}</small><strong>{stat.value}</strong></div>)}
+      </section> : null}
       {mvp && (
         <section className="battle-result-comparison" aria-label="チーム戦果比較">
           <header><span>TEAM</span><b>戦果比較</b><span>ENEMY</span></header>
@@ -70,7 +82,7 @@ export default function BattleResultSummary({ victory, tutorial = false, rewards
           <div><b>{analysis.player.survivors}</b><span>生存人数</span><b>{analysis.enemy.survivors}</b></div>
         </section>
       )}
-      {tutorial && victory ? (
+      {victory && (tutorial || presentationContext?.mode === "PATROL") ? (
         rewards ? (
           <div className="battle-result-rewards" aria-label="獲得報酬">
             <span><small>CASH</small><b>+{Number(rewards.totalCash || 0).toLocaleString()}</b></span>
@@ -79,10 +91,10 @@ export default function BattleResultSummary({ victory, tutorial = false, rewards
           </div>
         ) : <div className="battle-result-settling" role="status"><span>報酬データを準備中</span><i aria-hidden="true" /></div>
       ) : (
-        <p>{victory ? "バトルに勝利しました。" : "バトルに敗北しました。編成と強化を見直しましょう。"}</p>
+        <div className="battle-result-mode-reward"><strong>{modeResult?.reward || (victory ? "勝利" : "敗北")}</strong>{modeResult?.note && <p>{modeResult.note}</p>}</div>
       )}
-      <OutlawButton variant={victory ? "primary" : "secondary"} onClick={onContinue} className="battle-result-continue" disabled={tutorial && victory && !rewards}>
-        {tutorial && victory ? (rewards ? "次へ" : "報酬確定中…") : "次へ"}
+      <OutlawButton variant={victory ? "primary" : "secondary"} onClick={onContinue} className="battle-result-continue" disabled={victory && (tutorial || presentationContext?.mode === "PATROL") && !rewards}>
+        {victory && (tutorial || presentationContext?.mode === "PATROL") ? (rewards ? "次へ" : "報酬確定中…") : modeResult?.continueLabel || "次へ"}
       </OutlawButton>
     </section>
   );

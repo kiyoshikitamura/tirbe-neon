@@ -124,7 +124,13 @@ export default function RaidTab() {
                     message: raidFirstEntryFree ? "初回無料でレイドに挑戦しますか？" : "レイドポイントを1消費して挑戦しますか？",
                     confirmText: "挑戦する",
                     cancelText: "キャンセル",
-                    onConfirm: () => { startCardBattle("RAID", displayName, selectedRaid?.id); setConfirmDialogConfig(null); },
+                    onConfirm: () => {
+                      startCardBattle("RAID", displayName, selectedRaid?.id, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, {
+                        opponentLabel: displayName,
+                        opponentProfile: selectedRaid?.profileType || "BOSS",
+                      });
+                      setConfirmDialogConfig(null);
+                    },
                     onCancel: () => setConfirmDialogConfig(null),
                   });
                 }}

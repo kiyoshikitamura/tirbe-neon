@@ -3821,6 +3821,9 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     damagePopup: battle.damagePopup,
     setDamagePopup: battle.setDamagePopup,
     battleResultReplayEvents: battle.battleResultReplayEvents,
+    battlePresentationContext: battle.battlePresentationContext,
+    battleModeResultDetail: battle.battleModeResultDetail,
+    battleSkipPending: battle.battleSkipPending,
     gvgTargetBaseId: battle.gvgTargetBaseId,
     setGvgTargetBaseId: battle.setGvgTargetBaseId,
     battleLoading: battle.battleLoading,
@@ -3829,6 +3832,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     // ハンドラ
     startCardBattle: battle.startCardBattle,
     launchBattlePlaying: battle.launchBattlePlaying,
+    skipBattlePresentation: battle.skipBattlePresentation,
     handleEndTurn: battle.handleEndTurn,
     endBattleSession: battle.endBattleSession,
     completeBattleResult: battle.completeBattleResult,

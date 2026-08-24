@@ -6,6 +6,7 @@ import { CHARACTERS_MASTER, getCharacterTransparentImg } from "@/utils/game_cons
 import CharacterPresentation from "./character/CharacterPresentation";
 import QuestBattleViewer from "./battle/QuestBattleViewer";
 import BattleResultSummary from "./battle/BattleResultSummary";
+import BattleMatchupPresentation from "./battle/BattleMatchupPresentation";
 import { preloadBattleEffects } from "./battle/BattleEffectPresentation";
 import { preloadTutorialCompletionAssets } from "../lib/tutorialCompletionAssets";
 import "./CardBattleView.css";
@@ -35,9 +36,13 @@ export default function CardBattleView() {
     activeShakingCharId,
     damagePopup,
     battleResultReplayEvents,
+    battlePresentationContext,
+    battleModeResultDetail,
+    battleSkipPending,
     presentationPhase,
     authoritativeTimeline,
     launchBattlePlaying,
+    skipBattlePresentation,
     endBattleSession,
     completeBattleResult,
     completeTutorialBattleResult,
@@ -89,7 +94,7 @@ export default function CardBattleView() {
     battleLaunchRef.current = true;
     setSetupLaunching(true);
     playSe("BATTLE_START");
-    window.setTimeout(() => launchBattlePlaying(), 560);
+    window.setTimeout(() => launchBattlePlaying(), 1000);
   };
 
   const launchRegularBattle = () => {
@@ -97,7 +102,7 @@ export default function CardBattleView() {
     battleLaunchRef.current = true;
     setSetupLaunching(true);
     playSe("BATTLE_START");
-    launchBattlePlaying();
+    window.setTimeout(() => launchBattlePlaying(), 1000);
   };
 
   if (!battleMode || !battleState) return null;
@@ -125,10 +130,12 @@ export default function CardBattleView() {
           <BattleResultSummary
             victory={victory}
             tutorial={isTutorialBattle}
-            rewards={isTutorialBattle ? lastPatrolRewards : null}
+            rewards={battleMode === "PATROL" ? lastPatrolRewards : null}
             replayEvents={battleResultReplayEvents}
             playerParticipants={playerPartyStates}
             enemyParticipants={enemyPartyStates}
+            presentationContext={battlePresentationContext}
+            modeResult={battleModeResultDetail}
             onContinue={isTutorialBattle ? completeTutorialBattleResult : completeBattleResult}
           />
         )}
@@ -146,16 +153,19 @@ export default function CardBattleView() {
     const enemySkills = enemyPartyStates.flatMap((enemy: any) => enemy.skills || []);
     const playerPower = playerPartyStates.reduce((total: number, player: any) => total + Number(player.maxHp || 0) + Number(player.stats?.atk || 0) + Number(player.stats?.def || 0), 0);
 
+    if (setupLaunching) {
+      return <BattleMatchupPresentation
+        playerLeader={playerPartyStates[0]}
+        opponentLeader={enemyPartyStates[0]}
+        context={battlePresentationContext}
+        imageFor={getBattleCharacterImage}
+        acceptanceState={isTutorialBattle ? "B2" : undefined}
+      />;
+    }
+
     if (isTutorialBattle) {
       const playerLeader = playerPartyStates[0];
       const enemyLeader = enemyPartyStates[0];
-      if (setupLaunching) {
-        return <div className="battle-screen tutorial-battle-start-transition" data-acceptance-state="B2" role="status">
-          <div className="battle-start-leader is-player"><CharacterPresentation src={getBattleCharacterImage(playerLeader?.characterId)} alt={playerLeader?.name || "PLAYER"} variant="battle-leader" /></div>
-          <div className="battle-start-diagonal"><i /><strong>BATTLE<br />START</strong><i /></div>
-          <div className="battle-start-leader is-enemy"><CharacterPresentation src={getBattleCharacterImage(enemyLeader?.characterId)} alt={enemyLeader?.name || "ENEMY"} variant="battle-leader" /></div>
-        </div>;
-      }
       return <div className="battle-screen tutorial-battle-briefing" data-acceptance-state="B1" onClick={handleFirstUserInteraction}>
         <div className="tutorial-battle-location"><span>新宿・初級</span><small>QUEST BATTLE</small></div>
         <div className="tutorial-battle-versus">
@@ -373,6 +383,9 @@ export default function CardBattleView() {
         tutorial={isTutorialBattle}
         onSpeedChange={setBattleSpeed}
         onPauseChange={setIsAutoPaused}
+        canSkip={!isTutorialBattle && ["PATROL", "PVP", "PVP_PRACTICE", "RAID"].includes(battleMode)}
+        skipPending={battleSkipPending}
+        onSkip={skipBattlePresentation}
         onSound={() => playCyberSe("click")}
         onRetreat={() => {
           setConfirmDialogConfig({

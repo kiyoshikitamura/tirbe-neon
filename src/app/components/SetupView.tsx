@@ -74,6 +74,7 @@ export default function SetupView() {
       <div className="setup-world-shade" aria-hidden="true" />
       {presentationState === "WORLD_INFORMATION" ? (
         <section className={`setup-world-presentation is-stage-${worldStage + 1}`} aria-label="TRIBE NEON プロローグ" data-world-stage={worldStage + 1}>
+          <div className="setup-world-motion" aria-hidden="true"><i /><i /></div>
           <div className="setup-world-brand">TRIBE NEON <small>PROLOGUE</small></div>
           <img className="setup-world-emblem" src="/branding/tribe-neon-logo.png" alt="" aria-hidden="true" />
           <div className="setup-world-copy" key={worldStage}>

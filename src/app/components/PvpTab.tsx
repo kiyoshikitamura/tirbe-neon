@@ -222,7 +222,16 @@ export default function PvpTab() {
                             op.tactic, 
                             op.opponent_guild_main_alignment, 
                             op.opponent_guild_sub_alignment,
-                            op.defense_character_ids
+                            op.defense_character_ids,
+                            undefined,
+                            undefined,
+                            undefined,
+                            {
+                              opponentLabel: op.opponent_username,
+                              opponentLeaderCharacterId: [...(op.defense_characters || [])].sort((a: any, b: any) => Number(a.slot || 0) - Number(b.slot || 0))[0]?.character_id,
+                              opponentLeaderName: [...(op.defense_characters || [])].sort((a: any, b: any) => Number(a.slot || 0) - Number(b.slot || 0))[0]?.display_name,
+                              opponentTotalPower: Number(op.opponent_power || 0),
+                            }
                           )}
                         >
                           対戦

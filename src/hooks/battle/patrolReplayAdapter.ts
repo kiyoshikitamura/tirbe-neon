@@ -37,9 +37,11 @@ export function patrolSnapshotToParticipants(snapshot: unknown, isEnemy: boolean
     return {
       id,
       name: String(unit.name ?? (isEnemy ? "ENEMY" : "ALLY")),
-      characterId: isEnemy ? id.replace(/^enemy_/, "") : id.replace(/^ally_/, ""),
+      characterId: String(unit.characterId ?? (isEnemy ? id.replace(/^enemy_/, "") : id.replace(/^ally_/, ""))),
       alignment: String(unit.alignment ?? (isEnemy ? "CHAOS" : "ORDER")),
-      level: 1,
+      level: Math.max(1, numberValue(unit.level, 1)),
+      awakeningLevel: Math.max(0, numberValue(unit.awakeningLevel ?? unit.awakening_level, 0)),
+      rarity: typeof unit.rarity === "string" ? unit.rarity : undefined,
       hp,
       maxHp: hp,
       shield: 0,
@@ -47,6 +49,7 @@ export function patrolSnapshotToParticipants(snapshot: unknown, isEnemy: boolean
       isEnemy,
       tauntTurns: 0,
       stunTurns: 0,
+      activeEffects: [],
       stats: {
         hp,
         atk: Math.max(0, numberValue(stats.atk, 0)),

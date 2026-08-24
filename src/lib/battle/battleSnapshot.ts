@@ -14,6 +14,6 @@ export function buildBattleRosterSnapshot(args: { team: BattleTeam; characters: 
       if (!canonical) return [];
       return [{ id: canonical.skill_id, name: canonical.name, activationType: canonical.activation_type as "ACTIVE" | "BATTLE_START" | "ON_DAMAGE_TAKEN", cooldown: canonical.cooldown, availableFromRound: canonical.available_from_round, target: canonical.target as "ENEMY_SINGLE" | "ENEMY_ALL" | "ALLY_SINGLE" | "ALLY_ALL" | "SELF" | "ATTACKER_WHO_DAMAGED_SELF", effects: canonical.effects, exclusiveCharacterId: canonical.exclusive_character_id, skillPlusVal: Math.max(0, Math.min(10, owned.plus_val ?? 0)) }];
     });
-    return { id: character.id, characterId: character.character_id, name: master?.name ?? character.character_id, team: args.team, alignment: master?.attribute ?? "ORDER", stats: getCharacterTotalStats(character, args.equipments as never[]), skills };
+    return { id: character.id, characterId: character.character_id, name: master?.name ?? character.character_id, team: args.team, alignment: master?.attribute ?? "ORDER", level: character.level, awakeningLevel: character.awakening_level, rarity: master?.rarity, stats: getCharacterTotalStats(character, args.equipments as never[]), skills };
   });
 }

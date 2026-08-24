@@ -66,6 +66,8 @@ export interface ParticipantState {
   characterId: string; // Master Character ID
   alignment?: string; // 繧｢繝ｩ繧､繝｡繝ｳ繝・(JUSTICE, EVIL, ORDER, CHAOS)
   level: number;
+  awakeningLevel?: number;
+  rarity?: string;
   hp: number;
   maxHp: number;
   shield: number;
@@ -73,6 +75,14 @@ export interface ParticipantState {
   isEnemy: boolean;
   tauntTurns: number;
   stunTurns: number; // 繧ｹ繧ｿ繝ｳ謇狗分繧ｹ繧ｭ繝・・逕ｨ繧ｿ繝ｼ繝ｳ謨ｰ
+  activeEffects?: Array<{
+    id: string;
+    kind: string;
+    remainingDuration: number | null;
+    stat?: string;
+    magnitudeBp?: number;
+    amount?: number;
+  }>;
   stats: {
     hp: number;
     atk: number;

@@ -56,7 +56,8 @@ export default function TutorialBattlePrompt() {
         undefined,
         undefined,
         npc,
-        patrol.id
+        patrol.id,
+        { encounterLabel: course?.name || "新宿・初級", opponentLabel: npc.npc_name || "チュートリアルの敵" }
       );
     } catch (error) {
       console.warn("Tutorial battle initialization failed:", error);

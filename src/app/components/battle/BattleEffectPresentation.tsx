@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { SKILLS_MASTER_DATA } from "@/utils/skills_master_data";
 import CharacterPresentation from "../character/CharacterPresentation";
 import type { BattleParticipantView } from "./BattleUnitPortrait";
 import "./BattleEffectPresentation.css";
@@ -62,14 +61,13 @@ export function resolveBattleSkillPresentation(
   if (!cutIn) return null;
   const skill = participant?.skills?.find((entry) => String(entry.name ?? "") === cutIn.skillName);
   const skillId = String(skill?.id ?? skill?.skill_card_id ?? skill?.skill_id ?? "");
-  const master = SKILLS_MASTER_DATA.find((entry) => entry.id === skillId || entry.name === cutIn.skillName);
-  const rarity = stringValue(skill?.rarity ?? master?.rarity);
+  const actorRarity = stringValue(participant?.rarity);
   const isBasicAttack = isBasicAttackPresentation(skillId, cutIn.skillName);
 
   return {
     charName: cutIn.charName,
     skillName: cutIn.skillName,
-    tier: isBasicAttack ? null : rarity === "SSR" ? "SSR" : rarity === "SR" ? "SR" : "STANDARD",
+    tier: isBasicAttack ? null : actorRarity === "SSR" ? "SSR" : actorRarity === "SR" ? "SR" : "STANDARD",
     impact: resolveImpactKind(skill),
   };
 }

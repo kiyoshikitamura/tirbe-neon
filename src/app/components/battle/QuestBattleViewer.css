@@ -171,6 +171,43 @@
 .battle-viewer-header span{font-size:10px}.battle-viewer-header strong{font-size:16px}.battle-viewer-header strong small{font-size:9px}.battle-viewer-header i{padding:3px 7px;font-size:9px}
 .battle-timeline-slot{padding:5px 6px}.battle-timeline-slot small{font-size:8px}.battle-timeline-slot strong{font-size:10px}
 .battle-party-label{min-height:20px}.battle-party-label span{font-size:10px}.battle-party-label strong{font-size:9px}
+
+/* Phase C3: each side owns its actual roster length; no vacant slots exist. */
+.quest-battle-viewer,.quest-battle-viewer.is-tutorial{grid-template-rows:auto auto minmax(0,1fr) auto;gap:5px;padding:5px 6px calc(5px + env(safe-area-inset-bottom));overflow:hidden}
+.battle-timeline{grid-template-columns:1.2fr repeat(2,minmax(0,1fr));min-height:30px;gap:3px}
+.battle-timeline-slot:nth-child(n+4){display:none}
+.battle-timeline-slot{padding:3px 4px}
+.battle-timeline-slot small{font-size:6px}
+.battle-timeline-slot strong{font-size:8px}
+.battle-roster-stage{position:relative;display:grid;grid-template-columns:minmax(0,1fr) clamp(42px,13vw,58px) minmax(0,1fr);align-items:stretch;min-height:0;gap:5px;overflow:visible}
+.battle-party-zone{display:grid;grid-template-rows:auto minmax(0,1fr);min-height:0;overflow:visible}
+.battle-party-zone.is-player{grid-column:1}.battle-party-zone.is-enemy{grid-column:3}
+.battle-party-label{display:grid;align-content:center;min-height:26px;text-align:center}
+.battle-party-label span{font-family:var(--font-display);font-size:8px;letter-spacing:.1em}
+.battle-party-label strong{max-width:100%;font-size:7px}
+.battle-party-grid{display:grid;grid-template-columns:minmax(0,1fr);align-items:center;min-height:0;gap:3px}
+.battle-party-zone[data-party-size="1"] .battle-party-grid{grid-template-rows:minmax(0,1fr)}
+.battle-party-zone[data-party-size="2"] .battle-party-grid{grid-template-rows:repeat(2,minmax(0,1fr));gap:14px}
+.battle-party-zone[data-party-size="3"] .battle-party-grid{grid-template-rows:repeat(3,minmax(0,1fr));gap:8px}
+.battle-party-zone[data-party-size="4"] .battle-party-grid{grid-template-rows:repeat(4,minmax(0,1fr));gap:5px}
+.battle-party-zone[data-party-size="5"] .battle-party-grid{grid-template-rows:repeat(5,minmax(0,1fr));gap:3px}
+.battle-party-grid>div,.battle-party-grid>div:only-child{grid-column:auto;min-height:0}
+.quest-battle-viewer.is-tutorial .battle-party-grid{grid-template-columns:minmax(0,1fr)}
+.quest-battle-viewer.is-tutorial .battle-party-zone.is-player .battle-unit-party .battle-unit-meta{position:relative;right:auto;bottom:auto;left:auto;display:flex;padding:3px 3px 0;background:transparent}
+.quest-battle-viewer.is-tutorial .battle-party-zone.is-player .battle-unit-party .battle-unit-meta strong{display:block;overflow:hidden;font-size:clamp(8px,2.15vw,10px);text-align:left;text-overflow:ellipsis;white-space:nowrap}
+.battle-action-stage{position:relative;grid-column:2;display:grid;place-items:center;min-width:0;min-height:0;overflow:visible;border:0;background:linear-gradient(180deg,transparent,rgba(255,255,255,.035),transparent);box-shadow:none}
+.battle-action-relation{display:grid;grid-template-rows:auto 24px auto 24px auto;justify-items:center;align-items:center;width:100%;color:#aab1b8;font-family:var(--font-display);font-size:7px;text-align:center;writing-mode:horizontal-tb}
+.battle-action-relation span{display:block;overflow:hidden;max-width:54px;text-overflow:ellipsis;white-space:nowrap}
+.battle-action-relation i{width:1px;height:20px;background:linear-gradient(transparent,rgba(222,224,227,.72),transparent)}
+.battle-action-relation b{color:#f0dfaa;font-size:9px;letter-spacing:.08em}
+.battle-action-stage.is-enemy-actor .battle-action-relation{transform:rotate(180deg)}
+.battle-action-stage.is-enemy-actor .battle-action-relation>*{transform:rotate(180deg)}
+.battle-asset-impact,.battle-impact-burst,.battle-skill-cutin,.battle-skill-flash{z-index:12}
+.battle-viewer-controls,.quest-battle-viewer.is-tutorial .battle-viewer-controls{grid-template-columns:minmax(0,1fr) repeat(4,auto);min-height:34px;gap:4px}
+.battle-viewer-controls button{min-height:32px;padding:4px 7px}
+.battle-skip-btn{border:1px solid rgba(242,201,95,.48);color:#f5e6b6;background:rgba(24,21,15,.9);font-size:9px;font-weight:900}
+.battle-skip-btn[aria-busy="true"]{opacity:.7;cursor:wait}
+@media(max-width:374px){.battle-roster-stage{grid-template-columns:minmax(0,1fr) 38px minmax(0,1fr);gap:3px}.battle-viewer-controls button{padding:3px 5px;font-size:8px}.battle-tactic-label{font-size:7px}}
 .battle-action-copy span{font-size:9px}.battle-action-copy strong{font-size:clamp(17px,5vw,22px)}
 .battle-action-sequence span{font-size:8px}.battle-action-impact strong{font-size:12px}
 .battle-skill-flash{padding:8px}.battle-skill-flash small{font-size:9px}.battle-skill-flash strong{font-size:19px}

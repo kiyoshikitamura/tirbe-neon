@@ -726,7 +726,7 @@ test("first quest connects dispatch, official battle, and one reward to the comp
   await expect(page.locator(".battle-timeline-slot")).toHaveCount(3);
   await expect(page.locator(".battle-unit.is-actor").first()).toBeVisible();
   await expect(page.locator(".battle-unit.is-target").first()).toBeVisible();
-  await expect(page.locator(".battle-unit-action.is-actor .battle-unit-identity-badges img").first()).toBeVisible();
+  await expect(page.locator(".battle-unit-party.is-actor .battle-unit-identity-badges img").first()).toBeVisible();
   await expect(page.locator(".battle-action-sequence")).toBeHidden();
   await expect.poll(() => page.evaluate(() => {
     const metrics = (window as any).__TRIBE_BATTLE_PRESENTATION__;
@@ -741,8 +741,8 @@ test("first quest connects dispatch, official battle, and one reward to the comp
   expect(normalImpactDuration).toBeLessThanOrEqual(1_300);
   test.info().annotations.push({ type: "normal-impact-ms", description: String(normalImpactDuration) });
   await page.screenshot({ path: test.info().outputPath("M1-375-B3-normal-attack.png"), fullPage: true });
-  await expect(page.locator(".battle-action-stage.is-enemy-actor .battle-unit-action.is-actor")).toBeVisible({ timeout: 12_000 });
-  await expect(page.locator(".battle-action-stage.is-enemy-actor .battle-unit-action.is-actor .battle-unit-identity-badges img").first()).toBeVisible();
+  await expect(page.locator(".battle-action-stage.is-enemy-actor")).toBeVisible({ timeout: 12_000 });
+  await expect(page.locator(".battle-party-zone.is-enemy .battle-unit-party.is-actor .battle-unit-identity-badges img").first()).toBeVisible();
   await expect(page.locator(".battle-action-stage.is-enemy-actor.is-normal-action")).toBeVisible();
   await expect(page.locator(".battle-skill-cutin")).toHaveCount(0);
   await page.screenshot({ path: test.info().outputPath("M1-375-enemy-current-actor.png"), fullPage: true });
@@ -789,7 +789,7 @@ test("first quest connects dispatch, official battle, and one reward to the comp
       const rect = viewer.getBoundingClientRect();
       const hp = viewer.querySelector(".battle-unit-hp")?.getBoundingClientRect();
       const partyArt = viewer.querySelector(".battle-unit-party .battle-unit-art")?.getBoundingClientRect();
-      const regions = [".battle-viewer-header", ".battle-timeline", ".battle-enemy-compact", ".battle-action-stage", ".battle-party-zone.is-player", ".battle-viewer-controls"]
+      const regions = [".battle-viewer-header", ".battle-timeline", ".battle-roster-stage", ".battle-viewer-controls"]
         .map((selector) => viewer.querySelector<HTMLElement>(selector)?.getBoundingClientRect())
         .filter(Boolean) as DOMRect[];
       const actionStage = viewer.querySelector(".battle-action-stage")?.getBoundingClientRect();
@@ -851,6 +851,17 @@ test("first quest connects dispatch, official battle, and one reward to the comp
   await desktopPage.locator('[data-acceptance-state="B1"] .start-battle-btn').click();
   await expect(desktopPage.locator('[data-acceptance-state="B4"]')).toBeVisible({ timeout: 20_000 });
   await expect(desktopPage.locator(".battle-timeline-slot")).toHaveCount(3);
+  const desktopRoster = await desktopPage.locator(".battle-roster-stage").evaluate((stage) => [...stage.querySelectorAll<HTMLElement>(".battle-party-zone")].map((zone) => ({
+    declared: Number(zone.dataset.partySize || 0),
+    rendered: zone.querySelectorAll(".battle-unit-party").length,
+  })));
+  expect(desktopRoster).toHaveLength(2);
+  for (const side of desktopRoster) {
+    expect(side.declared).toBeGreaterThanOrEqual(1);
+    expect(side.declared).toBeLessThanOrEqual(5);
+    expect(side.rendered).toBe(side.declared);
+  }
+  await expect(desktopPage.locator('.battle-skip-btn')).toHaveCount(0);
   const desktopCanvas = await desktopPage.locator(".app-container").evaluate((canvas) => {
     const rect = canvas.getBoundingClientRect();
     return { width: rect.width, center: rect.left + rect.width / 2, viewportCenter: innerWidth / 2 };
@@ -871,7 +882,8 @@ test("first quest connects dispatch, official battle, and one reward to the comp
   await expect(page.locator(".battle-result-rewards")).toBeVisible();
   await expect(page.locator(".battle-result-summary")).toContainText("QUEST COMPLETE");
   await expect(page.locator(".battle-result-mvp")).toContainText("MVP");
-  await expect(page.locator(".battle-result-mvp-hero b")).toContainText("pt");
+  await expect(page.locator(".battle-result-opponent")).toContainText("VS OPPONENT");
+  await expect(page.locator(".battle-result-mvp-hero b")).toContainText("PT");
   await expect(page.locator(".battle-result-score-grid > div")).toHaveCount(5);
   await expect(page.locator(".battle-result-comparison > div")).toHaveCount(3);
   await expect(page.getByRole("button", { name: "勝利報酬を獲得" })).toHaveCount(0);
@@ -1070,11 +1082,23 @@ test("new mobile player completes the guided first session without footer naviga
   await expect(page.getByRole("button", { name: "バトルスタート" })).toHaveClass(/semantic-cta--primary/);
   await page.getByRole("button", { name: "バトルスタート" }).click();
   await expect(page.locator('[data-acceptance-state="B2"]')).toBeVisible();
+  await expect(page.locator('[data-acceptance-state="B2"] .battle-matchup-center')).toContainText("VS");
+  const matchupHeight = await page.locator('[data-acceptance-state="B2"]').evaluate((stage) => stage.getBoundingClientRect().height);
+  expect(matchupHeight).toBeGreaterThanOrEqual(760);
+  await page.waitForTimeout(350);
   await page.screenshot({ path: test.info().outputPath("B2-battle-start.png"), fullPage: true });
   await expect(page.locator(".quest-battle-viewer")).toBeVisible();
   await assertCenteredGameCanvas(page, ".battle-screen");
   await expect(page.locator('[data-acceptance-state="B3"]')).toBeVisible();
-  await expect(page.locator(".battle-unit-action.is-actor .battle-unit-identity-badges img")).toHaveCount(1);
+  await expect(page.locator('.battle-party-zone.is-player')).toHaveAttribute("data-party-size", "5");
+  const playerRosterRows = await page.locator('.battle-party-zone.is-player .battle-unit-party').evaluateAll((rows) => rows.map((row) => {
+    const rect = row.getBoundingClientRect();
+    return { top: Math.round(rect.top), left: Math.round(rect.left) };
+  }));
+  expect(playerRosterRows).toHaveLength(5);
+  expect(new Set(playerRosterRows.map((row) => row.top)).size).toBe(5);
+  expect(Math.max(...playerRosterRows.map((row) => row.left)) - Math.min(...playerRosterRows.map((row) => row.left))).toBeLessThanOrEqual(1);
+  await expect(page.locator(".battle-unit-party.is-actor .battle-unit-identity-badges img")).toHaveCount(1);
   await page.screenshot({ path: test.info().outputPath("B3-normal-attack.png"), fullPage: true });
   await expect(page.locator('[data-acceptance-state="B4"]')).toBeVisible({ timeout: 35_000 });
   await expect(page.locator(".battle-skill-cutin")).toBeVisible();

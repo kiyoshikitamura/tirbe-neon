@@ -1,6 +1,6 @@
 "use client";
 
-import { createElement, useRef, useState, useEffect, useCallback } from "react";
+import { useRef, useState, useEffect, useCallback } from "react";
 import { supabase } from "@/utils/supabase";
 import {
   CHARACTERS_MASTER,
@@ -20,7 +20,6 @@ import { gvgDefenseSnapshotToParticipants } from "./battle/gvgSnapshotAdapter";
 import { patrolSnapshotToParticipants, serverBattleEvents, type ServerBattleEvent } from "./battle/patrolReplayAdapter";
 import { beginActionPerformance } from "@/utils/actionPerformance";
 import { traceTutorialJourney } from "@/utils/tutorialJourneyTrace";
-import ModeBattleResultCard from "@/app/components/battle/ModeBattleResultCard";
 
 export type { UseBattleOptions, ParticipantState, CardState, SkillLogItem };
 
@@ -66,9 +65,43 @@ function canonicalParticipantSkill(owned: any) {
 }
 
 const patrolReplayCursorKey = (replayId: string) => `tribe_neon_patrol_replay_cursor_${replayId}`;
-type BattleMode = "PVP" | "PVP_PRACTICE" | "RAID" | "GVG" | "PATROL";
+export type BattleMode = "PVP" | "PVP_PRACTICE" | "RAID" | "GVG" | "PATROL";
 export type BattlePresentationPhase = "IDLE" | "ACTOR_FOCUS" | "TARGET_FOCUS" | "ATTACK_MOTION" | "IMPACT" | "DAMAGE" | "HP_TRANSITION" | "ACTION_HOLD";
 export type BattlePresentationTimelineNode = { id: string; name: string; isEnemy?: boolean };
+export type BattlePresentationContext = {
+  mode: BattleMode;
+  opponentLabel: string;
+  encounterLabel?: string;
+  opponentLeaderCharacterId?: string;
+  opponentLeaderName?: string;
+  opponentTotalPower?: number;
+  opponentProfile?: string;
+};
+export type BattleModeResultDetail = {
+  resultLabel?: string;
+  stats?: Array<{ label: string; value: string }>;
+  reward?: string;
+  note?: string;
+  continueLabel?: string;
+  destination?: string;
+};
+
+const activeEffectsFromPayload = (payload: Record<string, unknown>) => Array.isArray(payload.activeEffectsAfter)
+  ? payload.activeEffectsAfter.filter((entry): entry is NonNullable<ParticipantState["activeEffects"]>[number] => Boolean(entry) && typeof entry === "object")
+  : null;
+
+const projectActiveEffects = (participant: ParticipantState, payload: Record<string, unknown>): ParticipantState => {
+  const activeEffects = activeEffectsFromPayload(payload);
+  if (!activeEffects) return participant;
+  const shield = activeEffects.filter((entry) => entry.kind === "SHIELD").reduce((sum, entry) => sum + Math.max(0, Number(entry.amount || 0)), 0);
+  return {
+    ...participant,
+    activeEffects,
+    shield,
+    stunTurns: activeEffects.some((entry) => entry.id === "STUN") ? 1 : 0,
+    tauntTurns: activeEffects.some((entry) => entry.id === "TAUNT") ? 1 : 0,
+  };
+};
 
 function isRetryableResolveFailure(error: unknown): boolean {
   const context = typeof error === "object" && error !== null && "context" in error
@@ -181,6 +214,10 @@ export function useBattle(options: UseBattleOptions) {
   const [officialRaidEvents, setOfficialRaidEvents] = useState<ServerBattleEvent[]>([]);
   const [officialRaidEventIndex, setOfficialRaidEventIndex] = useState(0);
   const [officialRaidResult, setOfficialRaidResult] = useState<any | null>(null);
+  const [battleResultReplayEvents, setBattleResultReplayEvents] = useState<ServerBattleEvent[]>([]);
+  const [battlePresentationContext, setBattlePresentationContext] = useState<BattlePresentationContext | null>(null);
+  const [battleModeResultDetail, setBattleModeResultDetail] = useState<BattleModeResultDetail | null>(null);
+  const [battleSkipPending, setBattleSkipPending] = useState(false);
 
   // 5v5 状態管理
   const [playerPartyStates, setPlayerPartyStates] = useState<ParticipantState[]>([]);
@@ -292,7 +329,8 @@ export function useBattle(options: UseBattleOptions) {
     opponentDefenseCharIds?: string[],
     _supportCharacter?: any,
     patrolNpcOverride?: any,
-    patrolIdOverride?: string
+    patrolIdOverride?: string,
+    presentationOverride?: Partial<BattlePresentationContext>,
   ) => {
     if (!session) return;
     if (mode === "PATROL" && patrolIdOverride && patrolIdOverride === settledPatrolEncounterId) return;
@@ -346,6 +384,9 @@ export function useBattle(options: UseBattleOptions) {
     setOfficialPvpResult(null);
     setCanonicalAuxReplayId(null); setCanonicalAuxEvents([]); setCanonicalAuxEventIndex(0);
     setOfficialRaidReplayId(null); setOfficialRaidWinner(null); setOfficialRaidEvents([]); setOfficialRaidEventIndex(0); setOfficialRaidResult(null);
+    setBattleResultReplayEvents([]);
+    setBattleModeResultDetail(null);
+    setBattleSkipPending(false);
     let officialGvgDefenseDeck: unknown = null;
     let officialGvgAttackIdForBattle: string | null = null;
     let officialGvgReplayIdForBattle: string | null = null;
@@ -1214,6 +1255,17 @@ export function useBattle(options: UseBattleOptions) {
       setOfficialPvpWinner(practiceResult.winner);
     }
 
+    const opponentLeader = initialEnemyParty[0];
+    const presentationContextForBattle: BattlePresentationContext = {
+      mode,
+      opponentLabel: presentationOverride?.opponentLabel || targetName,
+      encounterLabel: presentationOverride?.encounterLabel,
+      opponentLeaderCharacterId: presentationOverride?.opponentLeaderCharacterId || opponentLeader?.characterId,
+      opponentLeaderName: presentationOverride?.opponentLeaderName || opponentLeader?.name,
+      opponentTotalPower: presentationOverride?.opponentTotalPower,
+      opponentProfile: presentationOverride?.opponentProfile,
+    };
+
     // 旧セッションは中断再開の互換用。再生UI移行後に廃止する。
     if (mode !== "PVP_PRACTICE") try {
       const { data: sessionData } = await supabase.from("battle_sessions").insert({
@@ -1240,6 +1292,7 @@ export function useBattle(options: UseBattleOptions) {
           officialPvpResult: officialPvpResultForBattle,
           officialRaidReplayId: officialRaidReplayIdForBattle, officialRaidWinner: officialRaidWinnerForBattle,
           officialRaidEvents: officialRaidEventsForBattle, officialRaidEventIndex: 0, officialRaidResult: officialRaidResultForBattle,
+          battlePresentationContext: presentationContextForBattle,
         },
         enemy_state: { enemyStates: initialEnemyParty },
         status: "ACTIVE"
@@ -1250,6 +1303,7 @@ export function useBattle(options: UseBattleOptions) {
       console.warn(err);
     }
 
+    setBattlePresentationContext(presentationContextForBattle);
     setBattleState("SETUP");
     setBattleLoading(false);
   };
@@ -1308,6 +1362,22 @@ export function useBattle(options: UseBattleOptions) {
 
     setPlayerPartyStates(updatedPlayers);
     setBattleLog(nextLogs);
+  };
+
+  const skipBattlePresentation = () => {
+    if (tutorialBattleActive || battleState !== "PLAYING" || battleSkipPending) return;
+    const events = battleMode === "PATROL" ? officialPatrolEvents
+      : battleMode === "PVP" ? officialPvpEvents
+      : battleMode === "RAID" ? officialRaidEvents
+      : battleMode === "PVP_PRACTICE" ? canonicalAuxEvents
+      : [];
+    const resultEvent = [...events].reverse().find((entry) => entry.type === "RESULT");
+    if (!resultEvent || events.length === 0) return;
+    setBattleSkipPending(true);
+    setIsAutoPaused(true);
+    clearPresentationTimers();
+    setBattleResultReplayEvents(events);
+    void endBattleSession(resultEvent.payload.winner === "PLAYER" ? "VICTORY" : "DEFEAT");
   };
 
   const handleEndTurn = (overrideIndex?: number) => {
@@ -1673,7 +1743,9 @@ export function useBattle(options: UseBattleOptions) {
       const previousActionWasSkill = previousAction
         ? String(previousAction.payload?.skillId ?? "BASIC_ATTACK") !== "BASIC_ATTACK"
         : false;
-      const delay = replayEvent.type === "ACTION"
+      const delay = replayEvent.type === "EFFECT" && replayEvent.payload.kind === "ACTIVE_EFFECT_SYNC"
+        ? 40
+        : replayEvent.type === "ACTION"
         ? (previousAction && previousReplayEvent && previousReplayEvent.type !== "ACTION"
           ? previousActionWasSkill ? 1050 : 940
           : 320)
@@ -1756,7 +1828,7 @@ export function useBattle(options: UseBattleOptions) {
           const critical = payload.critical === true;
           const missed = payload.hit === false;
           const updateTarget = (participant: ParticipantState) => participant.id === targetId
-            ? { ...participant, hp: remainingHp, isDead: remainingHp <= 0 }
+            ? projectActiveEffects({ ...participant, hp: remainingHp, isDead: remainingHp <= 0 }, payload)
             : participant;
           setPlayerPartyStates((previous) => previous.map(updateTarget));
           setEnemyPartyStates((previous) => previous.map(updateTarget));
@@ -1806,12 +1878,18 @@ export function useBattle(options: UseBattleOptions) {
           setBattleLog((previous) => [...previous, `${target?.name ?? targetId}のHPが ${amount.toLocaleString()} 回復。`]);
         } else if (replayEvent.type === "STATUS") {
           const status = String(payload.status ?? "STATUS");
-          if (status === "STUN") {
-            const updateTarget = (participant: ParticipantState) => participant.id === targetId ? { ...participant, stunTurns: 1 } : participant;
-            setPlayerPartyStates((previous) => previous.map(updateTarget));
-            setEnemyPartyStates((previous) => previous.map(updateTarget));
-          }
+          const updateTarget = (participant: ParticipantState) => participant.id === targetId ? projectActiveEffects(participant, payload) : participant;
+          setPlayerPartyStates((previous) => previous.map(updateTarget));
+          setEnemyPartyStates((previous) => previous.map(updateTarget));
           setBattleLog((previous) => [...previous, `${target?.name ?? targetId}に ${status} が付与された。`]);
+        } else if (replayEvent.type === "EFFECT") {
+          const kind = String(payload.kind ?? "EFFECT");
+          const updateTarget = (participant: ParticipantState) => participant.id === targetId ? projectActiveEffects(participant, payload) : participant;
+          setPlayerPartyStates((previous) => previous.map(updateTarget));
+          setEnemyPartyStates((previous) => previous.map(updateTarget));
+          if (kind === "SHIELD") {
+            setDamagePopup({ val: Math.max(0, Number(payload.amount || 0)), type: "shield", x: 120, y: 40, charId: targetId });
+          }
         } else if (replayEvent.type === "DEFEAT") {
           const updateTarget = (participant: ParticipantState) => participant.id === targetId
             ? { ...participant, hp: 0, isDead: true }
@@ -1890,6 +1968,12 @@ export function useBattle(options: UseBattleOptions) {
     const raidWinnerTemp = officialRaidWinner;
     const raidReplayIdTemp = officialRaidReplayId;
     const raidResultTemp = officialRaidResult;
+    const replayEventsTemp = modeTemp === "PATROL" ? officialPatrolEvents
+      : modeTemp === "PVP" ? officialPvpEvents
+      : modeTemp === "RAID" ? officialRaidEvents
+      : modeTemp === "GVG" || modeTemp === "PVP_PRACTICE" ? canonicalAuxEvents
+      : [];
+    setBattleResultReplayEvents(replayEventsTemp);
     const hasOfficialRaidResult = modeTemp === "RAID" && officialRaidReplayId
       && officialRaidResult
       && (raidWinnerTemp === "PLAYER" || raidWinnerTemp === "ENEMY");
@@ -1953,28 +2037,19 @@ export function useBattle(options: UseBattleOptions) {
     };
 
     if (modeTemp === "PVP_PRACTICE") {
-      releaseBattlePresentation();
-      if (setConfirmDialogConfig) {
-        setConfirmDialogConfig({
-          isOpen: true,
-          title: "NPC模擬戦結果",
-          message: createElement(ModeBattleResultCard, {
-            mode: "PVP",
-            victory: isWin,
-            opponent: opponentNameTemp,
-            stats: [
-              { label: "MODE", value: "PRACTICE" },
-              { label: "PVP POINT", value: "消費なし" },
-              { label: "RANK", value: "変動なし" },
-            ],
-            reward: "報酬なし",
-            note: "模擬戦は戦績・ランキング・報酬へ反映されません。",
-          }),
-          confirmText: "防衛設定へ戻る",
-          onConfirm: () => { setConfirmDialogConfig(null); navigateTab?.("pvp"); },
-          onCancel: () => { setConfirmDialogConfig(null); navigateTab?.("pvp"); },
-        });
-      }
+      setBattleModeResultDetail({
+        resultLabel: "NPC模擬戦結果",
+        stats: [
+          { label: "MODE", value: "PRACTICE" },
+          { label: "PVP POINT", value: "消費なし" },
+          { label: "RANK", value: "変動なし" },
+        ],
+        reward: "報酬なし",
+        note: "模擬戦は戦績・ランキング・報酬へ反映されません。",
+        continueLabel: "PvPへ戻る",
+        destination: "pvp",
+      });
+      setBattleState("RESULT");
       return;
     }
 
@@ -2009,8 +2084,8 @@ export function useBattle(options: UseBattleOptions) {
       setBattleState("RESULT");
       return;
     } else if (modeTemp === "PVP") {
-      releaseBattlePresentation();
       if (!hasOfficialPvpResult || !pvpResultTemp) {
+        releaseBattlePresentation();
         setErrorMessage("PvPのサーバー確定結果を確認できませんでした。");
         return;
       }
@@ -2025,28 +2100,38 @@ export function useBattle(options: UseBattleOptions) {
       const { data: firstPvpMilestone } = await supabase.from("user_funnel_milestones")
         .select("occurrence_count").eq("user_id", session.user.id).eq("milestone", "first_pvp").maybeSingle();
       const isFirstOfficialPvp = Number(firstPvpMilestone?.occurrence_count || 0) === 1;
-      if (setConfirmDialogConfig) {
-        setConfirmDialogConfig({
-          isOpen: true,
-          title: "PvP結果",
-          message: createElement(ModeBattleResultCard, { mode: "PVP", victory: finalResult === "VICTORY", opponent: opponentNameTemp, stats: [{ label: "RATING", value: `${oldRating.toLocaleString()} → ${newRating.toLocaleString()}` }, { label: "RANK CHANGE", value: `${pointsDiff >= 0 ? "+" : ""}${pointsDiff} pt` }, { label: "PVP POINT", value: `${Number(pvpResultTemp.remainingPvpPoints ?? 0)}/5` }], reward: `CASH +${rewardCash.toLocaleString()}`, note: isFirstOfficialPvp ? "初戦の順位を確認して、次のレイドへ進もう。" : "PvPへ戻って次の対戦相手を選べます。" }),
-          confirmText: isFirstOfficialPvp ? "ランキングを確認" : "PvPへ戻る", cancelText: "Homeへ",
-          onConfirm: () => { setConfirmDialogConfig(null); navigateTab?.(isFirstOfficialPvp ? "ranking" : "pvp"); },
-          onCancel: () => { setConfirmDialogConfig(null); navigateTab?.("home"); }
-        });
-      }
+      setBattleModeResultDetail({
+        stats: [
+          { label: "RATING", value: `${oldRating.toLocaleString()} → ${newRating.toLocaleString()}` },
+          { label: "RANK CHANGE", value: `${pointsDiff >= 0 ? "+" : ""}${pointsDiff} pt` },
+          { label: "PVP POINT", value: `${Number(pvpResultTemp.remainingPvpPoints ?? 0)}/5` },
+        ],
+        reward: `CASH +${rewardCash.toLocaleString()}`,
+        note: isFirstOfficialPvp ? "初戦の順位を確認して、次のレイドへ進もう。" : "PvPへ戻って次の対戦相手を選べます。",
+        continueLabel: isFirstOfficialPvp ? "ランキングを確認" : "PvPへ戻る",
+        destination: isFirstOfficialPvp ? "ranking" : "pvp",
+      });
+      setBattleState("RESULT");
+      return;
     } else if (modeTemp === "RAID") {
-      releaseBattlePresentation();
       if (hasOfficialRaidResult && raidResultTemp) {
         await syncBootstrapData(session.user.id);
-        if (setConfirmDialogConfig) setConfirmDialogConfig({
-          isOpen:true,title:"レイド結果",
-          message:createElement(ModeBattleResultCard, { mode: "RAID", victory: finalResult === "VICTORY", opponent: opponentNameTemp, stats: [{ label: "今回 DAMAGE", value: Number(raidResultTemp.rawDamage||0).toLocaleString() }, { label: "BOSS HP反映", value: Number(raidResultTemp.appliedDamage||0).toLocaleString() }, { label: "個人 CONTRIBUTION", value: Number(raidResultTemp.personalContribution||0).toLocaleString() }, { label: "BOSS 残りHP", value: Number(raidResultTemp.remainingBossHp||0).toLocaleString() }], reward: "サーバー確定報酬を反映済み", note: userGuildMember ? "TRIBE Contributionにも所属Snapshotで反映されます。" : "TRIBE加入でGuild RankingとContributionへ参加できます。" }),
-          confirmText:userGuildMember ? "レイドへ戻る" : "おすすめTRIBEを見る",cancelText:"Homeへ",
-          onConfirm:()=>{setConfirmDialogConfig(null);if(userGuildMember){navigateTab?.("raid");}else{void supabase.rpc("record_client_funnel_event",{p_event_name:"raid_to_guild_cta",p_source_screen:"raid_result",p_source_cta:"guild",p_object_id:null,p_metadata:{}});navigateTab?.("guild");}},onCancel:()=>{setConfirmDialogConfig(null);navigateTab?.("home");}
+        setBattleModeResultDetail({
+          stats: [
+            { label: "今回 DAMAGE", value: Number(raidResultTemp.rawDamage || 0).toLocaleString() },
+            { label: "BOSS HP反映", value: Number(raidResultTemp.appliedDamage || 0).toLocaleString() },
+            { label: "個人 CONTRIBUTION", value: Number(raidResultTemp.personalContribution || 0).toLocaleString() },
+            { label: "BOSS 残りHP", value: Number(raidResultTemp.remainingBossHp || 0).toLocaleString() },
+          ],
+          reward: "サーバー確定報酬を反映済み",
+          note: userGuildMember ? "TRIBE Contributionにも所属Snapshotで反映されます。" : "TRIBE加入でGuild RankingとContributionへ参加できます。",
+          continueLabel: userGuildMember ? "レイドへ戻る" : "おすすめTRIBEを見る",
+          destination: userGuildMember ? "raid" : "guild",
         });
+        setBattleState("RESULT");
         return;
       }
+      releaseBattlePresentation();
       setErrorMessage("Raidのサーバー確定結果を確認できませんでした。再度Raidを開始してください。");
       return;
     } else if (modeTemp === "GVG") {
@@ -2184,6 +2269,8 @@ export function useBattle(options: UseBattleOptions) {
 
   const completeBattleResult = () => {
     if (battleState !== "RESULT") return;
+    const completedMode = battleMode;
+    const destination = battleModeResultDetail?.destination;
     setBattleState(null);
     setBattleMode(null);
     setBattleOutcome(null);
@@ -2192,6 +2279,20 @@ export function useBattle(options: UseBattleOptions) {
     officialPatrolWinnerRef.current = null;
     battleEndingInFlightRef.current = false;
     setTutorialBattleActive(false);
+    setBattleResultReplayEvents([]);
+    setBattlePresentationContext(null);
+    setBattleSkipPending(false);
+    setBattleModeResultDetail(null);
+    if (completedMode === "RAID" && destination === "guild") {
+      void supabase.rpc("record_client_funnel_event", {
+        p_event_name: "raid_to_guild_cta",
+        p_source_screen: "raid_result",
+        p_source_cta: "guild",
+        p_object_id: null,
+        p_metadata: {},
+      });
+    }
+    if (destination) navigateTab?.(destination);
   };
 
   const resumeBattleSession = (activeBattleSession: any, localCharIds: string[]) => {
@@ -2203,6 +2304,12 @@ export function useBattle(options: UseBattleOptions) {
       setBattleSessionId(activeBattleSession.id);
       setBattleMode(activeBattleSession.battle_type as any);
       setBattleOpponentName(activeBattleSession.target_id);
+      setBattlePresentationContext(pState.battlePresentationContext || {
+        mode: activeBattleSession.battle_type as BattleMode,
+        opponentLabel: activeBattleSession.target_id,
+        opponentLeaderCharacterId: eState.enemyStates?.[0]?.characterId,
+        opponentLeaderName: eState.enemyStates?.[0]?.name,
+      });
       setGvgTargetBaseId(pState.gvgAreaId || null);
       setOfficialGvgAttackId(pState.officialGvgAttackId || null);
       setOfficialGvgReplayId(pState.officialGvgReplayId || null);
@@ -2249,12 +2356,6 @@ export function useBattle(options: UseBattleOptions) {
     }
   };
 
-  const battleResultReplayEvents = battleMode === "PATROL" ? officialPatrolEvents
-    : battleMode === "PVP" ? officialPvpEvents
-    : battleMode === "RAID" ? officialRaidEvents
-    : battleMode === "GVG" || battleMode === "PVP_PRACTICE" ? canonicalAuxEvents
-    : [];
-
   return {
     battleSessionId, setBattleSessionId,
     battleMode, setBattleMode,
@@ -2283,10 +2384,14 @@ export function useBattle(options: UseBattleOptions) {
     presentationPhase,
     authoritativeTimeline,
     battleResultReplayEvents,
+    battlePresentationContext,
+    battleModeResultDetail,
+    battleSkipPending,
     gvgTargetBaseId, setGvgTargetBaseId,
     battleLoading, setBattleLoading,
     startCardBattle,
     launchBattlePlaying,
+    skipBattlePresentation,
     handleEndTurn,
     endBattleSession,
     completeBattleResult,

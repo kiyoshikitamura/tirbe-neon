@@ -22,8 +22,12 @@
   --neon-glow-purple: 0 0 8px rgba(139, 0, 255, 0.6), 0 0 15px rgba(139, 0, 255, 0.3);
   --neon-glow-gold: 0 0 8px rgba(255, 215, 0, 0.6), 0 0 15px rgba(255, 215, 0, 0.3);
 
-  --font-inter: Arial, "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
-  --font-outfit: Arial, "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  /* Self-hosted WOFF2 delivery is pending. These tokens keep every open
+     surface on the production typography contract with safe local fallbacks. */
+  --font-ui: "Noto Sans JP", "Hiragino Kaku Gothic ProN", "Yu Gothic", system-ui, sans-serif;
+  --font-display: "Rajdhani", "Arial Narrow", Arial, "Noto Sans JP", sans-serif;
+  --font-inter: var(--font-ui);
+  --font-outfit: var(--font-display);
 
   /* UI Stage 1 semantic tokens */
   --ui-bg-root: #070a10;
@@ -115,12 +119,12 @@
   filter: grayscale(1);
 }
 
-.ui-type-display { font-size: var(--ui-font-display); font-weight: 900; line-height: 1.05; }
+.ui-type-display { font-family: var(--font-display); font-size: var(--ui-font-display); font-weight: 700; line-height: 1.05; }
 .ui-type-screen-title { font-size: var(--ui-font-title); font-weight: 900; line-height: 1.2; }
 .ui-type-section-heading { font-size: var(--ui-font-heading); font-weight: 800; line-height: 1.3; }
 .ui-type-body { font-size: var(--ui-font-body); line-height: 1.6; }
 .ui-type-caption { font-size: var(--ui-font-caption); line-height: 1.45; }
-.ui-type-numeric { font-size: var(--ui-font-numeric); font-weight: 900; font-variant-numeric: tabular-nums; }
+.ui-type-numeric { font-family: var(--font-display); font-size: var(--ui-font-numeric); font-weight: 700; font-variant-numeric: tabular-nums; }
 
 @supports (-webkit-touch-callout: none) {
   :root {

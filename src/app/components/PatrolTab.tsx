@@ -228,7 +228,8 @@ export default function PatrolTab() {
       await startCardBattle(
         "PATROL", battleNpc.npc_name || "敵NPC", battleNpc.id,
         undefined, undefined, undefined, undefined, undefined, undefined,
-        battleNpc, patrol.id
+        battleNpc, patrol.id,
+        { encounterLabel: patrol.courseName || battleNpc.npc_name || "クエスト", opponentLabel: battleNpc.npc_name || "敵NPC" }
       );
     } finally {
       battleStartRef.current = false;

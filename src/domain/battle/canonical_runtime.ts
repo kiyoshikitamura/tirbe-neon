@@ -51,6 +51,9 @@ export interface BattleSkill {
 export interface BattleUnitInput {
   id: string; characterId?: string; name: string; team: BattleTeam; alignment: Alignment;
   stats: BattleStats; skills: BattleSkill[];
+  level?: number;
+  awakeningLevel?: number;
+  rarity?: string;
   statusModifiers?: BattleStatusModifiers;
   combatModifiers?: BattleCombatModifiers;
 }
@@ -168,6 +171,17 @@ function toRuntimeUnit(unit: BattleUnitInput): BattleUnit {
 }
 
 const emit = (events: BattleReplayEvent[], round: number, type: BattleReplayEvent["type"], payload: Record<string, unknown>) => events.push({ index: events.length, round, type, payload });
+
+function activeEffectsAfter(unit: BattleUnit) {
+  return [
+    ...unit.statuses.map((effect) => ({ id: effect.type, kind: "STATUS", remainingDuration: effect.remainingDuration })),
+    ...unit.dots.map((effect) => ({ id: effect.type, kind: "DOT", remainingDuration: effect.remainingDuration })),
+    ...unit.modifiers.map((effect) => ({ id: `${effect.type}_${effect.stat}`, kind: effect.type, stat: effect.stat, magnitudeBp: effect.magnitudeBp, remainingDuration: effect.remainingDuration })),
+    ...unit.shields.map((effect) => ({ id: "SHIELD", kind: "SHIELD", amount: effect.amount, remainingDuration: effect.remainingDuration })),
+    ...unit.regens.map((effect) => ({ id: "REGEN", kind: "REGEN", amount: effect.tickAmount, remainingDuration: effect.remainingDuration })),
+    ...unit.counters.map((effect) => ({ id: `COUNTER_${effect.sourceSkillId}`, kind: "COUNTER", remainingDuration: effect.remainingDuration })),
+  ].sort((a, b) => a.id.localeCompare(b.id));
+}
 const hasStatus = (unit: BattleUnit, status: CanonicalStatus) => status === "POISON" || status === "BLEED" ? unit.dots.some((item) => item.type === status) : unit.statuses.some((item) => item.type === status);
 
 function selectEnemy(actor: BattleUnit, enemies: BattleUnit[], tactic: BattleTactic): BattleUnit {
@@ -237,7 +251,7 @@ function applyStatus(actor: BattleUnit, target: BattleUnit, effect: CanonicalEff
     if (existing) { existing.remainingDuration = Math.max(existing.remainingDuration, Number(effect.duration)); existing.appliedAction = context.action; }
     else target.statuses.push({ type: status, remainingDuration: Number(effect.duration), appliedAction: context.action, applicationSequence: nextSequence(context) });
   }
-  emit(context.events, context.round, "STATUS", { actorId: actor.id, targetId: target.id, status, duration: effect.duration, chanceBp: chance });
+  emit(context.events, context.round, "STATUS", { actorId: actor.id, targetId: target.id, status, duration: effect.duration, chanceBp: chance, activeEffectsAfter: activeEffectsAfter(target) });
   return true;
 }
 
@@ -268,7 +282,7 @@ function executeDamage(actor: BattleUnit, target: BattleUnit, powerBp: number, a
   const randomBp = context.rng.randomDamageBp();
   const amount = productionDamage({ atk: effectiveStat(actor, "ATK"), def: effectiveStat(target, "DEF"), powerBp, awakeningMultiplierBp, ignoreDefBp, battleModifierBp: damageModifierBp(actor, target), attributeBp: getAttributeMultiplierBp(actor.alignment, target.alignment), criticalDamageBp: criticalDamage, randomBp });
   const applied = absorbDamage(target, amount); actor.rawDamage += applied.hpDamage;
-  emit(context.events, context.round, "DAMAGE", { actorId: actor.id, targetId: target.id, amount, hpDamage: applied.hpDamage, shieldDamage: applied.shieldDamage, critical, hit: true, ignoreDefBp, randomBp, counter: isCounter, remainingHp: target.hp });
+  emit(context.events, context.round, "DAMAGE", { actorId: actor.id, targetId: target.id, amount, hpDamage: applied.hpDamage, shieldDamage: applied.shieldDamage, critical, hit: true, ignoreDefBp, randomBp, counter: isCounter, remainingHp: target.hp, activeEffectsAfter: activeEffectsAfter(target) });
   if (target.hp === 0) emit(context.events, context.round, "DEFEAT", { targetId: target.id });
   return { hit: true, hpDamage: applied.hpDamage, totalDamage: amount };
 }
@@ -314,33 +328,34 @@ function executeEffects(actor: BattleUnit, targets: BattleUnit[], skill: Normali
         const hpBeforeHeal = target.hp; target.hp = Math.min(maxHp(target), target.hp + amount); emit(context.events, context.round, "HEAL", { actorId: actor.id, targetId: target.id, amount, effectiveAmount: target.hp - hpBeforeHeal, remainingHp: target.hp });
       } else if (effect.type === "SHIELD") {
         const amount = bpProduct(maxHp(target), Number(effect.maxHpBp), skillEffectMultiplierBp("SUPPORT", skill.skillPlusVal)); applyShield(target, amount, Number(effect.duration), context);
-        emit(context.events, context.round, "EFFECT", { actorId: actor.id, targetId: target.id, kind: "SHIELD", amount, duration: effect.duration });
+        emit(context.events, context.round, "EFFECT", { actorId: actor.id, targetId: target.id, kind: "SHIELD", amount, duration: effect.duration, activeEffectsAfter: activeEffectsAfter(target) });
       } else if (effect.type === "REGEN") {
         const tickAmount = bpProduct(maxHp(target), Number(effect.maxHpBp), skillEffectMultiplierBp("SUPPORT", skill.skillPlusVal));
         target.regens = [{ sourceCharacterId: actor.id, tickAmount, remainingDuration: Number(effect.duration), appliedAction: context.action, applicationSequence: nextSequence(context) }];
-        emit(context.events, context.round, "EFFECT", { actorId: actor.id, targetId: target.id, kind: "REGEN", tickAmount, duration: effect.duration });
+        emit(context.events, context.round, "EFFECT", { actorId: actor.id, targetId: target.id, kind: "REGEN", tickAmount, duration: effect.duration, activeEffectsAfter: activeEffectsAfter(target) });
       } else if (effect.type === "BUFF" || effect.type === "DEBUFF") {
         if (context.rng.rollBp() < Number(effect.chanceBp ?? 10000)) {
           const magnitudeBp = Math.floor(Number(effect.magnitudeBp) * skillEffectMultiplierBp("SUPPORT", skill.skillPlusVal) / 10000);
           target.modifiers.push({ type: effect.type, stat: effect.stat as CanonicalStat, magnitudeBp, remainingDuration: Number(effect.duration), appliedAction: context.action, applicationSequence: nextSequence(context) });
-          emit(context.events, context.round, "EFFECT", { actorId: actor.id, targetId: target.id, kind: effect.type, stat: effect.stat, magnitudeBp, duration: effect.duration });
+          emit(context.events, context.round, "EFFECT", { actorId: actor.id, targetId: target.id, kind: effect.type, stat: effect.stat, magnitudeBp, duration: effect.duration, activeEffectsAfter: activeEffectsAfter(target) });
         }
       } else if (STATUS_TYPES.has(effect.type)) applyStatus(actor, target, effect, skill, context);
       else if (effect.type === "REMOVE_STATUS") {
         const negative = [...target.statuses, ...target.dots, ...target.modifiers.filter((item) => item.type === "DEBUFF")].sort((a, b) => a.applicationSequence - b.applicationSequence);
         const remove = effect.count === "all" ? negative : negative.slice(0, 1);
         target.statuses = target.statuses.filter((item) => !remove.includes(item)); target.dots = target.dots.filter((item) => !remove.includes(item)); target.modifiers = target.modifiers.filter((item) => !remove.includes(item));
-        emit(context.events, context.round, "EFFECT", { actorId: actor.id, targetId: target.id, kind: "REMOVE_STATUS", count: remove.length });
+        emit(context.events, context.round, "EFFECT", { actorId: actor.id, targetId: target.id, kind: "REMOVE_STATUS", count: remove.length, activeEffectsAfter: activeEffectsAfter(target) });
       } else if (effect.type === "COUNTER") {
         const limit = Number(skill.effects.find((item) => item.type === "TRIGGER_LIMIT")?.maxPerRound ?? 1);
         target.counters.push({ sourceSkillId: skill.id, powerBp: Number(effect.powerBp), awakeningMultiplierBp: skillEffectMultiplierBp("COUNTER", skill.skillPlusVal), remainingDuration: effect.duration == null ? null : Number(effect.duration), appliedAction: context.action, applicationSequence: nextSequence(context), maxPerRound: limit });
-        emit(context.events, context.round, "EFFECT", { actorId: actor.id, targetId: target.id, kind: "COUNTER", powerBp: effect.powerBp, duration: effect.duration });
+        emit(context.events, context.round, "EFFECT", { actorId: actor.id, targetId: target.id, kind: "COUNTER", powerBp: effect.powerBp, duration: effect.duration, activeEffectsAfter: activeEffectsAfter(target) });
       }
     }
   }
 }
 
 function endAction(actor: BattleUnit, context: RuntimeContext) {
+  const activeEffectsBeforeAging = JSON.stringify(activeEffectsAfter(actor));
   for (const dot of actor.dots.slice().sort((a, b) => a.applicationSequence - b.applicationSequence)) {
     if (dot.appliedAction >= context.action) continue;
     const numerator = BigInt(dot.sourceFinalAtkAtApplication) * BigInt(dot.dotCoefficientBp) * BigInt(dot.dotMultiplierBp) * BigInt(dot.attributeMultiplierBp);
@@ -356,6 +371,10 @@ function endAction(actor: BattleUnit, context: RuntimeContext) {
   const age = <T extends { remainingDuration: number; appliedAction: number }>(items: T[]) => items.map((item) => item.appliedAction < context.action ? { ...item, remainingDuration: item.remainingDuration - 1 } : item).filter((item) => item.remainingDuration > 0);
   actor.statuses = age(actor.statuses); actor.dots = age(actor.dots); actor.shields = age(actor.shields); actor.regens = age(actor.regens);
   actor.modifiers = age(actor.modifiers); actor.counters = actor.counters.map((item) => item.remainingDuration !== null && item.appliedAction < context.action ? { ...item, remainingDuration: item.remainingDuration - 1 } : item).filter((item) => item.remainingDuration === null || item.remainingDuration > 0);
+  const projectedEffects = activeEffectsAfter(actor);
+  if (activeEffectsBeforeAging !== JSON.stringify(projectedEffects)) {
+    emit(context.events, context.round, "EFFECT", { actorId: actor.id, targetId: actor.id, kind: "ACTIVE_EFFECT_SYNC", activeEffectsAfter: projectedEffects });
+  }
 }
 
 function battleStart(units: BattleUnit[], context: RuntimeContext) {

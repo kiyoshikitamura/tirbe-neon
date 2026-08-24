@@ -37,3 +37,38 @@
 .battle-result-comparison > div b { color:#fff; font-size:10px; font-variant-numeric:tabular-nums; }
 .battle-result-comparison > div span { color:#8c99a5; font-size:7px; }
 @media (max-height:860px) { .battle-result-summary{gap:7px;padding-top:13px}.battle-result-summary>strong{font-size:27px}.battle-result-mvp-hero{min-height:68px}.battle-result-mvp-hero .character-presentation{height:68px}.battle-result-rewards>span{min-height:48px} }
+
+/* Phase C3 result hierarchy: opponent, outcome, hero, comparison, reward, action. */
+.battle-result-summary{position:relative;justify-items:stretch;gap:8px;width:min(94vw,410px);padding:14px 12px calc(14px + env(safe-area-inset-bottom));font-family:var(--font-ui)}
+.battle-result-opponent{display:grid;justify-items:center;gap:2px;text-align:center;animation:battle-result-stage-in .3s ease-out .1s both}
+.battle-result-opponent small{font-family:var(--font-display);font-size:8px;letter-spacing:.2em}
+.battle-result-opponent strong{max-width:100%;overflow:hidden;color:#fff;font-size:15px;text-overflow:ellipsis;white-space:nowrap}
+.battle-result-opponent span,.battle-result-opponent b{color:#9da7b0;font-family:var(--font-display);font-size:8px;letter-spacing:.08em}
+.battle-result-outcome-label{margin:0;text-align:center;font-family:var(--font-display);font-size:clamp(34px,11vw,50px);line-height:.95;animation:battle-result-stage-in .34s cubic-bezier(.2,.85,.25,1) .25s both}
+.battle-result-summary.is-victory .battle-result-outcome-label{color:#f3df9a;text-shadow:0 2px 18px rgba(201,173,96,.42)}
+.battle-result-summary.is-defeat .battle-result-outcome-label{color:#ff738b}
+.battle-result-mvp{position:relative;min-height:240px;overflow:hidden;padding:10px;background:linear-gradient(90deg,rgba(8,10,14,.18),rgba(5,7,11,.94) 55%);animation:battle-result-stage-in .38s ease-out .45s both}
+.battle-result-mvp::after{position:absolute;inset:0;z-index:0;content:"";background:linear-gradient(90deg,transparent 22%,rgba(4,6,9,.44) 44%,rgba(4,6,9,.96) 76%);pointer-events:none}
+.battle-result-mvp-hero{display:block;min-height:96px}
+.battle-result-mvp-hero .character-presentation{position:absolute;z-index:0;bottom:-10px;left:-20px;width:58%;height:250px;border:0;background:transparent;filter:drop-shadow(8px 5px 12px rgba(0,0,0,.75));animation:battle-result-hero-in .48s cubic-bezier(.2,.85,.25,1) .45s both}
+.battle-result-mvp-copy{position:relative;z-index:2;display:grid!important;justify-items:start!important;margin-left:43%;padding-top:4px}
+.battle-result-mvp-copy small{font-family:var(--font-display);font-size:12px}
+.battle-result-mvp-copy strong{font-size:clamp(21px,6vw,28px)}
+.battle-result-mvp-copy b{font-family:var(--font-display);font-size:clamp(38px,12vw,54px)}
+.battle-result-mvp-copy b i{font-size:12px}
+.battle-result-score-grid{position:relative;z-index:2;grid-template-columns:repeat(2,minmax(0,1fr));margin-left:34%;animation:battle-result-stage-in .32s ease-out .8s both}
+.battle-result-score-grid>div{grid-template-columns:minmax(0,1fr) auto;align-items:center;padding:4px 5px;text-align:left}
+.battle-result-score-grid>div:last-child{grid-column:1/-1}
+.battle-result-score-grid dt{font-size:7px}.battle-result-score-grid dd{text-align:right}.battle-result-score-grid dd small{font-size:6px}
+.battle-result-comparison{animation:battle-result-stage-in .32s ease-out 1.05s both}
+.battle-result-mode-stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;animation:battle-result-stage-in .3s ease-out 1.12s both}
+.battle-result-mode-label{display:block;margin:-4px 0 5px;color:var(--ui-text-secondary);font-size:11px;text-align:center}
+.battle-result-mode-stats>div{display:grid;gap:2px;padding:6px;border:1px solid rgba(255,255,255,.1);background:rgba(0,0,0,.3)}
+.battle-result-mode-stats small{font-family:var(--font-display);font-size:7px;letter-spacing:.08em}.battle-result-mode-stats strong{overflow:hidden;font-family:var(--font-display);font-size:11px;text-overflow:ellipsis;white-space:nowrap}
+.battle-result-rewards,.battle-result-mode-reward{animation:battle-result-stage-in .3s ease-out 1.25s both}
+.battle-result-mode-reward{display:grid;gap:3px;padding:7px;border:1px solid rgba(242,201,95,.22);text-align:center}.battle-result-mode-reward strong{color:#f2dfaa}.battle-result-mode-reward p{font-size:10px;line-height:1.45}
+.battle-result-continue{animation:battle-result-stage-in .3s ease-out 1.4s both}
+@keyframes battle-result-stage-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes battle-result-hero-in{from{opacity:0;transform:translateX(-30px)}to{opacity:1;transform:none}}
+@media(max-height:760px){.battle-result-summary{max-height:94dvh;gap:5px;padding-top:8px}.battle-result-mvp{min-height:205px}.battle-result-mvp-hero .character-presentation{height:218px}.battle-result-mvp-copy b{font-size:38px}.battle-result-score-grid>div{padding:3px}.battle-result-comparison{padding:5px}.battle-result-mode-stats>div{padding:4px}}
+@media(prefers-reduced-motion:reduce){.battle-result-opponent,.battle-result-outcome-label,.battle-result-mvp,.battle-result-mvp-hero .character-presentation,.battle-result-score-grid,.battle-result-comparison,.battle-result-mode-stats,.battle-result-rewards,.battle-result-mode-reward,.battle-result-continue{animation:none}}
