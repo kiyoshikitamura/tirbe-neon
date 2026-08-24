@@ -1782,7 +1782,7 @@ export function useBattle(options: UseBattleOptions) {
         } else if (replayEvent.type === "HEAL") {
           setPresentationPhase("IMPACT");
           recordPresentationStage("impactAt", targetId);
-          const amount = Math.max(0, Number(payload.amount ?? 0));
+          const amount = Math.max(0, Number(payload.effectiveAmount ?? payload.amount ?? 0));
           const remainingHp = Math.max(0, Number(payload.remainingHp ?? target?.hp ?? 0));
           const updateTarget = (participant: ParticipantState) => participant.id === targetId
             ? { ...participant, hp: remainingHp, isDead: false }
@@ -2249,6 +2249,12 @@ export function useBattle(options: UseBattleOptions) {
     }
   };
 
+  const battleResultReplayEvents = battleMode === "PATROL" ? officialPatrolEvents
+    : battleMode === "PVP" ? officialPvpEvents
+    : battleMode === "RAID" ? officialRaidEvents
+    : battleMode === "GVG" || battleMode === "PVP_PRACTICE" ? canonicalAuxEvents
+    : [];
+
   return {
     battleSessionId, setBattleSessionId,
     battleMode, setBattleMode,
@@ -2276,6 +2282,7 @@ export function useBattle(options: UseBattleOptions) {
     damagePopup, setDamagePopup,
     presentationPhase,
     authoritativeTimeline,
+    battleResultReplayEvents,
     gvgTargetBaseId, setGvgTargetBaseId,
     battleLoading, setBattleLoading,
     startCardBattle,

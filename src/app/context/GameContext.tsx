@@ -3820,6 +3820,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     activeShakingCharId: battle.activeShakingCharId,
     damagePopup: battle.damagePopup,
     setDamagePopup: battle.setDamagePopup,
+    battleResultReplayEvents: battle.battleResultReplayEvents,
     gvgTargetBaseId: battle.gvgTargetBaseId,
     setGvgTargetBaseId: battle.setGvgTargetBaseId,
     battleLoading: battle.battleLoading,

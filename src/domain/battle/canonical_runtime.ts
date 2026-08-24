@@ -69,7 +69,7 @@ type ModifierInstance = { type: "BUFF" | "DEBUFF"; stat: CanonicalStat; magnitud
 type StatusInstance = { type: Exclude<CanonicalStatus, "POISON" | "BLEED">; remainingDuration: number; appliedAction: number; applicationSequence: number };
 type DotInstance = { type: "POISON" | "BLEED"; sourceCharacterId: string; sourceFinalAtkAtApplication: number; sourceAttribute: Alignment; targetAttribute: Alignment; attributeMultiplierBp: number; dotCoefficientBp: number; dotMultiplierBp: number; remainingDuration: number; appliedAction: number; applicationSequence: number };
 type ShieldInstance = { amount: number; remainingDuration: number; appliedAction: number; applicationSequence: number };
-type RegenInstance = { tickAmount: number; remainingDuration: number; appliedAction: number; applicationSequence: number };
+type RegenInstance = { sourceCharacterId: string; tickAmount: number; remainingDuration: number; appliedAction: number; applicationSequence: number };
 type CounterInstance = { sourceSkillId: string; powerBp: number; awakeningMultiplierBp: number; remainingDuration: number | null; appliedAction: number; applicationSequence: number; maxPerRound: number };
 
 export interface BattleUnit extends BattleUnitInput {
@@ -300,8 +300,8 @@ function executeEffects(actor: BattleUnit, targets: BattleUnit[], skill: Normali
       const result = executeDamage(actor, originalTarget, scaling ?? Number(selectedDamage.powerBp), skillEffectMultiplierBp(isCounter ? "COUNTER" : "DAMAGE", skill.skillPlusVal), ignoreDefBp, context, isCounter);
       hit = result.hit; hpDamage = result.hpDamage;
       if (lifestealBp && hpDamage > 0) {
-        const heal = Math.floor(hpDamage * lifestealBp / 10000); actor.hp = Math.min(maxHp(actor), actor.hp + heal);
-        emit(context.events, context.round, "HEAL", { actorId: actor.id, targetId: actor.id, amount: heal, source: "LIFESTEAL", remainingHp: actor.hp });
+        const heal = Math.floor(hpDamage * lifestealBp / 10000); const hpBeforeHeal = actor.hp; actor.hp = Math.min(maxHp(actor), actor.hp + heal);
+        emit(context.events, context.round, "HEAL", { actorId: actor.id, targetId: actor.id, amount: heal, effectiveAmount: actor.hp - hpBeforeHeal, source: "LIFESTEAL", remainingHp: actor.hp });
       }
       if (result.totalDamage > 0 && !isCounter) executeCounter(originalTarget, actor, context);
     }
@@ -311,13 +311,13 @@ function executeEffects(actor: BattleUnit, targets: BattleUnit[], skill: Normali
       const target = effect.self ? actor : originalTarget;
       if (effect.type === "HEAL") {
         const amount = bpProduct(maxHp(target), Number(effect.maxHpBp), skillEffectMultiplierBp("SUPPORT", skill.skillPlusVal));
-        target.hp = Math.min(maxHp(target), target.hp + amount); emit(context.events, context.round, "HEAL", { actorId: actor.id, targetId: target.id, amount, remainingHp: target.hp });
+        const hpBeforeHeal = target.hp; target.hp = Math.min(maxHp(target), target.hp + amount); emit(context.events, context.round, "HEAL", { actorId: actor.id, targetId: target.id, amount, effectiveAmount: target.hp - hpBeforeHeal, remainingHp: target.hp });
       } else if (effect.type === "SHIELD") {
         const amount = bpProduct(maxHp(target), Number(effect.maxHpBp), skillEffectMultiplierBp("SUPPORT", skill.skillPlusVal)); applyShield(target, amount, Number(effect.duration), context);
         emit(context.events, context.round, "EFFECT", { actorId: actor.id, targetId: target.id, kind: "SHIELD", amount, duration: effect.duration });
       } else if (effect.type === "REGEN") {
         const tickAmount = bpProduct(maxHp(target), Number(effect.maxHpBp), skillEffectMultiplierBp("SUPPORT", skill.skillPlusVal));
-        target.regens = [{ tickAmount, remainingDuration: Number(effect.duration), appliedAction: context.action, applicationSequence: nextSequence(context) }];
+        target.regens = [{ sourceCharacterId: actor.id, tickAmount, remainingDuration: Number(effect.duration), appliedAction: context.action, applicationSequence: nextSequence(context) }];
         emit(context.events, context.round, "EFFECT", { actorId: actor.id, targetId: target.id, kind: "REGEN", tickAmount, duration: effect.duration });
       } else if (effect.type === "BUFF" || effect.type === "DEBUFF") {
         if (context.rng.rollBp() < Number(effect.chanceBp ?? 10000)) {
@@ -351,7 +351,7 @@ function endAction(actor: BattleUnit, context: RuntimeContext) {
   else for (const regen of actor.regens.slice().sort((a, b) => a.applicationSequence - b.applicationSequence)) {
     if (regen.appliedAction >= context.action) continue;
     const amount = Math.min(maxHp(actor) - actor.hp, regen.tickAmount); actor.hp += amount;
-    emit(context.events, context.round, "HEAL", { actorId: actor.id, targetId: actor.id, amount, source: "REGEN", remainingHp: actor.hp });
+    emit(context.events, context.round, "HEAL", { actorId: regen.sourceCharacterId, targetId: actor.id, amount, effectiveAmount: amount, source: "REGEN", remainingHp: actor.hp });
   }
   const age = <T extends { remainingDuration: number; appliedAction: number }>(items: T[]) => items.map((item) => item.appliedAction < context.action ? { ...item, remainingDuration: item.remainingDuration - 1 } : item).filter((item) => item.remainingDuration > 0);
   actor.statuses = age(actor.statuses); actor.dots = age(actor.dots); actor.shields = age(actor.shields); actor.regens = age(actor.regens);

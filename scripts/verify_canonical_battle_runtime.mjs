@@ -86,7 +86,9 @@ assert.deepEqual(damages(result, "BLEED").map((event) => event.payload.amount), 
 
 // Regen ticks after own action, and does not revive after DoT death.
 result = battle([unit("p", "PLAYER", "ORDER", [skill("SKILL_060", { exclusiveCharacterId: null, availableFromRound: 1 })])], [unit("e", "ENEMY", "ORDER", [], { hp: 999999 })], { maxRounds: 4 });
-assert.equal(result.events.filter((event) => event.type === "HEAL" && event.payload.source === "REGEN").length, 3);
+const regenHeals = result.events.filter((event) => event.type === "HEAL" && event.payload.source === "REGEN");
+assert.equal(regenHeals.length, 3);
+assert.ok(regenHeals.every((event) => event.payload.actorId === "p" && event.payload.effectiveAmount === event.payload.amount));
 
 // Counter is max once per round and never chains into another counter.
 result = battle([unit("p", "PLAYER", "ORDER", [skill("SKILL_054", { exclusiveCharacterId: null })], { hp: 999999 })], [unit("e", "ENEMY", "ORDER", [skill("SKILL_012", { availableFromRound: 1 })], { hp: 999999, spd: 300 })], { maxRounds: 2 });

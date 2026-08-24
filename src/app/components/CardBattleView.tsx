@@ -34,6 +34,7 @@ export default function CardBattleView() {
     targetLine,
     activeShakingCharId,
     damagePopup,
+    battleResultReplayEvents,
     presentationPhase,
     authoritativeTimeline,
     launchBattlePlaying,
@@ -125,6 +126,9 @@ export default function CardBattleView() {
             victory={victory}
             tutorial={isTutorialBattle}
             rewards={isTutorialBattle ? lastPatrolRewards : null}
+            replayEvents={battleResultReplayEvents}
+            playerParticipants={playerPartyStates}
+            enemyParticipants={enemyPartyStates}
             onContinue={isTutorialBattle ? completeTutorialBattleResult : completeBattleResult}
           />
         )}

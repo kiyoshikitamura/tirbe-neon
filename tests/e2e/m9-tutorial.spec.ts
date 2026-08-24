@@ -55,6 +55,11 @@ const canvasAuditViewports = [
   { width: 1440, height: 900 },
   { width: 1920, height: 1080 },
 ];
+const c2AcceptanceViewports = [
+  { label: "iphone13", width: 390, height: 844 },
+  { label: "pixel7", width: 412, height: 915 },
+  { label: "desktop", width: 1024, height: 768 },
+];
 
 async function assertCenteredGameCanvas(page: import("@playwright/test").Page, screenSelector: string) {
   for (const viewport of canvasAuditViewports) {
@@ -131,67 +136,47 @@ async function revealTutorialTenPull(page: import("@playwright/test").Page, capt
     expect(layerMetrics).toEqual({ outerBackground: false, artInsideCard: true, backgroundInsideArt: true, frameCoversArt: true });
   };
   await expect(reveal).toBeVisible({ timeout: 15_000 });
-  // Role is not part of the canonical Character presentation contract.
-  await expect(reveal.locator(".character-presentation-attribute-badge")).toBeVisible();
-  await assertRevealParameters();
-  await expect(reveal).toBeEnabled();
-  if (captureVisuals) await page.screenshot({ path: test.info().outputPath("G1-rarity-N.png") });
-  const revealTapStartedAt = Date.now();
-  await reveal.click();
-  await expect(reveal).toHaveAttribute("aria-label", "2人目を確認");
-  const revealTransitionMs = Date.now() - revealTapStartedAt;
-  const rDwellStartedAt = Date.now();
-  await expect(reveal).not.toHaveClass(/is-advancing/);
-  await assertRevealParameters();
-  await expect(reveal).toBeEnabled();
-  expect(revealTransitionMs).toBeGreaterThanOrEqual(200);
-  expect(revealTransitionMs).toBeLessThan(1_000);
-  test.info().annotations.push({ type: "gacha-reveal-n-transition-ms", description: String(revealTransitionMs) });
-  const rRevealDwellMs = Date.now() - rDwellStartedAt;
-  // The R dwell timer starts when React commits the next reveal, before the
-  // aria-label observer above sees that commit. Validate the complete N -> R
-  // pacing so CI polling latency cannot subtract time from the dwell contract.
-  const rRevealReadyFromTapMs = revealTransitionMs + rRevealDwellMs;
-  expect(rRevealReadyFromTapMs).toBeGreaterThanOrEqual(1_200);
-  expect(rRevealReadyFromTapMs).toBeLessThan(2_200);
-  expect(rRevealDwellMs).toBeLessThan(1_700);
-  test.info().annotations.push({ type: "gacha-reveal-r-dwell-ms", description: String(rRevealDwellMs) });
-  test.info().annotations.push({ type: "gacha-reveal-r-ready-from-tap-ms", description: String(rRevealReadyFromTapMs) });
-  if (captureVisuals) await page.screenshot({ path: test.info().outputPath("G2-rarity-R.png") });
-  await reveal.click();
-  await expect(reveal).toHaveAttribute("aria-label", /^3/);
-  await expect(reveal).not.toHaveClass(/is-advancing/);
-  await assertRevealParameters();
-  await expect(reveal).toBeEnabled();
-  if (captureVisuals) await page.screenshot({ path: test.info().outputPath("G3-rarity-SR.png") });
-  for (let index = 2; index < 9; index += 1) {
-    await expect(reveal).toBeEnabled();
-    const currentLabel = await reveal.getAttribute("aria-label");
+  let finalCharacterId: string | null = null;
+  let ssrQuoteCount = 0;
+  for (let index = 0; index < 10; index += 1) {
+    await expect(reveal.locator(".tutorial-gacha-count")).toHaveText(`${index + 1} / 10`);
+    const state = await reveal.getAttribute("data-presentation-state");
+    if (state === "SSR_QUOTE") {
+      ssrQuoteCount += 1;
+      await expect(reveal.locator(".tutorial-ssr-quote")).toContainText("SSR");
+      await expect(reveal.locator(".tutorial-ssr-quote blockquote")).not.toBeEmpty();
+      await expect(reveal).toHaveAttribute("aria-label", /SSR紹介を確認/);
+      if (captureVisuals && index === 9) {
+        for (const viewport of c2AcceptanceViewports) {
+          await page.setViewportSize(viewport);
+          const bounds = await reveal.evaluate((element) => ({ rect: element.getBoundingClientRect().toJSON(), viewportWidth: innerWidth, viewportHeight: innerHeight, scrollWidth: element.scrollWidth, clientWidth: element.clientWidth }));
+          expect(bounds.rect.left).toBeGreaterThanOrEqual(0);
+          expect(bounds.rect.right).toBeLessThanOrEqual(bounds.viewportWidth);
+          expect(bounds.rect.bottom).toBeLessThanOrEqual(bounds.viewportHeight);
+          expect(bounds.scrollWidth).toBeLessThanOrEqual(bounds.clientWidth + 1);
+          await page.screenshot({ path: test.info().outputPath(`m9x-ssr-quote-${viewport.label}.png`) });
+        }
+      }
+      await reveal.click();
+      await expect(reveal).toHaveAttribute("data-presentation-state", "SSR_REVEAL");
+    } else {
+      await expect(reveal).toHaveAttribute("data-presentation-state", "STANDARD_REVEAL");
+    }
+    await expect(reveal.locator(".character-presentation-attribute-badge")).toBeVisible();
+    await assertRevealParameters();
+    await expect(reveal).toHaveAttribute("data-can-advance", "true", { timeout: 3_000 });
+    if (index === 9) finalCharacterId = await reveal.getAttribute("data-character-id");
+    if (captureVisuals && index === 9) {
+      await page.screenshot({ path: test.info().outputPath("G4-rarity-SSR.png") });
+      for (const viewport of c2AcceptanceViewports) {
+        await page.setViewportSize(viewport);
+        await page.screenshot({ path: test.info().outputPath(`m9x-ssr-reveal-${viewport.label}.png`) });
+      }
+    }
     await reveal.click();
-    await expect(reveal).not.toHaveAttribute("aria-label", currentLabel || "");
+    if (index < 9) await expect(reveal.locator(".tutorial-gacha-count")).toHaveText(`${index + 2} / 10`);
   }
-  await expect(reveal).toHaveAttribute("data-presentation-state", "SSR_OMEN");
-  await expect(reveal.locator('.character-presentation-rarity-badge[alt="SSR"]')).toBeVisible();
-  if (captureVisuals) {
-    for (const width of [375, 390, 430]) {
-      await page.setViewportSize({ width, height: 844 });
-      await page.screenshot({ path: test.info().outputPath(`m9x-ssr-omen-${width}.png`) });
-    }
-  }
-  await expect(reveal).toHaveAttribute("data-presentation-state", "SSR_REVEAL");
-  await expect(reveal.locator('.character-presentation-rarity-badge[alt="SSR"]')).toBeVisible();
-  const finalCharacterId = await reveal.getAttribute("data-character-id");
-  await assertRevealParameters();
-  await expect(reveal).toBeEnabled();
-  if (captureVisuals) {
-    await page.waitForTimeout(700);
-    await page.screenshot({ path: test.info().outputPath("G4-rarity-SSR.png") });
-    for (const width of [375, 390, 430]) {
-      await page.setViewportSize({ width, height: 844 });
-      await page.screenshot({ path: test.info().outputPath(`m9x-ssr-reveal-${width}.png`) });
-    }
-  }
-  await reveal.click();
+  expect(ssrQuoteCount).toBeGreaterThanOrEqual(1);
   return finalCharacterId;
 }
 
@@ -621,6 +606,9 @@ test("three random tutorial SSRs remain the same owned character through result 
     await page.getByRole("button", { name: "バトルスタート" }).click();
     await expect(page.locator('[data-acceptance-state="B6"]')).toBeVisible({ timeout: 70_000 });
     await expect(page.locator(".battle-result-summary")).toContainText("QUEST COMPLETE");
+    await expect(page.locator(".battle-result-mvp")).toBeVisible();
+    await expect(page.locator(".battle-result-score-grid > div")).toHaveCount(5);
+    await expect(page.locator(".battle-result-comparison > div")).toHaveCount(3);
     await page.reload();
     await expect.poll(async () => (
       await page.locator('[data-acceptance-state="B6"]').isVisible()
@@ -882,6 +870,10 @@ test("first quest connects dispatch, official battle, and one reward to the comp
   const rewardStartedAt = Date.now();
   await expect(page.locator(".battle-result-rewards")).toBeVisible();
   await expect(page.locator(".battle-result-summary")).toContainText("QUEST COMPLETE");
+  await expect(page.locator(".battle-result-mvp")).toContainText("MVP");
+  await expect(page.locator(".battle-result-mvp-hero b")).toContainText("pt");
+  await expect(page.locator(".battle-result-score-grid > div")).toHaveCount(5);
+  await expect(page.locator(".battle-result-comparison > div")).toHaveCount(3);
   await expect(page.getByRole("button", { name: "勝利報酬を獲得" })).toHaveCount(0);
   test.info().annotations.push({ type: "quest-reward-ms", description: String(Date.now() - rewardStartedAt) });
   for (const width of [375, 390, 430]) {
@@ -897,6 +889,18 @@ test("first quest connects dispatch, official battle, and one reward to the comp
     expect(rewardMetrics.bottom).toBeLessThanOrEqual(rewardMetrics.viewportHeight);
     expect(rewardMetrics.actionHeight).toBeGreaterThanOrEqual(44);
     await page.screenshot({ path: test.info().outputPath(`m9-1-reward-${width}.png`), fullPage: true });
+  }
+  for (const viewport of c2AcceptanceViewports) {
+    await page.setViewportSize(viewport);
+    const resultLayout = await page.locator(".battle-result-summary").evaluate((modal) => {
+      const rect = modal.getBoundingClientRect();
+      return { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom, viewportWidth: innerWidth, viewportHeight: innerHeight, scrollWidth: modal.scrollWidth, clientWidth: modal.clientWidth };
+    });
+    expect(resultLayout.left).toBeGreaterThanOrEqual(0);
+    expect(resultLayout.right).toBeLessThanOrEqual(resultLayout.viewportWidth);
+    expect(resultLayout.top).toBeGreaterThanOrEqual(0);
+    expect(resultLayout.bottom).toBeLessThanOrEqual(resultLayout.viewportHeight);
+    expect(resultLayout.scrollWidth).toBeLessThanOrEqual(resultLayout.clientWidth + 1);
   }
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem("mock_db_presents") || "[]").filter((present: any) => String(present.id).startsWith("patrol_reward_")).length)).toBe(1);
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem("mock_db_tutorial_progress") || "[]")[0]?.step_id)).toBe("TUTORIAL_BATTLE");

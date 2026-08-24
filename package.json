@@ -26,6 +26,8 @@
     "verify:production-item-equipment-assets": "node scripts/verify_production_item_equipment_assets.mjs",
     "verify:character-ssr-candidates": "node scripts/verify_character_ssr_candidate_contract.mjs",
     "verify:character-ssr-candidate-db-migration": "node scripts/verify_character_ssr_candidate_db_migration.mjs",
+    "verify:ssr-gacha-quotes": "node scripts/verify_ssr_gacha_quotes.mjs",
+    "verify:battle-mvp-result": "node --experimental-strip-types scripts/verify_battle_mvp_result.mjs",
     "verify:login-bonus-production": "node scripts/verify_login_bonus_production.mjs",
     "verify:reward-supply": "node scripts/verify_reward_supply.mjs",
     "generate:economy-foundation-db-migration": "node scripts/generate_economy_foundation_db_migration.mjs",
