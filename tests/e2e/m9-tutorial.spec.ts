@@ -163,8 +163,8 @@ async function revealTutorialTenPull(page: import("@playwright/test").Page, capt
       await expect(reveal).toHaveAttribute("data-presentation-state", "STANDARD_REVEAL");
     }
     await expect(reveal.locator(".character-presentation-attribute-badge")).toBeVisible();
-    await assertRevealParameters();
     await expect(reveal).toHaveAttribute("data-can-advance", "true", { timeout: 3_000 });
+    await assertRevealParameters();
     if (index === 9) finalCharacterId = await reveal.getAttribute("data-character-id");
     if (captureVisuals && index === 9) {
       await page.screenshot({ path: test.info().outputPath("G4-rarity-SSR.png") });
