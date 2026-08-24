@@ -140,6 +140,8 @@ try {
   await page.getByRole("button", { name: "編成へ進む" }).click();
   await page.screenshot({ path: path.join(artifactsDirectory, "preview-formation-owned.png"), fullPage: true });
   await (await visible(".char-party-auto-btn", 20_000)).click();
+  const formationCompletion = await visible('[data-acceptance-state="AUTO_FORMATION_COMPLETE"]', 20_000);
+  await formationCompletion.getByRole("button", { name: "OK" }).click();
   await visible('[data-acceptance-state="Q1"]', 30_000);
   await snapshotAcquisitionState("RECOMMENDED_FORMATION");
   await page.screenshot({ path: path.join(artifactsDirectory, "preview-formation-skill.png"), fullPage: true });
