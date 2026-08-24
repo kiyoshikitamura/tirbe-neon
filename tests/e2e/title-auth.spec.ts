@@ -154,11 +154,22 @@ test("name-only initialization rejects a normalized duplicate username", async (
   await page.getByRole("button", { name: "はじめから" }).click();
   await enterNameRegistration(page);
   await page.getByPlaceholder("プレイヤー名を入力").fill(" neon ");
+  await page.setViewportSize({ width: 390, height: 844 });
+  const beforeErrorHeight = await page.evaluate(() => document.documentElement.scrollHeight);
   await page.getByRole("button", { name: "この名前で始める" }).click();
 
   await expect(page.getByText("このユーザー名は既に使用されています。")).toBeVisible();
   await expect(page.locator('[data-entry-state="NAME_INPUT"]')).toBeVisible();
   await expect(page.getByPlaceholder("プレイヤー名を入力")).toHaveValue(" neon ");
+  const errorGeometry = await page.getByRole("alertdialog", { name: "エラー" }).evaluate((modal) => {
+    const rect = modal.getBoundingClientRect();
+    return {
+      centerDelta: Math.abs((rect.top + rect.height / 2) - window.innerHeight / 2),
+      documentHeight: document.documentElement.scrollHeight,
+    };
+  });
+  expect(errorGeometry.centerDelta).toBeLessThan(2);
+  expect(errorGeometry.documentHeight).toBe(beforeErrorHeight);
   await page.getByRole("button", { name: "閉じる" }).click();
   await page.getByPlaceholder("プレイヤー名を入力").fill("NEON2");
   await page.getByRole("button", { name: "この名前で始める" }).click();

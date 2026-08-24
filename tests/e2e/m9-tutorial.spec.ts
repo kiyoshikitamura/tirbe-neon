@@ -696,6 +696,9 @@ test("first quest connects dispatch, official battle, and one reward to the comp
   await expect(page.getByRole("button", { name: /すぐに時短する/ })).toBeVisible();
   test.info().annotations.push({ type: "quest-start-ms", description: String(Date.now() - questStartedAt) });
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem("mock_db_user_patrols") || "[]").length)).toBe(1);
+  const dispatchRequests = await page.evaluate(() => ((window as any).__TRIBE_TUTORIAL_JOURNEY_TRACE__ || [])
+    .filter((entry: any) => entry.phase === "dispatch_request").length);
+  expect(dispatchRequests).toBe(1);
 
   await page.reload();
   await expect(page.locator('[data-acceptance-state="Q3"]')).toBeVisible();
@@ -731,6 +734,10 @@ test("first quest connects dispatch, official battle, and one reward to the comp
   await expect(page.locator('[data-acceptance-state="B1"]')).toBeVisible();
   await expect(page.locator(".tutorial-battle-party-icons .character-presentation-battle-party")).toHaveCount(1);
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem("mock_db_battle_replay_sessions") || "[]").length)).toBe(1);
+
+  // C3-R5's focused verification intentionally stops at the authoritative
+  // Battle Start boundary. The default CI journey remains unchanged.
+  if (process.env.C3R5_STOP_AT_BATTLE_START === "1") return;
 
   for (const width of [375, 390, 430]) {
     await page.setViewportSize({ width, height: 844 });

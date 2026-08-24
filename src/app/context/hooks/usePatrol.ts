@@ -64,6 +64,28 @@ export function usePatrol(
     setDispatchLoading(false);
   };
 
+  const recoverCommittedTutorialDispatch = async (courseId: string, characterId: string, ownedCharacterId: string | null) => {
+    const { data: resumedStep, error: resumeError } = await supabase.rpc("advance_tutorial_progress", {
+      p_expected_step: "DISPATCH",
+      p_next_step: "FREE_INSTANT"
+    });
+    if (resumeError || resumedStep !== "FREE_INSTANT") return false;
+    invalidatePatrolBootstrap();
+    setTutorialStep("FREE_INSTANT");
+    traceTutorialJourney("dispatch_recovered", {
+      userId: session.user.id,
+      tutorialStepBefore: "DISPATCH",
+      tutorialStepAfter: "FREE_INSTANT",
+      questId: courseId,
+      dispatchedCharacterId: characterId,
+      dispatchedUserCharacterId: ownedCharacterId,
+    });
+    void syncBootstrapData(session.user.id).catch((bootstrapError) => {
+      console.warn("Tutorial dispatch recovery refresh failed:", bootstrapError);
+    });
+    return true;
+  };
+
   const handleStartPatrol = async () => {
     if (!session || !selectedCourse) return;
     const course = patrolCourses.find(c => c.id === selectedCourse);
@@ -83,15 +105,21 @@ export function usePatrol(
       return;
     }
 
-    if (activePatrols.some(p => p.characterId === selectedPatrolMember && p.status !== "COMPLETED")) {
-      setErrorMessage("このキャラクターはすでに出撃中です。");
-      return;
-    }
-
-    if (!beginMutation()) return false;
     const selectedOwnedCharacterId = getUserCharactersDbList().find(
       (ownedCharacter) => ownedCharacter.character_id === selectedPatrolMember
     )?.id ?? null;
+    if (activePatrols.some(p => p.characterId === selectedPatrolMember && p.status !== "COMPLETED")) {
+      if (!beginMutation()) return false;
+      try {
+        if (await recoverCommittedTutorialDispatch(course.id, selectedPatrolMember, selectedOwnedCharacterId)) return true;
+        setErrorMessage("このキャラクターはすでに出撃中です。");
+        return false;
+      } finally {
+        endMutation();
+      }
+    }
+
+    if (!beginMutation()) return false;
     const actionPerformance = beginActionPerformance("quest_start");
     playCyberSe("QUEST_START");
     try {
@@ -111,7 +139,23 @@ export function usePatrol(
         p_character_id: selectedPatrolMember,
       });
 
-      if (res.error) throw res.error;
+      if (res.error) {
+        const duplicateDispatch = res.error.code === "23505"
+          || /already dispatched|already.*dispatch|出撃中/i.test(res.error.message || "");
+        if (duplicateDispatch) {
+          // start_patrol and the legacy tutorial-step transition are separate
+          // authoritative calls. If the patrol commit won a previous request
+          // but the client was interrupted before advancing the step, resume
+          // that patrol instead of issuing another start or trapping the user.
+          if (await recoverCommittedTutorialDispatch(course.id, selectedPatrolMember, selectedOwnedCharacterId)) {
+            actionPerformance.mark("response");
+            actionPerformance.mark("state_update");
+            actionPerformance.markVisualReady();
+            return true;
+          }
+        }
+        throw res.error;
+      }
       if (res.data?.error) throw new Error(res.data.error);
       actionPerformance.mark("response");
 

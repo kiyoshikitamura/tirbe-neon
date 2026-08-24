@@ -59,6 +59,17 @@
   box-shadow: 0 0 0 2px rgba(0, 240, 255, .13);
 }
 
+/* Setup children normally participate in the cinematic layout. Error UI is
+   the exception: keep the current name screen intact beneath a centered,
+   non-scrolling overlay. */
+.setup-container > .setup-error-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  width: auto;
+  height: auto;
+}
+
 .setup-box label { font-size: var(--ui-font-body); line-height: 1.5; }
 
 .setup-primary-action {

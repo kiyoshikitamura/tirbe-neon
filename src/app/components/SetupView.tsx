@@ -117,7 +117,7 @@ export default function SetupView() {
         </div>
       )}
 
-      {errorMessage && <div className="modal-overlay" role="presentation"><div className="modal-card border-danger" role="alertdialog" aria-modal="true" aria-labelledby="setup-error-title"><div id="setup-error-title" className="modal-title text-color-danger">エラー</div><div className="modal-desc">{userFacingErrorMessage(errorMessage)}</div><button className="semantic-cta semantic-cta--danger" onClick={()=>setErrorMessage(null)}>閉じる</button></div></div>}
+      {errorMessage && <div className="modal-overlay setup-error-overlay" role="presentation"><div className="modal-card border-danger" role="alertdialog" aria-modal="true" aria-labelledby="setup-error-title"><div id="setup-error-title" className="modal-title text-color-danger">エラー</div><div className="modal-desc">{userFacingErrorMessage(errorMessage)}</div><button className="semantic-cta semantic-cta--danger" onClick={()=>setErrorMessage(null)}>閉じる</button></div></div>}
     </div>
   );
 }

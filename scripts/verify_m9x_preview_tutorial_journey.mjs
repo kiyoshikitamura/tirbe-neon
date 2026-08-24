@@ -66,7 +66,7 @@ page.on("console", (message) => {
 });
 page.on("response", (response) => {
   const requestUrl = new URL(response.url());
-  if (requestUrl.pathname.includes("/rpc/create_patrol_battle_replay") || requestUrl.pathname.includes("/functions/v1/resolve-battle")) {
+  if (requestUrl.pathname.includes("/rpc/start_patrol") || requestUrl.pathname.includes("/rpc/create_patrol_battle_replay") || requestUrl.pathname.includes("/functions/v1/resolve-battle")) {
     battleNetworkTrace.push({
       method: response.request().method(),
       pathname: requestUrl.pathname,
@@ -371,6 +371,10 @@ try {
   }
   const createResponses = battleNetworkTrace.filter((entry) => entry.pathname.includes("create_patrol_battle_replay"));
   const resolveResponses = battleNetworkTrace.filter((entry) => entry.pathname.includes("resolve-battle"));
+  const dispatchResponses = battleNetworkTrace.filter((entry) => entry.pathname.includes("/rpc/start_patrol"));
+  if (dispatchResponses.length !== 1 || dispatchResponses[0]?.status >= 400) {
+    throw new Error(`Fresh tutorial dispatch RPC count drifted: ${JSON.stringify(dispatchResponses)}`);
+  }
   if (process.env.M9X_PROBE_CONCURRENT_CREATE !== "1" && (createResponses.length !== 1 || resolveResponses.length !== 1)) {
     throw new Error(`Battle start handler was re-entered: ${JSON.stringify({ createResponses, resolveResponses })}`);
   }
@@ -422,7 +426,7 @@ try {
     battleNetworkTrace,
     starterSkill: { skillId: starterSkills[0].skill_card_id, plusValue: starterSkills[0].plus_val, slotIndex: starterSkills[0].slot_index },
     replayContract: { basicActionIndex, skillActionIndex, skillImpactIndex, winner: replay.result.winner },
-    battleResolveContract: { patrol: finalPatrol, replay: canonicalReplay, createResponseCount: createResponses.length, resolveResponseCount: resolveResponses.length },
+    battleResolveContract: { patrol: finalPatrol, replay: canonicalReplay, dispatchResponseCount: dispatchResponses.length, createResponseCount: createResponses.length, resolveResponseCount: resolveResponses.length },
     acquisitionAudit,
     guaranteedTutorialSsr: guaranteedResult.character_id,
     enemyPresentationActions,
