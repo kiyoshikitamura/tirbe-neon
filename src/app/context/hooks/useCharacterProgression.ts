@@ -137,8 +137,8 @@ export function useCharacterProgression(
         message: createElement("div", { className: "growth-result-v0", "data-growth-result": "level-up" },
           createElement("span", null, "CHARACTER GROWTH"),
           createElement("strong", null, characterName),
-          createElement("p", null, `Lv.${previousLevel} → Lv.${newLevel}`),
-          createElement("small", null, `総合力 ${powerBefore.toLocaleString()} → ${powerAfter.toLocaleString()}（+${Math.max(0, powerAfter - powerBefore).toLocaleString()}）`),
+          createElement("p", { className: "growth-result-level" }, `Lv.${previousLevel} → Lv.${newLevel}`),
+          createElement("small", { className: "growth-result-power" }, `総合力 ${powerBefore.toLocaleString()} → ${powerAfter.toLocaleString()}（+${Math.max(0, powerAfter - powerBefore).toLocaleString()}）`),
         ),
         onConfirm: () => setConfirmDialogConfig(null),
         onCancel: () => setConfirmDialogConfig(null)

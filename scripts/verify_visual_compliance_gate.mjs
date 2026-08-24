@@ -4,7 +4,8 @@ import { QA_PRESENTATION_SCENARIOS, VISUAL_COMPLIANCE_GATE, isQaHarnessAvailable
 
 const requiredScenarios = [
   "world-introduction", "name-input-error", "gacha-page", "gacha-standard-reveal", "gacha-ssr-reveal",
-  "skill-tutorial", "growth-before", "growth-result", "formation", "quest-encounter", "battle-5v3",
+  "skill-tutorial", "growth-before", "growth-result", "formation", "auto-formation", "quest-encounter",
+  "quest-normal-battle", "quest-instant-battle", "battle-5v3",
   "battle-5v5", "battle-2x", "battle-ssr-skill", "battle-result-win", "battle-result-lose", "first-home",
 ];
 assert.deepEqual(QA_PRESENTATION_SCENARIOS.map(([id]) => id), requiredScenarios, "QA launcher scenario contract drifted");

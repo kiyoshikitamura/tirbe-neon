@@ -34,6 +34,7 @@ export default function PatrolTab() {
     handleStartPatrol,
     dispatchLoading,
     handleInstantComplete,
+    transitionTutorialQuestToBattle,
     handleClaimRewards,
     dailyCashSkips,
     dailyPaidSkips,
@@ -102,8 +103,22 @@ export default function PatrolTab() {
   }, [tutorialStep]);
 
   React.useEffect(() => {
-    if (tutorialStep === "TUTORIAL_BATTLE" && battleState === null) setTutorialEncounterPresentation("RETURN");
+    if (tutorialStep === "TUTORIAL_BATTLE" && battleState === null) {
+      setTutorialEncounterReady(false);
+      setTutorialEncounterPresentation("RETURN");
+    }
   }, [battleState, tutorialStep]);
+
+  React.useEffect(() => {
+    if (tutorialStep !== "FREE_INSTANT") return;
+    const naturallyCompletedPatrol = activePatrols.find((patrol: any) =>
+      patrol.status === "CLAIMABLE"
+      && patrol.has_battle_event
+      && !patrol.battle_resolved
+    );
+    if (!naturallyCompletedPatrol) return;
+    void transitionTutorialQuestToBattle(naturallyCompletedPatrol.id);
+  }, [activePatrols, transitionTutorialQuestToBattle, tutorialStep]);
 
   React.useEffect(() => {
     if (tutorialEncounterPresentation !== "ENCOUNTER") return;

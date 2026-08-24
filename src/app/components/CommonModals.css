@@ -148,6 +148,11 @@
 .tutorial-ssr-quote h3 { margin:5px 0 2px; color:#fff; font-size:30px; letter-spacing:.08em; text-indent:.08em; }
 .tutorial-ssr-quote blockquote { width:100%; max-width:310px; margin:8px 0 18px; padding:18px 13px; border-block:1px solid rgba(242,201,95,.45); color:#fff8d4; font-size:15px; font-weight:800; line-height:1.8; text-wrap:balance; }
 .tutorial-ssr-quote small { color:rgba(255,255,255,.66); font-size:9px; font-weight:800; letter-spacing:.16em; }
+.tutorial-ssr-quote .tutorial-typewriter { display:block; min-height:5.4em; }
+.tutorial-ssr-flash { position:absolute; z-index:8; inset:0; display:grid; place-items:center; overflow:hidden; background:#000; }
+.tutorial-ssr-flash::before,.tutorial-ssr-flash::after { position:absolute; content:""; }
+.tutorial-ssr-flash::before { width:14vmax; height:14vmax; border-radius:50%; background:#fffbe1; box-shadow:0 0 44px #fff,0 0 110px rgba(242,201,95,.94); animation:tutorial-ssr-screen-flash .42s ease-out both; }
+.tutorial-ssr-flash::after { inset:-40%; background:conic-gradient(from 10deg,transparent,rgba(255,255,255,.9),transparent 9%,rgba(242,201,95,.48),transparent 22%); animation:tutorial-ssr-light-turn .42s ease-out both; }
 .tutorial-gacha-reveal.is-ssr-reveal::after { position: absolute; inset: -30%; z-index: 2; content: ""; pointer-events: none; background: conic-gradient(from 0deg, transparent, rgba(255,242,170,.34), transparent 18%, rgba(0,240,255,.2), transparent 38%); animation: tutorial-ssr-burst .72s ease-out both; }
 .tutorial-gacha-reveal.is-ssr-reveal .character-presentation { z-index: 3; animation: tutorial-ssr-character-in .48s cubic-bezier(.2,.85,.25,1) both; }
 .tutorial-gacha-reveal.is-ssr-reveal .tutorial-gacha-reveal-copy { animation: tutorial-ssr-copy-in .34s .18s ease-out both; }
@@ -157,6 +162,8 @@
 @keyframes tutorial-ssr-burst { from { opacity: 1; transform: rotate(0) scale(.25); } to { opacity: 0; transform: rotate(34deg) scale(1); } }
 @keyframes tutorial-ssr-character-in { from { opacity: 0; transform: translateY(24px) scale(.92); filter: brightness(3); } to { opacity: 1; transform: translateY(0) scale(1); filter: brightness(1); } }
 @keyframes tutorial-ssr-copy-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes tutorial-ssr-screen-flash { 0%{opacity:0;transform:scale(.08)} 48%{opacity:1} 100%{opacity:0;transform:scale(4.2)} }
+@keyframes tutorial-ssr-light-turn { from{opacity:0;transform:rotate(-18deg) scale(.4)} 45%{opacity:1} to{opacity:0;transform:rotate(18deg) scale(1.1)} }
 @keyframes tutorial-reveal-enter { from { opacity:0; transform:translateY(10px); filter:brightness(1.7); } to { opacity:1; transform:translateY(0); filter:brightness(1); } }
 @keyframes tutorial-reveal-light { from { opacity:.9; transform:translateX(-42%); } to { opacity:0; transform:translateX(42%); } }
 
@@ -189,6 +196,7 @@
 @keyframes gacha-result-ssr-sweep{to{filter:drop-shadow(0 0 13px rgba(242,201,95,.96)) brightness(1.2)}}
 @keyframes gacha-result-ssr-glint{0%,72%{left:-58%;opacity:0}76%{opacity:.82}88%{left:126%;opacity:.62}92%,100%{left:126%;opacity:0}}
 @media(prefers-reduced-motion:reduce){.gacha-result-card.rarity-ssr::before{display:none}.gacha-result-card.rarity-ssr{box-shadow:0 0 16px rgba(242,201,95,.42)}}
+@media(prefers-reduced-motion:reduce){.tutorial-ssr-flash::before,.tutorial-ssr-flash::after{animation:none}}
 
 /* ===== 詳細プロフィール・紹介ポップアップ (Matte Outlaw UI) ===== */
 

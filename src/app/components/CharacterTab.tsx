@@ -104,6 +104,8 @@ export default function CharacterTab() {
   const [tutorialGrowthPending, setTutorialGrowthPending] = useState(false);
   const [skillDisplayById, setSkillDisplayById] = useState<Record<string, any>>({});
   const formationSubmittingRef = useRef(false);
+  const tutorialFormationContinueRef = useRef<(() => void) | null>(null);
+  const tutorialFormationContinueRequestedRef = useRef(false);
   const tutorialGrowthPreparedRef = useRef(false);
   const isTutorialStep = onboardingState?.tutorial_step === "AUTO_FORMATION";
   const isTutorialFormation = isTutorialStep && formationEditMode;
@@ -436,8 +438,10 @@ export default function CharacterTab() {
                       if (resultDialog) {
                         setConfirmDialogConfig({
                           ...resultDialog,
+                          kind: "result",
                           cancelText: "",
                           confirmText: "編成へ進む",
+                          confirmVariant: "primary",
                           onConfirm: () => {
                             setConfirmDialogConfig(null);
                             setTutorialLearningPhase("FORMATION");
@@ -665,20 +669,26 @@ export default function CharacterTab() {
                 );
               })}
             </div>
-            <button
+            {!tutorialFormationPreviewReady && <button
               className="char-party-auto-btn semantic-cta semantic-cta--primary active-scale-effect"
               disabled={formationSubmitting}
               aria-busy={formationSubmitting}
               onClick={() => void (async () => {
                 if (formationSubmittingRef.current) return;
                 formationSubmittingRef.current = true;
+                tutorialFormationContinueRequestedRef.current = false;
                 setFormationSubmitting(true);
                 try {
                   const completed = await handleAutoFormation({
                     navigateAfter: false,
                     presentationDelayMs: isTutorialFormation ? 900 : 0,
                     onPreviewReady: isTutorialFormation ? () => setTutorialFormationPreviewReady(true) : undefined,
-                    waitForTutorialContinue: undefined,
+                    waitForTutorialContinue: isTutorialFormation ? () => {
+                      if (tutorialFormationContinueRequestedRef.current) return Promise.resolve();
+                      return new Promise<void>((resolve) => {
+                        tutorialFormationContinueRef.current = resolve;
+                      });
+                    } : undefined,
                   });
                   if (completed) playCyberSe("FORMATION_CONFIRM");
                   if (completed && onboardingState?.tutorial_step === "AUTO_FORMATION") {
@@ -692,7 +702,18 @@ export default function CharacterTab() {
               })()}
             >
               {tutorialFormationPreviewReady ? "編成完了" : formationSubmitting ? "編成中..." : isTutorialFormation ? "おすすめ編成にする" : "戦力順でおまかせ編成"}
-            </button>
+            </button>}
+            {tutorialFormationPreviewReady && <div className="tutorial-formation-complete" role="status" data-acceptance-state="AUTO_FORMATION_COMPLETE">
+              <span>FORMATION COMPLETE</span>
+              <strong>編成しました</strong>
+              <p>5人のメンバーと推奨スキルを保存しました。</p>
+              <button className="semantic-cta semantic-cta--primary tutorial-primary-target" onClick={() => {
+                tutorialFormationContinueRequestedRef.current = true;
+                const continueTutorial = tutorialFormationContinueRef.current;
+                tutorialFormationContinueRef.current = null;
+                continueTutorial?.();
+              }}>OK</button>
+            </div>}
           </section>
         </div>
       )}

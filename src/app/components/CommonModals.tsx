@@ -15,6 +15,7 @@ import { getCharacterLocationBackground } from "@/utils/characterVisualAssets";
 import "./CommonModals.css";
 import { userFacingErrorMessage } from "../lib/userFacingError";
 import { resolveSsrGachaQuote } from "@/domain/presentation/ssrGachaQuotes";
+import TypewriterText from "./tutorial/TypewriterText";
 
 function gachaLocationBackground(result: any): string {
   const master = CHARACTERS_MASTER.find((character: any) => character.id === result?.characterId);
@@ -57,7 +58,7 @@ export default function CommonModals() {
   } = useGame();
   const announcedScoutResultRef = useRef<any[] | null>(null);
   const [tutorialRevealIndex, setTutorialRevealIndex] = React.useState(0);
-  const [tutorialSsrStage, setTutorialSsrStage] = React.useState<"STANDARD" | "QUOTE" | "REVEAL">("STANDARD");
+  const [tutorialSsrStage, setTutorialSsrStage] = React.useState<"STANDARD" | "QUOTE" | "FLASH" | "REVEAL">("STANDARD");
   const [tutorialRevealAdvancing, setTutorialRevealAdvancing] = React.useState(false);
   const [tutorialRevealCanAdvance, setTutorialRevealCanAdvance] = React.useState(false);
   const [tutorialPullStarted, setTutorialPullStarted] = React.useState(false);
@@ -116,14 +117,17 @@ export default function CommonModals() {
   useEffect(() => {
     if (!isCharacterReveal || scoutAnimationState !== "SHOW_RESULTS") return;
     setTutorialRevealCanAdvance(false);
-    if (tutorialSsrStage === "QUOTE") {
-      setTutorialRevealCanAdvance(true);
-      return;
-    }
+    if (tutorialSsrStage === "QUOTE" || tutorialSsrStage === "FLASH") return;
     const dwellMs = tutorialRevealRarity === "SSR" ? 900 : tutorialRevealRarity === "SR" ? 1600 : tutorialRevealRarity === "R" ? 1100 : 650;
     const timer = window.setTimeout(() => setTutorialRevealCanAdvance(true), dwellMs);
     return () => window.clearTimeout(timer);
   }, [isCharacterReveal, scoutAnimationState, tutorialRevealIndex, tutorialRevealRarity, tutorialSsrStage]);
+
+  useEffect(() => {
+    if (tutorialSsrStage !== "FLASH") return;
+    const timer = window.setTimeout(() => setTutorialSsrStage("REVEAL"), 420);
+    return () => window.clearTimeout(timer);
+  }, [tutorialSsrStage]);
 
   const compactGachaOutcome = (result: any) => {
     const outcome = String(result.convertReward || "");
@@ -253,14 +257,15 @@ export default function CommonModals() {
           ) : isCharacterReveal && tutorialRevealIndex < scoutResults.length ? (
             <button
               type="button"
-              className={`tutorial-gacha-reveal rarity-${String(tutorialRevealResult?.rarity || "N").toLowerCase()} ${tutorialRevealResult?.convertReward === "新規獲得" ? "acquisition-new" : "acquisition-duplicate"} ${tutorialRevealAdvancing ? "is-advancing" : ""} ${tutorialRevealIndex === 9 ? "is-guaranteed" : ""} ${tutorialSsrStage === "QUOTE" ? "is-ssr-quote" : ""} ${tutorialSsrStage === "REVEAL" ? "is-ssr-reveal" : ""}`}
+              className={`tutorial-gacha-reveal rarity-${String(tutorialRevealResult?.rarity || "N").toLowerCase()} ${tutorialRevealResult?.convertReward === "新規獲得" ? "acquisition-new" : "acquisition-duplicate"} ${tutorialRevealAdvancing ? "is-advancing" : ""} ${tutorialRevealIndex === 9 ? "is-guaranteed" : ""} ${tutorialSsrStage === "QUOTE" ? "is-ssr-quote" : ""} ${tutorialSsrStage === "FLASH" ? "is-ssr-flash" : ""} ${tutorialSsrStage === "REVEAL" ? "is-ssr-reveal" : ""}`}
               onClick={() => {
                 if (tutorialRevealAdvanceRef.current || !tutorialRevealCanAdvance) return;
                 if (tutorialSsrStage === "QUOTE") {
                   playSe("GACHA_SSR");
-                  setTutorialSsrStage("REVEAL");
+                  setTutorialSsrStage("FLASH");
                   return;
                 }
+                if (tutorialSsrStage === "FLASH") return;
                 tutorialRevealAdvanceRef.current = true;
                 setTutorialRevealAdvancing(true);
                 playCyberSe("click");
@@ -274,18 +279,18 @@ export default function CommonModals() {
               aria-disabled={!tutorialRevealCanAdvance}
               aria-busy={tutorialRevealAdvancing}
               data-can-advance={tutorialRevealCanAdvance}
-              aria-label={tutorialSsrStage === "QUOTE" ? "SSRの特別紹介を確認" : `${tutorialRevealIndex + 1}人目を確認`}
-              data-character-id={tutorialSsrStage === "QUOTE" ? undefined : tutorialRevealResult?.characterId || undefined}
+              aria-label={tutorialSsrStage === "QUOTE" || tutorialSsrStage === "FLASH" ? "特別紹介を確認" : `${tutorialRevealIndex + 1}人目を確認`}
+              data-character-id={tutorialSsrStage === "QUOTE" || tutorialSsrStage === "FLASH" ? undefined : tutorialRevealResult?.characterId || undefined}
               data-presentation-state={tutorialRevealRarity === "SSR" ? `SSR_${tutorialSsrStage}` : "STANDARD_REVEAL"}
             >
               <span className="tutorial-gacha-count">{tutorialRevealIndex + 1} / {scoutResults.length}</span>
               {tutorialSsrStage === "QUOTE" ? (
                 <div className="tutorial-ssr-quote" role="status">
-                  <span>SSR SPECIAL INTRODUCTION</span>
-                  <strong>SSR</strong>
-                  <blockquote>{tutorialRevealQuote}</blockquote>
-                  <small>TAP TO CONTINUE</small>
+                  <blockquote><TypewriterText text={tutorialRevealQuote || ""} speedMs={38} onComplete={() => setTutorialRevealCanAdvance(true)} /></blockquote>
+                  <small>{tutorialRevealCanAdvance ? "TAP" : "…"}</small>
                 </div>
+              ) : tutorialSsrStage === "FLASH" ? (
+                <div className="tutorial-ssr-flash" role="status" aria-label="キャラクター登場演出中"><i /></div>
               ) : (
                 <div key={`${tutorialRevealIndex}-${tutorialRevealResult?.name || "character"}`} className="tutorial-gacha-reveal-body">
                   {tutorialRevealResult?.imageUrl && <CharacterPresentation src={tutorialRevealResult.imageUrl} alt={tutorialRevealResult.name} variant="reveal" rarity={tutorialRevealResult.rarity} attribute={tutorialRevealResult.attributeKey} backgroundSrc={gachaLocationBackground(tutorialRevealResult)} frameKind="reveal" rarityBadge attributeBadge />}

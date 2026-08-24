@@ -38,6 +38,7 @@ export function useAuth(
   const [giftCode, setGiftCode] = useState<string | null>(null);
   const [setupLoading, setSetupLoading] = useState<boolean>(false);
   const authActionRef = useRef(false);
+  const initializeRequestOwnerRef = useRef(0);
   const beginAuthAction = () => {
     if (authActionRef.current) return false;
     authActionRef.current = true;
@@ -204,6 +205,7 @@ export function useAuth(
   };
 
   const handleInitializeUser = async () => {
+    setErrorMessage(null);
     if (!setupUsername.trim()) {
       setErrorMessage("ユーザー名を入力してください。");
       return;
@@ -213,6 +215,9 @@ export function useAuth(
       return;
     }
     if (!beginAuthAction()) return;
+    const requestOwner = initializeRequestOwnerRef.current + 1;
+    initializeRequestOwnerRef.current = requestOwner;
+    const ownsRequest = () => initializeRequestOwnerRef.current === requestOwner;
     const actionPerformance = beginActionPerformance("game_initialization");
     try {
       actionPerformance.mark("request_start");
@@ -221,6 +226,7 @@ export function useAuth(
         p_invite_code: setupGiftCode.trim() || null
       });
 
+      if (!ownsRequest()) return;
       if (error) {
         setErrorMessage(error.code === "23505" || error.message?.includes("already in use")
           ? "このユーザー名は既に使用されています。"
@@ -231,6 +237,7 @@ export function useAuth(
       if (data?.status !== "success" && data?.status !== "already_initialized") {
         throw new Error("Unexpected initialization response");
       }
+      setErrorMessage(null);
       actionPerformance.mark("response");
       const tutorialStep = typeof data?.tutorial_step === "string" ? data.tutorial_step : "WORLD_INTRO";
       // The successful initialization response is authoritative. Project the
@@ -253,9 +260,9 @@ export function useAuth(
       actionPerformance.markVisualReady();
     } catch (err: any) {
       console.warn(err);
-      setErrorMessage("初期化に失敗しました。");
+      if (ownsRequest()) setErrorMessage("初期化に失敗しました。");
     } finally {
-      endAuthAction();
+      if (ownsRequest()) endAuthAction();
     }
   };
 

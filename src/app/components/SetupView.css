@@ -147,12 +147,12 @@
 .setup-world-presentation.is-stage-4 .setup-world-emblem{opacity:.32;filter:drop-shadow(0 0 34px rgba(0,240,255,.48));animation:world-logo-finale 1.25s cubic-bezier(.16,.8,.2,1) both}
 .setup-world-presentation.is-stage-4 .setup-world-copy{animation:world-copy-finale .72s cubic-bezier(.16,.8,.2,1) both}
 .setup-world-emblem{animation:world-emblem-reveal 2.4s ease-out both}
-@keyframes world-camera-drift{from{transform:scale(1.02) translate3d(-1.5%,1%,0)}to{transform:scale(1.09) translate3d(1.5%,-1%,0)}}
-@keyframes world-camera-stage-1{from{transform:scale(1.03) translate3d(-5%,2%,0)}to{transform:scale(1.17) translate3d(3%,-2%,0)}}
-@keyframes world-camera-stage-2{from{transform:scale(1.17) translate3d(5%,-2%,0)}to{transform:scale(1.05) translate3d(-4%,2%,0)}}
-@keyframes world-camera-stage-3{from{transform:scale(1.05) translate3d(-4%,-2%,0)}to{transform:scale(1.18) translate3d(4%,2%,0)}}
+@keyframes world-camera-drift{from{transform:scale(1.035);filter:brightness(.84) saturate(.9)}to{transform:scale(1.075);filter:brightness(1) saturate(1.08)}}
+@keyframes world-camera-stage-1{from{transform:scale(1.035);filter:brightness(.72) saturate(.82)}to{transform:scale(1.085);filter:brightness(.96) saturate(1.05)}}
+@keyframes world-camera-stage-2{from{transform:scale(1.055);filter:brightness(.8) saturate(.9)}to{transform:scale(1.095);filter:brightness(1.04) saturate(1.1)}}
+@keyframes world-camera-stage-3{from{transform:scale(1.045);filter:brightness(.76) saturate(.86)}to{transform:scale(1.09);filter:brightness(1) saturate(1.06)}}
 @keyframes world-camera-stage-4{from{transform:scale(1.2);filter:brightness(.52) saturate(.68) blur(2px)}to{transform:scale(1.03);filter:brightness(1) saturate(1.08) blur(0)}}
-@keyframes world-background-push{from{transform:scale(1.02) translate3d(-2%,1%,0)}to{transform:scale(1.15) translate3d(2%,-1%,0)}}
+@keyframes world-background-push{from{transform:scale(1.04);filter:brightness(.82)}50%{filter:brightness(1.02)}to{transform:scale(1.09);filter:brightness(.9)}}
 @keyframes world-scene-sweep{0%{opacity:0;transform:translateX(-70%)}32%{opacity:1}100%{opacity:0;transform:translateX(70%)}}
 @keyframes world-reflection-pass{0%,100%{opacity:0;transform:translateX(-35%)}45%{opacity:.55}70%{opacity:0;transform:translateX(35%)}}
 @keyframes world-brand-reveal{from{opacity:0;transform:translateY(-8px);letter-spacing:.5em}to{opacity:1;transform:none}}

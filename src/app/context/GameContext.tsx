@@ -411,6 +411,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     dispatchLoading, setDispatchLoading,
     handleStartPatrol,
     handleInstantComplete,
+    transitionTutorialQuestToBattle,
     handleClaimRewards
   } = patrol;
 
@@ -3527,12 +3528,15 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
           setSelectedLeader(String(tutorialFormation.leader_character_id));
         }
         setUpgradeSelectedCharId(committedParty[0]);
+        // Register the explicit-continuation owner before exposing the completion
+        // panel. Otherwise a fast tap during the presentation delay is lost.
+        const tutorialContinue = waitForTutorialContinue?.(tutorialFormation);
         onPreviewReady?.();
         if (presentationDelayMs > 0) {
           await new Promise(resolve => window.setTimeout(resolve, presentationDelayMs));
         }
-        if (waitForTutorialContinue) {
-          await waitForTutorialContinue(tutorialFormation);
+        if (tutorialContinue) {
+          await tutorialContinue;
         }
         setOnboardingState(current => current ? { ...current, tutorial_step: nextStep } : current);
         setActiveTab("patrol");
@@ -3916,6 +3920,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     guildXpActionMaster,
     handleStartPatrol,
     handleInstantComplete,
+    transitionTutorialQuestToBattle,
     handleClaimRewards,
     handleDeployGvgDefense,
     handleGvgDailyReset,

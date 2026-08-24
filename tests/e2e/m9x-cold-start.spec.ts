@@ -65,10 +65,12 @@ test("tutorial ten-pull guarantees slot 10 SSR and visible Growth precedes forma
   await expect(reveal).toHaveClass(/is-guaranteed/);
   await expect(reveal).toHaveAttribute("data-presentation-state", "SSR_QUOTE");
   await expect(reveal.locator(".tutorial-ssr-quote")).not.toContainText("レイジ");
+  await expect(reveal.locator(".tutorial-ssr-quote")).not.toContainText("SSR");
   await expect(reveal).not.toHaveAttribute("data-character-id", /.+/);
   await expect(reveal.locator(".tutorial-ssr-quote blockquote")).toHaveText("俺の前に立つなら、覚悟くらい決めてこい。");
   await page.screenshot({ path: test.info().outputPath("gacha-ssr-quote.png") });
   await reveal.click();
+  await expect(reveal).toHaveAttribute("data-presentation-state", "SSR_FLASH");
   await expect(reveal).toHaveAttribute("data-presentation-state", "SSR_REVEAL");
   await expect(reveal).toHaveAttribute("data-character-id", "char_reiji_01");
   await expect(reveal).toHaveAttribute("data-can-advance", "true");
@@ -116,6 +118,10 @@ test("tutorial ten-pull guarantees slot 10 SSR and visible Growth precedes forma
   await expect(formation).toBeVisible();
   await page.screenshot({ path: test.info().outputPath("formation-owned-roster.png"), fullPage: true });
   await formation.click();
+  const formationCompletion = page.locator('[data-acceptance-state="AUTO_FORMATION_COMPLETE"]');
+  await expect(formationCompletion).toContainText("編成しました");
+  await expect(page.locator('[data-acceptance-state="Q1"]')).toHaveCount(0);
+  await formationCompletion.getByRole("button", { name: "OK" }).click();
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem("mock_db_tutorial_progress") || "[]")[0]?.step_id)).toBe("DISPATCH");
   await expect(page.locator(".tutorial-character-step")).toHaveCount(0);
   await expect(page.locator(".patrol-container")).toBeVisible();

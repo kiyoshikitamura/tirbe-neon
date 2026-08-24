@@ -1,6 +1,6 @@
 export const QA_PRESENTATION_SCENARIOS = [
   ["world-introduction", "World Introduction"],
-  ["name-input-error", "Name Input / Error"],
+  ["name-input-error", "Name duplicate → retry"],
   ["gacha-page", "Gacha Page"],
   ["gacha-standard-reveal", "Gacha R/SR Reveal"],
   ["gacha-ssr-reveal", "Gacha SSR Quote → Reveal"],
@@ -8,7 +8,10 @@ export const QA_PRESENTATION_SCENARIOS = [
   ["growth-before", "Growth Before"],
   ["growth-result", "Growth Result"],
   ["formation", "Formation"],
+  ["auto-formation", "Auto Formation"],
   ["quest-encounter", "Quest Encounter"],
+  ["quest-normal-battle", "Quest normal → Battle"],
+  ["quest-instant-battle", "Quest instant → Battle"],
   ["battle-5v3", "Battle 5v3"],
   ["battle-5v5", "Battle 5v5"],
   ["battle-2x", "Battle 2x"],

@@ -159,6 +159,13 @@ test("name-only initialization rejects a normalized duplicate username", async (
   await expect(page.getByText("このユーザー名は既に使用されています。")).toBeVisible();
   await expect(page.locator('[data-entry-state="NAME_INPUT"]')).toBeVisible();
   await expect(page.getByPlaceholder("プレイヤー名を入力")).toHaveValue(" neon ");
+  await page.getByRole("button", { name: "閉じる" }).click();
+  await page.getByPlaceholder("プレイヤー名を入力").fill("NEON2");
+  await page.getByRole("button", { name: "この名前で始める" }).click();
+  await expect(page.getByRole("dialog", { name: "アゲハからの案内" })).toBeVisible();
+  await expect(page.getByText("このユーザー名は既に使用されています。")).toHaveCount(0);
+  await page.waitForTimeout(350);
+  await expect(page.getByText("このユーザー名は既に使用されています。")).toHaveCount(0);
 });
 
 test("tutorial gacha failure overlays the intact offer and remains retryable", async ({ page }) => {

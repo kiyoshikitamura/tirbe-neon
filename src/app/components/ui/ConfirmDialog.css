@@ -81,6 +81,7 @@
 
 @media (max-width: 412px) {
   .outlaw-confirm-overlay { align-items: flex-end; padding: 16px 12px calc(16px + env(safe-area-inset-bottom)); }
+  .outlaw-confirm-overlay:has(.kind-result) { align-items: center; }
   .outlaw-confirm-dialog { width: 100%; max-height: min(78dvh, 620px); overflow-y: auto; }
   .confirm-content-wrapper { padding: 24px 18px 18px; gap: 16px; }
   .confirm-actions { position: sticky; bottom: 0; }
