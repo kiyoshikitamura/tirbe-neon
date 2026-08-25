@@ -34,7 +34,10 @@ const artifactsDirectory = path.resolve("test-results", `m9x-${environment}-tuto
 await mkdir(artifactsDirectory, { recursive: true });
 
 const browser = await chromium.launch({ headless: true });
-const context = await browser.newContext({ ...devices["iPhone 13"] });
+const requestedViewport = process.env.M9X_PREVIEW_VIEWPORT === "desktop" ? "desktop" : "390";
+const context = await browser.newContext(requestedViewport === "desktop"
+  ? { viewport: { width: 1280, height: 900 } }
+  : { ...devices["iPhone 13"] });
 const page = await context.newPage();
 const pageErrors = [];
 const consoleErrors = [];
@@ -386,7 +389,8 @@ try {
     const unit = replayEvents.slice(index + 1);
     const nextActionOffset = unit.findIndex((candidate) => candidate.type === "ACTION");
     const bounded = nextActionOffset < 0 ? unit : unit.slice(0, nextActionOffset);
-    const impact = bounded.find((candidate) => ["DAMAGE", "HEAL", "STATUS"].includes(candidate.type));
+    const impact = bounded.find((candidate) => ["DAMAGE", "HEAL", "STATUS", "EFFECT"].includes(candidate.type)
+      && candidate.payload?.kind !== "ACTIVE_EFFECT_SYNC");
     return [{ actorId: String(event.payload?.actorId || ""), targetId: String(event.payload?.targetId || impact?.payload?.targetId || "") }];
   });
   const completedPresentationActions = [...(browserState.battlePresentation.history || []), browserState.battlePresentation.current]
@@ -401,8 +405,9 @@ try {
     })}`);
   }
   for (const presentation of enemyPresentationActions) {
-    const authoritative = authoritativeActions.find((action) => action.actorId === String(presentation.actorId) && action.targetId === String(presentation.targetId));
     const stageTargets = [presentation.targetFocusAtTargetId, presentation.impactAtTargetId, presentation.damageAtTargetId, presentation.hpSettledAtTargetId].filter(Boolean);
+    const presentedTargetId = String(presentation.targetId || stageTargets[0] || "");
+    const authoritative = authoritativeActions.find((action) => action.actorId === String(presentation.actorId) && action.targetId === presentedTargetId);
     if (!authoritative || stageTargets.some((target) => target !== authoritative.targetId)) {
       throw new Error(`Enemy presentation target drift: ${JSON.stringify({ presentation, authoritative, stageTargets })}`);
     }
@@ -413,6 +418,7 @@ try {
     previewUrl,
     projectRef: actualRef,
     environment,
+    viewport: requestedViewport,
     userId,
     uiOnly: true,
     directStateMutation: false,
