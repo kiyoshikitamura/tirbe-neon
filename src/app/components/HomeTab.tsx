@@ -300,34 +300,36 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
             拠点移動
           </button>
         </div>
-        {homeEventState !== "calm" && (
-          <button
-            className={`mypage-event-chip ${homeEventState} active-scale-effect`}
-            onClick={() => { navigateTab("raid"); playCyberSe("click"); }}
-          >
-            ⚠ レイド開催中
-          </button>
-        )}
+        <div className="mypage-secondary-hud">
+          {homeEventState !== "calm" && (
+            <button
+              className={`mypage-event-chip ${homeEventState} active-scale-effect`}
+              onClick={() => { navigateTab("raid"); playCyberSe("click"); }}
+            >
+              ⚠ レイド開催中
+            </button>
+          )}
 
-        {/* 総合力 表示パネル (最上段下中央・透過グレー) */}
-        <div
-          className="mypage-power-panel active-scale-effect"
-          role="button"
-          tabIndex={0}
-          aria-label="総合力ランキングを開く"
-          onClick={() => { navigateTab("ranking"); playCyberSe("click"); }}
-          onKeyDown={(event) => {
-            if (event.key === "Enter" || event.key === " ") {
-              navigateTab("ranking");
-              playCyberSe("click");
-            }
-          }}
-        >
-          <span className="mypage-power-label">総合力</span>
-          <span className={`mypage-power-val${totalPowerLoading ? " is-loading" : ""}`}>
-            {totalPowerLoading ? "—" : totalPower.toLocaleString()}
-          </span>
-          <span className="mypage-power-rank-link">RANK</span>
+          {/* 総合力 表示パネル (HUD 2段目右) */}
+          <div
+            className="mypage-power-panel active-scale-effect"
+            role="button"
+            tabIndex={0}
+            aria-label="総合力ランキングを開く"
+            onClick={() => { navigateTab("ranking"); playCyberSe("click"); }}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                navigateTab("ranking");
+                playCyberSe("click");
+              }
+            }}
+          >
+            <span className="mypage-power-label">総合力</span>
+            <span className={`mypage-power-val${totalPowerLoading ? " is-loading" : ""}`}>
+              {totalPowerLoading ? "—" : totalPower.toLocaleString()}
+            </span>
+            <span className="mypage-power-rank-link">RANK</span>
+          </div>
         </div>
 
         {/* 左側小アイコン群 (動的配列レンダリング) */}

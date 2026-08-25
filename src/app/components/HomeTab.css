@@ -6,8 +6,10 @@
 .mypage-view {
   display: flex;
   flex-direction: column;
+  justify-content: flex-start;
   width: 100%;
   height: 100%;
+  padding: 0;
   position: relative;
   overflow-x: hidden;
   overflow-y: auto;
@@ -73,7 +75,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 8px 12px;
+  padding: 5px 10px;
   background: linear-gradient(to bottom, rgba(0, 0, 0, 0.85), transparent);
   z-index: 10;
 }
@@ -134,12 +136,10 @@
 }
 
 .mypage-event-chip {
-  position: absolute;
-  top: 40px;
-  left: 12px;
+  position: relative;
   z-index: 13;
   border-radius: 12px;
-  padding: 4px 8px;
+  padding: 3px 7px;
   color: #fff;
   background: rgba(10, 12, 20, .9);
   font-size: 9px;
@@ -157,20 +157,36 @@
 
 /* 総合力 表示パネル (最上段下中央・透過グレー) */
 .mypage-power-panel {
-  position: absolute;
-  top: 40px;
-  right: 10px;
+  position: relative;
+  margin-left: auto;
   display: flex;
   align-items: center;
   gap: 4px;
   background: rgba(10, 14, 22, 0.62);
   border: 1px solid rgba(212, 175, 55, 0.35);
   border-radius: 20px;
-  padding: 3px 8px;
+  padding: 2px 7px;
   backdrop-filter: blur(6px);
   z-index: 12;
   box-shadow: 0 3px 10px rgba(0, 0, 0, 0.42);
   cursor: pointer;
+}
+
+.mypage-secondary-hud {
+  position: absolute;
+  top: 31px;
+  right: 10px;
+  left: 10px;
+  z-index: 13;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.mypage-secondary-hud > * {
+  pointer-events: auto;
 }
 
 .mypage-power-label {
@@ -213,8 +229,8 @@
 /* サブメニューアイコン (左右分散配置・上詰め圧縮) */
 .mypage-sub-icons-left {
   position: absolute;
-  top: 110px;
-  left: 8px;
+  top: 68px;
+  left: 6px;
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -223,8 +239,8 @@
 
 .mypage-sub-icons-right {
   position: absolute;
-  top: 110px;
-  right: 8px;
+  top: 68px;
+  right: 6px;
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -335,10 +351,50 @@
   z-index: 3;
   pointer-events: none;
 }
-.mypage-leader-layer.is-ssr::before { position:absolute;inset:14% -18% 0;content:"";border-radius:50%;background:radial-gradient(circle,rgba(255,218,92,.2),rgba(255,82,196,.07) 44%,transparent 70%);filter:blur(3px);animation:mypage-ssr-leader-glow 3.4s ease-in-out infinite; }
-@keyframes mypage-ssr-leader-glow { 0%,100%{opacity:.46;transform:scale(.96)} 50%{opacity:.86;transform:scale(1.04)} }
+.mypage-leader-layer.is-ssr::before {
+  position: absolute;
+  inset: 12% -20% 0;
+  z-index: 0;
+  content: "";
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 222, 109, .24), rgba(255, 82, 196, .07) 45%, transparent 70%);
+  filter: blur(4px);
+  animation: mypage-ssr-leader-glow 3.4s ease-in-out infinite;
+}
+
+.mypage-leader-layer.is-ssr::after {
+  position: absolute;
+  inset: 8% -8% 2%;
+  z-index: 3;
+  content: "";
+  opacity: .22;
+  background:
+    radial-gradient(circle at 24% 28%, rgba(255, 235, 151, .92) 0 1px, transparent 2px),
+    radial-gradient(circle at 76% 42%, rgba(255, 223, 104, .76) 0 1.5px, transparent 2.5px),
+    linear-gradient(108deg, transparent 34%, rgba(255, 237, 168, .32) 48%, transparent 61%);
+  background-size: 100% 100%, 100% 100%, 170% 100%;
+  background-position: center, center, 150% 0;
+  filter: drop-shadow(0 0 5px rgba(255, 218, 91, .5));
+  -webkit-mask-image: radial-gradient(ellipse at center, #000 24%, transparent 76%);
+  mask-image: radial-gradient(ellipse at center, #000 24%, transparent 76%);
+  pointer-events: none;
+  animation: mypage-ssr-leader-sweep 3.8s ease-in-out infinite;
+}
+
+@keyframes mypage-ssr-leader-glow {
+  0%, 100% { opacity: .44; transform: scale(.97); }
+  50% { opacity: .8; transform: scale(1.035); }
+}
+
+@keyframes mypage-ssr-leader-sweep {
+  0%, 18% { opacity: .12; background-position: center, center, 150% 0; }
+  50% { opacity: .34; }
+  82%, 100% { opacity: .14; background-position: center, center, -70% 0; }
+}
 
 .mypage-leader-img {
+  position: relative;
+  z-index: 2;
   height: 100%;
   max-height: 380px;
   object-fit: contain;
@@ -479,7 +535,21 @@
 .mypage-live-ticker-label { flex:0 0 auto;color:#00f0ff;font-family:var(--font-display);font-size:8px;font-weight:900;letter-spacing:.12em; }
 .mypage-live-ticker-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; font-size: 10px; font-weight: 700; }
 .mypage-live-ticker-arrow { color: #00f0ff; font-size: 17px; line-height: 1; }
-.mypage-live-ticker--visual { position:relative;z-index:12;flex:0 0 auto;width:auto;min-height:34px;margin:6px 12px 4px;background:rgba(4,10,18,.88);backdrop-filter:blur(6px); }
+.mypage-live-ticker--visual { position:relative;z-index:12;flex:0 0 auto;width:auto;min-height:32px;margin:2px 8px;background:rgba(4,10,18,.88);backdrop-filter:blur(6px); }
+
+@media (prefers-reduced-motion: reduce) {
+  .mypage-leader-layer.is-ssr::before {
+    opacity: .58;
+    transform: none;
+    animation: none;
+  }
+
+  .mypage-leader-layer.is-ssr::after {
+    opacity: .12;
+    background-position: center, center, center;
+    animation: none;
+  }
+}
 
 .circle-menu-btn {
   width: 72px;

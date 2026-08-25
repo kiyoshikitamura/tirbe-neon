@@ -11,7 +11,7 @@ async function openHomeScenario(page: Page, scenario: "first-home-fresh" | "firs
 }
 
 for (const viewport of viewports) {
-  test(`production First Home preserves the R2 hierarchy at ${viewport.width}x${viewport.height}`, async ({ page }) => {
+  test(`production First Home preserves the compact R3 hierarchy at ${viewport.width}x${viewport.height}`, async ({ page }) => {
     await page.setViewportSize(viewport);
     await openHomeScenario(page, "first-home-fresh");
 
@@ -36,13 +36,20 @@ for (const viewport of viewports) {
       const visual = box(".mypage-visual-area");
       const leader = box(".mypage-leader-layer");
       const ticker = box(".mypage-live-ticker--visual");
+      const view = document.querySelector<HTMLElement>(".mypage-view")!;
       const cta = box(".mypage-primary-cta");
       const banner = box(".mypage-event-banner-area");
       const footer = box(".footer-mobile");
       const shortcutWidth = Math.max(...[...document.querySelectorAll<HTMLElement>(".sub-icon-unit")].map((node) => node.getBoundingClientRect().width));
+      const leaderNode = document.querySelector<HTMLElement>(".mypage-leader-layer.is-ssr")!;
+      const leaderBefore = getComputedStyle(leaderNode, "::before");
+      const leaderAfter = getComputedStyle(leaderNode, "::after");
       return {
         leaderRatio: leader.height / visual.height,
         activityClearsCharacterVisual: ticker.bottom <= visual.top + 1,
+        activityToVisualGap: visual.top - ticker.bottom,
+        viewPaddingTop: parseFloat(getComputedStyle(view).paddingTop),
+        viewJustify: getComputedStyle(view).justifyContent,
         ctaHeight: cta.height,
         bannerStartsAboveFooter: banner.top < footer.top,
         shortcutWidth,
@@ -51,10 +58,17 @@ for (const viewport of viewports) {
         ctaWrap: getComputedStyle(document.querySelector<HTMLElement>(".mypage-primary-cta")!).flexWrap,
         bannerFilter: getComputedStyle(document.querySelector(".banner-bg-img")!).filter,
         townBackgroundPosition: getComputedStyle(document.querySelector(".mypage-visual-area")!).backgroundPosition,
+        ssrAuraAnimation: leaderBefore.animationName,
+        ssrSweepAnimation: leaderAfter.animationName,
+        leaderAnimation: getComputedStyle(leaderNode).animationName,
       };
     });
     expect(geometry.leaderRatio).toBeGreaterThanOrEqual(0.84);
     expect(geometry.activityClearsCharacterVisual).toBe(true);
+    expect(geometry.activityToVisualGap).toBeLessThanOrEqual(3);
+    expect(geometry.activityToVisualGap).toBeGreaterThanOrEqual(0);
+    expect(geometry.viewPaddingTop).toBe(0);
+    expect(geometry.viewJustify).toBe("flex-start");
     expect(geometry.shortcutWidth).toBeLessThanOrEqual(39);
     expect(geometry.ctaHeight).toBeLessThanOrEqual(54);
     expect(geometry.ctaDetailDisplay).toBe("none");
@@ -63,8 +77,11 @@ for (const viewport of viewports) {
     expect(geometry.horizontalOverflow).toBeLessThanOrEqual(1);
     expect(geometry.bannerFilter).toContain("brightness(1.24)");
     expect(geometry.townBackgroundPosition).toContain("56%");
+    expect(geometry.ssrAuraAnimation).toContain("mypage-ssr-leader-glow");
+    expect(geometry.ssrSweepAnimation).toContain("mypage-ssr-leader-sweep");
+    expect(geometry.leaderAnimation).toBe("none");
 
-    await page.screenshot({ path: `test-results/first-home-r2-${viewport.width}x${viewport.height}.png`, fullPage: false });
+    await page.screenshot({ path: `test-results/first-home-r3-${viewport.width}x${viewport.height}.png`, fullPage: false });
   });
 }
 
@@ -78,6 +95,30 @@ test("raid messaging only appears in the authoritative active-raid Home scenario
   await expect(page.locator(".mypage-event-chip.raid")).toBeVisible();
   await expect(page.locator(".banner-dots .dot")).toHaveCount(3);
   await expect(page.locator(".mypage-live-ticker--visual")).toContainText("KAI：SSRを獲得");
+  const hudDoesNotOverlap = await page.evaluate(() => {
+    const raid = document.querySelector<HTMLElement>(".mypage-event-chip.raid")!.getBoundingClientRect();
+    const power = document.querySelector<HTMLElement>(".mypage-power-panel")!.getBoundingClientRect();
+    return raid.right <= power.left;
+  });
+  expect(hudDoesNotOverlap).toBe(true);
+});
+
+test("SSR leader effect keeps a static aura when reduced motion is requested", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await openHomeScenario(page, "first-home-fresh");
+  const effect = await page.locator(".mypage-leader-layer.is-ssr").evaluate((leader) => {
+    const aura = getComputedStyle(leader, "::before");
+    const sweep = getComputedStyle(leader, "::after");
+    return {
+      auraAnimation: aura.animationName,
+      auraOpacity: Number(aura.opacity),
+      sweepAnimation: sweep.animationName,
+    };
+  });
+  expect(effect.auraAnimation).toBe("none");
+  expect(effect.auraOpacity).toBeGreaterThan(0);
+  expect(effect.sweepAnimation).toBe("none");
 });
 
 test("existing-account login uses the shared tutorial surface and CTA geometry", async ({ page }) => {
