@@ -12,7 +12,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test("launcher exposes every approved presentation fixture and preserves human-only judgments", async ({ page }) => {
-  await expect(page.locator("nav [data-scenario-id]")).toHaveCount(20);
+  await expect(page.locator("nav [data-scenario-id]")).toHaveCount(22);
   await expect(page.locator('[data-compliance-id="world-intro"]')).toHaveAttribute("data-status", "HUMAN_REQUIRED");
   await expect(page.locator('[data-compliance-id="skill-2x"]')).toHaveAttribute("data-status", "HUMAN_REQUIRED");
   await expect(page.locator('[data-compliance-id="battle-result"]')).toHaveAttribute("data-status", "HUMAN_REQUIRED");
@@ -114,6 +114,40 @@ test("SSR skill cut-in overlays the full roster rather than the center action co
   expect(Math.abs(cutIn!.x - viewer!.x)).toBeLessThanOrEqual(1);
   expect(Math.abs(cutIn!.width - viewer!.width)).toBeLessThanOrEqual(2);
 });
+
+test("consecutive skills keep a visible roster gap between full-screen cut-ins", async ({ page }) => {
+  await openScenario(page, "battle-consecutive-skill");
+  await expect(page.locator(".battle-skill-cutin")).toContainText("ストリートパンチ");
+  await expect(page.locator(".battle-skill-cutin")).toHaveCount(0, { timeout: 1_250 });
+  await expect(page.locator(".battle-skill-cutin")).toContainText("ネオンブレイク", { timeout: 1_250 });
+});
+
+test("FINAL HIT is a full-screen overlay and does not resize the roster", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await openScenario(page, "battle-final-hit");
+  const overlay = page.locator(".battle-final-hit-overlay");
+  await expect(overlay).toBeVisible();
+  await expect(overlay).toHaveCSS("position", "absolute");
+  for (const edge of ["top", "right", "bottom", "left"]) await expect(overlay).toHaveCSS(edge, "0px");
+  await expect(page.locator(".battle-roster-stage")).toBeVisible();
+});
+
+for (const viewport of [{ width: 390, height: 844 }, { width: 412, height: 915 }]) {
+  test(`World Intro keeps pure-black viewport edges at ${viewport.width}px`, async ({ page }) => {
+    await page.setViewportSize(viewport);
+    await openScenario(page, "world-introduction");
+    const geometry = await page.locator(".tutorial-world").evaluate((world) => {
+      const worldBox = world.getBoundingClientRect();
+      const contentBox = world.querySelector<HTMLElement>(".tutorial-world-content")!.getBoundingClientRect();
+      const style = getComputedStyle(world);
+      return { backgroundColor: style.backgroundColor, backgroundImage: style.backgroundImage, worldBox: { left: worldBox.left, right: worldBox.right }, contentBox: { left: contentBox.left, right: contentBox.right } };
+    });
+    expect(geometry.backgroundColor).toBe("rgb(0, 0, 0)");
+    expect(geometry.backgroundImage).toBe("none");
+    expect(geometry.contentBox.left).toBeGreaterThan(geometry.worldBox.left);
+    expect(geometry.contentBox.right).toBeLessThan(geometry.worldBox.right);
+  });
+}
 
 test("production result shows opponent, left MVP art, score and comparison", async ({ page }) => {
   await openScenario(page, "battle-result-win");

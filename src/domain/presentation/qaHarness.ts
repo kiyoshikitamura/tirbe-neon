@@ -16,6 +16,8 @@ export const QA_PRESENTATION_SCENARIOS = [
   ["battle-5v5", "Battle 5v5"],
   ["battle-2x", "Battle 2x"],
   ["battle-ssr-skill", "Battle SSR Skill"],
+  ["battle-consecutive-skill", "Battle Consecutive Skill"],
+  ["battle-final-hit", "Battle FINAL HIT"],
   ["battle-result-win", "Battle Result WIN"],
   ["battle-result-lose", "Battle Result LOSE"],
   ["first-home", "First Home"],

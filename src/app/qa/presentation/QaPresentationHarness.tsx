@@ -12,6 +12,7 @@ import { resolveSsrGachaQuote } from "@/domain/presentation/ssrGachaQuotes";
 import { getCharacterLocationBackground } from "@/utils/characterVisualAssets";
 import { CHARACTERS_MASTER, getCharacterTransparentImg } from "@/utils/game_constants";
 import "@/app/components/SetupView.css";
+import "@/app/components/TutorialWorldIntro.css";
 import "@/app/components/CommonModals.css";
 import "@/app/components/CharacterTab.css";
 import "@/app/components/ui/ConfirmDialog.css";
@@ -50,10 +51,11 @@ const replayEvents = [
   { type: "DAMAGE", payload: { actorId: "enemy-1", targetId: "player-3", hpDamage: 1080 } },
 ] as const;
 
-function BattleFixture({ size = 3, speed = 1, ssrSkill = false }: { size?: 3 | 5; speed?: number; ssrSkill?: boolean }) {
+function BattleFixture({ size = 3, speed = 1, ssrSkill = false, consecutiveSkill = false, finalHit = false }: { size?: 3 | 5; speed?: number; ssrSkill?: boolean; consecutiveSkill?: boolean; finalHit?: boolean }) {
   const paceDemo = speed === 2;
   const [liveSpeed, setLiveSpeed] = useState(paceDemo ? 1 : speed);
   const [paceSkillVisible, setPaceSkillVisible] = useState(ssrSkill);
+  const [consecutiveSkillName, setConsecutiveSkillName] = useState(consecutiveSkill ? "ストリートパンチ" : "");
   useEffect(() => {
     if (!paceDemo) setPaceSkillVisible(ssrSkill);
   }, [paceDemo, ssrSkill]);
@@ -62,9 +64,16 @@ function BattleFixture({ size = 3, speed = 1, ssrSkill = false }: { size?: 3 | 5
     const timer = window.setTimeout(() => setPaceSkillVisible(true), 160);
     return () => window.clearTimeout(timer);
   }, [paceDemo]);
-  const enemies = enemyParty.slice(0, size);
+  useEffect(() => {
+    if (!consecutiveSkill) return;
+    const gap = window.setTimeout(() => setConsecutiveSkillName(""), 900);
+    const next = window.setTimeout(() => setConsecutiveSkillName("ネオンブレイク"), 1320);
+    return () => { window.clearTimeout(gap); window.clearTimeout(next); };
+  }, [consecutiveSkill]);
+  const enemies = enemyParty.slice(0, size).map((entry) => finalHit ? { ...entry, hp: 0, isDead: true } : entry);
   const timeline = [...playerParty, ...enemies].map(({ id, name, isEnemy }) => ({ id, name, isEnemy }));
-  return <QuestBattleViewer battleMode="PATROL" opponentName="新宿・初級" playerParty={playerParty} enemyParty={enemies} timeline={timeline} timelineIndex={0} authoritativeTimeline={timeline.slice(0, 3)} presentationPhase={paceDemo ? "ACTION_HOLD" : "DAMAGE"} round={4} skillCutIn={paceSkillVisible ? { charName: playerParty[0].name, skillName: "ストリートパンチ" } : null} targetLine={{ fromId: "player-1", toId: "enemy-1" }} shakingId="enemy-1" damagePopup={{ charId: "enemy-1", val: ssrSkill ? 2940 : 1284, type: "dmg", isCritical: ssrSkill }} tactic="BALANCED" speed={liveSpeed} monthlyPassActive={false} paused={false} tutorial={size === 3 || paceDemo} onSpeedChange={setLiveSpeed} onPauseChange={() => undefined} canSkip={size === 5} skipPending={false} onSkip={() => undefined} onRetreat={() => undefined} onSound={() => undefined} />;
+  const fixtureSkillName = consecutiveSkill ? consecutiveSkillName : paceSkillVisible ? "ストリートパンチ" : "";
+  return <QuestBattleViewer battleMode="PATROL" opponentName="新宿・初級" playerParty={playerParty} enemyParty={enemies} timeline={timeline} timelineIndex={0} authoritativeTimeline={timeline.slice(0, 3)} presentationPhase={paceDemo ? "ACTION_HOLD" : "DAMAGE"} round={4} skillCutIn={fixtureSkillName ? { charName: playerParty[0].name, skillName: fixtureSkillName } : null} targetLine={{ fromId: "player-1", toId: "enemy-1" }} shakingId="enemy-1" damagePopup={{ charId: "enemy-1", val: ssrSkill ? 2940 : 1284, type: "dmg", isCritical: ssrSkill }} tactic="BALANCED" speed={liveSpeed} monthlyPassActive={false} paused={false} tutorial={size === 3 || paceDemo} onSpeedChange={setLiveSpeed} onPauseChange={() => undefined} canSkip={size === 5} skipPending={false} onSkip={() => undefined} onRetreat={() => undefined} onSound={() => undefined} />;
 }
 
 function SsrRevealFixture() {
@@ -103,7 +112,7 @@ function ResultFixture({ victory }: { victory: boolean }) {
 }
 
 function SimpleFixture({ kind }: { kind: QaPresentationScenarioId }) {
-  if (kind === "world-introduction") return <div className="setup-container is-world-entry"><div className="setup-world-shade" /><section className="setup-world-presentation is-stage-2" aria-label="TRIBE NEON プロローグ"><div className="setup-world-motion"><i /><i /></div><div className="setup-world-brand">TRIBE NEON <small>PROLOGUE</small></div><img className="setup-world-emblem" src="/branding/tribe-neon-logo.png" alt="" /><div className="setup-world-copy"><TypewriterText text={WORLD_STAGES[1].text} speedMs={22} highlightTerms={[...WORLD_STAGES[1].highlights]} /></div></section></div>;
+  if (kind === "world-introduction") return <div className="tutorial-world" aria-label="World Introduction"><div className="tutorial-world-content"><div className="tutorial-world-shade" /><div className="tutorial-world-ageha"><CharacterPresentation src="/characters/ageha_transparent_asset.png" alt="アゲハ" variant="dialogue-bust" /></div><div className="tutorial-world-dialogue"><strong>アゲハ</strong><TypewriterText text={WORLD_STAGES[1].text} speedMs={22} highlightTerms={[...WORLD_STAGES[1].highlights]} /></div><button className="semantic-cta semantic-cta--primary">次へ</button></div></div>;
   if (kind === "gacha-page") return <section className="qa-card qa-gacha"><span>アゲハ</span><p>まずは10連、引いてみよ。</p><img src="/gacha/bg_gacha_ssr.png" alt="ガチャバナー" /><small>無料10連 / SSR1体保証</small><button>無料10連を引く</button></section>;
   if (kind === "gacha-standard-reveal") { const character: any = findCharacter("アゲハ"); return <section className="qa-reveal"><CharacterPresentation src={getCharacterTransparentImg(character.name)} alt={character.jpName} variant="reveal" rarity={character.rarity} attribute={character.alignment} backgroundSrc={getCharacterLocationBackground(character.homeTown)} frameKind="reveal" rarityBadge attributeBadge /><h2>{character.jpName}</h2><small>タップして次へ</small></section>; }
   if (kind === "skill-tutorial") return <section className="qa-card"><span>SKILL TUTORIAL</span><h2>ストリートパンチ</h2><dl><div><dt>タイプ</dt><dd>攻撃</dd></div><div><dt>対象</dt><dd>敵単体</dd></div><div><dt>威力</dt><dd>120%</dd></div><div><dt>再使用</dt><dd>3ラウンド</dd></div></dl><button className="semantic-cta semantic-cta--primary tutorial-primary-target">育成へ進む</button></section>;
@@ -121,6 +130,8 @@ function Scenario({ id }: { id: QaPresentationScenarioId }) {
   if (id === "battle-5v5") return <BattleFixture size={5} />;
   if (id === "battle-2x") return <BattleFixture size={5} speed={2} />;
   if (id === "battle-ssr-skill") return <BattleFixture size={5} ssrSkill />;
+  if (id === "battle-consecutive-skill") return <BattleFixture size={5} speed={2} consecutiveSkill />;
+  if (id === "battle-final-hit") return <BattleFixture size={3} finalHit />;
   if (id === "battle-result-win") return <ResultFixture victory />;
   if (id === "battle-result-lose") return <ResultFixture victory={false} />;
   if (id === "quest-encounter") return <SimpleFixture kind={id} />;
@@ -139,5 +150,5 @@ function Scenario({ id }: { id: QaPresentationScenarioId }) {
 export default function QaPresentationHarness() {
   const [scenario, setScenario] = useState<QaPresentationScenarioId>("world-introduction");
   const label = useMemo(() => QA_PRESENTATION_SCENARIOS.find(([id]) => id === scenario)?.[1], [scenario]);
-  return <main className="qa-harness" data-qa-harness="presentation"><header><div><small>PREVIEW / DEVELOPMENT ONLY</small><h1>Human QA Harness</h1><p>{label}</p></div><a href="#compliance">Visual Compliance</a></header><nav aria-label="QA scenarios">{QA_PRESENTATION_SCENARIOS.map(([id, name]) => <button key={id} className={scenario === id ? "is-active" : ""} aria-pressed={scenario === id} onClick={() => setScenario(id)} data-scenario-id={id}>{name}</button>)}</nav><section className="qa-stage" data-active-scenario={scenario}><Scenario id={scenario} /></section><section id="compliance" className="qa-compliance"><h2>Visual Compliance Precheck</h2><p>客観的Contractは自動検証。見た目の品質はHuman ReviewまでPASSにしません。</p>{VISUAL_COMPLIANCE_GATE.map((item) => <article key={item.id} data-compliance-id={item.id} data-status={item.status}><div><strong>{item.specification}</strong><small>AUTO {item.automatedPrecheck}</small></div><b>{item.status}</b><p>{item.evidence}</p></article>)}</section></main>;
+  return <main className="qa-harness" data-qa-harness="presentation"><header><div><small>PREVIEW / DEVELOPMENT ONLY</small><h1>Human QA Harness</h1><p>{label}</p></div><a href="#compliance">Visual Compliance</a></header><nav aria-label="QA scenarios">{QA_PRESENTATION_SCENARIOS.map(([id, name]) => <button key={id} className={scenario === id ? "is-active" : ""} aria-pressed={scenario === id} onClick={() => setScenario(id)} data-scenario-id={id}>{name}</button>)}</nav><section className="qa-stage" data-active-scenario={scenario}><Scenario key={scenario} id={scenario} /></section><section id="compliance" className="qa-compliance"><h2>Visual Compliance Precheck</h2><p>客観的Contractは自動検証。見た目の品質はHuman ReviewまでPASSにしません。</p>{VISUAL_COMPLIANCE_GATE.map((item) => <article key={item.id} data-compliance-id={item.id} data-status={item.status}><div><strong>{item.specification}</strong><small>AUTO {item.automatedPrecheck}</small></div><b>{item.status}</b><p>{item.evidence}</p></article>)}</section></main>;
 }

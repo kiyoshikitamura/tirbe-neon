@@ -1793,6 +1793,11 @@ export function useBattle(options: UseBattleOptions) {
             : replayEvent.type === "RESULT"
               ? 820
               : 480;
+      const replayDelay = replayEvent.type === "ACTION" && previousActionWasSkill
+        ? Math.max(700, delay / battleSpeed)
+        : holdsSkillImpact
+          ? Math.max(450, delay / battleSpeed)
+          : delay / battleSpeed;
       const timer = setTimeout(() => {
         const payload = replayEvent.payload;
         const actorId = String(payload.actorId ?? "");
@@ -1954,7 +1959,7 @@ export function useBattle(options: UseBattleOptions) {
         else if (battleMode === "PVP") setOfficialPvpEventIndex(advanceReplay);
         else if (battleMode === "RAID") setOfficialRaidEventIndex(advanceReplay);
         else if (battleMode === "GVG" || battleMode === "PVP_PRACTICE") setCanonicalAuxEventIndex(advanceReplay);
-      }, delay / battleSpeed);
+      }, replayDelay);
 
       return () => clearTimeout(timer);
     }

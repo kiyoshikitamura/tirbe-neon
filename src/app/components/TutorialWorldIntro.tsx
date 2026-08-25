@@ -31,8 +31,8 @@ export default function TutorialWorldIntro() {
 
   return (
     <div className="tutorial-world" role="dialog" aria-modal="true" aria-label="アゲハからの案内">
-      <div className="tutorial-world-shade" />
       <div className="tutorial-world-content">
+        <div className="tutorial-world-shade" />
         <div className="tutorial-world-ageha" aria-hidden="true"><CharacterPresentation src="/characters/ageha_transparent_asset.png" alt="" variant="dialogue-bust" /></div>
         <div className="tutorial-world-dialogue"><strong>アゲハ</strong><TypewriterText text={`${username || setupUsername}ね。覚えた。よろしく。\n\nじゃあまず、一緒に動く仲間を探そっか。\nこの街、一人でどうにかするのは大変だから。`} speedMs={34} /></div>
         <button className="semantic-cta semantic-cta--primary" onClick={() => void continueTutorial()} disabled={advancing} aria-busy={advancing}>

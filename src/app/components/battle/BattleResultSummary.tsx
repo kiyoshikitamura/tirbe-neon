@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useAudio } from "@/audio/AudioProvider";
 import { analyzeBattleResult, type BattleResultParticipant, type BattleResultReplayEvent } from "@/domain/presentation/battleResultScoring";
 import { CHARACTERS_MASTER, getCharacterTransparentImg } from "@/utils/game_constants";
@@ -38,6 +38,7 @@ export default function BattleResultSummary({ victory, tutorial = false, rewards
     [...playerParticipants.map((entry) => toParticipant(entry, false)), ...enemyParticipants.map((entry) => toParticipant(entry, true))],
   ), [enemyParticipants, playerParticipants, replayEvents]);
   const mvp = analysis.mvp;
+  const [displayedTotal, setDisplayedTotal] = useState(0);
   const mvpMaster = CHARACTERS_MASTER.find((entry: any) => entry.id === mvp?.participant.characterId);
   const mvpImage = mvpMaster ? getCharacterTransparentImg(mvpMaster.name) : undefined;
   const opponentLeader = enemyParticipants.find((entry: any) => String(entry.characterId ?? entry.id) === presentationContext?.opponentLeaderCharacterId) || enemyParticipants[0];
@@ -51,6 +52,18 @@ export default function BattleResultSummary({ victory, tutorial = false, rewards
     announcedRef.current = true;
     playSe(victory ? "VICTORY" : "DEFEAT");
   }, [playSe, victory]);
+  useEffect(() => {
+    const target = mvp?.score.total ?? 0;
+    setDisplayedTotal(0);
+    if (target <= 0) return;
+    const startedAt = performance.now();
+    const timer = window.setInterval(() => {
+      const progress = Math.min(1, (performance.now() - startedAt) / 420);
+      setDisplayedTotal(Math.round(target * progress));
+      if (progress >= 1) window.clearInterval(timer);
+    }, 28);
+    return () => window.clearInterval(timer);
+  }, [mvp?.participant.id, mvp?.score.total]);
   return (
     <section className={`battle-result-summary ${victory ? "is-victory" : "is-defeat"}`} aria-label={victory ? "バトル勝利" : "バトル敗北"}>
       <header className="battle-result-opponent">
@@ -65,7 +78,7 @@ export default function BattleResultSummary({ victory, tutorial = false, rewards
         <section className="battle-result-mvp" aria-label={`MVP ${mvp.participant.name} ${mvp.score.total}ポイント`}>
           <div className="battle-result-mvp-hero">
             {mvpImage && <CharacterPresentation src={mvpImage} alt={mvp.participant.name} variant="battle" />}
-            <div className="battle-result-mvp-copy"><small>MVP</small><div><strong>{mvp.participant.name}</strong><b>{mvp.score.total}<i>PT</i></b></div></div>
+            <div className="battle-result-mvp-copy"><small>MVP</small><div><strong>{mvp.participant.name}</strong><b>{displayedTotal}<i>PT</i></b></div></div>
           </div>
           <dl className="battle-result-score-grid" aria-label="MVPスコア内訳">
             <div><dt>与ダメージ</dt><dd><b>{mvp.score.damage}</b> / 40<small>{mvp.raw.damage.toLocaleString()}</small></dd></div>

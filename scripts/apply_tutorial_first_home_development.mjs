@@ -11,6 +11,7 @@ const allowedMigrations = new Set([
   "20260823000192_tutorial_canonical_growth_before_formation.sql",
   "20260823000193_tutorial_growth_milestone_authority.sql",
   "20260824000194_reconcile_character_ssr_candidate_pool.sql",
+  "20260825000195_tutorial_durability_and_anonymous_cleanup.sql",
 ]);
 if (!allowedMigrations.has(migrationName)) throw new Error(`Migration is not approved by this Development guard: ${migrationName}`);
 const migration = resolve("supabase/migrations", migrationName);
@@ -31,5 +32,5 @@ const result = spawnSync(executable, [
   "--file", migration,
 ], { stdio: "inherit", env: { ...process.env, PGPASSWORD: process.env.SUPABASE_DB_PASSWORD } });
 if (result.error) throw result.error;
-if (result.status !== 0) throw new Error(`00190 psql apply failed with status ${result.status}`);
+if (result.status !== 0) throw new Error(`${migrationName} psql apply failed with status ${result.status}`);
 console.log(`${migrationName} physically applied to Development ${expectedRef}; migration history was not modified.`);
