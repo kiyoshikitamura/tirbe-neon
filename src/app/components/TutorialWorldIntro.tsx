@@ -8,7 +8,7 @@ import TypewriterText from "./tutorial/TypewriterText";
 import "./TutorialWorldIntro.css";
 
 export default function TutorialWorldIntro() {
-  const { onboardingState, setOnboardingState, navigateTab, playCyberSe, username, setupUsername } = useGame();
+  const { onboardingState, setOnboardingState, navigateTab, playCyberSe, handleFirstUserInteraction, setErrorMessage, username, setupUsername } = useGame();
   const [advancing, setAdvancing] = useState(false);
   const advancingRef = useRef(false);
   if (onboardingState?.tutorial_step !== "WORLD_INTRO") return null;
@@ -17,16 +17,28 @@ export default function TutorialWorldIntro() {
     if (advancingRef.current) return;
     advancingRef.current = true;
     setAdvancing(true);
-    playCyberSe("click");
-    const { error } = await supabase.rpc("advance_tutorial_progress", {
-      p_expected_step: "WORLD_INTRO", p_next_step: "FREE_GACHA",
-    });
-    if (!error) {
-      setOnboardingState((current: any) => current ? { ...current, tutorial_step: "FREE_GACHA" } : current);
+    try {
+      handleFirstUserInteraction();
+      playCyberSe("click");
+      const { error } = await supabase.rpc("advance_tutorial_progress", {
+        p_expected_step: "WORLD_INTRO", p_next_step: "FREE_GACHA",
+      });
+      let authoritativeStep = error ? null : "FREE_GACHA";
+      if (error) {
+        const { data: refreshedState, error: refreshError } = await supabase.rpc("get_current_onboarding_state");
+        if (refreshError) throw error;
+        authoritativeStep = refreshedState?.tutorial_step ?? null;
+      }
+      if (authoritativeStep !== "FREE_GACHA") throw error || new Error("Tutorial state did not advance");
+      setErrorMessage(null);
+      setOnboardingState((current: any) => current ? { ...current, tutorial_step: authoritativeStep } : current);
       navigateTab("gacha");
+    } catch {
+      setErrorMessage("チュートリアルを再開できませんでした。通信状態を確認して、もう一度お試しください。");
+    } finally {
+      advancingRef.current = false;
+      setAdvancing(false);
     }
-    advancingRef.current = false;
-    setAdvancing(false);
   };
 
   return (

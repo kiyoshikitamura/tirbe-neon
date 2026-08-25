@@ -137,6 +137,12 @@ test("name-only initialization is idempotent and resumes the tutorial after relo
   await page.getByText("TAP TO START").waitFor({ state: "visible", timeout: 2_000 }).catch(() => undefined);
   if (await page.getByText("TAP TO START").isVisible()) await page.getByText("TAP TO START").click();
   await expect(page.getByRole("dialog", { name: "アゲハからの案内" })).toBeVisible();
+  const resumedNext = page.getByRole("button", { name: "次へ" });
+  await expect(resumedNext).toBeEnabled();
+  await resumedNext.click();
+  await expect(page.getByRole("button", { name: "無料10連を引く" })).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole("button", { name: "無料10連を引く" })).toBeVisible();
   const reloadedCounts = await page.evaluate(() => ({
     users: JSON.parse(localStorage.getItem("mock_db_users") || "[]").length,
     characters: JSON.parse(localStorage.getItem("mock_db_user_characters") || "[]").length,
@@ -178,6 +184,35 @@ test("name-only initialization rejects a normalized duplicate username", async (
   await page.waitForTimeout(350);
   await expect(page.getByText("このユーザー名は既に使用されています。")).toHaveCount(0);
 });
+
+for (const viewport of [{ width: 390, height: 844 }, { width: 412, height: 915 }]) {
+  test(`world introduction renders black pixels outside its cinematic container at ${viewport.width}px`, async ({ page }) => {
+    await page.setViewportSize(viewport);
+    await page.goto("/");
+    await page.getByText("TAP TO START").click();
+    await page.getByRole("button", { name: "はじめから" }).click();
+    await expect(page.getByRole("region", { name: "TRIBE NEON プロローグ" })).toBeVisible();
+    const geometry = await page.locator(".setup-container.is-world-entry").evaluate((outer) => {
+      const inner = outer.querySelector<HTMLElement>(".setup-world-presentation")!;
+      const outerStyle = getComputedStyle(outer);
+      const outerBox = outer.getBoundingClientRect();
+      const innerBox = inner.getBoundingClientRect();
+      return {
+        backgroundColor: outerStyle.backgroundColor,
+        backgroundImage: outerStyle.backgroundImage,
+        outer: { top: outerBox.top, right: outerBox.right, bottom: outerBox.bottom, left: outerBox.left },
+        inner: { top: innerBox.top, right: innerBox.right, bottom: innerBox.bottom, left: innerBox.left },
+      };
+    });
+    expect(geometry.backgroundColor).toBe("rgb(0, 0, 0)");
+    expect(geometry.backgroundImage).toBe("none");
+    expect(geometry.inner.top).toBeGreaterThan(geometry.outer.top);
+    expect(geometry.inner.right).toBeLessThan(geometry.outer.right);
+    expect(geometry.inner.bottom).toBeLessThan(geometry.outer.bottom);
+    expect(geometry.inner.left).toBeGreaterThan(geometry.outer.left);
+    await page.screenshot({ path: `test-results/world-intro-${viewport.width}x${viewport.height}.png` });
+  });
+}
 
 test("tutorial gacha failure overlays the intact offer and remains retryable", async ({ page }) => {
   await page.goto("/");
