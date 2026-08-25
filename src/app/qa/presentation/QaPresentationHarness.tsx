@@ -53,43 +53,38 @@ const replayEvents = [
 
 function BattleFixture({ size = 3, speed = 1, ssrSkill = false, consecutiveSkill = false, finalHit = false }: { size?: 3 | 5; speed?: number; ssrSkill?: boolean; consecutiveSkill?: boolean; finalHit?: boolean }) {
   const paceDemo = speed === 2;
-  const [liveSpeed, setLiveSpeed] = useState(paceDemo ? 1 : speed);
-  const [paceSkillVisible, setPaceSkillVisible] = useState(ssrSkill);
+  const [liveSpeed, setLiveSpeed] = useState(speed);
   const [consecutiveSkillName, setConsecutiveSkillName] = useState(consecutiveSkill ? "ストリートパンチ" : "");
-  const skillDemo = ssrSkill || consecutiveSkill;
+  const skillDemo = ssrSkill || consecutiveSkill || paceDemo;
   const [skillPhase, setSkillPhase] = useState<"ACTOR_FOCUS" | "TARGET_FOCUS" | "ATTACK_MOTION" | "IMPACT" | "DAMAGE" | "HP_TRANSITION" | "ACTION_HOLD">(skillDemo ? "ACTOR_FOCUS" : "DAMAGE");
   const [showSkillDamage, setShowSkillDamage] = useState(!skillDemo);
   useEffect(() => {
-    if (!paceDemo) setPaceSkillVisible(ssrSkill);
-  }, [paceDemo, ssrSkill]);
-  useEffect(() => {
-    if (!paceDemo) return;
-    const timer = window.setTimeout(() => setPaceSkillVisible(true), 160);
-    return () => window.clearTimeout(timer);
-  }, [paceDemo]);
-  useEffect(() => {
     if (!skillDemo) return;
     const timers: number[] = [];
+    const targetAt = liveSpeed > 1 ? 760 : 1120;
+    const attackAt = liveSpeed > 1 ? 1040 : 1480;
+    const impactAt = liveSpeed > 1 ? 1300 : 1650;
     const scheduleResolution = (startAt: number, nextSkill?: string) => {
-      timers.push(window.setTimeout(() => setSkillPhase("TARGET_FOCUS"), startAt + 760));
-      timers.push(window.setTimeout(() => setSkillPhase("ATTACK_MOTION"), startAt + 900));
-      timers.push(window.setTimeout(() => { setShowSkillDamage(true); setSkillPhase("IMPACT"); }, startAt + 1040));
-      timers.push(window.setTimeout(() => setSkillPhase("DAMAGE"), startAt + 1160));
-      timers.push(window.setTimeout(() => setSkillPhase("HP_TRANSITION"), startAt + 1370));
-      timers.push(window.setTimeout(() => setSkillPhase("ACTION_HOLD"), startAt + 1600));
+      timers.push(window.setTimeout(() => setSkillPhase("TARGET_FOCUS"), startAt + targetAt));
+      timers.push(window.setTimeout(() => setSkillPhase("ATTACK_MOTION"), startAt + attackAt));
+      timers.push(window.setTimeout(() => { setShowSkillDamage(true); setSkillPhase("IMPACT"); }, startAt + impactAt));
+      timers.push(window.setTimeout(() => setSkillPhase("DAMAGE"), startAt + impactAt + 180));
+      timers.push(window.setTimeout(() => setSkillPhase("HP_TRANSITION"), startAt + impactAt + 480));
+      timers.push(window.setTimeout(() => setSkillPhase("ACTION_HOLD"), startAt + impactAt + 850));
       if (nextSkill) timers.push(window.setTimeout(() => {
         setShowSkillDamage(false);
         setSkillPhase("ACTOR_FOCUS");
         setConsecutiveSkillName(nextSkill);
-      }, startAt + 2020));
+      }, startAt + impactAt + 1100));
     };
+    const nextStart = impactAt + 1100;
     scheduleResolution(0, consecutiveSkill ? "ネオンブレイク" : undefined);
-    if (consecutiveSkill) scheduleResolution(2020);
+    if (consecutiveSkill) scheduleResolution(nextStart);
     return () => timers.forEach((timer) => window.clearTimeout(timer));
-  }, [consecutiveSkill, skillDemo]);
+  }, [consecutiveSkill, liveSpeed, skillDemo]);
   const enemies = enemyParty.slice(0, size).map((entry) => finalHit ? { ...entry, hp: 0, isDead: true } : entry);
   const timeline = [...playerParty, ...enemies].map(({ id, name, isEnemy }) => ({ id, name, isEnemy }));
-  const fixtureSkillName = consecutiveSkill ? consecutiveSkillName : paceSkillVisible ? "ストリートパンチ" : "";
+  const fixtureSkillName = consecutiveSkill ? consecutiveSkillName : skillDemo ? "ストリートパンチ" : "";
   return <QuestBattleViewer battleMode="PATROL" opponentName="新宿・初級" playerParty={playerParty} enemyParty={enemies} timeline={timeline} timelineIndex={0} authoritativeTimeline={timeline.slice(0, 3)} presentationPhase={skillDemo ? skillPhase : paceDemo ? "ACTION_HOLD" : "DAMAGE"} round={4} skillCutIn={fixtureSkillName ? { charName: playerParty[0].name, skillName: fixtureSkillName } : null} targetLine={{ fromId: "player-1", toId: "enemy-1" }} shakingId={showSkillDamage ? "enemy-1" : null} damagePopup={showSkillDamage ? { charId: "enemy-1", val: ssrSkill ? 2940 : 1284, type: "dmg", isCritical: ssrSkill } : null} tactic="BALANCED" speed={liveSpeed} monthlyPassActive={false} paused={false} tutorial={size === 3 || paceDemo} onSpeedChange={setLiveSpeed} onPauseChange={() => undefined} canSkip={size === 5} skipPending={false} onSkip={() => undefined} onRetreat={() => undefined} onSound={() => undefined} />;
 }
 
@@ -109,7 +104,8 @@ function SsrRevealFixture() {
 
 function NameRetryFixture() {
   const [state, setState] = useState<"ERROR" | "RETRY" | "SUCCESS">("ERROR");
-  return <div className="setup-container is-registration" data-name-lifecycle={state.toLowerCase()}><div className="setup-box setup-name-dialog"><div className="setup-name-guidance"><strong>アゲハ</strong><span>ここでなんて呼べばいい？</span></div><h2>プレイヤー名</h2><input className="setup-name-input" value={state === "ERROR" ? "NEON" : "NEON-R"} readOnly /><button className="semantic-cta semantic-cta--primary" onClick={() => setState("SUCCESS")}>{state === "SUCCESS" ? "登録完了" : "この名前で始める"}</button>{state === "SUCCESS" && <p role="status">未使用Nameで次のTutorialへ正常遷移</p>}</div>{state === "ERROR" && <div className="modal-overlay"><div className="modal-card border-danger" role="alertdialog"><div className="modal-title text-color-danger">エラー</div><div className="modal-desc">この名前はすでに使用されています。</div><button className="semantic-cta semantic-cta--danger" onClick={() => setState("RETRY")}>閉じる</button></div></div>}</div>;
+  if (state === "SUCCESS") return <div className="setup-container is-world-entry" data-name-lifecycle="success"><section className="setup-ageha-presentation" data-entry-state="AGEHA_INTRO"><div className="setup-ageha-character"><CharacterPresentation src="/characters/ageha_transparent_asset.png" alt="アゲハ" variant="dialogue-bust" /></div><div className="setup-ageha-dialogue"><div className="setup-ageha-name">アゲハ</div><span>NEON-Rね。覚えた。よろしく。</span></div><button className="semantic-cta semantic-cta--primary setup-primary-action">次へ</button></section></div>;
+  return <div className="setup-container is-registration" data-name-lifecycle={state.toLowerCase()}><div className="setup-box setup-name-dialog"><div className="setup-name-guidance"><strong>アゲハ</strong><span>ここでなんて呼べばいい？</span></div><h2>プレイヤー名</h2><input className="setup-name-input" value={state === "ERROR" ? "NEON" : "NEON-R"} readOnly /><button className="semantic-cta semantic-cta--primary" onClick={() => setState("SUCCESS")}>この名前で始める</button></div>{state === "ERROR" && <div className="modal-overlay"><div className="modal-card border-danger" role="alertdialog"><div className="modal-title text-color-danger">エラー</div><div className="modal-desc">この名前はすでに使用されています。</div><button className="semantic-cta semantic-cta--danger" onClick={() => setState("RETRY")}>閉じる</button></div></div>}</div>;
 }
 
 function AutoFormationFixture() {
@@ -125,7 +121,8 @@ function QuestTransitionFixture({ instant }: { instant: boolean }) {
 }
 
 function ResultFixture({ victory }: { victory: boolean }) {
-  return <BattleResultSummary tutorial victory={victory} replayEvents={replayEvents} playerParticipants={playerParty} enemyParticipants={enemyParty.slice(0, 3)} presentationContext={{ mode: "PATROL", opponentLabel: "新宿・初級", encounterLabel: "新宿・初級", opponentLeaderCharacterId: enemyParty[0].characterId, opponentLeaderName: enemyParty[0].name }} modeResult={{ resultLabel: victory ? "QUEST CLEAR" : "QUEST FAILED", reward: victory ? "初回報酬獲得" : "編成を見直して再挑戦", continueLabel: "確認" }} onContinue={() => undefined} continueControl={<button className="battle-result-continue semantic-cta semantic-cta--primary">確認</button>} />;
+  const rewards = victory ? { totalCash: 1000, totalXp: 120, dropItemName: "キャラEXP（小）", dropItemQty: 1 } : null;
+  return <BattleResultSummary tutorial victory={victory} rewards={rewards} replayEvents={replayEvents} playerParticipants={playerParty} enemyParticipants={enemyParty.slice(0, 3)} presentationContext={{ mode: "PATROL", opponentLabel: "新宿・初級", encounterLabel: "新宿・初級", opponentLeaderCharacterId: enemyParty[0].characterId, opponentLeaderName: enemyParty[0].name }} modeResult={{ resultLabel: victory ? "QUEST CLEAR" : "QUEST FAILED", reward: victory ? "初回報酬獲得" : "編成を見直して再挑戦", continueLabel: "確認" }} onContinue={() => undefined} continueControl={<button className="battle-result-continue semantic-cta semantic-cta--primary">確認</button>} />;
 }
 
 function SimpleFixture({ kind }: { kind: QaPresentationScenarioId }) {

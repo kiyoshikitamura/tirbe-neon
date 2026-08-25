@@ -144,3 +144,22 @@ export function BattleImpactEffect({ kind, speed }: { kind: BattleImpactKind; sp
     </div>
   );
 }
+
+export function BattleSkillResolutionVfx({
+  presentation,
+  phase,
+  actorSide,
+}: {
+  presentation: BattleSkillPresentation | null;
+  phase: "TARGET_FOCUS" | "ATTACK_MOTION";
+  actorSide: "player" | "enemy";
+}) {
+  if (!presentation?.tier) return null;
+  return (
+    <div className={`battle-skill-resolution-vfx is-${phase.toLowerCase().replaceAll("_", "-")} is-${actorSide}`} role="status" aria-label={`${presentation.skillName} 攻撃演出`}>
+      <img src={BATTLE_EFFECT_ASSETS.speedLines} alt="" aria-hidden="true" />
+      <i aria-hidden="true" />
+      <strong>{presentation.skillName}</strong>
+    </div>
+  );
+}

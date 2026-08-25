@@ -6,6 +6,7 @@ import BattleUnitPortrait, { BattleDamagePopup, BattleParticipantView } from "./
 import {
   BattleImpactEffect,
   BattleSkillCutIn,
+  BattleSkillResolutionVfx,
   resolveBattleSkillPresentation,
   type BattleImpactKind,
 } from "./BattleEffectPresentation";
@@ -167,11 +168,14 @@ export default function QuestBattleViewer(props: Props) {
           <div className="battle-action-relation" aria-hidden="true">
             <span>{activeParticipant?.name || "ACTOR"}</span><i /><b>{isSkillAction ? "SKILL" : "HIT"}</b><i /><span>{targetParticipant?.name || "TARGET"}</span>
           </div>
-          {props.damagePopup && props.damagePopup.type === "dmg" && <BattleImpactEffect kind={(skillPresentation?.impact || "impact") as BattleImpactKind} speed={props.speed} />}
-          {props.damagePopup && <div className={`battle-impact-burst is-${props.damagePopup.type}`} aria-hidden="true"><i /><i /><i /></div>}
           {props.skillCutIn && isSkillAction && !skillPresentation?.tier && <div className="battle-skill-flash"><small>SKILL</small><strong>{props.skillCutIn.skillName}</strong></div>}
         </section>
         <PartyZone side="enemy" label={props.opponentName} party={props.enemyParty} activeId={activeParticipant?.id} targetId={targetParticipant?.id} shakingId={props.shakingId} visualOf={visualOf} popupFor={popupFor} hasAdvantage={hasAdvantage} tutorial={props.tutorial} />
+        {isSkillAction && (props.presentationPhase === "TARGET_FOCUS" || props.presentationPhase === "ATTACK_MOTION") && <BattleSkillResolutionVfx presentation={skillPresentation} phase={props.presentationPhase} actorSide={activeSide} />}
+        {props.damagePopup && <div className={`battle-target-impact-vfx is-${sideOf(targetParticipant)} is-${props.damagePopup.type}`} aria-hidden="true">
+          {props.damagePopup.type === "dmg" && <BattleImpactEffect kind={(skillPresentation?.impact || "impact") as BattleImpactKind} speed={props.speed} />}
+          <div className={`battle-impact-burst is-${props.damagePopup.type}`}><i /><i /><i /></div>
+        </div>}
       </main>
 
       <BattleSkillCutIn presentation={skillPresentation} participant={activeParticipant ? { ...activeParticipant, rarity: activeVisual.rarity } : undefined} imageSrc={activeVisual.src} speed={props.speed} />

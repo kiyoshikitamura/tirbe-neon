@@ -1794,9 +1794,9 @@ export function useBattle(options: UseBattleOptions) {
               ? 820
               : 480;
       const replayDelay = followsSkill
-        ? Math.max(1150, delay / battleSpeed)
+        ? Math.max(1300, delay / battleSpeed)
         : replayEvent.type === "ACTION" && previousActionWasSkill
-        ? Math.max(700, delay / battleSpeed)
+        ? Math.max(1050, delay / battleSpeed)
         : holdsSkillImpact
           ? Math.max(450, delay / battleSpeed)
           : delay / battleSpeed;
@@ -1847,8 +1847,8 @@ export function useBattle(options: UseBattleOptions) {
           setActiveSkillCutIn({ charName: actor?.name ?? actorId, skillName: skill?.name ?? (skillId === "BASIC_ATTACK" ? "通常攻撃" : skillId) });
           const actorTimelineIndex = timeline.findIndex((entry) => entry.id === actorId);
           if (actorTimelineIndex >= 0) setTimelineIndex(actorTimelineIndex);
-          const targetDelay = isSkill ? Math.max(700, 1120 / battleSpeed) : 260 / battleSpeed;
-          const attackDelay = isSkill ? Math.max(1000, 1480 / battleSpeed) : 480 / battleSpeed;
+          const targetDelay = isSkill ? Math.max(760, 1120 / battleSpeed) : 260 / battleSpeed;
+          const attackDelay = isSkill ? Math.max(1040, 1480 / battleSpeed) : 480 / battleSpeed;
           presentationTimersRef.current.push(setTimeout(() => {
             if (nextTargetId) setTargetLine({ fromId: actorId, toId: nextTargetId });
             setPresentationPhase("TARGET_FOCUS");
@@ -1868,23 +1868,27 @@ export function useBattle(options: UseBattleOptions) {
           const updateTarget = (participant: ParticipantState) => participant.id === targetId
             ? projectActiveEffects({ ...participant, hp: remainingHp, isDead: remainingHp <= 0 }, payload)
             : participant;
-          setPlayerPartyStates((previous) => previous.map(updateTarget));
-          setEnemyPartyStates((previous) => previous.map(updateTarget));
+          const projectHpTransition = () => {
+            setPlayerPartyStates((previous) => previous.map(updateTarget));
+            setEnemyPartyStates((previous) => previous.map(updateTarget));
+          };
+          if (!followsSkill) projectHpTransition();
           setTargetLine(actorId && targetId ? { fromId: actorId, toId: targetId } : null);
           setActiveShakingCharId(missed ? null : targetId);
           setDamagePopup({ val: amount, type: "dmg", isCritical: critical, x: 120, y: 40, charId: targetId });
           presentationTimersRef.current.push(setTimeout(() => {
             setPresentationPhase("DAMAGE");
             recordPresentationStage("damageAt", targetId);
-          }, followsSkill ? Math.max(120, 100 / battleSpeed) : 100 / battleSpeed));
+          }, followsSkill ? 180 : 100 / battleSpeed));
           presentationTimersRef.current.push(setTimeout(() => {
+            if (followsSkill) projectHpTransition();
             setPresentationPhase("HP_TRANSITION");
             recordPresentationStage("hpSettledAt", targetId);
-          }, followsSkill ? Math.max(300, 450 / battleSpeed) : 450 / battleSpeed));
+          }, followsSkill ? 480 : 450 / battleSpeed));
           presentationTimersRef.current.push(setTimeout(() => {
             setPresentationPhase("ACTION_HOLD");
             recordPresentationStage("actionCompleteAt");
-          }, followsSkill ? Math.max(450, 900 / battleSpeed) : 900 / battleSpeed));
+          }, followsSkill ? 850 : 900 / battleSpeed));
           playCyberSe(missed ? "click" : "hit");
           setBattleLog((previous) => [...previous, missed
             ? `${actor?.name ?? actorId}の攻撃は外れた。`

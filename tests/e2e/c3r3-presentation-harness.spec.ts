@@ -51,6 +51,10 @@ test("name duplicate error is owned by the current screen and does not return af
   await page.getByRole("button", { name: "この名前で始める" }).click();
   await expect(page.locator('[data-name-lifecycle="success"]')).toBeVisible();
   await expect(page.getByRole("alertdialog")).toHaveCount(0);
+  const next = page.locator('.setup-ageha-presentation .setup-primary-action');
+  await expect(next).toBeEnabled();
+  await expect(next).not.toHaveCSS("background-color", "rgb(95, 101, 108)");
+  await expect(next).toHaveCSS("opacity", "1");
 });
 
 test("auto formation waits for explicit OK before the next route", async ({ page }) => {
@@ -114,18 +118,20 @@ test("SSR skill cut-in overlays the full roster rather than the center action co
   expect(Math.abs(cutIn!.x - viewer!.x)).toBeLessThanOrEqual(1);
   expect(Math.abs(cutIn!.width - viewer!.width)).toBeLessThanOrEqual(2);
   await expect(page.locator(".battle-skill-cutin")).toHaveCount(0, { timeout: 1_250 });
-  await expect(page.locator('[data-action-phase="impact"], [data-action-phase="damage"], [data-action-phase="hp-transition"]')).toBeVisible({ timeout: 1_000 });
+  await expect(page.locator(".battle-skill-resolution-vfx")).toBeVisible({ timeout: 700 });
+  await expect(page.locator('[data-action-phase="impact"], [data-action-phase="damage"], [data-action-phase="hp-transition"]')).toBeVisible({ timeout: 1_600 });
   await expect(page.locator(".battle-unit-popup")).toContainText("2,940");
-  await expect(page.locator('[data-action-phase="action-hold"]')).toBeVisible({ timeout: 1_000 });
+  await expect(page.locator('[data-action-phase="action-hold"]')).toBeVisible({ timeout: 1_200 });
 });
 
 test("consecutive skills keep a visible roster gap between full-screen cut-ins", async ({ page }) => {
   await openScenario(page, "battle-consecutive-skill");
   await expect(page.locator(".battle-skill-cutin")).toContainText("ストリートパンチ");
   await expect(page.locator(".battle-skill-cutin")).toHaveCount(0, { timeout: 1_250 });
-  await expect(page.locator(".battle-unit-popup")).toBeVisible({ timeout: 1_000 });
-  await expect(page.locator('[data-action-phase="action-hold"]')).toBeVisible({ timeout: 1_000 });
-  await expect(page.locator(".battle-skill-cutin")).toContainText("ネオンブレイク", { timeout: 1_000 });
+  await expect(page.locator(".battle-skill-resolution-vfx")).toBeVisible({ timeout: 700 });
+  await expect(page.locator(".battle-unit-popup")).toBeVisible({ timeout: 1_200 });
+  await expect(page.locator('[data-action-phase="action-hold"]')).toBeVisible({ timeout: 1_200 });
+  await expect(page.locator(".battle-skill-cutin")).toContainText("ネオンブレイク", { timeout: 1_400 });
 });
 
 test("FINAL HIT is a full-screen overlay and does not resize the roster", async ({ page }) => {
@@ -208,6 +214,13 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 412, height: 915 }
     await openScenario(page, "battle-result-win");
     await expect(page.locator(".battle-result-mvp-copy strong")).not.toContainText(/ケンゴ|レオ|ミオ|ミヤビ|カレン/);
     await expect(page.locator(".battle-result-score-grid > div")).toHaveCount(5);
+    const resultGeometry = await page.locator(".battle-result-summary").evaluate((summary) => {
+      const button = summary.querySelector<HTMLElement>(".battle-result-continue")!.getBoundingClientRect();
+      const box = summary.getBoundingClientRect();
+      return { scrollHeight: summary.scrollHeight, clientHeight: summary.clientHeight, ctaBottom: button.bottom, visibleBottom: box.bottom };
+    });
+    expect(resultGeometry.scrollHeight).toBeLessThanOrEqual(resultGeometry.clientHeight + 1);
+    expect(resultGeometry.ctaBottom).toBeLessThanOrEqual(resultGeometry.visibleBottom + 1);
   });
 }
 

@@ -81,6 +81,13 @@
   min-height: 52px;
   font-size: var(--ui-font-button);
 }
+.setup-ageha-presentation .setup-primary-action:not(:disabled):not([aria-busy="true"]) {
+  opacity: 1;
+  color: #031014;
+  border-color: color-mix(in srgb, var(--ui-accent) 82%, #fff);
+  background: linear-gradient(135deg, var(--ui-accent), color-mix(in srgb, var(--ui-value) 72%, var(--ui-accent)));
+  filter: drop-shadow(0 0 12px color-mix(in srgb, var(--ui-accent) 34%, transparent));
+}
 
 .setup-title {
   color: var(--ui-text-primary);
