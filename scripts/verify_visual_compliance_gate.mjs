@@ -6,7 +6,8 @@ const requiredScenarios = [
   "world-introduction", "name-input-error", "gacha-page", "gacha-standard-reveal", "gacha-ssr-reveal",
   "skill-tutorial", "growth-before", "growth-result", "formation", "auto-formation", "quest-encounter",
   "quest-normal-battle", "quest-instant-battle", "battle-5v3",
-  "battle-5v5", "battle-2x", "battle-ssr-skill", "battle-consecutive-skill", "battle-final-hit", "battle-result-win", "battle-result-lose", "first-home",
+  "battle-5v5", "battle-2x", "battle-ssr-skill", "battle-consecutive-skill", "battle-final-hit", "battle-result-win", "battle-result-lose",
+  "first-home-fresh", "first-home-raid", "first-home-guild-out", "first-home-guild-in",
 ];
 assert.deepEqual(QA_PRESENTATION_SCENARIOS.map(([id]) => id), requiredScenarios, "QA launcher scenario contract drifted");
 assert.equal(isQaHarnessAvailable("production", "development"), false, "Production must never expose QA harness");
@@ -14,12 +15,12 @@ assert.equal(isQaHarnessAvailable(undefined, "production"), false, "Unknown prod
 for (const environment of ["preview", "development", "test"]) assert.equal(isQaHarnessAvailable(environment, "production"), true);
 
 const allowed = new Set(["PASS", "PARTIAL", "FAIL", "HUMAN_REQUIRED"]);
-assert.equal(VISUAL_COMPLIANCE_GATE.length, 8);
+assert.equal(VISUAL_COMPLIANCE_GATE.length, 9);
 for (const item of VISUAL_COMPLIANCE_GATE) {
   assert.ok(allowed.has(item.status), `${item.id}: invalid status`);
   assert.ok(item.evidence.trim(), `${item.id}: missing evidence`);
 }
-for (const subjective of ["world-intro", "growth", "battle-start", "variable-roster", "skill-2x", "ssr-skill", "battle-result"]) {
+for (const subjective of ["world-intro", "growth", "battle-start", "variable-roster", "skill-2x", "ssr-skill", "battle-result", "first-home"]) {
   assert.equal(VISUAL_COMPLIANCE_GATE.find((entry) => entry.id === subjective)?.status, "HUMAN_REQUIRED", `${subjective} must not be auto-PASSed`);
 }
 

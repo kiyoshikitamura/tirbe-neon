@@ -20,7 +20,7 @@ assert.equal(PRODUCTION_CREATIVES.length, 9, "Production Creative slot count mus
 assert.equal(new Set(PRODUCTION_CREATIVES.map((creative) => creative.id)).size, 9, "Creative IDs must be unique");
 assert.equal(new Set(PRODUCTION_CREATIVES.map((creative) => creative.assetPath)).size, 9, "Creative paths must be unique");
 assert.ok(PRODUCTION_CREATIVES.every((creative) => creative.enabled), "All frozen slots must be enabled");
-assert.ok(PRODUCTION_CREATIVES.every((creative) => !creative.available), "Assets must remain unavailable before delivery");
+assert.ok(PRODUCTION_CREATIVES.filter((creative) => creative.slot.startsWith("GACHA_")).every((creative) => !creative.available), "Gacha assets must remain unavailable before delivery");
 
 for (const [gachaId, expectedPath] of Object.entries(expectedGachaPaths)) {
   const slot = PRODUCTION_CREATIVE_BY_GACHA_ID[gachaId];
@@ -30,7 +30,10 @@ for (const [gachaId, expectedPath] of Object.entries(expectedGachaPaths)) {
   assert.equal(resolveAvailableGachaCreative(gachaId), null, `${gachaId} must use fallback before delivery`);
 }
 
-assert.equal(resolveAvailableMyPageCreatives(), null, "My Page must preserve fallback before all three assets arrive");
+const productionMyPage = resolveAvailableMyPageCreatives();
+assert.deepEqual(productionMyPage?.map((creative) => creative.assetPath), expectedMyPagePaths);
+assert.deepEqual(productionMyPage?.map((creative) => creative.destination), ["guild", "raid", null]);
+assert.ok(productionMyPage?.every((creative) => creative.width === 1200 && creative.height === 200));
 
 const deliveredFixture = PRODUCTION_CREATIVES.map((creative) => ({ ...creative, available: true }));
 for (const [gachaId, expectedPath] of Object.entries(expectedGachaPaths)) {
@@ -40,7 +43,7 @@ for (const [gachaId, expectedPath] of Object.entries(expectedGachaPaths)) {
 const deliveredMyPage = resolveAvailableMyPageCreatives(deliveredFixture);
 assert.deepEqual(deliveredMyPage?.map((creative) => creative.assetPath), expectedMyPagePaths);
 assert.deepEqual(deliveredMyPage?.map((creative) => creative.order), [1, 2, 3]);
-assert.ok(deliveredMyPage?.every((creative) => creative.destination === null));
+assert.deepEqual(deliveredMyPage?.map((creative) => creative.destination), ["guild", "raid", null]);
 assert.ok(deliveredMyPage?.every((creative) => creative.width === 1200 && creative.height === 200));
 
 const partialFixture = deliveredFixture.map((creative) => creative.id === "mypage_banner_03" ? { ...creative, available: false } : creative);

@@ -16,10 +16,15 @@ import "./HomeTab.css";
 
 const PRODUCTION_MY_PAGE_CREATIVES = resolveAvailableMyPageCreatives();
 
+type HomeTabQaState = Readonly<{
+  socialActivities?: readonly any[];
+  funnelMilestones?: readonly string[];
+}>;
+
 /**
  * MainMyPage - マイページメイン画面
  */
-function MainMyPage() {
+function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
   const {
     currentBaseId,
     selectedLeader,
@@ -56,24 +61,28 @@ function MainMyPage() {
   } = useGame();
 
   const equippedTitleName = ownedTitles.find((title: { id: string }) => title.id === titleEquipped)?.name || titleEquipped;
+  const visibleEquippedTitle = equippedTitleName && !["title_none", "称号なし", "No Title", "半グレの首領"].includes(equippedTitleName)
+    ? equippedTitleName
+    : null;
 
 
   // イベントバナースライドインジケーター
   const [bannerIndex, setBannerIndex] = useState(0);
   const [leaderLine, setLeaderLine] = useState<string | null>(null);
-  const [funnelMilestones, setFunnelMilestones] = useState<Set<string>>(new Set());
-  const [socialActivities, setSocialActivities] = useState<any[]>([]);
+  const [funnelMilestones, setFunnelMilestones] = useState<Set<string>>(new Set(qaState?.funnelMilestones || []));
+  const [socialActivities, setSocialActivities] = useState<any[]>([...(qaState?.socialActivities || [])]);
   const lastCtaImpression = useRef<string | null>(null);
-  const fallbackBanners: Array<{ id: string; title: string; img: string; destination: string | null }> = [
-    { id: "pickup_ssr_go", title: "【ピックアップガチャ】SSR「剛」新登場！", img: "/gacha/bg_gacha_sr.png", destination: "gacha" },
-    { id: "raid_raijin", title: "【レイドイベント】強敵「雷神」襲来中！", img: "/gacha/bg_gacha_normal.png", destination: "raid" }
-  ];
   const [banners, setBanners] = useState(() => PRODUCTION_MY_PAGE_CREATIVES?.map((creative) => ({
     id: creative.id,
     title: "",
     img: creative.assetPath,
     destination: creative.destination
-  })).filter((banner) => isDestinationAvailable(banner.destination)) ?? fallbackBanners);
+  })).filter((banner) => !banner.destination || isDestinationAvailable(banner.destination)) ?? []);
+  const visibleBanners = useMemo(
+    () => banners.filter((banner) => banner.destination !== "raid" || isRaidActive),
+    [banners, isRaidActive],
+  );
+  const activeBannerIndex = visibleBanners.length ? bannerIndex % visibleBanners.length : 0;
 
   const openBanner = (destination: string | null) => {
     if (!destination) return;
@@ -83,11 +92,12 @@ function MainMyPage() {
   };
 
   useEffect(() => {
+    if (visibleBanners.length < 2) return;
     const timer = setInterval(() => {
-      setBannerIndex((prev) => (prev + 1) % banners.length);
+      setBannerIndex((prev) => (prev + 1) % visibleBanners.length);
     }, 4000);
     return () => clearInterval(timer);
-  }, [banners.length]);
+  }, [visibleBanners.length]);
 
   useEffect(() => {
     if (PRODUCTION_MY_PAGE_CREATIVES) return;
@@ -98,23 +108,25 @@ function MainMyPage() {
   }, [featureOperatingStates]);
 
   useEffect(() => {
-    setBanners((current) => current.filter((banner) => isDestinationAvailable(banner.destination, featureOperatingStates)));
+    setBanners((current) => current.filter((banner) => !banner.destination || isDestinationAvailable(banner.destination, featureOperatingStates)));
   }, [featureOperatingStates]);
 
   useEffect(() => {
+    if (qaState?.funnelMilestones) return;
     if (!session?.user?.id) return;
     void supabase.from("user_funnel_milestones").select("milestone").eq("user_id", session.user.id)
       .then(({ data }) => setFunnelMilestones(new Set((data || []).map((row) => row.milestone))));
-  }, [session?.user?.id]);
+  }, [qaState?.funnelMilestones, session?.user?.id]);
 
   useEffect(() => {
+    if (qaState?.socialActivities) return;
     if (!session?.user?.id) return;
     void supabase.from("social_activity_feed").select("id,activity_type,actor_user_id,actor_display_name,guild_id,object_master_id,display_payload,permanent,created_at")
       .order("permanent", { ascending: false }).order("created_at", { ascending: false }).limit(20)
       .then(({ data, error }) => {
         if (!error) setSocialActivities((data || []).filter((event: any) => !["FRIEND", "GVG", "SHOP", "PAYMENT"].includes(String(event.activity_type || "").toUpperCase())));
       });
-  }, [session?.user?.id]);
+  }, [qaState?.socialActivities, session?.user?.id]);
 
   const primaryCta = useMemo<{
     key: string; eyebrow: string; title: string; detail: string; tab?: string; action?: "guild_chat" | "mission";
@@ -123,7 +135,7 @@ function MainMyPage() {
     if (tutorialStep && tutorialStep !== "AUTHENTICATION") return { key: "tutorial", eyebrow: "次にすること", title: "チュートリアルを続ける", detail: "最初の成功体験を完了しよう。", tab: tutorialStep === "FREE_GACHA" ? "gacha" : tutorialStep === "AUTO_FORMATION" ? "character" : "patrol" };
     if (!funnelMilestones.has("first_pvp")) return { key: "first_pvp", eyebrow: "次にすること", title: "最初のPvPへ挑戦", detail: "街のプレイヤーと競い、現在の強さを確かめよう。", tab: "pvp" };
     if (!funnelMilestones.has("ranking_viewed")) return { key: "ranking_viewed", eyebrow: "次にすること", title: "ランキングを確認", detail: "初戦の順位と次の目標を確認しよう。", tab: "ranking" };
-    if (!funnelMilestones.has("first_raid")) return { key: "first_raid", eyebrow: "次にすること", title: "開催中レイドへ", detail: "全プレイヤーで強敵へ挑み、貢献を残そう。", tab: "raid" };
+    if (!funnelMilestones.has("first_raid") && isRaidActive) return { key: "first_raid", eyebrow: "次にすること", title: "開催中レイドへ", detail: "全プレイヤーで強敵へ挑み、貢献を残そう。", tab: "raid" };
     if (!userGuildMember) return { key: "guild_discovery", eyebrow: "SOCIAL", title: "おすすめTRIBEを見る", detail: "活動中の仲間と出会い、レイド貢献を共有しよう。", tab: "guild" };
     if (!funnelMilestones.has("guild_activation")) return { key: "guild_home", eyebrow: "SOCIAL", title: "所属TRIBEへ", detail: "加入したTRIBEの仲間と次の行動を確認しよう。", tab: "guild" };
     if (unreadMissionsCount > 0) return { key: "mission_reward", eyebrow: "報酬", title: "達成報酬を受け取る", detail: `受取可能なミッションが ${unreadMissionsCount} 件あります。`, action: "mission" };
@@ -374,9 +386,9 @@ function MainMyPage() {
         {leaderLine && <div className="mypage-leader-line">{leaderLine}</div>}
 
         {/* 層構造装飾: z-4 称号プレートバナー */}
-        {titleEquipped && titleEquipped !== "title_none" && (
+        {visibleEquippedTitle && (
           <div className="mypage-title-banner-layer">
-            <span className="mypage-title-banner-badge">{equippedTitleName}</span>
+            <span className="mypage-title-banner-badge">{visibleEquippedTitle}</span>
           </div>
         )}
 
@@ -427,37 +439,37 @@ function MainMyPage() {
         </button>
         {/* 月額VIPパスバナー */}
         {/* 3. イベントバナーエリア (大ボタン直下) */}
-        <div className="mypage-event-banner-area">
+        {visibleBanners.length > 0 && <div className="mypage-event-banner-area">
           <div className="banner-slide-wrapper">
             <button
               className="banner-arrow left"
-              onClick={() => setBannerIndex((prev) => (prev - 1 + banners.length) % banners.length)}
+              onClick={() => setBannerIndex((prev) => (prev - 1 + visibleBanners.length) % visibleBanners.length)}
             >
               ‹
             </button>
             <button
-              className={`banner-card${banners[bannerIndex].id === "vip_pass" ? " vip" : ""}`}
-              onClick={() => openBanner(banners[bannerIndex].destination)}
-              aria-disabled={!banners[bannerIndex].destination}
+              className={`banner-card${visibleBanners[activeBannerIndex].id === "vip_pass" ? " vip" : ""}`}
+              onClick={() => openBanner(visibleBanners[activeBannerIndex].destination)}
+              aria-disabled={!visibleBanners[activeBannerIndex].destination}
             >
-              <img src={banners[bannerIndex].img} alt="Banner" className="banner-bg-img" />
+              <img src={visibleBanners[activeBannerIndex].img} alt="Banner" className="banner-bg-img" />
               <div className="banner-info-overlay">
-                <span className="banner-title">{banners[bannerIndex].title}</span>
+                <span className="banner-title">{visibleBanners[activeBannerIndex].title}</span>
               </div>
             </button>
             <button
               className="banner-arrow right"
-              onClick={() => setBannerIndex((prev) => (prev + 1) % banners.length)}
+              onClick={() => setBannerIndex((prev) => (prev + 1) % visibleBanners.length)}
             >
               ›
             </button>
           </div>
           <div className="banner-dots">
-            {banners.map((_, i) => (
-              <span key={i} className={`dot ${i === bannerIndex ? "active" : ""}`} />
+            {visibleBanners.map((_, i) => (
+              <span key={i} className={`dot ${i === activeBannerIndex ? "active" : ""}`} />
             ))}
           </div>
-        </div>
+        </div>}
 
         {/* 4. 1行チャットプレビュー ＆ 暗号メッセージアプリ『トライブ』起動 */}
         <div className="mypage-chat-preview-area">
@@ -483,6 +495,6 @@ function MainMyPage() {
   );
 }
 
-export default function HomeTab() {
-  return <MainMyPage />;
+export default function HomeTab({ qaState }: { qaState?: HomeTabQaState } = {}) {
+  return <MainMyPage qaState={qaState} />;
 }

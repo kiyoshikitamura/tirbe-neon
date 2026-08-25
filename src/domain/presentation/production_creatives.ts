@@ -1,4 +1,4 @@
-export const PRODUCTION_CREATIVE_STATUS = "INTEGRATION CONTRACT FROZEN / ASSETS PENDING" as const;
+export const PRODUCTION_CREATIVE_STATUS = "MY PAGE DELIVERED / GACHA ASSETS PENDING" as const;
 
 export type CanonicalGachaId =
   | "CHAR_SPECIAL"
@@ -38,9 +38,9 @@ export const PRODUCTION_CREATIVES = [
   { id: "gacha_normal_character", slot: "GACHA_NORMAL_CHARACTER", assetPath: "/promotion/gacha_normal_character.png", destination: null, order: null, enabled: true, available: false, width: 1200, height: 300 },
   { id: "gacha_normal_skill", slot: "GACHA_NORMAL_SKILL", assetPath: "/promotion/gacha_normal_skill.png", destination: null, order: null, enabled: true, available: false, width: 1200, height: 300 },
   { id: "gacha_normal_equipment", slot: "GACHA_NORMAL_EQUIPMENT", assetPath: "/promotion/gacha_normal_equipment.png", destination: null, order: null, enabled: true, available: false, width: 1200, height: 300 },
-  { id: "mypage_banner_01", slot: "MYPAGE_BANNER_01", assetPath: "/promotion/mypage_banner_01.png", destination: null, order: 1, enabled: true, available: false, width: 1200, height: 200 },
-  { id: "mypage_banner_02", slot: "MYPAGE_BANNER_02", assetPath: "/promotion/mypage_banner_02.png", destination: null, order: 2, enabled: true, available: false, width: 1200, height: 200 },
-  { id: "mypage_banner_03", slot: "MYPAGE_BANNER_03", assetPath: "/promotion/mypage_banner_03.png", destination: null, order: 3, enabled: true, available: false, width: 1200, height: 200 }
+  { id: "mypage_banner_01", slot: "MYPAGE_BANNER_01", assetPath: "/promotion/mypage_banner_01.png", destination: "guild", order: 1, enabled: true, available: true, width: 1200, height: 200 },
+  { id: "mypage_banner_02", slot: "MYPAGE_BANNER_02", assetPath: "/promotion/mypage_banner_02.png", destination: "raid", order: 2, enabled: true, available: true, width: 1200, height: 200 },
+  { id: "mypage_banner_03", slot: "MYPAGE_BANNER_03", assetPath: "/promotion/mypage_banner_03.png", destination: null, order: 3, enabled: true, available: true, width: 1200, height: 200 }
 ] as const satisfies readonly ProductionCreative[];
 
 export const PRODUCTION_CREATIVE_BY_GACHA_ID: Readonly<Record<CanonicalGachaId, ProductionCreativeSlot>> = {

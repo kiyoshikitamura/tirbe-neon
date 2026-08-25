@@ -88,7 +88,7 @@ import { useCharacterProgression } from "./hooks/useCharacterProgression";
 import { shouldRevalidateAuthSession } from "@/utils/auth_session_events";
 import { getJstDateString } from "@/utils/jst_date";
 
-const GameContext = createContext<any>(null);
+export const GameContext = createContext<any>(null);
 
 export function GameProvider({ children }: { children: React.ReactNode }) {
   const lastValidatedAuthUserIdRef = useRef<string | null>(null);

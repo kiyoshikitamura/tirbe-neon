@@ -28,7 +28,7 @@ export default function Header() {
   const recoverySeconds = vitalityNextRecoveryAt
     ? Math.max(0, Math.ceil((new Date(vitalityNextRecoveryAt).getTime() - now) / 1000))
     : null;
-  const visibleTitle = userTitle && !["称号なし", "No Title", "title_none"].includes(userTitle)
+  const visibleTitle = userTitle && !["称号なし", "No Title", "title_none", "半グレの首領"].includes(userTitle)
     ? userTitle
     : null;
 

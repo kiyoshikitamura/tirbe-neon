@@ -20,7 +20,10 @@ export const QA_PRESENTATION_SCENARIOS = [
   ["battle-final-hit", "Battle FINAL HIT"],
   ["battle-result-win", "Battle Result WIN"],
   ["battle-result-lose", "Battle Result LOSE"],
-  ["first-home", "First Home"],
+  ["first-home-fresh", "First Home / Fresh"],
+  ["first-home-raid", "First Home / Active Raid"],
+  ["first-home-guild-out", "First Home / Guild未加入"],
+  ["first-home-guild-in", "First Home / Guild加入済み"],
 ] as const;
 
 export type QaPresentationScenarioId = typeof QA_PRESENTATION_SCENARIOS[number][0];
@@ -41,6 +44,7 @@ export const VISUAL_COMPLIANCE_GATE: ReadonlyArray<Readonly<{
   { id: "skill-2x", specification: "2xでもSkillが通常攻撃に埋没しない", status: "HUMAN_REQUIRED", automatedPrecheck: "PASS", evidence: "Production skill cut-inをspeed=2 fixtureで表示" },
   { id: "ssr-skill", specification: "SSR SkillにPremium感がある", status: "HUMAN_REQUIRED", automatedPrecheck: "PASS", evidence: "SSR actor + production premium tierをHarnessで表示" },
   { id: "battle-result", specification: "VS → WIN/LOSE → 左MVP → Score → Comparison", status: "HUMAN_REQUIRED", automatedPrecheck: "PASS", evidence: "Production BattleResultSummaryとauthoritative-shaped replay fixtureを使用" },
+  { id: "first-home", specification: "First ViewでActivity / Leader / CTA / Bannerを判別できる", status: "HUMAN_REQUIRED", automatedPrecheck: "PASS", evidence: "Production HomeTabをFresh / Raid / Guild未加入 / Guild加入済みの4状態で表示" },
 ]);
 
 export function isQaHarnessAvailable(appEnvironment: string | undefined, nodeEnvironment: string | undefined) {

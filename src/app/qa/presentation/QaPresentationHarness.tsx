@@ -4,8 +4,13 @@ import { useEffect, useMemo, useState } from "react";
 import BattleMatchupPresentation from "@/app/components/battle/BattleMatchupPresentation";
 import BattleResultSummary from "@/app/components/battle/BattleResultSummary";
 import QuestBattleViewer from "@/app/components/battle/QuestBattleViewer";
+import Footer from "@/app/components/Footer";
+import Header from "@/app/components/Header";
+import HomeTab from "@/app/components/HomeTab";
 import CharacterPresentation from "@/app/components/character/CharacterPresentation";
+import PageShell from "@/app/components/ui/PageShell";
 import TypewriterText from "@/app/components/tutorial/TypewriterText";
+import { GameContext } from "@/app/context/GameContext";
 import { WORLD_STAGES } from "@/app/components/SetupView";
 import { QA_PRESENTATION_SCENARIOS, VISUAL_COMPLIANCE_GATE, type QaPresentationScenarioId } from "@/domain/presentation/qaHarness";
 import { resolveSsrGachaQuote } from "@/domain/presentation/ssrGachaQuotes";
@@ -140,11 +145,74 @@ function SimpleFixture({ kind }: { kind: QaPresentationScenarioId }) {
   if (kind === "growth-result") return <div className="outlaw-confirm-overlay qa-growth-result-overlay"><section className="outlaw-confirm-dialog neon-mode kind-result"><div className="confirm-content-wrapper"><h3 className="confirm-title">レベルアップ結果</h3><div className="growth-result-v0" data-growth-result="level-up"><span>CHARACTER GROWTH</span><strong>{leader.jpName}</strong><p className="growth-result-level">Lv.1 → Lv.7</p><small className="growth-result-power">総合力 1,840 → 2,960（+1,120）</small></div><button className="semantic-cta semantic-cta--primary">編成へ進む</button></div></section></div>;
   if (kind === "formation") return <section className="qa-card"><span>FORMATION</span><h2>現在の編成</h2><div className="qa-formation">{playerParty.map((entry) => <CharacterPresentation key={entry.id} src={getCharacterTransparentImg(findCharacter(entry.name).name)} alt={entry.name} variant="thumbnail" />)}</div><button>編成を保存</button></section>;
   if (kind === "quest-encounter") return <section className="qa-card"><span>QUEST ENCOUNTER</span><h2>新宿・初級</h2><p>敵 3人 / 推奨Lv.5 / EASY</p><button>新宿へ派遣する</button></section>;
-  if (kind === "first-home") return <section className="qa-card qa-home"><span>LIVE　SSR獲得：ゴウ</span><CharacterPresentation src={getCharacterTransparentImg(leader.name)} alt={leader.jpName} variant="full-body" rarity="SSR" /><h2>{leader.jpName}</h2><button>次にすること：最初のPvPへ</button></section>;
   return null;
 }
 
+type HomeScenario = "first-home-fresh" | "first-home-raid" | "first-home-guild-out" | "first-home-guild-in";
+
+function ProductionHomeFixture({ scenario }: { scenario: HomeScenario }) {
+  const homeLeader: any = findCharacter("アゲハ");
+  const raidActive = scenario === "first-home-raid";
+  const guildJoined = scenario === "first-home-guild-in";
+  const activationComplete = scenario === "first-home-guild-out" || guildJoined;
+  const noop = () => undefined;
+  const game = {
+    activeTab: "home",
+    currentBaseId: "shinjuku",
+    selectedLeader: homeLeader.id,
+    selectedMembers: playerParty.map((entry) => entry.characterId),
+    unreadMissionsCount: 2,
+    unclaimedPresentsCount: 1,
+    guildChats: [],
+    chatUnreadCounts: {},
+    bbsUnreadTotal: 0,
+    dmUnreadTotal: 0,
+    selectedBgMode: "auto",
+    titleEquipped: "半グレの首領",
+    userTitle: "半グレの首領",
+    ownedTitles: [],
+    interiorItem: "none",
+    equippedFrontEffect: "effect_none",
+    totalPower: 7420,
+    totalPowerLoading: false,
+    monthlyPassActive: false,
+    isRaidActive: raidActive,
+    session: null,
+    activePatrols: [],
+    onboardingState: { tutorial_step: "AUTHENTICATION" },
+    userGuildMember: guildJoined ? { role: "MEMBER" } : null,
+    userGuild: guildJoined ? { name: "NEON CREW" } : null,
+    featureOperatingStates: [],
+    username: "NEON-R",
+    userLevel: 2,
+    userXp: 120,
+    cash: 4200,
+    diamonds: 300,
+    vitality: 95,
+    vitalityNextRecoveryAt: new Date(Date.now() + 180_000).toISOString(),
+    setShowMissionPanel: noop,
+    setShowInboxPanel: noop,
+    setInboxPanelTab: noop,
+    setShowSettingsPanel: noop,
+    setShowMoveBaseModal: noop,
+    setShowTribeChatPanel: noop,
+    navigateTab: noop,
+    playCyberSe: noop,
+    fetchPlayerDetail: noop,
+  };
+  const milestones = activationComplete || raidActive ? ["first_pvp", "ranking_viewed"] : [];
+  const activities = [{ id: "qa-activity", activity_type: "SSR_CHARACTER", actor_user_id: "other-user", actor_display_name: "KAI", created_at: new Date().toISOString() }];
+  return <GameContext.Provider value={game}>
+    <div className="qa-production-home" data-home-scenario={scenario} data-raid-active={String(raidActive)} data-guild-joined={String(guildJoined)}>
+      <PageShell header={<Header />} footer={<Footer />}>
+        <HomeTab qaState={{ socialActivities: activities, funnelMilestones: milestones }} />
+      </PageShell>
+    </div>
+  </GameContext.Provider>;
+}
+
 function Scenario({ id }: { id: QaPresentationScenarioId }) {
+  if (id.startsWith("first-home-")) return <ProductionHomeFixture scenario={id as HomeScenario} />;
   if (id === "gacha-ssr-reveal") return <SsrRevealFixture />;
   if (id === "battle-5v3") return <BattleFixture size={3} />;
   if (id === "battle-5v5") return <BattleFixture size={5} />;
@@ -163,12 +231,17 @@ function Scenario({ id }: { id: QaPresentationScenarioId }) {
   if (id === "skill-tutorial") return <SimpleFixture kind={id} />;
   if (id === "gacha-standard-reveal" || id === "gacha-page") return <SimpleFixture kind={id} />;
   if (id === "name-input-error") return <NameRetryFixture />;
-  if (id === "world-introduction" || id === "first-home") return <SimpleFixture kind={id} />;
+  if (id === "world-introduction") return <SimpleFixture kind={id} />;
   return <BattleMatchupPresentation playerLeader={playerParty[0]} opponentLeader={enemyParty[0]} context={{ mode: "PATROL", opponentLabel: "新宿・初級", encounterLabel: "新宿・初級", opponentLeaderCharacterId: enemyParty[0].characterId, opponentLeaderName: enemyParty[0].name }} imageFor={(id) => { const master: any = CHARACTERS_MASTER.find((entry: any) => entry.id === id); return master ? getCharacterTransparentImg(master.name) : undefined; }} />;
 }
 
 export default function QaPresentationHarness() {
   const [scenario, setScenario] = useState<QaPresentationScenarioId>("world-introduction");
+  useEffect(() => {
+    const requested = new URLSearchParams(window.location.search).get("scenario");
+    if (QA_PRESENTATION_SCENARIOS.some(([id]) => id === requested)) setScenario(requested as QaPresentationScenarioId);
+  }, []);
   const label = useMemo(() => QA_PRESENTATION_SCENARIOS.find(([id]) => id === scenario)?.[1], [scenario]);
-  return <main className="qa-harness" data-qa-harness="presentation"><header><div><small>PREVIEW / DEVELOPMENT ONLY</small><h1>Human QA Harness</h1><p>{label}</p></div><a href="#compliance">Visual Compliance</a></header><nav aria-label="QA scenarios">{QA_PRESENTATION_SCENARIOS.map(([id, name]) => <button key={id} className={scenario === id ? "is-active" : ""} aria-pressed={scenario === id} onClick={() => setScenario(id)} data-scenario-id={id}>{name}</button>)}</nav><section className="qa-stage" data-active-scenario={scenario}><Scenario key={scenario} id={scenario} /></section><section id="compliance" className="qa-compliance"><h2>Visual Compliance Precheck</h2><p>客観的Contractは自動検証。見た目の品質はHuman ReviewまでPASSにしません。</p>{VISUAL_COMPLIANCE_GATE.map((item) => <article key={item.id} data-compliance-id={item.id} data-status={item.status}><div><strong>{item.specification}</strong><small>AUTO {item.automatedPrecheck}</small></div><b>{item.status}</b><p>{item.evidence}</p></article>)}</section></main>;
+  const fullscreenHome = scenario.startsWith("first-home-");
+  return <main className={`qa-harness${fullscreenHome ? " is-home-preview" : ""}`} data-qa-harness="presentation"><header><div><small>PREVIEW / DEVELOPMENT ONLY</small><h1>Human QA Harness</h1><p>{label}</p></div><a href="#compliance">Visual Compliance</a></header><nav aria-label="QA scenarios">{QA_PRESENTATION_SCENARIOS.map(([id, name]) => <button key={id} className={scenario === id ? "is-active" : ""} aria-pressed={scenario === id} onClick={() => setScenario(id)} data-scenario-id={id}>{name}</button>)}</nav><section className="qa-stage" data-active-scenario={scenario}><Scenario key={scenario} id={scenario} /></section><section id="compliance" className="qa-compliance"><h2>Visual Compliance Precheck</h2><p>客観的Contractは自動検証。見た目の品質はHuman ReviewまでPASSにしません。</p>{VISUAL_COMPLIANCE_GATE.map((item) => <article key={item.id} data-compliance-id={item.id} data-status={item.status}><div><strong>{item.specification}</strong><small>AUTO {item.automatedPrecheck}</small></div><b>{item.status}</b><p>{item.evidence}</p></article>)}</section></main>;
 }
