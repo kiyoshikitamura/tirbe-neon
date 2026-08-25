@@ -92,16 +92,17 @@ type CutInProps = {
 export function BattleSkillCutIn({ presentation, participant, imageSrc, speed }: CutInProps) {
   const [visible, setVisible] = useState<BattleSkillPresentation | null>(null);
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const lastPresentationRef = useRef<BattleSkillPresentation | null>(null);
+  const lastPresentationKeyRef = useRef("");
 
   useLayoutEffect(() => {
     if (!presentation?.tier) {
-      lastPresentationRef.current = null;
+      lastPresentationKeyRef.current = "";
       setVisible(null);
       return;
     }
-    if (lastPresentationRef.current === presentation) return;
-    lastPresentationRef.current = presentation;
+    const presentationKey = `${presentation.charName}:${presentation.skillName}:${presentation.tier}`;
+    if (lastPresentationKeyRef.current === presentationKey) return;
+    lastPresentationKeyRef.current = presentationKey;
     if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
     setVisible(presentation);
     const minimumDuration = speed > 1 ? 720 : presentation.tier === "SSR" ? 1100 : 960;

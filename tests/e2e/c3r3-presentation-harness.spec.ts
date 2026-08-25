@@ -113,13 +113,19 @@ test("SSR skill cut-in overlays the full roster rather than the center action co
   expect(cutIn).not.toBeNull();
   expect(Math.abs(cutIn!.x - viewer!.x)).toBeLessThanOrEqual(1);
   expect(Math.abs(cutIn!.width - viewer!.width)).toBeLessThanOrEqual(2);
+  await expect(page.locator(".battle-skill-cutin")).toHaveCount(0, { timeout: 1_250 });
+  await expect(page.locator('[data-action-phase="impact"], [data-action-phase="damage"], [data-action-phase="hp-transition"]')).toBeVisible({ timeout: 1_000 });
+  await expect(page.locator(".battle-unit-popup")).toContainText("2,940");
+  await expect(page.locator('[data-action-phase="action-hold"]')).toBeVisible({ timeout: 1_000 });
 });
 
 test("consecutive skills keep a visible roster gap between full-screen cut-ins", async ({ page }) => {
   await openScenario(page, "battle-consecutive-skill");
   await expect(page.locator(".battle-skill-cutin")).toContainText("ストリートパンチ");
   await expect(page.locator(".battle-skill-cutin")).toHaveCount(0, { timeout: 1_250 });
-  await expect(page.locator(".battle-skill-cutin")).toContainText("ネオンブレイク", { timeout: 1_250 });
+  await expect(page.locator(".battle-unit-popup")).toBeVisible({ timeout: 1_000 });
+  await expect(page.locator('[data-action-phase="action-hold"]')).toBeVisible({ timeout: 1_000 });
+  await expect(page.locator(".battle-skill-cutin")).toContainText("ネオンブレイク", { timeout: 1_000 });
 });
 
 test("FINAL HIT is a full-screen overlay and does not resize the roster", async ({ page }) => {
@@ -159,6 +165,17 @@ test("production result shows opponent, left MVP art, score and comparison", asy
   await expect(page.locator(".battle-result-score-grid")).toBeVisible();
   await expect(page.locator(".battle-result-mvp-copy strong")).toHaveText("レイジ");
   await expect(page.locator(".battle-result-score-grid > div")).toHaveCount(5);
+  await expect(page.locator(".battle-result-score-grid")).toContainText("0 / 20");
+  await expect(page.locator(".battle-result-score-grid")).toContainText("0 / 15");
+  const heroGeometry = await page.locator(".battle-result-mvp").evaluate((card) => {
+    const art = card.querySelector<HTMLElement>(".battle-result-mvp-character")!.getBoundingClientRect();
+    const copy = card.querySelector<HTMLElement>(".battle-result-mvp-copy > div")!.getBoundingClientRect();
+    const cardBox = card.getBoundingClientRect();
+    return { artWidth: art.width, cardWidth: cardBox.width, artLeft: art.left, cardLeft: cardBox.left, nameScoreSameRow: copy.height < 48 };
+  });
+  expect(heroGeometry.artWidth).toBeGreaterThan(heroGeometry.cardWidth * 0.65);
+  expect(heroGeometry.artLeft).toBeLessThanOrEqual(heroGeometry.cardLeft + 4);
+  expect(heroGeometry.nameScoreSameRow).toBe(true);
   await expect(page.locator(".battle-result-score-grid > div").first()).toHaveCSS("border-top-width", "0px");
   await expect(page.locator(".battle-result-comparison header")).toContainText("味方");
   await expect(page.locator(".battle-result-comparison header")).toContainText("敵");

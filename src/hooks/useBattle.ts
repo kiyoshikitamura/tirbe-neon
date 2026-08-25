@@ -1781,7 +1781,7 @@ export function useBattle(options: UseBattleOptions) {
           ? previousActionWasSkill ? 1050 : 940
           : 320)
         : followsSkill
-          ? 2350
+          ? 1650
           : followsNormalAttack
             ? 780
             : holdsSkillImpact
@@ -1793,7 +1793,9 @@ export function useBattle(options: UseBattleOptions) {
             : replayEvent.type === "RESULT"
               ? 820
               : 480;
-      const replayDelay = replayEvent.type === "ACTION" && previousActionWasSkill
+      const replayDelay = followsSkill
+        ? Math.max(1150, delay / battleSpeed)
+        : replayEvent.type === "ACTION" && previousActionWasSkill
         ? Math.max(700, delay / battleSpeed)
         : holdsSkillImpact
           ? Math.max(450, delay / battleSpeed)

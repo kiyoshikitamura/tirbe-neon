@@ -39,6 +39,7 @@ export default function BattleResultSummary({ victory, tutorial = false, rewards
   ), [enemyParticipants, playerParticipants, replayEvents]);
   const mvp = analysis.mvp;
   const [displayedTotal, setDisplayedTotal] = useState(0);
+  const [displayedBreakdown, setDisplayedBreakdown] = useState({ damage: 0, kills: 0, heal: 0, shield: 0, survival: 0 });
   const mvpMaster = CHARACTERS_MASTER.find((entry: any) => entry.id === mvp?.participant.characterId);
   const mvpImage = mvpMaster ? getCharacterTransparentImg(mvpMaster.name) : undefined;
   const opponentLeader = enemyParticipants.find((entry: any) => String(entry.characterId ?? entry.id) === presentationContext?.opponentLeaderCharacterId) || enemyParticipants[0];
@@ -64,10 +65,30 @@ export default function BattleResultSummary({ victory, tutorial = false, rewards
     }, 28);
     return () => window.clearInterval(timer);
   }, [mvp?.participant.id, mvp?.score.total]);
+  useEffect(() => {
+    const target = mvp?.score;
+    setDisplayedBreakdown({ damage: 0, kills: 0, heal: 0, shield: 0, survival: 0 });
+    if (!target) return;
+    const keys = ["damage", "kills", "heal", "shield", "survival"] as const;
+    const startedAt = performance.now() + 520;
+    let frame = 0;
+    const tick = () => {
+      const now = performance.now();
+      const next = { damage: 0, kills: 0, heal: 0, shield: 0, survival: 0 };
+      keys.forEach((key, index) => {
+        const progress = Math.max(0, Math.min(1, (now - startedAt - index * 90) / 180));
+        next[key] = Math.round(target[key] * progress);
+      });
+      setDisplayedBreakdown(next);
+      if (now < startedAt + (keys.length - 1) * 90 + 180) frame = window.requestAnimationFrame(tick);
+    };
+    frame = window.requestAnimationFrame(tick);
+    return () => window.cancelAnimationFrame(frame);
+  }, [mvp?.participant.id, mvp?.score.damage, mvp?.score.heal, mvp?.score.kills, mvp?.score.shield, mvp?.score.survival]);
   return (
     <section className={`battle-result-summary ${victory ? "is-victory" : "is-defeat"}`} aria-label={victory ? "バトル勝利" : "バトル敗北"}>
       <header className="battle-result-opponent">
-        <small>{tutorial ? "クエストクリア · VS" : "VS 対戦相手"}</small>
+        <small>{tutorial ? "VS" : "VS 対戦相手"}</small>
         <strong>{opponentLabel}</strong>
         {presentationContext?.opponentLeaderName && <span>敵リーダー　{presentationContext.opponentLeaderName}</span>}
         {presentationContext?.opponentTotalPower ? <b>POWER {presentationContext.opponentTotalPower.toLocaleString()}</b> : presentationContext?.opponentProfile ? <b>{presentationContext.opponentProfile}</b> : null}
@@ -77,15 +98,15 @@ export default function BattleResultSummary({ victory, tutorial = false, rewards
       {mvp && (
         <section className="battle-result-mvp" aria-label={`MVP ${mvp.participant.name} ${mvp.score.total}ポイント`}>
           <div className="battle-result-mvp-hero">
-            {mvpImage && <CharacterPresentation src={mvpImage} alt={mvp.participant.name} variant="battle" />}
+            {mvpImage && <CharacterPresentation src={mvpImage} alt={mvp.participant.name} variant="dialogue-bust" className="battle-result-mvp-character" />}
             <div className="battle-result-mvp-copy"><small>MVP</small><div><strong>{mvp.participant.name}</strong><b>{displayedTotal}<i>PT</i></b></div></div>
           </div>
           <dl className="battle-result-score-grid" aria-label="MVPスコア内訳">
-            <div><dt>与ダメージ</dt><dd><b>{mvp.score.damage}</b> / 40<small>{mvp.raw.damage.toLocaleString()}</small></dd></div>
-            <div><dt>撃破</dt><dd><b>{mvp.score.kills}</b> / 20<small>{mvp.raw.kills}体</small></dd></div>
-            <div><dt>回復</dt><dd><b>{mvp.score.heal}</b> / 20<small>{mvp.raw.heal.toLocaleString()}</small></dd></div>
-            <div><dt>シールド</dt><dd><b>{mvp.score.shield}</b> / 15<small>{mvp.raw.shield.toLocaleString()}</small></dd></div>
-            <div><dt>生存</dt><dd><b>{mvp.score.survival}</b> / 5<small>{mvp.raw.survived ? "生存" : "戦闘不能"}</small></dd></div>
+            <div><dt>与ダメージ</dt><dd><b>{displayedBreakdown.damage}</b> / 40<small>{mvp.raw.damage.toLocaleString()}</small></dd></div>
+            <div><dt>撃破</dt><dd><b>{displayedBreakdown.kills}</b> / 20<small>{mvp.raw.kills}体</small></dd></div>
+            <div><dt>回復</dt><dd><b>{displayedBreakdown.heal}</b> / 20<small>{mvp.raw.heal.toLocaleString()}</small></dd></div>
+            <div><dt>シールド</dt><dd><b>{displayedBreakdown.shield}</b> / 15<small>{mvp.raw.shield.toLocaleString()}</small></dd></div>
+            <div><dt>生存</dt><dd><b>{displayedBreakdown.survival}</b> / 5<small>{mvp.raw.survived ? "生存" : "戦闘不能"}</small></dd></div>
           </dl>
         </section>
       )}

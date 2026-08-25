@@ -56,6 +56,9 @@ function BattleFixture({ size = 3, speed = 1, ssrSkill = false, consecutiveSkill
   const [liveSpeed, setLiveSpeed] = useState(paceDemo ? 1 : speed);
   const [paceSkillVisible, setPaceSkillVisible] = useState(ssrSkill);
   const [consecutiveSkillName, setConsecutiveSkillName] = useState(consecutiveSkill ? "ストリートパンチ" : "");
+  const skillDemo = ssrSkill || consecutiveSkill;
+  const [skillPhase, setSkillPhase] = useState<"ACTOR_FOCUS" | "TARGET_FOCUS" | "ATTACK_MOTION" | "IMPACT" | "DAMAGE" | "HP_TRANSITION" | "ACTION_HOLD">(skillDemo ? "ACTOR_FOCUS" : "DAMAGE");
+  const [showSkillDamage, setShowSkillDamage] = useState(!skillDemo);
   useEffect(() => {
     if (!paceDemo) setPaceSkillVisible(ssrSkill);
   }, [paceDemo, ssrSkill]);
@@ -65,15 +68,29 @@ function BattleFixture({ size = 3, speed = 1, ssrSkill = false, consecutiveSkill
     return () => window.clearTimeout(timer);
   }, [paceDemo]);
   useEffect(() => {
-    if (!consecutiveSkill) return;
-    const gap = window.setTimeout(() => setConsecutiveSkillName(""), 900);
-    const next = window.setTimeout(() => setConsecutiveSkillName("ネオンブレイク"), 1320);
-    return () => { window.clearTimeout(gap); window.clearTimeout(next); };
-  }, [consecutiveSkill]);
+    if (!skillDemo) return;
+    const timers: number[] = [];
+    const scheduleResolution = (startAt: number, nextSkill?: string) => {
+      timers.push(window.setTimeout(() => setSkillPhase("TARGET_FOCUS"), startAt + 760));
+      timers.push(window.setTimeout(() => setSkillPhase("ATTACK_MOTION"), startAt + 900));
+      timers.push(window.setTimeout(() => { setShowSkillDamage(true); setSkillPhase("IMPACT"); }, startAt + 1040));
+      timers.push(window.setTimeout(() => setSkillPhase("DAMAGE"), startAt + 1160));
+      timers.push(window.setTimeout(() => setSkillPhase("HP_TRANSITION"), startAt + 1370));
+      timers.push(window.setTimeout(() => setSkillPhase("ACTION_HOLD"), startAt + 1600));
+      if (nextSkill) timers.push(window.setTimeout(() => {
+        setShowSkillDamage(false);
+        setSkillPhase("ACTOR_FOCUS");
+        setConsecutiveSkillName(nextSkill);
+      }, startAt + 2020));
+    };
+    scheduleResolution(0, consecutiveSkill ? "ネオンブレイク" : undefined);
+    if (consecutiveSkill) scheduleResolution(2020);
+    return () => timers.forEach((timer) => window.clearTimeout(timer));
+  }, [consecutiveSkill, skillDemo]);
   const enemies = enemyParty.slice(0, size).map((entry) => finalHit ? { ...entry, hp: 0, isDead: true } : entry);
   const timeline = [...playerParty, ...enemies].map(({ id, name, isEnemy }) => ({ id, name, isEnemy }));
   const fixtureSkillName = consecutiveSkill ? consecutiveSkillName : paceSkillVisible ? "ストリートパンチ" : "";
-  return <QuestBattleViewer battleMode="PATROL" opponentName="新宿・初級" playerParty={playerParty} enemyParty={enemies} timeline={timeline} timelineIndex={0} authoritativeTimeline={timeline.slice(0, 3)} presentationPhase={paceDemo ? "ACTION_HOLD" : "DAMAGE"} round={4} skillCutIn={fixtureSkillName ? { charName: playerParty[0].name, skillName: fixtureSkillName } : null} targetLine={{ fromId: "player-1", toId: "enemy-1" }} shakingId="enemy-1" damagePopup={{ charId: "enemy-1", val: ssrSkill ? 2940 : 1284, type: "dmg", isCritical: ssrSkill }} tactic="BALANCED" speed={liveSpeed} monthlyPassActive={false} paused={false} tutorial={size === 3 || paceDemo} onSpeedChange={setLiveSpeed} onPauseChange={() => undefined} canSkip={size === 5} skipPending={false} onSkip={() => undefined} onRetreat={() => undefined} onSound={() => undefined} />;
+  return <QuestBattleViewer battleMode="PATROL" opponentName="新宿・初級" playerParty={playerParty} enemyParty={enemies} timeline={timeline} timelineIndex={0} authoritativeTimeline={timeline.slice(0, 3)} presentationPhase={skillDemo ? skillPhase : paceDemo ? "ACTION_HOLD" : "DAMAGE"} round={4} skillCutIn={fixtureSkillName ? { charName: playerParty[0].name, skillName: fixtureSkillName } : null} targetLine={{ fromId: "player-1", toId: "enemy-1" }} shakingId={showSkillDamage ? "enemy-1" : null} damagePopup={showSkillDamage ? { charId: "enemy-1", val: ssrSkill ? 2940 : 1284, type: "dmg", isCritical: ssrSkill } : null} tactic="BALANCED" speed={liveSpeed} monthlyPassActive={false} paused={false} tutorial={size === 3 || paceDemo} onSpeedChange={setLiveSpeed} onPauseChange={() => undefined} canSkip={size === 5} skipPending={false} onSkip={() => undefined} onRetreat={() => undefined} onSound={() => undefined} />;
 }
 
 function SsrRevealFixture() {
