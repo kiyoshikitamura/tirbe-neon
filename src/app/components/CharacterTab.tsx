@@ -703,9 +703,10 @@ export default function CharacterTab() {
             >
               {tutorialFormationPreviewReady ? "編成完了" : formationSubmitting ? "編成中..." : isTutorialFormation ? "おすすめ編成にする" : "戦力順でおまかせ編成"}
             </button>}
-            {tutorialFormationPreviewReady && <div className="tutorial-formation-complete" role="status" data-acceptance-state="AUTO_FORMATION_COMPLETE">
+            {tutorialFormationPreviewReady && <div className="tutorial-formation-complete" role="dialog" aria-modal="true" aria-labelledby="tutorial-formation-complete-title" data-acceptance-state="AUTO_FORMATION_COMPLETE">
+              <div className="tutorial-formation-complete-dialog">
               <span>FORMATION COMPLETE</span>
-              <strong>編成しました</strong>
+              <strong id="tutorial-formation-complete-title">編成しました</strong>
               <p>5人のメンバーと推奨スキルを保存しました。</p>
               <button className="semantic-cta semantic-cta--primary tutorial-primary-target" onClick={() => {
                 tutorialFormationContinueRequestedRef.current = true;
@@ -713,6 +714,7 @@ export default function CharacterTab() {
                 tutorialFormationContinueRef.current = null;
                 continueTutorial?.();
               }}>OK</button>
+              </div>
             </div>}
           </section>
         </div>

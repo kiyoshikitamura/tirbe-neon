@@ -85,14 +85,15 @@ export default function BattleUnitPortrait({
         {actor && <span className="battle-unit-role is-actor-label">ACTOR</span>}
         {target && <span className="battle-unit-role is-target-label">TARGET</span>}
         {participant.isDead && <span className="battle-unit-defeated">戦闘不能</span>}
-        {popup && (
-          <div className={`battle-unit-popup is-${popup.type} ${popup.isCritical ? "is-critical" : ""}`}>
-            {popup.isCritical && <small>CRITICAL</small>}
-            {advantage && popup.type === "dmg" && <small>WEAK</small>}
-            <strong>{popupSign}{Math.max(0, Number(popup.val) || 0).toLocaleString()}</strong>
-          </div>
-        )}
       </div>
+
+      {popup && (
+        <div className={`battle-unit-popup is-${popup.type} ${popup.isCritical ? "is-critical" : ""}`}>
+          {popup.isCritical && <small>CRITICAL</small>}
+          {advantage && popup.type === "dmg" && <small>WEAK</small>}
+          <strong>{popupSign}{Math.max(0, Number(popup.val) || 0).toLocaleString()}</strong>
+        </div>
+      )}
 
       <div className={`battle-unit-meta ${frame === "action" ? "is-action-identity" : ""}`}>
         <strong>{participant.name}</strong>

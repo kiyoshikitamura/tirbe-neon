@@ -404,6 +404,17 @@ export function useBattle(options: UseBattleOptions) {
     let officialRaidWinnerForBattle: "PLAYER" | "ENEMY" | null = null;
     let officialRaidEventsForBattle: ServerBattleEvent[] = [];
     let officialRaidResultForBattle: any | null = null;
+    let patrolPresentationEntered = false;
+
+    const releaseFailedPatrolTransition = (message: string) => {
+      if (mode !== "PATROL") return;
+      setBattleState(null);
+      setBattleMode(null);
+      setTutorialBattleActive(false);
+      setBattleLoading(false);
+      setErrorMessage(message);
+      patrolPresentationEntered = false;
+    };
 
     // レイドボスマスターデータの取得
     let bossMaster = {
@@ -1117,8 +1128,7 @@ export function useBattle(options: UseBattleOptions) {
         const canonicalPlayers = patrolSnapshotToParticipants(replayCreation.data?.player_snapshot, false);
         const canonicalEnemies = patrolSnapshotToParticipants(replayCreation.data?.enemy_snapshot, true);
         if (canonicalPlayers.length === 0 || canonicalEnemies.length === 0) {
-          setBattleLoading(false);
-          setErrorMessage("NPCバトルの正規編成を取得できませんでした。もう一度お試しください。");
+          releaseFailedPatrolTransition("NPCバトルの正規編成を取得できませんでした。もう一度お試しください。");
           return;
         }
         initialPlayerParty = canonicalPlayers;
@@ -1132,6 +1142,25 @@ export function useBattle(options: UseBattleOptions) {
         setTimeline(canonicalTimeline);
         setTimelineIndex(0);
 
+        // The replay snapshot is the authoritative hand-off from Encounter to
+        // Battle Presentation. Claim the screen before server resolution so a
+        // slower mobile request cannot let the tutorial navigation effect put
+        // the player back on the quest/dispatch surface while the encounter is
+        // being finalized.
+        const opponentLeader = canonicalEnemies[0];
+        setBattlePresentationContext({
+          mode,
+          opponentLabel: presentationOverride?.opponentLabel || targetName,
+          encounterLabel: presentationOverride?.encounterLabel,
+          opponentLeaderCharacterId: presentationOverride?.opponentLeaderCharacterId || opponentLeader?.characterId,
+          opponentLeaderName: presentationOverride?.opponentLeaderName || opponentLeader?.name,
+          opponentTotalPower: presentationOverride?.opponentTotalPower,
+          opponentProfile: presentationOverride?.opponentProfile,
+        });
+        setBattleState("SETUP");
+        patrolPresentationEntered = true;
+        writeTutorialBattleTrace("presentation_entered", { accepted: true, replaySessionId });
+
         let { data: resolvedReplay, error: resolveError } = await supabase.functions.invoke("resolve-battle", {
           body: { replaySessionId },
         });
@@ -1142,16 +1171,14 @@ export function useBattle(options: UseBattleOptions) {
         }
         if (resolveError || (resolvedReplay?.winner !== "PLAYER" && resolvedReplay?.winner !== "ENEMY")) {
           console.warn("Failed to resolve patrol replay on the server:", resolveError?.message);
-          setBattleLoading(false);
-          setErrorMessage("NPCバトルの勝敗をサーバーで確定できませんでした。もう一度お試しください。");
+          releaseFailedPatrolTransition("NPCバトルの勝敗をサーバーで確定できませんでした。もう一度お試しください。");
           return;
         }
         officialPatrolReplayIdForBattle = replaySessionId;
         officialPatrolWinnerForBattle = resolvedReplay.winner;
         officialPatrolEventsForBattle = serverBattleEvents(resolvedReplay.events);
         if (officialPatrolEventsForBattle.length === 0) {
-          setBattleLoading(false);
-          setErrorMessage("NPCバトルの確定記録を取得できませんでした。もう一度お試しください。");
+          releaseFailedPatrolTransition("NPCバトルの確定記録を取得できませんでした。もう一度お試しください。");
           return;
         }
         setOfficialPatrolReplayId(replaySessionId);
@@ -1237,6 +1264,10 @@ export function useBattle(options: UseBattleOptions) {
         await abortOfficialGvgStart("公式GvGのサーバー確定に失敗しました。もう一度お試しください。");
         return;
       }
+      if (mode === "PATROL") {
+        releaseFailedPatrolTransition("NPCバトルの開始処理に失敗しました。もう一度お試しください。");
+        return;
+      }
     }
 
     if (mode === "PVP_PRACTICE") {
@@ -1304,7 +1335,7 @@ export function useBattle(options: UseBattleOptions) {
     }
 
     setBattlePresentationContext(presentationContextForBattle);
-    setBattleState("SETUP");
+    if (!patrolPresentationEntered) setBattleState("SETUP");
     setBattleLoading(false);
   };
 
@@ -1809,8 +1840,8 @@ export function useBattle(options: UseBattleOptions) {
           setActiveSkillCutIn({ charName: actor?.name ?? actorId, skillName: skill?.name ?? (skillId === "BASIC_ATTACK" ? "通常攻撃" : skillId) });
           const actorTimelineIndex = timeline.findIndex((entry) => entry.id === actorId);
           if (actorTimelineIndex >= 0) setTimelineIndex(actorTimelineIndex);
-          const targetDelay = (isSkill ? 1120 : 260) / battleSpeed;
-          const attackDelay = (isSkill ? 1480 : 480) / battleSpeed;
+          const targetDelay = isSkill ? Math.max(700, 1120 / battleSpeed) : 260 / battleSpeed;
+          const attackDelay = isSkill ? Math.max(1000, 1480 / battleSpeed) : 480 / battleSpeed;
           presentationTimersRef.current.push(setTimeout(() => {
             if (nextTargetId) setTargetLine({ fromId: actorId, toId: nextTargetId });
             setPresentationPhase("TARGET_FOCUS");
@@ -1838,15 +1869,15 @@ export function useBattle(options: UseBattleOptions) {
           presentationTimersRef.current.push(setTimeout(() => {
             setPresentationPhase("DAMAGE");
             recordPresentationStage("damageAt", targetId);
-          }, 100 / battleSpeed));
+          }, followsSkill ? Math.max(120, 100 / battleSpeed) : 100 / battleSpeed));
           presentationTimersRef.current.push(setTimeout(() => {
             setPresentationPhase("HP_TRANSITION");
             recordPresentationStage("hpSettledAt", targetId);
-          }, 450 / battleSpeed));
+          }, followsSkill ? Math.max(300, 450 / battleSpeed) : 450 / battleSpeed));
           presentationTimersRef.current.push(setTimeout(() => {
             setPresentationPhase("ACTION_HOLD");
             recordPresentationStage("actionCompleteAt");
-          }, 900 / battleSpeed));
+          }, followsSkill ? Math.max(450, 900 / battleSpeed) : 900 / battleSpeed));
           playCyberSe(missed ? "click" : "hit");
           setBattleLog((previous) => [...previous, missed
             ? `${actor?.name ?? actorId}の攻撃は外れた。`

@@ -89,7 +89,7 @@ function NameRetryFixture() {
 function AutoFormationFixture() {
   const [complete, setComplete] = useState(false);
   const [continued, setContinued] = useState(false);
-  return <section className="qa-card" data-auto-formation-state={continued ? "continued" : complete ? "complete" : "idle"}><span>FORMATION</span><h2>出撃編成 5/5</h2><div className="qa-formation">{playerParty.map((entry) => <CharacterPresentation key={entry.id} src={getCharacterTransparentImg(findCharacter(entry.name).name)} alt={entry.name} variant="thumbnail" />)}</div>{continued ? <p role="status">クエストへ進みます</p> : complete ? <div className="tutorial-formation-complete" role="status"><span>FORMATION COMPLETE</span><strong>編成しました</strong><p>5人のメンバーと推奨スキルを保存しました。</p><button className="semantic-cta semantic-cta--primary" onClick={() => setContinued(true)}>OK</button></div> : <button className="semantic-cta semantic-cta--primary" onClick={() => setComplete(true)}>おすすめ編成にする</button>}</section>;
+  return <section className="qa-card" data-auto-formation-state={continued ? "continued" : complete ? "complete" : "idle"}><span>FORMATION</span><h2>出撃編成 5/5</h2><div className="qa-formation">{playerParty.map((entry) => <CharacterPresentation key={entry.id} src={getCharacterTransparentImg(findCharacter(entry.name).name)} alt={entry.name} variant="thumbnail" />)}</div>{continued ? <p role="status">クエストへ進みます</p> : complete ? <div className="tutorial-formation-complete" role="dialog" aria-modal="true"><div className="tutorial-formation-complete-dialog"><span>FORMATION COMPLETE</span><strong>編成しました</strong><p>5人のメンバーと推奨スキルを保存しました。</p><button className="semantic-cta semantic-cta--primary" onClick={() => setContinued(true)}>OK</button></div></div> : <button className="semantic-cta semantic-cta--primary" onClick={() => setComplete(true)}>おすすめ編成にする</button>}</section>;
 }
 
 function QuestTransitionFixture({ instant }: { instant: boolean }) {
@@ -99,7 +99,7 @@ function QuestTransitionFixture({ instant }: { instant: boolean }) {
 }
 
 function ResultFixture({ victory }: { victory: boolean }) {
-  return <BattleResultSummary victory={victory} replayEvents={replayEvents} playerParticipants={playerParty} enemyParticipants={enemyParty.slice(0, 3)} presentationContext={{ mode: "PATROL", opponentLabel: "新宿・初級", encounterLabel: "新宿・初級", opponentLeaderCharacterId: enemyParty[0].characterId, opponentLeaderName: enemyParty[0].name }} modeResult={{ resultLabel: victory ? "QUEST CLEAR" : "QUEST FAILED", reward: victory ? "初回報酬獲得" : "編成を見直して再挑戦", continueLabel: "確認" }} onContinue={() => undefined} continueControl={<button className="battle-result-continue semantic-cta semantic-cta--primary">確認</button>} />;
+  return <BattleResultSummary tutorial victory={victory} replayEvents={replayEvents} playerParticipants={playerParty} enemyParticipants={enemyParty.slice(0, 3)} presentationContext={{ mode: "PATROL", opponentLabel: "新宿・初級", encounterLabel: "新宿・初級", opponentLeaderCharacterId: enemyParty[0].characterId, opponentLeaderName: enemyParty[0].name }} modeResult={{ resultLabel: victory ? "QUEST CLEAR" : "QUEST FAILED", reward: victory ? "初回報酬獲得" : "編成を見直して再挑戦", continueLabel: "確認" }} onContinue={() => undefined} continueControl={<button className="battle-result-continue semantic-cta semantic-cta--primary">確認</button>} />;
 }
 
 function SimpleFixture({ kind }: { kind: QaPresentationScenarioId }) {

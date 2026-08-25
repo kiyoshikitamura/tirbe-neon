@@ -82,7 +82,7 @@
 .battle-unit-party .battle-unit-hp-copy{display:none}
 .battle-unit-party .battle-unit-statuses{right:2px;bottom:8px;left:48px;justify-content:flex-start;flex-wrap:nowrap;overflow:visible}
 .battle-unit-party .battle-unit-statuses span{min-width:17px;padding:1px 2px;font-size:6px;text-align:center}
-.battle-unit-party .battle-unit-popup{top:16%;right:-18px;left:-8px;justify-content:flex-start}
+.battle-unit-party .battle-unit-popup{top:16%;right:-6px;left:38px;justify-content:center;overflow:visible;white-space:nowrap}
 .battle-unit-party .battle-unit-popup strong{font-size:clamp(17px,5vw,27px)}
 .battle-unit-party .battle-unit-popup small{font-size:6px}
 .battle-party-zone[data-party-size="1"] .battle-unit-party{grid-template-columns:70px minmax(0,1fr);max-height:92px;min-height:82px}.battle-party-zone[data-party-size="1"] .battle-unit-party .battle-unit-statuses{left:72px}

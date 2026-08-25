@@ -51,10 +51,12 @@
 .battle-result-mvp::after{position:absolute;inset:0;z-index:0;content:"";background:linear-gradient(90deg,transparent 22%,rgba(4,6,9,.44) 44%,rgba(4,6,9,.96) 76%);pointer-events:none}
 .battle-result-mvp-hero{display:block;min-height:96px}
 .battle-result-mvp-hero .character-presentation{position:absolute;z-index:0;bottom:-10px;left:-20px;width:58%;height:250px;border:0;background:transparent;filter:drop-shadow(8px 5px 12px rgba(0,0,0,.75));animation:battle-result-hero-in .48s cubic-bezier(.2,.85,.25,1) .45s both}
+.battle-result-mvp-hero .character-presentation img{object-fit:contain;object-position:center bottom}
 .battle-result-mvp-copy{position:relative;z-index:2;display:grid!important;justify-items:start!important;margin-left:43%;padding-top:4px}
 .battle-result-mvp-copy small{font-family:var(--font-display);font-size:12px}
-.battle-result-mvp-copy strong{font-size:clamp(21px,6vw,28px)}
-.battle-result-mvp-copy b{font-family:var(--font-display);font-size:clamp(38px,12vw,54px)}
+.battle-result-mvp-copy>div{display:flex;align-items:baseline;gap:8px;min-width:0;width:100%}
+.battle-result-mvp-copy strong{min-width:0;overflow:hidden;font-size:clamp(19px,5.5vw,25px);text-overflow:ellipsis;white-space:nowrap}
+.battle-result-mvp-copy b{flex:0 0 auto;font-family:var(--font-display);font-size:clamp(27px,8vw,38px)}
 .battle-result-mvp-copy b i{font-size:12px}
 .battle-result-score-grid{position:relative;z-index:2;grid-template-columns:minmax(0,1fr);gap:2px;margin-left:43%;animation:battle-result-stage-in .32s ease-out .8s both}
 .battle-result-score-grid>div{grid-template-columns:minmax(0,1fr) auto;align-items:center;padding:2px 0;border:0;background:transparent;text-align:left}

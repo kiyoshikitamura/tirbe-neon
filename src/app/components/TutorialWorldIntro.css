@@ -10,3 +10,8 @@
 .tutorial-world-content{grid-template-rows:minmax(260px,42vh) auto auto;align-content:center}
 .tutorial-world-ageha{margin-bottom:-24px;mask-image:linear-gradient(180deg,#000 0 88%,transparent)}
 .tutorial-world-ageha{-webkit-mask-image:none;mask-image:none}
+
+/* C3-R9: the viewport is black; only the inner cinematic stage owns imagery. */
+.tutorial-world{background:#000;animation:none}
+.tutorial-world-content{overflow:hidden;background:#02050b url('/bg/bg_street_shinjuku.png') center/cover no-repeat;animation:tutorial-world-camera 9s ease-out both}
+@media(prefers-reduced-motion:reduce){.tutorial-world-content{animation:none}}

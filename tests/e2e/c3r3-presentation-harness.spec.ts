@@ -118,7 +118,8 @@ test("SSR skill cut-in overlays the full roster rather than the center action co
 test("production result shows opponent, left MVP art, score and comparison", async ({ page }) => {
   await openScenario(page, "battle-result-win");
   await expect(page.locator(".battle-result-opponent")).toContainText("新宿・初級");
-  await expect(page.locator(".battle-result-outcome-label")).toHaveText("WIN");
+  await expect(page.locator(".battle-result-outcome-label")).toHaveCount(0);
+  await expect(page.locator(".battle-result-mode-label")).toHaveText("クエストクリア");
   await expect(page.locator(".battle-result-mvp-hero .character-presentation")).toBeVisible();
   await expect(page.locator(".battle-result-mvp-copy b")).toContainText("PT");
   await expect(page.locator(".battle-result-score-grid")).toBeVisible();

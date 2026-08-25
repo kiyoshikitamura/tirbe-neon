@@ -59,13 +59,13 @@ export default function BattleResultSummary({ victory, tutorial = false, rewards
         {presentationContext?.opponentLeaderName && <span>敵リーダー　{presentationContext.opponentLeaderName}</span>}
         {presentationContext?.opponentTotalPower ? <b>POWER {presentationContext.opponentTotalPower.toLocaleString()}</b> : presentationContext?.opponentProfile ? <b>{presentationContext.opponentProfile}</b> : null}
       </header>
-      <div className="battle-result-outcome-label">{victory ? "WIN" : "LOSE"}</div>
+      {!tutorial && <div className="battle-result-outcome-label">{victory ? "WIN" : "LOSE"}</div>}
       {localizedResultLabel && <strong className="battle-result-mode-label">{localizedResultLabel}</strong>}
       {mvp && (
         <section className="battle-result-mvp" aria-label={`MVP ${mvp.participant.name} ${mvp.score.total}ポイント`}>
           <div className="battle-result-mvp-hero">
             {mvpImage && <CharacterPresentation src={mvpImage} alt={mvp.participant.name} variant="battle" />}
-            <div className="battle-result-mvp-copy"><small>MVP</small><strong>{mvp.participant.name}</strong><b>{mvp.score.total}<i>PT</i></b></div>
+            <div className="battle-result-mvp-copy"><small>MVP</small><div><strong>{mvp.participant.name}</strong><b>{mvp.score.total}<i>PT</i></b></div></div>
           </div>
           <dl className="battle-result-score-grid" aria-label="MVPスコア内訳">
             <div><dt>与ダメージ</dt><dd><b>{mvp.score.damage}</b> / 40<small>{mvp.raw.damage.toLocaleString()}</small></dd></div>
