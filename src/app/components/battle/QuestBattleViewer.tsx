@@ -47,6 +47,7 @@ type Props = {
   onSkip: () => void;
   onRetreat: () => void;
   onSound: () => void;
+  backgroundPath?: string;
 };
 
 const advantageMap: Record<string, string> = {
@@ -152,7 +153,7 @@ export default function QuestBattleViewer(props: Props) {
   const roundLimit = props.battleMode === "RAID" ? 30 : props.battleMode === "PVP" || props.battleMode === "GVG" ? 20 : 15;
 
   return (
-    <div className={`playing-container quest-battle-viewer ${props.tutorial ? "is-tutorial" : ""}`} data-battle-speed={props.speed} data-acceptance-state={props.tutorial ? acceptanceState : undefined} data-action-phase={actionPhase} data-action-kind={isSkillAction ? "skill" : "normal"} data-action-actor-id={activeParticipant?.id || ""} data-action-target-id={targetParticipant?.id || ""}>
+    <div className={`playing-container quest-battle-viewer ${props.tutorial ? "is-tutorial" : ""}`} style={props.backgroundPath ? { "--battle-background-image": `url(${props.backgroundPath})` } as React.CSSProperties : undefined} data-battle-speed={props.speed} data-acceptance-state={props.tutorial ? acceptanceState : undefined} data-action-phase={actionPhase} data-action-kind={isSkillAction ? "skill" : "normal"} data-action-actor-id={activeParticipant?.id || ""} data-action-target-id={targetParticipant?.id || ""}>
       <header className="battle-viewer-header">
         <span>{props.battleMode === "PATROL" ? "QUEST BATTLE" : props.battleMode}</span>
         <strong>ROUND {props.round}<small> / {roundLimit}</small></strong>

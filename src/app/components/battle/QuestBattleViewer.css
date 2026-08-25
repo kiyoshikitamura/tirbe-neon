@@ -11,7 +11,8 @@
   color: var(--ui-text-primary);
   background:
     radial-gradient(circle at 50% 44%, rgba(27, 164, 194, .15), transparent 35%),
-    linear-gradient(180deg, var(--ui-bg-surface), var(--ui-bg-root));
+    linear-gradient(180deg, rgba(5, 11, 18, .68), rgba(2, 5, 10, .9)),
+    var(--battle-background-image, linear-gradient(180deg, var(--ui-bg-surface), var(--ui-bg-root))) center/cover no-repeat;
 }
 
 .quest-battle-viewer.is-tutorial { background:linear-gradient(180deg,rgba(4,8,14,.7),rgba(2,5,10,.96)),url('/bg/bg_street_shinjuku.png') center/cover no-repeat; }
@@ -103,7 +104,7 @@
 
 .laser-overlay { position: absolute; z-index: 20; inset: 0; width: 100%; height: 100%; pointer-events: none; }
 .laser-path { filter: drop-shadow(0 0 5px currentColor); animation: battle-laser .36s ease-out both; }
-.shake { animation: battle-unit-shake .26s linear; }
+.shake { filter: brightness(1.16) drop-shadow(0 0 5px rgba(255, 89, 117, .7)); }
 
 @keyframes battle-skill-enter { from { opacity: 0; transform: scaleX(.75); } to { opacity: 1; transform: scaleX(1); } }
 @keyframes battle-laser { from { opacity: 0; stroke-dasharray: 3 12; } to { opacity: .85; stroke-dasharray: 30 3; } }

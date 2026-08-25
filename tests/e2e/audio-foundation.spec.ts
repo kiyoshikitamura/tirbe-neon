@@ -44,7 +44,7 @@ test.beforeEach(async ({ page }) => {
     const originalFetch = window.fetch.bind(window);
     window.fetch = async (input, init) => {
       const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
-      if (url.includes("/audio/")) {
+      if (url.includes("/sounds/")) {
         qa.requests.push(url);
         return new Response(new Uint8Array([1, 2, 3]), { status: 200, headers: { "content-type": "audio/mpeg" } });
       }
@@ -58,7 +58,7 @@ test("TAP TO START unlocks audio once and starts the title scene lazily", async 
   expect(await page.evaluate(() => window.__audioQa?.requests.length)).toBe(0);
   await page.getByRole("button", { name: "TAP TO START" }).click();
   await expect.poll(() => page.evaluate(() => window.__audioQa?.resumes)).toBe(1);
-  await expect.poll(() => page.evaluate(() => window.__audioQa?.requests.some((url) => url.endsWith("/audio/bgm/title.mp3")))).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.__audioQa?.requests.some((url) => url.endsWith("/sounds/bgm/bgm_title.mp3")))).toBe(true);
   await page.getByRole("button", { name: "既存アカウントでログイン" }).click();
   expect(await page.evaluate(() => window.__audioQa?.resumes)).toBe(1);
 });
@@ -87,7 +87,7 @@ test("missing audio assets stay silent without blocking title interaction", asyn
     const currentFetch = window.fetch.bind(window);
     window.fetch = async (input, init) => {
       const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
-      if (url.includes("/audio/")) return new Response(null, { status: 404 });
+      if (url.includes("/sounds/")) return new Response(null, { status: 404 });
       return currentFetch(input, init);
     };
   });
@@ -101,7 +101,8 @@ test("BGM and SE preferences persist locally across reload", async ({ page }) =>
     const userId = "00000000-0000-4000-8000-0000000000a0";
     localStorage.setItem("tribe_demo_uuid", userId);
     localStorage.setItem("mock_auth_mode", "EMAIL");
-    localStorage.setItem("mock_db_users", JSON.stringify([{ id: userId, username: "音響確認", current_base_id: "shinjuku" }]));
+    localStorage.setItem("mock_db_users", JSON.stringify([{ id: userId, username: "音響確認", current_base_id: "shinjuku", favorite_character_id: "char_reiji_01" }]));
+    localStorage.setItem("mock_db_user_characters", JSON.stringify([{ id: "audio-char-1", user_id: userId, character_id: "char_reiji_01", level: 1, awakening_level: 0 }]));
     if (!localStorage.getItem("tribe_neon_audio_settings_v1")) {
       localStorage.setItem("tribe_neon_audio_settings_v1", JSON.stringify({ bgmEnabled: false, seEnabled: true, bgmVolume: 0.25, seVolume: 0.6 }));
     }

@@ -13,6 +13,7 @@ import { useScreenReadiness } from "../hooks/useScreenReadiness";
 import { SCREEN_ASSET_MANIFESTS } from "../lib/screenManifests";
 import CharacterPresentation from "./character/CharacterPresentation";
 import { CHARACTERS_MASTER, getCharacterTransparentImg } from "@/utils/game_constants";
+import { getCharacterLocationBackground, resolveCharacterLocationKey } from "@/utils/characterVisualAssets";
 
 const tacticNames: { [key: string]: string } = {
   ATTACK_PRIORITY: "攻撃優先",
@@ -52,11 +53,14 @@ export default function PvpTab() {
     pvpPoints,
     pvpNextRecoveryAt,
     totalPower,
+    currentBaseId,
+    selectedLeader,
   } = useGame();
 
   const [selectedDefense, setSelectedDefense] = React.useState<string[]>([]);
   const [selectedTactic, setSelectedTactic] = React.useState<string>("ATTACK_PRIORITY");
   const [clock, setClock] = React.useState(() => Date.now());
+  const initialOpponentFetchRef = React.useRef<string | null>(null);
   const isInitialOpponentLoad = pvpSubView === "opponents" && opponentsLoading && pvpOpponents.length === 0;
   const readiness = useScreenReadiness({
     assets: SCREEN_ASSET_MANIFESTS.pvp,
@@ -83,6 +87,15 @@ export default function PvpTab() {
     return () => window.clearInterval(timer);
   }, [pvpNextRecoveryAt, pvpPoints]);
 
+  React.useEffect(() => {
+    const userId = session?.user?.id;
+    if (!userId || pvpSubView !== "opponents" || opponentsLoading || pvpOpponents.length > 0) return;
+    const fetchKey = `${userId}:${pvpRate}`;
+    if (initialOpponentFetchRef.current === fetchKey) return;
+    initialOpponentFetchRef.current = fetchKey;
+    void fetchPvpOpponents(userId, pvpRate);
+  }, [fetchPvpOpponents, opponentsLoading, pvpOpponents.length, pvpRate, pvpSubView, session?.user?.id]);
+
   const ownPvpRank = React.useMemo(() => {
     const sorted = [...pvpRankings].sort((left: any, right: any) => Number(right.rank_points || 0) - Number(left.rank_points || 0));
     const index = sorted.findIndex((entry: any) => entry.user_id === session?.user?.id);
@@ -99,6 +112,10 @@ export default function PvpTab() {
 
   const defenseCharactersFor = (opponent: any) => [...(opponent.defense_characters || [])]
     .sort((left: any, right: any) => Number(left.slot || 0) - Number(right.slot || 0));
+  const playerLeaderMaster = CHARACTERS_MASTER.find((character: any) => character.id === selectedLeader);
+  const heroOpponent = pvpOpponents[0];
+  const heroOpponentLeader = heroOpponent ? defenseCharactersFor(heroOpponent)[0] : null;
+  const pvpBackgroundPath = resolveCharacterLocationKey(currentBaseId) ? getCharacterLocationBackground(currentBaseId) : undefined;
 
   const handleToggleDefenseMember = (charId: string) => {
     setSelectedDefense(prev => {
@@ -157,6 +174,12 @@ export default function PvpTab() {
       status={readiness.status}
       onRetry={readiness.retry}
     >
+        <section className="pvp-hero" style={pvpBackgroundPath ? { "--pvp-hero-bg": `url(${pvpBackgroundPath})` } as React.CSSProperties : undefined} aria-label="PvP対戦">
+          <div className="pvp-hero-shade" aria-hidden="true" />
+          <CharacterPresentation className="pvp-hero-fighter is-player" src={playerLeaderMaster ? getCharacterTransparentImg(playerLeaderMaster.name) : undefined} alt={playerLeaderMaster?.jpName || "PLAYER"} variant="battle-leader" />
+          <div className="pvp-hero-title"><small>FIGHT</small><strong>喧嘩</strong><span>PVP</span></div>
+          <CharacterPresentation className="pvp-hero-fighter is-opponent" src={heroOpponentLeader?.asset_identifier || undefined} alt={heroOpponentLeader?.display_name || "OPPONENT"} variant="battle-leader" />
+        </section>
         <section className="pvp-self-summary" aria-label="自分のPvP情報">
           <div><small>順位</small><strong>{ownPvpRank ? `#${ownPvpRank}` : "圏外"}</strong></div>
           <div><small>RATING</small><strong>{pvpRate.toLocaleString()}</strong></div>
@@ -247,6 +270,8 @@ export default function PvpTab() {
                               opponentLeaderCharacterId: [...(op.defense_characters || [])].sort((a: any, b: any) => Number(a.slot || 0) - Number(b.slot || 0))[0]?.character_id,
                               opponentLeaderName: [...(op.defense_characters || [])].sort((a: any, b: any) => Number(a.slot || 0) - Number(b.slot || 0))[0]?.display_name,
                               opponentTotalPower: Number(op.opponent_power || 0),
+                              backgroundPath: pvpBackgroundPath,
+                              backgroundLabel: String(currentBaseId || ""),
                             }
                           )}
                         >

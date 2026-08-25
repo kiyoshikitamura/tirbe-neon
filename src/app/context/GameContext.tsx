@@ -2323,7 +2323,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     setActivePlayerDetail({
       id: userId,
       username: "プレイヤー情報を取得中",
-      avatarUrl: "/characters/reiji_transparent_asset.png",
+      avatarUrl: null,
       bio: "公開プロフィールを取得しています。",
       level: 1,
       xp: 0,
@@ -2338,7 +2338,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       setActivePlayerDetail({
         id: publicPlayer.user_id,
         username: publicPlayer.username,
-        avatarUrl: publicPlayer.avatar_url || "/characters/reiji_transparent_asset.png",
+        avatarUrl: publicPlayer.avatar_url || null,
         bio: publicPlayer.bio || "自己紹介が未設定です。",
         level: Number(publicPlayer.level || 1),
         xp: 0,
@@ -2452,6 +2452,18 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       */
     } catch (e: any) {
       console.warn("Failed to fetch player detail:", e.message);
+      setActivePlayerDetail({
+        id: userId,
+        username: "プレイヤー情報を取得できませんでした",
+        avatarUrl: null,
+        bio: "通信状態を確認して、一覧からもう一度お試しください。",
+        level: 0,
+        xp: 0,
+        titleName: "",
+        guildId: null,
+        guildName: null,
+        party: [],
+      });
     }
   };
 
@@ -3881,6 +3893,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
     // ハンドラ
     startCardBattle: battle.startCardBattle,
+    confirmPreparedPvpBattle: battle.confirmPreparedPvpBattle,
+    cancelPreparedPvpBattle: battle.cancelPreparedPvpBattle,
     launchBattlePlaying: battle.launchBattlePlaying,
     skipBattlePresentation: battle.skipBattlePresentation,
     handleEndTurn: battle.handleEndTurn,

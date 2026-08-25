@@ -54,6 +54,11 @@ export default function BattleResultSummary({ victory, tutorial = false, rewards
     playSe(victory ? "VICTORY" : "DEFEAT");
   }, [playSe, victory]);
   useEffect(() => {
+    if (!victory || (!rewards && !modeResult?.reward)) return;
+    const timer = window.setTimeout(() => playSe("REWARD"), 1280);
+    return () => window.clearTimeout(timer);
+  }, [modeResult?.reward, playSe, rewards, victory]);
+  useEffect(() => {
     const target = mvp?.score.total ?? 0;
     setDisplayedTotal(0);
     if (target <= 0) return;
