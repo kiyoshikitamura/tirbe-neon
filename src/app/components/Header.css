@@ -116,9 +116,15 @@
 }
 
 .header-mobile-stat-label {
-  font-size: 10px;
+  font-size: 13px;
   font-weight: 800;
   color: var(--neon-gold);
+}
+
+.header-mobile-stat-recovery {
+  color: var(--ui-text-secondary);
+  font-size: 8px;
+  white-space: nowrap;
 }
 
 .header-mobile-stat-energy {

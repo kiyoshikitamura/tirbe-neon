@@ -255,19 +255,11 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
   const visibleLeftSubIcons = leftSubIcons.filter((item) => item.id !== "ranking");
   const visibleRightSubIcons = rightSubIcons.filter((item) => item.id !== "raid");
 
-  const latestActivity = socialActivities.find(activity => activity.actor_user_id === session?.user?.id) || socialActivities[0];
+  const latestActivity = socialActivities[0];
   const activityText = latestActivity ? `${latestActivity.actor_display_name}：${latestActivity.activity_type === "GUILD_CREATED" ? "TRIBEを結成" : latestActivity.activity_type === "POWER_RANK_1" ? "総戦力ランキング1位に到達" : "SSRを獲得"}` : null;
-  const latestTicker = isRaidActive
-    ? { icon: "⚠", text: "レイド開催中。仲間と迎撃に参加しよう", onClick: () => navigateTab("raid") }
-    : latestActivity
-      ? { icon: "◆", text: activityText!, onClick: () => latestActivity.actor_user_id ? fetchPlayerDetail(latestActivity.actor_user_id) : undefined }
-    : latestMessage
-      ? { icon: "💬", text: `${latestMessage.author_name}: ${latestMessage.content}`, onClick: () => navigateTab("bbs") }
-      : unclaimedPresentsCount > 0
-        ? { icon: "🎁", text: `受け取り待ちのプレゼントが ${unclaimedPresentsCount} 件あります`, onClick: () => { setShowInboxPanel(true); setInboxPanelTab("presents"); } }
-        : unreadMissionsCount > 0
-          ? { icon: "✓", text: `達成済みミッションが ${unreadMissionsCount} 件あります`, onClick: () => setShowMissionPanel(true) }
-          : { icon: "◆", text: "クエストで育成素材を集めよう", onClick: () => navigateTab("patrol") };
+  const latestTicker = latestActivity
+    ? { text: activityText!, onClick: () => latestActivity.actor_user_id ? fetchPlayerDetail(latestActivity.actor_user_id) : undefined }
+    : { text: "まだ街の動きはありません", onClick: () => undefined };
 
   const interiorName = PROFILE_INTERIORS.find((item) => item.id === interiorItem)?.name;
   const homeEventState = isRaidActive ? "raid" : "calm";
@@ -286,7 +278,8 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
         {/* 背景グラデーションオーバーレイ */}
         <div className="mypage-visual-overlay" />
         <button className={`mypage-live-ticker mypage-live-ticker--visual ${homeEventState} active-scale-effect`} onClick={() => { latestTicker.onClick(); playCyberSe("click"); }}>
-          <span className="mypage-live-ticker-icon" aria-hidden="true">{latestTicker.icon}</span>
+          <span className="mypage-live-ticker-label">ACTIVITY</span>
+          <span className="mypage-live-ticker-icon" aria-hidden="true">◆</span>
           <span className="mypage-live-ticker-text">{latestTicker.text}</span>
           <span className="mypage-live-ticker-arrow" aria-hidden="true">›</span>
         </button>
@@ -409,10 +402,6 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
           <img src="/menu/menu_allies.png" alt="連合" className="circle-menu-img" />
         </button>
 
-        <button className="circle-menu-btn upcoming" disabled aria-label="抗争は準備中です">
-          <span className="circle-menu-upcoming-mark">抗争<small>準備中</small></span>
-        </button>
-
         <button
           className="circle-menu-btn fight active-scale-effect"
           onClick={() => { navigateTab("pvp"); playCyberSe("click"); }}
@@ -426,6 +415,10 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
         >
           <img src="/menu/menu_conquest.png" alt="制圧" className="circle-menu-img" />
           {completedPatrolsCount > 0 && <span className="circle-menu-alert-badge">{completedPatrolsCount}</span>}
+        </button>
+
+        <button className="circle-menu-btn upcoming" disabled aria-label="抗争は準備中です">
+          <span className="circle-menu-upcoming-mark">抗争<small>準備中</small></span>
         </button>
 
       </div>

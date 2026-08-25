@@ -66,15 +66,13 @@ export default function Header() {
 
         {/* Canonical Quest resource: Vitality */}
         <div className="header-mobile-stat">
-          <span className="header-mobile-stat-label">Vitality</span>
+          <span className="header-mobile-stat-label" aria-label="Vitality">⚡</span>
           <span className={`header-mobile-stat-val header-mobile-stat-energy ${vitality > VITALITY_MAX ? 'header-mobile-stat-overflow' : ''}`}>
             {vitality || 0}/{VITALITY_MAX}
-            {vitality >= VITALITY_MAX
-              ? " · 自然回復停止"
-              : recoverySeconds !== null
-                ? ` · 次の回復 ${Math.floor(recoverySeconds / 60)}:${String(recoverySeconds % 60).padStart(2, "0")}`
-                : " · 6分で1回復"}
           </span>
+          {vitality < VITALITY_MAX && recoverySeconds !== null && (
+            <span className="header-mobile-stat-recovery">+1 {Math.floor(recoverySeconds / 60)}:{String(recoverySeconds % 60).padStart(2, "0")}</span>
+          )}
         </div>
       </div>
     </header>
