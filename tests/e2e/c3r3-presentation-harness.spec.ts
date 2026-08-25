@@ -117,10 +117,22 @@ test("SSR skill cut-in overlays the full roster rather than the center action co
   expect(cutIn).not.toBeNull();
   expect(Math.abs(cutIn!.x - viewer!.x)).toBeLessThanOrEqual(1);
   expect(Math.abs(cutIn!.width - viewer!.width)).toBeLessThanOrEqual(2);
+  const target = page.locator('.battle-party-zone.is-enemy article#enemy-1');
+  const hpFill = target.locator(".battle-unit-hp i");
+  const hpBefore = await hpFill.evaluate((element) => (element as HTMLElement).style.width);
   await expect(page.locator(".battle-skill-cutin")).toHaveCount(0, { timeout: 1_250 });
   await expect(page.locator(".battle-skill-resolution-vfx")).toBeVisible({ timeout: 700 });
   await expect(page.locator('[data-action-phase="impact"], [data-action-phase="damage"], [data-action-phase="hp-transition"]')).toBeVisible({ timeout: 1_600 });
+  const impact = page.locator(".battle-unit-impact-vfx");
+  await expect(impact).toBeVisible();
+  const targetBox = await target.boundingBox();
+  const impactBox = await impact.boundingBox();
+  expect(targetBox).not.toBeNull();
+  expect(impactBox).not.toBeNull();
+  expect(impactBox!.y).toBeLessThan(targetBox!.y + targetBox!.height);
+  expect(impactBox!.y + impactBox!.height).toBeGreaterThan(targetBox!.y);
   await expect(page.locator(".battle-unit-popup")).toContainText("2,940");
+  await expect.poll(() => hpFill.evaluate((element) => (element as HTMLElement).style.width), { timeout: 1_200 }).not.toBe(hpBefore);
   await expect(page.locator('[data-action-phase="action-hold"]')).toBeVisible({ timeout: 1_200 });
 });
 

@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import CharacterPresentation from "../character/CharacterPresentation";
 import { getAttributeBadgeAsset, getAttributeLabel } from "@/utils/attributeAssets";
 import { getRarityBadgeAsset } from "@/utils/rarityAssets";
@@ -39,6 +40,7 @@ type Props = {
   placeholderAsset?: boolean;
   advantage?: boolean;
   popup?: BattleDamagePopup | null;
+  impactOverlay?: ReactNode;
   rarity?: string;
   attribute?: string;
 };
@@ -54,6 +56,7 @@ export default function BattleUnitPortrait({
   placeholderAsset = false,
   advantage = false,
   popup,
+  impactOverlay,
   rarity,
   attribute,
 }: Props) {
@@ -94,6 +97,7 @@ export default function BattleUnitPortrait({
           <strong>{popupSign}{Math.max(0, Number(popup.val) || 0).toLocaleString()}</strong>
         </div>
       )}
+      {impactOverlay}
 
       <div className={`battle-unit-meta ${frame === "action" ? "is-action-identity" : ""}`}>
         <strong>{participant.name}</strong>

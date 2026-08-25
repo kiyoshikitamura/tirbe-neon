@@ -58,6 +58,7 @@ function BattleFixture({ size = 3, speed = 1, ssrSkill = false, consecutiveSkill
   const skillDemo = ssrSkill || consecutiveSkill || paceDemo;
   const [skillPhase, setSkillPhase] = useState<"ACTOR_FOCUS" | "TARGET_FOCUS" | "ATTACK_MOTION" | "IMPACT" | "DAMAGE" | "HP_TRANSITION" | "ACTION_HOLD">(skillDemo ? "ACTOR_FOCUS" : "DAMAGE");
   const [showSkillDamage, setShowSkillDamage] = useState(!skillDemo);
+  const [skillHpResolved, setSkillHpResolved] = useState(false);
   useEffect(() => {
     if (!skillDemo) return;
     const timers: number[] = [];
@@ -69,10 +70,11 @@ function BattleFixture({ size = 3, speed = 1, ssrSkill = false, consecutiveSkill
       timers.push(window.setTimeout(() => setSkillPhase("ATTACK_MOTION"), startAt + attackAt));
       timers.push(window.setTimeout(() => { setShowSkillDamage(true); setSkillPhase("IMPACT"); }, startAt + impactAt));
       timers.push(window.setTimeout(() => setSkillPhase("DAMAGE"), startAt + impactAt + 180));
-      timers.push(window.setTimeout(() => setSkillPhase("HP_TRANSITION"), startAt + impactAt + 480));
+      timers.push(window.setTimeout(() => { setSkillHpResolved(true); setSkillPhase("HP_TRANSITION"); }, startAt + impactAt + 480));
       timers.push(window.setTimeout(() => setSkillPhase("ACTION_HOLD"), startAt + impactAt + 850));
       if (nextSkill) timers.push(window.setTimeout(() => {
         setShowSkillDamage(false);
+        setSkillHpResolved(false);
         setSkillPhase("ACTOR_FOCUS");
         setConsecutiveSkillName(nextSkill);
       }, startAt + impactAt + 1100));
@@ -82,7 +84,11 @@ function BattleFixture({ size = 3, speed = 1, ssrSkill = false, consecutiveSkill
     if (consecutiveSkill) scheduleResolution(nextStart);
     return () => timers.forEach((timer) => window.clearTimeout(timer));
   }, [consecutiveSkill, liveSpeed, skillDemo]);
-  const enemies = enemyParty.slice(0, size).map((entry) => finalHit ? { ...entry, hp: 0, isDead: true } : entry);
+  const enemies = enemyParty.slice(0, size).map((entry, index) => finalHit
+    ? { ...entry, hp: 0, isDead: true }
+    : index === 0 && skillDemo && skillHpResolved
+      ? { ...entry, hp: 900 }
+      : entry);
   const timeline = [...playerParty, ...enemies].map(({ id, name, isEnemy }) => ({ id, name, isEnemy }));
   const fixtureSkillName = consecutiveSkill ? consecutiveSkillName : skillDemo ? "ストリートパンチ" : "";
   return <QuestBattleViewer battleMode="PATROL" opponentName="新宿・初級" playerParty={playerParty} enemyParty={enemies} timeline={timeline} timelineIndex={0} authoritativeTimeline={timeline.slice(0, 3)} presentationPhase={skillDemo ? skillPhase : paceDemo ? "ACTION_HOLD" : "DAMAGE"} round={4} skillCutIn={fixtureSkillName ? { charName: playerParty[0].name, skillName: fixtureSkillName } : null} targetLine={{ fromId: "player-1", toId: "enemy-1" }} shakingId={showSkillDamage ? "enemy-1" : null} damagePopup={showSkillDamage ? { charId: "enemy-1", val: ssrSkill ? 2940 : 1284, type: "dmg", isCritical: ssrSkill } : null} tactic="BALANCED" speed={liveSpeed} monthlyPassActive={false} paused={false} tutorial={size === 3 || paceDemo} onSpeedChange={setLiveSpeed} onPauseChange={() => undefined} canSkip={size === 5} skipPending={false} onSkip={() => undefined} onRetreat={() => undefined} onSound={() => undefined} />;

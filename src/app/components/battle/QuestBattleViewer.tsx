@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { CHARACTERS_MASTER, getCharacterTransparentImg } from "@/utils/game_constants";
 import BattleUnitPortrait, { BattleDamagePopup, BattleParticipantView } from "./BattleUnitPortrait";
 import {
@@ -94,6 +94,12 @@ export default function QuestBattleViewer(props: Props) {
     };
   };
   const popupFor = (participant: Participant) => props.damagePopup?.charId === participant.id ? props.damagePopup : null;
+  const impactFor = (participant: Participant) => props.damagePopup?.charId === participant.id ? (
+    <div className={`battle-unit-impact-vfx is-${props.damagePopup.type}`} aria-hidden="true">
+      {props.damagePopup.type === "dmg" && <BattleImpactEffect kind={(skillPresentation?.impact || "impact") as BattleImpactKind} speed={props.speed} />}
+      <div className={`battle-impact-burst is-${props.damagePopup.type}`}><i /><i /><i /></div>
+    </div>
+  ) : null;
   const hasAdvantage = (target?: Participant) => Boolean(
     activeParticipant?.alignment
       && target?.alignment
@@ -163,19 +169,15 @@ export default function QuestBattleViewer(props: Props) {
       </section>
 
       <main className="battle-roster-stage">
-        <PartyZone side="player" label={`${props.playerParty.length} MEMBERS`} party={props.playerParty} activeId={activeParticipant?.id} targetId={targetParticipant?.id} shakingId={props.shakingId} visualOf={visualOf} popupFor={popupFor} hasAdvantage={hasAdvantage} tutorial={props.tutorial} />
+        <PartyZone side="player" label={`${props.playerParty.length} MEMBERS`} party={props.playerParty} activeId={activeParticipant?.id} targetId={targetParticipant?.id} shakingId={props.shakingId} visualOf={visualOf} popupFor={popupFor} impactFor={impactFor} hasAdvantage={hasAdvantage} tutorial={props.tutorial} />
         <section className={`battle-action-stage is-${activeSide}-actor is-phase-${actionPhase} ${isSkillAction ? "is-skill-action" : "is-normal-action"} ${isFinalHit ? "is-final-hit" : ""}`} aria-live="polite" aria-label={`${activeParticipant?.name || "ACTION"} ${isSkillAction ? skillName : "通常攻撃"} ${targetParticipant?.name || ""}`}>
           <div className="battle-action-relation" aria-hidden="true">
             <span>{activeParticipant?.name || "ACTOR"}</span><i /><b>{isSkillAction ? "SKILL" : "HIT"}</b><i /><span>{targetParticipant?.name || "TARGET"}</span>
           </div>
           {props.skillCutIn && isSkillAction && !skillPresentation?.tier && <div className="battle-skill-flash"><small>SKILL</small><strong>{props.skillCutIn.skillName}</strong></div>}
         </section>
-        <PartyZone side="enemy" label={props.opponentName} party={props.enemyParty} activeId={activeParticipant?.id} targetId={targetParticipant?.id} shakingId={props.shakingId} visualOf={visualOf} popupFor={popupFor} hasAdvantage={hasAdvantage} tutorial={props.tutorial} />
-        {isSkillAction && (props.presentationPhase === "TARGET_FOCUS" || props.presentationPhase === "ATTACK_MOTION") && <BattleSkillResolutionVfx presentation={skillPresentation} phase={props.presentationPhase} actorSide={activeSide} />}
-        {props.damagePopup && <div className={`battle-target-impact-vfx is-${sideOf(targetParticipant)} is-${props.damagePopup.type}`} aria-hidden="true">
-          {props.damagePopup.type === "dmg" && <BattleImpactEffect kind={(skillPresentation?.impact || "impact") as BattleImpactKind} speed={props.speed} />}
-          <div className={`battle-impact-burst is-${props.damagePopup.type}`}><i /><i /><i /></div>
-        </div>}
+        <PartyZone side="enemy" label={props.opponentName} party={props.enemyParty} activeId={activeParticipant?.id} targetId={targetParticipant?.id} shakingId={props.shakingId} visualOf={visualOf} popupFor={popupFor} impactFor={impactFor} hasAdvantage={hasAdvantage} tutorial={props.tutorial} />
+        {isSkillAction && (props.presentationPhase === "TARGET_FOCUS" || props.presentationPhase === "ATTACK_MOTION") && <BattleSkillResolutionVfx key={props.presentationPhase} presentation={skillPresentation} phase={props.presentationPhase} actorSide={activeSide} />}
       </main>
 
       <BattleSkillCutIn presentation={skillPresentation} participant={activeParticipant ? { ...activeParticipant, rarity: activeVisual.rarity } : undefined} imageSrc={activeVisual.src} speed={props.speed} />
@@ -214,11 +216,12 @@ type PartyZoneProps = {
   shakingId: string | null;
   visualOf: (participant: Participant, side: "player" | "enemy") => { src?: string; placeholder: boolean; rarity?: string; attribute?: string };
   popupFor: (participant: Participant) => (BattleDamagePopup & { charId: string }) | null;
+  impactFor: (participant: Participant) => ReactNode;
   hasAdvantage: (participant: Participant) => boolean;
   tutorial: boolean;
 };
 
-function PartyZone({ side, label, party, activeId, targetId, shakingId, visualOf, popupFor, hasAdvantage, tutorial }: PartyZoneProps) {
+function PartyZone({ side, label, party, activeId, targetId, shakingId, visualOf, popupFor, impactFor, hasAdvantage, tutorial }: PartyZoneProps) {
   return (
     <section className={`battle-party-zone is-${side} ${tutorial ? "is-tutorial-party" : ""}`} data-party-size={Math.max(1, Math.min(5, party.length))} aria-label={side === "enemy" ? "敵パーティ" : "味方パーティ"}>
       <div className="battle-party-label"><span>{side === "enemy" ? "ENEMY" : "YOUR TEAM"}</span><strong>{label}</strong></div>
@@ -236,6 +239,7 @@ function PartyZone({ side, label, party, activeId, targetId, shakingId, visualOf
                 target={targetId === participant.id}
                 placeholderAsset={visual.placeholder}
                 popup={popupFor(participant)}
+                impactOverlay={impactFor(participant)}
                 advantage={hasAdvantage(participant)}
                 rarity={visual.rarity}
                 attribute={visual.attribute}

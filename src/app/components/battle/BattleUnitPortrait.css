@@ -87,6 +87,7 @@
 .battle-unit-party.battle-unit-enemy .battle-unit-popup{right:4px;left:auto;max-width:calc(100% - 8px);justify-content:flex-end}
 .battle-unit-party .battle-unit-popup strong{font-size:clamp(17px,5vw,27px)}
 .battle-unit-party .battle-unit-popup small{font-size:6px}
+.battle-unit-party .battle-unit-impact-vfx .battle-asset-impact{right:-42%}
 .battle-party-zone[data-party-size="1"] .battle-unit-party{grid-template-columns:70px minmax(0,1fr);max-height:92px;min-height:82px}.battle-party-zone[data-party-size="1"] .battle-unit-party .battle-unit-statuses{left:72px}
 .battle-party-zone[data-party-size="2"] .battle-unit-party{grid-template-columns:62px minmax(0,1fr);min-height:70px}.battle-party-zone[data-party-size="2"] .battle-unit-party .battle-unit-statuses{left:64px}
 .battle-party-zone[data-party-size="3"] .battle-unit-party{grid-template-columns:56px minmax(0,1fr);min-height:60px}.battle-party-zone[data-party-size="3"] .battle-unit-party .battle-unit-statuses{left:58px}
