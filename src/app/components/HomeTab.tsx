@@ -16,6 +16,39 @@ import {
 import "./HomeTab.css";
 
 const PRODUCTION_MY_PAGE_CREATIVES = resolveAvailableMyPageCreatives();
+const homeVisualAssetPromises = new Map<string, Promise<boolean>>();
+
+function preloadAndDecodeHomeImage(src: string, timeoutMs = 8000): Promise<boolean> {
+  if (typeof window === "undefined") return Promise.resolve(true);
+  const cached = homeVisualAssetPromises.get(src);
+  if (cached) return cached;
+
+  const promise = new Promise<boolean>((resolve) => {
+    const image = new Image();
+    let settled = false;
+    const finish = (loaded: boolean) => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timer);
+      resolve(loaded);
+    };
+    const decode = () => {
+      if (typeof image.decode !== "function") {
+        finish(image.naturalWidth > 0);
+        return;
+      }
+      void image.decode().then(() => finish(image.naturalWidth > 0)).catch(() => finish(image.naturalWidth > 0));
+    };
+    const timer = window.setTimeout(() => finish(false), timeoutMs);
+    image.onload = decode;
+    image.onerror = () => finish(false);
+    image.src = src;
+    if (image.complete && image.naturalWidth > 0) decode();
+  });
+
+  homeVisualAssetPromises.set(src, promise);
+  return promise;
+}
 
 type HomeTabQaState = Readonly<{
   socialActivities?: readonly any[];
@@ -187,6 +220,24 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
     if (foundBg?.img) bgUrl = foundBg.img;
   }
 
+  const visualAssetKey = leaderImgUrl ? `${bgUrl}|${leaderImgUrl}` : null;
+  const [readyVisualAssetKey, setReadyVisualAssetKey] = useState<string | null>(null);
+  const visualReady = visualAssetKey !== null && readyVisualAssetKey === visualAssetKey;
+
+  useEffect(() => {
+    if (!visualAssetKey || !leaderImgUrl) return;
+    let active = true;
+    void Promise.all([
+      preloadAndDecodeHomeImage(bgUrl),
+      preloadAndDecodeHomeImage(leaderImgUrl),
+    ]).then(() => {
+      if (active) setReadyVisualAssetKey(visualAssetKey);
+    });
+    return () => {
+      active = false;
+    };
+  }, [bgUrl, leaderImgUrl, visualAssetKey]);
+
   // チャットプレビュー最新1行
   const latestMessage = (guildChats || []).length > 0 ? guildChats[guildChats.length - 1] : null;
   const unreadChatCount = Number(chatUnreadCounts?.GLOBAL || 0) + Number(chatUnreadCounts?.GUILD || 0);
@@ -282,7 +333,14 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
       </button>
 
       {/* 1. ビジュアルエリア (50vh 固定) */}
-      <div key={bgUrl} className={`mypage-visual-area mypage-background-enter mypage-event-${homeEventState}`} style={{ backgroundImage: `url(${bgUrl})` }}>
+      <div
+        key={visualAssetKey || bgUrl}
+        className={`mypage-visual-area ${visualReady ? "is-ready mypage-background-enter" : "is-preparing"} mypage-event-${homeEventState}`}
+        style={{ backgroundImage: visualReady ? `url(${bgUrl})` : "none" }}
+        data-visual-readiness={visualReady ? "ready" : "preparing"}
+        aria-busy={!visualReady}
+      >
+        {!visualReady && <div className="mypage-visual-loading" aria-label="リーダーを準備中"><span /></div>}
         {/* 背景グラデーションオーバーレイ */}
         <div className="mypage-visual-overlay" />
 
@@ -374,9 +432,9 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
         )}
 
         {/* 層構造装飾: z-3 リーダー立ち絵キャラクター */}
-        {leaderMaster && leaderImgUrl && <>
+        {visualReady && leaderMaster && leaderImgUrl && <>
           <div className={`mypage-leader-layer ${isSsrLeader ? "is-ssr" : ""}`}>
-            <img src={leaderImgUrl} alt={leaderMaster.name} className="mypage-leader-img" />
+            <img src={leaderImgUrl} alt={leaderMaster.name} className="mypage-leader-img" loading="eager" decoding="async" />
           </div>
           <button className="mypage-leader-tap-target" onClick={handleLeaderTap} aria-label="リーダーに話しかける" />
         </>}

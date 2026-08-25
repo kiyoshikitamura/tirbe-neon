@@ -10,6 +10,33 @@ async function openHomeScenario(page: Page, scenario: "first-home-fresh" | "firs
   await expect(page.locator(`[data-home-scenario="${scenario}"]`)).toBeVisible();
 }
 
+test("Home reveals the Town and decoded Leader as one visual on a cold load and reload", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  let delayedLeaderRequests = 0;
+  await page.route("**/characters/ageha_transparent_asset.png", async (route) => {
+    delayedLeaderRequests += 1;
+    await new Promise((resolve) => setTimeout(resolve, 1600));
+    await route.continue();
+  });
+
+  await page.goto("/qa/presentation?scenario=first-home-fresh", { waitUntil: "domcontentloaded" });
+  const visual = page.locator(".mypage-visual-area");
+  await expect(visual).toHaveAttribute("data-visual-readiness", "preparing");
+  await expect(page.locator(".mypage-visual-loading")).toBeVisible();
+  await expect(page.locator(".mypage-leader-layer")).toHaveCount(0);
+  expect(await visual.evaluate((node) => getComputedStyle(node).backgroundImage)).toBe("none");
+
+  await expect(visual).toHaveAttribute("data-visual-readiness", "ready");
+  await expect(page.locator(".mypage-visual-loading")).toHaveCount(0);
+  await expect(page.locator(".mypage-leader-layer.is-ssr")).toBeVisible();
+  expect(await visual.evaluate((node) => getComputedStyle(node).backgroundImage)).toContain("bg_street_shinjuku.png");
+  expect(delayedLeaderRequests).toBe(1);
+
+  await page.reload();
+  await expect(page.locator(".mypage-visual-area")).toHaveAttribute("data-visual-readiness", "ready");
+  await expect(page.locator(".mypage-leader-layer.is-ssr")).toBeVisible();
+});
+
 for (const viewport of viewports) {
   test(`production First Home preserves the compact R3 hierarchy at ${viewport.width}x${viewport.height}`, async ({ page }) => {
     await page.setViewportSize(viewport);
@@ -84,6 +111,27 @@ for (const viewport of viewports) {
     await page.screenshot({ path: `test-results/first-home-r3-${viewport.width}x${viewport.height}.png`, fullPage: false });
   });
 }
+
+test("SSR aura and sweep visibly change over a short loop without moving the Leader", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await openHomeScenario(page, "first-home-fresh");
+  const sample = () => page.locator(".mypage-leader-layer.is-ssr").evaluate((leader) => {
+    const aura = getComputedStyle(leader, "::before");
+    const sweep = getComputedStyle(leader, "::after");
+    return {
+      auraOpacity: Number(aura.opacity),
+      sweepOpacity: Number(sweep.opacity),
+      sweepPosition: sweep.backgroundPosition,
+      leaderTransform: getComputedStyle(leader).transform,
+    };
+  });
+  const first = await sample();
+  await page.waitForTimeout(850);
+  const second = await sample();
+  expect(Math.abs(first.auraOpacity - second.auraOpacity)).toBeGreaterThan(0.05);
+  expect(second.sweepPosition).not.toBe(first.sweepPosition);
+  expect(second.leaderTransform).toBe(first.leaderTransform);
+});
 
 test("raid messaging only appears in the authoritative active-raid Home scenario", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
