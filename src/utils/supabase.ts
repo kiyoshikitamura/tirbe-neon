@@ -30,3 +30,28 @@ export const usingMockSupabase = forceMock;
 export const supabase = (forceMock
   ? (new MockSupabaseClient() as any)
   : createClient(supabaseUrl, supabaseAnonKey)) as SupabaseClient<any, "public", any>;
+
+export async function authenticateExistingEmailAccount(email: string, password: string) {
+  if (forceMock) {
+    const identities = JSON.parse(window.localStorage.getItem("mock_db_auth_identities") || "[]");
+    const identity = identities.find((row: any) => row.provider === "email" && row.email?.toLowerCase() === email.toLowerCase());
+    if (!identity || window.localStorage.getItem("mock_existing_email_password") !== password) {
+      return { session: null, error: new Error("メールアドレスまたはパスワードが正しくありません。") };
+    }
+    return {
+      session: { access_token: `mock:${identity.user_id}`, refresh_token: `mock:${identity.user_id}`, user: { id: identity.user_id } },
+      error: null,
+    };
+  }
+
+  const isolated = createClient(supabaseUrl, supabaseAnonKey, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+  });
+  const { data, error } = await isolated.auth.signInWithPassword({ email, password });
+  if (error || !data.session) return { session: null, error: error || new Error("既存アカウントを確認できませんでした。") };
+  const { data: state, error: stateError } = await isolated.rpc("get_current_onboarding_state");
+  if (stateError || !state?.has_profile) {
+    return { session: null, error: stateError || new Error("既存のゲームデータを確認できませんでした。") };
+  }
+  return { session: data.session, error: null };
+}

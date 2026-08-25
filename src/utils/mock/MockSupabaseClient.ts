@@ -115,18 +115,34 @@ export class MockSupabaseClient {
     },
     signInWithPassword: async ({ email }: any) => {
       if (typeof window !== "undefined") {
-        let demoId = localStorage.getItem("tribe_demo_uuid");
+        const identities = this.getStorage("auth_identities") || [];
+        let demoId = identities.find((row: any) => row.provider === "email" && row.email?.toLowerCase() === email?.toLowerCase())?.user_id
+          || localStorage.getItem("tribe_demo_uuid");
         if (!demoId) {
           demoId = "00000000-0000-4000-8000-" + Math.floor(100000000000 + Math.random() * 900000000000).toString();
           localStorage.setItem("tribe_demo_uuid", demoId);
         }
         localStorage.setItem("mock_auth_mode", "EMAIL");
       }
-      return { data: { user: {} }, error: null };
+      const { data } = await this.auth.getSession();
+      return { data: { user: data.session?.user || {}, session: data.session }, error: null };
     },
     signInWithOAuth: async () => {
-      if (typeof window !== "undefined") localStorage.setItem("mock_auth_mode", "GOOGLE");
+      if (typeof window !== "undefined") {
+        const existingId = localStorage.getItem("mock_existing_google_user_id");
+        if (existingId) localStorage.setItem("tribe_demo_uuid", existingId);
+        localStorage.setItem("mock_auth_mode", "GOOGLE");
+      }
       return { data: { provider: "google" }, error: null };
+    },
+    setSession: async ({ access_token }: any) => {
+      if (typeof window === "undefined") return { data: { session: null }, error: { message: "Browser storage is unavailable" } };
+      const userId = String(access_token || "").replace(/^mock:/, "");
+      if (!userId) return { data: { session: null }, error: { message: "Invalid session" } };
+      localStorage.setItem("tribe_demo_uuid", userId);
+      localStorage.setItem("mock_auth_mode", "EMAIL");
+      const { data } = await this.auth.getSession();
+      return { data, error: null };
     },
     signUp: async () => {
       return { data: { user: {} }, error: null };

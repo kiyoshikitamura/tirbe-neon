@@ -1,9 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { supabase } from "@/utils/supabase";
+import { authenticateExistingEmailAccount, supabase, usingMockSupabase } from "@/utils/supabase";
 import { getExternalBrowserUrl, getOAuthCallbackUrl, isXInAppBrowser } from "@/utils/browserDetection";
 import { useGame } from "../context/GameContext";
+import { EXISTING_GOOGLE_LOGIN_INTENT_KEY } from "../context/hooks/useAuth";
 import ExternalBrowserGooglePrompt from "./ExternalBrowserGooglePrompt";
 
 const AUTH_INTENT_KEY = "tribe_onboarding_auth_intent";
@@ -23,6 +24,18 @@ type EmailIntent = {
   email: string;
   startedAt: number;
 };
+
+type AccountConflict = {
+  method: "GOOGLE" | "EMAIL";
+  email?: string;
+  password?: string;
+};
+
+function clearAccountSwitchQuery() {
+  const url = new URL(window.location.href);
+  url.searchParams.delete("account_switch");
+  window.history.replaceState({}, document.title, `${url.pathname}${url.search}${url.hash}`);
+}
 
 function readGoogleIntent(): AuthenticationIntent | null {
   if (typeof window === "undefined") return null;
@@ -88,6 +101,7 @@ export default function TutorialAuthentication() {
   const [error, setError] = useState<string | null>(() => getOAuthReturnError());
   const [notice, setNotice] = useState<string | null>(null);
   const [working, setWorking] = useState(false);
+  const [accountConflict, setAccountConflict] = useState<AccountConflict | null>(null);
   const workingRef = useRef(false);
 
   const beginWorking = () => {
@@ -141,11 +155,78 @@ export default function TutorialAuthentication() {
       window.localStorage.removeItem(EMAIL_INTENT_KEY);
     }
     const query = new URLSearchParams(window.location.search);
+    if (query.get("account_switch") === "google") {
+      setAccountConflict({ method: "GOOGLE" });
+      setError(null);
+    }
     const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
     if (!query.has("error") && !query.has("error_code") && !hash.has("error") && !hash.has("error_code")) return;
     window.localStorage.removeItem(AUTH_INTENT_KEY);
     window.history.replaceState({}, document.title, `${window.location.pathname}${window.location.hash.startsWith("#/") ? window.location.hash : ""}`);
   }, []);
+
+  const cancelAccountSwitch = () => {
+    window.localStorage.removeItem(EXISTING_GOOGLE_LOGIN_INTENT_KEY);
+    window.localStorage.removeItem(AUTH_INTENT_KEY);
+    clearAccountSwitchQuery();
+    setAccountConflict(null);
+    setError(null);
+  };
+
+  const continueAccountSwitch = async () => {
+    if (!accountConflict || !session?.user?.id || !session.user.is_anonymous || !beginWorking()) return;
+    setError(null);
+    let existingEmailSession: any = null;
+    if (accountConflict.method === "EMAIL") {
+      const verified = await authenticateExistingEmailAccount(accountConflict.email || "", accountConflict.password || "");
+      if (verified.error || !verified.session) {
+        setError(verified.error?.message || "既存アカウントを確認できませんでした。");
+        endWorking();
+        return;
+      }
+      existingEmailSession = verified.session;
+    }
+
+    const anonymousUserId = session.user.id;
+    const { data: discardResult, error: discardError } = await supabase.rpc("discard_current_anonymous_account_for_switch");
+    if (discardError || discardResult?.discardedUserId !== anonymousUserId || discardResult?.gameplayMerged !== false) {
+      setError(discardError?.message || "未登録データを安全に破棄できませんでした。");
+      endWorking();
+      return;
+    }
+
+    window.localStorage.removeItem(AUTH_INTENT_KEY);
+    window.localStorage.removeItem(EMAIL_INTENT_KEY);
+    clearAccountSwitchQuery();
+    if (accountConflict.method === "GOOGLE") {
+      window.localStorage.setItem(EXISTING_GOOGLE_LOGIN_INTENT_KEY, JSON.stringify({ startedAt: Date.now() }));
+      const { error: loginError } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: { redirectTo: getOAuthCallbackUrl() },
+      });
+      if (loginError) {
+        window.localStorage.removeItem(EXISTING_GOOGLE_LOGIN_INTENT_KEY);
+        setError(loginError.message);
+        endWorking();
+      } else if (usingMockSupabase) {
+        window.location.reload();
+      }
+      return;
+    }
+
+    window.localStorage.setItem(EXISTING_GOOGLE_LOGIN_INTENT_KEY, JSON.stringify({ startedAt: Date.now(), method: "EMAIL" }));
+    const { error: sessionError } = await supabase.auth.setSession({
+      access_token: existingEmailSession.access_token,
+      refresh_token: existingEmailSession.refresh_token,
+    });
+    if (sessionError) {
+      window.localStorage.removeItem(EXISTING_GOOGLE_LOGIN_INTENT_KEY);
+      setError(sessionError.message);
+      endWorking();
+      return;
+    }
+    window.location.reload();
+  };
 
   useEffect(() => {
     const identities = session?.user?.identities || [];
@@ -201,9 +282,10 @@ export default function TutorialAuthentication() {
     if (updateError) {
       window.localStorage.removeItem(EMAIL_INTENT_KEY);
       const collisionCodes = ["email_exists", "user_already_exists", "identity_already_exists"];
-      setError(collisionCodes.includes(updateError.code || "")
-        ? "このメールアドレスは既存アカウントで使用されています。既存アカウントへログインするか、別のメールアドレスを使用してください。"
-        : updateError.message);
+      if (collisionCodes.includes(updateError.code || "")) {
+        setAccountConflict({ method: "EMAIL", email: normalizedEmail, password });
+        setError(null);
+      } else setError(updateError.message);
     } else {
       const { data: refreshData } = await supabase.auth.refreshSession();
       const linkedUser = refreshData.session?.user || updateData.user;
@@ -241,7 +323,10 @@ export default function TutorialAuthentication() {
     });
     if (linkError) {
       window.localStorage.removeItem(AUTH_INTENT_KEY);
-      setError(getGoogleLinkError(linkError.code, linkError.message));
+      if (linkError.code === "identity_already_exists" || linkError.code === "user_already_exists") {
+        setAccountConflict({ method: "GOOGLE" });
+        setError(null);
+      } else setError(getGoogleLinkError(linkError.code, linkError.message));
       endWorking();
       return;
     }
@@ -276,6 +361,24 @@ export default function TutorialAuthentication() {
         url={googleExternalBrowserUrl}
         onClose={() => setGoogleExternalBrowserUrl(null)}
       />
+    ) : accountConflict ? (
+    <div className="modal-overlay background-black-95" style={{ zIndex: 20001 }}>
+      <div className="modal-card" style={{ maxWidth: 420 }} role="dialog" aria-modal="true" aria-labelledby="account-switch-title">
+        <div id="account-switch-title" className="modal-title text-left">既存のゲームデータが見つかりました</div>
+        <div className="modal-desc text-left mb-3">
+          この{accountConflict.method === "GOOGLE" ? "Googleアカウント" : "メールアドレス"}には、すでにTRIBE NEONのゲームデータがあります。
+          <br /><br />
+          既存のゲームデータで続ける場合、現在この端末でプレイ中の未登録データは破棄されます。ゲームデータは統合されません。
+        </div>
+        {error && <div className="text-color-red font-size-7 mb-2" role="alert">{error}</div>}
+        <button className="semantic-cta semantic-cta--danger width-100" onClick={() => void continueAccountSwitch()} disabled={working} aria-busy={working}>
+          {working ? "切り替え中..." : "既存データで続ける"}
+        </button>
+        <button className="semantic-cta semantic-cta--secondary mt-2 width-100" onClick={cancelAccountSwitch} disabled={working}>
+          キャンセル
+        </button>
+      </div>
+    </div>
     ) : (
     <div className="modal-overlay background-black-95" style={{ zIndex: 20000 }}>
       <div className="modal-card" style={{ maxWidth: 420 }}>

@@ -11,17 +11,28 @@ export default function AuthCallbackPage() {
     let active = true;
     let redirected = false;
 
-    const returnToApp = () => {
+    const returnToApp = (accountSwitch?: "google") => {
       if (!active || redirected) return;
       redirected = true;
-      window.location.replace(getOAuthReturnUrl());
+      const destination = new URL(getOAuthReturnUrl());
+      if (accountSwitch) destination.searchParams.set("account_switch", accountSwitch);
+      window.location.replace(destination.toString());
     };
 
     const completeCallback = async () => {
       const callbackUrl = new URL(window.location.href);
+      const callbackHash = new URLSearchParams(callbackUrl.hash.replace(/^#/, ""));
       const oauthError = callbackUrl.searchParams.get("error_description")
-        || callbackUrl.searchParams.get("error");
+        || callbackUrl.searchParams.get("error")
+        || callbackHash.get("error_description")
+        || callbackHash.get("error");
       if (oauthError) {
+        const errorCode = callbackUrl.searchParams.get("error_code") || callbackUrl.searchParams.get("error")
+          || callbackHash.get("error_code") || callbackHash.get("error");
+        if (errorCode === "identity_already_exists" || /already linked to another user/i.test(oauthError)) {
+          returnToApp("google");
+          return;
+        }
         setError(oauthError);
         return;
       }

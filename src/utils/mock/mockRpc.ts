@@ -1241,6 +1241,32 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     return { data: "AUTHENTICATION", error: null };
   }
 
+  if (funcName === "discard_current_anonymous_account_for_switch") {
+    const userId = typeof window === "undefined" ? null : localStorage.getItem("tribe_demo_uuid");
+    const authMode = typeof window === "undefined" ? null : localStorage.getItem("mock_auth_mode");
+    if (!userId || authMode !== "ANONYMOUS") return { data: null, error: { message: "Only the current anonymous account can be discarded" } };
+    const protectedRows = [
+      ["payment_transactions", "user_id"], ["user_monthly_passes", "user_id"], ["guild_members", "user_id"],
+      ["raid_damage_logs", "user_id"], ["pvp_defense_logs", "user_id"], ["gvg_attack_logs", "attacker_user_id"],
+    ];
+    if (protectedRows.some(([table, column]) => (client.getStorage(table) || []).some((row: any) => row[column] === userId))) {
+      return { data: null, error: { message: "Anonymous account has protected history and cannot be discarded" } };
+    }
+    const userScopedTables = [
+      "users", "tutorial_progress", "user_characters", "user_skills", "user_equipments", "user_items",
+      "user_formations", "user_main_formations", "user_missions", "user_patrols", "user_funnel_milestones",
+      "gacha_execution_history", "user_account_auth_methods",
+    ];
+    for (const table of userScopedTables) {
+      client.setStorage(table, (client.getStorage(table) || []).filter((row: any) => row.user_id !== userId && row.id !== userId));
+    }
+    const identities = (client.getStorage("auth_identities") || []).filter((row: any) => row.user_id !== userId);
+    client.setStorage("auth_identities", identities);
+    localStorage.setItem("mock_discarded_anonymous_user_id", userId);
+    localStorage.removeItem("tribe_demo_uuid");
+    return { data: { status: "DISCARDED", discardedUserId: userId, gameplayMerged: false }, error: null };
+  }
+
   if (funcName === "send_direct_message") {
     const { p_recipient_id, p_message } = params;
     const senderId = typeof window === "undefined" ? null : localStorage.getItem("tribe_demo_uuid");

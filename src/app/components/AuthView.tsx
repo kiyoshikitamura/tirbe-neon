@@ -36,7 +36,7 @@ export default function AuthView() {
             className="auth-btn-google semantic-cta semantic-cta--primary width-100 active-scale-effect"
             aria-busy={setupLoading}
           >
-            {setupLoading ? "ログイン中..." : "Googleで始める"}
+            {setupLoading ? "ログイン中..." : "Googleでログイン"}
           </button>
 
           <div className="auth-method-divider"><span>またはメールで続ける</span></div>

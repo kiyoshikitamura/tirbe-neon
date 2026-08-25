@@ -49,8 +49,8 @@ test("title screen opens the authentication menu", async ({ page }) => {
   await page.getByRole("button", { name: "既存アカウントでログイン" }).click();
 
   await expect(page.getByText("TRIBE NEON")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Googleで始める" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Googleで始める" })).toHaveClass(/semantic-cta--primary/);
+  await expect(page.getByRole("button", { name: "Googleでログイン" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Googleでログイン" })).toHaveClass(/semantic-cta--primary/);
 });
 
 test("authentication menu opens the email login form", async ({ page }) => {
@@ -284,7 +284,7 @@ test("email confirmation wait survives reload and finalizes after the callback s
   await expect.poll(async () => page.evaluate(() => localStorage.getItem("tribe_onboarding_email_intent"))).toBeNull();
 });
 
-test("email linking rejects an identity owned by another account without merging data", async ({ page }) => {
+test("email identity collision can be cancelled without changing anonymous tutorial data", async ({ page }) => {
   await seedCompletedAnonymous(page);
   await page.addInitScript(() => {
     localStorage.setItem("mock_db_auth_identities", JSON.stringify([{ user_id: "other-user", provider: "email", email: "used@example.com" }]));
@@ -295,7 +295,9 @@ test("email linking rejects an identity owned by another account without merging
   await page.getByPlaceholder("パスワード（6文字以上）").fill("secure-pass-123");
   await page.getByRole("button", { name: "メールアカウントを連携" }).click();
 
-  await expect(page.getByText(/このメールアドレスは既存アカウントで使用されています/)).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "既存のゲームデータが見つかりました" })).toBeVisible();
+  await page.getByRole("button", { name: "キャンセル" }).click();
+  await expect(page.getByText("ゲームデータを保存")).toBeVisible();
   const progress = await page.evaluate(() => JSON.parse(localStorage.getItem("mock_db_tutorial_progress") || "[]"));
   expect(progress[0].step_id).toBe("COMPLETE");
 });
@@ -374,14 +376,16 @@ test("existing Google login returns directly to the game without the war-entry d
   await expect.poll(async () => page.evaluate(() => localStorage.getItem("tribe_existing_google_login_intent"))).toBeNull();
 });
 
-test("Google linking rejects an identity owned by another account without merging data", async ({ page }) => {
+test("Google identity collision can be cancelled without changing anonymous tutorial data", async ({ page }) => {
   await seedCompletedAnonymous(page);
   await page.addInitScript(() => localStorage.setItem("mock_google_identity_collision", "true"));
   await page.goto("/");
   await page.getByText("TAP TO START").click();
   await page.getByRole("button", { name: "Googleアカウントを連携" }).click();
 
-  await expect(page.getByText(/このGoogleアカウントは既存アカウントで使用されています/)).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "既存のゲームデータが見つかりました" })).toBeVisible();
+  await page.getByRole("button", { name: "キャンセル" }).click();
+  await expect(page.getByText("ゲームデータを保存")).toBeVisible();
   const state = await page.evaluate(() => ({
     mode: localStorage.getItem("mock_auth_mode"),
     intent: localStorage.getItem("tribe_onboarding_auth_intent"),
@@ -390,6 +394,78 @@ test("Google linking rejects an identity owned by another account without mergin
   expect(state.mode).toBe("ANONYMOUS");
   expect(state.intent).toBeNull();
   expect(state.progress[0].step_id).toBe("COMPLETE");
+});
+
+test("Google OAuth callback converts an existing-identity error into the collision dialog", async ({ page }) => {
+  await seedCompletedAnonymous(page);
+  await page.goto("/auth/callback?error=identity_already_exists&error_code=identity_already_exists&error_description=Identity%20is%20already%20linked%20to%20another%20user");
+  await expect(page).toHaveURL(/account_switch=google/);
+  await page.getByText("TAP TO START").click();
+  await expect(page.getByRole("dialog", { name: "既存のゲームデータが見つかりました" })).toBeVisible();
+  await page.getByRole("button", { name: "キャンセル" }).click();
+  await expect(page).not.toHaveURL(/account_switch=/);
+});
+
+test("Google identity collision discards only anonymous data and resumes the existing save", async ({ page }) => {
+  await seedCompletedAnonymous(page);
+  await page.addInitScript(() => {
+    const existingId = "00000000-0000-4000-8000-000000000200";
+    localStorage.setItem("mock_google_identity_collision", "true");
+    localStorage.setItem("mock_existing_google_user_id", existingId);
+    localStorage.setItem("mock_db_auth_identities", JSON.stringify([{ user_id: existingId, provider: "google" }]));
+    const users = JSON.parse(localStorage.getItem("mock_db_users") || "[]");
+    users.push({ id: existingId, username: "既存Google", current_base_id: "shibuya", favorite_character_id: "char_ageha_01" });
+    localStorage.setItem("mock_db_users", JSON.stringify(users));
+    const progress = JSON.parse(localStorage.getItem("mock_db_tutorial_progress") || "[]");
+    progress.push({ user_id: existingId, step_id: "AUTHENTICATION" });
+    localStorage.setItem("mock_db_tutorial_progress", JSON.stringify(progress));
+    localStorage.setItem("mock_db_user_account_auth_methods", JSON.stringify([{ user_id: existingId, auth_method: "GOOGLE" }]));
+  });
+  await page.goto("/");
+  await page.getByText("TAP TO START").click();
+  await page.getByRole("button", { name: "Googleアカウントを連携" }).click();
+  await page.getByRole("button", { name: "既存データで続ける" }).click();
+
+  await expect.poll(async () => page.evaluate(() => localStorage.getItem("tribe_demo_uuid"))).toBe("00000000-0000-4000-8000-000000000200");
+  await expect(page.locator(".header-mobile")).toBeVisible();
+  const state = await page.evaluate(() => ({
+    discarded: localStorage.getItem("mock_discarded_anonymous_user_id"),
+    users: JSON.parse(localStorage.getItem("mock_db_users") || "[]"),
+    progress: JSON.parse(localStorage.getItem("mock_db_tutorial_progress") || "[]"),
+  }));
+  expect(state.discarded).toBe("00000000-0000-4000-8000-000000000099");
+  expect(state.users.some((row: any) => row.id === state.discarded)).toBe(false);
+  expect(state.users.find((row: any) => row.id === "00000000-0000-4000-8000-000000000200")?.username).toBe("既存Google");
+  expect(state.progress.some((row: any) => row.user_id === state.discarded)).toBe(false);
+});
+
+test("email identity collision verifies credentials before discard and resumes the existing save", async ({ page }) => {
+  await seedCompletedAnonymous(page);
+  await page.addInitScript(() => {
+    const existingId = "00000000-0000-4000-8000-000000000201";
+    localStorage.setItem("mock_existing_email_password", "existing-pass");
+    localStorage.setItem("mock_db_auth_identities", JSON.stringify([{ user_id: existingId, provider: "email", email: "existing@example.com" }]));
+    const users = JSON.parse(localStorage.getItem("mock_db_users") || "[]");
+    users.push({ id: existingId, username: "既存Email", current_base_id: "ikebukuro", favorite_character_id: "char_mio_01" });
+    localStorage.setItem("mock_db_users", JSON.stringify(users));
+    const progress = JSON.parse(localStorage.getItem("mock_db_tutorial_progress") || "[]");
+    progress.push({ user_id: existingId, step_id: "AUTHENTICATION" });
+    localStorage.setItem("mock_db_tutorial_progress", JSON.stringify(progress));
+    localStorage.setItem("mock_db_user_account_auth_methods", JSON.stringify([{ user_id: existingId, auth_method: "EMAIL" }]));
+  });
+  await page.goto("/");
+  await page.getByText("TAP TO START").click();
+  await page.getByPlaceholder("メールアドレス").fill("existing@example.com");
+  await page.getByPlaceholder("パスワード（6文字以上）").fill("existing-pass");
+  await page.getByRole("button", { name: "メールアカウントを連携" }).click();
+  await expect(page.getByRole("dialog", { name: "既存のゲームデータが見つかりました" })).toBeVisible();
+  await page.getByRole("button", { name: "既存データで続ける" }).click();
+
+  await expect.poll(async () => page.evaluate(() => localStorage.getItem("tribe_demo_uuid"))).toBe("00000000-0000-4000-8000-000000000201");
+  await expect(page.locator(".header-mobile")).toBeVisible();
+  const users = await page.evaluate(() => JSON.parse(localStorage.getItem("mock_db_users") || "[]"));
+  expect(users.some((row: any) => row.id === "00000000-0000-4000-8000-000000000099")).toBe(false);
+  expect(users.find((row: any) => row.id === "00000000-0000-4000-8000-000000000201")?.username).toBe("既存Email");
 });
 
 test("Google OAuth cancellation returns to onboarding and can be retried", async ({ page }) => {
