@@ -7,15 +7,35 @@
   color: #e2e8f0;
 }
 
-.pvp-status-hero {
-  min-height: 154px;
-  background-image: radial-gradient(circle at 76% 32%, rgba(0, 240, 255, 0.18), transparent 36%), linear-gradient(135deg, #111827, #070a12);
-}
+.pvp-view .ui-hub-page-content { gap: 8px; padding-top: 8px; }
 
-.pvp-status-heading { color: var(--ui-text-secondary); font-size: 10px; font-weight: 800; letter-spacing: 0.08em; }
-.pvp-status-rate { margin-top: 8px; color: var(--neon-cyan); font-size: 34px; font-weight: 900; font-variant-numeric: tabular-nums; text-shadow: 0 0 14px rgba(0, 240, 255, 0.22); }
-.pvp-status-rate small { font-size: 12px; }
-.pvp-status-meta { display: flex; align-items: center; gap: 8px; margin-top: 12px; color: var(--ui-text-secondary); font-size: 9px; }
+.pvp-self-summary {
+  display: grid;
+  grid-template-columns: .72fr 1fr 1.18fr;
+  gap: 1px;
+  overflow: hidden;
+  border: 1px solid rgba(0, 240, 255, .22);
+  border-radius: 5px;
+  background: rgba(0, 240, 255, .16);
+}
+.pvp-self-summary > div { min-width: 0; padding: 9px 10px; background: linear-gradient(145deg, rgba(12, 20, 31, .98), rgba(4, 9, 16, .98)); }
+.pvp-self-summary small { display: block; color: var(--ui-text-secondary); font-size: 8px; font-weight: 800; letter-spacing: .08em; }
+.pvp-self-summary strong { display: block; overflow: hidden; margin-top: 2px; color: #fff; font: 800 17px/1 var(--font-display); text-overflow: ellipsis; white-space: nowrap; }
+.pvp-self-summary > div:nth-child(2) strong { color: var(--neon-cyan); }
+
+.pvp-point-strip { display: flex; min-height: 42px; align-items: center; justify-content: space-between; gap: 12px; padding: 7px 11px; border: 1px solid rgba(255,255,255,.13); border-radius: 5px; background: rgba(9, 15, 24, .94); }
+.pvp-point-strip > div { display: flex; align-items: baseline; gap: 8px; }
+.pvp-point-strip small { color: var(--ui-text-secondary); font-size: 9px; font-weight: 800; }
+.pvp-point-strip strong { color: var(--neon-cyan); font: 800 19px/1 var(--font-display); }
+.pvp-point-strip strong span { color: var(--ui-text-secondary); font-size: 11px; }
+.pvp-point-strip > span { color: var(--ui-text-secondary); font-size: 9px; font-variant-numeric: tabular-nums; }
+
+.opponents-subtab > .flex.mb-4 { margin-bottom: 6px; }
+.pvp-rules-help { margin-bottom: 7px; border-bottom: 1px solid rgba(255,255,255,.08); color: var(--ui-text-secondary); font-size: 9px; }
+.pvp-rules-help summary { padding: 5px 2px 7px; color: #aeb8c4; cursor: pointer; }
+.pvp-rules-help p { margin: 0; padding: 4px 2px; line-height: 1.5; }
+.pvp-rules-help p:last-child { padding-bottom: 8px; }
+.pvp-rules-help b { margin-right: 6px; color: #fff; }
 
 .pvp-opponent-card {
   display: flex;
@@ -30,8 +50,14 @@
 .pvp-opponent-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
 .pvp-opponent-heading > strong { color: var(--neon-gold); font-size: 15px; }
 .pvp-opponent-guild { overflow: hidden; margin-top: 3px; color: var(--ui-text-secondary); font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+.pvp-opponent-leader { display: flex; align-items: baseline; gap: 6px; margin-top: 6px; }
+.pvp-opponent-leader span { color: var(--neon-gold); font: 700 8px var(--font-display); letter-spacing: .12em; }
+.pvp-opponent-leader strong { color: #fff; font-size: 11px; }
 .pvp-opponent-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; margin-top: 8px; color: var(--ui-text-secondary); font-size: 9px; }
 .pvp-opponent-power { color: #fff; font-size: 11px; font-weight: 900; }
+.pvp-power-difference { font-variant-numeric: tabular-nums; }
+.pvp-power-difference.is-higher { color: #ffb04a; }
+.pvp-power-difference.is-lower { color: var(--neon-cyan); }
 .pvp-opponent-deck { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; margin-top: 9px; }
 .pvp-opponent-deck .character-presentation { width: 100%; }
 .pvp-opponent-deck .character-presentation-meta { min-height: 20px; padding-top: 6px; }

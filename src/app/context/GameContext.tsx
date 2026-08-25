@@ -186,6 +186,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const [diamonds, setDiamonds] = useState<number>(200);
   const [vitality, setVitality] = useState<number>(100);
   const [vitalityNextRecoveryAt, setVitalityNextRecoveryAt] = useState<string | null>(null);
+  const [pvpNextRecoveryAt, setPvpNextRecoveryAt] = useState<string | null>(null);
   const [monthlyPassActive, setMonthlyPassActive] = useState<boolean>(false);
   const [monthlyPassClaimedToday, setMonthlyPassClaimedToday] = useState<boolean>(false);
 
@@ -977,6 +978,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         setVitality(row.out_vitality);
         setVitalityNextRecoveryAt(row.vitality_next_recovery_at ?? null);
         setPvpPoints(row.out_pvp_points);
+        setPvpNextRecoveryAt(row.pvp_next_recovery_at ?? null);
         setRaidPoints(Number(row.out_raid_points ?? 0));
         setRaidFirstEntryFree(Boolean(row.raid_first_entry_free));
         setCash(Number(row.out_cash));
@@ -1843,6 +1845,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
           setVitality(row.out_vitality);
           setVitalityNextRecoveryAt(row.vitality_next_recovery_at ?? null);
           setPvpPoints(row.out_pvp_points);
+          setPvpNextRecoveryAt(row.pvp_next_recovery_at ?? null);
           setRaidPoints(Number(row.out_raid_points ?? 0));
           setRaidFirstEntryFree(Boolean(row.raid_first_entry_free));
           setCash(Number(row.out_cash));
@@ -3652,6 +3655,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     cash, setCash,
     diamonds, setDiamonds,
     vitality, setVitality, vitalityNextRecoveryAt,
+    pvpNextRecoveryAt,
     pvpPoints, setPvpPoints,
     activeTab, setActiveTab,
     maintenanceEnabled: isMaintenanceEnabled(featureOperatingStates),

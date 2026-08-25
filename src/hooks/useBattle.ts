@@ -1068,7 +1068,10 @@ export function useBattle(options: UseBattleOptions) {
       }
       if (replayMode === "PVP" && (!replaySessionId || error)) {
         setBattleLoading(false);
-        setErrorMessage(error?.message || "PvPバトルの開始をサーバーで確定できませんでした。もう一度お試しください。");
+        const isInsufficientPoint = error?.code === "23514" || /insufficient pvp points/i.test(error?.message || "");
+        setErrorMessage(isInsufficientPoint
+          ? "PvP Pointが不足しています。回復を待ってから、もう一度お試しください。"
+          : error?.message || "PvPバトルの開始をサーバーで確定できませんでした。もう一度お試しください。");
         return;
       }
       if (replayMode === "RAID" && (!replaySessionId || error)) {

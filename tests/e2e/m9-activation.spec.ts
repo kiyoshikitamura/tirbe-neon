@@ -3,8 +3,9 @@ import { expect, test } from "@playwright/test";
 test.use({ viewport: { width: 390, height: 844 } });
 test.setTimeout(90_000);
 
-test.beforeEach(async ({ page }) => {
-  await page.addInitScript(() => {
+test.beforeEach(async ({ page }, testInfo) => {
+  const raidActive = !testInfo.title.includes("inactive Raid");
+  await page.addInitScript(({ raidActive }) => {
     const me = "00000000-0000-4000-8000-000000000901";
     const guildId = "30000000-0000-4000-8000-000000000901";
     const now = new Date().toISOString();
@@ -26,11 +27,11 @@ test.beforeEach(async ({ page }) => {
     localStorage.setItem("mock_db_guild_members", JSON.stringify([
       { id: "member-1", guild_id: guildId, user_id: "00000000-0000-4000-8000-000000000902", role: "MASTER" },
     ]));
-    localStorage.setItem("mock_db_raid_bosses", JSON.stringify([
+    localStorage.setItem("mock_db_raid_bosses", JSON.stringify(raidActive ? [
       { id: "20000000-0000-4000-8000-000000000901", boss_master_id: "BOSS_001", boss_name: "雷神連合総長", level: 99,
         current_hp: 7500000, max_hp: 10000000, base_id: "shinjuku", status: "ACTIVE", expires_at: new Date(Date.now() + 86400000).toISOString() },
-    ]));
-  });
+    ] : []));
+  }, { raidActive });
 });
 
 async function enterGame(page: import("@playwright/test").Page) {
@@ -63,6 +64,14 @@ test("First PvP milestone resumes through Ranking, Raid and public Guild discove
     return events.filter((entry: any) => entry.event_name === "guild_detail_view").length;
   });
   expect(detailKeys).toBe(1);
+});
+
+test("Ranking never advertises an inactive Raid and continues to a valid social action", async ({ page }) => {
+  await enterGame(page);
+  await page.locator(".mypage-primary-cta").click();
+  await expect(page.locator(".ranking-tab-view")).toBeVisible();
+  await expect(page.getByRole("button", { name: "次はレイドへ挑戦" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "おすすめTRIBEを見る" })).toBeVisible();
 });
 
 test("Guild recommendations are visible before Lv3 while server join remains locked", async ({ page }) => {

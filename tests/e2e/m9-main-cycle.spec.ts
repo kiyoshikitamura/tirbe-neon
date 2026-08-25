@@ -63,7 +63,7 @@ async function enterGame(page: import("@playwright/test").Page) {
 }
 
 async function mobileFramePass(page: import("@playwright/test").Page, selector: string, name: string) {
-  for (const width of [375, 390, 430]) {
+  for (const width of [375, 390, 412, 430]) {
     await page.setViewportSize({ width, height: 844 });
     const metrics = await page.locator(selector).first().evaluate((node) => ({ scrollWidth: node.scrollWidth, clientWidth: node.clientWidth }));
     expect(metrics.scrollWidth).toBeLessThanOrEqual(metrics.clientWidth + 1);
@@ -93,8 +93,15 @@ test("M9-V0 main cycle presents growth, mission, PvP, ranking, raid and guild di
   await page.getByRole("button", { name: /閉じる/ }).click();
 
   await page.locator(".circle-menu-btn.fight").click();
-  await expect(page.locator(".pvp-opponent-card").first()).toContainText("戦力");
+  await expect(page.locator(".pvp-self-summary")).toContainText("順位");
+  await expect(page.locator(".pvp-self-summary")).toContainText("RATING");
+  await expect(page.locator(".pvp-self-summary")).toContainText("総合力");
+  await expect(page.locator(".pvp-point-strip")).toContainText("PvP Point");
+  await expect(page.locator(".pvp-opponent-card").first()).toContainText("総合力");
   await expect(page.locator(".pvp-opponent-card").first()).toContainText("#1");
+  await expect(page.locator(".pvp-opponent-card").first()).toContainText("LEADER");
+  await expect(page.locator(".pvp-opponent-card").first()).toContainText("総合力差");
+  await expect(page.locator(".pvp-opponent-card").first().getByRole("button", { name: "対戦する" })).toBeVisible();
   await expect(page.locator(".pvp-opponent-deck .character-presentation-thumbnail").first()).toBeVisible();
   await mobileFramePass(page, ".pvp-view", "pvp");
   await page.getByRole("button", { name: "PvPランキング" }).click();
