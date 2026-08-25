@@ -1757,13 +1757,16 @@ export function useBattle(options: UseBattleOptions) {
       const previousReplayEvent = authoritativeEvents[authoritativeEventIndex - 1];
       const previousPreviousReplayEvent = authoritativeEvents[authoritativeEventIndex - 2];
       const previousSkillId = String(previousReplayEvent?.payload?.skillId ?? "BASIC_ATTACK");
-      const followsSkill = replayEvent.type === "DAMAGE"
+      const isPresentationOutcome = (event: ServerBattleEvent | undefined) => Boolean(event)
+        && (event!.type === "DAMAGE" || event!.type === "HEAL" || event!.type === "STATUS"
+          || (event!.type === "EFFECT" && event!.payload.kind !== "ACTIVE_EFFECT_SYNC"));
+      const followsSkill = isPresentationOutcome(replayEvent)
         && previousReplayEvent?.type === "ACTION"
         && previousSkillId !== "BASIC_ATTACK";
       const followsNormalAttack = replayEvent.type === "DAMAGE"
         && previousReplayEvent?.type === "ACTION"
         && previousSkillId === "BASIC_ATTACK";
-      const holdsSkillImpact = (previousReplayEvent?.type === "DAMAGE" || previousReplayEvent?.type === "HEAL" || previousReplayEvent?.type === "STATUS")
+      const holdsSkillImpact = isPresentationOutcome(previousReplayEvent)
         && previousPreviousReplayEvent?.type === "ACTION"
         && String(previousPreviousReplayEvent.payload?.skillId ?? "BASIC_ATTACK") !== "BASIC_ATTACK";
       const holdsNormalImpact = previousReplayEvent?.type === "DAMAGE"
@@ -1901,36 +1904,75 @@ export function useBattle(options: UseBattleOptions) {
           const updateTarget = (participant: ParticipantState) => participant.id === targetId
             ? { ...participant, hp: remainingHp, isDead: false }
             : participant;
-          setPlayerPartyStates((previous) => previous.map(updateTarget));
-          setEnemyPartyStates((previous) => previous.map(updateTarget));
+          const projectHpTransition = () => {
+            setPlayerPartyStates((previous) => previous.map(updateTarget));
+            setEnemyPartyStates((previous) => previous.map(updateTarget));
+          };
+          if (!followsSkill) projectHpTransition();
+          setTargetLine(actorId && targetId ? { fromId: actorId, toId: targetId } : null);
           setDamagePopup({ val: amount, type: "heal", x: 120, y: 40, charId: targetId });
           presentationTimersRef.current.push(setTimeout(() => {
             setPresentationPhase("DAMAGE");
             recordPresentationStage("damageAt", targetId);
-          }, 100 / battleSpeed));
+          }, followsSkill ? 180 : 100 / battleSpeed));
           presentationTimersRef.current.push(setTimeout(() => {
+            if (followsSkill) projectHpTransition();
             setPresentationPhase("HP_TRANSITION");
             recordPresentationStage("hpSettledAt", targetId);
-          }, 450 / battleSpeed));
+          }, followsSkill ? 480 : 450 / battleSpeed));
           presentationTimersRef.current.push(setTimeout(() => {
             setPresentationPhase("ACTION_HOLD");
             recordPresentationStage("actionCompleteAt");
-          }, 900 / battleSpeed));
+          }, followsSkill ? 850 : 900 / battleSpeed));
           playCyberSe("click");
           setBattleLog((previous) => [...previous, `${target?.name ?? targetId}のHPが ${amount.toLocaleString()} 回復。`]);
         } else if (replayEvent.type === "STATUS") {
+          setPresentationPhase("IMPACT");
+          recordPresentationStage("impactAt", targetId);
+          setTargetLine(actorId && targetId ? { fromId: actorId, toId: targetId } : null);
           const status = String(payload.status ?? "STATUS");
           const updateTarget = (participant: ParticipantState) => participant.id === targetId ? projectActiveEffects(participant, payload) : participant;
           setPlayerPartyStates((previous) => previous.map(updateTarget));
           setEnemyPartyStates((previous) => previous.map(updateTarget));
+          presentationTimersRef.current.push(setTimeout(() => {
+            setPresentationPhase("DAMAGE");
+            recordPresentationStage("damageAt", targetId);
+          }, followsSkill ? 180 : 100 / battleSpeed));
+          presentationTimersRef.current.push(setTimeout(() => {
+            setPresentationPhase("HP_TRANSITION");
+            recordPresentationStage("hpSettledAt", targetId);
+          }, followsSkill ? 480 : 450 / battleSpeed));
+          presentationTimersRef.current.push(setTimeout(() => {
+            setPresentationPhase("ACTION_HOLD");
+            recordPresentationStage("actionCompleteAt");
+          }, followsSkill ? 850 : 900 / battleSpeed));
           setBattleLog((previous) => [...previous, `${target?.name ?? targetId}に ${status} が付与された。`]);
         } else if (replayEvent.type === "EFFECT") {
           const kind = String(payload.kind ?? "EFFECT");
           const updateTarget = (participant: ParticipantState) => participant.id === targetId ? projectActiveEffects(participant, payload) : participant;
           setPlayerPartyStates((previous) => previous.map(updateTarget));
           setEnemyPartyStates((previous) => previous.map(updateTarget));
+          if (kind !== "ACTIVE_EFFECT_SYNC") {
+            setPresentationPhase("IMPACT");
+            recordPresentationStage("impactAt", targetId);
+            setTargetLine(actorId && targetId ? { fromId: actorId, toId: targetId } : null);
+          }
           if (kind === "SHIELD") {
             setDamagePopup({ val: Math.max(0, Number(payload.amount || 0)), type: "shield", x: 120, y: 40, charId: targetId });
+          }
+          if (kind !== "ACTIVE_EFFECT_SYNC") {
+            presentationTimersRef.current.push(setTimeout(() => {
+              setPresentationPhase("DAMAGE");
+              recordPresentationStage("damageAt", targetId);
+            }, followsSkill ? 180 : 100 / battleSpeed));
+            presentationTimersRef.current.push(setTimeout(() => {
+              setPresentationPhase("HP_TRANSITION");
+              recordPresentationStage("hpSettledAt", targetId);
+            }, followsSkill ? 480 : 450 / battleSpeed));
+            presentationTimersRef.current.push(setTimeout(() => {
+              setPresentationPhase("ACTION_HOLD");
+              recordPresentationStage("actionCompleteAt");
+            }, followsSkill ? 850 : 900 / battleSpeed));
           }
         } else if (replayEvent.type === "DEFEAT") {
           const updateTarget = (participant: ParticipantState) => participant.id === targetId
