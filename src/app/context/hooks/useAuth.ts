@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { supabase, usingMockSupabase } from "@/utils/supabase";
 import { getExternalBrowserUrl, getOAuthCallbackUrl, isXInAppBrowser } from "@/utils/browserDetection";
 import { beginActionPerformance } from "@/utils/actionPerformance";
+import { clearHomeResumeSnapshot } from "@/app/lib/homeResumePresentation";
 
 export const EXISTING_GOOGLE_LOGIN_INTENT_KEY = "tribe_existing_google_login_intent";
 
@@ -277,6 +278,7 @@ export function useAuth(
         
         localStorage.removeItem("tribe_demo_uuid");
         localStorage.removeItem(EXISTING_GOOGLE_LOGIN_INTENT_KEY);
+        clearHomeResumeSnapshot();
         setSession(null);
         setIsSetupRequired(false);
         setOnboardingState(null);

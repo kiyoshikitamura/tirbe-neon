@@ -34,6 +34,7 @@ import { beginActionPerformance } from "@/utils/actionPerformance";
 import { useAudio } from "@/audio/AudioProvider";
 import type { SeEvent } from "@/audio/audioContract";
 import { beginAssetTierMetric, finishAssetTierMetric, preloadAssetManifest } from "@/app/lib/screenAssets";
+import { clearHomeResumeSnapshot, markHomeReloadStage } from "@/app/lib/homeResumePresentation";
 import { canonicalMissionUiStatus } from "@/domain/gameplay/canonical/missions";
 import { canonicalItemName } from "@/domain/gameplay/canonical/items";
 import {
@@ -587,6 +588,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const restoreAuthSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
+      markHomeReloadStage("authSessionReady");
       if (session) {
         setSession(session);
         lastValidatedAuthUserIdRef.current = session.user.id;
@@ -595,6 +597,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         return;
       }
       lastValidatedAuthUserIdRef.current = null;
+      clearHomeResumeSnapshot();
       setSession(null);
       setOnboardingState(null);
       setIsSetupRequired(false);
@@ -985,6 +988,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         .select("username, favorite_character_id, bio, avatar_url, sound_settings, current_base_id, daily_cash_skips_count, daily_cash_skips_reset_date, quest_free_skips_count, quest_paid_skips_count, quest_skips_reset_date, last_guild_left_at, gift_code, title_equipped, equipped_background, equipped_front_effect, selected_bg_mode, interior_item, level, xp, created_at")
         .eq("id", userId)
         .single();
+      markHomeReloadStage("profileReady");
       
       if (userProfile) {
         setUsername(userProfile.username);

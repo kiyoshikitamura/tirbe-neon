@@ -6,6 +6,11 @@ import { supabase } from "@/utils/supabase";
 import { resolveAvailableMyPageCreatives } from "@/domain/presentation/production_creatives";
 import { HOME_ACTION_PRESENTATION_SLOTS } from "@/domain/presentation/homeActionPresentation";
 import { isDestinationAvailable } from "@/domain/operations/operations";
+import {
+  markHomeReloadStage,
+  readHomeResumeSnapshot,
+  writeHomeResumeSnapshot,
+} from "../lib/homeResumePresentation";
 
 import {
   PROFILE_BACKGROUNDS,
@@ -221,22 +226,40 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
   }
 
   const visualAssetKey = leaderImgUrl ? `${bgUrl}|${leaderImgUrl}` : null;
+  const [resumeVisualSnapshot] = useState(readHomeResumeSnapshot);
   const [readyVisualAssetKey, setReadyVisualAssetKey] = useState<string | null>(null);
   const visualReady = visualAssetKey !== null && readyVisualAssetKey === visualAssetKey;
 
   useEffect(() => {
+    markHomeReloadStage("homeShellReady");
+  }, []);
+
+  useEffect(() => {
     if (!visualAssetKey || !leaderImgUrl) return;
     let active = true;
-    void Promise.all([
-      preloadAndDecodeHomeImage(bgUrl),
-      preloadAndDecodeHomeImage(leaderImgUrl),
-    ]).then(() => {
+    const townReady = preloadAndDecodeHomeImage(bgUrl).then((loaded) => {
+      if (loaded) markHomeReloadStage("townImageDecoded");
+      return loaded;
+    });
+    const leaderReady = preloadAndDecodeHomeImage(leaderImgUrl).then((loaded) => {
+      if (loaded) markHomeReloadStage("leaderImageDecoded");
+      return loaded;
+    });
+    void Promise.all([townReady, leaderReady]).then(() => {
       if (active) setReadyVisualAssetKey(visualAssetKey);
     });
     return () => {
       active = false;
     };
   }, [bgUrl, leaderImgUrl, visualAssetKey]);
+
+  useEffect(() => {
+    if (!visualReady || !leaderImgUrl || !leaderMaster) return;
+    markHomeReloadStage("homeVisualReady");
+    if (session?.user?.id) {
+      writeHomeResumeSnapshot({ backgroundUrl: bgUrl, leaderImageUrl: leaderImgUrl, leaderName: leaderMaster.name });
+    }
+  }, [bgUrl, leaderImgUrl, leaderMaster, session?.user?.id, visualReady]);
 
   // チャットプレビュー最新1行
   const latestMessage = (guildChats || []).length > 0 ? guildChats[guildChats.length - 1] : null;
@@ -335,12 +358,15 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
       {/* 1. ビジュアルエリア (50vh 固定) */}
       <div
         key={visualAssetKey || bgUrl}
-        className={`mypage-visual-area ${visualReady ? "is-ready mypage-background-enter" : "is-preparing"} mypage-event-${homeEventState}`}
-        style={{ backgroundImage: visualReady ? `url(${bgUrl})` : "none" }}
+        className={`mypage-visual-area ${visualReady ? "is-ready mypage-background-enter" : `is-preparing ${resumeVisualSnapshot ? "has-resume-snapshot" : ""}`} mypage-event-${homeEventState}`}
+        style={{ backgroundImage: visualReady ? `url(${bgUrl})` : resumeVisualSnapshot ? `url(${resumeVisualSnapshot.backgroundUrl})` : "none" }}
         data-visual-readiness={visualReady ? "ready" : "preparing"}
         aria-busy={!visualReady}
       >
-        {!visualReady && <div className="mypage-visual-loading" aria-label="リーダーを準備中"><span /></div>}
+        {!visualReady && <div className="mypage-visual-loading" aria-label="リーダーを準備中">
+          {resumeVisualSnapshot && <img className="mypage-visual-loading-leader" src={resumeVisualSnapshot.leaderImageUrl} alt="" aria-hidden="true" />}
+          <span />
+        </div>}
         {/* 背景グラデーションオーバーレイ */}
         <div className="mypage-visual-overlay" />
 

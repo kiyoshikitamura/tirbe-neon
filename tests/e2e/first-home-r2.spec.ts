@@ -10,6 +10,68 @@ async function openHomeScenario(page: Page, scenario: "first-home-fresh" | "firs
   await expect(page.locator(`[data-home-scenario="${scenario}"]`)).toBeVisible();
 }
 
+const resumeSnapshot = {
+  backgroundUrl: "/bg/bg_street_shibuya.png",
+  leaderImageUrl: "/characters/reiji_transparent_asset.png",
+  leaderName: "reiji",
+};
+
+test("reload uses the stable Home resume shell instead of branded boot loading", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.addInitScript((snapshot) => {
+    window.sessionStorage.setItem("tribe-neon.home-resume-visual.v1", JSON.stringify(snapshot));
+  }, resumeSnapshot);
+  await page.route("**/branding/title-key-visual.png", async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 1600));
+    await route.continue();
+  });
+
+  await page.goto("/", { waitUntil: "domcontentloaded" });
+  await expect(page.locator('[data-home-resume-shell="true"]')).toBeVisible();
+  await expect(page.locator(".branded-loading")).toHaveCount(0);
+  const stableGeometry = await page.evaluate(() => {
+    const shell = document.querySelector<HTMLElement>("[data-home-resume-shell]")!;
+    const visual = document.querySelector<HTMLElement>(".home-resume-visual")!;
+    const footer = document.querySelector<HTMLElement>(".home-resume-footer")!;
+    return {
+      shellHeight: shell.getBoundingClientRect().height,
+      visualHeight: visual.getBoundingClientRect().height,
+      footerBottom: footer.getBoundingClientRect().bottom,
+      viewportHeight: window.innerHeight,
+    };
+  });
+  expect(stableGeometry.shellHeight).toBe(stableGeometry.viewportHeight);
+  expect(stableGeometry.visualHeight).toBeGreaterThanOrEqual(300);
+  expect(stableGeometry.footerBottom).toBeLessThanOrEqual(stableGeometry.viewportHeight);
+  await page.screenshot({ path: "test-results/first-home-r5-resume-shell-390x844.png", fullPage: false });
+  const resumeStages = await page.evaluate(() => window.__TRIBE_HOME_RELOAD_METRICS__?.stages);
+  expect(resumeStages?.reload).toBe(0);
+  expect(resumeStages?.homeShellReady).toBeGreaterThanOrEqual(0);
+});
+
+test("Home re-entry keeps the previous combined visual until current Town and Leader are decoded", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.addInitScript((snapshot) => {
+    window.sessionStorage.setItem("tribe-neon.home-resume-visual.v1", JSON.stringify(snapshot));
+  }, resumeSnapshot);
+  await page.route("**/characters/ageha_transparent_asset.png", async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 1600));
+    await route.continue();
+  });
+
+  await page.goto("/qa/presentation?scenario=first-home-fresh", { waitUntil: "domcontentloaded" });
+  const visual = page.locator(".mypage-visual-area");
+  await expect(visual).toHaveAttribute("data-visual-readiness", "preparing");
+  await expect(visual).toHaveClass(/has-resume-snapshot/);
+  expect(await visual.evaluate((node) => getComputedStyle(node).backgroundImage)).toContain("bg_street_shibuya.png");
+  await expect(page.locator(".mypage-visual-loading-leader")).toHaveAttribute("src", "/characters/reiji_transparent_asset.png");
+  await page.screenshot({ path: "test-results/first-home-r5-reentry-placeholder-390x844.png", fullPage: false });
+
+  await expect(visual).toHaveAttribute("data-visual-readiness", "ready");
+  expect(await visual.evaluate((node) => getComputedStyle(node).backgroundImage)).toContain("bg_street_shinjuku.png");
+  await expect(page.locator(".mypage-leader-layer.is-ssr")).toBeVisible();
+});
+
 test("Home reveals the Town and decoded Leader as one visual on a cold load and reload", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   let delayedLeaderRequests = 0;
@@ -31,6 +93,10 @@ test("Home reveals the Town and decoded Leader as one visual on a cold load and 
   await expect(page.locator(".mypage-leader-layer.is-ssr")).toBeVisible();
   expect(await visual.evaluate((node) => getComputedStyle(node).backgroundImage)).toContain("bg_street_shinjuku.png");
   expect(delayedLeaderRequests).toBe(1);
+  const readinessStages = await page.evaluate(() => window.__TRIBE_HOME_RELOAD_METRICS__?.stages);
+  expect(readinessStages?.homeShellReady).toBeLessThanOrEqual(readinessStages?.townImageDecoded || 0);
+  expect(readinessStages?.homeShellReady).toBeLessThanOrEqual(readinessStages?.leaderImageDecoded || 0);
+  expect(readinessStages?.homeVisualReady).toBeGreaterThanOrEqual(readinessStages?.leaderImageDecoded || 0);
 
   await page.reload();
   await expect(page.locator(".mypage-visual-area")).toHaveAttribute("data-visual-readiness", "ready");

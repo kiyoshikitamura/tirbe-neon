@@ -29,9 +29,10 @@
   overflow: hidden;
   flex-shrink: 0;
   background-color: #06080e;
+  isolation: isolate;
 }
 
-.mypage-visual-area.is-preparing {
+.mypage-visual-area.is-preparing:not(.has-resume-snapshot) {
   background-image: none !important;
 }
 
@@ -74,6 +75,31 @@
   border-top-color: rgba(0, 240, 255, .88);
   border-radius: 50%;
   animation: mypage-leader-loading-spin .72s linear infinite;
+}
+
+.mypage-visual-area.has-resume-snapshot .mypage-visual-loading {
+  background: linear-gradient(180deg, rgba(5, 8, 14, .34), rgba(9, 12, 20, .26) 58%, #090c14 100%);
+  backdrop-filter: blur(5px);
+}
+
+.mypage-visual-area.has-resume-snapshot .mypage-visual-loading::before {
+  display: none;
+}
+
+.mypage-visual-loading-leader {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  z-index: 1;
+  height: 86%;
+  opacity: .42;
+  object-fit: contain;
+  filter: blur(3px) saturate(.7);
+  transform: translateX(-50%);
+}
+
+.mypage-visual-loading > span {
+  z-index: 2;
 }
 
 @keyframes mypage-leader-loading {
