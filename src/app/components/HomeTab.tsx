@@ -4,6 +4,7 @@ import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useGame } from "../context/GameContext";
 import { supabase } from "@/utils/supabase";
 import { resolveAvailableMyPageCreatives } from "@/domain/presentation/production_creatives";
+import { HOME_ACTION_PRESENTATION_SLOTS } from "@/domain/presentation/homeActionPresentation";
 import { isDestinationAvailable } from "@/domain/operations/operations";
 
 import {
@@ -273,16 +274,17 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
 
   return (
     <div className="mypage-view">
+      <button className={`mypage-live-ticker mypage-live-ticker--visual ${homeEventState} active-scale-effect`} onClick={() => { latestTicker.onClick(); playCyberSe("click"); }}>
+        <span className="mypage-live-ticker-label">ACTIVITY</span>
+        <span className="mypage-live-ticker-icon" aria-hidden="true">◆</span>
+        <span className="mypage-live-ticker-text">{latestTicker.text}</span>
+        <span className="mypage-live-ticker-arrow" aria-hidden="true">›</span>
+      </button>
+
       {/* 1. ビジュアルエリア (50vh 固定) */}
       <div key={bgUrl} className={`mypage-visual-area mypage-background-enter mypage-event-${homeEventState}`} style={{ backgroundImage: `url(${bgUrl})` }}>
         {/* 背景グラデーションオーバーレイ */}
         <div className="mypage-visual-overlay" />
-        <button className={`mypage-live-ticker mypage-live-ticker--visual ${homeEventState} active-scale-effect`} onClick={() => { latestTicker.onClick(); playCyberSe("click"); }}>
-          <span className="mypage-live-ticker-label">ACTIVITY</span>
-          <span className="mypage-live-ticker-icon" aria-hidden="true">◆</span>
-          <span className="mypage-live-ticker-text">{latestTicker.text}</span>
-          <span className="mypage-live-ticker-arrow" aria-hidden="true">›</span>
-        </button>
 
         {/* 最上段HUD (拠点情報オーバーレイ) */}
         <div className="mypage-base-overlay">
@@ -394,33 +396,25 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
       </div>
 
       {/* 2. 丸型漢字メニューボタン (4個均等配置・ネガティブマージン -48px 重ね配置) */}
-      <div className="mypage-circle-menu-area">
-        <button
-          className="circle-menu-btn allies active-scale-effect"
-          onClick={() => { navigateTab("guild"); playCyberSe("click"); }}
-        >
-          <img src="/menu/menu_allies.png" alt="連合" className="circle-menu-img" />
-        </button>
-
-        <button
-          className="circle-menu-btn fight active-scale-effect"
-          onClick={() => { navigateTab("pvp"); playCyberSe("click"); }}
-        >
-          <img src="/menu/menu_fight.png" alt="喧嘩" className="circle-menu-img" />
-        </button>
-
-        <button
-          className="circle-menu-btn conquest active-scale-effect"
-          onClick={() => { navigateTab("patrol"); playCyberSe("click"); }}
-        >
-          <img src="/menu/menu_conquest.png" alt="制圧" className="circle-menu-img" />
-          {completedPatrolsCount > 0 && <span className="circle-menu-alert-badge">{completedPatrolsCount}</span>}
-        </button>
-
-        <button className="circle-menu-btn upcoming" disabled aria-label="抗争は準備中です">
-          <span className="circle-menu-upcoming-mark">抗争<small>準備中</small></span>
-        </button>
-
+      <div className="mypage-circle-menu-area" data-home-action-assets="pending-production-delivery">
+        {HOME_ACTION_PRESENTATION_SLOTS.map((action) => {
+          const upcoming = action.exposure === "UPCOMING";
+          return (
+            <button
+              key={action.id}
+              className={`circle-menu-btn ${action.id} ${upcoming ? "upcoming" : "active-scale-effect"}`}
+              disabled={upcoming}
+              aria-label={upcoming ? `${action.label}は準備中です` : action.label}
+              data-action-slot={action.id}
+              data-asset-delivery={action.deliveryStatus.toLowerCase()}
+              onClick={upcoming ? undefined : () => { if (action.destination) navigateTab(action.destination); playCyberSe("click"); }}
+            >
+              <img src={action.assetPath} alt="" className="circle-menu-img" aria-hidden="true" />
+              {action.id === "conquest" && completedPatrolsCount > 0 && <span className="circle-menu-alert-badge">{completedPatrolsCount}</span>}
+              {upcoming && <span className="circle-menu-state-overlay">準備中</span>}
+            </button>
+          );
+        })}
       </div>
 
       <div className="mypage-lower-content">

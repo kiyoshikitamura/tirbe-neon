@@ -27,6 +27,8 @@ for (const viewport of viewports) {
       buttons.map((button) => button.getAttribute("aria-label") || button.querySelector("img")?.getAttribute("alt")),
     );
     expect(actionOrder).toEqual(["連合", "喧嘩", "制圧", "抗争は準備中です"]);
+    await expect(page.locator(".mypage-circle-menu-area")).toHaveAttribute("data-home-action-assets", "pending-production-delivery");
+    await expect(page.locator('[data-action-slot="war"] img')).toHaveAttribute("src", "/menu/menu_war.png");
     await expect(page.getByRole("button", { name: "抗争は準備中です" })).toBeDisabled();
 
     const geometry = await page.evaluate(() => {
@@ -37,27 +39,30 @@ for (const viewport of viewports) {
       const cta = box(".mypage-primary-cta");
       const banner = box(".mypage-event-banner-area");
       const footer = box(".footer-mobile");
-      const shortcutWidth = Math.max(...[...document.querySelectorAll<HTMLElement>(".mypage-sub-icon-btn")].map((node) => node.getBoundingClientRect().width));
+      const shortcutWidth = Math.max(...[...document.querySelectorAll<HTMLElement>(".sub-icon-unit")].map((node) => node.getBoundingClientRect().width));
       return {
         leaderRatio: leader.height / visual.height,
-        tickerWidth: ticker.width,
-        visualWidth: visual.width,
+        activityClearsCharacterVisual: ticker.bottom <= visual.top + 1,
         ctaHeight: cta.height,
         bannerStartsAboveFooter: banner.top < footer.top,
         shortcutWidth,
         horizontalOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
         ctaDetailDisplay: getComputedStyle(document.querySelector(".mypage-primary-cta > span:not(.mypage-primary-cta-eyebrow)")!).display,
+        ctaWrap: getComputedStyle(document.querySelector<HTMLElement>(".mypage-primary-cta")!).flexWrap,
         bannerFilter: getComputedStyle(document.querySelector(".banner-bg-img")!).filter,
+        townBackgroundPosition: getComputedStyle(document.querySelector(".mypage-visual-area")!).backgroundPosition,
       };
     });
     expect(geometry.leaderRatio).toBeGreaterThanOrEqual(0.84);
-    expect(geometry.tickerWidth).toBeLessThan(geometry.visualWidth - 80);
+    expect(geometry.activityClearsCharacterVisual).toBe(true);
     expect(geometry.shortcutWidth).toBeLessThanOrEqual(39);
     expect(geometry.ctaHeight).toBeLessThanOrEqual(54);
     expect(geometry.ctaDetailDisplay).toBe("none");
+    expect(geometry.ctaWrap).toBe("nowrap");
     expect(geometry.bannerStartsAboveFooter).toBe(true);
     expect(geometry.horizontalOverflow).toBeLessThanOrEqual(1);
-    expect(geometry.bannerFilter).toContain("brightness(1.18)");
+    expect(geometry.bannerFilter).toContain("brightness(1.24)");
+    expect(geometry.townBackgroundPosition).toContain("56%");
 
     await page.screenshot({ path: `test-results/first-home-r2-${viewport.width}x${viewport.height}.png`, fullPage: false });
   });
