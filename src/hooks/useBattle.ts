@@ -1838,7 +1838,7 @@ export function useBattle(options: UseBattleOptions) {
           ? previousActionWasSkill ? 1050 : 940
           : 320)
         : followsSkill
-          ? 1650
+          ? 2200
           : followsNormalAttack
             ? 780
             : holdsSkillImpact

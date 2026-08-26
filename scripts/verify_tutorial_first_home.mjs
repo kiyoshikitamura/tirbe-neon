@@ -20,8 +20,8 @@ assert.match(context, /setSelectedLeader\(String\(tutorialFormation\.leader_char
 assert.match(context, /supabase\.rpc\("get_active_raids"\)/, "Home Raid state must use the server projection");
 assert.match(raid, /useState<number>\(0\)/, "Raid activity must start inactive");
 assert.doesNotMatch(header, /AP \(Action Point\)|>VIT</, "Header must not expose AP/VIT legacy labels");
-assert.match(header, />Vitality</, "Header must expose the canonical resource name");
-assert.match(header, /自然回復停止/);
+assert.match(header, /aria-label="Vitality"/, "Header must expose the canonical resource name");
+assert.match(header, /vitality < VITALITY_MAX && recoverySeconds !== null/, "Header recovery countdown must stop at the Vitality cap");
 assert.doesNotMatch(header, /userTitle \|\| "半グレの首領"/, "Header must not invent a default title");
 assert.doesNotMatch(manifest, /icon_friends/, "Friend must not be preloaded by the active shell");
 assert.match(character, /TUTORIAL_SKILL_STEP[\s\S]*育成へ進む[\s\S]*TUTORIAL_GROWTH_STEP[\s\S]*Lv\.7まで強化/, "Tutorial must present Skill then visible Growth");
