@@ -124,3 +124,20 @@
 - Loading QA: local cold start 1,319ms、boot manifest処理265ms、4/4 loaded・fallback/failed 0。BOOT_CRITICAL / TUTORIAL_CRITICAL / DEFERREDの段階ロードを維持。
 - TypeScript / Production build: PASS。Production deployは未実施。
 - Preview: `https://tribe-neon-mobile-preview.vercel.app`（Vercel Preview deployment `dpl_HbjnB55wY1exqdJp7FWVcKo8fo2u`）。iPhone 13 / Pixel 7 smoke PASS。
+
+## Mission Human Acceptance Follow-up (2026-08-21)
+
+- Mission Production Master: **PASS / FROZEN**
+- Mission Runtime Integration: **PASS / CLOSED**
+- Mission Automated Validation: **PASS**
+- Mission PC Human Acceptance: **PASS**
+- Mission Mobile Human Acceptance: **DEFERRED TO FINAL UI ACCEPTANCE**
+
+PC Human AcceptanceでMission Master、Runtime、個別Claim、Claim Allの機能に問題がないことを確認した。以下はMission Close blockerではなく、Mission専用の再設計も行わない。
+
+| Observed UX polish | Classification | Current action |
+| --- | --- | --- |
+| Claim操作から報酬獲得Dialogまで明示的なprocessing feedbackがなく、一時的にfreezeと誤認し得る | Common Async Feedback | DEFERRED NON-BLOCKER |
+| 報酬獲得Dialogが既存ゲーム内ModalのVisual Contractと統一されていない | Common Reward / Result Modal Standardization | DEFERRED NON-BLOCKER |
+
+将来の共通化対象はMission、Present、Gacha、Shop、Character Growth、Skill / Equipment Growthとし、Mission固有修正としては実装しない。390×844および412×915でのMission layout確認はFinal Cross-Screen Mobile Human Acceptanceへ統合する。clipping、操作不能、文字・報酬の判読不能、safe area、state表示欠損は最終Release blockerとし、processing feedback不足とDialog visual inconsistencyは非ブロッカーとして分離する。Mission Production Master / Runtime IntegrationはPASS / CLOSEDを維持する。
