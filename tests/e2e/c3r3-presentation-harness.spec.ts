@@ -23,6 +23,19 @@ test("launcher exposes every approved presentation fixture and preserves human-o
   await expect(page.locator('[data-compliance-id="battle-result"]')).toHaveAttribute("data-status", "HUMAN_REQUIRED");
 });
 
+test("shared skill detail uses the canonical dialog without exposing raw enums", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await openScenario(page, "shared-skill-presentation");
+  await page.locator('[data-skill-fixture-count="1"] .shared-skill-icon').click();
+  const dialog = page.locator(".canonical-dialog");
+  await expect(dialog).toBeVisible();
+  await expect(dialog).toContainText("スキル詳細");
+  await expect(dialog).toContainText("敵単体");
+  await expect(dialog).not.toContainText("ENEMY_SINGLE");
+  await dialog.getByRole("button", { name: "閉じる" }).last().click();
+  await expect(dialog).toBeHidden();
+});
+
 test("SSR quote hides identity until explicit tap and then uses canonical town background", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await openScenario(page, "gacha-ssr-reveal");

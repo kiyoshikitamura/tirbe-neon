@@ -154,11 +154,11 @@ function SimpleFixture({ kind }: { kind: QaPresentationScenarioId }) {
 function SharedSkillFixture() {
   const [selectedSkill, setSelectedSkill] = useState<SkillCardMaster | null>(null);
   const ids = ["SKILL_001", "SKILL_002", "SKILL_003", "SKILL_004", "SKILL_005", "SKILL_006"];
-  return <section className="qa-card" data-shared-skill-fixture>
+  return <GameContext.Provider value={{ playCyberSe: () => undefined } as any}><section className="qa-card" data-shared-skill-fixture>
     <span>SHARED SKILL PRESENTATION</span>
     {[0, 1, 3, 6].map((count) => <div key={count} data-skill-fixture-count={count}><h2>{count} SKILL</h2><SkillIconGrid skills={ids.slice(0, count)} onSelect={setSelectedSkill} /></div>)}
     {selectedSkill && <SkillDetailDialog skill={selectedSkill} onClose={() => setSelectedSkill(null)} />}
-  </section>;
+  </section></GameContext.Provider>;
 }
 
 function PublicProfileFixture() {
