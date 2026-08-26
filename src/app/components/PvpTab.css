@@ -23,7 +23,7 @@
 
 .pvp-self-summary {
   display: grid;
-  grid-template-columns: .72fr 1fr 1.18fr;
+  grid-template-columns: .8fr 1fr .8fr;
   gap: 1px;
   overflow: hidden;
   border: 1px solid rgba(0, 240, 255, .22);
@@ -34,6 +34,7 @@
 .pvp-self-summary small { display: block; color: var(--ui-text-secondary); font-size: 8px; font-weight: 800; letter-spacing: .08em; }
 .pvp-self-summary strong { display: block; overflow: hidden; margin-top: 2px; color: #fff; font: 800 17px/1 var(--font-display); text-overflow: ellipsis; white-space: nowrap; }
 .pvp-self-summary > div:nth-child(2) strong { color: var(--neon-cyan); }
+.pvp-self-summary strong span{margin-left:2px;color:var(--ui-text-secondary);font-size:10px}
 
 .pvp-point-strip { display: flex; min-height: 42px; align-items: center; justify-content: space-between; gap: 12px; padding: 7px 11px; border: 1px solid rgba(255,255,255,.13); border-radius: 5px; background: rgba(9, 15, 24, .94); }
 .pvp-point-strip > div { display: flex; align-items: baseline; gap: 8px; }
@@ -41,6 +42,11 @@
 .pvp-point-strip strong { color: var(--neon-cyan); font: 800 19px/1 var(--font-display); }
 .pvp-point-strip strong span { color: var(--ui-text-secondary); font-size: 11px; }
 .pvp-point-strip > span { color: var(--ui-text-secondary); font-size: 9px; font-variant-numeric: tabular-nums; }
+.pvp-my-deck{padding:7px 8px;border:1px solid rgba(255,255,255,.12);border-radius:5px;background:rgba(5,9,16,.9)}
+.pvp-section-heading{display:flex;align-items:center;justify-content:space-between;margin-bottom:5px}.pvp-section-heading strong{font:800 9px var(--font-display);letter-spacing:.12em}.pvp-section-heading span{font-size:10px;font-weight:900}
+.pvp-my-deck-members{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px}.pvp-my-deck-members .character-presentation{width:100%;height:54px}.pvp-my-deck-members .character-presentation-meta{display:none}.pvp-my-deck-empty{grid-column:1/-1;padding:8px;color:var(--ui-text-secondary);font-size:9px;text-align:center}
+.pvp-my-deck-member{position:relative;min-width:0}.pvp-my-deck-skill{position:absolute;right:1px;bottom:1px;width:18px;height:18px;border:1px solid rgba(255,255,255,.55);border-radius:3px;background:#02050a;object-fit:cover}
+.pvp-compact-actions{display:flex;justify-content:flex-end;gap:6px;margin-bottom:6px}.pvp-compact-actions .outlaw-button{min-height:32px;padding:5px 10px;font-size:9px}
 
 .opponents-subtab > .flex.mb-4 { margin-bottom: 6px; }
 .pvp-rules-help { margin-bottom: 7px; border-bottom: 1px solid rgba(255,255,255,.08); color: var(--ui-text-secondary); font-size: 9px; }
@@ -60,7 +66,7 @@
 .pvp-opponent-copy { min-width: 0; }
 .pvp-opponent-name { overflow: hidden; color: #fff; font-size: 13px; font-weight: 900; text-overflow: ellipsis; white-space: nowrap; }
 .pvp-opponent-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
-.pvp-opponent-heading > strong { color: var(--neon-gold); font-size: 15px; }
+.pvp-opponent-heading > strong { color: var(--neon-gold); font-size: 9px; white-space:nowrap; }
 .pvp-opponent-guild { overflow: hidden; margin-top: 3px; color: var(--ui-text-secondary); font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
 .pvp-opponent-leader { display: flex; align-items: baseline; gap: 6px; margin-top: 6px; }
 .pvp-opponent-leader span { color: var(--neon-gold); font: 700 8px var(--font-display); letter-spacing: .12em; }

@@ -182,8 +182,8 @@ function AppContent() {
   return (
     <div className="app-container">
       <PageShell
-        header={isMandatoryTutorial ? null : <Header />}
-        footer={isMandatoryTutorial ? null : <Footer />}
+        header={isMandatoryTutorial || Boolean(battleState) ? null : <Header />}
+        footer={isMandatoryTutorial || Boolean(battleState) ? null : <Footer />}
         overlays={(
           <>
             {/* Layer 3: コンパクトモーダル */}

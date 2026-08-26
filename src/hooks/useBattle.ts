@@ -226,6 +226,11 @@ export function useBattle(options: UseBattleOptions) {
   // 5v5 状態管理
   const [playerPartyStates, setPlayerPartyStates] = useState<ParticipantState[]>([]);
   const [enemyPartyStates, setEnemyPartyStates] = useState<ParticipantState[]>([]);
+  // Replay presentation timers must not read the render that scheduled them.
+  // Snapshot hydration and the first ACTION can otherwise cross on slower
+  // clients, which drops canonical names and applies HP events to stale rows.
+  const playerPartyStatesRef = useRef<ParticipantState[]>([]);
+  const enemyPartyStatesRef = useRef<ParticipantState[]>([]);
   const [timeline, setTimeline] = useState<any[]>([]);
   const [timelineIndex, setTimelineIndex] = useState<number>(0);
   const [battleRound, setBattleRound] = useState<number>(1);
@@ -255,6 +260,8 @@ export function useBattle(options: UseBattleOptions) {
   };
 
   useEffect(() => () => clearPresentationTimers(), [clearPresentationTimers]);
+  useEffect(() => { playerPartyStatesRef.current = playerPartyStates; }, [playerPartyStates]);
+  useEffect(() => { enemyPartyStatesRef.current = enemyPartyStates; }, [enemyPartyStates]);
 
 
 
@@ -1861,7 +1868,9 @@ export function useBattle(options: UseBattleOptions) {
         const payload = replayEvent.payload;
         const actorId = String(payload.actorId ?? "");
         const targetId = String(payload.targetId ?? "");
-        const allParticipants = [...playerPartyStates, ...enemyPartyStates];
+        const currentPlayers = playerPartyStatesRef.current;
+        const currentEnemies = enemyPartyStatesRef.current;
+        const allParticipants = [...currentPlayers, ...currentEnemies];
         const actor = allParticipants.find((participant) => participant.id === actorId);
         const target = allParticipants.find((participant) => participant.id === targetId);
         setBattleRound(replayEvent.round);
@@ -1897,11 +1906,11 @@ export function useBattle(options: UseBattleOptions) {
             .map((entry) => {
               const id = String(entry.payload.actorId ?? "");
               const participant = allParticipants.find((candidate) => candidate.id === id);
-              return { id, name: participant?.name ?? id, isEnemy: enemyPartyStates.some((candidate) => candidate.id === id) };
+              return { id, name: participant?.name ?? "キャラクター", isEnemy: currentEnemies.some((candidate) => candidate.id === id) };
             })
             .filter((entry) => entry.id);
           setAuthoritativeTimeline(nextActions);
-          setActiveSkillCutIn({ charName: actor?.name ?? actorId, skillName: skill?.name ?? (skillId === "BASIC_ATTACK" ? "通常攻撃" : skillId) });
+          setActiveSkillCutIn({ charName: actor?.name ?? "キャラクター", skillName: skill?.name ?? (skillId === "BASIC_ATTACK" ? "通常攻撃" : "スキル発動") });
           const actorTimelineIndex = timeline.findIndex((entry) => entry.id === actorId);
           if (actorTimelineIndex >= 0) setTimelineIndex(actorTimelineIndex);
           const targetDelay = isSkill ? Math.max(760, 1120 / battleSpeed) : 260 / battleSpeed;
@@ -1914,7 +1923,7 @@ export function useBattle(options: UseBattleOptions) {
           presentationTimersRef.current.push(setTimeout(() => {
             setPresentationPhase("ATTACK_MOTION");
           }, attackDelay));
-          setBattleLog((previous) => [...previous, `[ROUND ${replayEvent.round}] ${actor?.name ?? actorId}：${skill?.name ?? "通常攻撃"}`]);
+          setBattleLog((previous) => [...previous, `[ROUND ${replayEvent.round}] ${actor?.name ?? "キャラクター"}：${skill?.name ?? (isSkill ? "スキル発動" : "通常攻撃")}`]);
         } else if (replayEvent.type === "DAMAGE") {
           setPresentationPhase("IMPACT");
           recordPresentationStage("impactAt", targetId);
@@ -1926,8 +1935,16 @@ export function useBattle(options: UseBattleOptions) {
             ? projectActiveEffects({ ...participant, hp: remainingHp, isDead: remainingHp <= 0 }, payload)
             : participant;
           const projectHpTransition = () => {
-            setPlayerPartyStates((previous) => previous.map(updateTarget));
-            setEnemyPartyStates((previous) => previous.map(updateTarget));
+            setPlayerPartyStates((previous) => {
+              const next = previous.map(updateTarget);
+              playerPartyStatesRef.current = next;
+              return next;
+            });
+            setEnemyPartyStates((previous) => {
+              const next = previous.map(updateTarget);
+              enemyPartyStatesRef.current = next;
+              return next;
+            });
           };
           if (!followsSkill) projectHpTransition();
           setTargetLine(actorId && targetId ? { fromId: actorId, toId: targetId } : null);
@@ -1959,8 +1976,8 @@ export function useBattle(options: UseBattleOptions) {
             ? { ...participant, hp: remainingHp, isDead: false }
             : participant;
           const projectHpTransition = () => {
-            setPlayerPartyStates((previous) => previous.map(updateTarget));
-            setEnemyPartyStates((previous) => previous.map(updateTarget));
+            setPlayerPartyStates((previous) => { const next = previous.map(updateTarget); playerPartyStatesRef.current = next; return next; });
+            setEnemyPartyStates((previous) => { const next = previous.map(updateTarget); enemyPartyStatesRef.current = next; return next; });
           };
           if (!followsSkill) projectHpTransition();
           setTargetLine(actorId && targetId ? { fromId: actorId, toId: targetId } : null);
@@ -1986,8 +2003,8 @@ export function useBattle(options: UseBattleOptions) {
           setTargetLine(actorId && targetId ? { fromId: actorId, toId: targetId } : null);
           const status = String(payload.status ?? "STATUS");
           const updateTarget = (participant: ParticipantState) => participant.id === targetId ? projectActiveEffects(participant, payload) : participant;
-          setPlayerPartyStates((previous) => previous.map(updateTarget));
-          setEnemyPartyStates((previous) => previous.map(updateTarget));
+          setPlayerPartyStates((previous) => { const next = previous.map(updateTarget); playerPartyStatesRef.current = next; return next; });
+          setEnemyPartyStates((previous) => { const next = previous.map(updateTarget); enemyPartyStatesRef.current = next; return next; });
           presentationTimersRef.current.push(setTimeout(() => {
             setPresentationPhase("DAMAGE");
             recordPresentationStage("damageAt", targetId);
@@ -2004,8 +2021,8 @@ export function useBattle(options: UseBattleOptions) {
         } else if (replayEvent.type === "EFFECT") {
           const kind = String(payload.kind ?? "EFFECT");
           const updateTarget = (participant: ParticipantState) => participant.id === targetId ? projectActiveEffects(participant, payload) : participant;
-          setPlayerPartyStates((previous) => previous.map(updateTarget));
-          setEnemyPartyStates((previous) => previous.map(updateTarget));
+          setPlayerPartyStates((previous) => { const next = previous.map(updateTarget); playerPartyStatesRef.current = next; return next; });
+          setEnemyPartyStates((previous) => { const next = previous.map(updateTarget); enemyPartyStatesRef.current = next; return next; });
           if (kind !== "ACTIVE_EFFECT_SYNC") {
             setPresentationPhase("IMPACT");
             recordPresentationStage("impactAt", targetId);
@@ -2032,8 +2049,8 @@ export function useBattle(options: UseBattleOptions) {
           const updateTarget = (participant: ParticipantState) => participant.id === targetId
             ? { ...participant, hp: 0, isDead: true }
             : participant;
-          setPlayerPartyStates((previous) => previous.map(updateTarget));
-          setEnemyPartyStates((previous) => previous.map(updateTarget));
+          setPlayerPartyStates((previous) => { const next = previous.map(updateTarget); playerPartyStatesRef.current = next; return next; });
+          setEnemyPartyStates((previous) => { const next = previous.map(updateTarget); enemyPartyStatesRef.current = next; return next; });
           setBattleLog((previous) => [...previous, `${target?.name ?? targetId}は戦闘不能。`]);
         } else if (replayEvent.type === "RESULT") {
           clearPresentationTimers();
@@ -2240,9 +2257,9 @@ export function useBattle(options: UseBattleOptions) {
       const isFirstOfficialPvp = Number(firstPvpMilestone?.occurrence_count || 0) === 1;
       setBattleModeResultDetail({
         stats: [
-          { label: "RATING", value: `${oldRating.toLocaleString()} → ${newRating.toLocaleString()}` },
+          { label: "RATE", value: `${oldRating.toLocaleString()} → ${newRating.toLocaleString()}` },
           { label: "RANK CHANGE", value: `${pointsDiff >= 0 ? "+" : ""}${pointsDiff} pt` },
-          { label: "PVP POINT", value: `${Number(pvpResultTemp.remainingPvpPoints ?? 0)}/5` },
+          { label: "BP", value: `${Number(pvpResultTemp.remainingPvpPoints ?? 0)}/5` },
         ],
         reward: `CASH +${rewardCash.toLocaleString()}`,
         note: isFirstOfficialPvp ? "初戦の順位を確認して、次のレイドへ進もう。" : "PvPへ戻って次の対戦相手を選べます。",

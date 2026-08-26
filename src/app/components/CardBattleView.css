@@ -181,3 +181,9 @@
 @media (prefers-reduced-motion: reduce) {
   .setup-char-card, .start-battle-btn { transition: none; }
 }
+
+.setup-enemy-skill-grid button{width:50px;min-height:50px}.setup-enemy-skill-grid small{display:none}
+.setup-tactic-current{display:flex;min-height:40px;align-items:center;justify-content:space-between;gap:10px;padding:7px 9px;border:1px solid var(--ui-border);background:var(--ui-bg-raised)}
+.setup-tactic-current span{font-size:10px}.setup-tactic-current strong{color:var(--ui-accent)}
+.setup-tactic-current button{min-width:70px;padding:7px;border:1px solid var(--ui-accent);color:var(--ui-accent);background:transparent;font-weight:900}.setup-tactic-current button:disabled{opacity:.45}
+.tactic-dialog-options{display:grid;gap:7px;padding:12px}.tactic-dialog-options .tactic-btn{width:100%}

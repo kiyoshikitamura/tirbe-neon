@@ -222,7 +222,7 @@ type PartyZoneProps = {
   tutorial: boolean;
 };
 
-function PartyZone({ side, label, party, activeId, targetId, shakingId, visualOf, popupFor, impactFor, hasAdvantage, tutorial }: PartyZoneProps) {
+function PartyZone({ side, label, party, activeId, targetId, visualOf, popupFor, impactFor, hasAdvantage, tutorial }: PartyZoneProps) {
   return (
     <section className={`battle-party-zone is-${side} ${tutorial ? "is-tutorial-party" : ""}`} data-party-size={Math.max(1, Math.min(5, party.length))} aria-label={side === "enemy" ? "敵パーティ" : "味方パーティ"}>
       <div className="battle-party-label"><span>{side === "enemy" ? "ENEMY" : "YOUR TEAM"}</span><strong>{label}</strong></div>
@@ -230,7 +230,7 @@ function PartyZone({ side, label, party, activeId, targetId, shakingId, visualOf
         {party.map((participant) => {
           const visual = visualOf(participant, side);
           return (
-            <div key={participant.id} className={shakingId === participant.id ? "shake" : ""}>
+            <div key={participant.id}>
               <BattleUnitPortrait
                 participant={participant}
                 imageSrc={visual.src}

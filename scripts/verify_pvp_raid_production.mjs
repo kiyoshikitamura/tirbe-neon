@@ -33,7 +33,7 @@ const migration = fs.readFileSync("supabase/migrations/20260822000184_pvp_raid_r
 for (const token of ["canonical_pvp_rating_delta", "canonical_raid_rotation_pair", "rank() over(order by contribution desc)", "NORMAL_GACHA_TICKET_CHARACTER", "PRESENT_EXACTLY_ONCE", "DAMAGE 80% ATK"]) assert(migration.includes(token), token);
 for (const legacy of ["order by random()", "9999999", "3 free attempts", "rank_gap / 50", "plus_val * 0.10"]) assert(!migration.toLowerCase().includes(legacy.toLowerCase()), legacy);
 const pvpUi = fs.readFileSync("src/app/components/PvpTab.tsx", "utf8");
-for (const token of ["OFFICIAL", "PRACTICE", "WIN +", "勝利 CASH 500", "敗北 CASH 250"]) assert(pvpUi.includes(token), token);
+for (const token of ["公式戦", "模擬戦", "WIN +", "勝利 CASH 500", "敗北 CASH 250"]) assert(pvpUi.includes(token), token);
 const raidUi = fs.readFileSync("src/app/components/RaidTab.tsx", "utf8");
 for (const token of ["profileType", "参加1回: CASH 300", "討伐参加者", "個人1位", "Guild 1位"]) assert(raidUi.includes(token), token);
 const freeze = fs.readFileSync("specs/production/gameplay_foundation/pvp_raid_ranking_production_freeze_20260822.md", "utf8");

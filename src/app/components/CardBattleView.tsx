@@ -13,6 +13,14 @@ import { CANONICAL_SKILL_VIEW } from "@/utils/skills_master_data";
 import { getCanonicalSkillIcon } from "@/utils/skillVisualAssets";
 import "./CardBattleView.css";
 
+const TACTIC_OPTIONS = [
+  { id: "ATTACK_PRIORITY", icon: "⚔", label: "攻撃優先", description: "攻撃スキルを優先" },
+  { id: "HEAL_PRIORITY", icon: "✚", label: "回復優先", description: "HPの低い味方を優先" },
+  { id: "SKILL_PRIORITY", icon: "◆", label: "スキル優先", description: "使用可能なスキルを優先" },
+  { id: "BALANCED", icon: "◎", label: "バランス", description: "攻撃と回復を状況判断" },
+  { id: "WEAKNESS_FOCUS", icon: "⌖", label: "弱点集中", description: "有利属性の敵を集中" },
+] as const;
+
 export default function CardBattleView() {
   const {
     battleMode,
@@ -61,6 +69,7 @@ export default function CardBattleView() {
   // SETUP画面でカードタップ時に開く閲覧専用詳細ポップアップ
   const [selectedCharDetail, setSelectedCharDetail] = useState<any | null>(null);
   const [selectedOpponentSkill, setSelectedOpponentSkill] = useState<any | null>(null);
+  const [tacticDialogOpen, setTacticDialogOpen] = useState(false);
   const [setupLaunching, setSetupLaunching] = useState(false);
 
   const battleLaunchRef = useRef(false);
@@ -240,7 +249,7 @@ export default function CardBattleView() {
                 </div>
               )}
               {!isTutorialBattle && <div className="setup-enemy-detail-list mt-2">
-                <span className="font-size-7 text-secondary">戦力 {enemyPower.toLocaleString()}</span>
+                <span className="font-size-7 text-secondary">総合力 {enemyPower.toLocaleString()}</span>
                 <span className="font-size-7 text-secondary">
                   攻撃 {enemyPartyStates.reduce((total: number, enemy: any) => total + Number(enemy.stats?.atk || 0), 0).toLocaleString()}
                   {" ｜ "}防御 {enemyPartyStates.reduce((total: number, enemy: any) => total + Number(enemy.stats?.def || 0), 0).toLocaleString()}
@@ -249,7 +258,6 @@ export default function CardBattleView() {
                 {canonicalEnemySkills.length > 0 && <div className="setup-enemy-skill-grid" aria-label="対戦相手のスキル">
                   {canonicalEnemySkills.map((skill: any) => <button type="button" key={skill.id} onClick={() => setSelectedOpponentSkill(skill)} aria-label={`${skill.name}の詳細`}>
                     {getCanonicalSkillIcon(skill.id) ? <img src={getCanonicalSkillIcon(skill.id)} alt="" /> : <span aria-hidden="true">SK</span>}
-                    <small>{skill.name}</small>
                   </button>)}
                 </div>}
               </div>}
@@ -297,23 +305,9 @@ export default function CardBattleView() {
               <div className="font-size-8 font-weight-bold text-white mb-1">
                 作戦
               </div>
-              <div className="tactic-grid">
-                {[
-                  { id: "ATTACK_PRIORITY", icon: "⚔", label: "攻撃優先", description: "攻撃スキルを優先" },
-                  { id: "HEAL_PRIORITY", icon: "✚", label: "回復優先", description: "HPの低い味方を優先" },
-                  { id: "SKILL_PRIORITY", icon: "◆", label: "スキル優先", description: "使用可能なスキルを優先" },
-                  { id: "BALANCED", icon: "◎", label: "バランス", description: "攻撃と回復を状況判断" },
-                  { id: "WEAKNESS_FOCUS", icon: "⌖", label: "弱点集中", description: "有利属性の敵を集中" }
-                ].filter(t => !isTutorialBattle || t.id === tactic).map(t => (
-                  <button
-                    key={t.id}
-                    className={`tactic-btn active-scale-effect ${tactic === t.id ? "active" : ""}`}
-                    disabled={battleMode === "PATROL"}
-                    onClick={() => { setTactic(t.id as any); playCyberSe("click"); }}
-                  >
-                    <i aria-hidden="true">{t.icon}</i><span><strong>{t.label}</strong><small>{t.description}</small></span>
-                  </button>
-                ))}
+              <div className="setup-tactic-current">
+                <span>現在：<strong>{TACTIC_OPTIONS.find((entry) => entry.id === tactic)?.label || "バランス"}</strong></span>
+                <button type="button" disabled={battleMode === "PATROL"} onClick={() => setTacticDialogOpen(true)}>変更</button>
               </div>
               {battleMode === "PATROL" && (
                 <div className="font-size-6 text-secondary mt-1">派遣時に選んだ作戦で自動戦闘します。</div>
@@ -398,6 +392,17 @@ export default function CardBattleView() {
               <span>再使用 <b>{selectedOpponentSkill.cooldown ? `${selectedOpponentSkill.cooldown}ラウンド` : "なし"}</b></span>
             </div>
             <p>{selectedOpponentSkill.effect_type === "ATTACK" ? `対象へ威力${Number(selectedOpponentSkill.power || 0)}%のダメージ。` : selectedOpponentSkill.effect_type === "HEAL" ? "対象のHPを回復します。" : selectedOpponentSkill.effect_type === "DEBUFF" ? "対象へ弱体効果を与えます。" : "対象へ強化効果を与えます。"}</p>
+          </div>
+        </div>}
+        {tacticDialogOpen && <div className="read-only-detail-modal" onClick={() => setTacticDialogOpen(false)}>
+          <div className="detail-modal-card tactic-dialog-card" onClick={(event) => event.stopPropagation()}>
+            <div className="detail-modal-header"><span>作戦を変更</span><button className="sub-btn" onClick={() => setTacticDialogOpen(false)}>閉じる</button></div>
+            <div className="tactic-dialog-options">{TACTIC_OPTIONS.map((entry) => <button
+              type="button"
+              key={entry.id}
+              className={`tactic-btn ${tactic === entry.id ? "active" : ""}`}
+              onClick={() => { setTactic(entry.id as any); setTacticDialogOpen(false); playCyberSe("click"); }}
+            ><i aria-hidden="true">{entry.icon}</i><span><strong>{entry.label}</strong><small>{entry.description}</small></span></button>)}</div>
           </div>
         </div>}
       </div>
