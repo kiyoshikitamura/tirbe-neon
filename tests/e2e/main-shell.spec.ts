@@ -48,6 +48,46 @@ test("shared shell preserves footer navigation", async ({ page }) => {
   await expect(page.locator(".footer-item.active")).toContainText("キャラ");
 });
 
+for (const viewport of [{ width: 390, height: 844 }, { width: 412, height: 915 }]) {
+  test(`global identity keeps the explicit favorite and opens the self profile at ${viewport.width}`, async ({ page }) => {
+    await page.setViewportSize(viewport);
+    await enterGame(page);
+
+    const header = page.locator(".header-mobile");
+    const identity = header.locator(".user-identity-row.is-compact");
+    await expect(identity).toBeVisible();
+    await expect(identity.getByText("検証ユーザー", { exact: true })).toBeVisible();
+    await expect(identity.locator(".character-presentation-character")).toHaveAttribute("src", /reiji_transparent_asset/);
+    await expect(identity.locator(".character-presentation-frame")).toBeVisible();
+    await expect(identity.locator(".character-presentation-rarity")).toHaveCount(0);
+
+    const geometry = await header.evaluate((node) => ({
+      clientWidth: node.clientWidth,
+      scrollWidth: node.scrollWidth,
+      height: node.getBoundingClientRect().height,
+    }));
+    expect(geometry.scrollWidth).toBeLessThanOrEqual(geometry.clientWidth + 1);
+    expect(geometry.height).toBeLessThanOrEqual(96);
+
+    await identity.click();
+    const profile = page.getByRole("dialog", { name: "検証ユーザーの公開プロフィール" });
+    await expect(profile).toBeVisible();
+    await expect(profile.getByRole("button", { name: "DMを送る" })).toHaveCount(0);
+    await profile.getByRole("button", { name: "閉じる" }).click();
+
+    await page.getByRole("button", { name: /キャラ/ }).click();
+    await expect(page.locator(".header-mobile .user-identity-row.is-compact")).toBeVisible();
+
+    await page.reload();
+    const titleStart = page.getByText("TAP TO START");
+    await titleStart.waitFor({ state: "visible", timeout: 5_000 }).catch(() => undefined);
+    if (await titleStart.isVisible()) await titleStart.click();
+    const reloadedIdentity = page.locator(".header-mobile .user-identity-row.is-compact");
+    await expect(reloadedIdentity).toBeVisible();
+    await expect(reloadedIdentity.locator(".character-presentation-character")).toHaveAttribute("src", /reiji_transparent_asset/);
+  });
+}
+
 test("Open Beta home prioritizes the next action and keeps unreleased GvG unavailable", async ({ page }) => {
   await enterGame(page);
   await expect(page.locator(".mypage-primary-cta")).toBeVisible();

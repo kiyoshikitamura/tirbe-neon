@@ -4,6 +4,7 @@ import React from "react";
 import { useGame } from "../context/GameContext";
 import { VITALITY_MAX } from "@/utils/game_constants";
 import { CANONICAL_USER_LEVEL_PROGRESSION } from "@/domain/gameplay/canonical/action_resources";
+import UserIdentityRow from "./profile/UserIdentityRow";
 import "./Header.css";
 
 export default function Header() {
@@ -16,7 +17,10 @@ export default function Header() {
     vitality,
     vitalityNextRecoveryAt,
     userGuild,
-    userTitle
+    userTitle,
+    session,
+    identityLeaderCharacterId,
+    fetchPlayerDetail
   } = useGame();
   const [now, setNow] = React.useState(() => Date.now());
   React.useEffect(() => {
@@ -34,15 +38,18 @@ export default function Header() {
 
   return (
     <header className="header-mobile">
-      {/* 1行目: 通り名(称号) + 名前 + Lv + 所属ギルド */}
+      {/* 1行目: Identity + Lv */}
       <div className="header-mobile-row1">
         <div className="header-mobile-user">
-          {visibleTitle && <span className="header-mobile-title">{visibleTitle}</span>}
-          <span className="header-mobile-username">{username || "プレイヤー名"}</span>
+          <UserIdentityRow
+            variant="compact"
+            userName={username || "プレイヤー名"}
+            guildName={userGuild?.name}
+            title={visibleTitle}
+            leaderCharacterId={identityLeaderCharacterId || null}
+            onOpen={session?.user?.id ? () => void fetchPlayerDetail(session.user.id) : undefined}
+          />
           <span className="header-mobile-level-badge">Lv.{userLevel || 1} · EXP {userXp || 0}{levelRow?.requiredExp ? `/${levelRow.requiredExp}` : ""}</span>
-          <span className="header-mobile-guild-name">
-            {userGuild?.name ? userGuild.name : "未所属"}
-          </span>
         </div>
       </div>
 

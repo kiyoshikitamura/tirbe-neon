@@ -556,6 +556,11 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
   const [selectedTown, setSelectedTown] = useState<string>("shinjuku");
 
+  // Public identity authority is the explicitly saved favorite character only.
+  // Keep this separate from selectedLeader, whose legacy gameplay paths may fall
+  // back to a formation member when no favorite has been selected.
+  const [identityLeaderCharacterId, setIdentityLeaderCharacterId] = useState<string>("");
+  const [identityLeaderOwnerUserId, setIdentityLeaderOwnerUserId] = useState<string>("");
   const [activePlayerDetail, setActivePlayerDetail] = useState<any | null>(null);
   const [activeGuildDetail, setActiveGuildDetail] = useState<any | null>(null);
 
@@ -992,6 +997,14 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         .eq("id", userId)
         .single();
       markHomeReloadStage("profileReady");
+
+      const favoriteCharacterId = userProfile?.favorite_character_id;
+      setIdentityLeaderOwnerUserId(userId);
+      setIdentityLeaderCharacterId(
+        favoriteCharacterId && CHARACTERS_MASTER.some((character) => character.id === favoriteCharacterId)
+          ? favoriteCharacterId
+          : ""
+      );
       
       if (userProfile) {
         setUsername(userProfile.username);
@@ -3741,6 +3754,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     pendingGuildJoinRequests, setPendingGuildJoinRequests,
     guildJoinRequests, setGuildJoinRequests,
     selectedLeader, setSelectedLeader,
+    identityLeaderCharacterId: identityLeaderOwnerUserId === session?.user?.id ? identityLeaderCharacterId : "",
     upgradeSelectedCharId, setUpgradeSelectedCharId,
     characterLevel, setCharacterLevel,
     characterAwaken, setCharacterAwaken,
