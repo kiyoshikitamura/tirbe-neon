@@ -96,7 +96,7 @@ CLIの認証情報とローカル設定はRepository外に保存する。Secret�
 - Project ID: `prj_He8QAAwvfwm74FWq2Vb8BFHCbEXb`
 - Organization ID: `team_ounFOJd7sfCvcytYCkExbj77`
 - GitHub連携はクラウド側の既存設定を維持する。
-- PC移行作業ではPreview / Production Deploymentを実行していない。
+- 移行PRへのpushにより、既存GitHub連携のVercel Preview Deploymentが自動実行され、Vercel checkの成功を確認した。手動DeploymentとProduction Deploymentは実行していない。
 - `.vercel/`およびVercel認証情報をcommitしない。
 
 ## 8. AssetとArt / UI正本
@@ -139,6 +139,7 @@ Battleのauthoritative Replay contract、Server Authorityを変更しない。Cl
 | GitHub CLI認証・Repository操作 | PASS | branch push / PR作成実績あり |
 | Supabase CLI認証 | PASS | 3つの現行projectを参照確認 |
 | Vercel CLI認証・Project Link | PASS | 既存projectへlink済み |
+| Vercel Preview Deployment | PASS | GitHub連携による自動Deployment。Human Acceptanceは未実施 |
 | トップページ応答 | PASS | title `TRIBE NEON`、コンパイルエラーなし |
 | Asset参照 | PASS | 移行Assetのhashとbuildを確認 |
 | production creative verification | PASS | 移行統合時に実行済み |
@@ -158,7 +159,10 @@ Battleのauthoritative Replay contract、Server Authorityを変更しない。Cl
   - Presentation Harnessのscenario期待数22に対して実装25
   - Tutorial Skill impact期待時間2,100ms以上に対して実測1,657ms
   - 新規Mobile Player導線のCanvas位置期待値差
-- Vercel Preview DeploymentとPreview URL上のAcceptance
+- GitHub Qualityの`verify:operations-exposure`
+  - 最新`main`のHome表示と、検証スクリプトが要求する「抗争」「準備中」の同時存在が不一致
+  - 移行branch作成後の`main`でも同じ失敗が継続しており、移行Asset・引継ぎ文書による回帰ではない
+- Vercel Preview URL上のHuman Acceptance
 - Production Release判断
 
 E2Eの3件は本引継ぎ文書の追加による回帰ではなく、現行実装と既存Acceptance期待値の差である。移行PRへ修正を混在させず、M9-Xの別branch / 別PRで仕様と実装を照合して扱う。
