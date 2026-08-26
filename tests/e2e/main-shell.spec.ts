@@ -51,23 +51,23 @@ test("shared shell preserves footer navigation", async ({ page }) => {
 test("Open Beta home prioritizes the next action and keeps unreleased GvG unavailable", async ({ page }) => {
   await enterGame(page);
   await expect(page.locator(".mypage-primary-cta")).toBeVisible();
-  await expect(page.locator(".circle-menu-btn.war")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "抗争は準備中です" })).toBeDisabled();
 });
 
 test("stage two hubs share a mobile-safe page frame", async ({ page }) => {
   await enterGame(page);
 
   const cases = [
-    { selector: ".circle-menu-btn.fight", title: "喧嘩（PvP）", period: true },
-    { selector: ".circle-menu-btn.conquest", title: "クエスト", period: false },
-    { selector: ".mypage-power-panel", title: "ランキング", period: true },
+    { selector: ".circle-menu-btn.fight", title: "喧嘩（PvP）", period: false, hero: ".pvp-hero" },
+    { selector: ".circle-menu-btn.conquest", title: "クエスト", period: false, hero: ".ui-hero-panel" },
+    { selector: ".mypage-power-panel", title: "ランキング", period: true, hero: ".ui-hero-panel" },
   ];
 
   for (const target of cases) {
     await page.locator(target.selector).click();
     const hub = page.locator(".ui-hub-page");
     await expect(hub.getByRole("heading", { name: target.title, exact: true })).toBeVisible();
-    await expect(hub.locator(".ui-hero-panel").first()).toBeVisible();
+    await expect(hub.locator(target.hero).first()).toBeVisible();
     const pageMetrics = await hub.evaluate((node) => ({ scrollWidth: node.scrollWidth, clientWidth: node.clientWidth }));
     expect(pageMetrics.scrollWidth).toBeLessThanOrEqual(pageMetrics.clientWidth + 1);
     if (target.period) await expect(hub.locator(".period-status")).toBeVisible();
