@@ -16,6 +16,9 @@ import { CHARACTERS_MASTER, getCharacterTransparentImg } from "@/utils/game_cons
 import { getCharacterLocationBackground, resolveCharacterLocationKey } from "@/utils/characterVisualAssets";
 import { supabase } from "@/utils/supabase";
 import PvpDeckPresentation from "./pvp/PvpDeckPresentation";
+import RankPresentation from "./presentation/RankPresentation";
+import { SkillDetailDialog } from "./skill/SkillPresentation";
+import type { SkillCardMaster } from "@/utils/skills_master_data";
 
 const tacticNames: { [key: string]: string } = {
   ATTACK_PRIORITY: "攻撃優先",
@@ -60,11 +63,15 @@ export default function PvpTab() {
     currentBaseId,
     selectedLeader,
     selectedMembers,
+    userItems,
+    handleUseItem,
+    fetchPlayerDetail,
   } = useGame();
 
   const [selectedDefense, setSelectedDefense] = React.useState<string[]>([]);
   const [selectedTactic, setSelectedTactic] = React.useState<string>("ATTACK_PRIORITY");
   const [clock, setClock] = React.useState(() => Date.now());
+  const [selectedSkill, setSelectedSkill] = React.useState<SkillCardMaster | null>(null);
   const initialOpponentFetchRef = React.useRef<string | null>(null);
   const rankingAuthorityKey = `${session?.user?.id || "signed-out"}:${pvpRate}`;
   const [rankingAuthority, setRankingAuthority] = React.useState<{ key: string; standing: { rankPosition: number; rankPoints: number } | null } | null>(null);
@@ -99,7 +106,7 @@ export default function PvpTab() {
     const userId = session?.user?.id;
     if (!userId) return;
     let cancelled = false;
-    void supabase.rpc("get_public_pvp_rankings", { p_daily: false, p_limit: 100, p_offset: 0 }).then(({ data, error }) => {
+    void supabase.rpc("get_public_pvp_rankings", { p_daily: true, p_limit: 100, p_offset: 0 }).then(({ data, error }) => {
       if (cancelled || error || !Array.isArray(data)) return;
       const rows = data.map((row: any) => ({
         ...row,
@@ -188,9 +195,31 @@ export default function PvpTab() {
   const handleRefreshOpponents = async () => {
     playCyberSe("click");
     if (session?.user?.id) {
-      await fetchPvpOpponents(session.user.id, displayedPvpRate);
+      await fetchPvpOpponents(session.user.id, displayedPvpRate, { refresh: true });
     }
   };
+
+  const pvpTicketQuantity = Number((userItems || []).find((item: any) => item.item_id === "PVP_POINT_TICKET")?.quantity || 0);
+  const openBpRecoveryDialog = () => {
+    setConfirmDialogConfig({
+      isOpen: true,
+      title: "BP回復",
+      message: <div className="pvp-bp-recovery-copy"><strong>ファイトチケット　所持 ×{pvpTicketQuantity}</strong><span>現在 {pvpPoints} / 5</span><span>回復後 {Math.min(5, pvpPoints + 1)} / 5</span>{pvpTicketQuantity === 0 && <em>ファイトチケットを所持していません。</em>}</div>,
+      confirmText: pvpTicketQuantity > 0 ? "1枚使用" : "閉じる",
+      cancelText: pvpTicketQuantity > 0 ? "キャンセル" : "",
+      onConfirm: () => { setConfirmDialogConfig(null); if (pvpTicketQuantity > 0) void handleUseItem("PVP_POINT_TICKET"); },
+      onCancel: () => setConfirmDialogConfig(null),
+    });
+  };
+  const openBpShortageDialog = () => setConfirmDialogConfig({
+    isOpen: true,
+    title: "BPが不足しています",
+    message: "対戦にはBPが1必要です。ファイトチケットで回復できます。",
+    confirmText: "回復する",
+    cancelText: "閉じる",
+    onConfirm: () => { setConfirmDialogConfig(null); window.setTimeout(openBpRecoveryDialog, 0); },
+    onCancel: () => setConfirmDialogConfig(null),
+  });
 
   const handleNavigateToRanking = () => {
     playCyberSe("click");
@@ -201,6 +230,7 @@ export default function PvpTab() {
   };
 
   return (
+    <>
     <HubPage
       className="pvp-view"
       eyebrow="FIGHT / SOLO COMPETITION"
@@ -208,6 +238,7 @@ export default function PvpTab() {
       description="相手を選び、出撃編成と残り挑戦回数を確認して対戦する。"
       status={readiness.status}
       onRetry={readiness.retry}
+      hideVisualHeader
     >
         <section className="pvp-hero" style={pvpBackgroundPath ? { "--pvp-hero-bg": `url(${pvpBackgroundPath})` } as React.CSSProperties : undefined} aria-label="PvP対戦">
           <div className="pvp-hero-shade" aria-hidden="true" />
@@ -216,7 +247,7 @@ export default function PvpTab() {
           <CharacterPresentation className="pvp-hero-fighter is-opponent" src={heroOpponentLeader?.asset_identifier || undefined} alt={heroOpponentLeader?.display_name || "OPPONENT"} variant="battle-leader" />
         </section>
         <section className="pvp-self-summary" aria-label="自分のPvP情報">
-          <div><small>順位</small><strong>{ownPvpStanding === undefined ? "—" : ownPvpStanding ? `#${ownPvpStanding.rankPosition}` : "圏外"}</strong></div>
+          <div><small>順位</small><strong>{ownPvpStanding === undefined ? "—" : <RankPresentation rank={ownPvpStanding?.rankPosition} />}</strong></div>
           <div><small>RATE</small><strong>{displayedPvpRate.toLocaleString()}</strong></div>
           <div><small>BP</small><strong>{pvpPoints}<span>/5</span></strong></div>
         </section>
@@ -224,13 +255,14 @@ export default function PvpTab() {
         <section className="pvp-point-strip" aria-label="BP回復状況">
           <div><small>BP回復</small></div>
           <span>{pvpPoints >= 5 ? "最大" : recoveryCountdown ? `次回復 ${recoveryCountdown}` : "回復時刻を同期中"}</span>
+          {pvpPoints < 5 && <button type="button" className="pvp-recovery-button" onClick={openBpRecoveryDialog}>回復</button>}
         </section>
 
         <section className="pvp-my-deck" aria-label="自分のデッキ">
           <div className="pvp-section-heading"><strong>MY DECK</strong><span>総合力 {Number(totalPower || 0).toLocaleString()}</span></div>
-          <PvpDeckPresentation ariaLabel="自分の出撃メンバー" showSkills members={myDeckCharacters.map(({ ownedId, owned, master }: any) => {
-              const equippedSkill = (userSkillsList || []).find((entry: any) => entry.equipped_character_id === owned?.id);
-              return { key: ownedId, characterId: master?.id || ownedId, name: master?.jpName, level: Number(owned?.level || 1), skillId: equippedSkill?.skill_card_id };
+          <PvpDeckPresentation ariaLabel="自分の出撃メンバー" showSkills onSkillSelect={setSelectedSkill} members={myDeckCharacters.map(({ ownedId, owned, master }: any) => {
+              const equippedSkills = (userSkillsList || []).filter((entry: any) => entry.equipped_character_id === owned?.id).map((entry: any) => entry.skill_card_id).filter(Boolean).slice(0, 6);
+              return { key: ownedId, characterId: master?.id || ownedId, name: master?.jpName, level: Number(owned?.level || 1), skillIds: equippedSkills };
             })} />
           {myDeckCharacters.length === 0 && <span className="pvp-my-deck-empty">出撃編成を設定してください</span>}
         </section>
@@ -273,9 +305,9 @@ export default function PvpTab() {
                     {pvpOpponents.map((op: any) => (
                       <OutlawCard key={op.opponent_user_id} className="pvp-opponent-card" data-opponent-user-id={op.opponent_user_id}>
                         <div className="pvp-opponent-copy">
-                          <div className="pvp-opponent-heading"><div><div className="pvp-opponent-name">{op.opponent_username}</div><div className="pvp-opponent-guild">{op.opponent_guild_name || "無所属"}</div></div><strong>{op.opponent_rank ? `順位 ${op.opponent_rank}位` : "順位 圏外"}</strong></div>
-                          <div className="pvp-opponent-leader"><span>LEADER</span><strong>{defenseCharactersFor(op)[0]?.display_name || "未設定"}</strong></div>
-                          <PvpDeckPresentation className="pvp-opponent-deck" ariaLabel={`${op.opponent_username}の防衛メンバー`} members={defenseCharactersFor(op).map((character: any) => ({ key: `${op.opponent_user_id}-${character.slot}`, characterId: character.character_master_id, name: character.display_name, level: Number(character.level || 1), imageSrc: character.asset_identifier || undefined }))} />
+                          <div className="pvp-opponent-heading"><button type="button" className="pvp-opponent-identity" onClick={() => fetchPlayerDetail(op.opponent_user_id)}><div className="pvp-opponent-name">{op.opponent_username}</div><div className="pvp-opponent-guild">{op.opponent_guild_name || "無所属"}</div></button><strong><RankPresentation label="順位" rank={op.opponent_rank} /></strong></div>
+                          <button type="button" className="pvp-opponent-leader" onClick={() => fetchPlayerDetail(op.opponent_user_id)}><span>LEADER</span><strong>{defenseCharactersFor(op)[0]?.display_name || "未設定"}</strong></button>
+                          <PvpDeckPresentation className="pvp-opponent-deck" ariaLabel={`${op.opponent_username}の防衛メンバー`} onMemberSelect={() => fetchPlayerDetail(op.opponent_user_id)} members={defenseCharactersFor(op).map((character: any) => ({ key: `${op.opponent_user_id}-${character.slot}`, characterId: character.character_master_id, name: character.display_name, level: Number(character.level || 1), imageSrc: character.asset_identifier || undefined }))} />
                           <div className="pvp-opponent-meta">
                             <Badge tone="cyan">RATE {op.opponent_points}</Badge>
                             <span className="pvp-opponent-power">総合力 {Number(op.opponent_power || 0).toLocaleString()}</span>
@@ -287,7 +319,7 @@ export default function PvpTab() {
                         </div>
                         <OutlawButton 
                           variant="danger" 
-                          onClick={() => startCardBattle(
+                          onClick={() => pvpPoints < 1 ? openBpShortageDialog() : startCardBattle(
                             "PVP", 
                             op.opponent_username, 
                             op.opponent_user_id, 
@@ -435,5 +467,7 @@ export default function PvpTab() {
           </div>
         )}
     </HubPage>
+    {selectedSkill && <SkillDetailDialog skill={selectedSkill} onClose={() => setSelectedSkill(null)} />}
+    </>
   );
 }

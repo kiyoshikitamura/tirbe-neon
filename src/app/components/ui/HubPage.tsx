@@ -14,6 +14,7 @@ interface HubPageProps {
   errorMessage?: string;
   children: React.ReactNode;
   className?: string;
+  hideVisualHeader?: boolean;
 }
 
 export default function HubPage({
@@ -26,10 +27,11 @@ export default function HubPage({
   errorMessage,
   children,
   className = "",
+  hideVisualHeader = false,
 }: HubPageProps) {
   return (
     <div className={`ui-hub-page ${className}`}>
-      <PageHeader title={title} eyebrow={eyebrow} description={description} action={headerAction} />
+      {hideVisualHeader ? <h1 className="sr-only">{title}</h1> : <PageHeader title={title} eyebrow={eyebrow} description={description} action={headerAction} />}
       <div className="ui-hub-page-scroll custom-scrollbar">
         <ScreenReadinessBoundary status={status} onRetry={onRetry} errorMessage={errorMessage}>
           <div className="ui-hub-page-content">{children}</div>

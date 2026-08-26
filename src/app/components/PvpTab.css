@@ -36,12 +36,13 @@
 .pvp-self-summary > div:nth-child(2) strong { color: var(--neon-cyan); }
 .pvp-self-summary strong span{margin-left:2px;color:var(--ui-text-secondary);font-size:10px}
 
-.pvp-point-strip { display: flex; min-height: 42px; align-items: center; justify-content: space-between; gap: 12px; padding: 7px 11px; border: 1px solid rgba(255,255,255,.13); border-radius: 5px; background: rgba(9, 15, 24, .94); }
+.pvp-point-strip { display: flex; min-height: 42px; align-items: center; justify-content: space-between; gap: 8px; padding: 7px 11px; border: 1px solid rgba(255,255,255,.13); border-radius: 5px; background: rgba(9, 15, 24, .94); }
 .pvp-point-strip > div { display: flex; align-items: baseline; gap: 8px; }
 .pvp-point-strip small { color: var(--ui-text-secondary); font-size: 9px; font-weight: 800; }
 .pvp-point-strip strong { color: var(--neon-cyan); font: 800 19px/1 var(--font-display); }
 .pvp-point-strip strong span { color: var(--ui-text-secondary); font-size: 11px; }
 .pvp-point-strip > span { color: var(--ui-text-secondary); font-size: 9px; font-variant-numeric: tabular-nums; }
+.pvp-recovery-button{min-height:30px;padding:4px 10px;border:1px solid var(--neon-cyan);border-radius:4px;color:var(--neon-cyan);background:rgba(0,240,255,.06);font-size:9px;font-weight:900}.pvp-bp-recovery-copy{display:grid;gap:7px}.pvp-bp-recovery-copy strong{color:#fff}.pvp-bp-recovery-copy span{color:var(--ui-text-secondary)}.pvp-bp-recovery-copy em{color:#ffb04a;font-style:normal}
 .pvp-my-deck{padding:7px 8px;border:1px solid rgba(255,255,255,.12);border-radius:5px;background:rgba(5,9,16,.9)}
 .pvp-section-heading{display:flex;align-items:center;justify-content:space-between;margin-bottom:5px}.pvp-section-heading strong{font:800 9px var(--font-display);letter-spacing:.12em}.pvp-section-heading span{font-size:10px;font-weight:900}
 .pvp-my-deck-empty{display:block;padding:8px;color:var(--ui-text-secondary);font-size:9px;text-align:center}
@@ -64,6 +65,7 @@
 
 .pvp-opponent-copy { min-width: 0; }
 .pvp-opponent-name { overflow: hidden; color: #fff; font-size: 13px; font-weight: 900; text-overflow: ellipsis; white-space: nowrap; }
+.pvp-opponent-identity,.pvp-opponent-leader{appearance:none;padding:0;border:0;color:inherit;background:transparent;text-align:left;cursor:pointer}
 .pvp-opponent-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
 .pvp-opponent-heading > strong { color: var(--neon-gold); font-size: 9px; white-space:nowrap; }
 .pvp-opponent-guild { overflow: hidden; margin-top: 3px; color: var(--ui-text-secondary); font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }

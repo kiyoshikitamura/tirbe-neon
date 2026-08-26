@@ -2126,13 +2126,13 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     return { data: { status: "success" }, error: null };
   }
 
-  if (funcName === "get_pvp_opponents") {
+  if (funcName === "get_pvp_opponents" || funcName === "get_pvp_opponents_page") {
     const { p_user_id, p_my_points } = params;
     const users = client.getStorage("users") || [];
     const ranks = client.getStorage("pvp_ranks") || [];
     const candidates = users
       .filter((u: any) => u.id !== p_user_id)
-      .slice(0, 3)
+      .slice(Number(params?.p_offset || 0), Number(params?.p_offset || 0) + 5)
       .map((u: any, idx: number) => {
         const defenseIds = ["char_reiji_01", "char_rui_01", "char_chang_01"];
         return ({
@@ -2161,6 +2161,11 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
       });
       });
 
+    if (funcName === "get_pvp_opponents_page") {
+      const total = users.filter((u: any) => u.id !== p_user_id).length;
+      const offset = Number(params?.p_offset || 0);
+      return { data: { items: candidates, total_count: total, offset, next_offset: offset + 5 >= total ? 0 : offset + 5 }, error: null };
+    }
     return { data: candidates, error: null };
   }
 

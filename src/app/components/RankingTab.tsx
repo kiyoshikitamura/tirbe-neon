@@ -9,6 +9,7 @@ import Badge from "./ui/Badge";
 import SubTabNav from "./ui/SubTabNav";
 import PeriodStatus from "./ui/PeriodStatus";
 import OutlawButton from "./ui/OutlawButton";
+import RankPresentation from "./presentation/RankPresentation";
 import { useScreenReadiness } from "../hooks/useScreenReadiness";
 import { SCREEN_ASSET_MANIFESTS } from "../lib/screenManifests";
 import "./RankingTab.css";
@@ -499,7 +500,7 @@ export default function RankingTab() {
           <span>LEADERBOARD</span>
           <strong>{activeCategoryLabel}ランキング</strong>
         </div>
-        <small>{activeSubTab === "daily" ? "デイリー" : activeTab === "pvp" || activeTab === "raid" ? "週間" : "シーズン"}</small>
+        <small>{activeSubTab === "daily" ? "デイリー順位" : "シーズン順位"}</small>
       </div>
       <div className="ranking-content-area">
         {/* -------------------- 1. 総合力 -------------------- */}
@@ -572,7 +573,7 @@ export default function RankingTab() {
                   onClick={() => openPlayerFromRanking(item.user_id, "pvp_player")}
                 >
                   <div className="item-left flex items-center gap-3">
-                    <span className={`rank-badge ${displayRank ? `rank-${displayRank}` : "rank-unranked"}`}>{displayRank ?? "—"}</span>
+                    <span className={`rank-badge ${displayRank ? `rank-${displayRank}` : "rank-unranked"}`}><RankPresentation rank={displayRank} /></span>
                     <div className="flex-column"><span className="item-title font-weight-bold">{item.users?.username || "名無しの極道"}</span><span className="item-desc font-size-7 text-secondary">{guildName} ・ 戦力 {Number(power || 0).toLocaleString()}</span></div>
                   </div>
                   <span className="font-weight-bold text-color-cyan font-size-9">

@@ -27,20 +27,24 @@ export function usePvp(
   const [pvpDefenseLogs, setPvpDefenseLogs] = useState<any[]>([]);
   const [simulatingDefense, setSimulatingDefense] = useState<boolean>(false);
   const opponentsRequestRef = useRef<Promise<any[]> | null>(null);
+  const opponentsNextOffsetRef = useRef(0);
 
-  const fetchPvpOpponents = (userId: string, myPoints: number): Promise<any[]> => {
+  const fetchPvpOpponents = (userId: string, myPoints: number, options: { refresh?: boolean } = {}): Promise<any[]> => {
     if (!userId) return Promise.resolve([]);
     if (opponentsRequestRef.current) return opponentsRequestRef.current;
     const request = (async () => {
       setOpponentsLoading(true);
       try {
-        const { data, error } = await supabase.rpc("get_pvp_opponents", {
+        const requestedOffset = options.refresh ? opponentsNextOffsetRef.current : 0;
+        const { data, error } = await supabase.rpc("get_pvp_opponents_page", {
           p_user_id: userId,
-          p_my_points: myPoints
+          p_my_points: myPoints,
+          p_offset: requestedOffset,
         });
 
         if (error) throw error;
-        const nextOpponents = Array.isArray(data) ? data : [];
+        const nextOpponents = Array.isArray(data?.items) ? data.items : [];
+        opponentsNextOffsetRef.current = Number(data?.next_offset || 0);
         setPvpOpponents(nextOpponents);
         
         // 🚀 ロード時間短縮：アセット（NPC立ち絵やギルドエンブレム）のバックグラウンドプリロード

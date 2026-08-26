@@ -10,8 +10,8 @@ import BattleMatchupPresentation from "./battle/BattleMatchupPresentation";
 import { preloadBattleEffects } from "./battle/BattleEffectPresentation";
 import { preloadTutorialCompletionAssets } from "../lib/tutorialCompletionAssets";
 import { CANONICAL_SKILL_VIEW } from "@/utils/skills_master_data";
-import { getCanonicalSkillIcon } from "@/utils/skillVisualAssets";
 import PvpDeckPresentation, { PvpPowerSummary, canonicalPvpCharacter } from "./pvp/PvpDeckPresentation";
+import { SkillDetailDialog, SkillIconGrid } from "./skill/SkillPresentation";
 import "./CardBattleView.css";
 
 const TACTIC_OPTIONS = [
@@ -216,13 +216,6 @@ export default function CardBattleView() {
             {isTutorialBattle ? "初回バトル準備" : "バトル準備"}
           </div>
 
-          <div className="setup-match-heading" aria-label="battle briefing">
-            <span className="setup-mode-stamp">
-              {battleMode === "GVG" ? "抗争" : battleMode === "PVP_PRACTICE" ? "模擬戦" : battleMode === "PVP" ? "対決" : battleMode === "RAID" ? "討伐" : "出撃"}
-            </span>
-            <span className="setup-match-copy">対戦情報</span>
-          </div>
-
           {isPvP && <div className="setup-cta-area is-briefing-cta">
             <button
               className="start-battle-btn semantic-cta semantic-cta--primary active-scale-effect"
@@ -246,11 +239,7 @@ export default function CardBattleView() {
                 <>
                   <PvpPowerSummary className="is-opponent" totalPower={enemyPower} atk={enemyPartyStates.reduce((total: number, enemy: any) => total + Number(enemy.stats?.atk || 0), 0)} def={enemyPartyStates.reduce((total: number, enemy: any) => total + Number(enemy.stats?.def || 0), 0)} spd={enemyPartyStates.reduce((total: number, enemy: any) => total + Number(enemy.stats?.spd || 0), 0)} />
                   <PvpDeckPresentation className="setup-pvp-deck" ariaLabel="対戦相手のデッキ" members={enemyPartyStates.map((enemy: any, idx: number) => ({ key: enemy.id || `enemy-${idx}`, characterId: enemy.characterId, name: enemy.name, level: enemy.level }))} />
-                  {canonicalEnemySkills.length > 0 && <div className="setup-enemy-skill-grid" aria-label="対戦相手のスキル">
-                    {canonicalEnemySkills.map((skill: any) => <button className="pvp-deck-skill-slot is-interactive" type="button" key={skill.id} onClick={() => setSelectedOpponentSkill(skill)} aria-label={`${skill.name}の詳細`}>
-                      {getCanonicalSkillIcon(skill.id) ? <img src={getCanonicalSkillIcon(skill.id)} alt="" /> : <span aria-hidden="true">SK</span>}
-                    </button>)}
-                  </div>}
+                  <SkillIconGrid className="setup-enemy-skill-grid" skills={canonicalEnemySkills} onSelect={setSelectedOpponentSkill} />
                 </>
               ) : (
                 <div className="setup-enemy-spec">
@@ -276,12 +265,11 @@ export default function CardBattleView() {
             <div className="setup-player-wrapper">
               <div className="setup-player-title">
                 <span>自軍メンバー</span>
-                <span className="text-secondary font-size-6">タップで詳細</span>
               </div>
-              {isPvP ? <PvpDeckPresentation className="setup-pvp-deck" ariaLabel="自分のデッキ" showSkills members={playerPartyStates.map((charState: any, idx: number) => {
+              {isPvP ? <PvpDeckPresentation className="setup-pvp-deck" ariaLabel="自分のデッキ" showSkills onSkillSelect={setSelectedOpponentSkill} members={playerPartyStates.map((charState: any, idx: number) => {
                 const canonical = canonicalPvpCharacter(charState.characterId);
-                const equipped = (charState.skills || []).find((skill: any) => String(skill.skill_card_id || skill.skillId || skill.id) !== "BASIC_ATTACK");
-                return { key: charState.id || `player-${idx}`, characterId: canonical?.id || charState.characterId, name: charState.name, level: charState.level, skillId: equipped?.skill_card_id || equipped?.skillId || equipped?.id };
+                const equipped = (charState.skills || []).map((skill: any) => skill.skill_card_id || skill.skillId || skill.id).filter((skillId: string) => skillId && skillId !== "BASIC_ATTACK").slice(0, 6);
+                return { key: charState.id || `player-${idx}`, characterId: canonical?.id || charState.characterId, name: charState.name, level: charState.level, skillIds: equipped };
               })} /> : <div className="setup-cards-row gap-2 justify-between">
                 {playerPartyStates.map((charState: any, idx: number) => {
                   const hpPercent = (charState.hp / charState.maxHp) * 100;
@@ -392,22 +380,7 @@ export default function CardBattleView() {
             </div>
           </div>
         )}
-        {selectedOpponentSkill && <div className="read-only-detail-modal" onClick={() => setSelectedOpponentSkill(null)}>
-          <div className="detail-modal-card skill-detail-card" onClick={(event) => event.stopPropagation()}>
-            <div className="detail-modal-header"><span>スキル詳細</span><button className="sub-btn" onClick={() => setSelectedOpponentSkill(null)}>閉じる</button></div>
-            <div className="skill-detail-hero">
-              {getCanonicalSkillIcon(selectedOpponentSkill.id) && <img src={getCanonicalSkillIcon(selectedOpponentSkill.id)} alt="" />}
-              <div><strong>{selectedOpponentSkill.name}</strong><small>{selectedOpponentSkill.effect_type === "ATTACK" ? "攻撃" : selectedOpponentSkill.effect_type === "HEAL" ? "回復" : selectedOpponentSkill.effect_type === "DEBUFF" ? "弱体" : "強化"}スキル</small></div>
-            </div>
-            <div className="skill-detail-facts">
-              <span>タイプ <b>{selectedOpponentSkill.effect_type === "ATTACK" ? "攻撃" : selectedOpponentSkill.effect_type === "HEAL" ? "回復" : selectedOpponentSkill.effect_type === "DEBUFF" ? "弱体" : "強化"}</b></span>
-              <span>対象 <b>{selectedOpponentSkill.target === "ENEMY_SINGLE" ? "敵単体" : selectedOpponentSkill.target === "ENEMY_ALL" ? "敵全体" : selectedOpponentSkill.target === "ALLY_SINGLE" ? "味方単体" : selectedOpponentSkill.target === "ALLY_ALL" ? "味方全体" : "自身"}</b></span>
-              <span>威力 <b>{Number(selectedOpponentSkill.power || 0)}%</b></span>
-              <span>再使用 <b>{selectedOpponentSkill.cooldown ? `${selectedOpponentSkill.cooldown}ラウンド` : "なし"}</b></span>
-            </div>
-            <p>{selectedOpponentSkill.effect_type === "ATTACK" ? `対象へ威力${Number(selectedOpponentSkill.power || 0)}%のダメージ。` : selectedOpponentSkill.effect_type === "HEAL" ? "対象のHPを回復します。" : selectedOpponentSkill.effect_type === "DEBUFF" ? "対象へ弱体効果を与えます。" : "対象へ強化効果を与えます。"}</p>
-          </div>
-        </div>}
+        {selectedOpponentSkill && <SkillDetailDialog skill={selectedOpponentSkill} onClose={() => setSelectedOpponentSkill(null)} />}
         {tacticDialogOpen && <div className="read-only-detail-modal" onClick={() => setTacticDialogOpen(false)}>
           <div className="detail-modal-card tactic-dialog-card" onClick={(event) => event.stopPropagation()}>
             <div className="detail-modal-header"><span>作戦を変更</span><button className="sub-btn" onClick={() => setTacticDialogOpen(false)}>閉じる</button></div>

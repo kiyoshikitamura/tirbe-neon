@@ -2,7 +2,8 @@
 
 import CharacterPresentation from "../character/CharacterPresentation";
 import { CHARACTERS_MASTER, getCharacterTransparentImg } from "@/utils/game_constants";
-import { getCanonicalSkillIcon } from "@/utils/skillVisualAssets";
+import { SkillIconGrid } from "../skill/SkillPresentation";
+import type { SkillCardMaster } from "@/utils/skills_master_data";
 import "./PvpDeckPresentation.css";
 
 export type PvpDeckMember = {
@@ -11,6 +12,7 @@ export type PvpDeckMember = {
   name?: string;
   level?: number;
   skillId?: string;
+  skillIds?: string[];
   imageSrc?: string;
 };
 
@@ -30,22 +32,23 @@ export function PvpPowerSummary({ totalPower, atk, def, spd, className = "" }: {
   </div>;
 }
 
-export default function PvpDeckPresentation({ members, showSkills = false, className = "", ariaLabel }: { members: PvpDeckMember[]; showSkills?: boolean; className?: string; ariaLabel: string }) {
+export default function PvpDeckPresentation({ members, showSkills = false, onSkillSelect, onMemberSelect, className = "", ariaLabel }: { members: PvpDeckMember[]; showSkills?: boolean; onSkillSelect?: (skill: SkillCardMaster) => void; onMemberSelect?: (member: PvpDeckMember) => void; className?: string; ariaLabel: string }) {
   return <div className={`pvp-deck-presentation ${showSkills ? "has-skills" : ""} ${className}`.trim()} aria-label={ariaLabel}>
     {members.map((member) => {
       const master = canonicalPvpCharacter(member.characterId);
       const characterId = master?.id || member.characterId || "";
-      const skillIcon = showSkills ? getCanonicalSkillIcon(member.skillId) : null;
-      return <div className="pvp-deck-member" key={member.key} data-character-id={characterId}>
-        <CharacterPresentation
+      const skillIds = showSkills ? (member.skillIds || [member.skillId]).filter(Boolean).slice(0, 6) as string[] : [];
+      const portrait = <CharacterPresentation
           src={member.imageSrc || (master ? getCharacterTransparentImg(master.name) : undefined)}
           alt={master?.jpName || member.name || "キャラクター"}
           variant="thumbnail"
           rarity={master?.rarity || undefined}
           frameKind="character"
           metadata={false}
-        />
-        {showSkills && <div className="pvp-deck-skill-slot">{skillIcon ? <img src={skillIcon} alt="装備スキル" /> : <span aria-label="装備スキルなし" />}</div>}
+        />;
+      return <div className="pvp-deck-member" key={member.key} data-character-id={characterId}>
+        {onMemberSelect ? <button type="button" className="pvp-deck-character-button" onClick={() => onMemberSelect(member)} aria-label={`${master?.jpName || member.name || "プレイヤー"}のプロフィール`}>{portrait}</button> : portrait}
+        {showSkills && <SkillIconGrid skills={skillIds} onSelect={onSkillSelect} />}
       </div>;
     })}
   </div>;
