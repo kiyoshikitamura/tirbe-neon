@@ -223,6 +223,21 @@ export default function CardBattleView() {
             <span className="setup-match-copy">対戦情報</span>
           </div>
 
+          {isPvP && <div className="setup-cta-area is-briefing-cta">
+            <button
+              className="start-battle-btn semantic-cta semantic-cta--primary active-scale-effect"
+              onClick={launchRegularBattle}
+              disabled={setupLaunching}
+              aria-busy={setupLaunching}
+            >{setupLaunching ? "BATTLE START" : "対戦開始"}</button>
+            <button
+              type="button"
+              className="cancel-battle-btn semantic-cta semantic-cta--secondary"
+              disabled={setupLaunching}
+              onClick={() => { if (cancelPreparedPvpBattle()) playSe("UI_BACK"); }}
+            >対戦をやめる</button>
+          </div>}
+
           <div className="setup-scroll-area">
             {/* 上段：エネミー情報 */}
             <div className="setup-enemy-wrapper">
@@ -232,7 +247,7 @@ export default function CardBattleView() {
                   <PvpPowerSummary className="is-opponent" totalPower={enemyPower} atk={enemyPartyStates.reduce((total: number, enemy: any) => total + Number(enemy.stats?.atk || 0), 0)} def={enemyPartyStates.reduce((total: number, enemy: any) => total + Number(enemy.stats?.def || 0), 0)} spd={enemyPartyStates.reduce((total: number, enemy: any) => total + Number(enemy.stats?.spd || 0), 0)} />
                   <PvpDeckPresentation className="setup-pvp-deck" ariaLabel="対戦相手のデッキ" members={enemyPartyStates.map((enemy: any, idx: number) => ({ key: enemy.id || `enemy-${idx}`, characterId: enemy.characterId, name: enemy.name, level: enemy.level }))} />
                   {canonicalEnemySkills.length > 0 && <div className="setup-enemy-skill-grid" aria-label="対戦相手のスキル">
-                    {canonicalEnemySkills.map((skill: any) => <button type="button" key={skill.id} onClick={() => setSelectedOpponentSkill(skill)} aria-label={`${skill.name}の詳細`}>
+                    {canonicalEnemySkills.map((skill: any) => <button className="pvp-deck-skill-slot is-interactive" type="button" key={skill.id} onClick={() => setSelectedOpponentSkill(skill)} aria-label={`${skill.name}の詳細`}>
                       {getCanonicalSkillIcon(skill.id) ? <img src={getCanonicalSkillIcon(skill.id)} alt="" /> : <span aria-hidden="true">SK</span>}
                     </button>)}
                   </div>}
@@ -319,7 +334,7 @@ export default function CardBattleView() {
           </div>
 
           {/* 出撃開始ボタン */}
-          <div className="setup-cta-area">
+          {!isPvP && <div className="setup-cta-area">
             <button
               className={`start-battle-btn semantic-cta semantic-cta--primary active-scale-effect ${isTutorialBattle ? "tutorial-primary-target" : ""}`}
               onClick={isTutorialBattle ? launchBattleOnce : launchRegularBattle}
@@ -328,13 +343,7 @@ export default function CardBattleView() {
             >
               {setupLaunching ? "BATTLE START" : battleMode === "PVP_PRACTICE" ? "模擬戦開始" : isTutorialBattle ? "BATTLE START" : battleMode === "PVP" ? "対戦開始" : battleMode === "GVG" ? "抗争開始" : battleMode === "RAID" ? "討伐開始" : "出撃開始"}
             </button>
-            {battleMode === "PVP" && <button
-              type="button"
-              className="cancel-battle-btn semantic-cta semantic-cta--secondary"
-              disabled={setupLaunching}
-              onClick={() => { if (cancelPreparedPvpBattle()) playSe("UI_BACK"); }}
-            >対戦をやめる</button>}
-          </div>
+          </div>}
         </div>
 
         {/* 閲覧用詳細ポップアップ */}

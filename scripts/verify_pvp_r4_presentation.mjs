@@ -15,8 +15,8 @@ assert.match(battle, /remainingHp[\s\S]*playerPartyStatesRef\.current = nextPlay
 assert.match(battle, /battleMode === "PVP" && pvpCommitSucceededRef\.current/);
 assert.match(pvp, /selectedMembers[\s\S]*PvpDeckPresentation[\s\S]*characterId: master\?\.id \|\| ownedId/);
 assert.doesNotMatch(pvp, /const myDeckCharacters[\s\S]{0,400}myPvpDefenseDeck/);
-assert.match(setup, /setup-enemy-wrapper[\s\S]*PvpDeckPresentation[\s\S]*setup-versus-marker[\s\S]*setup-player-wrapper[\s\S]*setup-tactic-wrapper[\s\S]*setup-cta-area/);
-assert.match(setup, /className="setup-cta-area"/);
+assert.match(setup, /isPvP && <div className="setup-cta-area is-briefing-cta"[\s\S]*setup-scroll-area[\s\S]*setup-enemy-wrapper[\s\S]*PvpDeckPresentation[\s\S]*setup-versus-marker[\s\S]*setup-player-wrapper[\s\S]*setup-tactic-wrapper/);
+assert.match(setup, /setup-enemy-skill-grid[\s\S]*pvp-deck-skill-slot is-interactive/);
 assert.match(deck, /frameKind="character"/);
 assert.match(deck, /metadata=\{false\}/);
 

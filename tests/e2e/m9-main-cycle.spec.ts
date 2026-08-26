@@ -185,12 +185,23 @@ test("PvP MY DECK and pre-battle use the same main formation and mobile CTA flow
     const geometry = await Promise.all([tactic.boundingBox(), cta.boundingBox()]);
     expect(geometry[0]).not.toBeNull();
     expect(geometry[1]).not.toBeNull();
-    expect(geometry[1]!.y).toBeGreaterThanOrEqual(geometry[0]!.y + geometry[0]!.height);
+    expect(geometry[1]!.y + geometry[1]!.height).toBeLessThanOrEqual(geometry[0]!.y);
     const ctaBoxes = await cta.locator("button").evaluateAll((buttons) => buttons.map((button) => button.getBoundingClientRect()).map((box) => ({ left: box.left, right: box.right, width: box.width })));
     expect(ctaBoxes).toHaveLength(2);
     expect(Math.abs(ctaBoxes[0].left - ctaBoxes[1].left)).toBeLessThanOrEqual(1);
     expect(Math.abs(ctaBoxes[0].width - ctaBoxes[1].width)).toBeLessThanOrEqual(1);
     expect(ctaBoxes.every((box) => box.left >= 0 && box.right <= viewport.width + 1)).toBe(true);
+    const enemySkill = page.locator(".setup-enemy-skill-grid .pvp-deck-skill-slot").first();
+    if (await enemySkill.count()) {
+      const skillGeometry = await Promise.all([
+        enemySkill.boundingBox(),
+        page.locator(".setup-player-wrapper .pvp-deck-skill-slot").first().boundingBox(),
+      ]);
+      expect(skillGeometry[0]).not.toBeNull();
+      expect(skillGeometry[1]).not.toBeNull();
+      expect(Math.abs(skillGeometry[0]!.width - skillGeometry[1]!.width)).toBeLessThanOrEqual(1);
+      expect(Math.abs(skillGeometry[0]!.height - skillGeometry[1]!.height)).toBeLessThanOrEqual(1);
+    }
   }
   await page.getByRole("button", { name: "変更", exact: true }).click();
   await expect(page.locator(".tactic-dialog-options")).toBeVisible();

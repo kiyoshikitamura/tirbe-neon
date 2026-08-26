@@ -134,6 +134,13 @@ async function runViewport(viewport) {
       }));
       const tactic = document.querySelector(".setup-tactic-wrapper")?.getBoundingClientRect();
       const cta = document.querySelector(".setup-cta-area")?.getBoundingClientRect();
+      const opponent = document.querySelector(".setup-enemy-wrapper")?.getBoundingClientRect();
+      const enemySkill = document.querySelector(".setup-enemy-skill-grid .pvp-deck-skill-slot")?.getBoundingClientRect();
+      const playerSkill = document.querySelector(".setup-player-wrapper .pvp-deck-skill-slot")?.getBoundingClientRect();
+      const ctaButtons = [...document.querySelectorAll(".setup-cta-area button")].map((button) => {
+        const box = button.getBoundingClientRect();
+        return { left: box.left, right: box.right, top: box.top, bottom: box.bottom, width: box.width, height: box.height, disabled: button.disabled };
+      });
       return {
         playerDeck: describeDeck(".setup-player-wrapper .pvp-deck-member"),
         enemyDeck: describeDeck(".setup-enemy-wrapper .pvp-deck-member"),
@@ -142,9 +149,31 @@ async function runViewport(viewport) {
         rarityTextCount: [...document.querySelectorAll(".setup-container .pvp-deck-member")].filter((node) => /^(?:SSR|SR|R|N)$/m.test(node.textContent?.trim() || "")).length,
         frameCount: document.querySelectorAll(".setup-container .character-presentation-frame.is-character").length,
         tacticCtaOverlap: Boolean(tactic && cta && !(cta.top >= tactic.bottom || cta.bottom <= tactic.top)),
+        ctaBeforeOpponent: Boolean(cta && opponent && cta.bottom <= opponent.top),
+        ctaButtons,
+        skillGeometry: enemySkill && playerSkill ? {
+          enemy: { width: enemySkill.width, height: enemySkill.height },
+          player: { width: playerSkill.width, height: playerSkill.height },
+          widthDelta: Math.abs(enemySkill.width - playerSkill.width),
+          heightDelta: Math.abs(enemySkill.height - playerSkill.height),
+        } : null,
         horizontalOverflow: document.documentElement.scrollWidth > window.innerWidth,
       };
     });
+    if (process.env.PVP_R6_PREBATTLE_ONLY === "true") {
+      await page.screenshot({ path: `test-results/pvp-r6-prebattle-${viewport.width}x${viewport.height}.png`, fullPage: true });
+      return {
+        viewport,
+        users: { attacker: attacker.userId, defender: defender.userId },
+        renderedOpponentName,
+        topDeck,
+        preBattle: {
+          ...preBattle,
+          playerIds: preBattle.playerDeck.map((entry) => entry.id),
+          enemyIds: preBattle.enemyDeck.map((entry) => entry.id),
+        },
+      };
+    }
     await page.getByRole("button", { name: "対戦開始" }).click();
     try {
       await page.locator(".quest-battle-viewer").waitFor({ timeout: 45_000 });
@@ -216,17 +245,22 @@ try {
     assert.equal(result.topDeck.length, 5, `${result.viewport.width}: MY DECK count`);
     assert.ok(result.topDeck.every((entry) => entry.skillOverlaps === false), `${result.viewport.width}: skill overlaps portrait`);
     assert.deepEqual(result.topDeck.map((entry) => entry.id), result.preBattle.playerIds, `${result.viewport.width}: Top/Pre-Battle deck parity`);
-    assert.deepEqual(result.preBattle.playerIds, result.replay.playerIds, `${result.viewport.width}: Pre-Battle/Replay deck parity`);
+    if (result.replay) assert.deepEqual(result.preBattle.playerIds, result.replay.playerIds, `${result.viewport.width}: Pre-Battle/Replay deck parity`);
     assert.equal(result.preBattle.rarityTextCount, 0, `${result.viewport.width}: rarity text exposed`);
     assert.equal(result.preBattle.frameCount, 10, `${result.viewport.width}: canonical frame count`);
     assert.ok(result.topDeck.find((entry) => entry.id === "char_kengo_01")?.frameSrc?.includes("character-card-ssr"), `${result.viewport.width}: Kengo is not SSR framed`);
     assert.equal(result.preBattle.tacticCtaOverlap, false, `${result.viewport.width}: tactic/CTA overlap`);
+    assert.equal(result.preBattle.ctaBeforeOpponent, true, `${result.viewport.width}: CTA is not before opponent content`);
+    assert.equal(result.preBattle.ctaButtons.length, 2, `${result.viewport.width}: CTA count`);
+    assert.ok(result.preBattle.ctaButtons.every((button) => !button.disabled), `${result.viewport.width}: CTA is not tappable`);
+    assert.ok(Math.abs(result.preBattle.ctaButtons[0].left - result.preBattle.ctaButtons[1].left) <= 1 && Math.abs(result.preBattle.ctaButtons[0].width - result.preBattle.ctaButtons[1].width) <= 1, `${result.viewport.width}: CTA geometry mismatch`);
+    assert.ok(result.preBattle.skillGeometry && result.preBattle.skillGeometry.widthDelta <= 1 && result.preBattle.skillGeometry.heightDelta <= 1, `${result.viewport.width}: enemy/player skill geometry mismatch`);
     assert.equal(result.preBattle.horizontalOverflow, false, `${result.viewport.width}: horizontal overflow`);
-    assert.ok(result.hp.player?.stateBefore > result.hp.player?.stateAfter && result.hp.player?.observedDom?.hp === result.hp.player?.remainingHp, `${result.viewport.width}: player HP projection`);
-    assert.ok(result.hp.enemy?.stateBefore > result.hp.enemy?.stateAfter && result.hp.enemy?.observedDom?.hp === result.hp.enemy?.remainingHp, `${result.viewport.width}: enemy HP projection`);
-    assert.ok(result.skills.player && result.skills.enemy, `${result.viewport.width}: player/enemy skill presentation`);
-    assert.equal(result.skills.rawSkillIdCount, 0, `${result.viewport.width}: internal skill id exposed`);
-    if (process.env.PVP_R5_FAST_TRACE !== "true") {
+    if (result.hp) assert.ok(result.hp.player?.stateBefore > result.hp.player?.stateAfter && result.hp.player?.observedDom?.hp === result.hp.player?.remainingHp, `${result.viewport.width}: player HP projection`);
+    if (result.hp) assert.ok(result.hp.enemy?.stateBefore > result.hp.enemy?.stateAfter && result.hp.enemy?.observedDom?.hp === result.hp.enemy?.remainingHp, `${result.viewport.width}: enemy HP projection`);
+    if (result.skills) assert.ok(result.skills.player && result.skills.enemy, `${result.viewport.width}: player/enemy skill presentation`);
+    if (result.skills) assert.equal(result.skills.rawSkillIdCount, 0, `${result.viewport.width}: internal skill id exposed`);
+    if (result.replay && process.env.PVP_R5_FAST_TRACE !== "true") {
       assert.ok(result.defeatCount > 0 && result.renderedDefeatCount > 0, `${result.viewport.width}: defeat projection`);
     }
   }
