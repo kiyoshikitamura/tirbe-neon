@@ -75,9 +75,11 @@ test("Home re-entry keeps the previous combined visual until current Town and Le
 test("Home reveals the Town and decoded Leader as one visual on a cold load and reload", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   let delayedLeaderRequests = 0;
+  let releaseLeader: () => void = () => undefined;
+  const leaderGate = new Promise<void>((resolve) => { releaseLeader = resolve; });
   await page.route("**/characters/ageha_transparent_asset.png", async (route) => {
     delayedLeaderRequests += 1;
-    await new Promise((resolve) => setTimeout(resolve, 1600));
+    await leaderGate;
     await route.continue();
   });
 
@@ -88,6 +90,7 @@ test("Home reveals the Town and decoded Leader as one visual on a cold load and 
   await expect(page.locator(".mypage-leader-layer")).toHaveCount(0);
   expect(await visual.evaluate((node) => getComputedStyle(node).backgroundImage)).toBe("none");
 
+  releaseLeader();
   await expect(visual).toHaveAttribute("data-visual-readiness", "ready");
   await expect(page.locator(".mypage-visual-loading")).toHaveCount(0);
   await expect(page.locator(".mypage-leader-layer.is-ssr")).toBeVisible();

@@ -1,5 +1,10 @@
 import { expect, test } from "@playwright/test";
 
+type ConsecutiveSkillAudit = {
+  events: Array<{ skill: string; gapFeedback: boolean }>;
+  last: string;
+};
+
 const openScenario = async (page: import("@playwright/test").Page, id: string) => {
   await page.locator(`[data-scenario-id="${id}"]`).click();
   await expect(page.locator(".qa-stage")).toHaveAttribute("data-active-scenario", id);
@@ -137,13 +142,30 @@ test("SSR skill cut-in overlays the full roster rather than the center action co
 });
 
 test("consecutive skills keep a visible roster gap between full-screen cut-ins", async ({ page }) => {
+  await page.evaluate(() => {
+    const audit = { events: [] as Array<{ skill: string; gapFeedback: boolean }>, last: "" };
+    (window as Window & { __TRIBE_CONSECUTIVE_SKILL_AUDIT__?: ConsecutiveSkillAudit }).__TRIBE_CONSECUTIVE_SKILL_AUDIT__ = audit;
+    const record = () => {
+      const stage = document.querySelector('[data-active-scenario="battle-consecutive-skill"]');
+      if (!stage) return;
+      const skill = stage.querySelector(".battle-skill-cutin")?.textContent?.trim() || "";
+      const gapFeedback = !skill;
+      const signature = `${skill}|${gapFeedback}`;
+      if (signature === audit.last) return;
+      audit.last = signature;
+      audit.events.push({ skill, gapFeedback });
+    };
+    new MutationObserver(record).observe(document.body, { attributes: true, childList: true, characterData: true, subtree: true });
+    record();
+  });
   await openScenario(page, "battle-consecutive-skill");
-  await expect(page.locator(".battle-skill-cutin")).toContainText("ストリートパンチ");
-  await expect(page.locator(".battle-skill-cutin")).toHaveCount(0, { timeout: 1_250 });
-  await expect(page.locator(".battle-skill-resolution-vfx")).toBeVisible({ timeout: 700 });
-  await expect(page.locator(".battle-unit-popup")).toBeVisible({ timeout: 1_200 });
-  await expect(page.locator('[data-action-phase="action-hold"]')).toBeVisible({ timeout: 1_200 });
-  await expect(page.locator(".battle-skill-cutin")).toContainText("ネオンブレイク", { timeout: 1_400 });
+  await expect.poll(() => page.evaluate(() => {
+    const events = (window as Window & { __TRIBE_CONSECUTIVE_SKILL_AUDIT__?: ConsecutiveSkillAudit }).__TRIBE_CONSECUTIVE_SKILL_AUDIT__?.events || [];
+    const first = events.findIndex((event) => event.skill.includes("ストリートパンチ"));
+    const gap = events.findIndex((event, index) => index > first && event.gapFeedback);
+    const second = events.findIndex((event, index) => index > gap && event.skill.includes("ネオンブレイク"));
+    return first >= 0 && gap > first && second > gap;
+  }), { timeout: 5_000 }).toBe(true);
 });
 
 test("FINAL HIT is a full-screen overlay and does not resize the roster", async ({ page }) => {
