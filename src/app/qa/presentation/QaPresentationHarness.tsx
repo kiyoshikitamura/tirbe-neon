@@ -10,6 +10,8 @@ import HomeTab from "@/app/components/HomeTab";
 import CharacterPresentation from "@/app/components/character/CharacterPresentation";
 import PageShell from "@/app/components/ui/PageShell";
 import TypewriterText from "@/app/components/tutorial/TypewriterText";
+import { SkillDetailDialog, SkillIconGrid } from "@/app/components/skill/SkillPresentation";
+import type { SkillCardMaster } from "@/utils/skills_master_data";
 import { GameContext } from "@/app/context/GameContext";
 import { WORLD_STAGES } from "@/app/components/SetupView";
 import { QA_PRESENTATION_SCENARIOS, VISUAL_COMPLIANCE_GATE, type QaPresentationScenarioId } from "@/domain/presentation/qaHarness";
@@ -148,6 +150,16 @@ function SimpleFixture({ kind }: { kind: QaPresentationScenarioId }) {
   return null;
 }
 
+function SharedSkillFixture() {
+  const [selectedSkill, setSelectedSkill] = useState<SkillCardMaster | null>(null);
+  const ids = ["SKILL_001", "SKILL_002", "SKILL_003", "SKILL_004", "SKILL_005", "SKILL_006"];
+  return <section className="qa-card" data-shared-skill-fixture>
+    <span>SHARED SKILL PRESENTATION</span>
+    {[0, 1, 3, 6].map((count) => <div key={count} data-skill-fixture-count={count}><h2>{count} SKILL</h2><SkillIconGrid skills={ids.slice(0, count)} onSelect={setSelectedSkill} /></div>)}
+    {selectedSkill && <SkillDetailDialog skill={selectedSkill} onClose={() => setSelectedSkill(null)} />}
+  </section>;
+}
+
 type HomeScenario = "first-home-fresh" | "first-home-raid" | "first-home-guild-out" | "first-home-guild-in";
 
 function ProductionHomeFixture({ scenario }: { scenario: HomeScenario }) {
@@ -229,6 +241,7 @@ function Scenario({ id }: { id: QaPresentationScenarioId }) {
   if (id === "formation") return <SimpleFixture kind={id} />;
   if (id === "growth-before" || id === "growth-result") return <SimpleFixture kind={id} />;
   if (id === "skill-tutorial") return <SimpleFixture kind={id} />;
+  if (id === "shared-skill-presentation") return <SharedSkillFixture />;
   if (id === "gacha-standard-reveal" || id === "gacha-page") return <SimpleFixture kind={id} />;
   if (id === "name-input-error") return <NameRetryFixture />;
   if (id === "world-introduction") return <SimpleFixture kind={id} />;

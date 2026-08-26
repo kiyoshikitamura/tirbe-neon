@@ -5,6 +5,7 @@ export const QA_PRESENTATION_SCENARIOS = [
   ["gacha-standard-reveal", "Gacha R/SR Reveal"],
   ["gacha-ssr-reveal", "Gacha SSR Quote → Reveal"],
   ["skill-tutorial", "Skill Tutorial"],
+  ["shared-skill-presentation", "Shared Skill 0 / 1 / 3 / 6"],
   ["growth-before", "Growth Before"],
   ["growth-result", "Growth Result"],
   ["formation", "Formation"],
