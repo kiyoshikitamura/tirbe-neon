@@ -403,11 +403,11 @@ export default function CommonModals() {
             
             <div className="modal-body-content mt-3">
               <div className="profile-section mb-3">
-                <img
-                  src={activePlayerDetail.avatarUrl || "/reiji_transparent_asset.png"}
+                {activePlayerDetail.avatarUrl ? <img
+                  src={activePlayerDetail.avatarUrl}
                   alt=""
                   className="modal-profile-img mb-2"
-                />
+                /> : <div className="modal-profile-img modal-profile-img--empty mb-2" aria-label="プロフィール画像未設定" />}
                 <div className="font-size-9 font-weight-bold text-white">{activePlayerDetail.username}</div>
                 <div className="font-size-7 text-color-cyan mt-1">称号: {activePlayerDetail.titleName || "称号なし"}</div>
                 <div className="font-size-7 text-secondary mt-1">プレイヤーレベル: Lv.{activePlayerDetail.level}</div>
@@ -454,10 +454,13 @@ export default function CommonModals() {
                             <span className="font-size-7 text-secondary block">Lv.{char.level} (★{char.plus_val})</span>
                           </div>
                         </div>
-                        <div className="char-stats font-size-7 text-secondary text-right">
+                        {char.stats ? <div className="char-stats font-size-7 text-secondary text-right">
                           <div>HP: <span className="text-white font-weight-bold">{char.stats.hp}</span> ｜ ATK: <span className="text-white font-weight-bold">{char.stats.atk}</span></div>
                           <div>DEF: <span className="text-white font-weight-bold">{char.stats.def}</span> ｜ SPD: <span className="text-white font-weight-bold">{char.stats.spd}</span> ｜ LUK: <span className="text-white font-weight-bold">{char.stats.luk}</span></div>
-                        </div>
+                        </div> : <div className="char-stats font-size-7 text-secondary text-right">
+                          <div>総合力 <span className="text-white font-weight-bold">{Number(char.power || 0).toLocaleString()}</span></div>
+                          <div>{char.rarity || "N"}</div>
+                        </div>}
                       </div>
                     ))
                   ) : (

@@ -40,6 +40,8 @@ import TutorialWorldIntro from "./components/TutorialWorldIntro";
 import TutorialRuleGuide from "./components/TutorialRuleGuide";
 import TutorialAuthentication from "./components/TutorialAuthentication";
 import BrandedLoading from "./components/ui/BrandedLoading";
+import HomeResumeShell from "./components/HomeResumeShell";
+import { markHomeReloadStage, readHomeResumeSnapshot } from "./lib/homeResumePresentation";
 
 function AppContent() {
   const { session, authLoading, isSetupRequired, onboardingState, activeTab, showTitleView, battleState,
@@ -48,6 +50,10 @@ function AppContent() {
     globalInteractionBlocking,
     maintenanceEnabled
   } = useGame();
+  const [homeResumeSnapshot] = React.useState(() => {
+    markHomeReloadStage("reload", 0);
+    return readHomeResumeSnapshot();
+  });
   const { playBgm } = useAudio();
   const tutorialStep = onboardingState?.tutorial_step;
   const isMandatoryTutorial = Boolean(tutorialStep && tutorialStep !== "AUTHENTICATION");
@@ -74,6 +80,7 @@ function AppContent() {
   React.useEffect(() => {
     if (showTitleView) playBgm("TITLE");
     else if (battleState) playBgm("BATTLE");
+    else if (activeTab === "pvp") playBgm("PVP");
     else if (activeTab === "guild") playBgm("GUILD");
     else playBgm("HOME");
   }, [activeTab, battleState, playBgm, showTitleView]);
@@ -81,6 +88,9 @@ function AppContent() {
 
 
   if (!bootAssets.ready) {
+    if (homeResumeSnapshot && !(bootAssets.settled && bootAssets.requiredFailed)) {
+      return <HomeResumeShell snapshot={homeResumeSnapshot} />;
+    }
     return (
       <div className="app-container">
         <div className="app-loading-screen app-loading-screen--boot" role="status" aria-live="polite">
@@ -95,6 +105,10 @@ function AppContent() {
         </div>
       </div>
     );
+  }
+
+  if (authLoading && homeResumeSnapshot) {
+    return <HomeResumeShell snapshot={homeResumeSnapshot} />;
   }
 
   // 1. タイトル画面 (一番最初に表示)

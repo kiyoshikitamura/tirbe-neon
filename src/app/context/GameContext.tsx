@@ -34,6 +34,7 @@ import { beginActionPerformance } from "@/utils/actionPerformance";
 import { useAudio } from "@/audio/AudioProvider";
 import type { SeEvent } from "@/audio/audioContract";
 import { beginAssetTierMetric, finishAssetTierMetric, preloadAssetManifest } from "@/app/lib/screenAssets";
+import { clearHomeResumeSnapshot, markHomeReloadStage } from "@/app/lib/homeResumePresentation";
 import { canonicalMissionUiStatus } from "@/domain/gameplay/canonical/missions";
 import { canonicalItemName } from "@/domain/gameplay/canonical/items";
 import {
@@ -185,6 +186,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const [diamonds, setDiamonds] = useState<number>(200);
   const [vitality, setVitality] = useState<number>(100);
   const [vitalityNextRecoveryAt, setVitalityNextRecoveryAt] = useState<string | null>(null);
+  const [pvpNextRecoveryAt, setPvpNextRecoveryAt] = useState<string | null>(null);
   const [monthlyPassActive, setMonthlyPassActive] = useState<boolean>(false);
   const [monthlyPassClaimedToday, setMonthlyPassClaimedToday] = useState<boolean>(false);
 
@@ -587,6 +589,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const restoreAuthSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
+      markHomeReloadStage("authSessionReady");
       if (session) {
         setSession(session);
         lastValidatedAuthUserIdRef.current = session.user.id;
@@ -595,6 +598,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         return;
       }
       lastValidatedAuthUserIdRef.current = null;
+      clearHomeResumeSnapshot();
       setSession(null);
       setOnboardingState(null);
       setIsSetupRequired(false);
@@ -974,6 +978,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         setVitality(row.out_vitality);
         setVitalityNextRecoveryAt(row.vitality_next_recovery_at ?? null);
         setPvpPoints(row.out_pvp_points);
+        setPvpNextRecoveryAt(row.pvp_next_recovery_at ?? null);
         setRaidPoints(Number(row.out_raid_points ?? 0));
         setRaidFirstEntryFree(Boolean(row.raid_first_entry_free));
         setCash(Number(row.out_cash));
@@ -985,6 +990,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         .select("username, favorite_character_id, bio, avatar_url, sound_settings, current_base_id, daily_cash_skips_count, daily_cash_skips_reset_date, quest_free_skips_count, quest_paid_skips_count, quest_skips_reset_date, last_guild_left_at, gift_code, title_equipped, equipped_background, equipped_front_effect, selected_bg_mode, interior_item, level, xp, created_at")
         .eq("id", userId)
         .single();
+      markHomeReloadStage("profileReady");
       
       if (userProfile) {
         setUsername(userProfile.username);
@@ -1839,6 +1845,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
           setVitality(row.out_vitality);
           setVitalityNextRecoveryAt(row.vitality_next_recovery_at ?? null);
           setPvpPoints(row.out_pvp_points);
+          setPvpNextRecoveryAt(row.pvp_next_recovery_at ?? null);
           setRaidPoints(Number(row.out_raid_points ?? 0));
           setRaidFirstEntryFree(Boolean(row.raid_first_entry_free));
           setCash(Number(row.out_cash));
@@ -2316,7 +2323,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     setActivePlayerDetail({
       id: userId,
       username: "プレイヤー情報を取得中",
-      avatarUrl: "/characters/reiji_transparent_asset.png",
+      avatarUrl: null,
       bio: "公開プロフィールを取得しています。",
       level: 1,
       xp: 0,
@@ -2331,7 +2338,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       setActivePlayerDetail({
         id: publicPlayer.user_id,
         username: publicPlayer.username,
-        avatarUrl: publicPlayer.avatar_url || "/characters/reiji_transparent_asset.png",
+        avatarUrl: publicPlayer.avatar_url || null,
         bio: publicPlayer.bio || "自己紹介が未設定です。",
         level: Number(publicPlayer.level || 1),
         xp: 0,
@@ -2445,6 +2452,18 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       */
     } catch (e: any) {
       console.warn("Failed to fetch player detail:", e.message);
+      setActivePlayerDetail({
+        id: userId,
+        username: "プレイヤー情報を取得できませんでした",
+        avatarUrl: null,
+        bio: "通信状態を確認して、一覧からもう一度お試しください。",
+        level: 0,
+        xp: 0,
+        titleName: "",
+        guildId: null,
+        guildName: null,
+        party: [],
+      });
     }
   };
 
@@ -3648,6 +3667,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     cash, setCash,
     diamonds, setDiamonds,
     vitality, setVitality, vitalityNextRecoveryAt,
+    pvpNextRecoveryAt,
     pvpPoints, setPvpPoints,
     activeTab, setActiveTab,
     maintenanceEnabled: isMaintenanceEnabled(featureOperatingStates),
@@ -3873,6 +3893,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
     // ハンドラ
     startCardBattle: battle.startCardBattle,
+    confirmPreparedPvpBattle: battle.confirmPreparedPvpBattle,
+    cancelPreparedPvpBattle: battle.cancelPreparedPvpBattle,
     launchBattlePlaying: battle.launchBattlePlaying,
     skipBattlePresentation: battle.skipBattlePresentation,
     handleEndTurn: battle.handleEndTurn,

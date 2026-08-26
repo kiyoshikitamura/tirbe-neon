@@ -39,7 +39,7 @@
 @media (max-height:860px) { .battle-result-summary{gap:7px;padding-top:13px}.battle-result-summary>strong{font-size:27px}.battle-result-mvp-hero{min-height:68px}.battle-result-mvp-hero .character-presentation{height:68px}.battle-result-rewards>span{min-height:48px} }
 
 /* Phase C3 result hierarchy: opponent, outcome, hero, comparison, reward, action. */
-.battle-result-summary{position:relative;justify-items:stretch;gap:8px;width:min(94vw,410px);padding:14px 12px calc(14px + env(safe-area-inset-bottom));font-family:var(--font-ui)}
+.battle-result-summary{position:relative;box-sizing:border-box;justify-items:stretch;gap:8px;width:min(100%,410px);margin-inline:auto;padding:14px 12px calc(14px + env(safe-area-inset-bottom));font-family:var(--font-ui)}
 .battle-result-opponent{display:grid;justify-items:center;gap:2px;text-align:center;animation:battle-result-stage-in .3s ease-out .1s both}
 .battle-result-opponent small{font-family:var(--font-display);font-size:8px;letter-spacing:.2em}
 .battle-result-opponent strong{max-width:100%;overflow:hidden;color:#fff;font-size:15px;text-overflow:ellipsis;white-space:nowrap}

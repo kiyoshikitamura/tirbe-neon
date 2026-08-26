@@ -17,7 +17,7 @@ type Props = {
 export default function BattleMatchupPresentation({ playerLeader, opponentLeader, context, imageFor, acceptanceState }: Props) {
   const opponentName = context?.opponentLeaderName || opponentLeader?.name || context?.opponentLabel || "ENEMY";
   return (
-    <section className="battle-matchup" data-acceptance-state={acceptanceState} role="status" aria-label={`${context?.opponentLabel || opponentName}との対戦開始`}>
+    <section className="battle-matchup" style={context?.backgroundPath ? { "--battle-background-image": `url(${context.backgroundPath})` } as React.CSSProperties : undefined} data-acceptance-state={acceptanceState} role="status" aria-label={`${context?.opponentLabel || opponentName}との対戦開始`}>
       <div className="battle-matchup-shade" aria-hidden="true" />
       <article className="battle-matchup-leader is-player">
         <CharacterPresentation src={imageFor(playerLeader?.characterId)} alt={playerLeader?.name || "PLAYER"} variant="battle-leader" />

@@ -76,6 +76,8 @@ export type BattlePresentationContext = {
   opponentLeaderName?: string;
   opponentTotalPower?: number;
   opponentProfile?: string;
+  backgroundPath?: string;
+  backgroundLabel?: string;
 };
 export type BattleModeResultDetail = {
   resultLabel?: string;
@@ -188,6 +190,8 @@ export function useBattle(options: UseBattleOptions) {
   const [battleLoading, setBattleLoading] = useState<boolean>(false);
   const battleStartInFlightRef = useRef(false);
   const battleEndingInFlightRef = useRef(false);
+  const pendingPvpStartRef = useRef<any[] | null>(null);
+  const pvpCommitSucceededRef = useRef(false);
   const [settledPatrolEncounterId, setSettledPatrolEncounterId] = useState<string | null>(null);
   const activePatrolEncounterIdRef = useRef<string | null>(null);
   const [enemyTactic, setEnemyTactic] = useState<string>("OFFENSIVE");
@@ -331,6 +335,7 @@ export function useBattle(options: UseBattleOptions) {
     patrolNpcOverride?: any,
     patrolIdOverride?: string,
     presentationOverride?: Partial<BattlePresentationContext>,
+    prepareOnly: boolean = false,
   ) => {
     if (!session) return;
     if (mode === "PATROL" && patrolIdOverride && patrolIdOverride === settledPatrolEncounterId) return;
@@ -895,6 +900,15 @@ export function useBattle(options: UseBattleOptions) {
       }
     }
 
+    if (!loadedRealEnemy && mode === "PVP") {
+      setBattleLoading(false);
+      setBattleMode(null);
+      setBattleOpponentName("");
+      setErrorMessage("対戦相手の防衛編成を取得できませんでした。対戦相手一覧へ戻って、もう一度お試しください。");
+      pendingPvpStartRef.current = null;
+      return;
+    }
+
     if (!loadedRealEnemy) {
       if (mode === "PVP" || mode === "PVP_PRACTICE" || mode === "GVG") {
         const baseHp = mode === "GVG" ? 1400 : 1200;
@@ -1014,7 +1028,7 @@ export function useBattle(options: UseBattleOptions) {
     // Practice is deliberately client-local: it reuses the viewer and turn
     // presentation without creating an official replay, consuming PvP Point,
     // or entering any result/reward/ranking contract.
-    if (mode !== "PVP_PRACTICE") try {
+    if (mode !== "PVP_PRACTICE" && !prepareOnly) try {
       const playerSnapshot = participantsToBattleUnits(initialPlayerParty);
       const enemySnapshot = participantsToBattleUnits(initialEnemyParty);
       const replayMode = mode === "PATROL" ? "QUEST" : mode;
@@ -1068,7 +1082,10 @@ export function useBattle(options: UseBattleOptions) {
       }
       if (replayMode === "PVP" && (!replaySessionId || error)) {
         setBattleLoading(false);
-        setErrorMessage(error?.message || "PvPバトルの開始をサーバーで確定できませんでした。もう一度お試しください。");
+        const isInsufficientPoint = error?.code === "23514" || /insufficient pvp points/i.test(error?.message || "");
+        setErrorMessage(isInsufficientPoint
+          ? "PvP Pointが不足しています。回復を待ってから、もう一度お試しください。"
+          : error?.message || "PvPバトルの開始をサーバーで確定できませんでした。もう一度お試しください。");
         return;
       }
       if (replayMode === "RAID" && (!replaySessionId || error)) {
@@ -1237,6 +1254,7 @@ export function useBattle(options: UseBattleOptions) {
         setOfficialPvpEvents(events);
         setOfficialPvpEventIndex(0);
         setOfficialPvpResult(resolvedReplay);
+        pvpCommitSucceededRef.current = true;
         setPvpPoints(Number(resolvedReplay.remainingPvpPoints ?? replayCreation.data?.remaining_pvp_points ?? Math.max(0, pvpPoints - 1)));
       }
       if (replaySessionId && replayMode === "RAID") {
@@ -1295,10 +1313,12 @@ export function useBattle(options: UseBattleOptions) {
       opponentLeaderName: presentationOverride?.opponentLeaderName || opponentLeader?.name,
       opponentTotalPower: presentationOverride?.opponentTotalPower,
       opponentProfile: presentationOverride?.opponentProfile,
+      backgroundPath: presentationOverride?.backgroundPath,
+      backgroundLabel: presentationOverride?.backgroundLabel,
     };
 
     // 旧セッションは中断再開の互換用。再生UI移行後に廃止する。
-    if (mode !== "PVP_PRACTICE") try {
+    if (mode !== "PVP_PRACTICE" && !prepareOnly) try {
       const { data: sessionData } = await supabase.from("battle_sessions").insert({
         user_id: session.user.id,
         battle_type: mode,
@@ -1345,7 +1365,13 @@ export function useBattle(options: UseBattleOptions) {
     const actionPerformance = beginActionPerformance("battle_start");
     try {
       actionPerformance.mark("request_start");
-      await startCardBattleInternal(...args);
+      if (args[0] === "PVP") {
+        pendingPvpStartRef.current = args;
+        pvpCommitSucceededRef.current = false;
+        await startCardBattleInternal(...([...args.slice(0, 12), true] as unknown as Parameters<typeof startCardBattleInternal>));
+      } else {
+        await startCardBattleInternal(...args);
+      }
       actionPerformance.mark("response");
       actionPerformance.mark("state_update");
       actionPerformance.markVisualReady();
@@ -1393,6 +1419,34 @@ export function useBattle(options: UseBattleOptions) {
 
     setPlayerPartyStates(updatedPlayers);
     setBattleLog(nextLogs);
+  };
+
+  const confirmPreparedPvpBattle = async () => {
+    const pending = pendingPvpStartRef.current;
+    if (!pending || battleStartInFlightRef.current) return false;
+    battleStartInFlightRef.current = true;
+    pvpCommitSucceededRef.current = false;
+    try {
+      await startCardBattleInternal(...([...pending.slice(0, 12), false] as unknown as Parameters<typeof startCardBattleInternal>));
+      if (pvpCommitSucceededRef.current) pendingPvpStartRef.current = null;
+      return pvpCommitSucceededRef.current;
+    } finally {
+      battleStartInFlightRef.current = false;
+    }
+  };
+
+  const cancelPreparedPvpBattle = () => {
+    if (battleMode !== "PVP" || !pendingPvpStartRef.current || pvpCommitSucceededRef.current) return false;
+    pendingPvpStartRef.current = null;
+    setBattleState(null);
+    setBattleMode(null);
+    setBattleOpponentName("");
+    setBattlePresentationContext(null);
+    setPlayerPartyStates([]);
+    setEnemyPartyStates([]);
+    setTimeline([]);
+    setBattleLoading(false);
+    return true;
   };
 
   const skipBattlePresentation = () => {
@@ -2474,6 +2528,8 @@ export function useBattle(options: UseBattleOptions) {
     gvgTargetBaseId, setGvgTargetBaseId,
     battleLoading, setBattleLoading,
     startCardBattle,
+    confirmPreparedPvpBattle,
+    cancelPreparedPvpBattle,
     launchBattlePlaying,
     skipBattlePresentation,
     handleEndTurn,

@@ -7,14 +7,13 @@ import SubTabNav from "./ui/SubTabNav";
 import OutlawCard from "./ui/OutlawCard";
 import OutlawButton from "./ui/OutlawButton";
 import Badge from "./ui/Badge";
-import HeroPanel from "./ui/HeroPanel";
 import HubPage from "./ui/HubPage";
 import ScreenState from "./ui/ScreenState";
-import PeriodStatus from "./ui/PeriodStatus";
 import { useScreenReadiness } from "../hooks/useScreenReadiness";
 import { SCREEN_ASSET_MANIFESTS } from "../lib/screenManifests";
 import CharacterPresentation from "./character/CharacterPresentation";
 import { CHARACTERS_MASTER, getCharacterTransparentImg } from "@/utils/game_constants";
+import { getCharacterLocationBackground, resolveCharacterLocationKey } from "@/utils/characterVisualAssets";
 
 const tacticNames: { [key: string]: string } = {
   ATTACK_PRIORITY: "攻撃優先",
@@ -50,13 +49,18 @@ export default function PvpTab() {
     playCyberSe,
     setActiveTab,
     setRankingActiveTab,
-  setConfirmDialogConfig,
-    setGlobalInteractionBlocking,
-    pvpPoints
+    setConfirmDialogConfig,
+    pvpPoints,
+    pvpNextRecoveryAt,
+    totalPower,
+    currentBaseId,
+    selectedLeader,
   } = useGame();
 
   const [selectedDefense, setSelectedDefense] = React.useState<string[]>([]);
   const [selectedTactic, setSelectedTactic] = React.useState<string>("ATTACK_PRIORITY");
+  const [clock, setClock] = React.useState(() => Date.now());
+  const initialOpponentFetchRef = React.useRef<string | null>(null);
   const isInitialOpponentLoad = pvpSubView === "opponents" && opponentsLoading && pvpOpponents.length === 0;
   const readiness = useScreenReadiness({
     assets: SCREEN_ASSET_MANIFESTS.pvp,
@@ -76,6 +80,42 @@ export default function PvpTab() {
       setSelectedTactic(myPvpDefenseDeck.tactic || "ATTACK_PRIORITY");
     }
   }, [myPvpDefenseDeck]);
+
+  React.useEffect(() => {
+    if (pvpPoints >= 5 || !pvpNextRecoveryAt) return;
+    const timer = window.setInterval(() => setClock(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [pvpNextRecoveryAt, pvpPoints]);
+
+  React.useEffect(() => {
+    const userId = session?.user?.id;
+    if (!userId || pvpSubView !== "opponents" || opponentsLoading || pvpOpponents.length > 0) return;
+    const fetchKey = `${userId}:${pvpRate}`;
+    if (initialOpponentFetchRef.current === fetchKey) return;
+    initialOpponentFetchRef.current = fetchKey;
+    void fetchPvpOpponents(userId, pvpRate);
+  }, [fetchPvpOpponents, opponentsLoading, pvpOpponents.length, pvpRate, pvpSubView, session?.user?.id]);
+
+  const ownPvpRank = React.useMemo(() => {
+    const sorted = [...pvpRankings].sort((left: any, right: any) => Number(right.rank_points || 0) - Number(left.rank_points || 0));
+    const index = sorted.findIndex((entry: any) => entry.user_id === session?.user?.id);
+    const row = index >= 0 ? sorted[index] : null;
+    return row?.rank_position || (index >= 0 ? index + 1 : null);
+  }, [pvpRankings, session?.user?.id]);
+
+  const recoveryCountdown = React.useMemo(() => {
+    if (pvpPoints >= 5 || !pvpNextRecoveryAt) return null;
+    const remaining = Math.max(0, new Date(pvpNextRecoveryAt).getTime() - clock);
+    const seconds = Math.floor(remaining / 1000);
+    return `${String(Math.floor(seconds / 3600)).padStart(2, "0")}:${String(Math.floor((seconds % 3600) / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
+  }, [clock, pvpNextRecoveryAt, pvpPoints]);
+
+  const defenseCharactersFor = (opponent: any) => [...(opponent.defense_characters || [])]
+    .sort((left: any, right: any) => Number(left.slot || 0) - Number(right.slot || 0));
+  const playerLeaderMaster = CHARACTERS_MASTER.find((character: any) => character.id === selectedLeader);
+  const heroOpponent = pvpOpponents[0];
+  const heroOpponentLeader = heroOpponent ? defenseCharactersFor(heroOpponent)[0] : null;
+  const pvpBackgroundPath = resolveCharacterLocationKey(currentBaseId) ? getCharacterLocationBackground(currentBaseId) : undefined;
 
   const handleToggleDefenseMember = (charId: string) => {
     setSelectedDefense(prev => {
@@ -134,31 +174,22 @@ export default function PvpTab() {
       status={readiness.status}
       onRetry={readiness.retry}
     >
-        <HeroPanel className="pvp-status-hero">
-          <div className="pvp-status-heading">PvPランクポイント</div>
-          <div className="pvp-status-rate">{pvpRate.toLocaleString()} <small>pt</small></div>
-          <div className="pvp-status-meta">
-            <Badge tone={pvpPoints > 0 ? "cyan" : "warning"}>PvP Point {pvpPoints}/5</Badge>
-            <span>2時間ごとに1回復</span>
-          </div>
-        </HeroPanel>
+        <section className="pvp-hero" style={pvpBackgroundPath ? { "--pvp-hero-bg": `url(${pvpBackgroundPath})` } as React.CSSProperties : undefined} aria-label="PvP対戦">
+          <div className="pvp-hero-shade" aria-hidden="true" />
+          <CharacterPresentation className="pvp-hero-fighter is-player" src={playerLeaderMaster ? getCharacterTransparentImg(playerLeaderMaster.name) : undefined} alt={playerLeaderMaster?.jpName || "PLAYER"} variant="battle-leader" />
+          <div className="pvp-hero-title"><small>FIGHT</small><strong>喧嘩</strong><span>PVP</span></div>
+          <CharacterPresentation className="pvp-hero-fighter is-opponent" src={heroOpponentLeader?.asset_identifier || undefined} alt={heroOpponentLeader?.display_name || "OPPONENT"} variant="battle-leader" />
+        </section>
+        <section className="pvp-self-summary" aria-label="自分のPvP情報">
+          <div><small>順位</small><strong>{ownPvpRank ? `#${ownPvpRank}` : "圏外"}</strong></div>
+          <div><small>RATING</small><strong>{pvpRate.toLocaleString()}</strong></div>
+          <div><small>総合力</small><strong>{Number(totalPower || 0).toLocaleString()}</strong></div>
+        </section>
 
-        <PeriodStatus
-          label="PvP Point"
-          range="最大5 / 公式戦で1消費"
-          remaining="時間経過制"
-          cadence="2時間ごとに1回復・模擬戦は消費なし"
-        />
-
-        <OutlawCard>
-          <div className="upgrade-card-title">対戦モード</div>
-          <div className="pvp-opponent-meta">
-            <Badge tone="cyan">OFFICIAL</Badge><span>PvP Point 1・勝利 CASH 500・敗北 CASH 250・Rating変動あり</span>
-          </div>
-          <div className="pvp-opponent-meta mt-2">
-            <Badge tone="neutral">PRACTICE</Badge><span>消費・報酬・Rating・Mission進捗なし</span>
-          </div>
-        </OutlawCard>
+        <section className="pvp-point-strip" aria-label="PvP Point">
+          <div><small>PvP Point</small><strong>{pvpPoints}<span>/5</span></strong></div>
+          <span>{pvpPoints >= 5 ? "最大" : recoveryCountdown ? `次回復 ${recoveryCountdown}` : "回復時刻を同期中"}</span>
+        </section>
 
         <SubTabNav
           tabs={[
@@ -182,6 +213,12 @@ export default function PvpTab() {
                   </OutlawButton>
                 </div>
 
+                <details className="pvp-rules-help">
+                  <summary>公式戦・模擬戦のルール</summary>
+                  <p><b>公式戦</b> PvP Point 1消費・勝利 CASH 500・敗北 CASH 250・Rating変動あり</p>
+                  <p><b>模擬戦</b> 消費・報酬・Rating・Mission進捗なし</p>
+                </details>
+
                 {opponentsLoading && pvpOpponents.length === 0 ? (
                   <ScreenState kind="loading" compact />
                 ) : (
@@ -193,10 +230,11 @@ export default function PvpTab() {
                       <OutlawCard key={op.opponent_user_id} className="pvp-opponent-card">
                         <div className="pvp-opponent-copy">
                           <div className="pvp-opponent-heading"><div><div className="pvp-opponent-name">{op.opponent_username}</div><div className="pvp-opponent-guild">{op.opponent_guild_name || "無所属"}</div></div><strong>#{op.opponent_rank || "-"}</strong></div>
+                          <div className="pvp-opponent-leader"><span>LEADER</span><strong>{defenseCharactersFor(op)[0]?.display_name || "未設定"}</strong></div>
                           <div className="pvp-opponent-deck" aria-label={`${op.opponent_username}の防衛メンバー`}>
-                            {(op.defense_characters || []).map((character: any) => <CharacterPresentation
+                            {defenseCharactersFor(op).map((character: any) => <CharacterPresentation
                               key={`${op.opponent_user_id}-${character.slot}`}
-                              src={character.asset_identifier || "/characters/reiji_transparent_asset.png"}
+                              src={character.asset_identifier || undefined}
                               alt={character.display_name || "防衛キャラクター"}
                               variant="thumbnail"
                               rarity={character.rarity || "N"}
@@ -205,8 +243,9 @@ export default function PvpTab() {
                             />)}
                           </div>
                           <div className="pvp-opponent-meta">
-                            <Badge tone="cyan">{op.opponent_points} pt</Badge>
-                            <span className="pvp-opponent-power">戦力 {Number(op.opponent_power || 0).toLocaleString()}</span>
+                            <Badge tone="cyan">RATING {op.opponent_points}</Badge>
+                            <span className="pvp-opponent-power">総合力 {Number(op.opponent_power || 0).toLocaleString()}</span>
+                            <span className={`pvp-power-difference ${Number(op.opponent_power || 0) > Number(totalPower || 0) ? "is-higher" : "is-lower"}`}>総合力差 {Number(op.opponent_power || 0) - Number(totalPower || 0) >= 0 ? "+" : ""}{(Number(op.opponent_power || 0) - Number(totalPower || 0)).toLocaleString()}</span>
                             <Badge tone={op.opponent_class === "STRONGER" ? "warning" : op.opponent_class === "WEAKER" ? "neutral" : "cyan"}>{op.opponent_class === "STRONGER" ? "格上" : op.opponent_class === "WEAKER" ? "格下" : "同格"}</Badge>
                             <span>WIN +{Number(op.win_rating_delta || 0)} / LOSE {Number(op.loss_rating_delta || 0)}</span>
                             <span>作戦 {tacticNames[op.tactic] || "攻撃優先"}</span>
@@ -231,10 +270,12 @@ export default function PvpTab() {
                               opponentLeaderCharacterId: [...(op.defense_characters || [])].sort((a: any, b: any) => Number(a.slot || 0) - Number(b.slot || 0))[0]?.character_id,
                               opponentLeaderName: [...(op.defense_characters || [])].sort((a: any, b: any) => Number(a.slot || 0) - Number(b.slot || 0))[0]?.display_name,
                               opponentTotalPower: Number(op.opponent_power || 0),
+                              backgroundPath: pvpBackgroundPath,
+                              backgroundLabel: String(currentBaseId || ""),
                             }
                           )}
                         >
-                          対戦
+                          対戦する
                         </OutlawButton>
                       </OutlawCard>
                     ))}

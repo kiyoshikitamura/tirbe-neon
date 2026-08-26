@@ -1,0 +1,119 @@
+.home-resume-app {
+  background: #090c14;
+  pointer-events: none;
+}
+
+.home-resume-header {
+  display: grid;
+  grid-template-columns: 1.25fr .8fr 1fr;
+  gap: 10px;
+  min-height: 72px;
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(0, 240, 255, .22);
+  background: #090d16;
+}
+
+.home-resume-header i,
+.home-resume-activity i,
+.home-resume-cta i,
+.home-resume-banner i {
+  border-radius: 5px;
+  background: linear-gradient(105deg, rgba(37, 48, 65, .38) 30%, rgba(76, 99, 123, .46) 48%, rgba(37, 48, 65, .38) 66%);
+  background-size: 220% 100%;
+  animation: home-resume-shimmer 1.2s ease-in-out infinite;
+}
+
+.home-resume-header i { height: 18px; align-self: center; }
+
+.home-resume-content {
+  min-height: 100%;
+  overflow: hidden;
+  background: #090c14;
+}
+
+.home-resume-activity {
+  height: 36px;
+  padding: 3px 8px;
+}
+
+.home-resume-activity i { display: block; width: 100%; height: 30px; }
+
+.home-resume-visual {
+  position: relative;
+  height: 41vh;
+  min-height: 300px;
+  max-height: 460px;
+  overflow: hidden;
+  background-position: center 56%;
+  background-size: cover;
+}
+
+.home-resume-visual-veil {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(180deg, rgba(5, 8, 14, .42), rgba(9, 12, 20, .28) 62%, #090c14 100%);
+  backdrop-filter: blur(5px);
+}
+
+.home-resume-visual img {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  z-index: 2;
+  height: 86%;
+  opacity: .44;
+  object-fit: contain;
+  filter: blur(3px) saturate(.68);
+  transform: translateX(-50%);
+}
+
+.home-resume-actions {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  justify-content: space-evenly;
+  margin-top: -38px;
+  padding: 0 10px;
+}
+
+.home-resume-actions i {
+  width: 72px;
+  height: 72px;
+  border: 1px solid rgba(0, 240, 255, .18);
+  border-radius: 50%;
+  background: rgba(19, 29, 43, .82);
+}
+
+.home-resume-cta,
+.home-resume-banner { padding: 5px 12px 0; }
+.home-resume-cta i { display: block; height: 40px; }
+.home-resume-banner i { display: block; height: 56px; }
+
+.home-resume-footer {
+  display: flex;
+  min-height: 56px;
+  align-items: center;
+  justify-content: space-around;
+  border-top: 1px solid rgba(0, 240, 255, .2);
+  background: #080b12;
+}
+
+.home-resume-footer i {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(59, 74, 92, .42);
+}
+
+@keyframes home-resume-shimmer {
+  from { background-position: 140% 0; }
+  to { background-position: -50% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-resume-header i,
+  .home-resume-activity i,
+  .home-resume-cta i,
+  .home-resume-banner i { animation: none; }
+}

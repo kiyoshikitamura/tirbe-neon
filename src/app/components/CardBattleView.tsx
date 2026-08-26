@@ -9,6 +9,8 @@ import BattleResultSummary from "./battle/BattleResultSummary";
 import BattleMatchupPresentation from "./battle/BattleMatchupPresentation";
 import { preloadBattleEffects } from "./battle/BattleEffectPresentation";
 import { preloadTutorialCompletionAssets } from "../lib/tutorialCompletionAssets";
+import { CANONICAL_SKILL_VIEW } from "@/utils/skills_master_data";
+import { getCanonicalSkillIcon } from "@/utils/skillVisualAssets";
 import "./CardBattleView.css";
 
 export default function CardBattleView() {
@@ -42,6 +44,8 @@ export default function CardBattleView() {
     presentationPhase,
     authoritativeTimeline,
     launchBattlePlaying,
+    confirmPreparedPvpBattle,
+    cancelPreparedPvpBattle,
     skipBattlePresentation,
     endBattleSession,
     completeBattleResult,
@@ -56,6 +60,7 @@ export default function CardBattleView() {
 
   // SETUP画面でカードタップ時に開く閲覧専用詳細ポップアップ
   const [selectedCharDetail, setSelectedCharDetail] = useState<any | null>(null);
+  const [selectedOpponentSkill, setSelectedOpponentSkill] = useState<any | null>(null);
   const [setupLaunching, setSetupLaunching] = useState(false);
 
   const battleLaunchRef = useRef(false);
@@ -97,15 +102,26 @@ export default function CardBattleView() {
     window.setTimeout(() => launchBattlePlaying(), 1000);
   };
 
-  const launchRegularBattle = () => {
+  const launchRegularBattle = async () => {
     if (battleLaunchRef.current) return;
     battleLaunchRef.current = true;
     setSetupLaunching(true);
+    if (battleMode === "PVP") {
+      const committed = await confirmPreparedPvpBattle();
+      if (!committed) {
+        battleLaunchRef.current = false;
+        setSetupLaunching(false);
+        return;
+      }
+    }
     playSe("BATTLE_START");
     window.setTimeout(() => launchBattlePlaying(), 1000);
   };
 
   if (!battleMode || !battleState) return null;
+  const battleBackgroundStyle = battlePresentationContext?.backgroundPath
+    ? { "--battle-background-image": `url(${battlePresentationContext.backgroundPath})` } as React.CSSProperties
+    : undefined;
   const getBattleCharacterImage = (characterId: string | undefined) => {
     const master = CHARACTERS_MASTER.find((character: any) => character.id === characterId || character.name === characterId);
     return master ? getCharacterTransparentImg(master.name) : undefined;
@@ -114,7 +130,7 @@ export default function CardBattleView() {
   if (battleState === "ENDING" || battleState === "OUTCOME" || battleState === "RESULT") {
     const victory = battleOutcome === "VICTORY";
     return (
-      <div className={`battle-screen battle-ending-screen is-${battleState.toLowerCase()}`} data-battle-outcome={battleOutcome || "PENDING"} data-acceptance-state={battleState === "ENDING" ? "B5" : battleState === "RESULT" ? "B6" : undefined}>
+      <div className={`battle-screen battle-ending-screen is-${battleState.toLowerCase()}`} style={battleBackgroundStyle} data-battle-outcome={battleOutcome || "PENDING"} data-acceptance-state={battleState === "ENDING" ? "B5" : battleState === "RESULT" ? "B6" : undefined}>
         <div className="battle-ending-backdrop" aria-hidden="true" />
         {battleState === "ENDING" ? (
           <div className="battle-ending-hold" role="status" aria-label="バトル終了演出">
@@ -151,6 +167,10 @@ export default function CardBattleView() {
       return total + Number(enemy.maxHp || 0) + Number(stats.atk || 0) + Number(stats.def || 0);
     }, 0);
     const enemySkills = enemyPartyStates.flatMap((enemy: any) => enemy.skills || []);
+    const canonicalEnemySkills = Array.from(new Map(enemySkills
+      .map((skill: any) => CANONICAL_SKILL_VIEW.find((master) => master.id === skill.skill_card_id))
+      .filter(Boolean)
+      .map((skill: any) => [skill.id, skill])).values()) as any[];
     const playerPower = playerPartyStates.reduce((total: number, player: any) => total + Number(player.maxHp || 0) + Number(player.stats?.atk || 0) + Number(player.stats?.def || 0), 0);
 
     if (setupLaunching) {
@@ -181,7 +201,7 @@ export default function CardBattleView() {
 
     return (
       <div className="battle-screen" onClick={handleFirstUserInteraction}>
-        <div className={`setup-container scroll-container ${isTutorialBattle ? "tutorial-battle-setup" : ""}`}>
+        <div className={`setup-container scroll-container ${isTutorialBattle ? "tutorial-battle-setup" : ""}`} style={battleBackgroundStyle}>
           <div className="setup-title-bar">
             {isTutorialBattle ? "初回バトル準備" : "バトル準備"}
           </div>
@@ -226,9 +246,12 @@ export default function CardBattleView() {
                   {" ｜ "}防御 {enemyPartyStates.reduce((total: number, enemy: any) => total + Number(enemy.stats?.def || 0), 0).toLocaleString()}
                   {" ｜ "}速度 {enemyPartyStates.reduce((total: number, enemy: any) => total + Number(enemy.stats?.spd || 0), 0).toLocaleString()}
                 </span>
-                {enemySkills.length > 0 && (
-                  <span className="font-size-7 text-secondary">スキル {enemySkills.map((skill: any) => skill.name).join("、")}</span>
-                )}
+                {canonicalEnemySkills.length > 0 && <div className="setup-enemy-skill-grid" aria-label="対戦相手のスキル">
+                  {canonicalEnemySkills.map((skill: any) => <button type="button" key={skill.id} onClick={() => setSelectedOpponentSkill(skill)} aria-label={`${skill.name}の詳細`}>
+                    {getCanonicalSkillIcon(skill.id) ? <img src={getCanonicalSkillIcon(skill.id)} alt="" /> : <span aria-hidden="true">SK</span>}
+                    <small>{skill.name}</small>
+                  </button>)}
+                </div>}
               </div>}
             </div>
 
@@ -276,11 +299,11 @@ export default function CardBattleView() {
               </div>
               <div className="tactic-grid">
                 {[
-                  { id: "ATTACK_PRIORITY", label: "攻撃優先" },
-                  { id: "HEAL_PRIORITY", label: "回復優先" },
-                  { id: "SKILL_PRIORITY", label: "スキル優先" },
-                  { id: "BALANCED", label: "バランス" },
-                  { id: "WEAKNESS_FOCUS", label: "弱点集中" }
+                  { id: "ATTACK_PRIORITY", icon: "⚔", label: "攻撃優先", description: "攻撃スキルを優先" },
+                  { id: "HEAL_PRIORITY", icon: "✚", label: "回復優先", description: "HPの低い味方を優先" },
+                  { id: "SKILL_PRIORITY", icon: "◆", label: "スキル優先", description: "使用可能なスキルを優先" },
+                  { id: "BALANCED", icon: "◎", label: "バランス", description: "攻撃と回復を状況判断" },
+                  { id: "WEAKNESS_FOCUS", icon: "⌖", label: "弱点集中", description: "有利属性の敵を集中" }
                 ].filter(t => !isTutorialBattle || t.id === tactic).map(t => (
                   <button
                     key={t.id}
@@ -288,7 +311,7 @@ export default function CardBattleView() {
                     disabled={battleMode === "PATROL"}
                     onClick={() => { setTactic(t.id as any); playCyberSe("click"); }}
                   >
-                    {t.label}
+                    <i aria-hidden="true">{t.icon}</i><span><strong>{t.label}</strong><small>{t.description}</small></span>
                   </button>
                 ))}
               </div>
@@ -305,8 +328,14 @@ export default function CardBattleView() {
             disabled={setupLaunching}
             aria-busy={setupLaunching}
           >
-            {setupLaunching ? "BATTLE START" : battleMode === "PVP_PRACTICE" ? "模擬戦開始" : isTutorialBattle ? "BATTLE START" : "抗争開始"}
+            {setupLaunching ? "BATTLE START" : battleMode === "PVP_PRACTICE" ? "模擬戦開始" : isTutorialBattle ? "BATTLE START" : battleMode === "PVP" ? "対戦開始" : battleMode === "GVG" ? "抗争開始" : battleMode === "RAID" ? "討伐開始" : "出撃開始"}
           </button>
+          {battleMode === "PVP" && <button
+            type="button"
+            className="cancel-battle-btn semantic-cta semantic-cta--secondary"
+            disabled={setupLaunching}
+            onClick={() => { if (cancelPreparedPvpBattle()) playSe("UI_BACK"); }}
+          >対戦をやめる</button>}
         </div>
 
         {/* 閲覧用詳細ポップアップ */}
@@ -355,6 +384,22 @@ export default function CardBattleView() {
             </div>
           </div>
         )}
+        {selectedOpponentSkill && <div className="read-only-detail-modal" onClick={() => setSelectedOpponentSkill(null)}>
+          <div className="detail-modal-card skill-detail-card" onClick={(event) => event.stopPropagation()}>
+            <div className="detail-modal-header"><span>スキル詳細</span><button className="sub-btn" onClick={() => setSelectedOpponentSkill(null)}>閉じる</button></div>
+            <div className="skill-detail-hero">
+              {getCanonicalSkillIcon(selectedOpponentSkill.id) && <img src={getCanonicalSkillIcon(selectedOpponentSkill.id)} alt="" />}
+              <div><strong>{selectedOpponentSkill.name}</strong><small>{selectedOpponentSkill.effect_type === "ATTACK" ? "攻撃" : selectedOpponentSkill.effect_type === "HEAL" ? "回復" : selectedOpponentSkill.effect_type === "DEBUFF" ? "弱体" : "強化"}スキル</small></div>
+            </div>
+            <div className="skill-detail-facts">
+              <span>タイプ <b>{selectedOpponentSkill.effect_type === "ATTACK" ? "攻撃" : selectedOpponentSkill.effect_type === "HEAL" ? "回復" : selectedOpponentSkill.effect_type === "DEBUFF" ? "弱体" : "強化"}</b></span>
+              <span>対象 <b>{selectedOpponentSkill.target === "ENEMY_SINGLE" ? "敵単体" : selectedOpponentSkill.target === "ENEMY_ALL" ? "敵全体" : selectedOpponentSkill.target === "ALLY_SINGLE" ? "味方単体" : selectedOpponentSkill.target === "ALLY_ALL" ? "味方全体" : "自身"}</b></span>
+              <span>威力 <b>{Number(selectedOpponentSkill.power || 0)}%</b></span>
+              <span>再使用 <b>{selectedOpponentSkill.cooldown ? `${selectedOpponentSkill.cooldown}ラウンド` : "なし"}</b></span>
+            </div>
+            <p>{selectedOpponentSkill.effect_type === "ATTACK" ? `対象へ威力${Number(selectedOpponentSkill.power || 0)}%のダメージ。` : selectedOpponentSkill.effect_type === "HEAL" ? "対象のHPを回復します。" : selectedOpponentSkill.effect_type === "DEBUFF" ? "対象へ弱体効果を与えます。" : "対象へ強化効果を与えます。"}</p>
+          </div>
+        </div>}
       </div>
     );
   }
@@ -387,6 +432,7 @@ export default function CardBattleView() {
         skipPending={battleSkipPending}
         onSkip={skipBattlePresentation}
         onSound={() => playCyberSe("click")}
+        backgroundPath={battlePresentationContext?.backgroundPath}
         onRetreat={() => {
           setConfirmDialogConfig({
             isOpen: true,

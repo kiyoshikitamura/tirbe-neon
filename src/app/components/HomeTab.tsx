@@ -4,7 +4,13 @@ import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useGame } from "../context/GameContext";
 import { supabase } from "@/utils/supabase";
 import { resolveAvailableMyPageCreatives } from "@/domain/presentation/production_creatives";
+import { HOME_ACTION_PRESENTATION_SLOTS } from "@/domain/presentation/homeActionPresentation";
 import { isDestinationAvailable } from "@/domain/operations/operations";
+import {
+  markHomeReloadStage,
+  readHomeResumeSnapshot,
+  writeHomeResumeSnapshot,
+} from "../lib/homeResumePresentation";
 
 import {
   PROFILE_BACKGROUNDS,
@@ -15,6 +21,39 @@ import {
 import "./HomeTab.css";
 
 const PRODUCTION_MY_PAGE_CREATIVES = resolveAvailableMyPageCreatives();
+const homeVisualAssetPromises = new Map<string, Promise<boolean>>();
+
+function preloadAndDecodeHomeImage(src: string, timeoutMs = 8000): Promise<boolean> {
+  if (typeof window === "undefined") return Promise.resolve(true);
+  const cached = homeVisualAssetPromises.get(src);
+  if (cached) return cached;
+
+  const promise = new Promise<boolean>((resolve) => {
+    const image = new Image();
+    let settled = false;
+    const finish = (loaded: boolean) => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timer);
+      resolve(loaded);
+    };
+    const decode = () => {
+      if (typeof image.decode !== "function") {
+        finish(image.naturalWidth > 0);
+        return;
+      }
+      void image.decode().then(() => finish(image.naturalWidth > 0)).catch(() => finish(image.naturalWidth > 0));
+    };
+    const timer = window.setTimeout(() => finish(false), timeoutMs);
+    image.onload = decode;
+    image.onerror = () => finish(false);
+    image.src = src;
+    if (image.complete && image.naturalWidth > 0) decode();
+  });
+
+  homeVisualAssetPromises.set(src, promise);
+  return promise;
+}
 
 type HomeTabQaState = Readonly<{
   socialActivities?: readonly any[];
@@ -186,6 +225,42 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
     if (foundBg?.img) bgUrl = foundBg.img;
   }
 
+  const visualAssetKey = leaderImgUrl ? `${bgUrl}|${leaderImgUrl}` : null;
+  const [resumeVisualSnapshot] = useState(readHomeResumeSnapshot);
+  const [readyVisualAssetKey, setReadyVisualAssetKey] = useState<string | null>(null);
+  const visualReady = visualAssetKey !== null && readyVisualAssetKey === visualAssetKey;
+
+  useEffect(() => {
+    markHomeReloadStage("homeShellReady");
+  }, []);
+
+  useEffect(() => {
+    if (!visualAssetKey || !leaderImgUrl) return;
+    let active = true;
+    const townReady = preloadAndDecodeHomeImage(bgUrl).then((loaded) => {
+      if (loaded) markHomeReloadStage("townImageDecoded");
+      return loaded;
+    });
+    const leaderReady = preloadAndDecodeHomeImage(leaderImgUrl).then((loaded) => {
+      if (loaded) markHomeReloadStage("leaderImageDecoded");
+      return loaded;
+    });
+    void Promise.all([townReady, leaderReady]).then(() => {
+      if (active) setReadyVisualAssetKey(visualAssetKey);
+    });
+    return () => {
+      active = false;
+    };
+  }, [bgUrl, leaderImgUrl, visualAssetKey]);
+
+  useEffect(() => {
+    if (!visualReady || !leaderImgUrl || !leaderMaster) return;
+    markHomeReloadStage("homeVisualReady");
+    if (session?.user?.id) {
+      writeHomeResumeSnapshot({ backgroundUrl: bgUrl, leaderImageUrl: leaderImgUrl, leaderName: leaderMaster.name });
+    }
+  }, [bgUrl, leaderImgUrl, leaderMaster, session?.user?.id, visualReady]);
+
   // チャットプレビュー最新1行
   const latestMessage = (guildChats || []).length > 0 ? guildChats[guildChats.length - 1] : null;
   const unreadChatCount = Number(chatUnreadCounts?.GLOBAL || 0) + Number(chatUnreadCounts?.GUILD || 0);
@@ -273,16 +348,27 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
 
   return (
     <div className="mypage-view">
+      <button className={`mypage-live-ticker mypage-live-ticker--visual ${homeEventState} active-scale-effect`} onClick={() => { latestTicker.onClick(); playCyberSe("click"); }}>
+        <span className="mypage-live-ticker-label">ACTIVITY</span>
+        <span className="mypage-live-ticker-icon" aria-hidden="true">◆</span>
+        <span className="mypage-live-ticker-text">{latestTicker.text}</span>
+        <span className="mypage-live-ticker-arrow" aria-hidden="true">›</span>
+      </button>
+
       {/* 1. ビジュアルエリア (50vh 固定) */}
-      <div key={bgUrl} className={`mypage-visual-area mypage-background-enter mypage-event-${homeEventState}`} style={{ backgroundImage: `url(${bgUrl})` }}>
+      <div
+        key={visualAssetKey || bgUrl}
+        className={`mypage-visual-area ${visualReady ? "is-ready mypage-background-enter" : `is-preparing ${resumeVisualSnapshot ? "has-resume-snapshot" : ""}`} mypage-event-${homeEventState}`}
+        style={{ backgroundImage: visualReady ? `url(${bgUrl})` : resumeVisualSnapshot ? `url(${resumeVisualSnapshot.backgroundUrl})` : "none" }}
+        data-visual-readiness={visualReady ? "ready" : "preparing"}
+        aria-busy={!visualReady}
+      >
+        {!visualReady && <div className="mypage-visual-loading" aria-label="リーダーを準備中">
+          {resumeVisualSnapshot && <img className="mypage-visual-loading-leader" src={resumeVisualSnapshot.leaderImageUrl} alt="" aria-hidden="true" />}
+          <span />
+        </div>}
         {/* 背景グラデーションオーバーレイ */}
         <div className="mypage-visual-overlay" />
-        <button className={`mypage-live-ticker mypage-live-ticker--visual ${homeEventState} active-scale-effect`} onClick={() => { latestTicker.onClick(); playCyberSe("click"); }}>
-          <span className="mypage-live-ticker-label">ACTIVITY</span>
-          <span className="mypage-live-ticker-icon" aria-hidden="true">◆</span>
-          <span className="mypage-live-ticker-text">{latestTicker.text}</span>
-          <span className="mypage-live-ticker-arrow" aria-hidden="true">›</span>
-        </button>
 
         {/* 最上段HUD (拠点情報オーバーレイ) */}
         <div className="mypage-base-overlay">
@@ -298,34 +384,36 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
             拠点移動
           </button>
         </div>
-        {homeEventState !== "calm" && (
-          <button
-            className={`mypage-event-chip ${homeEventState} active-scale-effect`}
-            onClick={() => { navigateTab("raid"); playCyberSe("click"); }}
-          >
-            ⚠ レイド開催中
-          </button>
-        )}
+        <div className="mypage-secondary-hud">
+          {homeEventState !== "calm" && (
+            <button
+              className={`mypage-event-chip ${homeEventState} active-scale-effect`}
+              onClick={() => { navigateTab("raid"); playCyberSe("click"); }}
+            >
+              ⚠ レイド開催中
+            </button>
+          )}
 
-        {/* 総合力 表示パネル (最上段下中央・透過グレー) */}
-        <div
-          className="mypage-power-panel active-scale-effect"
-          role="button"
-          tabIndex={0}
-          aria-label="総合力ランキングを開く"
-          onClick={() => { navigateTab("ranking"); playCyberSe("click"); }}
-          onKeyDown={(event) => {
-            if (event.key === "Enter" || event.key === " ") {
-              navigateTab("ranking");
-              playCyberSe("click");
-            }
-          }}
-        >
-          <span className="mypage-power-label">総合力</span>
-          <span className={`mypage-power-val${totalPowerLoading ? " is-loading" : ""}`}>
-            {totalPowerLoading ? "—" : totalPower.toLocaleString()}
-          </span>
-          <span className="mypage-power-rank-link">RANK</span>
+          {/* 総合力 表示パネル (HUD 2段目右) */}
+          <div
+            className="mypage-power-panel active-scale-effect"
+            role="button"
+            tabIndex={0}
+            aria-label="総合力ランキングを開く"
+            onClick={() => { navigateTab("ranking"); playCyberSe("click"); }}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                navigateTab("ranking");
+                playCyberSe("click");
+              }
+            }}
+          >
+            <span className="mypage-power-label">総合力</span>
+            <span className={`mypage-power-val${totalPowerLoading ? " is-loading" : ""}`}>
+              {totalPowerLoading ? "—" : totalPower.toLocaleString()}
+            </span>
+            <span className="mypage-power-rank-link">RANK</span>
+          </div>
         </div>
 
         {/* 左側小アイコン群 (動的配列レンダリング) */}
@@ -370,9 +458,9 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
         )}
 
         {/* 層構造装飾: z-3 リーダー立ち絵キャラクター */}
-        {leaderMaster && leaderImgUrl && <>
+        {visualReady && leaderMaster && leaderImgUrl && <>
           <div className={`mypage-leader-layer ${isSsrLeader ? "is-ssr" : ""}`}>
-            <img src={leaderImgUrl} alt={leaderMaster.name} className="mypage-leader-img" />
+            <img src={leaderImgUrl} alt={leaderMaster.name} className="mypage-leader-img" loading="eager" decoding="async" />
           </div>
           <button className="mypage-leader-tap-target" onClick={handleLeaderTap} aria-label="リーダーに話しかける" />
         </>}
@@ -394,33 +482,25 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
       </div>
 
       {/* 2. 丸型漢字メニューボタン (4個均等配置・ネガティブマージン -48px 重ね配置) */}
-      <div className="mypage-circle-menu-area">
-        <button
-          className="circle-menu-btn allies active-scale-effect"
-          onClick={() => { navigateTab("guild"); playCyberSe("click"); }}
-        >
-          <img src="/menu/menu_allies.png" alt="連合" className="circle-menu-img" />
-        </button>
-
-        <button
-          className="circle-menu-btn fight active-scale-effect"
-          onClick={() => { navigateTab("pvp"); playCyberSe("click"); }}
-        >
-          <img src="/menu/menu_fight.png" alt="喧嘩" className="circle-menu-img" />
-        </button>
-
-        <button
-          className="circle-menu-btn conquest active-scale-effect"
-          onClick={() => { navigateTab("patrol"); playCyberSe("click"); }}
-        >
-          <img src="/menu/menu_conquest.png" alt="制圧" className="circle-menu-img" />
-          {completedPatrolsCount > 0 && <span className="circle-menu-alert-badge">{completedPatrolsCount}</span>}
-        </button>
-
-        <button className="circle-menu-btn upcoming" disabled aria-label="抗争は準備中です">
-          <span className="circle-menu-upcoming-mark">抗争<small>準備中</small></span>
-        </button>
-
+      <div className="mypage-circle-menu-area" data-home-action-assets="pending-production-delivery">
+        {HOME_ACTION_PRESENTATION_SLOTS.map((action) => {
+          const upcoming = action.exposure === "UPCOMING";
+          return (
+            <button
+              key={action.id}
+              className={`circle-menu-btn ${action.id} ${upcoming ? "upcoming" : "active-scale-effect"}`}
+              disabled={upcoming}
+              aria-label={upcoming ? `${action.label}は準備中です` : action.label}
+              data-action-slot={action.id}
+              data-asset-delivery={action.deliveryStatus.toLowerCase()}
+              onClick={upcoming ? undefined : () => { if (action.destination) navigateTab(action.destination); playCyberSe("click"); }}
+            >
+              <img src={action.assetPath} alt="" className="circle-menu-img" aria-hidden="true" />
+              {action.id === "conquest" && completedPatrolsCount > 0 && <span className="circle-menu-alert-badge">{completedPatrolsCount}</span>}
+              {upcoming && <span className="circle-menu-state-overlay">準備中</span>}
+            </button>
+          );
+        })}
       </div>
 
       <div className="mypage-lower-content">
