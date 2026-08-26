@@ -162,7 +162,8 @@ function SharedSkillFixture() {
 }
 
 function PublicProfileFixture() {
-  return <GameContext.Provider value={{ playCyberSe: () => undefined } as any}><PublicUserProfile profile={{
+  const [open, setOpen] = useState(true);
+  return <GameContext.Provider value={{ playCyberSe: () => undefined } as any}>{open ? <PublicUserProfile profile={{
     id: "qa-public-user",
     status: "ready",
     username: "NEON-RIVAL",
@@ -175,7 +176,7 @@ function PublicProfileFixture() {
     totalPower: 83146,
     dailyPvpRank: 7,
     party: enemyParty.map((entry) => ({ characterId: entry.characterId, name: entry.name, level: entry.level, rarity: entry.rarity })),
-  }} currentUserId="qa-self" onClose={() => undefined} onRetry={() => undefined} onDm={() => undefined} /></GameContext.Provider>;
+  }} currentUserId="qa-self" onClose={() => setOpen(false)} onRetry={() => undefined} onDm={() => undefined} /> : <button type="button" onClick={() => setOpen(true)}>公開プロフィールを開く</button>}</GameContext.Provider>;
 }
 
 type HomeScenario = "first-home-fresh" | "first-home-raid" | "first-home-guild-out" | "first-home-guild-in";

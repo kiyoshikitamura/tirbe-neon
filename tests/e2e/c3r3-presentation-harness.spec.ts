@@ -272,6 +272,28 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 412, height: 915 }
 }
 
 for (const viewport of [{ width: 390, height: 844 }, { width: 412, height: 915 }]) {
+  test(`public profile follows canonical mobile dialog contract at ${viewport.width}px`, async ({ page }) => {
+    await page.setViewportSize(viewport);
+    await openScenario(page, "public-user-profile");
+    const dialog = page.locator(".canonical-dialog");
+    await expect(dialog).toBeVisible();
+    const box = await dialog.boundingBox();
+    expect(box).not.toBeNull();
+    expect(box!.x).toBeGreaterThanOrEqual(0);
+    expect(box!.x + box!.width).toBeLessThanOrEqual(viewport.width + 1);
+    expect(Math.abs(box!.x - (viewport.width - box!.x - box!.width))).toBeLessThanOrEqual(2);
+    await expect(dialog.getByText("NEON-RIVAL", { exact: true })).toBeVisible();
+    await expect(dialog.getByText("自己紹介", { exact: true })).toBeVisible();
+    await expect(dialog.locator(".public-profile-deck .character-presentation")).toHaveCount(5);
+    await expect(dialog.getByText("DMを送る", { exact: true })).toBeVisible();
+    await expect(dialog).not.toContainText("プレイヤープロフィール");
+    await expect(dialog).not.toContainText("ユーザー経験値");
+    await expect(dialog).not.toContainText("半グレの首領");
+    await dialog.getByRole("button", { name: "閉じる" }).click();
+    await expect(dialog).toBeHidden();
+    await expect(page.getByRole("button", { name: "公開プロフィールを開く" })).toBeVisible();
+  });
+
   test(`tutorial primary actions and growth result remain mobile-centered at ${viewport.width}px`, async ({ page }) => {
     await page.setViewportSize(viewport);
     for (const scenario of ["skill-tutorial", "growth-before"] as const) {
