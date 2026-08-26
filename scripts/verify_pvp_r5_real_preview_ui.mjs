@@ -72,7 +72,7 @@ async function runViewport(viewport) {
   const page = await context.newPage();
   let opponentRpcRequestCount = 0;
   page.on("request", (request) => {
-    if (request.url().includes("/rest/v1/rpc/get_pvp_opponents")) opponentRpcRequestCount += 1;
+    if (request.method() === "POST" && request.url().includes("/rest/v1/rpc/get_pvp_opponents")) opponentRpcRequestCount += 1;
   });
   page.on("console", (message) => { if (message.type() === "error") console.error(`BROWSER ${message.text()}`); });
   const storageKey = `sb-${PREVIEW_REF}-auth-token`;
