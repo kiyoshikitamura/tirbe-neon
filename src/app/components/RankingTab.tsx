@@ -327,8 +327,9 @@ export default function RankingTab() {
       const idx = sortedPvpRankings.findIndex((p: any) => p.user_id === myId);
       if (idx !== -1) {
         const val = activeSubTab === "daily" ? `${sortedPvpRankings[idx].daily_wins} 勝` : `${sortedPvpRankings[idx].rank_points} pt`;
+        const serverRank = Number(sortedPvpRankings[idx].rank_position);
         return {
-          rank: `${idx + 1}位`,
+          rank: Number.isFinite(serverRank) && serverRank > 0 ? `${serverRank}位` : "圏外",
           score: val
         };
       }
@@ -559,9 +560,11 @@ export default function RankingTab() {
         {activeTab === "pvp" && (
           <div className="list-container">
             {sortedPvpRankings.length > 0 ? (
-              sortedPvpRankings.map((item: any, idx: number) => {
+              sortedPvpRankings.map((item: any) => {
                 const guildName = item.users?.guild_members?.[0]?.guilds?.name || "無所属";
                 const power = effectivePowerRankings.find((entry: any) => entry.user_id === item.user_id)?.current_power;
+                const serverRank = Number(item.rank_position);
+                const displayRank = Number.isFinite(serverRank) && serverRank > 0 ? serverRank : null;
                 return (
                 <div
                   key={item.user_id}
@@ -569,7 +572,7 @@ export default function RankingTab() {
                   onClick={() => openPlayerFromRanking(item.user_id, "pvp_player")}
                 >
                   <div className="item-left flex items-center gap-3">
-                    <span className={`rank-badge rank-${idx + 1}`}>{idx + 1}</span>
+                    <span className={`rank-badge ${displayRank ? `rank-${displayRank}` : "rank-unranked"}`}>{displayRank ?? "—"}</span>
                     <div className="flex-column"><span className="item-title font-weight-bold">{item.users?.username || "名無しの極道"}</span><span className="item-desc font-size-7 text-secondary">{guildName} ・ 戦力 {Number(power || 0).toLocaleString()}</span></div>
                   </div>
                   <span className="font-weight-bold text-color-cyan font-size-9">

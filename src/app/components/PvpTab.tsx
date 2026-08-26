@@ -14,6 +14,7 @@ import { SCREEN_ASSET_MANIFESTS } from "../lib/screenManifests";
 import CharacterPresentation from "./character/CharacterPresentation";
 import { CHARACTERS_MASTER, getCharacterTransparentImg } from "@/utils/game_constants";
 import { getCharacterLocationBackground, resolveCharacterLocationKey } from "@/utils/characterVisualAssets";
+import { supabase } from "@/utils/supabase";
 import PvpDeckPresentation from "./pvp/PvpDeckPresentation";
 
 const tacticNames: { [key: string]: string } = {
@@ -45,6 +46,7 @@ export default function PvpTab() {
     userSkillsList,
     startCardBattle,
     pvpRankings,
+    setPvpRankings,
     triggerNpcDefenseSimulation,
     simulatingDefense,
     pvpDefenseLogs,
@@ -64,6 +66,9 @@ export default function PvpTab() {
   const [selectedTactic, setSelectedTactic] = React.useState<string>("ATTACK_PRIORITY");
   const [clock, setClock] = React.useState(() => Date.now());
   const initialOpponentFetchRef = React.useRef<string | null>(null);
+  const rankingAuthorityKey = `${session?.user?.id || "signed-out"}:${pvpRate}`;
+  const [rankingAuthority, setRankingAuthority] = React.useState<{ key: string; standing: { rankPosition: number; rankPoints: number } | null } | null>(null);
+  const ownPvpStanding = rankingAuthority?.key === rankingAuthorityKey ? rankingAuthority.standing : undefined;
   const isInitialOpponentLoad = pvpSubView === "opponents" && opponentsLoading && pvpOpponents.length === 0;
   const readiness = useScreenReadiness({
     assets: SCREEN_ASSET_MANIFESTS.pvp,
@@ -92,19 +97,38 @@ export default function PvpTab() {
 
   React.useEffect(() => {
     const userId = session?.user?.id;
+    if (!userId) return;
+    let cancelled = false;
+    void supabase.rpc("get_public_pvp_rankings", { p_daily: false, p_limit: 100, p_offset: 0 }).then(({ data, error }) => {
+      if (cancelled || error || !Array.isArray(data)) return;
+      const rows = data.map((row: any) => ({
+        ...row,
+        users: { username: row.username, avatar_url: row.avatar_url, guild_members: row.guild_id ? [{ guild_id: row.guild_id, guilds: row.guild_name ? { name: row.guild_name } : null }] : [] },
+      }));
+      setPvpRankings(rows);
+      const ownRow = rows.find((row: any) => row.user_id === userId);
+      setRankingAuthority({
+        key: rankingAuthorityKey,
+        standing: ownRow ? {
+          rankPosition: Number(ownRow.rank_position),
+          rankPoints: Number(ownRow.rank_points),
+        } : null,
+      });
+    });
+    return () => { cancelled = true; };
+  }, [rankingAuthorityKey, session?.user?.id, setPvpRankings]);
+
+  React.useEffect(() => {
+    const userId = session?.user?.id;
     if (!userId || pvpSubView !== "opponents" || opponentsLoading || pvpOpponents.length > 0) return;
-    const fetchKey = `${userId}:${pvpRate}`;
+    const currentRate = ownPvpStanding?.rankPoints ?? pvpRate;
+    const fetchKey = `${userId}:${currentRate}`;
     if (initialOpponentFetchRef.current === fetchKey) return;
     initialOpponentFetchRef.current = fetchKey;
-    void fetchPvpOpponents(userId, pvpRate);
-  }, [fetchPvpOpponents, opponentsLoading, pvpOpponents.length, pvpRate, pvpSubView, session?.user?.id]);
+    void fetchPvpOpponents(userId, currentRate);
+  }, [fetchPvpOpponents, opponentsLoading, ownPvpStanding?.rankPoints, pvpOpponents.length, pvpRate, pvpSubView, session?.user?.id]);
 
-  const ownPvpRank = React.useMemo(() => {
-    const sorted = [...pvpRankings].sort((left: any, right: any) => Number(right.rank_points || 0) - Number(left.rank_points || 0));
-    const index = sorted.findIndex((entry: any) => entry.user_id === session?.user?.id);
-    const row = index >= 0 ? sorted[index] : null;
-    return row?.rank_position || (index >= 0 ? index + 1 : null);
-  }, [pvpRankings, session?.user?.id]);
+  const displayedPvpRate = ownPvpStanding?.rankPoints ?? pvpRate;
 
   const recoveryCountdown = React.useMemo(() => {
     if (pvpPoints >= 5 || !pvpNextRecoveryAt) return null;
@@ -161,10 +185,10 @@ export default function PvpTab() {
     await savePvpDefenseDeck(selectedDefense, selectedTactic);
   };
 
-  const handleRefreshOpponents = () => {
+  const handleRefreshOpponents = async () => {
     playCyberSe("click");
     if (session?.user?.id) {
-      fetchPvpOpponents(session.user.id, pvpRate);
+      await fetchPvpOpponents(session.user.id, displayedPvpRate);
     }
   };
 
@@ -192,8 +216,8 @@ export default function PvpTab() {
           <CharacterPresentation className="pvp-hero-fighter is-opponent" src={heroOpponentLeader?.asset_identifier || undefined} alt={heroOpponentLeader?.display_name || "OPPONENT"} variant="battle-leader" />
         </section>
         <section className="pvp-self-summary" aria-label="自分のPvP情報">
-          <div><small>順位</small><strong>{ownPvpRank ? `#${ownPvpRank}` : "圏外"}</strong></div>
-          <div><small>RATE</small><strong>{pvpRate.toLocaleString()}</strong></div>
+          <div><small>順位</small><strong>{ownPvpStanding === undefined ? "—" : ownPvpStanding ? `#${ownPvpStanding.rankPosition}` : "圏外"}</strong></div>
+          <div><small>RATE</small><strong>{displayedPvpRate.toLocaleString()}</strong></div>
           <div><small>BP</small><strong>{pvpPoints}<span>/5</span></strong></div>
         </section>
 
@@ -247,7 +271,7 @@ export default function PvpTab() {
                       <ScreenState kind="empty" compact title="対戦相手が見つかりません" message="時間を置いて更新してください。" />
                     )}
                     {pvpOpponents.map((op: any) => (
-                      <OutlawCard key={op.opponent_user_id} className="pvp-opponent-card">
+                      <OutlawCard key={op.opponent_user_id} className="pvp-opponent-card" data-opponent-user-id={op.opponent_user_id}>
                         <div className="pvp-opponent-copy">
                           <div className="pvp-opponent-heading"><div><div className="pvp-opponent-name">{op.opponent_username}</div><div className="pvp-opponent-guild">{op.opponent_guild_name || "無所属"}</div></div><strong>{op.opponent_rank ? `順位 ${op.opponent_rank}位` : "順位 圏外"}</strong></div>
                           <div className="pvp-opponent-leader"><span>LEADER</span><strong>{defenseCharactersFor(op)[0]?.display_name || "未設定"}</strong></div>

@@ -105,6 +105,8 @@ test("M9-V0 main cycle presents growth, mission, PvP, ranking, raid and guild di
 
   await page.locator(".circle-menu-btn.fight").click();
   await expect(page.locator(".pvp-hero")).toBeVisible();
+  await expect(page.locator(".pvp-self-summary > div").first().locator("strong")).not.toHaveText("—");
+  const pvpTopRank = (await page.locator(".pvp-self-summary > div").first().locator("strong").textContent())?.replace("#", "");
   await expect(page.locator(".pvp-self-summary")).toContainText("順位");
   await expect(page.locator(".pvp-self-summary")).toContainText("RATE");
   await expect(page.locator(".pvp-self-summary")).toContainText("BP");
@@ -120,6 +122,7 @@ test("M9-V0 main cycle presents growth, mission, PvP, ranking, raid and guild di
   await mobileFramePass(page, ".pvp-view", "pvp");
   await page.getByRole("button", { name: "ランキング", exact: true }).click();
   await expect(page.locator(".ranking-hero-copy")).toContainText("あなたの現在地");
+  await expect(page.locator(".ranking-hero-copy strong")).toHaveText(`${pvpTopRank}位`);
   await expect(page.getByRole("button", { name: "PvPへ戻る" })).toBeVisible();
   await page.locator(".ranking-tab-view .clickable-item").first().click();
   await expect(page.locator(".modal-card").getByText("街の強敵A", { exact: true })).toBeVisible();

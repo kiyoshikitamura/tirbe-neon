@@ -61,9 +61,19 @@ async function runViewport(viewport) {
   if (directOpponents.error) throw directOpponents.error;
   if (!Array.isArray(directOpponents.data) || directOpponents.data.length === 0) throw new Error("Preview QA opponent projection is empty");
   console.error(`R5 direct Preview opponents=${directOpponents.data.length} first=${directOpponents.data[0].opponent_username}`);
+  const { data: rankingRows, error: rankingError } = await attacker.client.rpc("get_public_pvp_rankings", { p_daily: false, p_limit: 100, p_offset: 0 });
+  if (rankingError) throw rankingError;
+  const ownRanking = rankingRows.find((row) => row.user_id === attacker.userId);
+  if (!ownRanking) throw new Error("Preview QA user is missing from public PvP ranking");
+  const { count: candidatePopulation, error: populationError } = await admin.from("pvp_defense_decks").select("user_id", { count: "exact", head: true }).not("character_1_id", "is", null).neq("user_id", attacker.userId);
+  if (populationError) throw populationError;
   const browser = await chromium.launch({ headless: true });
   const context = await browser.newContext({ viewport, reducedMotion: "no-preference" });
   const page = await context.newPage();
+  let opponentRpcRequestCount = 0;
+  page.on("request", (request) => {
+    if (request.url().includes("/rest/v1/rpc/get_pvp_opponents")) opponentRpcRequestCount += 1;
+  });
   page.on("console", (message) => { if (message.type() === "error") console.error(`BROWSER ${message.text()}`); });
   const storageKey = `sb-${PREVIEW_REF}-auth-token`;
   await page.addInitScript(({ storageKey, session }) => {
@@ -110,6 +120,39 @@ async function runViewport(viewport) {
       if (await refresh.isVisible().catch(() => false)) await refresh.click();
     }
     await firstOpponentCard.waitFor({ timeout: 30_000 });
+
+    await page.waitForFunction(() => document.querySelector(".pvp-self-summary > div strong")?.textContent?.trim() !== "—");
+    const beforeOpponentIds = await page.locator(".pvp-opponent-card").evaluateAll((nodes) => nodes.map((node) => node.getAttribute("data-opponent-user-id")));
+    const pvpTopRank = (await page.locator(".pvp-self-summary > div").first().locator("strong").textContent())?.trim() || "";
+    const requestsBeforeRefresh = opponentRpcRequestCount;
+    const refreshResponsePromise = page.waitForResponse((response) => response.url().includes("/rest/v1/rpc/get_pvp_opponents") && response.request().method() === "POST", { timeout: 20_000 });
+    await page.getByRole("button", { name: "更新", exact: true }).click();
+    const refreshResponse = await refreshResponsePromise;
+    const refreshPayload = await refreshResponse.json();
+    await page.getByRole("button", { name: "更新", exact: true }).waitFor({ state: "visible" });
+    await page.waitForFunction(() => [...document.querySelectorAll("button")].some((button) => button.textContent?.trim() === "更新" && button.getAttribute("aria-busy") === "false"));
+    const afterOpponentIds = await page.locator(".pvp-opponent-card").evaluateAll((nodes) => nodes.map((node) => node.getAttribute("data-opponent-user-id")));
+    const refreshTrace = {
+      candidatePopulation,
+      requestCount: opponentRpcRequestCount - requestsBeforeRefresh,
+      beforeOpponentIds,
+      responseOpponentIds: Array.isArray(refreshPayload) ? refreshPayload.map((entry) => entry.opponent_user_id) : [],
+      afterOpponentIds,
+    };
+
+    if (process.env.PVP_R7_TOP_ONLY === "true") {
+      await page.getByRole("button", { name: "ランキング", exact: true }).click();
+      await page.locator(".ranking-tab-view").waitFor({ timeout: 20_000 });
+      await page.waitForFunction((expected) => document.querySelector(".ranking-hero-copy strong")?.textContent?.trim() === expected, `${Number(ownRanking.rank_position)}位`, { timeout: 20_000 });
+      const rankingDisplay = (await page.locator(".ranking-hero-copy strong").textContent())?.trim() || "";
+      await page.screenshot({ path: `test-results/pvp-r7-top-${viewport.width}x${viewport.height}.png`, fullPage: true });
+      return {
+        viewport,
+        users: { attacker: attacker.userId, defender: defender.userId },
+        rank: { server: Number(ownRanking.rank_position), pvpTop: pvpTopRank, ranking: rankingDisplay },
+        refresh: refreshTrace,
+      };
+    }
 
     await page.waitForFunction(() => document.querySelectorAll(".pvp-my-deck .pvp-deck-member").length === 5, null, { timeout: 20_000 });
     const topDeck = await page.locator(".pvp-my-deck .pvp-deck-member").evaluateAll((nodes) => nodes.map((node) => ({
@@ -242,6 +285,13 @@ try {
   const results = [];
   for (const viewport of requested) results.push(await runViewport(viewport));
   for (const result of results) {
+    if (result.rank) {
+      assert.equal(result.rank.pvpTop, `#${result.rank.server}`, `${result.viewport.width}: PvP Top rank authority`);
+      assert.equal(result.rank.ranking, `${result.rank.server}位`, `${result.viewport.width}: Ranking rank authority`);
+      assert.equal(result.refresh.requestCount, 1, `${result.viewport.width}: refresh RPC request count`);
+      assert.deepEqual(result.refresh.afterOpponentIds, result.refresh.responseOpponentIds, `${result.viewport.width}: refresh response/DOM parity`);
+      continue;
+    }
     assert.equal(result.topDeck.length, 5, `${result.viewport.width}: MY DECK count`);
     assert.ok(result.topDeck.every((entry) => entry.skillOverlaps === false), `${result.viewport.width}: skill overlaps portrait`);
     assert.deepEqual(result.topDeck.map((entry) => entry.id), result.preBattle.playerIds, `${result.viewport.width}: Top/Pre-Battle deck parity`);
