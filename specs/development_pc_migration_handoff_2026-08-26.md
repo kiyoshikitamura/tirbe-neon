@@ -144,7 +144,7 @@ Battleのauthoritative Replay contract、Server Authorityを変更しない。Cl
 | Asset参照 | PASS | 移行Assetのhashとbuildを確認 |
 | production creative verification | PASS | 移行統合時に実行済み |
 | typecheck | PASS | 移行統合時および開発開始判定時に実行済み |
-| lint | PASS WITH WARNINGS | エラー0、既存warning 1,336件。移行PRではcleanupしない |
+| lint | PASS WITH WARNINGS | 最新`main`統合後にエラー0、既存warning 1,349件。移行PRではcleanupしない |
 | production build | PASS | 移行統合時および引継ぎ文書追加時に実行済み |
 | `test:e2e` | PARTIAL | 100件中97件PASS、3件FAIL。下記の既存Acceptance差分を参照 |
 | Codex Repository Access | PASS | 読み取り・編集・検証・Git操作可能 |
