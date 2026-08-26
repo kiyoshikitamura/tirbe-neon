@@ -3,6 +3,7 @@
 import React from "react";
 import { CANONICAL_SKILL_VIEW, type SkillCardMaster } from "@/utils/skills_master_data";
 import { getCanonicalSkillIcon } from "@/utils/skillVisualAssets";
+import CanonicalDialog from "../ui/CanonicalDialog";
 import "./SkillPresentation.css";
 
 const TYPE_LABEL: Record<string, string> = { ATTACK: "攻撃", HEAL: "回復", DEBUFF: "弱体", BUFF: "強化" };
@@ -35,9 +36,8 @@ export function SkillIconGrid({ skills, onSelect, mode = "confirmation", classNa
 export function SkillDetailDialog({ skill, onClose }: { skill: string | SkillCardMaster | null | undefined; onClose: () => void }) {
   const canonical = resolveCanonicalSkill(skill);
   if (!canonical) return null;
-  return <div className="shared-skill-dialog" role="dialog" aria-modal="true" aria-label="スキル詳細" onClick={onClose}>
-    <div className="shared-skill-dialog-card" onClick={(event) => event.stopPropagation()}>
-      <div className="shared-skill-dialog-header"><strong>スキル詳細</strong><button type="button" onClick={onClose}>閉じる</button></div>
+  return <CanonicalDialog title="スキル詳細" ariaLabel={`${canonical.name}の詳細`} onClose={onClose} actions={[{ label: "閉じる", semantic: "secondary", onClick: onClose }]}>
+    <div className="shared-skill-dialog shared-skill-dialog-card">
       <div className="shared-skill-dialog-hero"><SkillIcon skill={canonical} size="regular" /><div><strong>{canonical.name}</strong><small>{TYPE_LABEL[canonical.effect_type] || "特殊"}スキル</small></div></div>
       <dl>
         <div><dt>タイプ</dt><dd>{TYPE_LABEL[canonical.effect_type] || "特殊"}</dd></div>
@@ -47,5 +47,5 @@ export function SkillDetailDialog({ skill, onClose }: { skill: string | SkillCar
       </dl>
       <p>{canonical.description || "効果説明はありません。"}</p>
     </div>
-  </div>;
+  </CanonicalDialog>;
 }

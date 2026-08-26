@@ -60,6 +60,7 @@
 .settings-textarea {
   resize: vertical;
 }
+.settings-bio-meta{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:8px;color:var(--text-secondary);font-size:11px}.settings-bio-meta button{min-width:104px}
 
 .settings-toggle-group {
   display: flex;

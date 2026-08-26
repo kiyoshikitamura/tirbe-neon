@@ -16,6 +16,8 @@ import "./CommonModals.css";
 import { userFacingErrorMessage } from "../lib/userFacingError";
 import { resolveSsrGachaQuote } from "@/domain/presentation/ssrGachaQuotes";
 import TypewriterText from "./tutorial/TypewriterText";
+import CanonicalDialog from "./ui/CanonicalDialog";
+import PublicUserProfile from "./profile/PublicUserProfile";
 
 function gachaLocationBackground(result: any): string {
   const master = CHARACTERS_MASTER.find((character: any) => character.id === result?.characterId);
@@ -54,6 +56,7 @@ export default function CommonModals() {
     userGuildMember,
     handleDemoJoinGuild,
     fetchGuildDetail,
+    fetchPlayerDetail,
     playSe,
   } = useGame();
   const announcedScoutResultRef = useRef<any[] | null>(null);
@@ -376,101 +379,27 @@ export default function CommonModals() {
 
       {/* ❌ 汎用エラーモーダル */}
       {errorMessage && (
-        <div className="modal-overlay">
-          <div className="modal-card border-danger">
-            <div className="modal-title text-color-danger">エラー</div>
-            <div className="modal-desc">{userFacingErrorMessage(errorMessage)}</div>
-            <button className="semantic-cta semantic-cta--danger width-100 active-scale-effect" onClick={() => setErrorMessage(null)}>
-              閉じる
-            </button>
-          </div>
-        </div>
+        <CanonicalDialog title="エラー" onClose={() => setErrorMessage(null)} actions={[{ label: "閉じる", semantic: "secondary", onClick: () => setErrorMessage(null) }]}>
+          {userFacingErrorMessage(errorMessage)}
+        </CanonicalDialog>
       )}
 
       {/* 👤 プレイヤー自己紹介ポップアップ */}
       {activePlayerDetail && (
-        <div className="modal-overlay">
-          <div className="modal-card detail-modal-layout border-silver shadow-silver-10 max-w-sm w-full mx-4 my-6">
-            <div className="modal-title border-bottom-subtle pb-2 flex items-center justify-between">
-              <span className="font-weight-bold text-white">プレイヤープロフィール</span>
-              <button 
-                className="sub-btn font-size-7 py-0.5 active-scale-effect"
-                onClick={() => { setActivePlayerDetail(null); playCyberSe("click"); }}
-              >
-                閉じる
-              </button>
-            </div>
-            
-            <div className="modal-body-content mt-3">
-              <div className="profile-section mb-3">
-                {activePlayerDetail.avatarUrl ? <img
-                  src={activePlayerDetail.avatarUrl}
-                  alt=""
-                  className="modal-profile-img mb-2"
-                /> : <div className="modal-profile-img modal-profile-img--empty mb-2" aria-label="プロフィール画像未設定" />}
-                <div className="font-size-9 font-weight-bold text-white">{activePlayerDetail.username}</div>
-                <div className="font-size-7 text-color-cyan mt-1">称号: {activePlayerDetail.titleName || "称号なし"}</div>
-                <div className="font-size-7 text-secondary mt-1">プレイヤーレベル: Lv.{activePlayerDetail.level}</div>
-                <div className="font-size-7 text-secondary mt-1">ユーザー経験値: {Number(activePlayerDetail.xp || 0).toLocaleString()}</div>
-                {activePlayerDetail.guildId ? (
-                  <button className="sub-btn font-size-7 mt-1" onClick={() => {
-                    void import("../../utils/supabase").then(({ supabase }) => supabase.rpc("record_client_funnel_event", {
-                      p_event_name: "ranking_guild_detail", p_source_screen: "player_detail", p_source_cta: "player_guild",
-                      p_object_id: activePlayerDetail.guildId, p_metadata: {}
-                    }));
-                    fetchGuildDetail(activePlayerDetail.guildId);
-                  }}>所属TRIBE: {activePlayerDetail.guildName}</button>
-                ) : <div className="font-size-7 text-secondary mt-1">所属TRIBE: 未所属</div>}
-              </div>
-
-              <div className="bio-section steel-tray p-2.5 mb-3 font-size-8 text-white line-height-14">
-                {activePlayerDetail.bio}
-              </div>
-
-              {activePlayerDetail.id && activePlayerDetail.id !== session?.user?.id && (
-                <button
-                  className="action-btn claim active-scale-effect font-size-8 px-3 mb-3"
-                  onClick={() => {
-                    setDmRecipientId(activePlayerDetail.id);
-                    setActivePlayerDetail(null);
-                    setChatChannel("DM");
-                    setShowTribeChatPanel(true);
-                    playCyberSe("click");
-                  }}
-                >
-                  DMを送る
-                </button>
-              )}
-
-              <div className="party-section">
-                <span className="section-subtitle font-size-7 text-secondary block mb-2">出撃パーティ</span>
-                <div className="flex-col-gap-2">
-                  {activePlayerDetail.party && activePlayerDetail.party.length > 0 ? (
-                    activePlayerDetail.party.map((char: any, idx: number) => (
-                      <div key={idx} className="party-member-card steel-tray p-2 flex justify-between items-center">
-                        <div className="char-info flex items-center gap-2">
-                          <div className="char-name-lv">
-                            <span className="font-size-8 font-weight-bold text-white block">{char.name}</span>
-                            <span className="font-size-7 text-secondary block">Lv.{char.level} (★{char.plus_val})</span>
-                          </div>
-                        </div>
-                        {char.stats ? <div className="char-stats font-size-7 text-secondary text-right">
-                          <div>HP: <span className="text-white font-weight-bold">{char.stats.hp}</span> ｜ ATK: <span className="text-white font-weight-bold">{char.stats.atk}</span></div>
-                          <div>DEF: <span className="text-white font-weight-bold">{char.stats.def}</span> ｜ SPD: <span className="text-white font-weight-bold">{char.stats.spd}</span> ｜ LUK: <span className="text-white font-weight-bold">{char.stats.luk}</span></div>
-                        </div> : <div className="char-stats font-size-7 text-secondary text-right">
-                          <div>総合力 <span className="text-white font-weight-bold">{Number(char.power || 0).toLocaleString()}</span></div>
-                          <div>{char.rarity || "N"}</div>
-                        </div>}
-                      </div>
-                    ))
-                  ) : (
-                    <div className="font-size-7 text-secondary text-center py-2">編成されたキャラクターがいません。</div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+        <PublicUserProfile
+          profile={activePlayerDetail}
+          currentUserId={session?.user?.id}
+          onClose={() => { setActivePlayerDetail(null); playCyberSe("click"); }}
+          onRetry={() => void fetchPlayerDetail(activePlayerDetail.id)}
+          onGuild={(guildId) => fetchGuildDetail(guildId)}
+          onDm={(userId) => {
+            setDmRecipientId(userId);
+            setActivePlayerDetail(null);
+            setChatChannel("DM");
+            setShowTribeChatPanel(true);
+            playCyberSe("click");
+          }}
+        />
       )}
 
       {/* 🏢 ギルド紹介ポップアップ */}

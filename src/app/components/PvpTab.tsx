@@ -19,6 +19,9 @@ import PvpDeckPresentation from "./pvp/PvpDeckPresentation";
 import RankPresentation from "./presentation/RankPresentation";
 import { SkillDetailDialog } from "./skill/SkillPresentation";
 import type { SkillCardMaster } from "@/utils/skills_master_data";
+import CanonicalDialog from "./ui/CanonicalDialog";
+import UserIdentityRow from "./profile/UserIdentityRow";
+import StatusMetric from "./presentation/StatusMetric";
 
 const tacticNames: { [key: string]: string } = {
   ATTACK_PRIORITY: "攻撃優先",
@@ -72,6 +75,7 @@ export default function PvpTab() {
   const [selectedTactic, setSelectedTactic] = React.useState<string>("ATTACK_PRIORITY");
   const [clock, setClock] = React.useState(() => Date.now());
   const [selectedSkill, setSelectedSkill] = React.useState<SkillCardMaster | null>(null);
+  const [bpDialog, setBpDialog] = React.useState<"shortage" | "recovery" | null>(null);
   const initialOpponentFetchRef = React.useRef<string | null>(null);
   const rankingAuthorityKey = `${session?.user?.id || "signed-out"}:${pvpRate}`;
   const [rankingAuthority, setRankingAuthority] = React.useState<{ key: string; standing: { rankPosition: number; rankPoints: number } | null } | null>(null);
@@ -200,26 +204,8 @@ export default function PvpTab() {
   };
 
   const pvpTicketQuantity = Number((userItems || []).find((item: any) => item.item_id === "PVP_POINT_TICKET")?.quantity || 0);
-  const openBpRecoveryDialog = () => {
-    setConfirmDialogConfig({
-      isOpen: true,
-      title: "BP回復",
-      message: <div className="pvp-bp-recovery-copy"><strong>ファイトチケット　所持 ×{pvpTicketQuantity}</strong><span>現在 {pvpPoints} / 5</span><span>回復後 {Math.min(5, pvpPoints + 1)} / 5</span>{pvpTicketQuantity === 0 && <em>ファイトチケットを所持していません。</em>}</div>,
-      confirmText: pvpTicketQuantity > 0 ? "1枚使用" : "閉じる",
-      cancelText: pvpTicketQuantity > 0 ? "キャンセル" : "",
-      onConfirm: () => { setConfirmDialogConfig(null); if (pvpTicketQuantity > 0) void handleUseItem("PVP_POINT_TICKET"); },
-      onCancel: () => setConfirmDialogConfig(null),
-    });
-  };
-  const openBpShortageDialog = () => setConfirmDialogConfig({
-    isOpen: true,
-    title: "BPが不足しています",
-    message: "対戦にはBPが1必要です。ファイトチケットで回復できます。",
-    confirmText: "回復する",
-    cancelText: "閉じる",
-    onConfirm: () => { setConfirmDialogConfig(null); window.setTimeout(openBpRecoveryDialog, 0); },
-    onCancel: () => setConfirmDialogConfig(null),
-  });
+  const openBpRecoveryDialog = () => setBpDialog("recovery");
+  const openBpShortageDialog = () => setBpDialog("shortage");
 
   const handleNavigateToRanking = () => {
     playCyberSe("click");
@@ -247,9 +233,9 @@ export default function PvpTab() {
           <CharacterPresentation className="pvp-hero-fighter is-opponent" src={heroOpponentLeader?.asset_identifier || undefined} alt={heroOpponentLeader?.display_name || "OPPONENT"} variant="battle-leader" />
         </section>
         <section className="pvp-self-summary" aria-label="自分のPvP情報">
-          <div><small>順位</small><strong>{ownPvpStanding === undefined ? "—" : <RankPresentation rank={ownPvpStanding?.rankPosition} />}</strong></div>
-          <div><small>RATE</small><strong>{displayedPvpRate.toLocaleString()}</strong></div>
-          <div><small>BP</small><strong>{pvpPoints}<span>/5</span></strong></div>
+          <StatusMetric label="順位" value={ownPvpStanding === undefined ? "—" : <RankPresentation rank={ownPvpStanding?.rankPosition} />} />
+          <StatusMetric label="RATE" value={displayedPvpRate.toLocaleString()} />
+          <StatusMetric label="BP" value={pvpPoints} suffix={<span>/5</span>} />
         </section>
 
         <section className="pvp-point-strip" aria-label="BP回復状況">
@@ -305,8 +291,7 @@ export default function PvpTab() {
                     {pvpOpponents.map((op: any) => (
                       <OutlawCard key={op.opponent_user_id} className="pvp-opponent-card" data-opponent-user-id={op.opponent_user_id}>
                         <div className="pvp-opponent-copy">
-                          <div className="pvp-opponent-heading"><button type="button" className="pvp-opponent-identity" onClick={() => fetchPlayerDetail(op.opponent_user_id)}><div className="pvp-opponent-name">{op.opponent_username}</div><div className="pvp-opponent-guild">{op.opponent_guild_name || "無所属"}</div></button><strong><RankPresentation label="順位" rank={op.opponent_rank} /></strong></div>
-                          <button type="button" className="pvp-opponent-leader" onClick={() => fetchPlayerDetail(op.opponent_user_id)}><span>LEADER</span><strong>{defenseCharactersFor(op)[0]?.display_name || "未設定"}</strong></button>
+                          <div className="pvp-opponent-heading"><UserIdentityRow userName={op.opponent_username} guildName={op.opponent_guild_name} leaderCharacterId={defenseCharactersFor(op)[0]?.character_master_id} leaderImageSrc={defenseCharactersFor(op)[0]?.asset_identifier} onOpen={() => fetchPlayerDetail(op.opponent_user_id)} /><strong><RankPresentation label="順位" rank={op.opponent_rank} /></strong></div>
                           <PvpDeckPresentation className="pvp-opponent-deck" ariaLabel={`${op.opponent_username}の防衛メンバー`} onMemberSelect={() => fetchPlayerDetail(op.opponent_user_id)} members={defenseCharactersFor(op).map((character: any) => ({ key: `${op.opponent_user_id}-${character.slot}`, characterId: character.character_master_id, name: character.display_name, level: Number(character.level || 1), imageSrc: character.asset_identifier || undefined }))} />
                           <div className="pvp-opponent-meta">
                             <Badge tone="cyan">RATE {op.opponent_points}</Badge>
@@ -468,6 +453,16 @@ export default function PvpTab() {
         )}
     </HubPage>
     {selectedSkill && <SkillDetailDialog skill={selectedSkill} onClose={() => setSelectedSkill(null)} />}
+    {bpDialog === "shortage" && <CanonicalDialog title="BPが不足しています" onClose={() => setBpDialog(null)} actions={[
+      { label: "閉じる", semantic: "secondary", onClick: () => setBpDialog(null) },
+      { label: "回復する", semantic: "primary", onClick: () => setBpDialog("recovery") },
+    ]}>対戦にはBPが1必要です。{`\n`}ファイトチケットで回復できます。</CanonicalDialog>}
+    {bpDialog === "recovery" && <CanonicalDialog title="BP回復" onClose={() => setBpDialog(null)} actions={pvpTicketQuantity > 0 ? [
+      { label: "キャンセル", semantic: "secondary", onClick: () => setBpDialog(null) },
+      { label: "1枚使用", semantic: "primary", onClick: () => { setBpDialog(null); void handleUseItem("PVP_POINT_TICKET"); } },
+    ] : [{ label: "閉じる", semantic: "secondary", onClick: () => setBpDialog(null) }]}>
+      <div className="pvp-bp-recovery-copy"><strong>ファイトチケット</strong><span>所持 ×{pvpTicketQuantity}</span><span>BP　{pvpPoints} / 5 → {Math.min(5, pvpPoints + 1)} / 5</span>{pvpTicketQuantity === 0 && <em>ファイトチケットを所持していません。</em>}</div>
+    </CanonicalDialog>}
     </>
   );
 }

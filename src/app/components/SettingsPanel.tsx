@@ -5,6 +5,7 @@ import { useGame } from "../context/GameContext";
 import FullScreenPanel from "./ui/FullScreenPanel";
 import OutlawButton from "./ui/OutlawButton";
 import "./SettingsPanel.css";
+import { USER_BIO_MAX_LENGTH } from "@/domain/presentation/userBio";
 
 const QA_EMAIL = "izasama39@gmail.com";
 const QA_TOOLS_ENABLED = process.env.NEXT_PUBLIC_APP_ENV === "development"
@@ -25,6 +26,8 @@ function getSupabaseErrorMessage(error: unknown): string {
 export default function SettingsPanel() {
   const game = useGame();
   const [qaLoading, setQaLoading] = useState(false);
+  const [bioDraft, setBioDraft] = useState<string | null>(null);
+  const displayedBio = bioDraft ?? game.bio;
   const isOpen = game.showSettingsPanel;
   const canProvisionQa = QA_TOOLS_ENABLED && game.session?.user?.email === QA_EMAIL;
   const hasSharedCosmetic = (id: string) => game.ownedHomeCosmeticIds === null || game.ownedHomeCosmeticIds.includes(id);
@@ -36,6 +39,7 @@ export default function SettingsPanel() {
 
   const close = () => {
     game.setErrorMessage("");
+    setBioDraft(null);
     game.setShowSettingsPanel(false);
   };
 
@@ -67,9 +71,9 @@ export default function SettingsPanel() {
         {game.errorMessage && <div className="settings-error-message">{game.errorMessage}</div>}
 
         <section className="settings-section">
-          <h4 className="settings-section-title">プレイヤー情報</h4>
+          <h4 className="settings-section-title">プロフィール設定</h4>
           <div className="settings-field"><label>プレイヤー名</label><input className="settings-input" value={game.username} maxLength={8} onChange={(event) => game.setUsername(event.target.value)} /></div>
-          <div className="settings-field"><label>自己紹介（Bio）</label><textarea className="settings-textarea" value={game.bio} maxLength={200} rows={3} onChange={(event) => game.setBio(event.target.value)} /></div>
+          <div className="settings-field settings-bio-field"><label htmlFor="profile-bio">自己紹介</label><textarea id="profile-bio" className="settings-textarea" value={displayedBio} maxLength={USER_BIO_MAX_LENGTH} rows={4} placeholder="自己紹介を入力" onChange={(event) => setBioDraft(event.target.value)} /><div className="settings-bio-meta"><span>{Array.from(displayedBio).length} / {USER_BIO_MAX_LENGTH}</span><OutlawButton variant="primary" disabled={game.profileLoading || displayedBio.trim() === game.bio} onClick={() => void game.handleUpdateBio(displayedBio)}>保存</OutlawButton></div></div>
           <div className="settings-field"><label>称号</label><select className="settings-select" value={game.titleEquipped} onChange={(event) => game.setTitleEquipped(event.target.value)}><option value="title_none">称号なし</option>{game.ownedTitles.map((title: { id: string; name: string }) => <option key={title.id} value={title.id}>{title.name}</option>)}</select></div>
         </section>
 

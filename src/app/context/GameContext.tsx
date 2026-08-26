@@ -37,6 +37,7 @@ import { beginAssetTierMetric, finishAssetTierMetric, preloadAssetManifest } fro
 import { clearHomeResumeSnapshot, markHomeReloadStage } from "@/app/lib/homeResumePresentation";
 import { canonicalMissionUiStatus } from "@/domain/gameplay/canonical/missions";
 import { canonicalItemName } from "@/domain/gameplay/canonical/items";
+import { normalizeUserBio } from "@/domain/presentation/userBio";
 import {
   CANONICAL_QUEST_ENCOUNTERS,
   CANONICAL_QUEST_REWARD_POOLS,
@@ -997,7 +998,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         if (userProfile.favorite_character_id) {
           setSelectedLeader(userProfile.favorite_character_id);
         }
-        setBio(userProfile.bio || "歌舞伎町の覇権を握る。");
+        setBio(normalizeUserBio(userProfile.bio));
         setAvatarUrl(userProfile.avatar_url || "/reiji_transparent_asset.png");
         setDailyCashSkips(userProfile.quest_free_skips_count ?? userProfile.daily_cash_skips_count ?? 0);
         setDailyPaidSkips(userProfile.quest_paid_skips_count ?? 0);
@@ -2322,30 +2323,39 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     setActiveGuildDetail(null);
     setActivePlayerDetail({
       id: userId,
+      status: "loading",
       username: "プレイヤー情報を取得中",
-      avatarUrl: null,
-      bio: "公開プロフィールを取得しています。",
+      bio: null,
       level: 1,
-      xp: 0,
-      titleName: "称号なし",
+      titleName: null,
+      leaderCharacterId: null,
       guildId: null,
       guildName: null,
       party: []
     });
     try {
-      const { data: publicPlayer, error: publicPlayerError } = await supabase.rpc("get_public_player_detail", { p_user_id: userId });
+      const [{ data: publicPlayer, error: publicPlayerError }, { data: profileRows, error: profileError }, { data: dailyRows, error: dailyError }] = await Promise.all([
+        supabase.rpc("get_public_player_detail", { p_user_id: userId }),
+        supabase.rpc("get_public_profiles", { p_user_ids: [userId] }),
+        supabase.rpc("get_public_pvp_rankings", { p_daily: true, p_limit: 100, p_offset: 0 }),
+      ]);
       if (publicPlayerError) throw publicPlayerError;
+      if (profileError) console.warn("Public identity projection unavailable:", profileError.message);
+      if (dailyError) console.warn("Public daily PvP rank unavailable:", dailyError.message);
+      const identity = (Array.isArray(profileRows) ? profileRows : [])[0] || {};
+      const dailyStanding = (Array.isArray(dailyRows) ? dailyRows : []).find((row: any) => row.user_id === userId);
       setActivePlayerDetail({
         id: publicPlayer.user_id,
+        status: "ready",
         username: publicPlayer.username,
-        avatarUrl: publicPlayer.avatar_url || null,
-        bio: publicPlayer.bio || "自己紹介が未設定です。",
+        leaderCharacterId: identity.favorite_character_id || null,
+        bio: publicPlayer.bio || null,
         level: Number(publicPlayer.level || 1),
-        xp: 0,
-        titleName: "",
+        titleName: identity.title_name || identity.title_equipped || null,
         guildId: publicPlayer.guild_id || null,
         guildName: publicPlayer.guild_name || null,
         totalPower: Number(publicPlayer.total_power || 0),
+        dailyPvpRank: dailyStanding ? Number(dailyStanding.rank_position) : null,
         party: (publicPlayer.main_formation || []).map((character: any) => ({
           characterId: character.character_master_id,
           name: character.display_name,
@@ -2454,15 +2464,16 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       console.warn("Failed to fetch player detail:", e.message);
       setActivePlayerDetail({
         id: userId,
-        username: "プレイヤー情報を取得できませんでした",
-        avatarUrl: null,
-        bio: "通信状態を確認して、一覧からもう一度お試しください。",
+        status: "error",
+        username: "プロフィール",
+        bio: null,
         level: 0,
-        xp: 0,
-        titleName: "",
+        titleName: null,
+        leaderCharacterId: null,
         guildId: null,
         guildName: null,
         party: [],
+        errorMessage: "通信状態を確認して、再試行してください。",
       });
     }
   };

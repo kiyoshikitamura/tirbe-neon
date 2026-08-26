@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/utils/supabase";
+import { USER_BIO_MAX_LENGTH } from "@/domain/presentation/userBio";
 
 export function useUserProfile(
   session: any,
@@ -21,7 +22,7 @@ export function useUserProfile(
 ) {
   const [ownedTitles, setOwnedTitles] = useState<Array<{ id: string; name: string }>>([]);
   const [username, setUsername] = useState<string>("");
-  const [bio, setBio] = useState<string>("歌舞伎町の覇権を握るため立ち上がる。");
+  const [bio, setBio] = useState<string>("");
   const [avatarUrl, setAvatarUrl] = useState<string>("/reiji_transparent_asset.png");
   const [currentBaseId, setCurrentBaseId] = useState<string>("shinjuku");
   const [lastGuildLeftAt, setLastGuildLeftAt] = useState<string | null>(null);
@@ -195,6 +196,31 @@ export function useUserProfile(
     if (nextSe) playCyberSe("click");
   };
 
+  const handleUpdateBio = async (value: string) => {
+    if (!session?.user?.id || profileLoading) return false;
+    const nextBio = value.trim();
+    if (Array.from(nextBio).length > USER_BIO_MAX_LENGTH) {
+      setErrorMessage(`自己紹介は${USER_BIO_MAX_LENGTH}文字以内で入力してください。`);
+      return false;
+    }
+    setProfileLoading(true);
+    playCyberSe("click");
+    try {
+      const { error } = await supabase.from("users").update({ bio: nextBio }).eq("id", session.user.id);
+      if (error) throw error;
+      setBio(nextBio);
+      await syncBootstrapData(session.user.id);
+      setConfirmDialogConfig({ isOpen: true, title: "保存完了", message: "自己紹介を保存しました。", confirmText: "OK", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
+      return true;
+    } catch (error: any) {
+      if (error.message?.includes("Bio can only be changed once per day")) setErrorMessage("自己紹介は1日1回まで変更できます。");
+      else setErrorMessage("自己紹介の保存に失敗しました。");
+      return false;
+    } finally {
+      setProfileLoading(false);
+    }
+  };
+
   return {
     username, setUsername,
     bio, setBio,
@@ -213,7 +239,7 @@ export function useUserProfile(
     interiorItem, setInteriorItem,
     selectedLeader, setSelectedLeader,
     upgradeSelectedCharId, setUpgradeSelectedCharId,
-    handleUpdateProfile,
+    handleUpdateProfile, handleUpdateBio,
     handleToggleSound
   };
 }

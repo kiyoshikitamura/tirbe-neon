@@ -12,6 +12,7 @@ import PageShell from "@/app/components/ui/PageShell";
 import TypewriterText from "@/app/components/tutorial/TypewriterText";
 import { SkillDetailDialog, SkillIconGrid } from "@/app/components/skill/SkillPresentation";
 import type { SkillCardMaster } from "@/utils/skills_master_data";
+import PublicUserProfile from "@/app/components/profile/PublicUserProfile";
 import { GameContext } from "@/app/context/GameContext";
 import { WORLD_STAGES } from "@/app/components/SetupView";
 import { QA_PRESENTATION_SCENARIOS, VISUAL_COMPLIANCE_GATE, type QaPresentationScenarioId } from "@/domain/presentation/qaHarness";
@@ -160,6 +161,23 @@ function SharedSkillFixture() {
   </section>;
 }
 
+function PublicProfileFixture() {
+  return <PublicUserProfile profile={{
+    id: "qa-public-user",
+    status: "ready",
+    username: "NEON-RIVAL",
+    leaderCharacterId: enemyParty[0].characterId,
+    level: 12,
+    guildId: "qa-guild",
+    guildName: "NIGHT CREW",
+    titleName: "新宿ストリートキング",
+    bio: "夜の街で、最高のチームを探しています。\n対戦よろしく！",
+    totalPower: 83146,
+    dailyPvpRank: 7,
+    party: enemyParty.map((entry) => ({ characterId: entry.characterId, name: entry.name, level: entry.level, rarity: entry.rarity })),
+  }} currentUserId="qa-self" onClose={() => undefined} onRetry={() => undefined} onDm={() => undefined} />;
+}
+
 type HomeScenario = "first-home-fresh" | "first-home-raid" | "first-home-guild-out" | "first-home-guild-in";
 
 function ProductionHomeFixture({ scenario }: { scenario: HomeScenario }) {
@@ -242,6 +260,7 @@ function Scenario({ id }: { id: QaPresentationScenarioId }) {
   if (id === "growth-before" || id === "growth-result") return <SimpleFixture kind={id} />;
   if (id === "skill-tutorial") return <SimpleFixture kind={id} />;
   if (id === "shared-skill-presentation") return <SharedSkillFixture />;
+  if (id === "public-user-profile") return <PublicProfileFixture />;
   if (id === "gacha-standard-reveal" || id === "gacha-page") return <SimpleFixture kind={id} />;
   if (id === "name-input-error") return <NameRetryFixture />;
   if (id === "world-introduction") return <SimpleFixture kind={id} />;
