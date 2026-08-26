@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { supabase } from "@/utils/supabase";
 import { CHARACTERS_MASTER } from "@/utils/game_constants";
 
@@ -26,23 +26,26 @@ export function usePvp(
   const [pvpSeasonLoading, setPvpSeasonLoading] = useState<boolean>(false);
   const [pvpDefenseLogs, setPvpDefenseLogs] = useState<any[]>([]);
   const [simulatingDefense, setSimulatingDefense] = useState<boolean>(false);
+  const opponentsRequestRef = useRef<Promise<any[]> | null>(null);
 
-  const fetchPvpOpponents = async (userId: string, myPoints: number) => {
-    if (!userId) return;
-    setOpponentsLoading(true);
-    try {
-      const { data, error } = await supabase.rpc("get_pvp_opponents", {
-        p_user_id: userId,
-        p_my_points: myPoints
-      });
+  const fetchPvpOpponents = (userId: string, myPoints: number): Promise<any[]> => {
+    if (!userId) return Promise.resolve([]);
+    if (opponentsRequestRef.current) return opponentsRequestRef.current;
+    const request = (async () => {
+      setOpponentsLoading(true);
+      try {
+        const { data, error } = await supabase.rpc("get_pvp_opponents", {
+          p_user_id: userId,
+          p_my_points: myPoints
+        });
 
-      if (error) throw error;
-      if (data) {
-        setPvpOpponents(data);
+        if (error) throw error;
+        const nextOpponents = Array.isArray(data) ? data : [];
+        setPvpOpponents(nextOpponents);
         
         // 🚀 ロード時間短縮：アセット（NPC立ち絵やギルドエンブレム）のバックグラウンドプリロード
         if (typeof window !== "undefined") {
-          data.forEach((op: any) => {
+          nextOpponents.forEach((op: any) => {
             if (op.defense_character_ids && op.defense_character_ids.length > 0) {
               const charId = op.defense_character_ids[0];
               const cleanId = charId.replace("c_", "");
@@ -54,13 +57,20 @@ export function usePvp(
             }
           });
         }
+        return nextOpponents;
+      } catch (err: any) {
+        console.warn("Failed to fetch PvP opponents:", err.message);
+        setErrorMessage(`対戦相手を取得できませんでした。${err.message ? `（${err.message}）` : ""}`);
+        return [];
+      } finally {
+        setOpponentsLoading(false);
       }
-    } catch (err: any) {
-      console.warn("Failed to fetch PvP opponents:", err.message);
-      setErrorMessage(`対戦相手を取得できませんでした。${err.message ? `（${err.message}）` : ""}`);
-    } finally {
-      setOpponentsLoading(false);
-    }
+    })();
+    opponentsRequestRef.current = request;
+    void request.finally(() => {
+      if (opponentsRequestRef.current === request) opponentsRequestRef.current = null;
+    });
+    return request;
   };
 
   const savePvpDefenseDeck = async (members: string[], tactic: string = "ATTACK_PRIORITY") => {
