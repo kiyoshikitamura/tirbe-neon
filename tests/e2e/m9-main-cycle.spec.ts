@@ -40,8 +40,16 @@ test.beforeEach(async ({ page }) => {
       { user_id: me, rank_points: 1100, daily_wins: 2, season_wins: 4, updated_at: now },
     ];
     localStorage.setItem("mock_db_pvp_ranks", JSON.stringify(location.search.includes("freshPvp=1") ? pvpRanks.filter((entry) => entry.user_id !== me) : pvpRanks));
-    localStorage.setItem("mock_db_pvp_defense_decks", JSON.stringify(rivals.map((userId) => ({ user_id: userId, character_1_id: "c_reiji", tactic: "BALANCED" }))));
-    localStorage.setItem("mock_db_user_main_formations", JSON.stringify([{ user_id: rivals[0], slot: 1, user_character_id: "10000000-0000-4000-8000-000000000102" }]));
+    localStorage.setItem("mock_db_pvp_defense_decks", JSON.stringify([
+      { user_id: rivals[0], character_1_id: "10000000-0000-4000-8000-000000000102", tactic: "BALANCED" },
+      { user_id: rivals[1], character_1_id: "10000000-0000-4000-8000-000000000102", tactic: "BALANCED" },
+    ]));
+    localStorage.setItem("mock_db_user_main_formations", JSON.stringify([
+      { user_id: me, slot: 1, user_character_id: "10000000-0000-4000-8000-000000000001" },
+      { user_id: me, slot: 2, user_character_id: "10000000-0000-4000-8000-000000000002" },
+      { user_id: me, slot: 3, user_character_id: "10000000-0000-4000-8000-000000000003" },
+      { user_id: rivals[0], slot: 1, user_character_id: "10000000-0000-4000-8000-000000000102" },
+    ]));
     localStorage.setItem("mock_db_user_power_rankings", JSON.stringify([
       { user_id: rivals[0], total_power: 23500, updated_at: now }, { user_id: rivals[1], total_power: 21000, updated_at: now }, { user_id: me, total_power: 19000, updated_at: now },
     ]));
@@ -140,4 +148,43 @@ test("Fresh player outside public top 100 receives opponents on first PvP view",
   await page.locator(".circle-menu-btn.fight").click();
   await expect(page.locator(".pvp-opponent-card")).toHaveCount(2);
   await expect(page.getByText("対戦相手が見つかりません")).toHaveCount(0);
+});
+
+test("PvP MY DECK and pre-battle use the same main formation and mobile CTA flow", async ({ page }) => {
+  await enterGame(page);
+  await page.locator(".circle-menu-btn.fight").click();
+  await expect(page.locator(".pvp-hero")).toBeVisible();
+  await expect(page.locator(".pvp-my-deck-member")).toHaveCount(3);
+  const deckIds = await page.locator(".pvp-my-deck-member").evaluateAll((nodes) => nodes.map((node) => node.getAttribute("data-character-id")));
+  expect(deckIds).toEqual(["char_reiji_01", "char_rui_01", "char_chang_01"]);
+
+  await page.locator(".pvp-opponent-card").first().getByRole("button", { name: "対戦する" }).click();
+  await expect(page.locator(".setup-container")).toBeVisible();
+  const setupIds = await page.locator(".setup-char-card").evaluateAll((nodes) => nodes.map((node) => node.getAttribute("data-character-id")));
+  expect(setupIds).toEqual(deckIds);
+  await expect(page.locator(".setup-char-card .character-presentation-meta")).toHaveCount(0);
+  await expect(page.locator(".setup-enemy-mini-card .character-presentation-meta")).toHaveCount(0);
+  await expect(page.locator(".setup-stat-summary").first()).toContainText("総合力");
+  await expect(page.locator(".setup-stat-summary").first()).toContainText("ATK");
+
+  const tactic = page.locator(".setup-tactic-wrapper");
+  const cta = page.locator(".setup-cta-area");
+  for (const viewport of [{ width: 390, height: 844 }, { width: 412, height: 915 }]) {
+    await page.setViewportSize(viewport);
+    const geometry = await Promise.all([tactic.boundingBox(), cta.boundingBox()]);
+    expect(geometry[0]).not.toBeNull();
+    expect(geometry[1]).not.toBeNull();
+    expect(geometry[1]!.y).toBeGreaterThanOrEqual(geometry[0]!.y + geometry[0]!.height);
+    const ctaBoxes = await cta.locator("button").evaluateAll((buttons) => buttons.map((button) => button.getBoundingClientRect()).map((box) => ({ left: box.left, right: box.right, width: box.width })));
+    expect(ctaBoxes).toHaveLength(2);
+    expect(Math.abs(ctaBoxes[0].left - ctaBoxes[1].left)).toBeLessThanOrEqual(1);
+    expect(Math.abs(ctaBoxes[0].width - ctaBoxes[1].width)).toBeLessThanOrEqual(1);
+    expect(ctaBoxes.every((box) => box.left >= 0 && box.right <= viewport.width + 1)).toBe(true);
+  }
+  await page.getByRole("button", { name: "変更", exact: true }).click();
+  await expect(page.locator(".tactic-dialog-options")).toBeVisible();
+  await page.getByRole("button", { name: /バランス/ }).click();
+  await expect(page.locator(".setup-tactic-current")).toContainText("バランス");
+  await page.getByRole("button", { name: "対戦をやめる" }).click();
+  await expect(page.locator(".pvp-view")).toBeVisible();
 });

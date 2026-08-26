@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useLayoutEffect, type ReactNode } from "react";
 import CharacterPresentation from "../character/CharacterPresentation";
 import { getAttributeBadgeAsset, getAttributeLabel } from "@/utils/attributeAssets";
 import { getRarityBadgeAsset } from "@/utils/rarityAssets";
@@ -77,9 +77,34 @@ export default function BattleUnitPortrait({
 
   const popupSign = popup?.type === "dmg" ? "−" : "+";
 
+  useLayoutEffect(() => {
+    if (typeof window === "undefined") return;
+    const frame = window.requestAnimationFrame(() => {
+      const unit = domId ? document.getElementById(domId) : null;
+      const track = unit?.querySelector<HTMLElement>(".battle-unit-hp");
+      const fill = unit?.querySelector<HTMLElement>("[data-hp-fill]");
+      const battleWindow = window as typeof window & { __TRIBE_BATTLE_HP_TRACE__?: any[] };
+      const trace = battleWindow.__TRIBE_BATTLE_HP_TRACE__;
+      if (!trace?.length) return;
+      const projected = [...trace].reverse().find((entry) => entry.targetId === participant.id && entry.renderedAt == null);
+      if (projected) {
+        projected.renderedHp = hp;
+        projected.renderedPercent = Number(hpPercent.toFixed(2));
+        projected.renderedTrackPx = track?.getBoundingClientRect().width ?? null;
+        projected.renderedFillPx = fill?.getBoundingClientRect().width ?? null;
+        projected.renderedAt = performance.now();
+      }
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [domId, hp, hpPercent, participant.id]);
+
   return (
     <article
       id={domId}
+      data-participant-id={participant.id}
+      data-hp={hp}
+      data-max-hp={maxHp}
+      data-hp-percent={hpPercent.toFixed(2)}
       className={`battle-unit battle-unit-${frame} battle-unit-${side} is-rarity-${String(rarity || participant.rarity || "N").toLowerCase()} ${placeholderAsset ? "has-placeholder-art" : ""} ${actor ? "is-actor" : ""} ${target ? "is-target" : ""} ${participant.isDead ? "is-defeated" : ""}`.trim()}
       aria-label={`${participant.name} HP ${hp} / ${maxHp}${actor ? " 行動中" : ""}${target ? " 対象" : ""}`}
     >
@@ -107,7 +132,7 @@ export default function BattleUnitPortrait({
         </span>
       </div>
       {frame === "party" && <div className="battle-unit-growth"><span>Lv.{Math.max(1, Number(participant.level || 1))}</span>{Number(participant.awakeningLevel || 0) > 0 && <b>+{Number(participant.awakeningLevel)}</b>}</div>}
-      <div className="battle-unit-hp" aria-hidden="true"><i style={{ width: `${hpPercent}%` }} /></div>
+      <div className="battle-unit-hp" aria-hidden="true"><i data-hp-fill style={{ width: `${hpPercent}%` }} /></div>
       <div className="battle-unit-hp-copy"><span>HP</span><b>{Math.round(hpPercent)}%</b></div>
       {statuses.length > 0 && <div className="battle-unit-statuses" aria-label={statuses.map((status) => status.id).join("、")}>
         {visibleStatuses.map((status) => <span key={`${status.id}-${status.kind}`} title={`${status.id}${status.remainingDuration == null ? "" : ` ${status.remainingDuration}`}`}>{statusShortLabel(status)}</span>)}

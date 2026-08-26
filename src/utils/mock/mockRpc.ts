@@ -2164,6 +2164,21 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     return { data: candidates, error: null };
   }
 
+  if (funcName === "get_public_battle_roster") {
+    const targetUserId = params?.p_target_user_id;
+    const owned = (client.getStorage("user_characters") || []).filter((entry: any) => entry.user_id === targetUserId);
+    const formation = (client.getStorage("user_main_formations") || [])
+      .filter((entry: any) => entry.user_id === targetUserId)
+      .sort((left: any, right: any) => Number(left.slot || 0) - Number(right.slot || 0));
+    const ordered = formation.map((slot: any) => owned.find((entry: any) => entry.id === slot.user_character_id)).filter(Boolean);
+    const characters = (ordered.length > 0 ? ordered : owned.slice(0, 5)).map((character: any) => ({
+      ...character,
+      equipments: [],
+      skills: (client.getStorage("user_skills") || []).filter((skill: any) => skill.equipped_character_id === character.id),
+    }));
+    return { data: { characters }, error: null };
+  }
+
   if (funcName === "process_pvp_match_result") {
     const { p_user_id, p_target_user_id, p_is_win, p_point_diff, p_cash_reward } = params;
     const users = client.getStorage("users") || [];

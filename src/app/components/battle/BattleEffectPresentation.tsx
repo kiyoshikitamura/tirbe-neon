@@ -4,6 +4,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import CharacterPresentation from "../character/CharacterPresentation";
 import type { BattleParticipantView } from "./BattleUnitPortrait";
 import "./BattleEffectPresentation.css";
+import { isInternalBattleLabel, safeBattleCharacterName } from "@/domain/presentation/battleSkillLabels";
 
 export const BATTLE_EFFECT_ASSETS = {
   heavyImpact: "/effects/fx_heavy_impact.png",
@@ -59,14 +60,15 @@ export function resolveBattleSkillPresentation(
   participant?: BattleParticipantView,
 ): BattleSkillPresentation | null {
   if (!cutIn) return null;
-  const skill = participant?.skills?.find((entry) => String(entry.name ?? "") === cutIn.skillName);
+  const safeSkillName = isInternalBattleLabel(cutIn.skillName) ? "スキル発動" : cutIn.skillName;
+  const skill = participant?.skills?.find((entry) => String(entry.name ?? "") === safeSkillName);
   const skillId = String(skill?.id ?? skill?.skill_card_id ?? skill?.skill_id ?? "");
   const actorRarity = stringValue(participant?.rarity);
-  const isBasicAttack = isBasicAttackPresentation(skillId, cutIn.skillName);
+  const isBasicAttack = isBasicAttackPresentation(skillId, safeSkillName);
 
   return {
-    charName: cutIn.charName,
-    skillName: cutIn.skillName,
+    charName: safeBattleCharacterName(cutIn.charName),
+    skillName: safeSkillName,
     tier: isBasicAttack ? null : actorRarity === "SSR" ? "SSR" : actorRarity === "SR" ? "SR" : "STANDARD",
     impact: resolveImpactKind(skill),
   };

@@ -57,6 +57,7 @@ export default function PvpTab() {
     totalPower,
     currentBaseId,
     selectedLeader,
+    selectedMembers,
   } = useGame();
 
   const [selectedDefense, setSelectedDefense] = React.useState<string[]>([]);
@@ -115,19 +116,13 @@ export default function PvpTab() {
   const defenseCharactersFor = (opponent: any) => [...(opponent.defense_characters || [])]
     .sort((left: any, right: any) => Number(left.slot || 0) - Number(right.slot || 0));
   const myDeckCharacters = React.useMemo(() => {
-    const ids = [
-      myPvpDefenseDeck?.character_1_id,
-      myPvpDefenseDeck?.character_2_id,
-      myPvpDefenseDeck?.character_3_id,
-      myPvpDefenseDeck?.character_4_id,
-      myPvpDefenseDeck?.character_5_id,
-    ].filter(Boolean);
+    const ids = (selectedMembers || []).slice(0, 5);
     return ids.map((ownedId: string) => {
-      const owned = userCharactersDbList.find((entry: any) => entry.id === ownedId || entry.character_id === ownedId);
-      const master = CHARACTERS_MASTER.find((entry: any) => entry.id === owned?.character_id || entry.id === ownedId);
+      const owned = userCharactersDbList.find((entry: any) => entry.character_id === ownedId);
+      const master = CHARACTERS_MASTER.find((entry: any) => entry.id === ownedId);
       return { ownedId, owned, master };
     });
-  }, [myPvpDefenseDeck, userCharactersDbList]);
+  }, [selectedMembers, userCharactersDbList]);
   const playerLeaderMaster = CHARACTERS_MASTER.find((character: any) => character.id === selectedLeader);
   const heroOpponent = pvpOpponents[0];
   const heroOpponentLeader = heroOpponent ? defenseCharactersFor(heroOpponent)[0] : null;
@@ -213,7 +208,7 @@ export default function PvpTab() {
             {myDeckCharacters.map(({ ownedId, owned, master }: any) => {
               const equippedSkill = (userSkillsList || []).find((entry: any) => entry.equipped_character_id === owned?.id);
               const skillIcon = getCanonicalSkillIcon(equippedSkill?.skill_card_id);
-              return <div className="pvp-my-deck-member" key={ownedId}>
+              return <div className="pvp-my-deck-member" key={ownedId} data-character-id={ownedId}>
                 <CharacterPresentation
                   src={master ? getCharacterTransparentImg(master.name) : undefined}
                   alt={master?.jpName || "デッキメンバー"}
@@ -224,7 +219,7 @@ export default function PvpTab() {
                 {skillIcon && <img className="pvp-my-deck-skill" src={skillIcon} alt="装備スキル" />}
               </div>;
             })}
-            {myDeckCharacters.length === 0 && <span className="pvp-my-deck-empty">防衛デッキを設定してください</span>}
+            {myDeckCharacters.length === 0 && <span className="pvp-my-deck-empty">出撃編成を設定してください</span>}
           </div>
         </section>
 

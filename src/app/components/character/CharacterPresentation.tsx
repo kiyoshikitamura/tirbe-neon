@@ -23,6 +23,7 @@ type Props = {
   attributeBadge?: boolean;
   backgroundSrc?: string;
   className?: string;
+  metadata?: boolean;
 };
 
 export default function CharacterPresentation({
@@ -40,6 +41,7 @@ export default function CharacterPresentation({
   attributeBadge = false,
   backgroundSrc,
   className = "",
+  metadata = true,
 }: Props) {
   const rarityClass = rarity ? `character-presentation-rarity-${rarity.toLowerCase()}` : "";
   const framing = getCharacterPresentationMetadata(src || "");
@@ -76,7 +78,7 @@ export default function CharacterPresentation({
       {rarity && rarityBadge && <img className="character-presentation-rarity-badge" src={getRarityBadgeAsset(rarity)} alt={rarity} />}
       {attributeBadge && getAttributeBadgeAsset(attribute) && <img className="character-presentation-attribute-badge" src={getAttributeBadgeAsset(attribute) || ""} alt={getAttributeLabel(attribute)} />}
       {badge && <span className="character-presentation-badge">{badge}</span>}
-      {(name || rarity || typeof level === "number") && (
+      {metadata && (name || rarity || typeof level === "number") && (
         <figcaption className="character-presentation-meta">
           {rarity && !rarityBadge && <span className="character-presentation-rarity">{rarity}</span>}
           {name && <strong>{name}</strong>}

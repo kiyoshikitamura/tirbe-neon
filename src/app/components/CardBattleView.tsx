@@ -229,8 +229,8 @@ export default function CardBattleView() {
               {isPvP ? (
                 <div className="setup-enemy-cards-row">
                   {enemyPartyStates.map((enemy: any, idx: number) => (
-                    <div key={idx} className="setup-enemy-mini-card">
-                      <CharacterPresentation src={getBattleCharacterImage(enemy.characterId)} alt={enemy.name} variant="thumbnail" />
+                    <div key={enemy.id || idx} className="setup-enemy-mini-card" data-character-id={enemy.characterId}>
+                      <CharacterPresentation src={getBattleCharacterImage(enemy.characterId)} alt={enemy.name} variant="thumbnail" rarity={enemy.rarity || "N"} frameKind="character" metadata={false} />
                       <div className="setup-card-name">{enemy.name}</div>
                       <div className="setup-card-lv">Lv.{enemy.level}</div>
                     </div>
@@ -248,13 +248,9 @@ export default function CardBattleView() {
                   </div>
                 </div>
               )}
-              {!isTutorialBattle && <div className="setup-enemy-detail-list mt-2">
-                <span className="font-size-7 text-secondary">総合力 {enemyPower.toLocaleString()}</span>
-                <span className="font-size-7 text-secondary">
-                  攻撃 {enemyPartyStates.reduce((total: number, enemy: any) => total + Number(enemy.stats?.atk || 0), 0).toLocaleString()}
-                  {" ｜ "}防御 {enemyPartyStates.reduce((total: number, enemy: any) => total + Number(enemy.stats?.def || 0), 0).toLocaleString()}
-                  {" ｜ "}速度 {enemyPartyStates.reduce((total: number, enemy: any) => total + Number(enemy.stats?.spd || 0), 0).toLocaleString()}
-                </span>
+              {!isTutorialBattle && <div className="setup-stat-summary mt-2" aria-label="対戦相手ステータス">
+                <strong>総合力 <b>{enemyPower.toLocaleString()}</b></strong>
+                <div><span>ATK <b>{enemyPartyStates.reduce((total: number, enemy: any) => total + Number(enemy.stats?.atk || 0), 0).toLocaleString()}</b></span><span>DEF <b>{enemyPartyStates.reduce((total: number, enemy: any) => total + Number(enemy.stats?.def || 0), 0).toLocaleString()}</b></span><span>SPD <b>{enemyPartyStates.reduce((total: number, enemy: any) => total + Number(enemy.stats?.spd || 0), 0).toLocaleString()}</b></span></div>
                 {canonicalEnemySkills.length > 0 && <div className="setup-enemy-skill-grid" aria-label="対戦相手のスキル">
                   {canonicalEnemySkills.map((skill: any) => <button type="button" key={skill.id} onClick={() => setSelectedOpponentSkill(skill)} aria-label={`${skill.name}の詳細`}>
                     {getCanonicalSkillIcon(skill.id) ? <img src={getCanonicalSkillIcon(skill.id)} alt="" /> : <span aria-hidden="true">SK</span>}
@@ -279,8 +275,9 @@ export default function CardBattleView() {
 
                   return (
                     <div 
-                      key={idx} 
+                      key={charState.id || idx}
                       className={`setup-char-card ${idx === 0 ? "is-leader" : ""} flex-col items-center cursor-pointer active-scale-effect`}
+                      data-character-id={charState.characterId}
                       onClick={() => { if (!isTutorialBattle) { setSelectedCharDetail(charState); playCyberSe("click"); } }}
                     >
                       <CharacterPresentation
@@ -288,6 +285,8 @@ export default function CardBattleView() {
                         src={masterData ? getCharacterTransparentImg(masterData.name) : undefined}
                         alt={charState.name}
                         variant="thumbnail"
+                        frameKind="character"
+                        metadata={false}
                       />
                       <div className="setup-card-name truncate mt-1 font-size-6">{charState.name}</div>
                       <div className="setup-card-lv font-size-6 text-amber-300">Lv.{charState.level}</div>
@@ -298,6 +297,10 @@ export default function CardBattleView() {
                   );
                 })}
               </div>
+              {!isTutorialBattle && <div className="setup-stat-summary is-player" aria-label="自軍ステータス">
+                <strong>総合力 <b>{playerPower.toLocaleString()}</b></strong>
+                <div><span>ATK <b>{playerPartyStates.reduce((total: number, player: any) => total + Number(player.stats?.atk || 0), 0).toLocaleString()}</b></span><span>DEF <b>{playerPartyStates.reduce((total: number, player: any) => total + Number(player.stats?.def || 0), 0).toLocaleString()}</b></span><span>SPD <b>{playerPartyStates.reduce((total: number, player: any) => total + Number(player.stats?.spd || 0), 0).toLocaleString()}</b></span></div>
+              </div>}
             </div>
 
             {/* 作戦AI設定 */}
@@ -316,20 +319,22 @@ export default function CardBattleView() {
           </div>
 
           {/* 出撃開始ボタン */}
-          <button 
-            className={`start-battle-btn semantic-cta semantic-cta--primary active-scale-effect ${isTutorialBattle ? "tutorial-primary-target" : ""}`}
-            onClick={isTutorialBattle ? launchBattleOnce : launchRegularBattle}
-            disabled={setupLaunching}
-            aria-busy={setupLaunching}
-          >
-            {setupLaunching ? "BATTLE START" : battleMode === "PVP_PRACTICE" ? "模擬戦開始" : isTutorialBattle ? "BATTLE START" : battleMode === "PVP" ? "対戦開始" : battleMode === "GVG" ? "抗争開始" : battleMode === "RAID" ? "討伐開始" : "出撃開始"}
-          </button>
-          {battleMode === "PVP" && <button
-            type="button"
-            className="cancel-battle-btn semantic-cta semantic-cta--secondary"
-            disabled={setupLaunching}
-            onClick={() => { if (cancelPreparedPvpBattle()) playSe("UI_BACK"); }}
-          >対戦をやめる</button>}
+          <div className="setup-cta-area">
+            <button
+              className={`start-battle-btn semantic-cta semantic-cta--primary active-scale-effect ${isTutorialBattle ? "tutorial-primary-target" : ""}`}
+              onClick={isTutorialBattle ? launchBattleOnce : launchRegularBattle}
+              disabled={setupLaunching}
+              aria-busy={setupLaunching}
+            >
+              {setupLaunching ? "BATTLE START" : battleMode === "PVP_PRACTICE" ? "模擬戦開始" : isTutorialBattle ? "BATTLE START" : battleMode === "PVP" ? "対戦開始" : battleMode === "GVG" ? "抗争開始" : battleMode === "RAID" ? "討伐開始" : "出撃開始"}
+            </button>
+            {battleMode === "PVP" && <button
+              type="button"
+              className="cancel-battle-btn semantic-cta semantic-cta--secondary"
+              disabled={setupLaunching}
+              onClick={() => { if (cancelPreparedPvpBattle()) playSe("UI_BACK"); }}
+            >対戦をやめる</button>}
+          </div>
         </div>
 
         {/* 閲覧用詳細ポップアップ */}

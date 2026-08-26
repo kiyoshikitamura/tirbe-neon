@@ -20,6 +20,7 @@ import { gvgDefenseSnapshotToParticipants } from "./battle/gvgSnapshotAdapter";
 import { patrolSnapshotToParticipants, serverBattleEvents, type ServerBattleEvent } from "./battle/patrolReplayAdapter";
 import { beginActionPerformance } from "@/utils/actionPerformance";
 import { traceTutorialJourney } from "@/utils/tutorialJourneyTrace";
+import { resolveBattleSkillLabel, safeBattleCharacterName } from "@/domain/presentation/battleSkillLabels";
 
 export type { UseBattleOptions, ParticipantState, CardState, SkillLogItem };
 
@@ -1569,7 +1570,10 @@ export function useBattle(options: UseBattleOptions) {
     if (!target) target = defaultPlayerTarget;
 
     // 演出表示
-    setActiveSkillCutIn({ charName: enemy.name, skillName: chosenSkill.name });
+    setActiveSkillCutIn({
+      charName: safeBattleCharacterName(enemy.name),
+      skillName: resolveBattleSkillLabel(chosenSkill.skill_card_id ?? chosenSkill.skill_id ?? chosenSkill.id, enemy.skills as Array<Record<string, unknown>>),
+    });
     setTargetLine({ fromId: enemy.id, toId: target.id });
 
     setTimeout(() => {
@@ -1699,7 +1703,10 @@ export function useBattle(options: UseBattleOptions) {
     const nextAp = 0;
 
     // 演出設定
-    setActiveSkillCutIn({ charName: actor.name, skillName: chosenSkill.name });
+    setActiveSkillCutIn({
+      charName: safeBattleCharacterName(actor.name),
+      skillName: resolveBattleSkillLabel(chosenSkill.skill_card_id ?? chosenSkill.skill_id ?? chosenSkill.id, actor.skills as Array<Record<string, unknown>>),
+    });
     setTargetLine({ fromId: actor.id, toId: target.id });
 
     setTimeout(() => {
@@ -1898,7 +1905,8 @@ export function useBattle(options: UseBattleOptions) {
             const startedAt = performance.now();
             metrics.current = { kind: isSkill ? "skill" : "normal", skillId, actorId, targetId: nextTargetId || null, startedAt, actorFocusAt: startedAt };
           }
-          const skill = actor?.skills.find((entry: any) => String(entry.id ?? entry.skill_card_id) === skillId);
+          const actorName = safeBattleCharacterName(actor?.name);
+          const skillName = resolveBattleSkillLabel(skillId, (actor?.skills || []) as Array<Record<string, unknown>>);
           const nextActions = authoritativeEvents
             .slice(authoritativeEventIndex)
             .filter((entry) => entry.type === "ACTION")
@@ -1910,7 +1918,7 @@ export function useBattle(options: UseBattleOptions) {
             })
             .filter((entry) => entry.id);
           setAuthoritativeTimeline(nextActions);
-          setActiveSkillCutIn({ charName: actor?.name ?? "キャラクター", skillName: skill?.name ?? (skillId === "BASIC_ATTACK" ? "通常攻撃" : "スキル発動") });
+          setActiveSkillCutIn({ charName: actorName, skillName });
           const actorTimelineIndex = timeline.findIndex((entry) => entry.id === actorId);
           if (actorTimelineIndex >= 0) setTimelineIndex(actorTimelineIndex);
           const targetDelay = isSkill ? Math.max(760, 1120 / battleSpeed) : 260 / battleSpeed;
@@ -1923,7 +1931,7 @@ export function useBattle(options: UseBattleOptions) {
           presentationTimersRef.current.push(setTimeout(() => {
             setPresentationPhase("ATTACK_MOTION");
           }, attackDelay));
-          setBattleLog((previous) => [...previous, `[ROUND ${replayEvent.round}] ${actor?.name ?? "キャラクター"}：${skill?.name ?? (isSkill ? "スキル発動" : "通常攻撃")}`]);
+          setBattleLog((previous) => [...previous, `[ROUND ${replayEvent.round}] ${actorName}：${skillName}`]);
         } else if (replayEvent.type === "DAMAGE") {
           setPresentationPhase("IMPACT");
           recordPresentationStage("impactAt", targetId);
@@ -1935,16 +1943,29 @@ export function useBattle(options: UseBattleOptions) {
             ? projectActiveEffects({ ...participant, hp: remainingHp, isDead: remainingHp <= 0 }, payload)
             : participant;
           const projectHpTransition = () => {
-            setPlayerPartyStates((previous) => {
-              const next = previous.map(updateTarget);
-              playerPartyStatesRef.current = next;
-              return next;
-            });
-            setEnemyPartyStates((previous) => {
-              const next = previous.map(updateTarget);
-              enemyPartyStatesRef.current = next;
-              return next;
-            });
+            const beforePlayers = playerPartyStatesRef.current;
+            const beforeEnemies = enemyPartyStatesRef.current;
+            const nextPlayers = beforePlayers.map(updateTarget);
+            const nextEnemies = beforeEnemies.map(updateTarget);
+            const beforeTarget = [...beforePlayers, ...beforeEnemies].find((participant) => participant.id === targetId);
+            const afterTarget = [...nextPlayers, ...nextEnemies].find((participant) => participant.id === targetId);
+            playerPartyStatesRef.current = nextPlayers;
+            enemyPartyStatesRef.current = nextEnemies;
+            setPlayerPartyStates(nextPlayers);
+            setEnemyPartyStates(nextEnemies);
+            if (typeof window !== "undefined") {
+              const battleWindow = window as typeof window & { __TRIBE_BATTLE_HP_TRACE__?: any[] };
+              (battleWindow.__TRIBE_BATTLE_HP_TRACE__ ||= []).push({
+                eventIndex: authoritativeEventIndex,
+                targetId,
+                side: beforePlayers.some((participant) => participant.id === targetId) ? "player" : "enemy",
+                amount,
+                remainingHp,
+                stateBefore: beforeTarget?.hp ?? null,
+                stateAfter: afterTarget?.hp ?? null,
+                projectedAt: performance.now(),
+              });
+            }
           };
           if (!followsSkill) projectHpTransition();
           setTargetLine(actorId && targetId ? { fromId: actorId, toId: targetId } : null);
@@ -2049,8 +2070,12 @@ export function useBattle(options: UseBattleOptions) {
           const updateTarget = (participant: ParticipantState) => participant.id === targetId
             ? { ...participant, hp: 0, isDead: true }
             : participant;
-          setPlayerPartyStates((previous) => { const next = previous.map(updateTarget); playerPartyStatesRef.current = next; return next; });
-          setEnemyPartyStates((previous) => { const next = previous.map(updateTarget); enemyPartyStatesRef.current = next; return next; });
+          const nextPlayers = playerPartyStatesRef.current.map(updateTarget);
+          const nextEnemies = enemyPartyStatesRef.current.map(updateTarget);
+          playerPartyStatesRef.current = nextPlayers;
+          enemyPartyStatesRef.current = nextEnemies;
+          setPlayerPartyStates(nextPlayers);
+          setEnemyPartyStates(nextEnemies);
           setBattleLog((previous) => [...previous, `${target?.name ?? targetId}は戦闘不能。`]);
         } else if (replayEvent.type === "RESULT") {
           clearPresentationTimers();
