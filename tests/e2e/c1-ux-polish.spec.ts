@@ -69,7 +69,7 @@ for (const viewport of [
 test("Guild recommendation explains why and keeps join feedback actionable", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await enterGame(page);
-  await page.locator(".circle-menu-btn.allies").click();
+  await page.locator(".circle-menu-btn.guild").click();
   await expect(page.locator(".guild-lobby-guild-card").first()).toBeVisible();
   await expect(page.locator(".guild-recommendation-reason").first()).toContainText("おすすめ理由");
   await expectNoHorizontalOverflow(page, ".guild-lobby-view");

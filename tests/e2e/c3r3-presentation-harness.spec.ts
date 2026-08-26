@@ -12,7 +12,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test("launcher exposes every approved presentation fixture and preserves human-only judgments", async ({ page }) => {
-  await expect(page.locator("nav [data-scenario-id]")).toHaveCount(22);
+  await expect(page.locator("nav [data-scenario-id]")).toHaveCount(25);
   await expect(page.locator('[data-compliance-id="world-intro"]')).toHaveAttribute("data-status", "HUMAN_REQUIRED");
   await expect(page.locator('[data-compliance-id="skill-2x"]')).toHaveAttribute("data-status", "HUMAN_REQUIRED");
   await expect(page.locator('[data-compliance-id="battle-result"]')).toHaveAttribute("data-status", "HUMAN_REQUIRED");

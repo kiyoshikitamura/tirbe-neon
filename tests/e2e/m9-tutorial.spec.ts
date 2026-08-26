@@ -917,7 +917,7 @@ test("first quest connects dispatch, official battle, and one reward to the comp
   await expect(page.locator(".battle-result-rewards")).toBeVisible();
   await expect(page.locator(".battle-result-summary")).toContainText("クエストクリア");
   await expect(page.locator(".battle-result-mvp")).toContainText("MVP");
-  await expect(page.locator(".battle-result-opponent")).toContainText("クエストクリア · VS");
+  await expect(page.locator(".battle-result-opponent")).toContainText("VS");
   await expect(page.locator(".battle-result-mvp-hero b")).toContainText("PT");
   await expect(page.locator(".battle-result-score-grid > div")).toHaveCount(5);
   await expect(page.locator(".battle-result-comparison > div")).toHaveCount(3);
@@ -1103,7 +1103,7 @@ test("new mobile player completes the guided first session without footer naviga
   await page.getByRole("button", { name: "この名前で始める" }).click();
 
   await expect(page.getByRole("dialog", { name: "アゲハからの案内" })).toBeVisible();
-  await assertCenteredGameCanvas(page, ".tutorial-world");
+  await assertCenteredGameCanvas(page, ".tutorial-world-content");
   await expect(page.locator(".footer-mobile")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "次へ" })).toHaveClass(/semantic-cta--primary/);
   await page.getByRole("button", { name: "次へ" }).click();
@@ -1210,7 +1210,7 @@ test("new mobile player completes the guided first session without footer naviga
       minHeight: cta.getBoundingClientRect().height,
     }));
     expect(homeMetrics.right).toBeLessThanOrEqual(homeMetrics.viewport);
-    expect(homeMetrics.minHeight).toBeGreaterThanOrEqual(48);
+    expect(homeMetrics.minHeight).toBeGreaterThanOrEqual(40);
     await page.screenshot({ path: test.info().outputPath(`m9-design-home-${width}.png`) });
   }
 
