@@ -10,10 +10,14 @@ assert.equal(safeBattleCharacterName("player_123"), "キャラクター");
 const battle = fs.readFileSync(new URL("../src/hooks/useBattle.ts", import.meta.url), "utf8");
 const pvp = fs.readFileSync(new URL("../src/app/components/PvpTab.tsx", import.meta.url), "utf8");
 const setup = fs.readFileSync(new URL("../src/app/components/CardBattleView.tsx", import.meta.url), "utf8");
+const deck = fs.readFileSync(new URL("../src/app/components/pvp/PvpDeckPresentation.tsx", import.meta.url), "utf8");
 assert.match(battle, /remainingHp[\s\S]*playerPartyStatesRef\.current = nextPlayers[\s\S]*setPlayerPartyStates\(nextPlayers\)/);
-assert.match(pvp, /selectedMembers[\s\S]*data-character-id=\{ownedId\}/);
+assert.match(battle, /battleMode === "PVP" && pvpCommitSucceededRef\.current/);
+assert.match(pvp, /selectedMembers[\s\S]*PvpDeckPresentation[\s\S]*characterId: master\?\.id \|\| ownedId/);
 assert.doesNotMatch(pvp, /const myDeckCharacters[\s\S]{0,400}myPvpDefenseDeck/);
-assert.match(setup, /metadata=\{false\}/);
+assert.match(setup, /setup-enemy-wrapper[\s\S]*PvpDeckPresentation[\s\S]*setup-versus-marker[\s\S]*setup-player-wrapper[\s\S]*setup-tactic-wrapper[\s\S]*setup-cta-area/);
 assert.match(setup, /className="setup-cta-area"/);
+assert.match(deck, /frameKind="character"/);
+assert.match(deck, /metadata=\{false\}/);
 
 console.log("PvP R4 presentation contract: PASS");

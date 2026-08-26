@@ -566,9 +566,42 @@ export function useBattle(options: UseBattleOptions) {
       setGvgTargetBaseId(null);
     }
 
-    // 自部隊5名のロード
-    const party = selectedMembers.length > 0 ? selectedMembers : userCharactersDbList.slice(0, 5).map(c => c.character_id);
-    const userCharRecords = party.map(charId => userCharactersDbList.find(c => c.character_id === charId)).filter(Boolean);
+    // PvP preparation and commit are two separate UI phases. Both must read the
+    // same server-owned Main Formation instead of re-reading mutable patrol UI
+    // state, otherwise the commit phase can replace a visible deck with zero
+    // participants.
+    let party = selectedMembers.length > 0 ? selectedMembers : userCharactersDbList.slice(0, 5).map(c => c.character_id);
+    let battleUserCharacters = userCharactersDbList;
+    let battleUserSkills = userSkillsList;
+    let battleUserEquipments = userEquipmentsList;
+    if (mode === "PVP") {
+      const { data: mainFormation, error: mainFormationError } = await supabase.rpc("get_current_main_formation");
+      const canonicalParty = Array.isArray(mainFormation?.characters)
+        ? mainFormation.characters.map((entry: any) => String(entry.character_id || "")).filter(Boolean).slice(0, 5)
+        : [];
+      if (mainFormationError || canonicalParty.length === 0) {
+        setBattleLoading(false);
+        setErrorMessage("出撃編成を確認できませんでした。編成を保存してから、もう一度お試しください。");
+        return;
+      }
+      party = canonicalParty;
+      if (party.some((characterId) => !battleUserCharacters.some((owned: any) => owned.character_id === characterId))) {
+        const [{ data: ownedRows, error: ownedError }, { data: skillRows }, { data: equipmentRows }] = await Promise.all([
+          supabase.from("user_characters").select("*").in("character_id", party),
+          supabase.from("user_skills").select("*"),
+          supabase.from("user_equipments").select("*"),
+        ]);
+        if (ownedError || !ownedRows?.length) {
+          setBattleLoading(false);
+          setErrorMessage("出撃メンバーを読み込めませんでした。もう一度お試しください。");
+          return;
+        }
+        battleUserCharacters = ownedRows;
+        battleUserSkills = skillRows || [];
+        battleUserEquipments = equipmentRows || [];
+      }
+    }
+    const userCharRecords = party.map(charId => battleUserCharacters.find((c: any) => c.character_id === charId)).filter(Boolean);
 
     // AP remains presentation compatibility state only; Canonical Gameplay does not consume it.
     setMaxAp(0);
@@ -576,7 +609,7 @@ export function useBattle(options: UseBattleOptions) {
 
     // 味方部隊の個別ステータス構築
     let initialPlayerParty: ParticipantState[] = userCharRecords.map((charRecord, idx) => {
-      const stats = getCharacterTotalStats(charRecord, userEquipmentsList);
+      const stats = getCharacterTotalStats(charRecord, battleUserEquipments);
       const master = CHARACTERS_MASTER.find(c => c.id === charRecord.character_id);
 
       let finalHp = stats.hp;
@@ -599,7 +632,7 @@ export function useBattle(options: UseBattleOptions) {
       }
 
       // キャラクターごとの装備スキルを取得
-      const charSkills = userSkillsList
+      const charSkills = battleUserSkills
         .filter(us => us.equipped_character_id === charRecord.id && us.slot_index !== null)
         .map(canonicalParticipantSkill)
         .filter(Boolean) as any[];
@@ -1229,6 +1262,13 @@ export function useBattle(options: UseBattleOptions) {
         }
         initialPlayerParty = canonicalPlayers;
         initialEnemyParty = canonicalEnemies;
+        // Replay events address the immutable snapshot participant IDs
+        // (`player_<owned-character-uuid>` / `enemy_<owned-character-uuid>`).
+        // Update the synchronous projection refs together with React state so
+        // the first DAMAGE event cannot race the post-render ref effects and
+        // miss only the player target while an `ally_<master-id>` remains.
+        playerPartyStatesRef.current = canonicalPlayers;
+        enemyPartyStatesRef.current = canonicalEnemies;
         setPlayerPartyStates(canonicalPlayers);
         setEnemyPartyStates(canonicalEnemies);
         const canonicalTimeline = [
@@ -1415,13 +1455,20 @@ export function useBattle(options: UseBattleOptions) {
 
     // バトル開始時発動スキル (START_OF_BATTLE) の評価
     const nextLogs = [...battleLog, "戦闘開始！初期バフ適用。"];
+    const hasAuthoritativeReplay = (battleMode === "PATROL" && officialPatrolEvents.length > 0)
+      // The setup-screen callback can capture the pre-commit empty event
+      // array. The commit ref is synchronous and is the authoritative guard.
+      || (battleMode === "PVP" && pvpCommitSucceededRef.current)
+      || (battleMode === "RAID" && officialRaidEvents.length > 0)
+      || ((battleMode === "GVG" || battleMode === "PVP_PRACTICE") && canonicalAuxEvents.length > 0);
+    if (hasAuthoritativeReplay) {
+      // The confirmation callback may still close over the pre-replay setup
+      // roster (`ally_<master-id>`). Never write that stale array back over
+      // the immutable replay snapshot immediately before playback.
+      setBattleLog(nextLogs);
+      return;
+    }
     const updatedPlayers = playerPartyStates.map(p => {
-      // QUEST is a replay of the already-resolved server record. Client-only
-      // opening passives must not mutate its authoritative HP/shield state.
-      if ((battleMode === "PATROL" && officialPatrolEvents.length > 0)
-        || (battleMode === "PVP" && officialPvpEvents.length > 0)
-        || (battleMode === "RAID" && officialRaidEvents.length > 0)
-        || ((battleMode === "GVG" || battleMode === "PVP_PRACTICE") && canonicalAuxEvents.length > 0)) return p;
       return p;
     });
 
@@ -1967,7 +2014,10 @@ export function useBattle(options: UseBattleOptions) {
               });
             }
           };
-          if (!followsSkill) projectHpTransition();
+          // DAMAGE is the authoritative HP boundary. Project it immediately
+          // when that replay event is consumed; presentation timers may be
+          // cleared by the following ACTION and must never own gameplay state.
+          projectHpTransition();
           setTargetLine(actorId && targetId ? { fromId: actorId, toId: targetId } : null);
           setActiveShakingCharId(missed ? null : targetId);
           setDamagePopup({ val: amount, type: "dmg", isCritical: critical, x: 120, y: 40, charId: targetId });
@@ -1976,7 +2026,6 @@ export function useBattle(options: UseBattleOptions) {
             recordPresentationStage("damageAt", targetId);
           }, followsSkill ? 180 : 100 / battleSpeed));
           presentationTimersRef.current.push(setTimeout(() => {
-            if (followsSkill) projectHpTransition();
             setPresentationPhase("HP_TRANSITION");
             recordPresentationStage("hpSettledAt", targetId);
           }, followsSkill ? 480 : 450 / battleSpeed));

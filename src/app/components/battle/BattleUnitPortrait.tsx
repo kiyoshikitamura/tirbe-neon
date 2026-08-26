@@ -3,7 +3,6 @@
 import { useLayoutEffect, type ReactNode } from "react";
 import CharacterPresentation from "../character/CharacterPresentation";
 import { getAttributeBadgeAsset, getAttributeLabel } from "@/utils/attributeAssets";
-import { getRarityBadgeAsset } from "@/utils/rarityAssets";
 import "./BattleUnitPortrait.css";
 
 export type BattleParticipantView = {
@@ -109,7 +108,7 @@ export default function BattleUnitPortrait({
       aria-label={`${participant.name} HP ${hp} / ${maxHp}${actor ? " 行動中" : ""}${target ? " 対象" : ""}`}
     >
       <div className="battle-unit-art">
-        <CharacterPresentation src={imageSrc} alt={participant.name} variant="battle" className={`character-presentation-battle-${frame}`} />
+        <CharacterPresentation src={imageSrc} alt={participant.name} variant="battle" rarity={rarity || participant.rarity} frameKind="character" metadata={false} className={`character-presentation-battle-${frame}`} />
         {actor && <span className="battle-unit-role is-actor-label">ACTOR</span>}
         {target && <span className="battle-unit-role is-target-label">TARGET</span>}
         {participant.isDead && <span className="battle-unit-defeated">戦闘不能</span>}
@@ -127,7 +126,6 @@ export default function BattleUnitPortrait({
       <div className={`battle-unit-meta ${frame === "action" ? "is-action-identity" : ""}`}>
         <strong>{participant.name}</strong>
         <span className="battle-unit-identity-badges">
-          {(rarity || participant.rarity) && <img src={getRarityBadgeAsset(rarity || participant.rarity)} alt={String(rarity || participant.rarity).toUpperCase()} />}
           {getAttributeBadgeAsset(attribute) && <img src={getAttributeBadgeAsset(attribute) || ""} alt={getAttributeLabel(attribute)} />}
         </span>
       </div>

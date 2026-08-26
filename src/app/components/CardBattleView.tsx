@@ -11,6 +11,7 @@ import { preloadBattleEffects } from "./battle/BattleEffectPresentation";
 import { preloadTutorialCompletionAssets } from "../lib/tutorialCompletionAssets";
 import { CANONICAL_SKILL_VIEW } from "@/utils/skills_master_data";
 import { getCanonicalSkillIcon } from "@/utils/skillVisualAssets";
+import PvpDeckPresentation, { PvpPowerSummary, canonicalPvpCharacter } from "./pvp/PvpDeckPresentation";
 import "./CardBattleView.css";
 
 const TACTIC_OPTIONS = [
@@ -227,15 +228,15 @@ export default function CardBattleView() {
             <div className="setup-enemy-wrapper">
               <div className="setup-enemy-title">対戦相手</div>
               {isPvP ? (
-                <div className="setup-enemy-cards-row">
-                  {enemyPartyStates.map((enemy: any, idx: number) => (
-                    <div key={enemy.id || idx} className="setup-enemy-mini-card" data-character-id={enemy.characterId}>
-                      <CharacterPresentation src={getBattleCharacterImage(enemy.characterId)} alt={enemy.name} variant="thumbnail" rarity={enemy.rarity || "N"} frameKind="character" metadata={false} />
-                      <div className="setup-card-name">{enemy.name}</div>
-                      <div className="setup-card-lv">Lv.{enemy.level}</div>
-                    </div>
-                  ))}
-                </div>
+                <>
+                  <PvpPowerSummary className="is-opponent" totalPower={enemyPower} atk={enemyPartyStates.reduce((total: number, enemy: any) => total + Number(enemy.stats?.atk || 0), 0)} def={enemyPartyStates.reduce((total: number, enemy: any) => total + Number(enemy.stats?.def || 0), 0)} spd={enemyPartyStates.reduce((total: number, enemy: any) => total + Number(enemy.stats?.spd || 0), 0)} />
+                  <PvpDeckPresentation className="setup-pvp-deck" ariaLabel="対戦相手のデッキ" members={enemyPartyStates.map((enemy: any, idx: number) => ({ key: enemy.id || `enemy-${idx}`, characterId: enemy.characterId, name: enemy.name, level: enemy.level }))} />
+                  {canonicalEnemySkills.length > 0 && <div className="setup-enemy-skill-grid" aria-label="対戦相手のスキル">
+                    {canonicalEnemySkills.map((skill: any) => <button type="button" key={skill.id} onClick={() => setSelectedOpponentSkill(skill)} aria-label={`${skill.name}の詳細`}>
+                      {getCanonicalSkillIcon(skill.id) ? <img src={getCanonicalSkillIcon(skill.id)} alt="" /> : <span aria-hidden="true">SK</span>}
+                    </button>)}
+                  </div>}
+                </>
               ) : (
                 <div className="setup-enemy-spec">
                   <div className="setup-enemy-threat">
@@ -248,14 +249,9 @@ export default function CardBattleView() {
                   </div>
                 </div>
               )}
-              {!isTutorialBattle && <div className="setup-stat-summary mt-2" aria-label="対戦相手ステータス">
+              {!isTutorialBattle && !isPvP && <div className="setup-stat-summary mt-2" aria-label="対戦相手ステータス">
                 <strong>総合力 <b>{enemyPower.toLocaleString()}</b></strong>
                 <div><span>ATK <b>{enemyPartyStates.reduce((total: number, enemy: any) => total + Number(enemy.stats?.atk || 0), 0).toLocaleString()}</b></span><span>DEF <b>{enemyPartyStates.reduce((total: number, enemy: any) => total + Number(enemy.stats?.def || 0), 0).toLocaleString()}</b></span><span>SPD <b>{enemyPartyStates.reduce((total: number, enemy: any) => total + Number(enemy.stats?.spd || 0), 0).toLocaleString()}</b></span></div>
-                {canonicalEnemySkills.length > 0 && <div className="setup-enemy-skill-grid" aria-label="対戦相手のスキル">
-                  {canonicalEnemySkills.map((skill: any) => <button type="button" key={skill.id} onClick={() => setSelectedOpponentSkill(skill)} aria-label={`${skill.name}の詳細`}>
-                    {getCanonicalSkillIcon(skill.id) ? <img src={getCanonicalSkillIcon(skill.id)} alt="" /> : <span aria-hidden="true">SK</span>}
-                  </button>)}
-                </div>}
               </div>}
             </div>
 
@@ -267,7 +263,11 @@ export default function CardBattleView() {
                 <span>自軍メンバー</span>
                 <span className="text-secondary font-size-6">タップで詳細</span>
               </div>
-              <div className="setup-cards-row gap-2 justify-between">
+              {isPvP ? <PvpDeckPresentation className="setup-pvp-deck" ariaLabel="自分のデッキ" showSkills members={playerPartyStates.map((charState: any, idx: number) => {
+                const canonical = canonicalPvpCharacter(charState.characterId);
+                const equipped = (charState.skills || []).find((skill: any) => String(skill.skill_card_id || skill.skillId || skill.id) !== "BASIC_ATTACK");
+                return { key: charState.id || `player-${idx}`, characterId: canonical?.id || charState.characterId, name: charState.name, level: charState.level, skillId: equipped?.skill_card_id || equipped?.skillId || equipped?.id };
+              })} /> : <div className="setup-cards-row gap-2 justify-between">
                 {playerPartyStates.map((charState: any, idx: number) => {
                   const hpPercent = (charState.hp / charState.maxHp) * 100;
                   const masterData = CHARACTERS_MASTER.find(m => m.id === charState.characterId || m.name === charState.characterId);
@@ -296,11 +296,11 @@ export default function CardBattleView() {
                     </div>
                   );
                 })}
-              </div>
-              {!isTutorialBattle && <div className="setup-stat-summary is-player" aria-label="自軍ステータス">
+              </div>}
+              {!isTutorialBattle && (isPvP ? <PvpPowerSummary className="is-player" totalPower={playerPower} atk={playerPartyStates.reduce((total: number, player: any) => total + Number(player.stats?.atk || 0), 0)} def={playerPartyStates.reduce((total: number, player: any) => total + Number(player.stats?.def || 0), 0)} spd={playerPartyStates.reduce((total: number, player: any) => total + Number(player.stats?.spd || 0), 0)} /> : <div className="setup-stat-summary is-player" aria-label="自軍ステータス">
                 <strong>総合力 <b>{playerPower.toLocaleString()}</b></strong>
                 <div><span>ATK <b>{playerPartyStates.reduce((total: number, player: any) => total + Number(player.stats?.atk || 0), 0).toLocaleString()}</b></span><span>DEF <b>{playerPartyStates.reduce((total: number, player: any) => total + Number(player.stats?.def || 0), 0).toLocaleString()}</b></span><span>SPD <b>{playerPartyStates.reduce((total: number, player: any) => total + Number(player.stats?.spd || 0), 0).toLocaleString()}</b></span></div>
-              </div>}
+              </div>)}
             </div>
 
             {/* 作戦AI設定 */}

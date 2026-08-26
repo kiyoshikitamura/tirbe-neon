@@ -13,6 +13,7 @@ import {
 import "./QuestBattleViewer.css";
 import { useAudio } from "@/audio/AudioProvider";
 import type { BattlePresentationPhase } from "@/hooks/useBattle";
+import { isInternalBattleLabel } from "@/domain/presentation/battleSkillLabels";
 
 type Participant = BattleParticipantView & {
   characterId?: string;
@@ -110,9 +111,11 @@ export default function QuestBattleViewer(props: Props) {
   const activeSide = sideOf(activeParticipant);
   const activeVisual = visualOf(activeParticipant, activeSide);
   const targetHasAdvantage = hasAdvantage(targetParticipant);
-  const skillName = props.skillCutIn?.skillName || "通常攻撃";
+  const rawSkillName = props.skillCutIn?.skillName || "通常攻撃";
+  const skillName = isInternalBattleLabel(rawSkillName) ? "スキル発動" : rawSkillName;
   const isSkillAction = Boolean(props.skillCutIn && !/通常攻撃|ATTACK/i.test(skillName));
-  const skillPresentation = resolveBattleSkillPresentation(props.skillCutIn, activeParticipant ? { ...activeParticipant, rarity: activeVisual.rarity } : undefined);
+  const safeCutIn = props.skillCutIn ? { ...props.skillCutIn, skillName } : null;
+  const skillPresentation = resolveBattleSkillPresentation(safeCutIn, activeParticipant ? { ...activeParticipant, rarity: activeVisual.rarity } : undefined);
   const lastSkillCueRef = useRef<unknown>(null);
   const lastDamageCueRef = useRef<unknown>(null);
   const tutorialPaceRef = useRef({ normalSeen: false, skillSeen: false, advanced: false });
@@ -175,7 +178,7 @@ export default function QuestBattleViewer(props: Props) {
           <div className="battle-action-relation" aria-hidden="true">
             <span>{activeParticipant?.name || "ACTOR"}</span><i /><b>{isSkillAction ? "SKILL" : "HIT"}</b><i /><span>{targetParticipant?.name || "TARGET"}</span>
           </div>
-          {props.skillCutIn && isSkillAction && !skillPresentation?.tier && <div className="battle-skill-flash"><small>SKILL</small><strong>{props.skillCutIn.skillName}</strong></div>}
+          {props.skillCutIn && isSkillAction && !skillPresentation?.tier && <div className="battle-skill-flash"><small>SKILL</small><strong>{skillName}</strong></div>}
         </section>
         <PartyZone side="enemy" label={props.opponentName} party={props.enemyParty} activeId={activeParticipant?.id} targetId={targetParticipant?.id} shakingId={props.shakingId} visualOf={visualOf} popupFor={popupFor} impactFor={impactFor} hasAdvantage={hasAdvantage} tutorial={props.tutorial} />
         {isSkillAction && (props.presentationPhase === "TARGET_FOCUS" || props.presentationPhase === "ATTACK_MOTION") && <BattleSkillResolutionVfx key={props.presentationPhase} presentation={skillPresentation} phase={props.presentationPhase} actorSide={activeSide} />}

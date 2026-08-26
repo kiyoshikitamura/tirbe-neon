@@ -154,18 +154,29 @@ test("PvP MY DECK and pre-battle use the same main formation and mobile CTA flow
   await enterGame(page);
   await page.locator(".circle-menu-btn.fight").click();
   await expect(page.locator(".pvp-hero")).toBeVisible();
-  await expect(page.locator(".pvp-my-deck-member")).toHaveCount(3);
-  const deckIds = await page.locator(".pvp-my-deck-member").evaluateAll((nodes) => nodes.map((node) => node.getAttribute("data-character-id")));
+  const topDeck = page.locator(".pvp-my-deck .pvp-deck-member");
+  await expect(topDeck).toHaveCount(3);
+  const deckIds = await topDeck.evaluateAll((nodes) => nodes.map((node) => node.getAttribute("data-character-id")));
   expect(deckIds).toEqual(["char_reiji_01", "char_rui_01", "char_chang_01"]);
+  await expect(topDeck.locator(".character-presentation-meta")).toHaveCount(0);
+  await expect(topDeck.locator(".character-presentation-frame.is-character")).toHaveCount(3);
+  const skillOverlaps = await topDeck.evaluateAll((nodes) => nodes.map((node) => {
+    const portrait = node.querySelector(".character-presentation")?.getBoundingClientRect();
+    const skill = node.querySelector(".pvp-deck-skill-slot")?.getBoundingClientRect();
+    return Boolean(portrait && skill && !(skill.right <= portrait.left || skill.left >= portrait.right || skill.bottom <= portrait.top || skill.top >= portrait.bottom));
+  }));
+  expect(skillOverlaps).toEqual([false, false, false]);
 
   await page.locator(".pvp-opponent-card").first().getByRole("button", { name: "対戦する" }).click();
   await expect(page.locator(".setup-container")).toBeVisible();
-  const setupIds = await page.locator(".setup-char-card").evaluateAll((nodes) => nodes.map((node) => node.getAttribute("data-character-id")));
+  const setupPlayerDeck = page.locator(".setup-player-wrapper .pvp-deck-member");
+  const setupIds = await setupPlayerDeck.evaluateAll((nodes) => nodes.map((node) => node.getAttribute("data-character-id")));
   expect(setupIds).toEqual(deckIds);
-  await expect(page.locator(".setup-char-card .character-presentation-meta")).toHaveCount(0);
-  await expect(page.locator(".setup-enemy-mini-card .character-presentation-meta")).toHaveCount(0);
-  await expect(page.locator(".setup-stat-summary").first()).toContainText("総合力");
-  await expect(page.locator(".setup-stat-summary").first()).toContainText("ATK");
+  await expect(setupPlayerDeck.locator(".character-presentation-meta")).toHaveCount(0);
+  await expect(page.locator(".setup-enemy-wrapper .pvp-deck-member .character-presentation-meta")).toHaveCount(0);
+  await expect(page.locator(".setup-player-wrapper .character-presentation-frame.is-character")).toHaveCount(3);
+  await expect(page.locator(".setup-enemy-wrapper .pvp-power-summary")).toContainText("総合力");
+  await expect(page.locator(".setup-enemy-wrapper .pvp-power-summary")).toContainText("ATK");
 
   const tactic = page.locator(".setup-tactic-wrapper");
   const cta = page.locator(".setup-cta-area");

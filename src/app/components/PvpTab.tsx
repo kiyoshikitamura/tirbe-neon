@@ -14,7 +14,7 @@ import { SCREEN_ASSET_MANIFESTS } from "../lib/screenManifests";
 import CharacterPresentation from "./character/CharacterPresentation";
 import { CHARACTERS_MASTER, getCharacterTransparentImg } from "@/utils/game_constants";
 import { getCharacterLocationBackground, resolveCharacterLocationKey } from "@/utils/characterVisualAssets";
-import { getCanonicalSkillIcon } from "@/utils/skillVisualAssets";
+import PvpDeckPresentation from "./pvp/PvpDeckPresentation";
 
 const tacticNames: { [key: string]: string } = {
   ATTACK_PRIORITY: "攻撃優先",
@@ -204,23 +204,11 @@ export default function PvpTab() {
 
         <section className="pvp-my-deck" aria-label="自分のデッキ">
           <div className="pvp-section-heading"><strong>MY DECK</strong><span>総合力 {Number(totalPower || 0).toLocaleString()}</span></div>
-          <div className="pvp-my-deck-members">
-            {myDeckCharacters.map(({ ownedId, owned, master }: any) => {
+          <PvpDeckPresentation ariaLabel="自分の出撃メンバー" showSkills members={myDeckCharacters.map(({ ownedId, owned, master }: any) => {
               const equippedSkill = (userSkillsList || []).find((entry: any) => entry.equipped_character_id === owned?.id);
-              const skillIcon = getCanonicalSkillIcon(equippedSkill?.skill_card_id);
-              return <div className="pvp-my-deck-member" key={ownedId} data-character-id={ownedId}>
-                <CharacterPresentation
-                  src={master ? getCharacterTransparentImg(master.name) : undefined}
-                  alt={master?.jpName || "デッキメンバー"}
-                  variant="thumbnail"
-                  rarity={master?.rarity || "N"}
-                  level={Number(owned?.level || 1)}
-                />
-                {skillIcon && <img className="pvp-my-deck-skill" src={skillIcon} alt="装備スキル" />}
-              </div>;
-            })}
-            {myDeckCharacters.length === 0 && <span className="pvp-my-deck-empty">出撃編成を設定してください</span>}
-          </div>
+              return { key: ownedId, characterId: master?.id || ownedId, name: master?.jpName, level: Number(owned?.level || 1), skillId: equippedSkill?.skill_card_id };
+            })} />
+          {myDeckCharacters.length === 0 && <span className="pvp-my-deck-empty">出撃編成を設定してください</span>}
         </section>
 
         <SubTabNav
@@ -263,17 +251,7 @@ export default function PvpTab() {
                         <div className="pvp-opponent-copy">
                           <div className="pvp-opponent-heading"><div><div className="pvp-opponent-name">{op.opponent_username}</div><div className="pvp-opponent-guild">{op.opponent_guild_name || "無所属"}</div></div><strong>{op.opponent_rank ? `順位 ${op.opponent_rank}位` : "順位 圏外"}</strong></div>
                           <div className="pvp-opponent-leader"><span>LEADER</span><strong>{defenseCharactersFor(op)[0]?.display_name || "未設定"}</strong></div>
-                          <div className="pvp-opponent-deck" aria-label={`${op.opponent_username}の防衛メンバー`}>
-                            {defenseCharactersFor(op).map((character: any) => <CharacterPresentation
-                              key={`${op.opponent_user_id}-${character.slot}`}
-                              src={character.asset_identifier || undefined}
-                              alt={character.display_name || "防衛キャラクター"}
-                              variant="thumbnail"
-                              rarity={character.rarity || "N"}
-                              name={character.display_name}
-                              level={Number(character.level || 1)}
-                            />)}
-                          </div>
+                          <PvpDeckPresentation className="pvp-opponent-deck" ariaLabel={`${op.opponent_username}の防衛メンバー`} members={defenseCharactersFor(op).map((character: any) => ({ key: `${op.opponent_user_id}-${character.slot}`, characterId: character.character_master_id, name: character.display_name, level: Number(character.level || 1), imageSrc: character.asset_identifier || undefined }))} />
                           <div className="pvp-opponent-meta">
                             <Badge tone="cyan">RATE {op.opponent_points}</Badge>
                             <span className="pvp-opponent-power">総合力 {Number(op.opponent_power || 0).toLocaleString()}</span>
@@ -378,7 +356,7 @@ export default function PvpTab() {
                             aria-pressed={isSelected}
                           >
                             <span className="pvp-defense-check">{isSelected ? "✓" : "+"}</span>
-                            <CharacterPresentation src={getCharacterTransparentImg(master.name)} alt={master.jpName} variant="thumbnail" rarity={master.rarity || "N"} />
+                            <CharacterPresentation src={getCharacterTransparentImg(master.name)} alt={master.jpName} variant="thumbnail" rarity={master.rarity || "N"} frameKind="character" metadata={false} />
                             <span className="pvp-defense-name">{master.jpName || "キャラクター"}</span>
                             <span className="pvp-defense-level">Lv.{char.level}</span>
                           </button>
