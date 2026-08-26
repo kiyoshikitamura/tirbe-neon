@@ -175,7 +175,7 @@ function PublicProfileFixture() {
     bio: "夜の街で、最高のチームを探しています。\n対戦よろしく！",
     totalPower: 83146,
     dailyPvpRank: 7,
-    party: enemyParty.map((entry) => ({ characterId: entry.characterId, name: entry.name, level: entry.level, rarity: entry.rarity })),
+    party: enemyParty.map((entry, index) => ({ characterId: entry.characterId, name: entry.name, level: entry.level, rarity: entry.rarity, power: 12400 - index * 700, skillIds: index === 0 ? ["SKILL_001", "SKILL_005"] : [] })),
   }} currentUserId="qa-self" onClose={() => setOpen(false)} onRetry={() => undefined} onDm={() => undefined} /> : <button type="button" onClick={() => setOpen(true)}>公開プロフィールを開く</button>}</GameContext.Provider>;
 }
 

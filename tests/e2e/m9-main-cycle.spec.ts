@@ -144,6 +144,20 @@ test("M9-V0 main cycle presents growth, mission, PvP, ranking, raid and guild di
   await mobileFramePass(page, ".guild-lobby-view", "guild-detail");
 });
 
+test("PvP hero asset is the first visual title at 390 and 412", async ({ page }) => {
+  await enterGame(page);
+  await page.locator(".circle-menu-btn.fight").click();
+  await expect(page.locator(".pvp-hero-title")).toHaveCount(0);
+  for (const viewport of [{ width: 390, height: 844 }, { width: 412, height: 915 }]) {
+    await page.setViewportSize(viewport);
+    const semanticHeading = await page.locator(".pvp-view > .sr-only").boundingBox();
+    expect(semanticHeading).not.toBeNull();
+    expect(semanticHeading!.width).toBeLessThanOrEqual(1);
+    expect(semanticHeading!.height).toBeLessThanOrEqual(1);
+    await expect(page.locator(".pvp-hero")).toBeVisible();
+  }
+});
+
 test("Fresh player outside public top 100 receives opponents on first PvP view", async ({ page }) => {
   test.setTimeout(35_000);
   await page.goto("/?freshPvp=1");

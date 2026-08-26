@@ -2334,16 +2334,19 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       party: []
     });
     try {
-      const [{ data: publicPlayer, error: publicPlayerError }, { data: profileRows, error: profileError }, { data: dailyRows, error: dailyError }] = await Promise.all([
+      const [{ data: publicPlayer, error: publicPlayerError }, { data: profileRows, error: profileError }, { data: dailyRows, error: dailyError }, { data: publicRoster, error: publicRosterError }] = await Promise.all([
         supabase.rpc("get_public_player_detail", { p_user_id: userId }),
         supabase.rpc("get_public_profiles", { p_user_ids: [userId] }),
         supabase.rpc("get_public_pvp_rankings", { p_daily: true, p_limit: 100, p_offset: 0 }),
+        supabase.rpc("get_public_battle_roster", { p_target_user_id: userId }),
       ]);
       if (publicPlayerError) throw publicPlayerError;
       if (profileError) console.warn("Public identity projection unavailable:", profileError.message);
       if (dailyError) console.warn("Public daily PvP rank unavailable:", dailyError.message);
+      if (publicRosterError) console.warn("Public equipped skill projection unavailable:", publicRosterError.message);
       const identity = (Array.isArray(profileRows) ? profileRows : [])[0] || {};
       const dailyStanding = (Array.isArray(dailyRows) ? dailyRows : []).find((row: any) => row.user_id === userId);
+      const rosterCharacters = Array.isArray(publicRoster?.characters) ? publicRoster.characters : [];
       setActivePlayerDetail({
         id: publicPlayer.user_id,
         status: "ready",
@@ -2356,15 +2359,23 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         guildName: publicPlayer.guild_name || null,
         totalPower: Number(publicPlayer.total_power || 0),
         dailyPvpRank: dailyStanding ? Number(dailyStanding.rank_position) : null,
-        party: (publicPlayer.main_formation || []).map((character: any) => ({
-          characterId: character.character_master_id,
-          name: character.display_name,
-          level: Number(character.level || 1),
-          plus_val: Number(character.awakening_level || 0),
-          rarity: character.rarity,
-          assetIdentifier: character.asset_identifier,
-          power: Number(character.character_power || 0),
-        })),
+        party: (publicPlayer.main_formation || []).map((character: any) => {
+          const rosterCharacter = rosterCharacters.find((entry: any) => entry.character_id === character.character_master_id);
+          const statValue = (key: "atk" | "def" | "spd") => Number.isFinite(Number(rosterCharacter?.stats?.[key])) ? Number(rosterCharacter.stats[key]) : undefined;
+          return {
+            characterId: character.character_master_id,
+            name: character.display_name,
+            level: Number(character.level || 1),
+            plus_val: Number(character.awakening_level || 0),
+            rarity: character.rarity,
+            assetIdentifier: character.asset_identifier,
+            power: Number(character.character_power || 0),
+            atk: statValue("atk"),
+            def: statValue("def"),
+            spd: statValue("spd"),
+            skillIds: (Array.isArray(rosterCharacter?.skills) ? rosterCharacter.skills : []).sort((left: any, right: any) => Number(left.slot_index || 0) - Number(right.slot_index || 0)).map((skill: any) => skill.skill_card_id).filter(Boolean).slice(0, 6),
+          };
+        }),
       });
       return;
       /* Retired: public player detail is supplied exclusively by the server snapshot RPC.

@@ -219,9 +219,7 @@ export default function PvpTab() {
     <>
     <HubPage
       className="pvp-view"
-      eyebrow="FIGHT / SOLO COMPETITION"
       title="喧嘩（PvP）"
-      description="相手を選び、出撃編成と残り挑戦回数を確認して対戦する。"
       status={readiness.status}
       onRetry={readiness.retry}
       hideVisualHeader
@@ -229,7 +227,6 @@ export default function PvpTab() {
         <section className="pvp-hero" style={pvpBackgroundPath ? { "--pvp-hero-bg": `url(${pvpBackgroundPath})` } as React.CSSProperties : undefined} aria-label="PvP対戦">
           <div className="pvp-hero-shade" aria-hidden="true" />
           <CharacterPresentation className="pvp-hero-fighter is-player" src={playerLeaderMaster ? getCharacterTransparentImg(playerLeaderMaster.name) : undefined} alt={playerLeaderMaster?.jpName || "PLAYER"} variant="battle-leader" />
-          <div className="pvp-hero-title"><small>FIGHT</small><strong>喧嘩</strong><span>PVP</span></div>
           <CharacterPresentation className="pvp-hero-fighter is-opponent" src={heroOpponentLeader?.asset_identifier || undefined} alt={heroOpponentLeader?.display_name || "OPPONENT"} variant="battle-leader" />
         </section>
         <section className="pvp-self-summary" aria-label="自分のPvP情報">

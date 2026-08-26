@@ -302,7 +302,16 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 412, height: 915 }
     await expect(dialog).not.toContainText("プレイヤープロフィール");
     await expect(dialog).not.toContainText("ユーザー経験値");
     await expect(dialog).not.toContainText("半グレの首領");
-    await dialog.getByRole("button", { name: "閉じる" }).click();
+    await dialog.locator(".public-profile-deck button").first().click();
+    const characterDetail = dialog.locator(".public-profile-character-detail");
+    await expect(characterDetail).toBeVisible();
+    await expect(characterDetail).toContainText("総合力 12,400");
+    await expect(characterDetail.locator(".shared-skill-icon")).toHaveCount(2);
+    await characterDetail.locator(".shared-skill-icon").first().click();
+    const skillDialog = page.locator(".canonical-dialog").last();
+    await expect(skillDialog).toContainText("ストリートパンチ");
+    await skillDialog.getByRole("button", { name: "閉じる" }).last().click();
+    await dialog.getByRole("button", { name: "閉じる", exact: true }).click();
     await expect(dialog).toBeHidden();
     await expect(page.getByRole("button", { name: "公開プロフィールを開く" })).toBeVisible();
   });
