@@ -32,7 +32,7 @@ for (const token of [
   "level = 5 then '[\"GUILD_CREATION\"]'::jsonb",
 ]) assert.ok(migration.includes(token), `Migration missing: ${token}`);
 assert.ok(!migration.includes("Guild rejoin cooldown is active"));
-for (const fixture of ["LV4 DENY", "LOW CASH", "LV5 SUCCESS", "LV5 RETRY", "MEMBER DENY", "ROLLBACK TEST"]) {
+for (const fixture of ["LV4 DENY", "LOW CASH", "LV5 SUCCESS", "LV5 RETRY", "MEMBER DENY", "ROLLBACK"]) {
   assert.ok(dbTest.includes(fixture), `DB test missing: ${fixture}`);
 }
 

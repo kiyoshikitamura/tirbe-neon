@@ -11,7 +11,7 @@ begin
   -- Lv4 is denied and no state changes.
   v_user := '52000000-0000-4000-8000-000000000004';
   insert into public.users(id, username, level, xp, cash, last_guild_left_at)
-  values(v_user, 'guild-lv4', 4, 0, 10000, null);
+  values(v_user, 'lv4user', 4, 0, 10000, null);
   perform set_config('request.jwt.claim.sub', v_user::text, true);
   begin
     perform public.create_guild_v2(v_user, 'LV4 DENY', 5000);
@@ -23,7 +23,7 @@ begin
   -- Lv5 with insufficient CASH is denied.
   v_user := '52000000-0000-4000-8000-000000000005';
   insert into public.users(id, username, level, xp, cash, last_guild_left_at)
-  values(v_user, 'guild-low-cash', 5, 0, 4999, null);
+  values(v_user, 'lowcash', 5, 0, 4999, null);
   perform set_config('request.jwt.claim.sub', v_user::text, true);
   begin
     perform public.create_guild_v2(v_user, 'LOW CASH', 5000);
@@ -33,7 +33,7 @@ begin
   -- Recent Guild leave does not block creation under the Lv5 contract.
   v_user := '52000000-0000-4000-8000-000000000006';
   insert into public.users(id, username, level, xp, cash, last_guild_left_at)
-  values(v_user, 'guild-lv5', 5, 0, 5000, now());
+  values(v_user, 'lv5user', 5, 0, 5000, now());
   perform set_config('request.jwt.claim.sub', v_user::text, true);
   v_guild := (public.create_guild_v2(v_user, 'LV5 SUCCESS', 5000)->>'guild_id')::uuid;
   select cash into v_cash from public.users where id = v_user;
@@ -58,7 +58,7 @@ begin
   -- Existing membership is denied even at Lv5 with sufficient CASH.
   v_user := '52000000-0000-4000-8000-000000000007';
   insert into public.users(id, username, level, xp, cash, guild_id)
-  values(v_user, 'guild-member', 5, 0, 10000, v_guild);
+  values(v_user, 'member5', 5, 0, 10000, v_guild);
   insert into public.guild_members(guild_id, user_id, role) values(v_guild, v_user, 'MEMBER');
   perform set_config('request.jwt.claim.sub', v_user::text, true);
   begin
@@ -69,10 +69,10 @@ begin
   -- A forced downstream failure rolls back Guild, membership, and CASH.
   v_user := '52000000-0000-4000-8000-000000000008';
   insert into public.users(id, username, level, xp, cash)
-  values(v_user, 'guild-rollback', 5, 0, 5000);
+  values(v_user, 'rollback', 5, 0, 5000);
   perform set_config('request.jwt.claim.sub', v_user::text, true);
   begin
-    perform public.create_guild_v2(v_user, 'ROLLBACK TEST', 5000);
+    perform public.create_guild_v2(v_user, 'ROLLBACK', 5000);
     raise exception 'forced rollback';
   exception when sqlstate 'P0001' then
     get stacked diagnostics v_message = message_text;
