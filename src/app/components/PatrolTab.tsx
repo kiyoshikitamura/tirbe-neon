@@ -69,6 +69,18 @@ export default function PatrolTab() {
   const [tutorialDispatchPresentation, setTutorialDispatchPresentation] = React.useState<"STARTED" | "PROGRESS" | "SPEEDUP">("STARTED");
   const [tutorialEncounterPresentation, setTutorialEncounterPresentation] = React.useState<"RETURN" | "ENCOUNTER">("RETURN");
   const [tutorialEncounterReady, setTutorialEncounterReady] = React.useState(false);
+  const [authoritativeTutorialEncounter, setAuthoritativeTutorialEncounter] = React.useState<{
+    patrolId: string;
+    npc: any;
+  } | null>(null);
+  const tutorialEncounterPatrol = activePatrols.find((patrol: any) =>
+    patrol.has_battle_event
+    && !patrol.battle_resolved
+    && patrol.id !== settledPatrolEncounterId
+  );
+  const tutorialEncounterPatrolId = tutorialEncounterPatrol?.id ?? null;
+  const tutorialEncounterPatrolStatus = tutorialEncounterPatrol?.status ?? null;
+  const tutorialEncounterQuestId = tutorialEncounterPatrol?.courseId ?? null;
 
   // コースが未選択のときに初期選択を設定
   React.useEffect(() => {
@@ -119,6 +131,45 @@ export default function PatrolTab() {
     if (!naturallyCompletedPatrol) return;
     void transitionTutorialQuestToBattle(naturallyCompletedPatrol.id);
   }, [activePatrols, transitionTutorialQuestToBattle, tutorialStep]);
+
+  React.useEffect(() => {
+    if (tutorialStep !== "TUTORIAL_BATTLE" || !tutorialEncounterPatrolId) {
+      return;
+    }
+
+    let active = true;
+    const patrolId = tutorialEncounterPatrolId;
+    void supabase.rpc("get_patrol_battle_enemy", { p_patrol_id: patrolId }).then(({ data, error }) => {
+      if (!active) return;
+      if (error || !data?.id) {
+        setAuthoritativeTutorialEncounter(null);
+        traceTutorialJourney("encounter_authorization_rejected", {
+          tutorialStepBefore: tutorialStep,
+          nextExpectedTutorialStep: "TUTORIAL_BATTLE",
+          patrolId,
+          patrolStatus: tutorialEncounterPatrolStatus,
+          rejectionReason: error?.message || "authoritative encounter is unavailable",
+        });
+        return;
+      }
+      setAuthoritativeTutorialEncounter({ patrolId, npc: data });
+      traceTutorialJourney("encounter_authorized", {
+        tutorialStepBefore: tutorialStep,
+        tutorialStepAfter: tutorialStep,
+        nextExpectedTutorialStep: "TUTORIAL_BATTLE",
+        questId: tutorialEncounterQuestId,
+        patrolId,
+        patrolStatus: tutorialEncounterPatrolStatus,
+        encounterId: data.id,
+        encounterState: "READY",
+        battleEligibility: true,
+      });
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [tutorialEncounterPatrolId, tutorialEncounterPatrolStatus, tutorialEncounterQuestId, tutorialStep]);
 
   React.useEffect(() => {
     if (tutorialEncounterPresentation !== "ENCOUNTER") return;
@@ -326,7 +377,10 @@ export default function PatrolTab() {
     const tutorialCourse = activeCourse || patrolCourses.find((course: any) => course.id === tutorialPatrol?.courseId) || patrolCourses[0];
     const tutorialCharacter = CHARACTERS_MASTER.find((character: any) => character.id === (tutorialPatrol?.characterId || selectedPatrolMember));
     const tutorialOwnedCharacter = userCharactersDbList.find((character: any) => character.character_id === tutorialCharacter?.id);
-    const tutorialNpc = patrolNpcs.find((npc: any) => npc.quest_id === tutorialPatrol?.courseId);
+    const encounterProjection = authoritativeTutorialEncounter;
+    const tutorialNpc = encounterProjection && encounterProjection.patrolId === tutorialPatrol?.id
+      ? encounterProjection.npc
+      : null;
     const tutorialEncounterProjectionReady = Boolean(
       tutorialPatrol
       && tutorialNpc

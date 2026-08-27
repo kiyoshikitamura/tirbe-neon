@@ -27,19 +27,57 @@ insert into public.user_patrols(
 ) values(
   '13000000-0000-4000-8000-000000000001',
   '11000000-0000-4000-8000-000000000001',
-  'q_shinjuku_1','q_shinjuku_1','char_ageha_01','CLAIMABLE',true,false,now()
+  'q_shinjuku_1','q_shinjuku_1','char_ageha_01','ONGOING',true,false,now()+interval '1 minute'
 );
+
+insert into public.tutorial_progress(user_id,step_id)
+values('11000000-0000-4000-8000-000000000001','FREE_INSTANT');
 
 set local role authenticated;
 select set_config('request.jwt.claim.sub','11000000-0000-4000-8000-000000000001',true);
 
 do $$
 declare
+  v_completion jsonb;
+  v_encounter jsonb;
   v_first jsonb;
   v_retry jsonb;
   v_resolved_retry jsonb;
   v_count integer;
+  v_duplicate_rejected boolean:=false;
 begin
+  v_completion:=public.complete_patrol_instantly(
+    '11000000-0000-4000-8000-000000000001',
+    '13000000-0000-4000-8000-000000000001',
+    'FREE_TUTORIAL'
+  );
+  if v_completion->>'tutorial_step'<>'TUTORIAL_BATTLE'
+     or (select step_id from public.tutorial_progress where user_id='11000000-0000-4000-8000-000000000001')<>'TUTORIAL_BATTLE'
+     or (select status from public.user_patrols where id='13000000-0000-4000-8000-000000000001')<>'CLAIMABLE' then
+    raise exception 'instant completion did not authorize the tutorial encounter';
+  end if;
+
+  v_encounter:=public.get_patrol_battle_enemy('13000000-0000-4000-8000-000000000001');
+  if v_encounter->>'quest_id'<>'q_shinjuku_1' then
+    raise exception 'tutorial encounter authority was not reachable';
+  end if;
+
+  begin
+    perform public.complete_patrol_instantly(
+      '11000000-0000-4000-8000-000000000001',
+      '13000000-0000-4000-8000-000000000001',
+      'FREE_TUTORIAL'
+    );
+  exception when check_violation then
+    v_duplicate_rejected:=true;
+  end;
+  if not v_duplicate_rejected then
+    raise exception 'duplicate instant completion was not rejected';
+  end if;
+  if exists(select 1 from public.presents where user_id='11000000-0000-4000-8000-000000000001') then
+    raise exception 'instant completion granted a reward before battle finalization';
+  end if;
+
   v_first:=public.create_patrol_battle_replay(
     '13000000-0000-4000-8000-000000000001','ATTACK_PRIORITY'
   );

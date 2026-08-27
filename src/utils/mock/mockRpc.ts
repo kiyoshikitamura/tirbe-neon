@@ -808,6 +808,32 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     return { data: id, error: null };
   }
 
+  if (funcName === "get_patrol_battle_enemy") {
+    const userId = typeof window === "undefined" ? null : localStorage.getItem("tribe_demo_uuid");
+    const patrol = (client.getStorage("user_patrols") || []).find((entry: any) =>
+      entry.id === params.p_patrol_id
+      && entry.user_id === userId
+      && entry.status === "CLAIMABLE"
+      && entry.has_battle_event
+      && !entry.battle_resolved
+    );
+    const encounter = patrol ? CANONICAL_QUEST_ENCOUNTERS.find((entry) => entry.questId === (patrol.course_id || patrol.quest_id)) : null;
+    if (!patrol || !encounter) {
+      return { data: null, error: { message: "eligible patrol encounter not found", code: "P0002" } };
+    }
+    return {
+      data: {
+        id: encounter.encounterId,
+        quest_id: encounter.questId,
+        npc_name: "Canonical NPC Party",
+        npc_level: encounter.members[0]?.level ?? 1,
+        encounter_rate: 1,
+        enemy_data: {},
+      },
+      error: null,
+    };
+  }
+
   if (funcName === "create_patrol_battle_replay") {
     const userId = typeof window === "undefined" ? null : localStorage.getItem("tribe_demo_uuid");
     const patrols = client.getStorage("user_patrols") || [];
