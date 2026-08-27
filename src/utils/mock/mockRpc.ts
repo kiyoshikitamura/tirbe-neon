@@ -293,11 +293,11 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     const rankings = client.getStorage("user_power_rankings") || [];
     const memberships = client.getStorage("guild_members") || [];
     const guilds = client.getStorage("guilds") || [];
-    return { data: rankings.sort((a: any, b: any) => Number(b.total_power || 0) - Number(a.total_power || 0)).map((ranking: any) => {
+    return { data: rankings.sort((a: any, b: any) => Number(b.total_power || 0) - Number(a.total_power || 0)).map((ranking: any, index: number) => {
       const user = users.find((entry: any) => entry.id === ranking.user_id) || {};
       const membership = memberships.find((entry: any) => entry.user_id === ranking.user_id);
       const guild = membership && guilds.find((entry: any) => entry.id === membership.guild_id);
-      return { user_id: ranking.user_id, current_power: Number(ranking.total_power || 0), updated_at: ranking.updated_at || new Date().toISOString(), username: user.username || "プレイヤー", avatar_url: user.avatar_url || null, guild_id: guild?.id || null, guild_name: guild?.name || null };
+      return { user_id: ranking.user_id, current_power: Number(ranking.total_power || 0), updated_at: ranking.updated_at || new Date().toISOString(), username: user.username || "プレイヤー", avatar_url: user.avatar_url || null, guild_id: guild?.id || null, guild_name: guild?.name || null, rank_position: Object.prototype.hasOwnProperty.call(ranking, "rank_position") ? ranking.rank_position : index + 1 };
     }), error: null };
   }
 
@@ -343,7 +343,24 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
   }
 
   if (funcName === "get_raid_season_rankings") {
-    return { data: { season_id: "mock-raid-season", starts_at: new Date(Date.now() - 86400000).toISOString(), ends_at: new Date(Date.now() + 86400000).toISOString(), personal: [], individual: [], guild: [] }, error: null };
+    const users = client.getStorage("users") || [];
+    const guilds = client.getStorage("guilds") || [];
+    const logs = client.getStorage("raid_damage_logs") || [];
+    const personalTotals = new Map<string, number>();
+    const guildTotals = new Map<string, { contribution: number; participants: Set<string> }>();
+    logs.forEach((log: any) => {
+      if (log.user_id) personalTotals.set(log.user_id, (personalTotals.get(log.user_id) || 0) + Number(log.raw_damage || log.damage || 0));
+      if (log.guild_id) {
+        const current = guildTotals.get(log.guild_id) || { contribution: 0, participants: new Set<string>() };
+        current.contribution += Number(log.raw_damage || log.damage || 0);
+        if (log.user_id) current.participants.add(log.user_id);
+        guildTotals.set(log.guild_id, current);
+      }
+    });
+    const individual = [...personalTotals.entries()].sort((a, b) => b[1] - a[1]).map(([userId, contribution], index) => ({ user_id: userId, username: users.find((user: any) => user.id === userId)?.username || "プレイヤー", contribution, rank_position: index + 1 }));
+    const guild = [...guildTotals.entries()].sort((a, b) => b[1].contribution - a[1].contribution).map(([guildId, total], index) => ({ guild_id: guildId, guild_name: guilds.find((entry: any) => entry.id === guildId)?.name || "ギルド", contribution: total.contribution, participant_count: total.participants.size, rank_position: index + 1 }));
+    const userId = typeof window === "undefined" ? null : localStorage.getItem("tribe_demo_uuid");
+    return { data: { season_id: "mock-raid-season", starts_at: new Date(Date.now() - 86400000).toISOString(), ends_at: new Date(Date.now() + 86400000).toISOString(), individual, guild, selfRank: individual.find((row) => row.user_id === userId) || null }, error: null };
   }
 
   if (funcName === "get_public_gvg_rankings") {
