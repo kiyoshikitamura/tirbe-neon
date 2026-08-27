@@ -14,6 +14,7 @@ import StatusMetric from "./presentation/StatusMetric";
 import { useScreenReadiness } from "../hooks/useScreenReadiness";
 import { SCREEN_ASSET_MANIFESTS } from "../lib/screenManifests";
 import "./RankingTab.css";
+import "./RaidRankingMetric.css";
 
 type RankingCategory = "power" | "guild_power" | "pvp" | "raid";
 type RankingPeriod = "daily" | "season";
@@ -211,7 +212,7 @@ export default function RankingTab() {
       return Number(activePeriod === "daily" ? currentGuildRow?.daily_power : currentGuildRow?.current_power || 0).toLocaleString();
     }
     if (activeTab === "pvp") return activePeriod === "daily" ? `${Number(currentRow?.daily_wins || 0).toLocaleString()}勝` : `${Number(currentRow?.rank_points || 0).toLocaleString()} RATE`;
-    return `${Number(currentRow?.contribution ?? selfRank?.contribution ?? 0).toLocaleString()} Dmg`;
+    return Number(currentRow?.contribution ?? selfRank?.contribution ?? 0).toLocaleString();
   }, [activePeriod, activeTab, currentGuildId, currentGuildRow, currentRow, currentUser?.total_power, selfRank]);
 
   const activeCategoryLabel = RANKING_TABS.find((tab) => tab.id === activeTab)?.label || "総合力";
@@ -247,10 +248,10 @@ export default function RankingTab() {
               const profile = profiles[row.user_id];
               const rank = validRank(row.rank_position);
               const metric = activeTab === "power" ? Number(row.current_power || 0).toLocaleString() : activeTab === "pvp" ? activePeriod === "daily" ? `${Number(row.daily_wins || 0)}勝` : Number(row.rank_points || 0).toLocaleString() : Number(row.contribution || row.damage_dealt || 0).toLocaleString();
-              return <article key={row.user_id} className={`ranking-user-row ${row.user_id === currentUserId ? "is-current" : ""}`}><span className={`ranking-position is-${rank || "out"}`}><RankPresentation rank={rank} /></span><div className="ranking-user-main"><UserIdentityRow userName={profile?.username || row.username || "プレイヤー"} guildName={profile?.guild_name || row.guild_name} leaderCharacterId={profile?.favorite_character_id} onOpen={() => openPlayer(row.user_id)} variant="compact" /><RankingDeck characterIds={profile?.main_formation_character_ids} /></div><span className="ranking-metric">{metric}<small>{activeTab === "power" ? "総合力" : activeTab === "pvp" ? activePeriod === "daily" ? "WIN" : "RATE" : "Dmg"}</small></span></article>;
+              return <article key={row.user_id} className={`ranking-user-row ${row.user_id === currentUserId ? "is-current" : ""}`}><span className={`ranking-position is-${rank || "out"}`}><RankPresentation rank={rank} /></span><div className="ranking-user-main"><UserIdentityRow userName={profile?.username || row.username || "プレイヤー"} guildName={profile?.guild_name || row.guild_name} leaderCharacterId={profile?.favorite_character_id} onOpen={() => openPlayer(row.user_id)} variant="compact" /><RankingDeck characterIds={profile?.main_formation_character_ids} /></div><span className={`ranking-metric ${activeTab === "raid" ? "is-raid-metric" : ""}`}>{metric}<small>{activeTab === "power" ? "総合力" : activeTab === "pvp" ? activePeriod === "daily" ? "WIN" : "RATE" : "ダメージ"}</small></span></article>;
             }) : <div className="ranking-empty">まだランキングデータがありません</div>}</div>}
 
-      {activeTab === "raid" && guildRows.length > 0 && <section className="ranking-raid-guilds"><div className="ranking-list-heading"><strong>ギルドランキング</strong><span>{periodLabel}</span></div>{guildRows.slice(0, 3).map((row) => { const rank = validRank(row.rank_position); return <button type="button" key={row.guild_id} className="ranking-guild-row" onClick={() => openGuild(row.guild_id)}><span className={`ranking-position is-${rank || "out"}`}><RankPresentation rank={rank} /></span><span className="ranking-guild-identity"><strong>{row.guild_name || "ギルド"}</strong><small>{Number(row.participant_count || 0)} MEMBERS</small></span><span className="ranking-metric">{Number(row.contribution || 0).toLocaleString()}<small>Dmg</small></span></button>; })}</section>}
+      {activeTab === "raid" && guildRows.length > 0 && <section className="ranking-raid-guilds"><div className="ranking-list-heading"><strong>ギルドランキング</strong><span>{periodLabel}</span></div>{guildRows.slice(0, 3).map((row) => { const rank = validRank(row.rank_position); return <button type="button" key={row.guild_id} className="ranking-guild-row" onClick={() => openGuild(row.guild_id)}><span className={`ranking-position is-${rank || "out"}`}><RankPresentation rank={rank} /></span><span className="ranking-guild-identity"><strong>{row.guild_name || "ギルド"}</strong><small>{Number(row.participant_count || 0)} MEMBERS</small></span><span className="ranking-metric is-raid-metric">{Number(row.contribution || 0).toLocaleString()}<small>ダメージ</small></span></button>; })}</section>}
       {activationMilestones.has("first_pvp") && !activationMilestones.has("first_raid") && isRaidActive ? <OutlawButton variant="primary" fullWidth className="ranking-return-cta" onClick={() => setActiveTab("raid")}>次はレイドへ挑戦</OutlawButton>
         : activationMilestones.has("first_pvp") && !userGuildMember ? <OutlawButton variant="primary" fullWidth className="ranking-return-cta" onClick={() => setActiveTab("guild")}>おすすめTRIBEを見る</OutlawButton>
           : activationMilestones.has("first_pvp") && userGuildMember && !activationMilestones.has("guild_activation") ? <OutlawButton variant="primary" fullWidth className="ranking-return-cta" onClick={() => setActiveTab("guild")}>所属TRIBEへ</OutlawButton>

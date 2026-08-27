@@ -80,6 +80,15 @@ export type BattlePresentationContext = {
   opponentProfile?: string;
   backgroundPath?: string;
   backgroundLabel?: string;
+  opponentSkills?: Array<{
+    id: string;
+    name: string;
+    activationType?: string;
+    target?: string;
+    cooldown?: number | null;
+    availableFromRound?: number;
+    effects?: string[];
+  }>;
 };
 export type BattleModeResultDetail = {
   resultLabel?: string;
@@ -155,6 +164,7 @@ export function useBattle(options: UseBattleOptions) {
     raidPoints,
     setRaidPoints,
     setRaidFirstEntryFree,
+    requestRaidTopRefresh,
     cash,
     setCash,
     diamonds,
@@ -1398,6 +1408,7 @@ export function useBattle(options: UseBattleOptions) {
       opponentProfile: presentationOverride?.opponentProfile,
       backgroundPath: presentationOverride?.backgroundPath,
       backgroundLabel: presentationOverride?.backgroundLabel,
+      opponentSkills: presentationOverride?.opponentSkills,
     };
 
     // 旧セッションは中断再開の互換用。再生UI移行後に廃止する。
@@ -2415,10 +2426,9 @@ export function useBattle(options: UseBattleOptions) {
         await syncBootstrapData(session.user.id);
         setBattleModeResultDetail({
           stats: [
-            { label: "今回 DAMAGE", value: Number(raidResultTemp.rawDamage || 0).toLocaleString() },
-            { label: "BOSS HP反映", value: Number(raidResultTemp.appliedDamage || 0).toLocaleString() },
-            { label: "個人 CONTRIBUTION", value: Number(raidResultTemp.personalContribution || 0).toLocaleString() },
-            { label: "BOSS 残りHP", value: Number(raidResultTemp.remainingBossHp || 0).toLocaleString() },
+            { label: "今回のダメージ", value: Number(raidResultTemp.appliedDamage || 0).toLocaleString() },
+            { label: "累計貢献ダメージ", value: Number(raidResultTemp.personalContribution || 0).toLocaleString() },
+            { label: "ボス残りHP", value: Number(raidResultTemp.remainingBossHp || 0).toLocaleString() },
           ],
           reward: raidResultTemp.rewardProjectionUnavailable
             ? "報酬はサーバーで確定済み"
@@ -2428,11 +2438,11 @@ export function useBattle(options: UseBattleOptions) {
           rewards: Array.isArray(raidResultTemp.grantedRewards)
             ? raidResultTemp.grantedRewards.map((entry: any) => ({
                 id: String(entry.itemId || ""),
-                name: String(entry.name || "報酬"),
+                name: String(entry.itemId) === "CASH" ? "キャッシュ" : canonicalItemName(String(entry.itemId || "")),
                 quantity: Number(entry.quantity || 0),
               })).filter((entry: any) => entry.id && entry.quantity > 0)
             : [],
-          note: userGuildMember ? "TRIBE Contributionにも所属Snapshotで反映されます。" : "TRIBE加入でGuild RankingとContributionへ参加できます。",
+          note: userGuildMember ? undefined : "ギルドに加入すると、ギルドランキングに参加できます。",
           continueLabel: "レイドへ戻る",
           destination: "raid",
         });
@@ -2590,6 +2600,7 @@ export function useBattle(options: UseBattleOptions) {
     setBattlePresentationContext(null);
     setBattleSkipPending(false);
     setBattleModeResultDetail(null);
+    if (destination === "raid") requestRaidTopRefresh?.();
     if (destination) navigateTab?.(destination);
   };
 

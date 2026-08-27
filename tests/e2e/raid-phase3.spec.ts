@@ -20,8 +20,8 @@ test.beforeEach(async ({ page }) => {
     localStorage.setItem("mock_db_user_main_formations", JSON.stringify(owned.map((entry: any, index: number) => ({ user_id: me, slot: index + 1, user_character_id: entry.id }))));
     localStorage.setItem("mock_db_user_power_rankings", JSON.stringify([{ user_id: me, total_power: 61096, rank_position: 4, updated_at: now }]));
     localStorage.setItem("mock_db_user_items", JSON.stringify([{ id: "raid-ticket", user_id: me, item_id: "RAID_POINT_TICKET", quantity: 2 }]));
-    localStorage.setItem("mock_db_raid_bosses", JSON.stringify([{ id: raidId, boss_master_id: "RAID_BOSS_001", boss_name: "新宿・剛腕頭領", level: 30, current_hp: 16875000, max_hp: 22500000, base_id: "shinjuku", profile_type: "HIGH_ATK", status: "ACTIVE", expires_at: new Date(Date.now() + 20 * 3600_000).toISOString() }]));
-    localStorage.setItem("mock_db_raid_boss_master", JSON.stringify([{ id: "RAID_BOSS_001", boss_name: "新宿・剛腕頭領", level: 30, max_hp: 22500000, atk: 8714, def: 5166, spd: 358, luk: 28, skills: [] }]));
+    localStorage.setItem("mock_db_raid_bosses", JSON.stringify([{ id: raidId, boss_master_id: "RAID_BOSS_004", boss_name: "六本木・幻惑頭領", level: 30, current_hp: 16650000, max_hp: 22200000, base_id: "roppongi", profile_type: "DEBUFF", status: "ACTIVE", expires_at: new Date(Date.now() + 20 * 3600_000).toISOString() }]));
+    localStorage.setItem("mock_db_raid_boss_master", JSON.stringify([{ id: "RAID_BOSS_004", boss_name: "六本木・幻惑頭領", level: 30, max_hp: 22200000, atk: 6455, def: 5740, spd: 358, luk: 28, skills: [{ id: "BASIC_ATTACK", name: "通常攻撃", target: "ENEMY_SINGLE", cooldown: 0, effects: ["DAMAGE 80% ATK"] }, { id: "RAID_SKILL_DEBUFF", name: "威圧", target: "ENEMY_ALL", cooldown: 4, effects: ["DAMAGE 110% ATK", "ATK -20% / 2T"] }] }]));
     localStorage.setItem("mock_db_raid_damage_logs", JSON.stringify([
       { user_id: me, raid_boss_instance_id: raidId, raw_damage: 123456, created_at: now },
       ...[1, 2, 3].map((rank) => ({ user_id: `raid-rival-${rank}`, raid_boss_instance_id: raidId, raw_damage: 500000 - rank * 50000, created_at: now })),
@@ -43,9 +43,11 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 412, height: 915 }
   test(`Raid Top and pre-battle mobile hierarchy ${viewport.width}x${viewport.height}`, async ({ page }) => {
     await page.setViewportSize(viewport);
     await openRaid(page);
-    await expect(page.locator(".raid-context")).toContainText("制圧 / RAID");
-    await expect(page.locator(".raid-boss-stage")).toContainText("新宿・剛腕頭領");
-    await expect(page.locator(".raid-hp-text")).toContainText("16,875,000 / 22,500,000");
+    await expect(page.locator(".raid-context")).toHaveCount(0);
+    await expect(page.locator(".raid-view")).not.toContainText("出現中の強敵");
+    await expect(page.locator(".raid-boss-stage")).toContainText("六本木・幻惑頭領");
+    await expect(page.locator(".raid-boss-visual")).toBeVisible();
+    await expect(page.locator(".raid-hp-text")).toContainText("16,650,000 / 22,200,000");
     await expect(page.locator(".raid-status-grid")).toContainText("3 / 5");
     await expect(page.locator(".raid-status-grid")).toContainText("4位");
     const topGeometry = await page.locator(".raid-view").evaluate((node) => ({ scrollWidth: node.scrollWidth, clientWidth: node.clientWidth }));
@@ -55,7 +57,13 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 412, height: 915 }
 
     await challenge.click();
     await expect(page.locator(".raid-battle-setup")).toBeVisible();
-    await expect(page.locator(".raid-battle-target")).toContainText("新宿・剛腕頭領");
+    await expect(page.locator(".raid-battle-target")).toContainText("六本木・幻惑頭領");
+    await expect(page.locator(".raid-battle-boss-visual")).toBeVisible();
+    await expect(page.locator(".raid-battle-boss-skills .shared-skill-icon")).toHaveCount(2);
+    await page.locator(".raid-battle-boss-skills .shared-skill-icon").nth(1).click();
+    await expect(page.getByRole("dialog", { name: "威圧の詳細" })).toContainText("威圧");
+    await page.getByRole("dialog", { name: "威圧の詳細" }).getByRole("button", { name: "閉じる", exact: true }).last().click();
+    expect(await page.locator(".raid-battle-setup").evaluate((node) => getComputedStyle(node).backgroundImage)).toContain("bg_street_roppongi.png");
     await expect(page.locator(".raid-battle-deck .character-presentation")).toHaveCount(5);
     await expect(page.locator(".raid-battle-deck")).toContainText("総合力");
     await expect(page.locator(".raid-battle-resource")).toContainText("3 / 5");

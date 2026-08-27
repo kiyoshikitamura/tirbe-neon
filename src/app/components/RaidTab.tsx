@@ -2,13 +2,12 @@
 
 import React from "react";
 import { supabase } from "@/utils/supabase";
-import { BASE_MAP_MASTER } from "@/utils/game_constants";
+import { BASE_MAP_MASTER, getCanonicalBattleBackground } from "@/utils/game_constants";
 import { useGame } from "../context/GameContext";
 import { useScreenReadiness } from "../hooks/useScreenReadiness";
 import { SCREEN_ASSET_MANIFESTS } from "../lib/screenManifests";
 import Badge from "./ui/Badge";
 import CanonicalDialog from "./ui/CanonicalDialog";
-import HeroPanel from "./ui/HeroPanel";
 import HubPage from "./ui/HubPage";
 import OutlawButton from "./ui/OutlawButton";
 import OutlawCard from "./ui/OutlawCard";
@@ -22,6 +21,7 @@ export default function RaidTab() {
   const {
     startCardBattle, playCyberSe, navigateTab, userLevel, raidPoints, raidFirstEntryFree,
     setRaidPoints, setRaidFirstEntryFree, userGuildMember, fetchGuildDetail, session, syncBootstrapData,
+    raidTopRefreshRevision,
   } = useGame();
   const readiness = useScreenReadiness({ assets: SCREEN_ASSET_MANIFESTS.raid });
   const [activeRaids, setActiveRaids] = React.useState<any[]>([]);
@@ -33,6 +33,7 @@ export default function RaidTab() {
   const [dialog, setDialog] = React.useState<RaidDialog>(null);
   const [recoveryLoading, setRecoveryLoading] = React.useState(false);
   const [raidTicketQuantity, setRaidTicketQuantity] = React.useState(0);
+  const [projectionRevision, setProjectionRevision] = React.useState(0);
   const [now, setNow] = React.useState(() => Date.now());
 
   const loadRaidTop = React.useCallback(async () => {
@@ -53,10 +54,11 @@ export default function RaidTab() {
     setRaidPoints?.(Number(attempt?.raidPoints ?? 0));
     setRaidFirstEntryFree?.(Boolean(attempt?.firstEntryFree));
     setRaidTicketQuantity(Number(ticket?.quantity || 0));
+    setProjectionRevision((revision) => revision + 1);
     setLoading(false);
   }, [session?.user?.id, setRaidFirstEntryFree, setRaidPoints]);
 
-  React.useEffect(() => { void loadRaidTop(); }, [loadRaidTop]);
+  React.useEffect(() => { void loadRaidTop(); }, [loadRaidTop, raidTopRefreshRevision]);
   React.useEffect(() => { const timer = window.setInterval(() => setNow(Date.now()), 1000); return () => window.clearInterval(timer); }, []);
   React.useEffect(() => {
     if (!selectedRaidId) { setSelfRank(null); return; }
@@ -65,7 +67,7 @@ export default function RaidTab() {
       if (current) setSelfRank(error ? null : data?.selfRank ?? null);
     });
     return () => { current = false; };
-  }, [selectedRaidId]);
+  }, [projectionRevision, selectedRaidId]);
   React.useEffect(() => {
     if (userGuildMember) return;
     void supabase.rpc("get_recommended_guilds", { p_limit: 3 }).then(({ data }) => { if (Array.isArray(data)) setRecommendedGuilds(data); });
@@ -92,7 +94,11 @@ export default function RaidTab() {
     if (!raidFirstEntryFree && raidPoints <= 0) { setDialog("shortage"); return; }
     if (!canOpenBriefing) return;
     void startCardBattle("RAID", selectedRaid.bossName, selectedRaid.id, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, {
-      opponentLabel: selectedRaid.bossName, opponentProfile: selectedRaid.profileType || "BOSS", backgroundLabel: baseName,
+      opponentLabel: selectedRaid.bossName,
+      opponentProfile: selectedRaid.profileType || "BOSS",
+      backgroundLabel: baseName,
+      backgroundPath: getCanonicalBattleBackground(selectedRaid.baseId),
+      opponentSkills: Array.isArray(selectedRaid.skillLoadout) ? selectedRaid.skillLoadout : [],
     });
   };
 
@@ -113,17 +119,16 @@ export default function RaidTab() {
 
   return <>
     <HubPage className="raid-view" title="レイド" hideVisualHeader status={readiness.status} onRetry={readiness.retry}>
-      <section className="raid-context" aria-label="制圧レイド"><img src="/menu/raid.png" alt="" /><div><small>制圧 / RAID</small><h2>出現中の強敵</h2><p>仲間と累積ダメージを重ねて討伐する</p></div></section>
       {loading ? <div className="raid-loading" role="status">レイド情報を取得中…</div> : errorMessage ? <OutlawCard className="raid-error"><p>{errorMessage}</p><OutlawButton variant="primary" onClick={() => void loadRaidTop()}>再読み込み</OutlawButton></OutlawCard> : activeRaids.length === 0 ? <OutlawCard className="raid-empty"><strong>現在開催中のレイドはありません</strong><p>次の開催情報が確定すると、ここに表示されます。</p></OutlawCard> : <>
         <div className="raid-target-tabs" role="tablist" aria-label="レイド対象">{activeRaids.map((raid) => <button key={raid.id} role="tab" aria-selected={raid.id === selectedRaid?.id} className={raid.id === selectedRaid?.id ? "is-active" : ""} onClick={() => setSelectedRaidId(raid.id)}>{BASE_MAP_MASTER.find((base) => base.id === raid.baseId)?.name || raid.baseId}</button>)}</div>
-        <HeroPanel className={`raid-boss-hero ${isDefeated || isExpired ? "raid-boss-ended" : ""}`}>
-          <div className="raid-boss-stage"><div className="raid-boss-emblem"><img src="/menu/raid.png" alt="レイドボス" /></div><div><span>RAID BOSS</span><strong>{selectedRaid?.bossName}</strong><small>Lv.{selectedRaid?.level || 1} ・ {baseName}</small></div><Badge tone={isDefeated || isExpired ? "neutral" : "danger"}>{isDefeated ? "討伐済み" : formatTime(displaySeconds)}</Badge></div>
+        <OutlawCard className={`raid-boss-hero ${isDefeated || isExpired ? "raid-boss-ended" : ""}`}>
+          <div className="raid-boss-stage"><div className="raid-boss-visual" role="img" aria-label={`${selectedRaid?.bossName || "レイドボス"} 画像準備中`}><span aria-hidden="true" /></div><div><span>RAID BOSS</span><strong>{selectedRaid?.bossName}</strong><small>Lv.{selectedRaid?.level || 1} ・ {baseName}</small></div><Badge tone={isDefeated || isExpired ? "neutral" : "danger"}>{isDefeated ? "討伐済み" : formatTime(displaySeconds)}</Badge></div>
           <div className="raid-hp-heading"><span>BOSS HP</span><strong>{hpPercent.toFixed(1)}%</strong></div>
           <div className="raid-hp-bar-container" role="meter" aria-label="ボス残りHP" aria-valuemin={0} aria-valuemax={displayMaxHp} aria-valuenow={displayHp}><div className="raid-hp-bar-fill" style={{ width: `${hpPercent}%` }} /><span className="raid-hp-text">{displayHp.toLocaleString()} / {displayMaxHp.toLocaleString()}</span></div>
           <div className="raid-status-grid"><StatusMetric label="RAID POINT" value={raidFirstEntryFree ? "初回無料" : `${raidPoints} / 5`} /><StatusMetric label="CONTRIBUTION" value={Number(selfRank?.contribution || 0).toLocaleString()} /><StatusMetric label="RANK" value={<RankPresentation rank={selfRank?.rank_position} />} /></div>
           <OutlawButton variant="primary" fullWidth onClick={openBriefing} disabled={!canOpenBriefing}>{userLevel < 5 ? "プレイヤーLv5以上で解放" : isDefeated ? "討伐済み" : isExpired ? "開催終了" : "挑戦する"}</OutlawButton>
           {!raidFirstEntryFree && <small className="raid-cost-copy">討伐開始時にRPを1消費 ・ 2時間ごとに1回復</small>}
-        </HeroPanel>
+        </OutlawCard>
         <div className="raid-secondary-actions"><OutlawButton variant="secondary" onClick={() => { navigateTab("ranking", "raid"); playCyberSe("click"); }}>レイドランキング</OutlawButton><OutlawButton variant="secondary" onClick={() => void loadRaidTop()}>最新状態へ更新</OutlawButton></div>
         {!userGuildMember && recommendedGuilds.length > 0 && <OutlawCard className="raid-guild-suggestion"><div className="upgrade-card-title">おすすめTRIBE</div><p>加入するとGuild Contributionへ参加できます。</p>{recommendedGuilds.map((guild) => <button key={guild.guild_id} className="sub-btn active-scale-effect" onClick={() => void fetchGuildDetail(guild.guild_id)}>{guild.name}<span>{guild.member_count}/{guild.member_limit}人</span></button>)}</OutlawCard>}
       </>}

@@ -13,6 +13,9 @@ const result = read("src/app/components/battle/BattleResultSummary.tsx");
 const migration = read("supabase/migrations/20260827000202_raid_battle_reward_projection.sql");
 
 assert(raid.includes('hideVisualHeader'), "Raid Top must not spend first view on a duplicate page title.");
+assert(!raid.includes('className="raid-context"') && !raid.includes('出現中の強敵'), "Temporary Raid hero copy must be absent.");
+assert(raid.includes('getCanonicalBattleBackground(selectedRaid.baseId)'), "Raid area must resolve the canonical battle background.");
+assert(raid.includes('opponentSkills: Array.isArray(selectedRaid.skillLoadout)'), "Raid boss skills must flow from the server projection.");
 assert(raid.includes('get_active_raids') && raid.includes('get_current_raid_attempt_state'), "Raid Top must read server Raid and attempt projections.");
 assert(raid.includes('get_raid_rankings') && raid.includes('p_limit: 100') && raid.includes('<RankPresentation'), "Raid rank must use the unambiguous server projection and shared presentation.");
 assert(raid.includes('CanonicalDialog title="RPが不足しています"'), "RP shortage must use CanonicalDialog.");
@@ -23,6 +26,10 @@ assert(battle.includes('battleStartInFlightRef.current') && battleView.includes(
 assert(battle.includes('mode === "PVP" || mode === "RAID"'), "Raid must use the canonical Main Formation authority.");
 assert(battleView.includes('className="raid-battle-setup scroll-container"'), "Raid must expose the dedicated compact pre-battle hierarchy.");
 assert(battleView.includes('RAID POINT') && battleView.includes('討伐開始'), "Raid pre-battle must show resource and primary CTA.");
+assert(battleView.includes('raid-battle-boss-skills') && battleView.includes('<SkillIconGrid skills={canonicalRaidBossSkills}'), "Raid pre-battle must use shared boss skill presentation.");
+assert(battle.includes('{ label: "今回のダメージ"') && battle.includes('{ label: "累計貢献ダメージ"') && battle.includes('{ label: "ボス残りHP"'), "Raid Result must use clear Japanese-first metrics.");
+assert(!battle.includes('BOSS HP反映') && !battle.includes('今回 DAMAGE'), "Raid Result must not expose internal processing labels.");
+assert(battle.includes('if (destination === "raid") requestRaidTopRefresh?.();'), "Raid Result return must invalidate the Raid Top projection.");
 assert(battle.includes('continueLabel: "レイドへ戻る"') && battle.includes('destination: "raid"'), "Raid Result must return to Raid Top.");
 assert(migration.includes('requester_user_id = v_user_id') && migration.includes("finalization_status = 'FINALIZED'"), "Reward projection must be owner-scoped and finalized-only.");
 assert(migration.includes('grant_row.granted_at = v_replay.finalized_at'), "Reward projection must expose only grants from this finalization.");

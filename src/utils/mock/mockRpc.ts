@@ -186,19 +186,24 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
   if (funcName === "get_active_raids") {
     const raids = client.getStorage("raid_bosses") || [];
     const fallbackBoss = CANONICAL_RAID_BOSSES.bosses[0];
-    return { data: raids.map((raid: any) => ({
-      id: raid.id,
-      bossMasterId: raid.boss_master_id || raid.boss_id || fallbackBoss.bossId,
-      bossName: raid.boss_name || raid.name || fallbackBoss.displayName,
-      level: Number(raid.level || fallbackBoss.referenceLevel),
-      currentHp: Number(raid.current_hp ?? fallbackBoss.maxHp),
-      maxHp: Number(raid.max_hp ?? fallbackBoss.maxHp),
-      profileType: raid.profile_type || fallbackBoss.profileType,
-      baseId: raid.base_id || "shinjuku",
-      spawnedAt: raid.spawned_at || new Date().toISOString(),
-      expiresAt: raid.expires_at || new Date(Date.now() + 86_400_000).toISOString(),
-      status: raid.status || "ACTIVE",
-    })), error: null };
+    return { data: raids.map((raid: any) => {
+      const bossMasterId = raid.boss_master_id || raid.boss_id || fallbackBoss.bossId;
+      const master = CANONICAL_RAID_BOSSES.bosses.find((entry) => entry.bossId === bossMasterId) || fallbackBoss;
+      return {
+        id: raid.id,
+        bossMasterId,
+        bossName: raid.boss_name || raid.name || master.displayName,
+        level: Number(raid.level || master.referenceLevel),
+        currentHp: Number(raid.current_hp ?? master.maxHp),
+        maxHp: Number(raid.max_hp ?? master.maxHp),
+        profileType: raid.profile_type || master.profileType,
+        baseId: raid.base_id || master.townId,
+        spawnedAt: raid.spawned_at || new Date().toISOString(),
+        expiresAt: raid.expires_at || new Date(Date.now() + 86_400_000).toISOString(),
+        status: raid.status || "ACTIVE",
+        skillLoadout: raid.skill_loadout || master.skillLoadout,
+      };
+    }), error: null };
   }
 
   if (funcName === "get_recommended_guilds") {

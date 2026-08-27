@@ -26,6 +26,7 @@ export interface UseBattleOptions {
   raidPoints?: number;
   setRaidPoints?: React.Dispatch<React.SetStateAction<number>>;
   setRaidFirstEntryFree?: React.Dispatch<React.SetStateAction<boolean>>;
+  requestRaidTopRefresh?: () => void;
   cash?: number;
   setCash?: React.Dispatch<React.SetStateAction<number>>;
   diamonds?: number;

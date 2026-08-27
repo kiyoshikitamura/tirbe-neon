@@ -58,6 +58,11 @@ export const BASE_MAP_MASTER = [
   { id: "akihabara",  name: "秋葉原", rank: "B", rewardMultiplier: 1.0, dailyRankPt: 10, description: "ジャンク電子パーツとコンカフェ情報網の闇市。" }
 ];
 
+export function getCanonicalBattleBackground(areaId: string | null | undefined): string | undefined {
+  const canonicalArea = BASE_MAP_MASTER.find((area) => area.id === areaId);
+  return canonicalArea ? `/bg/bg_street_${canonicalArea.id}.png` : undefined;
+}
+
 export const GEAR_SLOTS_MASTER = [
   { index: 0, label: "武器1", type: "WEAPON" },
   { index: 1, label: "武器2", type: "WEAPON" },

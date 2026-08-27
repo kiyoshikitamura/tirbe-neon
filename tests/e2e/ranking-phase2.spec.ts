@@ -109,7 +109,13 @@ test("Ranking categories isolate metrics and profiles preserve identity context"
   await page.getByRole("button", { name: "レイド", exact: true }).click();
   await expect(page.locator(".ranking-skeleton")).toHaveCount(0);
   await expect(page.locator(".ranking-user-row")).toHaveCount(5);
-  await expect(page.locator(".ranking-metric small").first()).toHaveText("Dmg");
+  await expect(page.locator(".ranking-metric small").first()).toHaveText("ダメージ");
+  const raidMetric = page.locator(".ranking-user-row .ranking-metric").first();
+  const raidRow = page.locator(".ranking-user-row").first();
+  for (const value of ["7,630", "24,033", "9,999,999", "123,456,789", "9,999,999,999"]) {
+    await raidMetric.evaluate((node, nextValue) => { if (node.firstChild) node.firstChild.textContent = nextValue; }, value);
+    expect(await raidRow.evaluate((node) => node.scrollWidth <= node.clientWidth + 1)).toBe(true);
+  }
 
   await page.getByRole("button", { name: "総合力", exact: true }).click();
   await expect(page.locator(".ranking-skeleton")).toHaveCount(0);

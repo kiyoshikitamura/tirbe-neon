@@ -1,0 +1,5 @@
+.ranking-metric.is-raid-metric {
+  max-width: 88px;
+  font-size: clamp(8px, 2.4vw, 11px);
+  line-height: 1.1;
+}

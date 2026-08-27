@@ -182,6 +182,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const [activeBanners, setActiveBanners] = useState<any[]>([]);
   const [userXp, setUserXp] = useState<number>(0);
   const [raidPoints, setRaidPoints] = useState<number>(5);
+  const [raidTopRefreshRevision, setRaidTopRefreshRevision] = useState(0);
   const [raidFirstEntryFree, setRaidFirstEntryFree] = useState<boolean>(true);
   const [cash, setCash] = useState<number>(10000);
   const [diamonds, setDiamonds] = useState<number>(200);
@@ -784,6 +785,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     raidPoints,
     setRaidPoints,
     setRaidFirstEntryFree,
+    requestRaidTopRefresh: () => setRaidTopRefreshRevision((revision) => revision + 1),
     vitality,
     setVitality,
     selectedBattleHelper: null,
@@ -4071,7 +4073,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     setGlobalInteractionBlocking,
     activeBanners, setActiveBanners,
     userItems, setUserItems,
-    raidPoints, setRaidPoints, raidFirstEntryFree,
+    raidPoints, setRaidPoints, raidFirstEntryFree, raidTopRefreshRevision,
     monthlyPassActive, setMonthlyPassActive,
     monthlyPassClaimedToday, setMonthlyPassClaimedToday,
     handlePurchaseMonthlyPass, handleClaimDailyPassReward,

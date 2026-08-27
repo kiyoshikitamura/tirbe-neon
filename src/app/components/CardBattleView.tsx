@@ -10,6 +10,7 @@ import BattleMatchupPresentation from "./battle/BattleMatchupPresentation";
 import { preloadBattleEffects } from "./battle/BattleEffectPresentation";
 import { preloadTutorialCompletionAssets } from "../lib/tutorialCompletionAssets";
 import { CANONICAL_SKILL_VIEW } from "@/utils/skills_master_data";
+import { parseCanonicalEffects } from "@/domain/battle/canonical_effects";
 import PvpDeckPresentation, { PvpPowerSummary, canonicalPvpCharacter } from "./pvp/PvpDeckPresentation";
 import { SkillDetailDialog, SkillIconGrid } from "./skill/SkillPresentation";
 import "./CardBattleView.css";
@@ -192,6 +193,23 @@ export default function CardBattleView() {
       .map((skill: any) => CANONICAL_SKILL_VIEW.find((master) => master.id === skill.skill_card_id))
       .filter(Boolean)
       .map((skill: any) => [skill.id, skill])).values()) as any[];
+    const canonicalRaidBossSkills = (battlePresentationContext?.opponentSkills || []).slice(0, 6).map((skill: NonNullable<typeof battlePresentationContext>["opponentSkills"][number]) => {
+      const sharedMaster = CANONICAL_SKILL_VIEW.find((entry) => entry.id === skill.id);
+      if (sharedMaster) return sharedMaster;
+      const effects = parseCanonicalEffects(skill.effects || []);
+      const damage = effects.find((effect) => effect.type === "DAMAGE");
+      const effectType = damage ? "ATTACK" : effects.some((effect) => effect.type === "HEAL" || effect.type === "REGEN") ? "HEAL"
+        : effects.some((effect) => effect.type === "DEBUFF" || ["BLIND", "SILENCE", "STUN", "POISON", "BLEED", "TAUNT"].includes(effect.type)) ? "DEBUFF" : "BUFF";
+      return {
+        id: skill.id, name: skill.name, rarity: "N", alignment: "NONE" as const,
+        power: Number(damage?.powerBp || 0) / 100, effect_type: effectType,
+        is_exclusive: false, exclusive_character_id: null,
+        description: (skill.effects || []).join(" / "), is_obtainable: true as const,
+        activationType: (skill.activationType || "ACTIVE") as "ACTIVE",
+        cooldown: skill.cooldown ?? null, availableFromRound: skill.availableFromRound ?? 1,
+        target: skill.target || "ENEMY_SINGLE", effects,
+      };
+    });
     const playerPower = playerPartyStates.reduce((total: number, player: any) => total + Number(player.maxHp || 0) + Number(player.stats?.atk || 0) + Number(player.stats?.def || 0), 0);
 
     if (setupLaunching) {
@@ -222,7 +240,7 @@ export default function CardBattleView() {
 
     if (battleMode === "RAID") {
       const boss = enemyPartyStates[0];
-      return <div className="battle-screen" onClick={handleFirstUserInteraction}>
+      return <><div className="battle-screen" onClick={handleFirstUserInteraction}>
         <div className="raid-battle-setup scroll-container" style={battleBackgroundStyle}>
           <header className="raid-battle-setup__header">
             <small>RAID BRIEFING</small>
@@ -230,9 +248,10 @@ export default function CardBattleView() {
           </header>
           <main className="raid-battle-setup__body">
             <section className="raid-battle-target" aria-label="レイド対象">
-              <img src="/menu/raid.png" alt="" />
+              <div className="raid-battle-boss-visual" role="img" aria-label={`${battleOpponentName} 画像準備中`}><span aria-hidden="true" /></div>
               <div><small>RAID BOSS</small><strong>{battleOpponentName}</strong><span>Lv.{boss?.level || 1}</span></div>
               <dl><div><dt>HP</dt><dd>{Number(boss?.hp || 0).toLocaleString()} / {Number(boss?.maxHp || 0).toLocaleString()}</dd></div><div><dt>ATK</dt><dd>{Number(boss?.stats?.atk || 0).toLocaleString()}</dd></div><div><dt>DEF</dt><dd>{Number(boss?.stats?.def || 0).toLocaleString()}</dd></div></dl>
+              {canonicalRaidBossSkills.length > 0 && <div className="raid-battle-boss-skills"><strong>ボススキル</strong><SkillIconGrid skills={canonicalRaidBossSkills} onSelect={setSelectedOpponentSkill} /></div>}
             </section>
             <section className="raid-battle-deck" aria-label="自分のデッキ">
               <header><strong>MY DECK</strong><span>総合力 {playerPower.toLocaleString()}</span></header>
@@ -253,7 +272,7 @@ export default function CardBattleView() {
             <button type="button" className="cancel-battle-btn semantic-cta semantic-cta--secondary" disabled={setupLaunching} onClick={() => { if (cancelPreparedRaidBattle()) playSe("UI_BACK"); }}>レイドへ戻る</button>
           </footer>
         </div>
-      </div>;
+      </div>{selectedOpponentSkill && <SkillDetailDialog skill={selectedOpponentSkill} onClose={() => setSelectedOpponentSkill(null)} />}</>;
     }
 
     return (
