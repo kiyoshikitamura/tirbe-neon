@@ -6,7 +6,7 @@
 - **User EXPの供給源はQuestのみ。**
 - PvP / Raid / Guild / Mission / Login / RankingからUser EXPは配布しない。
 - Character / Equipment EXPはQuestを最大供給源とする。
-- Guild設立解放はUser Lv8。
+- Guild設立解放はUser Lv5。
 - 初日45〜60分程度でLv8へ到達可能。
 - Quest時短にはDaily Capを持たせる。
 - 課金でAwakening/LBを先行できても、EXP側にDaily Soft Gateを残す。
@@ -317,7 +317,7 @@ Quest SkipはAcceleration商品。
 1. User EXP source=Quest only
 2. PvP/Raid/Mission/Login/RankingでUser EXP増加なし
 3. Lv8まで5〜8 Quest程度
-4. Guild Create Lv8
+4. Guild Create Lv5
 5. Character EXP毎Quest Guaranteed
 6. Equipment EXP毎Quest Guaranteed
 7. HARDの素材価値が高い

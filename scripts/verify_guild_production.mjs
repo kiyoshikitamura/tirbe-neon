@@ -10,6 +10,7 @@ assert.equal(master.expSources.filter((x) => x.enabled !== false).reduce((sum, x
 assert.deepEqual(master.recruitmentModes, ["OPEN_JOIN", "APPLICATION_REQUIRED", "CLOSED"]);
 assert.equal(master.donation.cashCost, 5000);
 assert.equal(master.donation.guildExp, 20);
+assert.deepEqual(master.creation, { userLevel: 5, cashCost: 5000, nameMin: 1, nameMax: 12 });
 assert.equal(Object.keys(master.recommendation.weights).length, 11);
 assert.equal(master.combatBuffEnabled, false);
 assert.equal(master.gvgState, "CLOSED");

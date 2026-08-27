@@ -43,7 +43,7 @@ const postflightQuery = `select json_build_object(
  'raidCanonical',position('raid_points' in pg_get_functiondef('public.start_raid_battle(uuid,text[],text)'::regprocedure))>0,
  'pvpTwoHours',position('/ 7200' in pg_get_functiondef('public.start_pvp_battle(uuid,text[],text)'::regprocedure))>0,
  'recoveryProjection',position('vitality_next_recovery_at' in pg_get_functiondef('public.sync_and_recover_vitality_and_pvp_points(uuid)'::regprocedure))>0,
- 'guildCreationCanonical',position('v_level < 8' in pg_get_functiondef('public.create_guild_v2(uuid,text,integer)'::regprocedure))>0 and position('p_creation_cost <> 5000' in pg_get_functiondef('public.create_guild_v2(uuid,text,integer)'::regprocedure))>0
+ 'guildCreationCanonical',position('level < 5' in pg_get_functiondef('public.create_guild_v2(uuid,text,integer)'::regprocedure))>0 and position('p_creation_cost <> 5000' in pg_get_functiondef('public.create_guild_v2(uuid,text,integer)'::regprocedure))>0
 )::text;`;
 const query = preflightOnly ? preflightQuery : postflightQuery;
 const result = spawnSync(executable,["-X","--tuples-only","--no-align","--set","ON_ERROR_STOP=1","--host",connection.host,"--port",connection.port,"--username",connection.user,"--dbname",connection.database,"--command",query],{encoding:"utf8",env:{...process.env,PGPASSWORD:connection.password}});

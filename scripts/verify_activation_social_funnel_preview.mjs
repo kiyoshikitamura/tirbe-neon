@@ -56,8 +56,8 @@ try {
   const recommendationLeaders = await Promise.all([createPlayer("FR"), createPlayer("FS")]);
 
   await Promise.all([
-    admin.from("users").update({ level: 8, cash: 20000, last_active_at: new Date().toISOString() }).eq("id", leader.id),
-    ...recommendationLeaders.map((candidate) => admin.from("users").update({ level: 8, cash: 20000, last_active_at: new Date().toISOString() }).eq("id", candidate.id)),
+    admin.from("users").update({ level: 5, cash: 20000, last_active_at: new Date().toISOString() }).eq("id", leader.id),
+    ...recommendationLeaders.map((candidate) => admin.from("users").update({ level: 5, cash: 20000, last_active_at: new Date().toISOString() }).eq("id", candidate.id)),
     admin.from("users").update({ level: 5, cash: 1000 }).eq("id", opponent.id),
     admin.from("users").update({ pvp_points: 5, cash: 2000 }).eq("id", player.id),
   ]);

@@ -30,7 +30,7 @@ const admin = createClient(url, serviceRoleKey, {
   auth: { persistSession: false, autoRefreshToken: false },
 });
 const [{ error: leaderPreparationError }, { error: applicantPreparationError }] = await Promise.all([
-  admin.from("users").update({ level: 8 }).eq("id", leader.userId),
+  admin.from("users").update({ level: 5 }).eq("id", leader.userId),
   admin.from("users").update({ level: 3 }).eq("id", applicant.userId),
 ]);
 if (leaderPreparationError || applicantPreparationError) {

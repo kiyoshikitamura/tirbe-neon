@@ -41,14 +41,14 @@ try {
  for(let i=0;i<clients.length;i++){
   const {data:auth,error}=await clients[i].auth.signInAnonymously();if(error||!auth.user)throw error||new Error("Guild fixture auth failed");users.push(auth.user.id);
   const {error:init}=await clients[i].rpc("initialize_current_player",{p_username:`G5${i}${Date.now().toString(36).slice(-4)}`.slice(0,8)});if(init)throw init;
-  sql(`update public.users set level=8,cash=20000,last_guild_left_at=null where id='${auth.user.id}'::uuid`);
+  sql(`update public.users set level=5,cash=20000,last_guild_left_at=null where id='${auth.user.id}'::uuid`);
  }
  const created=await clients[0].rpc("create_guild_v2",{p_user_id:users[0],p_guild_name:`G5${Date.now().toString(36).slice(-7)}`.slice(0,12),p_creation_cost:5000});if(created.error)throw created.error;guildId=created.data.guild_id;
  if(sql(`select role from public.guild_members where guild_id='${guildId}' and user_id='${users[0]}'`)!=="MASTER")throw new Error("Creator MASTER mismatch");
  let changed=await clients[0].rpc("update_guild_recruitment",{p_guild_id:guildId,p_mode:"APPLICATION_REQUIRED",p_description:"Production Social Core"});if(changed.error)throw changed.error;
  sql(`update public.users set level=2 where id='${users[3]}'::uuid`);
  const lowLevelRequest=await clients[3].rpc("request_guild_join",{p_guild_id:guildId});if(!lowLevelRequest.error)throw new Error("Lv2 Guild application was accepted");
- sql(`update public.users set level=8 where id='${users[3]}'::uuid`);
+ sql(`update public.users set level=5 where id='${users[3]}'::uuid`);
  let request=await clients[1].rpc("request_guild_join",{p_guild_id:guildId});if(request.error)throw request.error;
  let review=await clients[0].rpc("review_guild_join_request",{p_request_id:request.data.request_id,p_approve:true});if(review.error)throw review.error;
  let promoted=await clients[0].rpc("set_guild_member_role",{p_guild_id:guildId,p_target_user_id:users[1],p_new_role:"SUB_MASTER"});if(promoted.error)throw promoted.error;

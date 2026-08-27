@@ -11,15 +11,15 @@ const openMember = "00000000-0000-4000-8000-000000004014";
 const openGuild = "30000000-0000-4000-8000-000000004001";
 const approvalGuild = "30000000-0000-4000-8000-000000004002";
 
-async function seedGuildVisitor(page: Page, level = 8, initialGuildRole: string | null = null) {
-  await page.addInitScript(({ me, openLeader, approvalLeader, openSubmaster, openMember, openGuild, approvalGuild, level, initialGuildRole }) => {
+async function seedGuildVisitor(page: Page, level = 5, initialGuildRole: string | null = null, cash = 10000) {
+  await page.addInitScript(({ me, openLeader, approvalLeader, openSubmaster, openMember, openGuild, approvalGuild, level, initialGuildRole, cash }) => {
     if (sessionStorage.getItem("phase4_guild_seeded") === "1") return;
     sessionStorage.setItem("phase4_guild_seeded", "1");
     const now = new Date().toISOString();
     localStorage.setItem("tribe_demo_uuid", me);
     localStorage.setItem("mock_auth_mode", "EMAIL");
     localStorage.setItem("mock_db_users", JSON.stringify([
-      { id: me, username: "Guild Visitor", level, cash: 10000, current_base_id: "shinjuku", last_active_at: now, favorite_character_id: "char_reiji_01", guild_id: initialGuildRole ? openGuild : null },
+      { id: me, username: "Guild Visitor", level, cash, current_base_id: "shinjuku", last_active_at: now, favorite_character_id: "char_reiji_01", guild_id: initialGuildRole ? openGuild : null },
       { id: openLeader, username: "Open Leader", level: 20, cash: 10000, current_base_id: "shinjuku", last_active_at: now, favorite_character_id: "char_kengo_01", guild_id: openGuild },
       { id: approvalLeader, username: "Approval Leader", level: 18, cash: 10000, current_base_id: "shinjuku", last_active_at: now, favorite_character_id: "char_chang_01", guild_id: approvalGuild },
       { id: openSubmaster, username: "Neon Submaster", level: 16, cash: 10000, current_base_id: "shinjuku", last_active_at: now, favorite_character_id: "char_haruka_01", guild_id: openGuild },
@@ -43,7 +43,7 @@ async function seedGuildVisitor(page: Page, level = 8, initialGuildRole: string 
     ]));
     localStorage.setItem("mock_db_guild_join_requests", "[]");
     localStorage.setItem("mock_db_board_posts", "[]");
-  }, { me, openLeader, approvalLeader, openSubmaster, openMember, openGuild, approvalGuild, level, initialGuildRole });
+  }, { me, openLeader, approvalLeader, openSubmaster, openMember, openGuild, approvalGuild, level, initialGuildRole, cash });
 }
 
 async function enterGuild(page: Page) {
@@ -182,8 +182,8 @@ test("member leave uses a destructive canonical dialog and returns to unaffiliat
   await expect(page.locator(".guild-visual-identity")).toHaveCount(0);
 });
 
-test("Lv8 user creates a Guild, becomes master, and persists saved attributes", async ({ page }) => {
-  await seedGuildVisitor(page, 8);
+test("Lv5 user creates a Guild, becomes master, and persists saved attributes", async ({ page }) => {
+  await seedGuildVisitor(page, 5);
   await enterGuild(page);
   await page.locator(".guild-lobby-create summary").click();
   await page.getByPlaceholder("ギルド名を入力 (12文字)").fill("FINAL NEON");
@@ -220,6 +220,32 @@ test("Lv8 user creates a Guild, becomes master, and persists saved attributes", 
   await page.getByRole("button", { name: "ギルド", exact: true }).click();
   await expect(page.locator(".guild-identity-attributes")).toContainText("メイン属性 悪");
   await expect(page.locator(".guild-identity-attributes")).toContainText("サブ属性 混沌");
+});
+
+test("Guild creation entry is first and Lv4 or insufficient CASH remains gated", async ({ page }) => {
+  await seedGuildVisitor(page, 4);
+  await enterGuild(page);
+  const creation = page.locator(".guild-lobby-create");
+  const recommendations = page.locator(".guild-lobby-section").filter({ hasText: "おすすめギルド" }).first();
+  await expect(creation).toContainText("Lv.5 / 5,000キャッシュ");
+  expect(await creation.evaluate((node) => node.nextElementSibling?.textContent?.includes("おすすめギルド"))).toBe(true);
+  await creation.locator("summary").click();
+  await expect(page.getByPlaceholder("ギルド名を入力 (12文字)")).toBeDisabled();
+  await expect(creation.getByRole("button", { name: "Lv.5で解放" })).toBeDisabled();
+  await expect(recommendations).toBeVisible();
+
+  await page.evaluate(() => {
+    const users = JSON.parse(localStorage.getItem("mock_db_users") || "[]");
+    users[0].level = 5;
+    users[0].cash = 4999;
+    localStorage.setItem("mock_db_users", JSON.stringify(users));
+  });
+  await page.reload();
+  const continueAction = page.getByRole("button", { name: "続きから" });
+  if (await continueAction.isVisible()) await continueAction.click();
+  await page.getByRole("button", { name: "ギルド", exact: true }).click();
+  await page.locator(".guild-lobby-create summary").click();
+  await expect(page.locator(".guild-lobby-create").getByRole("button", { name: "資金不足" })).toBeDisabled();
 });
 
 test("Guild My Page geometry is compact at 390 and 412", async ({ page }) => {

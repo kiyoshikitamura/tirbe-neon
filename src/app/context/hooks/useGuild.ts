@@ -87,7 +87,7 @@ export function useGuild(
       const res = await supabase.rpc("create_guild_v2", {
         p_user_id: session.user.id,
         p_guild_name: guildName,
-        p_creation_cost: 5000
+        p_creation_cost: GUILD_PRODUCTION.creation.cashCost
       });
 
       if (res.error) {
@@ -125,8 +125,8 @@ export function useGuild(
   const handleCreateGuild = () => {
     if (!session) return;
     const guildName = newGuildName.trim();
-    if (userLevel < 8) {
-      setErrorMessage("ギルド創設にはプレイヤーレベル8以上が必要です。");
+    if (userLevel < GUILD_PRODUCTION.creation.userLevel) {
+      setErrorMessage(`ギルド創設にはプレイヤーレベル${GUILD_PRODUCTION.creation.userLevel}以上が必要です。`);
       return;
     }
     if (!guildName) {
@@ -137,18 +137,14 @@ export function useGuild(
       setErrorMessage("ギルド名は12文字以内で入力してください。");
       return;
     }
-    if (cash < 5000) {
-      setErrorMessage("創設にはキャッシュ5,000が必要です。");
-      return;
-    }
-    if (getGuildPenaltyState().isPenalty) {
-      setErrorMessage("ギルド脱退後のペナルティ制限期間中です。");
+    if (cash < GUILD_PRODUCTION.creation.cashCost) {
+      setErrorMessage(`創設にはキャッシュ${GUILD_PRODUCTION.creation.cashCost.toLocaleString()}が必要です。`);
       return;
     }
     setConfirmDialogConfig({
       isOpen: true,
       title: "ギルドを設立",
-      message: `「${guildName}」を設立しますか？\n設立には5,000キャッシュが必要です。`,
+      message: `「${guildName}」を設立しますか？\n設立には${GUILD_PRODUCTION.creation.cashCost.toLocaleString()}キャッシュが必要です。`,
       confirmText: "設立する",
       cancelText: "キャンセル",
       presentation: "canonical",

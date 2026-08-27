@@ -33,7 +33,7 @@
 | Battle Result | WIN/LOSE→共通情報→Quest EXP/Item→次CTA | 専用SummaryとQuest報酬が分離 | 二重表示可能性を監査 | Package順序を維持し、独自説明を除去 |
 | WORLD Slide | Package §5の正本Copy | 独自短文 | P0 | 正本Copyへ完全一致 |
 | POWER Slide | Package §5の正本Copy | 独自短文 | P0 | 正本Copyへ完全一致 |
-| TRIBE Slide | Package §5の正本Copy、Lv8注記 | 独自短文、Lv8注記不足 | P0 | 正本Copyへ完全一致 |
+| TRIBE Slide | Package §5の正本Copy、Lv5注記 | 独自短文、Lv5注記不足 | P0 | 正本Copyへ完全一致 |
 | Mission Hub | Tutorial後に直接接続するProduct Navigation | Home遷移後、Missionは任意Modal | P0 | RULE_GUIDE完了時にMissionを開く。既存Mission/RPCを再利用 |
 | Practice Battle | NPC明示、無報酬・無戦績・無Point消費 | 既存Practice mode成立 | 重大差異なし | Functional回帰 |
 | Activity | 実在Playerのみ。SSR本人保証、Rank #1交代、TRIBE設立 | Home tickerで成立 | fallback独自Copyあり | 正本イベント表示のみ残す |

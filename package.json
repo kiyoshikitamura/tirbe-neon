@@ -67,6 +67,7 @@
     "verify:pvp-raid:development": "node scripts/verify_pvp_raid_development.mjs",
     "verify:guild-production": "node scripts/verify_guild_production.mjs",
     "verify:guild-activation": "node scripts/verify_guild_activation_contract.mjs",
+    "verify:guild-creation-level5": "node scripts/verify_guild_creation_level5.mjs",
     "verify:guild-db-migration": "node scripts/verify_guild_db_migration.mjs",
     "verify:mock-guild-production": "node scripts/verify_mock_guild_production.mjs",
     "verify:guild-production:development": "node scripts/verify_guild_development.mjs",

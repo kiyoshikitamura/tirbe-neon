@@ -34,8 +34,8 @@ union all select 60,'ranking_milestone_contract',
 union all select 70,'existing_unlock_contracts',
  case when pg_get_functiondef('public.request_guild_join(uuid)'::regprocedure) like '%v_level < 3%'
   and pg_get_functiondef('public.join_guild(uuid)'::regprocedure) like '%v_level < 3%'
-  and pg_get_functiondef('public.create_guild_v2(uuid,text,integer)'::regprocedure) like '%v_level < 8%'
+  and pg_get_functiondef('public.create_guild_v2(uuid,text,integer)'::regprocedure) like '%level < 5%'
   and pg_get_functiondef('public.create_guild_v2(uuid,text,integer)'::regprocedure) like '%5000%'
   and pg_get_functiondef('public.start_raid_battle(uuid,text[],text)'::regprocedure) like '%v_user.level<5%' then 'PASS' else 'FAIL' end,
- 'Raid Lv5, Guild Join Lv3, Guild Create Lv8 / 5,000 CASH unchanged'
+ 'Raid Lv5, Guild Join Lv3, Guild Create Lv5 / 5,000 CASH'
 order by display_order;

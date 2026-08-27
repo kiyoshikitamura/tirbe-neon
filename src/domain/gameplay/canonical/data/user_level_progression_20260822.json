@@ -33,7 +33,9 @@
       "level": 5,
       "requiredExp": 300,
       "cumulativeExp": 700,
-      "unlockKeys": []
+      "unlockKeys": [
+        "GUILD_CREATION"
+      ]
     },
     {
       "level": 6,
@@ -51,9 +53,7 @@
       "level": 8,
       "requiredExp": 600,
       "cumulativeExp": 1750,
-      "unlockKeys": [
-        "GUILD_CREATION"
-      ]
+      "unlockKeys": []
     },
     {
       "level": 9,

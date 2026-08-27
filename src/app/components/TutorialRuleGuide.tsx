@@ -28,7 +28,7 @@ const slides = [
     image: "/branding/tutorial/tribe.webp",
     alt: "レイジを中心に集まったTRIBEの仲間たち",
     title: "気の合う奴らと、TRIBEへ。",
-    body: <>この街には、たくさんのプレイヤーがいる。仲間を見つけて、TRIBEに集まろう。<br />そしていつか、<strong>自分たちのTRIBEで頂点を目指せ。</strong><br /><small>TRIBE設立はプレイヤーLv8で解放</small></>,
+    body: <>この街には、たくさんのプレイヤーがいる。仲間を見つけて、TRIBEに集まろう。<br />そしていつか、<strong>自分たちのTRIBEで頂点を目指せ。</strong><br /><small>TRIBE設立はプレイヤーLv5で解放</small></>,
   },
 ] as const;
 

@@ -3222,7 +3222,9 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     const users = client.getStorage("users");
     const user = users.find((u: any) => u.id === p_user_id);
     const cleanName = String(p_guild_name || "").trim();
-    if (!user || Number(user.level || 1) < 8 || user.cash < p_creation_cost || p_creation_cost !== 5000 || Array.from(cleanName).length < 1 || Array.from(cleanName).length > 12) return { error: { message: "Guild creation requirements are not met" } };
+    const members = client.getStorage("guild_members") || [];
+    if (!user || Number(user.level || 1) < 5 || user.cash < p_creation_cost || p_creation_cost !== 5000 || Array.from(cleanName).length < 1 || Array.from(cleanName).length > 12) return { error: { message: "Guild creation requirements are not met" } };
+    if (user.guild_id || members.some((member: any) => member.user_id === p_user_id)) return { error: { message: "Leave the current guild before creating another guild" } };
     
     const guilds = client.getStorage("guilds") || [];
     if (guilds.some((g: any) => !g.is_disbanded && String(g.name).trim().toLocaleLowerCase() === cleanName.toLocaleLowerCase())) {
@@ -3243,7 +3245,6 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     };
     guilds.push(newGuild);
     
-    const members = client.getStorage("guild_members") || [];
     members.push({
       id: "gm_" + Date.now(),
       guild_id: newGuildId,

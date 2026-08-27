@@ -7,7 +7,8 @@ const resources = JSON.parse(await readFile("src/domain/gameplay/canonical/data/
 const activation = JSON.parse(await readFile("src/domain/gameplay/canonical/data/activation_budget_20260822.json", "utf8"));
 assert.equal(levels.levels.length, 100);
 assert.deepEqual(levels.levels.slice(0, 7).map((row) => row.requiredExp), [100, 150, 200, 250, 300, 350, 400]);
-assert.deepEqual(levels.levels[7].unlockKeys, ["GUILD_CREATION"]);
+assert.deepEqual(levels.levels[4].unlockKeys, ["GUILD_CREATION"]);
+assert.deepEqual(levels.levels[7].unlockKeys, []);
 for (const [level, cumulative] of [[8,1750],[10,3050],[20,28050],[30,120550],[50,708050],[75,2712750],[100,6858050]]) {
   assert.equal(levels.levels[level - 1].cumulativeExp, cumulative);
 }

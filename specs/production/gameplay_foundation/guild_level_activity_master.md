@@ -4,8 +4,8 @@
 
 ## 1. 上位仕様
 
-- Guild加入・検索・RecommendationはUser Lv8未満でも利用可能。
-- Guild設立解放はUser Lv8。
+- Guild加入・検索・RecommendationはUser Lv5未満でも利用可能。
+- Guild設立解放はUser Lv5。
 - Guild初期Member Cap = 10。
 - Guild成長で最大20名。
 - Guild LevelはActivity蓄積で成長。
@@ -177,7 +177,7 @@ Guild Levelは補助Signal。
 ## 11. Guild Creation
 
 解放:
-**User Lv8**
+**User Lv5**
 
 設立時:
 - Guild Lv1
@@ -198,7 +198,7 @@ Guild Levelは補助Signal。
 
 ## 12. Join / Apply
 
-Lv8未満でも:
+Lv5未満でも:
 - Guild一覧
 - Recommendation
 - Detail
@@ -207,7 +207,7 @@ Lv8未満でも:
 
 を利用可能。
 
-Lv8はCreationだけのGate。
+Lv5はCreationだけのGate。
 
 Open Guild:
 即加入。
@@ -449,7 +449,7 @@ Frozen寄り:
 - Combat Buff最大2%
 - Activity daily cap
 - Raid/PvP damage/rating比例XPなし
-- Creation Lv8
+- Creation Lv5
 
 監視:
 - Guild creation/day
@@ -492,8 +492,8 @@ Guild Lv課金加速がGvGを決定する構造になりにくい。
 14. GvG participation per session
 15. GvG win bonus smaller than participation
 16. Guild Level never down
-17. join before User Lv8
-18. create requires Lv8
+17. join before User Lv5
+18. create requires Lv5
 19. Raid not Guild-only
 20. Recommendation prioritizes activity over level
 21. Level reward once
@@ -512,7 +512,7 @@ Guild Lv課金加速がGvGを決定する構造になりにくい。
 - Activity Daily Cap
 - GvG参加重視
 - Guild Level downなし
-- User Lv8は設立のみ
+- User Lv5は設立のみ
 - Raidは個人参加可能
 - RecommendationはActivity優先
 

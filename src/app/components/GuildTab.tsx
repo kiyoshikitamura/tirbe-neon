@@ -170,7 +170,8 @@ export default function GuildTab() {
 
   if (!userGuild) {
     const joinUnlocked = userLevel >= 3 && !penalty.isPenalty;
-    const createUnlocked = userLevel >= 8 && cash >= 5000 && !penalty.isPenalty;
+    const createUnlocked = userLevel >= GUILD_PRODUCTION.creation.userLevel
+      && cash >= GUILD_PRODUCTION.creation.cashCost;
     const renderGuildCard = (g: any) => {
       const guild = { ...g, id: g.id || g.guild_id };
       const pendingRequest = pendingGuildJoinRequests.find((request: any) => request.guild_id === guild.id);
@@ -214,6 +215,28 @@ export default function GuildTab() {
             <div className="guild-lobby-notice">脱退後の参加制限中です。残り {Math.ceil(penalty.secondsLeft / 3600)} 時間</div>
           )}
 
+          <details className={`guild-lobby-create ${createUnlocked ? "is-ready" : ""}`}>
+            <summary>ギルドを設立する <small>Lv.{GUILD_PRODUCTION.creation.userLevel} / {GUILD_PRODUCTION.creation.cashCost.toLocaleString()}キャッシュ</small></summary>
+            <div className="guild-create-form">
+              <input
+                type="text"
+                placeholder="ギルド名を入力 (12文字)"
+                value={newGuildName}
+                onChange={(e) => setNewGuildName(e.target.value)}
+                maxLength={GUILD_PRODUCTION.creation.nameMax}
+                disabled={cash < GUILD_PRODUCTION.creation.cashCost || userLevel < GUILD_PRODUCTION.creation.userLevel}
+                className="guild-create-input bg-black-60 border-subtle text-white p-2 rounded outline-none"
+              />
+              <OutlawButton
+                variant={createUnlocked ? "primary" : "secondary"}
+                onClick={handleCreateGuild}
+                disabled={gvgResetLoading || cash < GUILD_PRODUCTION.creation.cashCost || !newGuildName.trim() || userLevel < GUILD_PRODUCTION.creation.userLevel}
+              >
+                {gvgResetLoading ? <div className="spinner" /> : userLevel < GUILD_PRODUCTION.creation.userLevel ? `Lv.${GUILD_PRODUCTION.creation.userLevel}で解放` : cash < GUILD_PRODUCTION.creation.cashCost ? "資金不足" : "創設する"}
+              </OutlawButton>
+            </div>
+          </details>
+
           <section className="guild-lobby-section">
             <div className="guild-lobby-section-heading"><span>おすすめギルド</span><small>{recommendedGuilds.length}件</small></div>
             <div className="guild-lobby-list">
@@ -251,27 +274,6 @@ export default function GuildTab() {
             </div>}
           </section>
 
-          <details className={`guild-lobby-create ${createUnlocked ? "is-ready" : ""}`}>
-            <summary>ギルドを設立する <small>Lv.8 / 5,000キャッシュ</small></summary>
-            <div className="guild-create-form">
-              <input 
-                type="text" 
-                placeholder="ギルド名を入力 (12文字)" 
-                value={newGuildName}
-                onChange={(e) => setNewGuildName(e.target.value)}
-                maxLength={12}
-                disabled={penalty.isPenalty || cash < 5000 || userLevel < 8}
-                className="guild-create-input bg-black-60 border-subtle text-white p-2 rounded outline-none"
-              />
-              <OutlawButton 
-                variant={createUnlocked ? "primary" : "secondary"}
-                onClick={handleCreateGuild}
-                disabled={gvgResetLoading || penalty.isPenalty || cash < 5000 || !newGuildName.trim() || userLevel < 8}
-              >
-                {gvgResetLoading ? <div className="spinner" /> : userLevel < 8 ? "Lv.8で解放" : cash < 5000 ? "資金不足" : "創設する"}
-              </OutlawButton>
-            </div>
-          </details>
         </div>
       </div>
     );

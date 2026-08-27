@@ -12,7 +12,7 @@ for (let level = 1; level <= 100; level += 1) {
     : level <= 7
       ? frozenEarlyRequirements[level - 1]
       : round50(600 + 100 * (level - 8) + 25 * (level - 8) ** 2);
-  levels.push({ level, requiredExp, cumulativeExp, unlockKeys: level === 8 ? ["GUILD_CREATION"] : [] });
+  levels.push({ level, requiredExp, cumulativeExp, unlockKeys: level === 5 ? ["GUILD_CREATION"] : [] });
   cumulativeExp += requiredExp;
 }
 for (const [level, expected] of referenceCumulative) {

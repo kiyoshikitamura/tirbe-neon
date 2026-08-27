@@ -12,7 +12,7 @@ Per member and JST calendar day, each source grants at most once: LOGIN 10, FIRS
 
 ## Social operations
 
-Creation requires User Lv8 and 5,000 CASH; trimmed names are 1–12 characters. Roles are MASTER, SUB_MASTER, MEMBER. SUB_MASTER may review applications, kick MEMBERs, edit recruitment/description/welcome, and use Guild Shop; only MASTER may assign roles, act on SUB_MASTER, transfer leadership, or disband.
+Creation requires User Lv5 and 5,000 CASH; trimmed names are 1–12 characters. Roles are MASTER, SUB_MASTER, MEMBER. SUB_MASTER may review applications, kick MEMBERs, edit recruitment/description/welcome, and use Guild Shop; only MASTER may assign roles, act on SUB_MASTER, transfer leadership, or disband.
 
 Recruitment modes are OPEN_JOIN, APPLICATION_REQUIRED, CLOSED. Mode changes retain pending applications. Capacity and authorization are rechecked under transaction locks.
 

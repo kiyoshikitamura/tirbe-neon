@@ -8,7 +8,7 @@ Status: `USER LEVEL / ACTION RESOURCE PRODUCTION FREEZE PASS / CLOSED`
 - User Lv9→100 follows `round50(600 + 100x + 25x²)`, where `x = current level - 8` and exact 25 ties round down.
 - User Level cap: Lv100. Lv100 `requiredExp = 0`; additional EXP does not level up and progress is represented as 0.
 - Reference cumulative EXP: Lv10 `3,050`; Lv20 `28,050`; Lv30 `120,550`; Lv50 `708,050`; Lv75 `2,712,750`; Lv100 `6,858,050`.
-- Guild creation unlock: User Lv8; cost: CASH 5,000.
+- Guild creation unlock: User Lv5; cost: CASH 5,000.
 - Vitality: natural max 100, hard cap 500, +1 per 6 minutes.
 - ENERGY_DRINK: +50. Use is rejected without consumption when the result would exceed 500.
 - Quest Vitality: EASY 5, NORMAL 10, HARD 15.

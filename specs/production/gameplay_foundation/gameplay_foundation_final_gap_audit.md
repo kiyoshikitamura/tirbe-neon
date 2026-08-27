@@ -162,8 +162,8 @@ M9へImplementation Migrationとして合流する前に、以下の残Gapを区
 - 10→12→14→17→20
 - max combat buff2%
 - XP source/cap
-- create Lv8
-- join before Lv8
+- create Lv5
+- join before Lv5
 - no level down
 - Activity recommendation
 

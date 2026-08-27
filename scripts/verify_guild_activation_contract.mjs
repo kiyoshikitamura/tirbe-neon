@@ -9,13 +9,14 @@ const chat = read("src/app/components/TribeChatModal.tsx");
 const chatHook = read("src/app/context/hooks/useChat.ts");
 const migration = read("supabase/migrations/20260827000203_guild_activation_identity_projection.sql");
 const remediationMigration = read("supabase/migrations/20260828000204_guild_human_acceptance_projection.sql");
+const creationMigration = read("supabase/migrations/20260828000206_guild_creation_level5_authority.sql");
 
 const checks = [
   [!guild.includes("guild-lobby-hero\""), "temporary Guild hero is absent"],
   [!guild.includes("現在ギルドに所属していません") && !guild.includes("guild-lobby-unlock"), "unaffiliated intro card is absent"],
   [guild.includes("おすすめギルド"), "recommendations are the primary discovery path"],
-  [guild.includes("<details className={`guild-lobby-create"), "creation remains secondary"],
-  [guild.includes("const createUnlocked = userLevel >= 8") && guild.includes("userLevel < 8 ? \"Lv.8で解放\""), "Lv8 client creation gate remains authoritative"],
+  [guild.indexOf("<details className={`guild-lobby-create") < guild.indexOf("おすすめギルド"), "creation entry precedes recommendations"],
+  [guild.includes("GUILD_PRODUCTION.creation.userLevel") && guild.includes("`Lv.${GUILD_PRODUCTION.creation.userLevel}で解放`"), "Lv5 master drives the client creation gate"],
   [guild.includes('guildSubTab === "home"') && guild.includes("guild-visual-identity") && guild.includes("guild-action-grid"), "joined users land on the compact Guild My Page"],
   [guild.includes("直近7日アクティブ") && guild.includes("COMING SOON"), "Guild My Page status and unavailable actions are explicit"],
   [guild.includes("<UserIdentityRow") && guild.includes("guild-member-role"), "joined member list uses shared identity and canonical role labels"],
@@ -33,6 +34,8 @@ const checks = [
   [migration.includes("grant execute on function public.get_public_guild_detail(uuid) to authenticated"), "public Guild projection remains authenticated"],
   [remediationMigration.includes("'members'") && remediationMigration.includes("member_profile.favorite_character_id"), "member identity projection is canonical"],
   [remediationMigration.includes("grant execute on function public.search_guilds(text) to authenticated"), "search projection remains authenticated"],
+  [creationMigration.includes("v_user.level < 5") && creationMigration.includes("p_creation_cost <> 5000"), "Lv5 and 5,000 CASH are server authoritative"],
+  [creationMigration.includes("pg_advisory_xact_lock") && !creationMigration.includes("Guild rejoin cooldown is active"), "creation is serialized and no longer blocked by the join cooldown"],
 ];
 
 for (const [ok, label] of checks) {
