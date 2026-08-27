@@ -53,6 +53,12 @@ begin
   v_definition := replace(v_definition, chr(13), '');
   v_needle := replace(v_needle, chr(13), '');
   v_replacement := replace(v_replacement, chr(13), '');
+  -- Preview environments may already contain this audited patch from the
+  -- earlier targeted hotfix even when migration history was not recorded.
+  -- Treat that exact canonical replacement as converged instead of failing.
+  if position(v_replacement in v_definition) > 0 then
+    return;
+  end if;
   if position(v_needle in v_definition) = 0 then
     raise exception 'patrol replay function does not match the expected canonical definition';
   end if;
