@@ -1,8 +1,31 @@
 -- Phase 2C: expose Canonical equipment/status runtime inputs without rewriting 00168.
 begin;
 
-alter function public.build_server_battle_snapshot(uuid,text[],text)
-  rename to build_server_battle_snapshot_00168;
+do $converge_snapshot$
+declare
+  v_current text;
+begin
+  if to_regprocedure('public.build_server_battle_snapshot_00168(uuid,text[],text)') is null then
+    if to_regprocedure('public.build_server_battle_snapshot(uuid,text[],text)') is null then
+      raise exception 'build_server_battle_snapshot(uuid,text[],text) is required' using errcode='P0002';
+    end if;
+    alter function public.build_server_battle_snapshot(uuid,text[],text)
+      rename to build_server_battle_snapshot_00168;
+    return;
+  end if;
+
+  -- Preview may already contain the exact 00170 wrapper from an earlier
+  -- targeted apply while migration history is behind. Only that known wrapper
+  -- is accepted; any other duplicate backup/current pair remains fail-closed.
+  select pg_get_functiondef(to_regprocedure('public.build_server_battle_snapshot(uuid,text[],text)'))
+  into v_current;
+  if v_current is null
+     or position('build_server_battle_snapshot_00168' in v_current)=0
+     or position('canonical_equipment_runtime_projection' in v_current)=0 then
+    raise exception 'battle snapshot functions do not match the known 00170 canonical state';
+  end if;
+end;
+$converge_snapshot$;
 
 create or replace function public.canonical_equipment_runtime_projection(
   p_user_id uuid,
