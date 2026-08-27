@@ -986,10 +986,51 @@ test("naturally completed tutorial quest uses the same encounter and battle boun
   }, { userId });
 
   await page.goto("/");
+  await page.waitForTimeout(150);
+  await page.getByRole("button", { name: "続きから" }).click();
   await expect(page.locator('[data-acceptance-state="Q5"]')).toBeVisible();
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem("mock_db_tutorial_progress") || "[]")[0]?.step_id)).toBe("TUTORIAL_BATTLE");
   await page.getByRole("button", { name: "次へ" }).click();
   await expect(page.locator('[data-acceptance-state="Q6"] [data-encounter-projection]')).toHaveAttribute("data-encounter-projection", "ready");
+  await expect(page.locator('[data-acceptance-state="Q6"] [data-encounter-ready="true"]')).toBeVisible();
+  await page.getByRole("button", { name: "バトルへ" }).click();
+  await expect(page.locator('[data-acceptance-state="B1"]')).toBeVisible();
+  await expect(page.evaluate(() => JSON.parse(localStorage.getItem("mock_db_battle_replay_sessions") || "[]").length)).resolves.toBe(1);
+});
+
+test("tutorial instant completion projects quest complete without a reload", async ({ page }) => {
+  const userId = "00000000-0000-4000-8000-000000000915";
+  await page.addInitScript(({ userId }) => {
+    const now = Date.now();
+    localStorage.setItem("tribe_demo_uuid", userId);
+    localStorage.setItem("mock_auth_mode", "GOOGLE");
+    localStorage.setItem("mock_db_users", JSON.stringify([{ id: userId, username: "時短連続確認", cash: 10000, vitality: 95, level: 1, xp: 0, current_base_id: "shinjuku" }]));
+    localStorage.setItem("mock_db_user_characters", JSON.stringify([{ id: `starter_${userId}`, user_id: userId, character_id: "char_reiji_01", level: 7, awakening_level: 0 }]));
+    localStorage.setItem("mock_db_user_main_formations", JSON.stringify([{ user_id: userId, slot: 1, user_character_id: `starter_${userId}` }]));
+    localStorage.setItem("mock_db_pvp_defense_decks", JSON.stringify([{ id: `deck_${userId}`, user_id: userId, character_1_id: `starter_${userId}` }]));
+    localStorage.setItem("mock_db_tutorial_progress", JSON.stringify([{ user_id: userId, step_id: "FREE_INSTANT" }]));
+    localStorage.setItem("mock_db_battle_replay_sessions", "[]");
+    localStorage.setItem("mock_db_user_patrols", JSON.stringify([{
+      id: `instant_complete_${userId}`,
+      user_id: userId,
+      course_id: "q_shinjuku_1",
+      character_id: "char_reiji_01",
+      started_at: new Date(now).toISOString(),
+      expires_at: new Date(now + 60_000).toISOString(),
+      status: "ONGOING",
+      has_battle_event: true,
+      battle_resolved: false,
+    }]));
+  }, { userId });
+
+  await page.goto("/");
+  await expect(page.getByText("セッション確認中")).toBeHidden();
+  await page.getByRole("button", { name: "続きから" }).click();
+  await expect(page.locator('[data-acceptance-state="Q3"]')).toBeVisible();
+  await page.getByRole("button", { name: /すぐに時短する/ }).click();
+  await expect(page.locator('[data-acceptance-state="Q5"]')).toBeVisible();
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem("mock_db_tutorial_progress") || "[]")[0]?.step_id)).toBe("TUTORIAL_BATTLE");
+  await page.getByRole("button", { name: "次へ" }).click();
   await expect(page.locator('[data-acceptance-state="Q6"] [data-encounter-ready="true"]')).toBeVisible();
   await page.getByRole("button", { name: "バトルへ" }).click();
   await expect(page.locator('[data-acceptance-state="B1"]')).toBeVisible();

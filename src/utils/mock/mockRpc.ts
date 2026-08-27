@@ -2568,8 +2568,11 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     const user = users.find((entry: any) => entry.id === p_user_id);
     if (!user) return { data: null, error: { message: "User not found" } };
     if (p_use_currency === "FREE_TUTORIAL") {
-      const progress = (client.getStorage("tutorial_progress") || []).find((entry: any) => entry.user_id === p_user_id);
+      const tutorialProgress = client.getStorage("tutorial_progress") || [];
+      const progress = tutorialProgress.find((entry: any) => entry.user_id === p_user_id);
       if (progress?.step_id !== "FREE_INSTANT") return { data: null, error: { message: "Free completion is unavailable" } };
+      progress.step_id = "TUTORIAL_BATTLE";
+      client.setStorage("tutorial_progress", tutorialProgress);
     } else if (p_use_currency === "FREE_PREOPEN" || p_use_currency === "FREE") {
       const todayJst = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
       if (user.quest_skips_reset_date !== todayJst) { user.quest_free_skips_count = 0; user.quest_paid_skips_count = 0; }
@@ -2597,6 +2600,7 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
         currency: p_use_currency,
         free_skips_remaining: p_use_currency === "FREE_PREOPEN" || p_use_currency === "FREE" ? 5 - Number(user.quest_free_skips_count || 0) : null,
         paid_skips_remaining: p_use_currency === "DIAMOND" ? 10 - Number(user.quest_paid_skips_count || 0) : null,
+        tutorial_step: p_use_currency === "FREE_TUTORIAL" ? "TUTORIAL_BATTLE" : null,
       },
       error: null,
     };

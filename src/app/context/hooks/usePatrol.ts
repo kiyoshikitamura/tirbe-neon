@@ -50,7 +50,11 @@ export function usePatrol(
   const [showPatrolRewardModal, setShowPatrolRewardModal] = useState<boolean>(false);
   const [dispatchLoading, setDispatchLoading] = useState<boolean>(false);
   const mutationInFlightRef = useRef(false);
-  const tutorialCompletionOwnerRef = useRef<{ patrolId: string; status: "IN_FLIGHT" | "SUCCESS" | "FAILED" } | null>(null);
+  const tutorialCompletionOwnerRef = useRef<{
+    patrolId: string;
+    status: "IN_FLIGHT" | "SUCCESS" | "FAILED";
+    promise: Promise<boolean> | null;
+  } | null>(null);
 
   const beginMutation = () => {
     if (mutationInFlightRef.current) return false;
@@ -214,39 +218,51 @@ export function usePatrol(
 
   const transitionTutorialQuestToBattle = async (patrolId: string, authoritativeStep?: string | null) => {
     if (!session) return false;
-    if (tutorialCompletionOwnerRef.current?.patrolId === patrolId) {
-      return tutorialCompletionOwnerRef.current.status === "SUCCESS";
+    const existingOwner = tutorialCompletionOwnerRef.current;
+    if (existingOwner?.patrolId === patrolId) {
+      if (existingOwner.status === "SUCCESS") return true;
+      if (existingOwner.status === "IN_FLIGHT" && existingOwner.promise) {
+        return existingOwner.promise;
+      }
     }
-    tutorialCompletionOwnerRef.current = { patrolId, status: "IN_FLIGHT" };
-    try {
-      let nextTutorialStep = authoritativeStep;
-      if (nextTutorialStep !== "TUTORIAL_BATTLE") {
-        const { data: advancedStep, error: advanceError } = await supabase.rpc("advance_tutorial_progress", {
-          p_expected_step: "FREE_INSTANT",
-          p_next_step: "TUTORIAL_BATTLE"
+    const owner: NonNullable<typeof tutorialCompletionOwnerRef.current> = {
+      patrolId,
+      status: "IN_FLIGHT",
+      promise: null,
+    };
+    tutorialCompletionOwnerRef.current = owner;
+    owner.promise = (async () => {
+      try {
+        let nextTutorialStep = authoritativeStep;
+        if (nextTutorialStep !== "TUTORIAL_BATTLE") {
+          const { data: advancedStep, error: advanceError } = await supabase.rpc("advance_tutorial_progress", {
+            p_expected_step: "FREE_INSTANT",
+            p_next_step: "TUTORIAL_BATTLE"
+          });
+          if (advanceError) throw advanceError;
+          nextTutorialStep = advancedStep;
+        }
+        if (nextTutorialStep !== "TUTORIAL_BATTLE") {
+          throw new Error(`Unexpected tutorial quest completion state: ${String(nextTutorialStep)}`);
+        }
+        invalidatePatrolBootstrap();
+        setActivePatrols((current) => current.map((entry) => entry.id === patrolId
+          ? { ...entry, status: "CLAIMABLE", secondsLeft: 0, expires_at: new Date().toISOString() }
+          : entry));
+        setTutorialStep("TUTORIAL_BATTLE");
+        owner.status = "SUCCESS";
+        void syncBootstrapData(session.user.id).catch((bootstrapError) => {
+          console.warn("Tutorial quest completion refresh failed:", bootstrapError);
         });
-        if (advanceError) throw advanceError;
-        nextTutorialStep = advancedStep;
+        return true;
+      } catch (error: any) {
+        owner.status = "FAILED";
+        console.warn("Tutorial quest completion transition failed:", error);
+        setErrorMessage("クエスト完了情報を同期できませんでした。もう一度お試しください。");
+        return false;
       }
-      if (nextTutorialStep !== "TUTORIAL_BATTLE") {
-        throw new Error(`Unexpected tutorial quest completion state: ${String(nextTutorialStep)}`);
-      }
-      invalidatePatrolBootstrap();
-      setActivePatrols((current) => current.map((entry) => entry.id === patrolId
-        ? { ...entry, status: "CLAIMABLE", secondsLeft: 0, expires_at: new Date().toISOString() }
-        : entry));
-      setTutorialStep("TUTORIAL_BATTLE");
-      tutorialCompletionOwnerRef.current = { patrolId, status: "SUCCESS" };
-      void syncBootstrapData(session.user.id).catch((bootstrapError) => {
-        console.warn("Tutorial quest completion refresh failed:", bootstrapError);
-      });
-      return true;
-    } catch (error: any) {
-      tutorialCompletionOwnerRef.current = { patrolId, status: "FAILED" };
-      console.warn("Tutorial quest completion transition failed:", error);
-      setErrorMessage("クエスト完了情報を同期できませんでした。もう一度お試しください。");
-      return false;
-    }
+    })();
+    return owner.promise;
   };
 
   const handleInstantComplete = async (currency: "CASH" | "DIAMOND" | "FREE_TUTORIAL" | "FREE_PREOPEN", patrolId: string) => {
