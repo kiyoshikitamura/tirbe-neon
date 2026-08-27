@@ -19,20 +19,14 @@ const DECORATIONS_SHOP = [
 ];
 
 function guildRoleLabel(role?: string | null): string {
-  if (role === "MASTER") return "団長";
+  if (role === "MASTER") return "ギルドマスター";
   if (role === "SUBMASTER" || role === "SUB_MASTER") return "副団長";
   return "メンバー";
 }
 
-function recommendationReason(recommendation: any, guild: any): string {
-  const active = Number(recommendation?.active_members_7d || 0);
-  const members = Number(guild?.member_count || 0);
-  const cap = Number(guild?.member_limit || 10);
-  if (Number(recommendation?.raid_participants_7d || 0) >= 3) return "レイド参加が活発";
-  if (active >= Math.max(3, Math.ceil(members * 0.6))) return "活動中のメンバーが多い";
-  if (cap - members >= 3) return "空きがあり参加しやすい";
-  return "現在メンバー募集中";
-}
+const guildAlignmentLabel = (value?: string | null) => ({
+  JUSTICE: "正義", EVIL: "悪", ORDER: "秩序", CHAOS: "混沌",
+}[String(value || "").toUpperCase()] || "未設定");
 
 export default function GuildTab() {
   const {
@@ -91,8 +85,14 @@ export default function GuildTab() {
     setRecommendationsLoading(true);
     void (async () => {
       try {
-        const { data } = await supabase.rpc("get_recommended_guilds", { p_limit: 5 });
-        if (Array.isArray(data)) setRecommendedGuilds(data);
+        const [{ data }, { data: publicGuilds }] = await Promise.all([
+          supabase.rpc("get_recommended_guilds", { p_limit: 5 }),
+          supabase.rpc("search_guilds", { p_query: "" }),
+        ]);
+        if (Array.isArray(data)) {
+          const publicById = new Map<string, any>((publicGuilds || []).map((guild: any) => [guild.id, guild]));
+          setRecommendedGuilds(data.map((guild: any) => ({ ...guild, ...publicById.get(guild.guild_id), guild_id: guild.guild_id })));
+        }
       } finally {
         setRecommendationsLoading(false);
       }
@@ -173,17 +173,48 @@ export default function GuildTab() {
   if (!userGuild) {
     const joinUnlocked = userLevel >= 3 && !penalty.isPenalty;
     const createUnlocked = userLevel >= 8 && cash >= 5000 && !penalty.isPenalty;
-    const recommendationById = new Map(recommendedGuilds.map((guild) => [guild.guild_id, guild]));
-    const displayGuilds = hasSearched
-      ? allGuildsDbList
-      : recommendedGuilds.map((guild: any) => ({ ...guild, id: guild.guild_id }));
+    const renderGuildCard = (g: any) => {
+      const guild = { ...g, id: g.id || g.guild_id };
+      const pendingRequest = pendingGuildJoinRequests.find((request: any) => request.guild_id === guild.id);
+      const hasOtherPendingRequest = pendingGuildJoinRequests.length > 0 && !pendingRequest;
+      const isFull = Number(guild.member_count || 0) >= Number(guild.member_limit || 10);
+      const recruitmentMode = guildRecruitmentMode(guild.recruitment_mode, guild.approval_required);
+      return (
+        <div key={guild.id} className="guild-lobby-guild-card">
+          {guild.emblem_url || guild.logo_icon
+            ? <img className="guild-lobby-guild-mark" src={guild.emblem_url || guild.logo_icon} alt="" />
+            : <div className="guild-lobby-guild-mark is-placeholder" aria-hidden="true" />}
+          <button className="guild-lobby-guild-info guild-detail-trigger" onClick={() => void fetchGuildDetail(guild.id)}>
+            <strong>{guild.name}</strong>
+            <span>Lv.{guild.level} ・ {guild.member_count || 0}/{guild.member_limit || guildMemberCap(Number(guild.level || 1))}名 ・ {isFull ? "満員" : "空きあり"} ・ {recruitmentMode === "OPEN_JOIN" ? "自由加入" : recruitmentMode === "APPLICATION_REQUIRED" ? "承認制" : "募集停止"}</span>
+            <span className="guild-attribute-line">メイン属性 {guildAlignmentLabel(guild.main_alignment)} ・ サブ属性 {guildAlignmentLabel(guild.sub_alignment)}</span>
+            <span className="guild-activity-line">直近7日アクティブ {guild.active_members_7d ?? "-"}人 ・ レイド貢献 {Number(guild.raid_contribution_7d || 0).toLocaleString()} ・ 総合力 {Number(guild.guild_power || 0).toLocaleString()}</span>
+            <small>詳細を見る ›</small>
+          </button>
+          {pendingRequest ? (
+            <OutlawButton variant="secondary" className="font-size-8 px-3" disabled={gvgResetLoading} loadingLabel="取消中…" onClick={() => handleCancelGuildJoinRequest(pendingRequest.id)}>
+              申請中（取消）
+            </OutlawButton>
+          ) : (
+            <OutlawButton
+              variant={joinUnlocked && !isFull && !hasOtherPendingRequest ? "primary" : "secondary"}
+              className="font-size-8 px-3"
+              disabled={!joinUnlocked || isFull || hasOtherPendingRequest || recruitmentMode === "CLOSED" || gvgResetLoading}
+              onClick={() => handleDemoJoinGuild(guild.id, guild.name, recruitmentMode === "APPLICATION_REQUIRED")}
+            >
+              {!joinUnlocked ? "利用不可" : isFull ? "満員" : hasOtherPendingRequest ? "他へ申請中" : recruitmentMode === "CLOSED" ? "募集停止" : recruitmentMode === "APPLICATION_REQUIRED" ? "加入申請" : "加入する"}
+            </OutlawButton>
+          )}
+        </div>
+      );
+    };
     return (
       <div className="view-container guild-lobby-view">
         <h1 className="sr-only">ギルド</h1>
         <div className="scroll-container flex-1 guild-lobby-scroll">
           <section className={`guild-lobby-unlock ${joinUnlocked ? "is-ready" : ""}`}>
             <div><span>現在ギルドに所属していません</span><strong>{joinUnlocked ? "参加可能" : `Lv.${userLevel} / Lv.3`}</strong></div>
-            <div className="guild-lobby-progress"><span style={{ width: `${Math.min((userLevel / 3) * 100, 100)}%` }} /></div>
+            {!joinUnlocked && <div className="guild-lobby-progress"><span style={{ width: `${Math.min((userLevel / 3) * 100, 100)}%` }} /></div>}
             <p>{joinUnlocked ? "おすすめまたは検索から参加先を選べます。" : "プレイヤーLv.3でギルドへ参加できます。"}</p>
           </section>
 
@@ -192,7 +223,18 @@ export default function GuildTab() {
           )}
 
           <section className="guild-lobby-section">
-            <div className="guild-lobby-section-heading"><span>{hasSearched ? "検索結果" : "おすすめギルド"}</span><small>{hasSearched ? `${displayGuilds.length}件` : "参加しやすいギルド"}</small></div>
+            <div className="guild-lobby-section-heading"><span>おすすめギルド</span><small>{recommendedGuilds.length}件</small></div>
+            <div className="guild-lobby-list">
+              {recommendationsLoading && <div className="guild-lobby-empty" role="status"><strong>おすすめを取得中</strong></div>}
+              {recommendedGuilds.map(renderGuildCard)}
+              {!recommendationsLoading && recommendedGuilds.length === 0 && (
+                <div className="guild-lobby-empty"><strong>おすすめギルドがありません</strong><span>ギルド名から検索できます。</span></div>
+              )}
+            </div>
+          </section>
+
+          <section className="guild-lobby-section guild-lobby-search-section">
+            <div className="guild-lobby-section-heading"><span>ギルドを検索</span>{hasSearched && <small>{allGuildsDbList.length}件</small>}</div>
             <div className="flex gap-2 mb-3">
               <input
                 type="search"
@@ -209,46 +251,12 @@ export default function GuildTab() {
                 {searchLoading ? "検索中…" : "検索"}
               </OutlawButton>
             </div>
-            <div className="guild-lobby-list">
-              {(recommendationsLoading && !hasSearched) && <div className="guild-lobby-empty" role="status"><strong>おすすめを取得中</strong></div>}
-              {displayGuilds.map((g: any) => {
-                const activity = recommendationById.get(g.id);
-                const pendingRequest = pendingGuildJoinRequests.find((request: any) => request.guild_id === g.id);
-                const hasOtherPendingRequest = pendingGuildJoinRequests.length > 0 && !pendingRequest;
-                const isFull = Number(g.member_count || 0) >= Number(g.member_limit || 10);
-                return (
-                <div key={g.id} className="guild-lobby-guild-card">
-                  {g.emblem_url || g.logo_icon
-                    ? <img className="guild-lobby-guild-mark" src={g.emblem_url || g.logo_icon} alt="" />
-                    : <div className="guild-lobby-guild-mark is-placeholder" aria-hidden="true" />}
-                  <button className="guild-lobby-guild-info guild-detail-trigger" onClick={() => void fetchGuildDetail(g.id)}>
-                    <strong>{g.name}</strong>
-                    <span>Lv.{g.level} ・ {g.member_count || 0}/{g.member_limit || guildMemberCap(Number(g.level || 1))}名 ・ {isFull ? "満員" : "空きあり"} ・ {guildRecruitmentMode(g.recruitment_mode, g.approval_required) === "OPEN_JOIN" ? "自由加入" : guildRecruitmentMode(g.recruitment_mode, g.approval_required) === "APPLICATION_REQUIRED" ? "承認制" : "募集停止"}</span>
-                    <span className="guild-activity-line">7日間活動 {activity?.active_members_7d ?? g.active_members_7d ?? "-"}人 ・ レイド貢献 {Number(activity?.raid_contribution_7d || g.raid_contribution_7d || 0).toLocaleString()} ・ 総合力 {Number(activity?.guild_power || g.guild_power || 0).toLocaleString()}</span>
-                    {activity && <span className="guild-recommendation-reason">おすすめ理由：{recommendationReason(activity, g)}</span>}
-                    <small>詳細を見る ›</small>
-                  </button>
-                  {pendingRequest ? (
-                    <OutlawButton variant="secondary" className="font-size-8 px-3" disabled={gvgResetLoading} loadingLabel="取消中…" onClick={() => handleCancelGuildJoinRequest(pendingRequest.id)}>
-                      申請中（取消）
-                    </OutlawButton>
-                  ) : (
-                    <OutlawButton
-                      variant={joinUnlocked && !isFull && !hasOtherPendingRequest ? "primary" : "secondary"}
-                      className="font-size-8 px-3"
-                      disabled={!joinUnlocked || isFull || hasOtherPendingRequest || guildRecruitmentMode(g.recruitment_mode, g.approval_required) === "CLOSED" || gvgResetLoading}
-                      onClick={() => handleDemoJoinGuild(g.id, g.name)}
-                    >
-                      {!joinUnlocked ? "利用不可" : isFull ? "満員" : hasOtherPendingRequest ? "他へ申請中" : guildRecruitmentMode(g.recruitment_mode, g.approval_required) === "CLOSED" ? "募集停止" : guildRecruitmentMode(g.recruitment_mode, g.approval_required) === "APPLICATION_REQUIRED" ? "加入申請" : "加入する"}
-                    </OutlawButton>
-                  )}
-                </div>
-                );
-              })}
-              {!recommendationsLoading && displayGuilds.length === 0 && (
+            {hasSearched && <div className="guild-lobby-list guild-search-results">
+              {allGuildsDbList.map(renderGuildCard)}
+              {allGuildsDbList.length === 0 && (
                 <div className="guild-lobby-empty"><strong>参加できるTRIBEが見つかりません</strong><span>検索条件を変えるか、時間をおいてもう一度確認してください。</span></div>
               )}
-            </div>
+            </div>}
           </section>
 
           <details className={`guild-lobby-create ${createUnlocked ? "is-ready" : ""}`}>
@@ -521,13 +529,13 @@ export default function GuildTab() {
               )}
             </OutlawCard>
             <OutlawCard glowLine="right">
-              <div className="font-bold text-neon-magenta mb-1">TRIBEプロフィール属性</div>
-              <p className="font-size-8 text-secondary mt-1 mb-4">TRIBEのプロフィール表示に使用します。Pre-openではBattle Buffは発生しません。</p>
+              <div className="font-bold text-neon-magenta mb-1">ギルド属性</div>
+              <p className="font-size-8 text-secondary mt-1 mb-4">GvGで使用するメイン属性とサブ属性です。通常バトルには適用されません。</p>
               <div className="flex-col-gap-3 text-left">
                 <div>
-                  <label className="font-size-8 text-secondary block font-bold mb-1">主アライメント</label>
-                  <div className="flex gap-2 mt-1">
-                    {["ORDER", "CHAOS"].map(val => {
+                  <label className="font-size-8 text-secondary block font-bold mb-1">メイン属性</label>
+                  <div className="guild-attribute-options mt-1">
+                    {["JUSTICE", "EVIL", "ORDER", "CHAOS"].map(val => {
                       const jpVal = alignmentEnToJp[val] || val;
                       const isSel = userGuild.main_alignment === val;
                       return (
@@ -546,9 +554,9 @@ export default function GuildTab() {
                 </div>
 
                 <div className="mt-2">
-                  <label className="font-size-8 text-secondary block font-bold mb-1">副アライメント</label>
-                  <div className="flex gap-2 mt-1">
-                    {["JUSTICE", "EVIL"].map(val => {
+                  <label className="font-size-8 text-secondary block font-bold mb-1">サブ属性</label>
+                  <div className="guild-attribute-options mt-1">
+                    {["JUSTICE", "EVIL", "ORDER", "CHAOS"].map(val => {
                       const jpVal = alignmentEnToJp[val] || val;
                       const isSel = userGuild.sub_alignment === val;
                       return (

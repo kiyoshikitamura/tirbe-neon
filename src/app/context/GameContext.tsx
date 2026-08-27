@@ -246,8 +246,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     (userId: string) => syncBootstrapData(userId),
     (actionType: string, sourceId?: string) => addGuildXpAndContributionByAction(actionType, sourceId),
     setConfirmDialogConfig,
-    () => { setChatChannel("GUILD"); setShowTribeChatPanel(true); },
-    () => navigateTab("raid")
+    () => { setChatChannel("GUILD"); setShowTribeChatPanel(true); }
   );
 
   const {
@@ -2512,7 +2511,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       description: "公開情報を取得しています。",
       approval_required: false,
       recruitment_mode: "OPEN_JOIN",
-      controlledBases: []
+      controlledBases: [],
+      members: [],
     });
     try {
       const { data: publicGuild, error: publicGuildError } = await supabase.rpc("get_public_guild_detail", { p_guild_id: guildId });
@@ -2543,6 +2543,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         active_members_7d: publicGuild.active_members_7d,
         raid_contribution_7d: publicGuild.raid_contribution_7d,
         guild_power: publicGuild.guild_power,
+        members: Array.isArray(publicGuild.members) ? publicGuild.members : [],
       });
       void supabase.rpc("record_client_funnel_event", {
         p_event_name: "guild_detail_view", p_source_screen: "guild_detail", p_source_cta: "open",

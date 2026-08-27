@@ -4,6 +4,7 @@ import "./ConfirmDialog.css";
 import OutlawButton from "./OutlawButton";
 import BattleResultSummary from "../battle/BattleResultSummary";
 import RewardReceipt, { type RewardReceiptItem } from "./RewardReceipt";
+import CanonicalDialog from "./CanonicalDialog";
 
 export interface ConfirmDialogConfig {
   isOpen: boolean;
@@ -18,6 +19,7 @@ export interface ConfirmDialogConfig {
   kind?: "confirm" | "reward" | "result";
   rewards?: RewardReceiptItem[];
   delivery?: "PRESENT" | "INVENTORY";
+  presentation?: "legacy" | "canonical";
 }
 
 export default function ConfirmDialog({
@@ -33,6 +35,7 @@ export default function ConfirmDialog({
   kind = "confirm",
   rewards = [],
   delivery = "INVENTORY",
+  presentation = "legacy",
 }: ConfirmDialogConfig) {
   const [dismissed, setDismissed] = useState(false);
   const actionStartedRef = useRef(false);
@@ -61,6 +64,21 @@ export default function ConfirmDialog({
       <div className="outlaw-confirm-overlay">
         <BattleResultSummary victory={isVictory} onContinue={() => runAndDismiss(onConfirm)} />
       </div>
+    );
+  }
+
+  if (presentation === "canonical") {
+    return (
+      <CanonicalDialog
+        title={title}
+        onClose={() => runAndDismiss(onCancel)}
+        actions={[
+          ...(cancelText ? [{ label: cancelText, semantic: "secondary" as const, onClick: () => runAndDismiss(onCancel) }] : []),
+          { label: confirmText, semantic: isDanger ? "danger" as const : "primary" as const, onClick: () => runAndDismiss(onConfirm) },
+        ]}
+      >
+        {message}
+      </CanonicalDialog>
     );
   }
 

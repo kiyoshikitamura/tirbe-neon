@@ -263,6 +263,15 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
       member_count: members.length, member_limit: Number(guild.member_limit || (guild.level >= 5 ? 20 : guild.level === 4 ? 17 : guild.level === 3 ? 14 : guild.level === 2 ? 12 : 10)),
       main_alignment: guild.main_alignment || "NEUTRAL", sub_alignment: guild.sub_alignment || "NEUTRAL",
       emblem_url: guild.logo_icon || null, leader_user_id: leader?.id || null, leader_name: leader?.username || "不在", leader_favorite_character_id: leader?.favorite_character_id || null, controlled_base_ids: controls,
+      members: members
+        .map((member: any) => {
+          const profile = users.find((entry: any) => entry.id === member.user_id) || {};
+          return { user_id: member.user_id, username: profile.username || "プレイヤー", favorite_character_id: profile.favorite_character_id || null, role: member.role, level: Number(profile.level || 1), joined_at: member.joined_at || "" };
+        })
+        .sort((left: any, right: any) => {
+          const roleOrder = (role: string) => role === "MASTER" ? 0 : ["SUB_MASTER", "SUBMASTER"].includes(role) ? 1 : 2;
+          return roleOrder(left.role) - roleOrder(right.role) || String(left.joined_at).localeCompare(String(right.joined_at)) || String(left.user_id).localeCompare(String(right.user_id));
+        }),
       active_members_7d: members.filter((member: any) => {
         const profile = users.find((entry: any) => entry.id === member.user_id);
         return profile?.last_active_at && new Date(profile.last_active_at).getTime() >= activeSince;

@@ -28,6 +28,7 @@
 .guild-lobby-guild-info strong { overflow: hidden; color: #fff; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
 .guild-lobby-guild-info span { color: #91a1b8; font-size: 10px; }
 .guild-lobby-guild-info .guild-activity-line { color: var(--neon-cyan); font-size: 9px; }
+.guild-lobby-guild-info .guild-attribute-line { color: #e6d9ff; font-size: 9px; }
 .guild-lobby-guild-info small { color: var(--neon-gold); font-size: 9px; font-weight: 800; }
 
 .guild-membership-summary { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: center; gap: 10px; margin: 10px 8px 0; padding: 11px; border: 1px solid rgba(0, 240, 255, .34); background: linear-gradient(125deg, rgba(0, 208, 229, .1), rgba(9, 14, 24, .94)); }
@@ -186,20 +187,9 @@
   border: 2px solid rgba(0, 240, 255, 0.3);
 }
 
-.guild-recommendation-reason {
-  display: inline-flex;
-  width: fit-content;
-  max-width: 100%;
-  margin-top: 4px;
-  padding: 3px 7px;
-  border: 1px solid rgba(247, 196, 72, .38);
-  border-radius: 999px;
-  color: var(--neon-gold);
-  background: rgba(247, 196, 72, .08);
-  font-size: 9px;
-  line-height: 1.35;
-  overflow-wrap: anywhere;
-}
+.guild-lobby-search-section { margin-top:4px; padding-top:12px; border-top:1px solid rgba(86,110,143,.28); }
+.guild-attribute-options { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:6px; }
+@media(max-width:390px){.guild-attribute-options{grid-template-columns:repeat(2,minmax(0,1fr))}}
 
 .guild-lobby-empty {
   display: grid;

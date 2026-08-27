@@ -15,8 +15,7 @@ export function useGuild(
   syncBootstrapData: (userId: string) => Promise<void>,
   addGuildXpAndContributionByAction: (actionType: string, sourceId?: string) => Promise<void>,
   setConfirmDialogConfig: React.Dispatch<React.SetStateAction<import("@/app/components/ui/ConfirmDialog").ConfirmDialogConfig | null>>,
-  openGuildChat?: () => void,
-  navigateToRaid?: () => void
+  openGuildChat?: () => void
 ) {
   const [userGuild, setUserGuild] = useState<any | null>(null);
   const [userGuildMember, setUserGuildMember] = useState<any | null>(null);
@@ -30,32 +29,14 @@ export function useGuild(
   const [pendingGuildJoinRequests, setPendingGuildJoinRequests] = useState<any[]>([]);
   const [guildJoinRequests, setGuildJoinRequests] = useState<any[]>([]);
 
-  const openGuildWelcomeLegacy = (guildId: string, guildName: string) => {
-    setConfirmDialogConfig({
-      isOpen: true,
-      title: "ギルドへようこそ",
-      message: `「${guildName}」への加入が完了しました。`,
-      confirmText: "ギルドチャットを開く",
-      cancelText: "あとで",
-      onConfirm: () => {
-        void supabase.rpc("record_client_funnel_event", {
-          p_event_name: "guild_welcome_chat_click", p_source_screen: "guild_welcome",
-          p_source_cta: "open_chat", p_object_id: guildId, p_metadata: {}
-        });
-        setConfirmDialogConfig(null);
-        openGuildChat?.();
-      },
-      onCancel: () => setConfirmDialogConfig(null)
-    });
-  };
-
   const openGuildWelcome = (guildId: string, guildName: string) => {
     setConfirmDialogConfig({
       isOpen: true,
       title: "ギルドへようこそ",
       message: `「${guildName}」への加入が完了しました。`,
       confirmText: "ギルドチャットを見る",
-      cancelText: "レイドへ",
+      cancelText: "閉じる",
+      presentation: "canonical",
       onConfirm: () => {
         void supabase.rpc("record_client_funnel_event", {
           p_event_name: "guild_welcome_chat_click", p_source_screen: "guild_welcome",
@@ -64,10 +45,7 @@ export function useGuild(
         setConfirmDialogConfig(null);
         openGuildChat?.();
       },
-      onCancel: () => {
-        setConfirmDialogConfig(null);
-        navigateToRaid?.();
-      },
+      onCancel: () => setConfirmDialogConfig(null),
     });
   };
 
@@ -235,7 +213,7 @@ export function useGuild(
     }
   };
 
-  const handleDemoJoinGuild = async (targetGuildId: string, guildName: string, approvalRequiredOverride?: boolean): Promise<"joined" | "pending" | null> => {
+  const executeGuildJoin = async (targetGuildId: string, guildName: string, requiresApproval: boolean): Promise<"joined" | "pending" | null> => {
     if (!session) return null;
     if (userLevel < 3) {
       setErrorMessage("ギルド加入にはプレイヤーレベル3以上が必要です。");
@@ -258,9 +236,6 @@ export function useGuild(
         return null;
       }
 
-      const mode = guildRecruitmentMode(targetGuild?.recruitment_mode, approvalRequiredOverride ?? Boolean(targetGuild?.approval_required));
-      if (mode === "CLOSED") throw new Error("このギルドは現在募集を停止しています。");
-      const requiresApproval = mode === "APPLICATION_REQUIRED";
       const { error } = requiresApproval
         ? await supabase.rpc("request_guild_join", { p_guild_id: targetGuildId })
         : await supabase.rpc("join_guild", { p_guild_id: targetGuildId });
@@ -271,19 +246,21 @@ export function useGuild(
       }
       if (!requiresApproval) playCyberSe("GUILD_JOIN");
 
-      setConfirmDialogConfig({
-        isOpen: true,
-        title: requiresApproval ? "加入申請" : "ギルド加入",
-        message: requiresApproval
-          ? `ギルド『${guildName}』へ加入申請を送りました。`
-          : `ギルド『${guildName}』に加入しました！`,
-        onConfirm: () => {
-          setConfirmDialogConfig(null);
-          if (!requiresApproval) openGuildWelcome(targetGuildId, guildName);
-        },
-        onCancel: () => setConfirmDialogConfig(null)
-      });
       await syncBootstrapData(session.user.id);
+      if (requiresApproval) {
+        setConfirmDialogConfig({
+          isOpen: true,
+          title: "加入申請",
+          message: `「${guildName}」へ加入申請を送りました。`,
+          confirmText: "OK",
+          cancelText: "",
+          presentation: "canonical",
+          onConfirm: () => setConfirmDialogConfig(null),
+          onCancel: () => setConfirmDialogConfig(null),
+        });
+      } else {
+        openGuildWelcome(targetGuildId, guildName);
+      }
       return requiresApproval ? "pending" : "joined";
     } catch (err: any) {
       console.warn(err.message);
@@ -299,6 +276,31 @@ export function useGuild(
     } finally {
       setGvgResetLoading(false);
     }
+  };
+
+  const handleDemoJoinGuild = async (targetGuildId: string, guildName: string, approvalRequiredOverride?: boolean): Promise<"joined" | "pending" | null> => {
+    const targetGuild = allGuildsDbList.find((guild: any) => guild.id === targetGuildId);
+    const mode = guildRecruitmentMode(targetGuild?.recruitment_mode, approvalRequiredOverride ?? Boolean(targetGuild?.approval_required));
+    if (mode === "CLOSED") {
+      setErrorMessage("このギルドは現在募集を停止しています。");
+      return null;
+    }
+    if (mode !== "APPLICATION_REQUIRED") return executeGuildJoin(targetGuildId, guildName, false);
+
+    setConfirmDialogConfig({
+      isOpen: true,
+      title: "加入申請",
+      message: `「${guildName}」へ加入申請を送りますか？`,
+      confirmText: "申請する",
+      cancelText: "キャンセル",
+      presentation: "canonical",
+      onConfirm: () => {
+        setConfirmDialogConfig(null);
+        void executeGuildJoin(targetGuildId, guildName, true);
+      },
+      onCancel: () => setConfirmDialogConfig(null),
+    });
+    return null;
   };
 
   const handleLeaveGuild = () => {

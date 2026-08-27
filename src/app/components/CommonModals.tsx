@@ -25,6 +25,16 @@ function gachaLocationBackground(result: any): string {
   return getCharacterLocationBackground(master?.homeTown);
 }
 
+const guildAlignmentLabel = (value?: string | null) => ({
+  JUSTICE: "正義", EVIL: "悪", ORDER: "秩序", CHAOS: "混沌",
+}[String(value || "").toUpperCase()] || "未設定");
+
+const guildRoleLabel = (role?: string | null) => {
+  if (role === "MASTER") return "ギルドマスター";
+  if (role === "SUB_MASTER" || role === "SUBMASTER") return "副団長";
+  return "メンバー";
+};
+
 export default function CommonModals() {
   const {
     showGearModal,
@@ -420,29 +430,30 @@ export default function CommonModals() {
                 <div><strong>{activeGuildDetail.name}</strong><span>Lv.{activeGuildDetail.level} ・ {activeGuildDetail.member_count}/{activeGuildDetail.member_limit}名</span></div>
               </div>
               <div className="guild-meta-section flex justify-between mb-3">
-                <UserIdentityRow
-                  userName={activeGuildDetail.leaderName}
-                  guildName={activeGuildDetail.name}
-                  leaderCharacterId={activeGuildDetail.leaderCharacterId}
-                  onOpen={activeGuildDetail.leaderUserId ? () => fetchPlayerDetail(activeGuildDetail.leaderUserId) : undefined}
-                  variant="compact"
-                />
+                <div className="guild-public-master">
+                  <small>ギルドマスター</small>
+                  <UserIdentityRow
+                    userName={activeGuildDetail.leaderName}
+                    guildName={activeGuildDetail.name}
+                    leaderCharacterId={activeGuildDetail.leaderCharacterId}
+                    onOpen={activeGuildDetail.leaderUserId ? () => fetchPlayerDetail(activeGuildDetail.leaderUserId) : undefined}
+                    variant="compact"
+                  />
+                </div>
                 <div className="guild-alignment text-right">
                   <span className="alignment-badge main font-size-7 px-1.5 py-0.5 font-weight-bold text-white rounded">
-                    主属性: {activeGuildDetail.main_alignment}
+                    メイン属性: {guildAlignmentLabel(activeGuildDetail.main_alignment)}
                   </span>
-                  {activeGuildDetail.sub_alignment && (
-                    <span className="alignment-badge sub font-size-7 px-1.5 py-0.5 font-weight-bold text-white rounded block mt-1">
-                      副属性: {activeGuildDetail.sub_alignment}
-                    </span>
-                  )}
+                  <span className="alignment-badge sub font-size-7 px-1.5 py-0.5 font-weight-bold text-white rounded block mt-1">
+                    サブ属性: {guildAlignmentLabel(activeGuildDetail.sub_alignment)}
+                  </span>
                 </div>
               </div>
 
               <div className="guild-public-status-grid">
                 <span><small>参加方法</small><strong>{Number(activeGuildDetail.member_count || 0) >= Number(activeGuildDetail.member_limit || 0) ? "満員" : activeGuildDetail.recruitment_mode === "CLOSED" ? "募集停止" : activeGuildDetail.recruitment_mode === "APPLICATION_REQUIRED" || activeGuildDetail.approval_required ? "承認制" : "自由加入"}</strong></span>
                 <span><small>空き枠</small><strong>{Math.max(0, Number(activeGuildDetail.member_limit || 0) - Number(activeGuildDetail.member_count || 0))}枠</strong></span>
-                <span><small>7日間活動</small><strong>{Number(activeGuildDetail.active_members_7d || 0)}人</strong></span>
+                <span><small>直近7日アクティブ</small><strong>{Number(activeGuildDetail.active_members_7d || 0)}人</strong></span>
                 <span><small>レイド貢献</small><strong>{Number(activeGuildDetail.raid_contribution_7d || 0).toLocaleString()}</strong></span>
                 <span><small>総合力</small><strong>{Number(activeGuildDetail.guild_power || 0).toLocaleString()}</strong></span>
               </div>
@@ -450,6 +461,24 @@ export default function CommonModals() {
               <div className="guild-desc-box steel-tray p-2.5 mb-3 font-size-8 text-white line-height-14">
                 {activeGuildDetail.description}
               </div>
+
+              <section className="guild-public-members" aria-label="メンバー">
+                <div className="guild-public-section-title"><strong>メンバー</strong><small>{activeGuildDetail.members?.length || 0}名</small></div>
+                <div className="guild-public-member-list">
+                  {(activeGuildDetail.members || []).map((member: any) => (
+                    <div className="guild-public-member-row" key={member.user_id}>
+                      <UserIdentityRow
+                        userName={member.username}
+                        guildName={activeGuildDetail.name}
+                        leaderCharacterId={member.favorite_character_id || null}
+                        onOpen={() => fetchPlayerDetail(member.user_id)}
+                        variant="compact"
+                      />
+                      <span>{guildRoleLabel(member.role)}</span>
+                    </div>
+                  ))}
+                </div>
+              </section>
 
               {!userGuildMember && (() => {
                 const pendingRequest = pendingGuildJoinRequests?.find((request: any) => request.guild_id === activeGuildDetail.id && request.status === "PENDING");
