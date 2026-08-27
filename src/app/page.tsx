@@ -50,10 +50,12 @@ function AppContent() {
     globalInteractionBlocking,
     maintenanceEnabled
   } = useGame();
-  const [homeResumeSnapshot] = React.useState(() => {
+  const [homeResumeSnapshot, setHomeResumeSnapshot] = React.useState<ReturnType<typeof readHomeResumeSnapshot>>(null);
+  React.useLayoutEffect(() => {
     markHomeReloadStage("reload", 0);
-    return readHomeResumeSnapshot();
-  });
+    const snapshot = readHomeResumeSnapshot();
+    queueMicrotask(() => setHomeResumeSnapshot(snapshot));
+  }, []);
   const { playBgm } = useAudio();
   const tutorialStep = onboardingState?.tutorial_step;
   const isMandatoryTutorial = Boolean(tutorialStep && tutorialStep !== "AUTHENTICATION");
