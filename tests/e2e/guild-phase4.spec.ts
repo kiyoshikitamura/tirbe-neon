@@ -68,8 +68,10 @@ async function expectNoOverflow(page: Page, selector: string) {
 test("unaffiliated discovery uses compact Japanese-first Guild presentation", async ({ page }) => {
   await seedGuildVisitor(page);
   await enterGuild(page);
+  await expect(page.locator(".guild-lobby-section-heading").first()).toBeVisible();
   await expect(page.locator(".guild-lobby-hero")).toHaveCount(0);
-  await expect(page.getByText("現在ギルドに所属していません")).toBeVisible();
+  await expect(page.getByText("現在ギルドに所属していません")).toHaveCount(0);
+  await expect(page.locator(".guild-lobby-unlock")).toHaveCount(0);
   await expect(page.locator(".guild-lobby-progress")).toHaveCount(0);
   await expect(page.getByText("参加しやすいギルド")).toHaveCount(0);
   const sectionHeadings = await page.locator(".guild-lobby-section-heading > span").allTextContents();
@@ -80,6 +82,13 @@ test("unaffiliated discovery uses compact Japanese-first Guild presentation", as
     return { open: details.open, ready: details.classList.contains("is-ready") };
   });
   expect(creation).toEqual({ open: false, ready: true });
+  const searchGeometry = await page.locator(".guild-search-form").evaluate((node) => {
+    const input = node.querySelector("input")!;
+    const button = node.querySelector("button")!;
+    return { inputWidth: input.getBoundingClientRect().width, buttonWidth: button.getBoundingClientRect().width, fontSize: parseFloat(getComputedStyle(input).fontSize) };
+  });
+  expect(searchGeometry.inputWidth).toBeGreaterThan(searchGeometry.buttonWidth * 2);
+  expect(searchGeometry.fontSize).toBeGreaterThanOrEqual(16);
   await expect(page.locator(".guild-activity-line").first()).toContainText("直近7日アクティブ");
   await expect(page.locator(".guild-activity-line").first()).toContainText("レイド貢献");
   await expect(page.locator(".guild-activity-line").first()).toContainText("総合力");
@@ -163,11 +172,54 @@ test("member leave uses a destructive canonical dialog and returns to unaffiliat
   await page.locator(".canonical-dialog").getByRole("button", { name: "閉じる", exact: true }).last().click();
   await page.getByRole("button", { name: "ギルドを脱退" }).click();
   await expect(page.locator(".canonical-dialog")).toContainText("ギルドを脱退");
-  await expect(page.locator(".canonical-dialog")).toContainText("『OPEN NEON』を脱退しますか？");
+  await expect(page.locator(".canonical-dialog")).toContainText("「OPEN NEON」を脱退しますか？");
   await expect(page.locator(".canonical-dialog").getByRole("button", { name: "脱退する" })).toHaveClass(/danger/);
   await page.locator(".canonical-dialog").getByRole("button", { name: "脱退する" }).click();
-  await expect(page.getByText("現在ギルドに所属していません")).toBeVisible();
+  await expect(page.locator(".canonical-dialog")).toContainText("ギルドから正常に脱退しました。");
+  await expect(page.locator(".canonical-dialog").getByRole("button", { name: "キャンセル" })).toHaveCount(0);
+  await page.locator(".canonical-dialog").getByRole("button", { name: "OK" }).click();
+  await expect(page.getByText("おすすめギルド")).toBeVisible();
   await expect(page.locator(".guild-visual-identity")).toHaveCount(0);
+});
+
+test("Lv8 user creates a Guild, becomes master, and persists saved attributes", async ({ page }) => {
+  await seedGuildVisitor(page, 8);
+  await enterGuild(page);
+  await page.locator(".guild-lobby-create summary").click();
+  await page.getByPlaceholder("ギルド名を入力 (12文字)").fill("FINAL NEON");
+  await page.getByRole("button", { name: "創設する" }).click();
+  const confirmation = page.locator(".canonical-dialog");
+  await expect(confirmation).toContainText("「FINAL NEON」を設立しますか？");
+  await expect(confirmation).toContainText("5,000キャッシュ");
+  await expect(confirmation.getByRole("button", { name: "キャンセル" })).toBeVisible();
+  await expect(confirmation.getByRole("button", { name: "設立する" })).not.toHaveClass(/danger/);
+  await confirmation.getByRole("button", { name: "設立する" }).click();
+  await expect(confirmation).toContainText("「FINAL NEON」を設立しました。");
+  await expect(confirmation.getByRole("button", { name: "キャンセル" })).toHaveCount(0);
+  await confirmation.getByRole("button", { name: "OK" }).click();
+  await expect(page.locator(".guild-visual-identity")).toContainText("FINAL NEON");
+  await expect(page.locator(".guild-visual-identity")).toContainText("ギルドマスター");
+  await page.locator(".guild-action-grid button").filter({ hasText: /^メンバー/ }).click();
+  await expect(page.locator(".guild-member-row")).toHaveCount(1);
+  await expect(page.locator(".guild-member-row")).toContainText("ギルドマスター");
+  await page.getByRole("button", { name: "ギルドマイページへ戻る" }).click();
+  await page.getByRole("button", { name: "ギルド設定" }).click();
+  await page.getByRole("button", { name: "悪", exact: true }).first().click();
+  await page.getByRole("button", { name: "混沌", exact: true }).last().click();
+  await page.getByRole("button", { name: "属性を保存" }).click();
+  await expect(confirmation).toContainText("ギルド属性を保存しました。");
+  await confirmation.getByRole("button", { name: "OK" }).click();
+  await page.getByRole("button", { name: "ギルドマイページへ戻る" }).click();
+  await expect(page.locator(".guild-identity-attributes")).toContainText("メイン属性 悪");
+  await expect(page.locator(".guild-identity-attributes")).toContainText("サブ属性 混沌");
+  await page.reload();
+  const titleAction = page.getByRole("button", { name: "TAP TO START" });
+  if (await titleAction.isVisible()) await titleAction.click();
+  const continueAction = page.getByRole("button", { name: "続きから" });
+  if (await continueAction.isVisible()) await continueAction.click();
+  await page.getByRole("button", { name: "ギルド", exact: true }).click();
+  await expect(page.locator(".guild-identity-attributes")).toContainText("メイン属性 悪");
+  await expect(page.locator(".guild-identity-attributes")).toContainText("サブ属性 混沌");
 });
 
 test("Guild My Page geometry is compact at 390 and 412", async ({ page }) => {
@@ -206,6 +258,28 @@ test("role navigation exposes settings to submasters and master leave remains sa
   await page.getByRole("button", { name: "ギルドを脱退" }).click();
   await expect(page.getByText("脱退する前に、マスター権限を譲渡してください。")).toBeVisible();
   await expect(page.locator(".guild-lobby-view")).toHaveCount(0);
+});
+
+test("master can review a pending join request from the member view", async ({ page }) => {
+  await seedGuildVisitor(page, 8, "MASTER");
+  await page.addInitScript(({ openGuild }) => {
+    const applicantId = "00000000-0000-4000-8000-000000004099";
+    const users = JSON.parse(localStorage.getItem("mock_db_users") || "[]");
+    users.push({ id: applicantId, username: "Join Applicant", level: 9, cash: 10000, guild_id: null, favorite_character_id: "char_shun_01" });
+    localStorage.setItem("mock_db_users", JSON.stringify(users));
+    localStorage.setItem("mock_db_guild_join_requests", JSON.stringify([{ id: "pending-final", guild_id: openGuild, user_id: applicantId, status: "PENDING", requested_at: new Date().toISOString() }]));
+  }, { openGuild });
+  await enterGuild(page);
+  await page.locator(".guild-action-grid button").filter({ hasText: /^メンバー/ }).click();
+  await expect(page.getByText("加入申請", { exact: true })).toBeVisible();
+  await expect(page.getByText("Join Applicant")).toBeVisible();
+  await page.getByRole("button", { name: "承認", exact: true }).click();
+  await expect(page.locator(".canonical-dialog")).toContainText("加入申請を承認しました。");
+  await expect(page.locator(".canonical-dialog").getByRole("button", { name: "キャンセル" })).toHaveCount(0);
+  await page.locator(".canonical-dialog").getByRole("button", { name: "OK" }).click();
+  await expect(page.getByText("Join Applicant")).toBeVisible();
+  const approved = await page.evaluate(() => JSON.parse(localStorage.getItem("mock_db_guild_join_requests") || "[]")[0]?.status);
+  expect(approved).toBe("APPROVED");
 });
 
 test("approval request becomes pending and survives reload", async ({ page }) => {

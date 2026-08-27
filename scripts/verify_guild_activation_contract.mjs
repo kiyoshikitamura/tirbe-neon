@@ -12,7 +12,7 @@ const remediationMigration = read("supabase/migrations/20260828000204_guild_huma
 
 const checks = [
   [!guild.includes("guild-lobby-hero\""), "temporary Guild hero is absent"],
-  [guild.includes("現在ギルドに所属していません"), "unaffiliated status is explicit"],
+  [!guild.includes("現在ギルドに所属していません") && !guild.includes("guild-lobby-unlock"), "unaffiliated intro card is absent"],
   [guild.includes("おすすめギルド"), "recommendations are the primary discovery path"],
   [guild.includes("<details className={`guild-lobby-create"), "creation remains secondary"],
   [guild.includes("const createUnlocked = userLevel >= 8") && guild.includes("userLevel < 8 ? \"Lv.8で解放\""), "Lv8 client creation gate remains authoritative"],
@@ -20,6 +20,9 @@ const checks = [
   [guild.includes("直近7日アクティブ") && guild.includes("COMING SOON"), "Guild My Page status and unavailable actions are explicit"],
   [guild.includes("<UserIdentityRow") && guild.includes("guild-member-role"), "joined member list uses shared identity and canonical role labels"],
   [guild.includes("ギルドを脱退") && !guild.includes("解散 / 脱退"), "ordinary membership leave is an explicit secondary action"],
+  [!guild.includes("所属設定"), "ambiguous membership settings label is absent"],
+  [guild.includes("guild-search-input") && guild.includes("guild-search-button"), "mobile search reserves primary width for the input"],
+  [guild.includes("属性を保存") && guild.includes("mainAlignmentDraft") && guild.includes("subAlignmentDraft"), "Guild attributes use explicit draft and save flow"],
   [detail.includes("<CanonicalDialog") && detail.includes("<UserIdentityRow"), "Guild detail reuses canonical dialog and identity"],
   [detail.includes("直近7日アクティブ") && detail.includes("レイド貢献") && detail.includes("総合力"), "Guild detail is Japanese-first"],
   [detail.includes("メイン属性") && detail.includes("サブ属性") && !detail.includes("主属性:"), "Guild attributes use canonical Japanese labels"],

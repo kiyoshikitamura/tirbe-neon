@@ -399,6 +399,28 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     return { data: { status: "cancelled" }, error: null };
   }
 
+  if (funcName === "review_guild_join_request") {
+    const currentUserId = typeof window === "undefined" ? null : localStorage.getItem("tribe_demo_uuid");
+    const requests = client.getStorage("guild_join_requests") || [];
+    const request = requests.find((entry: any) => entry.id === params?.p_request_id && entry.status === "PENDING");
+    const members = client.getStorage("guild_members") || [];
+    const reviewer = members.find((entry: any) => entry.guild_id === request?.guild_id && entry.user_id === currentUserId);
+    if (!request || !["MASTER", "SUB_MASTER", "SUBMASTER"].includes(reviewer?.role)) {
+      return { data: null, error: { message: "Guild application review is not permitted" } };
+    }
+    request.status = params?.p_approve ? "APPROVED" : "REJECTED";
+    if (params?.p_approve && !members.some((entry: any) => entry.guild_id === request.guild_id && entry.user_id === request.user_id)) {
+      members.push({ id: `gm_${Date.now()}`, guild_id: request.guild_id, user_id: request.user_id, role: "MEMBER", joined_at: new Date().toISOString() });
+      const users = client.getStorage("users") || [];
+      const applicant = users.find((entry: any) => entry.id === request.user_id);
+      if (applicant) applicant.guild_id = request.guild_id;
+      client.setStorage("users", users);
+      client.setStorage("guild_members", members);
+    }
+    client.setStorage("guild_join_requests", requests);
+    return { data: { status: String(request.status).toLocaleLowerCase() }, error: null };
+  }
+
   if (funcName === "get_raid_rankings") {
     const users = client.getStorage("users") || [];
     const guilds = client.getStorage("guilds") || [];
@@ -3333,7 +3355,7 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     const currentUserId = typeof window === "undefined" ? null : localStorage.getItem("tribe_demo_uuid");
     const members = client.getStorage("guild_members") || [];
     const membership = members.find((member: any) => member.guild_id === p_guild_id && member.user_id === currentUserId);
-    if (membership?.role !== "MASTER" || !["JUSTICE", "EVIL", "ORDER", "CHAOS"].includes(p_main) || !["JUSTICE", "EVIL", "ORDER", "CHAOS"].includes(p_sub)) {
+    if (!["MASTER", "SUB_MASTER", "SUBMASTER"].includes(membership?.role) || !["JUSTICE", "EVIL", "ORDER", "CHAOS"].includes(p_main) || !["JUSTICE", "EVIL", "ORDER", "CHAOS"].includes(p_sub)) {
       return { data: null, error: { message: "Invalid guild alignment" } };
     }
     const guilds = client.getStorage("guilds") || [];

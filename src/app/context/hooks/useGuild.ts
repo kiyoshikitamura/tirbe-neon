@@ -79,37 +79,14 @@ export function useGuild(
     return { isPenalty: false, secondsLeft: 0 };
   };
 
-  const handleCreateGuild = async () => {
+  const executeCreateGuild = async (guildName: string) => {
     if (!session) return;
-    if (userLevel < 8) {
-      setErrorMessage("ギルド創設にはプレイヤーレベル8以上が必要です。");
-      return;
-    }
-    if (!newGuildName.trim()) {
-      setErrorMessage("ギルド名は空欄にできません。");
-      return;
-    }
-    if (Array.from(newGuildName.trim()).length > GUILD_PRODUCTION.creation.nameMax) {
-      setErrorMessage("ギルド名は12文字以内で入力してください。");
-      return;
-    }
-    if (cash < 5000) {
-      setErrorMessage("創設にはキャッシュ5,000が必要です。");
-      return;
-    }
-
-    const penalty = getGuildPenaltyState();
-    if (penalty.isPenalty) {
-      setErrorMessage("ギルド脱退後のペナルティ制限期間中です。");
-      return;
-    }
-
     setGvgResetLoading(true);
     playCyberSe("click");
     try {
       const res = await supabase.rpc("create_guild_v2", {
         p_user_id: session.user.id,
-        p_guild_name: newGuildName.trim(),
+        p_guild_name: guildName,
         p_creation_cost: 5000
       });
 
@@ -125,13 +102,62 @@ export function useGuild(
       }
 
       setNewGuildName("");
-      setConfirmDialogConfig({ isOpen: true, title: "ギルド作成", message: `ギルド『${newGuildName.trim()}』を創設しました！`, onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
       await syncBootstrapData(session.user.id);
+      setGuildSubTab("home");
+      setConfirmDialogConfig({
+        isOpen: true,
+        title: "ギルド設立",
+        message: `「${guildName}」を設立しました。`,
+        confirmText: "OK",
+        cancelText: "",
+        presentation: "canonical",
+        onConfirm: () => setConfirmDialogConfig(null),
+        onCancel: () => setConfirmDialogConfig(null),
+      });
     } catch (err: any) {
       console.warn(err.message);
+      setErrorMessage("ギルドの設立に失敗しました。");
     } finally {
       setGvgResetLoading(false);
     }
+  };
+
+  const handleCreateGuild = () => {
+    if (!session) return;
+    const guildName = newGuildName.trim();
+    if (userLevel < 8) {
+      setErrorMessage("ギルド創設にはプレイヤーレベル8以上が必要です。");
+      return;
+    }
+    if (!guildName) {
+      setErrorMessage("ギルド名は空欄にできません。");
+      return;
+    }
+    if (Array.from(guildName).length > GUILD_PRODUCTION.creation.nameMax) {
+      setErrorMessage("ギルド名は12文字以内で入力してください。");
+      return;
+    }
+    if (cash < 5000) {
+      setErrorMessage("創設にはキャッシュ5,000が必要です。");
+      return;
+    }
+    if (getGuildPenaltyState().isPenalty) {
+      setErrorMessage("ギルド脱退後のペナルティ制限期間中です。");
+      return;
+    }
+    setConfirmDialogConfig({
+      isOpen: true,
+      title: "ギルドを設立",
+      message: `「${guildName}」を設立しますか？\n設立には5,000キャッシュが必要です。`,
+      confirmText: "設立する",
+      cancelText: "キャンセル",
+      presentation: "canonical",
+      onConfirm: () => {
+        setConfirmDialogConfig(null);
+        void executeCreateGuild(guildName);
+      },
+      onCancel: () => setConfirmDialogConfig(null),
+    });
   };
 
   const handleUpdateGuildAlignment = async (mainAlign: string, subAlign: string) => {
@@ -167,7 +193,16 @@ export function useGuild(
       if (error) throw error;
 
       await syncBootstrapData(session.user.id);
-      setConfirmDialogConfig({ isOpen: true, title: "属性変更", message: "組織属性を更新しました。", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
+      setConfirmDialogConfig({
+        isOpen: true,
+        title: "属性設定",
+        message: "ギルド属性を保存しました。",
+        confirmText: "OK",
+        cancelText: "",
+        presentation: "canonical",
+        onConfirm: () => setConfirmDialogConfig(null),
+        onCancel: () => setConfirmDialogConfig(null),
+      });
     } catch (e: any) {
       console.warn("Update alignment failed:", e.message);
       setErrorMessage("属性の更新に失敗しました。");
@@ -200,9 +235,9 @@ export function useGuild(
       if (error) throw error;
 
       if (isMaster && otherMembers.length === 0) {
-        setConfirmDialogConfig({ isOpen: true, title: "ギルド解散", message: "ギルドは自動解散されました。", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
+        setConfirmDialogConfig({ isOpen: true, title: "ギルド解散", message: "ギルドを解散しました。", confirmText: "OK", cancelText: "", presentation: "canonical", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
       } else {
-        setConfirmDialogConfig({ isOpen: true, title: "ギルド脱退", message: "ギルドから正常に脱退しました。", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
+        setConfirmDialogConfig({ isOpen: true, title: "ギルド脱退", message: "ギルドから正常に脱退しました。", confirmText: "OK", cancelText: "", presentation: "canonical", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
       }
 
       await syncBootstrapData(session.user.id);
@@ -316,7 +351,7 @@ export function useGuild(
       title: isMaster ? "ギルドを解散" : "ギルドを脱退",
       message: isMaster
         ? `『${userGuild.name}』を解散しますか？この操作は取り消せません。`
-        : `『${userGuild.name}』を脱退しますか？`,
+        : `「${userGuild.name}」を脱退しますか？`,
       onConfirm: () => {
         setConfirmDialogConfig(null);
         void executeLeaveGuild();
@@ -392,6 +427,9 @@ export function useGuild(
         isOpen: true,
         title: approve ? "加入承認" : "加入却下",
         message: approve ? "加入申請を承認しました。" : "加入申請を却下しました。",
+        confirmText: "OK",
+        cancelText: "",
+        presentation: "canonical",
         onConfirm: () => setConfirmDialogConfig(null),
         onCancel: () => setConfirmDialogConfig(null),
       });
@@ -416,7 +454,7 @@ export function useGuild(
           p_new_id: targetUserId
         });
         if (error) throw error;
-        setConfirmDialogConfig({ isOpen: true, title: "マスター交代", message: `マスター権限を『${targetName}』へ譲渡しました。`, onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
+        setConfirmDialogConfig({ isOpen: true, title: "マスター交代", message: `マスター権限を「${targetName}」へ譲渡しました。`, confirmText: "OK", cancelText: "", presentation: "canonical", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
       } else {
         const { error } = await supabase.rpc("set_guild_member_role", {
           p_guild_id: userGuild.id,
@@ -424,7 +462,8 @@ export function useGuild(
           p_new_role: newRole
         });
         if (error) throw error;
-        setConfirmDialogConfig({ isOpen: true, title: "役職変更", message: `『${targetName}』の階級を ${newRole} へ変更しました。`, onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
+        const roleLabel = ["SUB_MASTER", "SUBMASTER"].includes(newRole) ? "副団長" : "メンバー";
+        setConfirmDialogConfig({ isOpen: true, title: "役職変更", message: `「${targetName}」の役職を${roleLabel}へ変更しました。`, confirmText: "OK", cancelText: "", presentation: "canonical", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
       }
       await syncBootstrapData(session.user.id);
     } catch (err: any) {
@@ -449,7 +488,11 @@ export function useGuild(
     setConfirmDialogConfig({
       isOpen: true,
       title: "追放確認",
-      message: `『${targetName}』を追放しますか？`,
+      message: `「${targetName}」を追放しますか？`,
+      confirmText: "追放する",
+      cancelText: "キャンセル",
+      isDanger: true,
+      presentation: "canonical",
       onConfirm: async () => {
         setConfirmDialogConfig(null);
         setGvgResetLoading(true);
@@ -460,7 +503,7 @@ export function useGuild(
             p_user_id: targetUserId
           });
           if (error) throw error;
-          setConfirmDialogConfig({ isOpen: true, title: "追放完了", message: `『${targetName}』を追放しました。`, onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
+          setConfirmDialogConfig({ isOpen: true, title: "追放完了", message: `「${targetName}」を追放しました。`, confirmText: "OK", cancelText: "", presentation: "canonical", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
           await syncBootstrapData(session.user.id);
         } catch (err: any) {
           console.warn(err.message);

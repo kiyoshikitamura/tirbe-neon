@@ -65,6 +65,8 @@ export default function GuildTab() {
   const [searchLoading, setSearchLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [activeMembers7d, setActiveMembers7d] = useState<number | null>(null);
+  const [mainAlignmentDraft, setMainAlignmentDraft] = useState(userGuild?.main_alignment || "JUSTICE");
+  const [subAlignmentDraft, setSubAlignmentDraft] = useState(userGuild?.sub_alignment || "ORDER");
   useEffect(() => {
     if (userGuild) return;
     setRecommendationsLoading(true);
@@ -90,6 +92,10 @@ export default function GuildTab() {
   useEffect(() => {
     setWelcomeDraft(userGuild?.welcome_message || "");
   }, [userGuild?.id, userGuild?.welcome_message]);
+  useEffect(() => {
+    setMainAlignmentDraft(["JUSTICE", "EVIL", "ORDER", "CHAOS"].includes(userGuild?.main_alignment) ? userGuild.main_alignment : "JUSTICE");
+    setSubAlignmentDraft(["JUSTICE", "EVIL", "ORDER", "CHAOS"].includes(userGuild?.sub_alignment) ? userGuild.sub_alignment : "ORDER");
+  }, [userGuild?.id, userGuild?.main_alignment, userGuild?.sub_alignment]);
   useEffect(() => {
     if (!userGuild?.id) {
       setActiveMembers7d(null);
@@ -204,12 +210,6 @@ export default function GuildTab() {
       <div className="view-container guild-lobby-view">
         <h1 className="sr-only">ギルド</h1>
         <div className="scroll-container flex-1 guild-lobby-scroll">
-          <section className={`guild-lobby-unlock ${joinUnlocked ? "is-ready" : ""}`}>
-            <div><span>現在ギルドに所属していません</span><strong>{joinUnlocked ? "参加可能" : `Lv.${userLevel} / Lv.3`}</strong></div>
-            {!joinUnlocked && <div className="guild-lobby-progress"><span style={{ width: `${Math.min((userLevel / 3) * 100, 100)}%` }} /></div>}
-            <p>{joinUnlocked ? "おすすめまたは検索から参加先を選べます。" : "プレイヤーLv.3でギルドへ参加できます。"}</p>
-          </section>
-
           {penalty.isPenalty && (
             <div className="guild-lobby-notice">脱退後の参加制限中です。残り {Math.ceil(penalty.secondsLeft / 3600)} 時間</div>
           )}
@@ -227,7 +227,7 @@ export default function GuildTab() {
 
           <section className="guild-lobby-section guild-lobby-search-section">
             <div className="guild-lobby-section-heading"><span>ギルドを検索</span>{hasSearched && <small>{allGuildsDbList.length}件</small>}</div>
-            <div className="flex gap-2 mb-3">
+            <div className="guild-search-form mb-3">
               <input
                 type="search"
                 value={guildSearchQuery}
@@ -237,9 +237,9 @@ export default function GuildTab() {
                 }}
                 maxLength={30}
                 placeholder="ギルド名で検索"
-                className="flex-1 bg-black-60 border-subtle text-white font-size-9 p-2 rounded outline-none"
+                className="guild-search-input bg-black-60 border-subtle text-white p-2 rounded outline-none"
               />
-              <OutlawButton variant="secondary" onClick={() => void runGuildSearch()} disabled={gvgResetLoading || searchLoading}>
+              <OutlawButton className="guild-search-button" variant="secondary" onClick={() => void runGuildSearch()} disabled={gvgResetLoading || searchLoading}>
                 {searchLoading ? "検索中…" : "検索"}
               </OutlawButton>
             </div>
@@ -253,7 +253,7 @@ export default function GuildTab() {
 
           <details className={`guild-lobby-create ${createUnlocked ? "is-ready" : ""}`}>
             <summary>ギルドを設立する <small>Lv.8 / 5,000キャッシュ</small></summary>
-            <div className="flex gap-2">
+            <div className="guild-create-form">
               <input 
                 type="text" 
                 placeholder="ギルド名を入力 (12文字)" 
@@ -261,7 +261,7 @@ export default function GuildTab() {
                 onChange={(e) => setNewGuildName(e.target.value)}
                 maxLength={12}
                 disabled={penalty.isPenalty || cash < 5000 || userLevel < 8}
-                className="flex-1 bg-black-60 border-subtle text-white font-size-9 p-2 rounded outline-none"
+                className="guild-create-input bg-black-60 border-subtle text-white p-2 rounded outline-none"
               />
               <OutlawButton 
                 variant={createUnlocked ? "primary" : "secondary"}
@@ -319,7 +319,7 @@ export default function GuildTab() {
         </nav>
 
         {(isMaster || isSubMaster) && <button type="button" className="guild-settings-link" onClick={() => setGuildSubTab("settings")}>ギルド設定</button>}
-        <section className="guild-membership-settings"><span>所属設定</span><button type="button" onClick={handleLeaveGuild} disabled={gvgResetLoading}>ギルドを脱退</button></section>
+        <div className="guild-leave-action"><button type="button" onClick={handleLeaveGuild} disabled={gvgResetLoading}>ギルドを脱退</button></div>
       </div>}
 
       {guildSubTab !== "home" && <div className="guild-secondary-view">
@@ -474,13 +474,13 @@ export default function GuildTab() {
                   <div className="guild-attribute-options mt-1">
                     {["JUSTICE", "EVIL", "ORDER", "CHAOS"].map(val => {
                       const jpVal = alignmentEnToJp[val] || val;
-                      const isSel = userGuild.main_alignment === val;
+                      const isSel = mainAlignmentDraft === val;
                       return (
                         <OutlawButton 
                           key={val}
                           variant={isSel ? "neon" : "secondary"}
                           disabled={!isMaster && !isSubMaster}
-                          onClick={() => handleUpdateGuildAlignment(val, userGuild.sub_alignment)}
+                          onClick={() => setMainAlignmentDraft(val)}
                           className="flex-1 font-size-8 py-2 font-bold"
                         >
                           {jpVal}
@@ -495,13 +495,13 @@ export default function GuildTab() {
                   <div className="guild-attribute-options mt-1">
                     {["JUSTICE", "EVIL", "ORDER", "CHAOS"].map(val => {
                       const jpVal = alignmentEnToJp[val] || val;
-                      const isSel = userGuild.sub_alignment === val;
+                      const isSel = subAlignmentDraft === val;
                       return (
                         <OutlawButton 
                           key={val}
                           variant={isSel ? "neon" : "secondary"}
                           disabled={!isMaster && !isSubMaster}
-                          onClick={() => handleUpdateGuildAlignment(userGuild.main_alignment, val)}
+                          onClick={() => setSubAlignmentDraft(val)}
                           className="flex-1 font-size-8 py-2 font-bold"
                         >
                           {jpVal}
@@ -510,6 +510,14 @@ export default function GuildTab() {
                     })}
                   </div>
                 </div>
+                <OutlawButton
+                  variant="primary"
+                  className="width-100 mt-3"
+                  disabled={gvgResetLoading || (!isMaster && !isSubMaster)}
+                  onClick={() => void handleUpdateGuildAlignment(mainAlignmentDraft, subAlignmentDraft)}
+                >
+                  属性を保存
+                </OutlawButton>
               </div>
             </OutlawCard>
           </div>
