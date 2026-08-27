@@ -19,9 +19,6 @@ export type OnboardingState = {
   gameplay_authorized: boolean;
 };
 
-export type GameplayResetReason = "AUTHENTICATION" | "PAYMENT" | "GUILD" | "ACTIVE_GAMEPLAY" | "UNSUPPORTED";
-export type GameplayResetEligibility = { eligible: boolean; reason: GameplayResetReason | null };
-
 export function useAuth(
   playCyberSe: (type: string) => void,
   stopCyberBgm: () => void,
@@ -43,7 +40,6 @@ export function useAuth(
   const [setupLoading, setSetupLoading] = useState<boolean>(false);
   const authActionRef = useRef(false);
   const initializeRequestOwnerRef = useRef(0);
-  const gameplayResetRequestRef = useRef<string | null>(null);
   const beginAuthAction = () => {
     if (authActionRef.current) return false;
     authActionRef.current = true;
@@ -64,8 +60,6 @@ export function useAuth(
   const [password, setPassword] = useState<string>("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [googleExternalBrowserUrl, setGoogleExternalBrowserUrl] = useState<string | null>(null);
-  const [gameplayResetEligibility, setGameplayResetEligibility] = useState<GameplayResetEligibility | null>(null);
-  const [gameplayResetLoading, setGameplayResetLoading] = useState(false);
 
   const handleEmailSignup = async () => {
     if (!email.trim() || !password.trim()) {
@@ -130,11 +124,10 @@ export function useAuth(
   };
 
   const handleStartNewGame = async (): Promise<boolean> => {
-    // A persisted identity/gameplay account must never be replaced with a new
-    // anonymous identity. Existing-save reset requires its own transactional
-    // server authority and explicit payment/entitlement retention contract.
-    if (session && onboardingState?.has_profile) {
-      setErrorMessage("既存ゲームデータの安全な初期化機能は現在利用できません。");
+    // Title visitors do not receive an anonymous identity. Any restored
+    // session, including an unfinished anonymous one, must use Continue.
+    if (session) {
+      setErrorMessage("このゲームデータは「続きから」再開してください。");
       return false;
     }
     if (!beginAuthAction()) return false;
@@ -142,10 +135,6 @@ export function useAuth(
     playCyberSe("click");
     try {
       localStorage.removeItem(EXISTING_GOOGLE_LOGIN_INTENT_KEY);
-      // An authenticated identity without a gameplay profile has no save to
-      // reset. Leave that empty session before creating the canonical fresh
-      // anonymous tutorial identity.
-      if (session) await supabase.auth.signOut();
       const { data, error } = await supabase.auth.signInAnonymously();
       if (error || !data.session) throw error || new Error("匿名セッションを作成できませんでした。");
       if (!data.session.user.is_anonymous) {
@@ -280,62 +269,6 @@ export function useAuth(
     }
   };
 
-  const checkGameplayResetEligibility = async (): Promise<GameplayResetEligibility> => {
-    setGameplayResetLoading(true);
-    setErrorMessage(null);
-    try {
-      const { data, error } = await supabase.rpc("check_current_gameplay_reset_eligibility");
-      if (error) throw error;
-      const next: GameplayResetEligibility = {
-        eligible: data?.eligible === true,
-        reason: data?.eligible === true ? null : (data?.reason || "UNSUPPORTED"),
-      };
-      setGameplayResetEligibility(next);
-      return next;
-    } catch (error) {
-      console.warn("Gameplay reset eligibility failed", error);
-      const fallback: GameplayResetEligibility = { eligible: false, reason: "UNSUPPORTED" };
-      setGameplayResetEligibility(fallback);
-      return fallback;
-    } finally {
-      setGameplayResetLoading(false);
-    }
-  };
-
-  const handleResetGameplay = async (): Promise<boolean> => {
-    if (!session?.user?.id || !beginAuthAction()) return false;
-    setGameplayResetLoading(true);
-    setErrorMessage(null);
-    try {
-      const requestId = gameplayResetRequestRef.current || crypto.randomUUID();
-      gameplayResetRequestRef.current = requestId;
-      const { data, error } = await supabase.rpc("reset_current_gameplay", {
-        p_request_id: requestId,
-        p_acknowledged: true,
-      });
-      if (error) throw error;
-      if (data?.status === "not_resettable") {
-        gameplayResetRequestRef.current = null;
-        setGameplayResetEligibility({ eligible: false, reason: data?.reason || "UNSUPPORTED" });
-        return false;
-      }
-      if (data?.status !== "success" || data?.tutorial_step !== "WORLD_INTRO") {
-        throw new Error("Unexpected gameplay reset response");
-      }
-      clearHomeResumeSnapshot();
-      await checkIfSetupRequired(session.user.id);
-      gameplayResetRequestRef.current = null;
-      return true;
-    } catch (error) {
-      console.warn("Gameplay reset failed", error);
-      setErrorMessage("ゲームデータの初期化に失敗しました。既存データは変更されていません。");
-      return false;
-    } finally {
-      setGameplayResetLoading(false);
-      endAuthAction();
-    }
-  };
-
   const handleLogout = async () => {
     setConfirmDialogConfig({
       isOpen: true,
@@ -386,10 +319,6 @@ export function useAuth(
     handleEmailLogin,
     handleGoogleLogin,
     handleStartNewGame,
-    gameplayResetEligibility,
-    gameplayResetLoading,
-    checkGameplayResetEligibility,
-    handleResetGameplay,
     handleGoogleDemoLogin,
     handleInitializeUser,
     handleLogout
