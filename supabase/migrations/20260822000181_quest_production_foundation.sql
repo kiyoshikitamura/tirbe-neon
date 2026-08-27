@@ -81,6 +81,7 @@ insert into public.user_quest_first_clears(user_id,quest_id,cleared_at)
 select distinct patrol.user_id,coalesce(patrol.course_id,patrol.quest_id),coalesce(patrol.started_at,now())
 from public.user_patrols patrol
 join public.users existing_user on existing_user.id=patrol.user_id
+join auth.users existing_identity on existing_identity.id=patrol.user_id
 where patrol.status='COMPLETED' and coalesce(patrol.course_id,patrol.quest_id) is not null
 on conflict(user_id,quest_id) do nothing;
 
