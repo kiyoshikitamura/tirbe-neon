@@ -3,6 +3,7 @@ import { useGame } from "../context/GameContext";
 import FullScreenPanel from "./ui/FullScreenPanel";
 import SubTabNav from "./ui/SubTabNav";
 import OutlawButton from "./ui/OutlawButton";
+import UserIdentityRow from "./profile/UserIdentityRow";
 import "./TribeChatModal.css";
 
 export default function TribeChatModal() {
@@ -91,7 +92,7 @@ export default function TribeChatModal() {
   };
 
   return (
-    <FullScreenPanel title="TRIBE Chat" onClose={handleClose} className="tribe-chat-panel">
+    <FullScreenPanel title={chatChannel === "GUILD" ? `${userGuild?.name || "ギルド"} チャット` : "チャット"} onClose={handleClose} className="tribe-chat-panel">
       <div className="tribe-modal-container-inner flex-col" style={{ height: '100%' }}>
         {/* チャンネルタブ (全体 / ギルド / DM) */}
         <SubTabNav
@@ -190,18 +191,22 @@ export default function TribeChatModal() {
             ) : (
               safeGuildChats.map((msg: any, idx: number) => {
                 const isSelf = msg.user_id === session?.user?.id;
+                const member = guildMembersList?.find((entry: any) => entry.user_id === msg.user_id);
+                const leaderCharacterId = member?.users?.favorite_character_id || null;
+                const timeStr = msg?.created_at
+                  ? new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+                  : "";
                 return (
                   <div key={idx} className={`tribe-msg-row ${isSelf ? "self" : "other"}`}>
                     <div className="tribe-msg-header">
-                      <button
-                        type="button"
-                        className="tribe-msg-author"
-                        onClick={() => {
-                          if (msg.user_id && msg.user_id !== session?.user?.id) fetchPlayerDetail(msg.user_id);
-                        }}
-                      >
-                        {msg.author_name}
-                      </button>
+                      <div className="tribe-msg-identity"><UserIdentityRow
+                        userName={member?.users?.username || msg.author_name || "ユーザー"}
+                        guildName={userGuild?.name || null}
+                        leaderCharacterId={leaderCharacterId}
+                        onOpen={msg.user_id ? () => fetchPlayerDetail(msg.user_id) : undefined}
+                        variant="compact"
+                      /></div>
+                      {timeStr && <span className="tribe-msg-time">{timeStr}</span>}
                     </div>
                     {msg.reply_to_message_id && (
                       <div className="tribe-msg-reply-source">返信先のメッセージ</div>

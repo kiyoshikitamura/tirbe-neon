@@ -56,6 +56,8 @@ async function enterHome(page: Page) {
   await page.goto("/");
   const titleAction = page.getByRole("button", { name: "TAP TO START" });
   if (await titleAction.isVisible()) await titleAction.click();
+  const continueAction = page.getByRole("button", { name: "続きから" });
+  if (await continueAction.isVisible()) await continueAction.click();
   await expect(page.locator(".header-mobile")).toBeVisible();
 }
 
@@ -101,6 +103,8 @@ test("Guild master edits the welcome message through the existing secure contrac
   await page.reload();
   const titleAction = page.getByRole("button", { name: "TAP TO START" });
   if (await titleAction.isVisible()) await titleAction.click();
+  const continueAction = page.getByRole("button", { name: "続きから" });
+  if (await continueAction.isVisible()) await continueAction.click();
   await page.getByRole("button", { name: "ギルド" }).click();
   await expect(page.locator(".guild-welcome-card")).toContainText("みんなでレイドへ行こう");
 });
@@ -115,8 +119,8 @@ test("Title to Guild human response journey remains visible across every mobile 
   await assertMobileWave(page, ".guild-lobby-view", "journey-guild-discovery");
   await page.locator(".guild-detail-trigger").first().click();
   await expect(page.locator(".guild-public-status-grid")).toBeVisible();
-  await page.getByRole("button", { name: "このTRIBEに加入する" }).click();
-  await page.getByRole("button", { name: "TRIBE Chatを見る" }).click();
+  await page.getByRole("button", { name: "このギルドに加入する" }).click();
+  await page.getByRole("button", { name: "ギルドチャットを見る" }).click();
   await expect(page.getByPlaceholder("ギルドへ送信...")).toBeVisible();
   await page.getByPlaceholder("ギルドへ送信...").fill("はじめまして！よろしくお願いします！");
   await page.getByRole("button", { name: "送信" }).click();
@@ -129,8 +133,10 @@ test("Title to Guild human response journey remains visible across every mobile 
   await page.reload();
   const titleAction = page.getByRole("button", { name: "TAP TO START" });
   if (await titleAction.isVisible()) await titleAction.click();
+  const continueAction = page.getByRole("button", { name: "続きから" });
+  if (await continueAction.isVisible()) await continueAction.click();
   await page.getByRole("button", { name: "ギルド" }).click();
-  await page.getByRole("button", { name: "TRIBE Chat" }).click();
+  await page.getByRole("button", { name: "ギルドチャット" }).click();
   await expect(page.getByRole("button", { name: /ギルド \(1\)/ })).toBeVisible();
   await page.getByRole("button", { name: /ギルド \(1\)/ }).click();
   await expect(page.locator(".tribe-msg-bubble").filter({ hasText: "次のレイドで待ってるよ" })).toBeVisible();

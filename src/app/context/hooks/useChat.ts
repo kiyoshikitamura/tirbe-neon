@@ -2,12 +2,10 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/utils/supabase";
-import { CHARACTERS_MASTER } from "@/utils/game_constants";
 
 export function useChat(
   session: any,
   username: string,
-  selectedLeader: string,
   userGuildMember: any,
   showTribeChatPanel: boolean,
   playCyberSe: (type: string) => void,
@@ -232,7 +230,7 @@ export function useChat(
   }, [session?.user?.id, dmRecipientId, showTribeChatPanel, chatChannel, fetchDirectMessages, markDirectMessagesRead, refreshDirectMessageUnreadCounts]);
 
   const handleSendChat = async () => {
-    if (!session || !chatInput.trim() || chatCooldown > 0) return;
+    if (!session || !chatInput.trim() || chatCooldown > 0 || chatSending) return;
     setChatSending(true);
     playCyberSe("click");
 
@@ -243,14 +241,11 @@ export function useChat(
         ? (userGuildMember?.guild_id || null) 
         : null;
 
-      const leaderChar = CHARACTERS_MASTER.find(c => c.id === selectedLeader) || CHARACTERS_MASTER[0];
-      const avatarUrlToSend = leaderChar.img;
-
       const newPost = {
         id: temporaryMessageId,
         user_id: session.user.id,
         author_name: username,
-        author_avatar_url: avatarUrlToSend,
+        author_avatar_url: null,
         content,
         target_type: chatChannel,
         target_id: targetId,
@@ -274,7 +269,7 @@ export function useChat(
     } catch (err: any) {
       setGuildChats((previous) => previous.filter((message) => message.id !== temporaryMessageId));
       console.warn(err.message);
-      setErrorMessage(err.message || "チャットの送信に失敗しました。");
+      setErrorMessage("メッセージを送信できませんでした。入力内容を確認して、もう一度お試しください。");
     } finally {
       setChatSending(false);
     }

@@ -511,7 +511,6 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const chat = useChat(
     session,
     username,
-    selectedLeader,
     userGuildMember,
     showTribeChatPanel,
     (type: string) => playCyberSe(type as any),
@@ -1166,8 +1165,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
               const userPower = Number(m.users?.total_power || 0);
               const favCharId = m.users?.favorite_character_id;
               const userChars = (charsRes.data || []).filter((c: any) => c.user_id === m.user_id);
-              const leaderChar = userChars.find((c: any) => c.character_id === favCharId) || userChars[0];
-              const userLevel = leaderChar ? leaderChar.level : 1;
+              const leaderChar = favCharId ? userChars.find((c: any) => c.character_id === favCharId) : null;
+              const userLevel = Number(m.users?.level || leaderChar?.level || 1);
 
               const partyCharIds = Array.isArray(m.users?.main_formation_character_ids)
                 ? m.users.main_formation_character_ids
@@ -2507,6 +2506,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       main_alignment: "未設定",
       sub_alignment: null,
       emblem_url: null,
+      leaderUserId: null,
+      leaderCharacterId: null,
       leaderName: "取得中",
       description: "公開情報を取得しています。",
       approval_required: false,
@@ -2532,6 +2533,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         main_alignment: publicGuild.main_alignment,
         sub_alignment: publicGuild.sub_alignment,
         emblem_url: publicGuild.emblem_url,
+        leaderUserId: publicGuild.leader_user_id || null,
+        leaderCharacterId: publicGuild.leader_favorite_character_id || null,
         leaderName: publicGuild.leader_name,
         description: publicGuild.description || "紹介文はまだ登録されていません。",
         approval_required: Boolean(publicGuild.approval_required),

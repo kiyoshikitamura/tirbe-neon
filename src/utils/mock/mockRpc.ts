@@ -262,7 +262,7 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
       description: guild.description || "", approval_required: Boolean(guild.approval_required), recruitment_mode: guild.recruitment_mode || (guild.approval_required ? "APPLICATION_REQUIRED" : "OPEN_JOIN"),
       member_count: members.length, member_limit: Number(guild.member_limit || (guild.level >= 5 ? 20 : guild.level === 4 ? 17 : guild.level === 3 ? 14 : guild.level === 2 ? 12 : 10)),
       main_alignment: guild.main_alignment || "NEUTRAL", sub_alignment: guild.sub_alignment || "NEUTRAL",
-      emblem_url: guild.logo_icon || null, leader_name: leader?.username || "不在", controlled_base_ids: controls,
+      emblem_url: guild.logo_icon || null, leader_user_id: leader?.id || null, leader_name: leader?.username || "不在", leader_favorite_character_id: leader?.favorite_character_id || null, controlled_base_ids: controls,
       active_members_7d: members.filter((member: any) => {
         const profile = users.find((entry: any) => entry.id === member.user_id);
         return profile?.last_active_at && new Date(profile.last_active_at).getTime() >= activeSince;
@@ -345,6 +345,49 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
         guild_id: guild?.id || null, guild_name: guild?.name || null };
     }).sort((a: any, b: any) => Number(params?.p_daily ? b.daily_wins - a.daily_wins : b.rank_points - a.rank_points))
       .map((row: any, index: number) => ({ ...row, rank_position: index + 1 })), error: null };
+  }
+
+  if (funcName === "search_guilds") {
+    const query = String(params?.p_query || "").trim().toLocaleLowerCase();
+    const guilds = client.getStorage("guilds") || [];
+    const members = client.getStorage("guild_members") || [];
+    return { data: guilds
+      .filter((guild: any) => !guild.is_disbanded && (!query || String(guild.name || "").toLocaleLowerCase().includes(query)))
+      .map((guild: any) => ({
+        ...guild,
+        member_count: members.filter((member: any) => member.guild_id === guild.id).length,
+        member_limit: Number(guild.member_limit || (guild.level >= 5 ? 20 : guild.level === 4 ? 17 : guild.level === 3 ? 14 : guild.level === 2 ? 12 : 10)),
+        recruitment_mode: guild.recruitment_mode || (guild.approval_required ? "APPLICATION_REQUIRED" : "OPEN_JOIN"),
+      }))
+      .sort((left: any, right: any) => Number(right.level || 1) - Number(left.level || 1) || String(left.name).localeCompare(String(right.name)))
+      .slice(0, 50), error: null };
+  }
+
+  if (funcName === "request_guild_join") {
+    const userId = typeof window === "undefined" ? null : localStorage.getItem("tribe_demo_uuid");
+    const guilds = client.getStorage("guilds") || [];
+    const guild = guilds.find((entry: any) => entry.id === params?.p_guild_id && !entry.is_disbanded);
+    const memberships = client.getStorage("guild_members") || [];
+    const requests = client.getStorage("guild_join_requests") || [];
+    if (!userId || !guild || (guild.recruitment_mode || (guild.approval_required ? "APPLICATION_REQUIRED" : "OPEN_JOIN")) !== "APPLICATION_REQUIRED" || memberships.some((entry: any) => entry.user_id === userId)) {
+      return { data: null, error: { message: "Guild application requirements are not met" } };
+    }
+    const existing = requests.find((entry: any) => entry.user_id === userId && entry.status === "PENDING");
+    if (existing) return { data: { status: "pending", request_id: existing.id }, error: null };
+    const request = { id: `gjr_${Date.now()}`, guild_id: guild.id, user_id: userId, status: "PENDING", requested_at: new Date().toISOString() };
+    requests.push(request);
+    client.setStorage("guild_join_requests", requests);
+    return { data: { status: "pending", request_id: request.id }, error: null };
+  }
+
+  if (funcName === "cancel_guild_join_request") {
+    const userId = typeof window === "undefined" ? null : localStorage.getItem("tribe_demo_uuid");
+    const requests = client.getStorage("guild_join_requests") || [];
+    const request = requests.find((entry: any) => entry.id === params?.p_request_id && entry.user_id === userId && entry.status === "PENDING");
+    if (!request) return { data: null, error: { message: "Pending Guild application not found" } };
+    request.status = "CANCELLED";
+    client.setStorage("guild_join_requests", requests);
+    return { data: { status: "cancelled" }, error: null };
   }
 
   if (funcName === "get_raid_rankings") {

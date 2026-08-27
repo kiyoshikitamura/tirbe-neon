@@ -37,9 +37,11 @@ test.beforeEach(async ({ page }, testInfo) => {
 async function enterGame(page: import("@playwright/test").Page) {
   await page.goto("/");
   const tapToStart = page.getByRole("button", { name: "TAP TO START" });
+  const continueAction = page.getByRole("button", { name: "続きから" });
   const header = page.locator(".header-mobile");
-  await expect(tapToStart.or(header)).toBeVisible();
+  await expect(tapToStart.or(continueAction).or(header)).toBeVisible();
   if (await tapToStart.isVisible()) await tapToStart.click();
+  if (await continueAction.isVisible()) await continueAction.click();
   await expect(page.locator(".header-mobile")).toBeVisible();
 }
 
@@ -57,8 +59,8 @@ test("First PvP milestone resumes through Ranking, Raid and public Guild discove
   await page.getByRole("button", { name: /ギルド/ }).click();
   await expect(page.locator(".guild-lobby-view")).toBeVisible();
   await page.locator(".guild-detail-trigger").first().click();
-  await expect(page.locator(".guild-public-status-grid")).toContainText("ACTIVE / 7D");
-  await expect(page.locator(".guild-public-status-grid")).toContainText("POWER");
+  await expect(page.locator(".guild-public-status-grid")).toContainText("7日間活動");
+  await expect(page.locator(".guild-public-status-grid")).toContainText("総合力");
   const detailKeys = await page.evaluate(() => {
     const events = JSON.parse(localStorage.getItem("mock_db_client_funnel_events") || "[]");
     return events.filter((entry: any) => entry.event_name === "guild_detail_view").length;
@@ -84,8 +86,8 @@ test("Guild recommendations are visible before Lv3 while server join remains loc
   await page.getByRole("button", { name: /ギルド/ }).click();
   await expect(page.locator(".guild-detail-trigger").first()).toBeVisible();
   await page.locator(".guild-detail-trigger").first().click();
-  await expect(page.getByRole("button", { name: "このTRIBEに加入する", exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "このTRIBEに加入する", exact: true }).click();
+  await expect(page.getByRole("button", { name: "このギルドに加入する", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "このギルドに加入する", exact: true }).click();
   await expect(page.getByText(/レベル3/)).toBeVisible();
 });
 
@@ -117,9 +119,11 @@ test("Guild Home omits closed GvG combat projection on mobile", async ({ page })
 test("Pre-open operations hides closed surfaces and rejects closed deep links", async ({ page }) => {
   await page.goto("/?tab=friend");
   const tapToStart = page.getByRole("button", { name: "TAP TO START" });
+  const continueAction = page.getByRole("button", { name: "続きから" });
   const header = page.locator(".header-mobile");
-  await expect(tapToStart.or(header)).toBeVisible();
+  await expect(tapToStart.or(continueAction).or(header)).toBeVisible();
   if (await tapToStart.isVisible()) await tapToStart.click();
+  if (await continueAction.isVisible()) await continueAction.click();
   await expect(header).toBeVisible();
   await expect(page.getByText(/フレンド一覧|フレンドを探/)).toHaveCount(0);
   await expect(page.getByRole("button", { name: "ショップは準備中です" })).toBeDisabled();

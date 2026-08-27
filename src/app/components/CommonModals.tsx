@@ -18,6 +18,7 @@ import { resolveSsrGachaQuote } from "@/domain/presentation/ssrGachaQuotes";
 import TypewriterText from "./tutorial/TypewriterText";
 import CanonicalDialog from "./ui/CanonicalDialog";
 import PublicUserProfile from "./profile/PublicUserProfile";
+import UserIdentityRow from "./profile/UserIdentityRow";
 
 function gachaLocationBackground(result: any): string {
   const master = CHARACTERS_MASTER.find((character: any) => character.id === result?.characterId);
@@ -54,6 +55,7 @@ export default function CommonModals() {
     onboardingState,
     navigateTab,
     userGuildMember,
+    pendingGuildJoinRequests,
     handleDemoJoinGuild,
     fetchGuildDetail,
     fetchPlayerDetail,
@@ -404,69 +406,69 @@ export default function CommonModals() {
 
       {/* 🏢 ギルド紹介ポップアップ */}
       {activeGuildDetail && (
-        <div className="modal-overlay">
-          <div className="modal-card detail-modal-layout border-silver shadow-silver-10 max-w-sm w-full mx-4 my-6">
-            <div className="modal-title border-bottom-subtle pb-2 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="guild-emblem-placeholder flex items-center justify-center font-weight-bold">
-                  {activeGuildDetail.name.charAt(0)}
-                </div>
-                <span className="font-weight-bold text-white">{activeGuildDetail.name}</span>
+        <CanonicalDialog
+          title={activeGuildDetail.name}
+          size="large"
+          ariaLabel={`${activeGuildDetail.name}の詳細`}
+          onClose={() => { setActiveGuildDetail(null); playCyberSe("click"); }}
+        >
+            <div className="guild-public-detail">
+              <div className="guild-public-identity">
+                {activeGuildDetail.emblem_url
+                  ? <img className="guild-emblem-placeholder" src={activeGuildDetail.emblem_url} alt="" />
+                  : <div className="guild-emblem-placeholder is-placeholder" aria-hidden="true" />}
+                <div><strong>{activeGuildDetail.name}</strong><span>Lv.{activeGuildDetail.level} ・ {activeGuildDetail.member_count}/{activeGuildDetail.member_limit}名</span></div>
               </div>
-              <button 
-                className="sub-btn font-size-7 py-0.5 active-scale-effect"
-                onClick={() => { setActiveGuildDetail(null); playCyberSe("click"); }}
-              >
-                閉じる
-              </button>
-            </div>
-            
-            <div className="modal-body-content mt-3">
               <div className="guild-meta-section flex justify-between mb-3">
-                <div className="guild-info">
-                  <div className="font-size-8 text-white">代表者: <span className="font-weight-bold">{activeGuildDetail.leaderName}</span></div>
-                  <div className="font-size-7 text-secondary mt-0.5">レベル: Lv.{activeGuildDetail.level} (XP: {activeGuildDetail.xp})</div>
-                  <div className="font-size-7 text-secondary mt-0.5">メンバー数: {activeGuildDetail.member_count} / {activeGuildDetail.member_limit} 人</div>
-                </div>
+                <UserIdentityRow
+                  userName={activeGuildDetail.leaderName}
+                  guildName={activeGuildDetail.name}
+                  leaderCharacterId={activeGuildDetail.leaderCharacterId}
+                  onOpen={activeGuildDetail.leaderUserId ? () => fetchPlayerDetail(activeGuildDetail.leaderUserId) : undefined}
+                  variant="compact"
+                />
                 <div className="guild-alignment text-right">
                   <span className="alignment-badge main font-size-7 px-1.5 py-0.5 font-weight-bold text-white rounded">
-                    メイン: {activeGuildDetail.main_alignment}
+                    主属性: {activeGuildDetail.main_alignment}
                   </span>
                   {activeGuildDetail.sub_alignment && (
                     <span className="alignment-badge sub font-size-7 px-1.5 py-0.5 font-weight-bold text-white rounded block mt-1">
-                      サブ: {activeGuildDetail.sub_alignment}
+                      副属性: {activeGuildDetail.sub_alignment}
                     </span>
                   )}
                 </div>
               </div>
 
               <div className="guild-public-status-grid">
-                <span><small>RECRUITMENT</small><strong>{Number(activeGuildDetail.member_count || 0) >= Number(activeGuildDetail.member_limit || 0) ? "満員" : activeGuildDetail.recruitment_mode === "CLOSED" ? "募集停止" : activeGuildDetail.recruitment_mode === "APPLICATION_REQUIRED" || activeGuildDetail.approval_required ? "承認制・募集中" : "即時加入可能"}</strong></span>
-                <span><small>OPEN SLOTS</small><strong>{Math.max(0, Number(activeGuildDetail.member_limit || 0) - Number(activeGuildDetail.member_count || 0))}枠</strong></span>
-                <span><small>ACTIVE / 7D</small><strong>{Number(activeGuildDetail.active_members_7d || 0)}人</strong></span>
-                <span><small>RAID / 7D</small><strong>{Number(activeGuildDetail.raid_contribution_7d || 0).toLocaleString()}</strong></span>
-                <span><small>POWER</small><strong>{Number(activeGuildDetail.guild_power || 0).toLocaleString()}</strong></span>
+                <span><small>参加方法</small><strong>{Number(activeGuildDetail.member_count || 0) >= Number(activeGuildDetail.member_limit || 0) ? "満員" : activeGuildDetail.recruitment_mode === "CLOSED" ? "募集停止" : activeGuildDetail.recruitment_mode === "APPLICATION_REQUIRED" || activeGuildDetail.approval_required ? "承認制" : "自由加入"}</strong></span>
+                <span><small>空き枠</small><strong>{Math.max(0, Number(activeGuildDetail.member_limit || 0) - Number(activeGuildDetail.member_count || 0))}枠</strong></span>
+                <span><small>7日間活動</small><strong>{Number(activeGuildDetail.active_members_7d || 0)}人</strong></span>
+                <span><small>レイド貢献</small><strong>{Number(activeGuildDetail.raid_contribution_7d || 0).toLocaleString()}</strong></span>
+                <span><small>総合力</small><strong>{Number(activeGuildDetail.guild_power || 0).toLocaleString()}</strong></span>
               </div>
 
               <div className="guild-desc-box steel-tray p-2.5 mb-3 font-size-8 text-white line-height-14">
                 {activeGuildDetail.description}
               </div>
 
-              {!userGuildMember && (
-                <OutlawButton variant="primary" fullWidth className="mt-3" disabled={activeGuildDetail.recruitment_mode === "CLOSED" || Number(activeGuildDetail.member_count || 0) >= Number(activeGuildDetail.member_limit || 0)} onClick={() => {
+              {!userGuildMember && (() => {
+                const pendingRequest = pendingGuildJoinRequests?.find((request: any) => request.guild_id === activeGuildDetail.id && request.status === "PENDING");
+                const unavailable = activeGuildDetail.recruitment_mode === "CLOSED" || Number(activeGuildDetail.member_count || 0) >= Number(activeGuildDetail.member_limit || 0);
+                return <OutlawButton variant="primary" fullWidth className="mt-3" disabled={Boolean(pendingRequest) || unavailable} onClick={async () => {
+                  const targetGuild = activeGuildDetail;
+                  setActiveGuildDetail(null);
                   void import("../../utils/supabase").then(({ supabase }) => supabase.rpc("record_client_funnel_event", {
                     p_event_name: "guild_detail_join_click", p_source_screen: "guild_detail",
-                    p_source_cta: activeGuildDetail.recruitment_mode === "APPLICATION_REQUIRED" || activeGuildDetail.approval_required ? "apply" : "join",
-                    p_object_id: activeGuildDetail.id, p_metadata: {}
+                    p_source_cta: targetGuild.recruitment_mode === "APPLICATION_REQUIRED" || targetGuild.approval_required ? "apply" : "join",
+                    p_object_id: targetGuild.id, p_metadata: {}
                   }));
-                  void handleDemoJoinGuild(activeGuildDetail.id, activeGuildDetail.name, activeGuildDetail.recruitment_mode === "APPLICATION_REQUIRED" || activeGuildDetail.approval_required);
+                  await handleDemoJoinGuild(targetGuild.id, targetGuild.name, targetGuild.recruitment_mode === "APPLICATION_REQUIRED" || targetGuild.approval_required);
                 }}>
-                  {activeGuildDetail.recruitment_mode === "CLOSED" ? "募集停止" : activeGuildDetail.recruitment_mode === "APPLICATION_REQUIRED" || activeGuildDetail.approval_required ? "加入申請する" : "このTRIBEに加入する"}
-                </OutlawButton>
-              )}
+                  {pendingRequest ? "申請中" : activeGuildDetail.recruitment_mode === "CLOSED" ? "募集停止" : Number(activeGuildDetail.member_count || 0) >= Number(activeGuildDetail.member_limit || 0) ? "満員" : activeGuildDetail.recruitment_mode === "APPLICATION_REQUIRED" || activeGuildDetail.approval_required ? "加入申請する" : "このギルドに加入する"}
+                </OutlawButton>;
+              })()}
             </div>
-          </div>
-        </div>
+        </CanonicalDialog>
       )}
     </>
   );

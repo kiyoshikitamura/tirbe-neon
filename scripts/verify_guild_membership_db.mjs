@@ -41,7 +41,7 @@ if (requestError || requested?.status !== "pending") throw requestError || new E
 const requestId = requested.request_id;
 
 const { error: unauthorizedReviewError } = await applicant.rpc("review_guild_join_request", { p_request_id: requestId, p_approve: true });
-if (!unauthorizedReviewError || !/only the guild master/i.test(unauthorizedReviewError.message)) {
+if (!unauthorizedReviewError || !/(only the guild master|review permission)/i.test(unauthorizedReviewError.message)) {
   throw new Error("Applicant unexpectedly reviewed their own request.");
 }
 

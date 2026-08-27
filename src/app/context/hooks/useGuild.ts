@@ -33,9 +33,9 @@ export function useGuild(
   const openGuildWelcomeLegacy = (guildId: string, guildName: string) => {
     setConfirmDialogConfig({
       isOpen: true,
-      title: "TRIBEへようこそ",
+      title: "ギルドへようこそ",
       message: `「${guildName}」への加入が完了しました。`,
-      confirmText: "Chatを開く",
+      confirmText: "ギルドチャットを開く",
       cancelText: "あとで",
       onConfirm: () => {
         void supabase.rpc("record_client_funnel_event", {
@@ -52,9 +52,9 @@ export function useGuild(
   const openGuildWelcome = (guildId: string, guildName: string) => {
     setConfirmDialogConfig({
       isOpen: true,
-      title: "TRIBEへようこそ",
+      title: "ギルドへようこそ",
       message: `「${guildName}」への加入が完了しました。`,
-      confirmText: "TRIBE Chatを見る",
+      confirmText: "ギルドチャットを見る",
       cancelText: "レイドへ",
       onConfirm: () => {
         void supabase.rpc("record_client_funnel_event", {
@@ -235,16 +235,16 @@ export function useGuild(
     }
   };
 
-  const handleDemoJoinGuild = async (targetGuildId: string, guildName: string, approvalRequiredOverride?: boolean) => {
-    if (!session) return;
+  const handleDemoJoinGuild = async (targetGuildId: string, guildName: string, approvalRequiredOverride?: boolean): Promise<"joined" | "pending" | null> => {
+    if (!session) return null;
     if (userLevel < 3) {
       setErrorMessage("ギルド加入にはプレイヤーレベル3以上が必要です。");
-      return;
+      return null;
     }
     const penalty = getGuildPenaltyState();
     if (penalty.isPenalty) {
       setErrorMessage("ギルド脱退後のペナルティ制限期間中です。");
-      return;
+      return null;
     }
 
     setGvgResetLoading(true);
@@ -255,7 +255,7 @@ export function useGuild(
       if (Number(targetGuild?.member_count || 0) >= targetGuildCap) {
         setConfirmDialogConfig({ isOpen: true, title: "加入失敗", message: `対象ギルドは上限人数（${targetGuildCap}名）に達しています。`, onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
         setGvgResetLoading(false);
-        return;
+        return null;
       }
 
       const mode = guildRecruitmentMode(targetGuild?.recruitment_mode, approvalRequiredOverride ?? Boolean(targetGuild?.approval_required));
@@ -284,9 +284,18 @@ export function useGuild(
         onCancel: () => setConfirmDialogConfig(null)
       });
       await syncBootstrapData(session.user.id);
+      return requiresApproval ? "pending" : "joined";
     } catch (err: any) {
       console.warn(err.message);
-      setErrorMessage(err.message || "ギルドへの加入処理に失敗しました。");
+      const message = String(err?.message || "");
+      setErrorMessage(
+        /cap|full|上限|満員/i.test(message) ? "このギルドは満員です。" :
+        /pending|申請/i.test(message) ? "加入申請はすでに送信済みです。" :
+        /already|所属/i.test(message) ? "すでにギルドへ所属しています。" :
+        /cooldown|制限/i.test(message) ? "脱退後の参加制限中です。時間をおいてもう一度お試しください。" :
+        "ギルドへの加入処理に失敗しました。"
+      );
+      return null;
     } finally {
       setGvgResetLoading(false);
     }
