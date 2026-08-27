@@ -70,6 +70,7 @@ revoke all on public.canonical_guild_progression_master,public.canonical_guild_e
  public.canonical_guild_recruitment_master,public.canonical_guild_donation_master,public.guild_exp_daily_ledger,public.guild_exp_daily_progress from public,anon,authenticated;
 grant select on public.canonical_guild_progression_master,public.canonical_guild_exp_source_master,public.canonical_guild_role_master,
  public.canonical_guild_recruitment_master,public.canonical_guild_donation_master to authenticated;
+drop policy if exists guild_exp_ledger_own_read on public.guild_exp_daily_ledger;
 create policy guild_exp_ledger_own_read on public.guild_exp_daily_ledger for select to authenticated using(user_id=auth.uid());
 grant select on public.guild_exp_daily_ledger to authenticated;
 
