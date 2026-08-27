@@ -61,7 +61,7 @@ export default function RaidTab() {
   React.useEffect(() => {
     if (!selectedRaidId) { setSelfRank(null); return; }
     let current = true;
-    void supabase.rpc("get_raid_rankings", { p_instance_id: selectedRaidId }).then(({ data, error }) => {
+    void supabase.rpc("get_raid_rankings", { p_instance_id: selectedRaidId, p_limit: 100, p_offset: 0 }).then(({ data, error }) => {
       if (current) setSelfRank(error ? null : data?.selfRank ?? null);
     });
     return () => { current = false; };

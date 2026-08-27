@@ -14,7 +14,7 @@ const migration = read("supabase/migrations/20260827000202_raid_battle_reward_pr
 
 assert(raid.includes('hideVisualHeader'), "Raid Top must not spend first view on a duplicate page title.");
 assert(raid.includes('get_active_raids') && raid.includes('get_current_raid_attempt_state'), "Raid Top must read server Raid and attempt projections.");
-assert(raid.includes('get_raid_rankings') && raid.includes('<RankPresentation'), "Raid rank must use the server projection and shared presentation.");
+assert(raid.includes('get_raid_rankings') && raid.includes('p_limit: 100') && raid.includes('<RankPresentation'), "Raid rank must use the unambiguous server projection and shared presentation.");
 assert(raid.includes('CanonicalDialog title="RPが不足しています"'), "RP shortage must use CanonicalDialog.");
 assert(raid.includes('use_action_resource_ticket') && raid.includes('p_item_id: "RAID_POINT_TICKET"'), "Raid recovery must use the existing ticket authority.");
 assert(!raid.includes('setConfirmDialogConfig'), "Raid Top must not commit a battle through a legacy confirmation dialog.");

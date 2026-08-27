@@ -16,8 +16,8 @@ const assert = (condition, message) => { if (!condition) throw new Error(message
 
 async function createInstance(currentHp, maxHp, baseId) {
   const { data, error } = await admin.from("raid_bosses").insert({
-    boss_id: "BOSS_001",
-    boss_master_id: "BOSS_001",
+    boss_id: "RAID_BOSS_001",
+    boss_master_id: "RAID_BOSS_001",
     current_hp: currentHp,
     max_hp: maxHp,
     base_id: baseId,
@@ -52,38 +52,43 @@ try {
   if (initError) throw initError;
   const { error: levelError } = await admin.from("users").update({ level: 5 }).eq("id", userId);
   if (levelError) throw levelError;
-  const { data: characters, error: characterError } = await player.from("user_characters").select("id").limit(1);
-  if (characterError || !characters?.[0]) throw characterError || new Error("Starter character missing.");
+  const { data: character, error: characterError } = await admin.from("user_characters").insert({
+    user_id: userId,
+    character_id: "char_reiji_01",
+    level: 5,
+    awakening_level: 0,
+  }).select("id").single();
+  if (characterError || !character) throw characterError || new Error("Raid fixture character could not be created.");
 
   const defeatedId = await createInstance(1, 1, "p0_e2e_defeat");
-  const defeated = await startAndResolve(defeatedId, characters[0].id);
+  const defeated = await startAndResolve(defeatedId, character.id);
   const { data: defeatedState } = await admin.from("raid_bosses").select("status,outcome,outcome_finalized_at").eq("id", defeatedId).single();
   assert(defeated.result?.remainingBossHp === 0, "Defeat fixture was not reduced to zero HP.");
   assert(defeatedState?.status === "DEFEATED" && defeatedState?.outcome === "DEFEAT_SUCCESS" && defeatedState.outcome_finalized_at, "Defeat lifecycle was not finalized.");
-  const { count: defeatRewardCount } = await admin.from("raid_reward_grants").select("reward_id", { count: "exact", head: true })
-    .eq("raid_boss_instance_id", defeatedId).eq("user_id", userId).eq("reward_reason", "DEFEAT");
+  const { count: defeatRewardCount } = await admin.from("raid_production_reward_grants").select("item_id", { count: "exact", head: true })
+    .eq("raid_boss_instance_id", defeatedId).eq("user_id", userId).eq("reward_type", "CLEAR");
   assert(Number(defeatRewardCount) > 0, "Defeat reward was not granted server-side.");
 
   const expiredId = await createInstance(999999999, 999999999, "p0_e2e_timeout");
-  await startAndResolve(expiredId, characters[0].id);
+  await startAndResolve(expiredId, character.id);
   const { error: expireUpdateError } = await admin.from("raid_bosses").update({ expires_at: new Date(Date.now() - 1000).toISOString() }).eq("id", expiredId);
   if (expireUpdateError) throw expireUpdateError;
   const { error: expireError } = await admin.rpc("finalize_expired_raid_instance", { p_instance_id: expiredId });
   if (expireError) throw expireError;
   const { data: expiredState } = await admin.from("raid_bosses").select("status,outcome,outcome_finalized_at").eq("id", expiredId).single();
   assert(expiredState?.status === "EXPIRED" && expiredState?.outcome === "TIMEOUT_FAILURE" && expiredState.outcome_finalized_at, "Timeout lifecycle was not finalized.");
-  const { count: failureRewardCountBefore } = await admin.from("raid_reward_grants").select("reward_id", { count: "exact", head: true })
-    .eq("raid_boss_instance_id", expiredId).eq("user_id", userId).eq("reward_reason", "FAILURE");
-  assert(Number(failureRewardCountBefore) > 0, "Timeout participation reward was not granted server-side.");
+  const { count: failureRewardCountBefore } = await admin.from("raid_production_reward_grants").select("item_id", { count: "exact", head: true })
+    .eq("raid_boss_instance_id", expiredId).eq("user_id", userId).eq("reward_type", "PERSONAL_RANK");
+  assert(Number(failureRewardCountBefore) > 0, "Timeout rank reward was not granted server-side.");
   await admin.rpc("finalize_expired_raid_instance", { p_instance_id: expiredId });
-  const { count: failureRewardCountAfter } = await admin.from("raid_reward_grants").select("reward_id", { count: "exact", head: true })
-    .eq("raid_boss_instance_id", expiredId).eq("user_id", userId).eq("reward_reason", "FAILURE");
+  const { count: failureRewardCountAfter } = await admin.from("raid_production_reward_grants").select("item_id", { count: "exact", head: true })
+    .eq("raid_boss_instance_id", expiredId).eq("user_id", userId).eq("reward_type", "PERSONAL_RANK");
   assert(failureRewardCountAfter === failureRewardCountBefore, "Timeout retry duplicated rewards.");
 
   console.log(JSON.stringify({
     projectRef: expectedRef,
     status: "PASS",
-    checks: ["boss defeat finalization", "defeat reward", "24h timeout finalization", "failure reward", "timeout idempotency"],
+    checks: ["boss defeat finalization", "clear reward", "24h timeout finalization", "rank reward", "timeout idempotency"],
   }, null, 2));
 } finally {
   if (userId) await admin.auth.admin.deleteUser(userId);
