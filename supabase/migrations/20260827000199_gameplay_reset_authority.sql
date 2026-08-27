@@ -170,7 +170,7 @@ begin
       'formation_order',jsonb_build_array(1,2,3,4,5),
       'leader_character',v_leader
     ),
-    'TUTORIAL_CANONICAL_HISTORY',v_history.id,'2026-08-21',v_history.created_at
+    'TUTORIAL_CANONICAL_HISTORY',v_history.request_id,'2026-08-21',v_history.created_at
   ) on conflict(user_id) do nothing;
   return exists(select 1 from public.user_lifetime_onboarding_grants where user_id=p_user_id);
 end;
