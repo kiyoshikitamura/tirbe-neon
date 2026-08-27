@@ -164,6 +164,10 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     handleEmailLogin,
     handleGoogleLogin,
     handleStartNewGame,
+    gameplayResetEligibility,
+    gameplayResetLoading,
+    checkGameplayResetEligibility,
+    handleResetGameplay,
     handleGoogleDemoLogin,
     handleInitializeUser,
     handleLogout
@@ -697,23 +701,13 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       }
       setOnboardingState(nextState);
       setIsSetupRequired(nextState.is_anonymous && !nextState.has_profile);
-      const authenticationReturnPending = nextState.has_profile
-        && !nextState.is_anonymous
-        && nextState.tutorial_step === "COMPLETE"
-        && (nextState.auth_method === "GOOGLE" || nextState.auth_method === "EMAIL");
-      if (authenticationReturnPending) setShowTitleView(false);
       if (nextState.gameplay_authorized && hasValidExistingGoogleLoginIntent()) {
         window.localStorage.removeItem(EXISTING_GOOGLE_LOGIN_INTENT_KEY);
         setShowTitleView(false);
       }
       if (nextState.has_profile) {
-        // A persisted first-session step is a resume target, not a reason to
-        // return the player to the title while auth/bootstrap is settling.
-        // This also removes the cold-cache race where TAP TO START appeared
-        // after a reload even though the tutorial route was already known.
-        if (nextState.tutorial_step && nextState.tutorial_step !== "COMPLETE") {
-          setShowTitleView(false);
-        }
+        // Persisted progress is hydrated here, but entry remains on the title.
+        // Only an explicit "続きから" action selects the resume route.
         // Resume an interrupted mandatory tutorial at the screen required by
         // the persisted server-side step instead of falling back to Home.
         if (nextState.tutorial_step === "FREE_GACHA") setActiveTab("gacha");
@@ -3948,6 +3942,10 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     googleExternalBrowserUrl,
     dismissGoogleExternalBrowserPrompt,
     handleStartNewGame,
+    gameplayResetEligibility,
+    gameplayResetLoading,
+    checkGameplayResetEligibility,
+    handleResetGameplay,
     handleGoogleDemoLogin,
     handleInitializeUser,
     handleGenerateGiftCode,

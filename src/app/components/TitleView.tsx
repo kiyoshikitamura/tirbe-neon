@@ -1,13 +1,15 @@
 import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useGame } from "../context/GameContext";
+import CanonicalDialog from "./ui/CanonicalDialog";
 import "./TitleView.css";
 import { markTitleAssetReady } from "../lib/screenAssets";
 
 export default function TitleView() {
-  const { showTitleView, setShowTitleView, authLoading, setupLoading, session, errorMessage, playCyberSe, handleFirstUserInteraction, handleStartNewGame } = useGame();
-  const [showEntryActions, setShowEntryActions] = useState(false);
+  const { showTitleView, setShowTitleView, authLoading, setupLoading, session, onboardingState, errorMessage, playCyberSe, handleFirstUserInteraction, handleStartNewGame, gameplayResetEligibility, gameplayResetLoading, checkGameplayResetEligibility, handleResetGameplay } = useGame();
   const [isGameStartTransition, setIsGameStartTransition] = useState(false);
+  const [showResetWarning, setShowResetWarning] = useState(false);
+  const [resetAcknowledged, setResetAcknowledged] = useState(false);
   const gameStartRef = useRef(false);
 
   useEffect(() => {
@@ -16,18 +18,24 @@ export default function TitleView() {
 
   if (!showTitleView) return null;
 
-  const handleStart = (event?: React.SyntheticEvent) => {
+  const openContinue = (event: React.MouseEvent) => {
     event?.stopPropagation();
-    if (authLoading) return;
     handleFirstUserInteraction();
     playCyberSe("click");
-    if (session) setShowTitleView(false);
-    else setShowEntryActions(true);
+    setShowTitleView(false);
   };
 
   const beginNewGame = async (event: React.MouseEvent) => {
     event.stopPropagation();
     handleFirstUserInteraction();
+    playCyberSe("click");
+    if (authLoading || setupLoading) return;
+    if (session && onboardingState?.has_profile) {
+      setResetAcknowledged(false);
+      setShowResetWarning(true);
+      void checkGameplayResetEligibility();
+      return;
+    }
     if (gameStartRef.current) return;
     gameStartRef.current = true;
     setIsGameStartTransition(true);
@@ -40,14 +48,24 @@ export default function TitleView() {
     setIsGameStartTransition(false);
   };
 
-  const openExistingLogin = (event: React.MouseEvent) => {
-    event.stopPropagation();
-    playCyberSe("click");
+  const resetReasonMessage = gameplayResetEligibility?.eligible ? null : ({
+    PAYMENT: "購入履歴があるアカウントはゲームデータを初期化できません。",
+    GUILD: "連合に所属しているため、ゲームデータを初期化できません。",
+    ACTIVE_GAMEPLAY: "進行中のゲームがあります。完了後にもう一度お試しください。",
+    AUTHENTICATION: "続きからログインした後に、もう一度お試しください。",
+    UNSUPPORTED: "現在のアカウントはゲームデータの初期化に対応していません。",
+  } as Record<string, string>)[gameplayResetEligibility?.reason || "UNSUPPORTED"];
+
+  const confirmReset = async () => {
+    if (!resetAcknowledged || !gameplayResetEligibility?.eligible || gameplayResetLoading || setupLoading) return;
+    const succeeded = await handleResetGameplay();
+    if (!succeeded) return;
+    setShowResetWarning(false);
     setShowTitleView(false);
   };
 
   return (
-    <div className="title-view-overlay" onClick={handleStart}>
+    <div className="title-view-overlay">
       <div className="title-view-container">
         {/* 背景画像 (CSSで指定) */}
         
@@ -59,17 +77,12 @@ export default function TitleView() {
           </div>
         ) : <div className="title-view-content">
           <div className="title-tap-area">
-            {showEntryActions && !session ? (
-              <div className="title-entry-actions" onClick={(event) => event.stopPropagation()}>
-                <button className="semantic-cta semantic-cta--primary title-entry-primary" onClick={(event) => void beginNewGame(event)} disabled={setupLoading}>はじめから</button>
-                <button className="semantic-cta semantic-cta--secondary title-entry-secondary" onClick={openExistingLogin}>既存アカウントでログイン</button>
-                {errorMessage && <div className="title-entry-error" role="alert">{errorMessage}</div>}
-              </div>
-            ) : (
-              <button className="semantic-cta semantic-cta--primary title-tap-text blink-animation" onClick={handleStart} disabled={authLoading} aria-busy={authLoading}>
-                {authLoading ? "セッション確認中" : "TAP TO START"}
-              </button>
-            )}
+            <div className="title-entry-actions">
+              <button className="semantic-cta semantic-cta--primary title-entry-primary" onClick={(event) => void beginNewGame(event)} disabled={authLoading || setupLoading} aria-busy={authLoading || setupLoading}>はじめから</button>
+              <button className="semantic-cta semantic-cta--secondary title-entry-secondary" onClick={openContinue}>続きから</button>
+              {authLoading && <small className="title-entry-status" role="status">セッション確認中</small>}
+              {errorMessage && <div className="title-entry-error" role="alert">{errorMessage}</div>}
+            </div>
           </div>
         </div>}
 
@@ -85,6 +98,20 @@ export default function TitleView() {
           </div>
         </div>
       </div>
+      {showResetWarning && <CanonicalDialog
+        title="ゲームデータの初期化"
+        onClose={() => setShowResetWarning(false)}
+        actions={[
+          { label: "キャンセル", semantic: "secondary", onClick: () => setShowResetWarning(false) },
+          { label: "データを初期化してはじめる", semantic: "danger", disabled: !resetAcknowledged || !gameplayResetEligibility?.eligible || gameplayResetLoading || setupLoading, onClick: () => void confirmReset() },
+        ]}
+      >
+        <div className="title-reset-warning">
+          <p>現在のゲームデータを初期化します。所持しているキャラクター、スキル、装備、アイテム、ゲームの進行状況は失われ、元に戻せません。</p>
+          <label><input type="checkbox" checked={resetAcknowledged} onChange={(event) => setResetAcknowledged(event.target.checked)} />現在のゲームデータが初期化されることを確認しました</label>
+          {gameplayResetLoading ? <small role="status">初期化できる状態か確認しています…</small> : resetReasonMessage ? <small role="alert">{resetReasonMessage}</small> : null}
+        </div>
+      </CanonicalDialog>}
     </div>
   );
 }

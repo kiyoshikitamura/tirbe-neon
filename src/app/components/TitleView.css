@@ -75,6 +75,42 @@
   text-align: center;
 }
 
+.title-entry-status {
+  color: var(--ui-text-secondary);
+  font-size: var(--ui-font-caption);
+  text-align: center;
+}
+
+.title-reset-warning {
+  display: grid;
+  gap: 14px;
+}
+
+.title-reset-warning p,
+.title-reset-warning small {
+  margin: 0;
+}
+
+.title-reset-warning label {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  align-items: start;
+  gap: 10px;
+  color: var(--ui-text-primary);
+}
+
+.title-reset-warning input {
+  width: 20px;
+  height: 20px;
+  margin: 2px 0 0;
+  accent-color: var(--ui-combat);
+}
+
+.title-reset-warning small {
+  color: var(--ui-text-muted);
+  line-height: 1.5;
+}
+
 .title-tap-text {
   display: inline-flex;
   align-items: center;

@@ -2718,6 +2718,57 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     return { data: { status: "success" }, error: null };
   }
   
+  if (funcName === "check_current_gameplay_reset_eligibility") {
+    const userId = typeof window === "undefined" ? null : localStorage.getItem("tribe_demo_uuid");
+    if (!userId) return { data: { eligible: false, reason: "AUTHENTICATION" }, error: null };
+    const hasPaidAuthority = ["payment_transactions", "user_shop_purchases", "user_monthly_passes"]
+      .some((table) => (client.getStorage(table) || []).some((row: any) => row.user_id === userId));
+    if (hasPaidAuthority) return { data: { eligible: false, reason: "PAYMENT" }, error: null };
+    const isGuildMember = (client.getStorage("guild_members") || []).some((row: any) => row.user_id === userId)
+      || (client.getStorage("guilds") || []).some((row: any) => row.leader_id === userId);
+    if (isGuildMember) return { data: { eligible: false, reason: "GUILD" }, error: null };
+    const hasActiveGameplay = (client.getStorage("user_patrols") || []).some((row: any) => row.user_id === userId && row.status !== "COMPLETED")
+      || (client.getStorage("battle_replay_sessions") || []).some((row: any) => row.requester_user_id === userId && (row.status === "PENDING" || row.finalization_status === "PENDING"));
+    if (hasActiveGameplay) return { data: { eligible: false, reason: "ACTIVE_GAMEPLAY" }, error: null };
+    const hasGrant = (client.getStorage("user_lifetime_onboarding_grants") || []).some((row: any) => row.user_id === userId);
+    return { data: { eligible: hasGrant, reason: hasGrant ? null : "UNSUPPORTED" }, error: null };
+  }
+
+  if (funcName === "reset_current_gameplay") {
+    const userId = typeof window === "undefined" ? null : localStorage.getItem("tribe_demo_uuid");
+    if (!userId || params.p_acknowledged !== true || !params.p_request_id) return { data: null, error: { message: "invalid gameplay reset request" } };
+    const requests = client.getStorage("gameplay_reset_requests") || [];
+    const prior = requests.find((row: any) => row.request_id === params.p_request_id);
+    if (prior) return prior.user_id === userId ? { data: prior.result, error: null } : { data: null, error: { message: "request_id belongs to another user" } };
+    const hasPaidAuthority = ["payment_transactions", "user_shop_purchases", "user_monthly_passes"]
+      .some((table) => (client.getStorage(table) || []).some((row: any) => row.user_id === userId));
+    const isGuildMember = (client.getStorage("guild_members") || []).some((row: any) => row.user_id === userId)
+      || (client.getStorage("guilds") || []).some((row: any) => row.leader_id === userId);
+    const hasActiveGameplay = (client.getStorage("user_patrols") || []).some((row: any) => row.user_id === userId && row.status !== "COMPLETED")
+      || (client.getStorage("battle_replay_sessions") || []).some((row: any) => row.requester_user_id === userId && (row.status === "PENDING" || row.finalization_status === "PENDING"));
+    const hasGrant = (client.getStorage("user_lifetime_onboarding_grants") || []).some((row: any) => row.user_id === userId);
+    const denialReason = hasPaidAuthority ? "PAYMENT" : isGuildMember ? "GUILD" : hasActiveGameplay ? "ACTIVE_GAMEPLAY" : !hasGrant ? "UNSUPPORTED" : null;
+    if (denialReason) return { data: { status: "not_resettable", reason: denialReason }, error: null };
+    const ownedTables = ["user_main_formations", "pvp_defense_decks", "gvg_defense_decks", "user_skills", "user_equipments", "user_characters", "user_items", "user_power_rankings"];
+    for (const table of ownedTables) client.setStorage(table, (client.getStorage(table) || []).filter((row: any) => row.user_id !== userId));
+    const missions = client.getStorage("user_missions") || [];
+    for (const mission of missions) if (mission.user_id === userId && mission.status === "PROGRESS") mission.current_progress = 0;
+    client.setStorage("user_missions", missions);
+    const users = client.getStorage("users") || [];
+    const user = users.find((row: any) => row.id === userId);
+    if (user) Object.assign(user, { level: 1, xp: 0, cash: 10000, neon_diamonds: 200, diamonds: 0, vitality: 100, pvp_points: 5, raid_points: 5, favorite_character_id: null, current_base_id: "shinjuku" });
+    client.setStorage("users", users);
+    const progressRows = client.getStorage("tutorial_progress") || [];
+    const progress = progressRows.find((row: any) => row.user_id === userId);
+    if (progress) Object.assign(progress, { step_id: "WORLD_INTRO", completed_at: null });
+    else progressRows.push({ user_id: userId, step_id: "WORLD_INTRO" });
+    client.setStorage("tutorial_progress", progressRows);
+    const result = { status: "success", tutorial_step: "WORLD_INTRO", request_id: params.p_request_id };
+    requests.push({ request_id: params.p_request_id, user_id: userId, status: "COMPLETED", result });
+    client.setStorage("gameplay_reset_requests", requests);
+    return { data: result, error: null };
+  }
+
   if (funcName === "execute_tutorial_character_gacha") {
     if (typeof window !== "undefined" && localStorage.getItem("mock_tutorial_gacha_error") === "true") {
       return { data: null, error: { message: "mock tutorial gacha unavailable", code: "P0001" } };
@@ -2733,12 +2784,15 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     const normal = pool.filter((row: any) => row.gacha_id === "CHAR_NORMAL" && canonicalById.has(row.item_id));
     const ssr = pool.filter((row: any) => row.gacha_id === "CHAR_SPECIAL"
       && canonicalById.get(row.item_id)?.rarity === "SSR");
+    const lifetimeGrant = (client.getStorage("user_lifetime_onboarding_grants") || []).find((row: any) => row.user_id === userId);
+    const lifetimeResults = lifetimeGrant?.canonical_payload?.gacha_results;
     if (!normal.length || !ssr.length) return { data: null, error: { message: "canonical tutorial gacha bucket is empty" } };
     const characters = client.getStorage("user_characters") || [];
     const results = Array.from({ length: 10 }, (_, index) => {
       // Stable tutorial fixture order keeps N/R/SR visual contract assertions
       // deterministic while preserving the production RPC response shape.
-      const picked = index === 9 ? ssr[0] : normal[index % normal.length];
+      const lifetimeCharacterId = Array.isArray(lifetimeResults) ? lifetimeResults[index]?.character_id : null;
+      const picked = lifetimeCharacterId ? { item_id: lifetimeCharacterId } : index === 9 ? ssr[0] : normal[index % normal.length];
       const canonicalCharacter = canonicalById.get(picked.item_id)!;
       const existing = characters.find((row: any) => row.user_id === userId && row.character_id === picked.item_id);
       if (!existing) {

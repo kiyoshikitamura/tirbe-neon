@@ -48,8 +48,11 @@ begin
     raise exception 'create_patrol_battle_replay(uuid,text) is required' using errcode = 'P0002';
   end if;
   -- Functions created from Windows migration files can retain CRLF inside
-  -- their quoted PL/pgSQL body. Normalize before applying the audited patch.
+  -- their quoted PL/pgSQL body. Normalize both the stored function and this
+  -- migration's dollar-quoted literals before applying the audited patch.
   v_definition := replace(v_definition, chr(13), '');
+  v_needle := replace(v_needle, chr(13), '');
+  v_replacement := replace(v_replacement, chr(13), '');
   if position(v_needle in v_definition) = 0 then
     raise exception 'patrol replay function does not match the expected canonical definition';
   end if;
