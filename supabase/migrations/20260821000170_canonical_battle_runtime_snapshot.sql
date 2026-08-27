@@ -4,6 +4,7 @@ begin;
 do $converge_snapshot$
 declare
   v_current text;
+  v_backup text;
 begin
   if to_regprocedure('public.build_server_battle_snapshot_00168(uuid,text[],text)') is null then
     if to_regprocedure('public.build_server_battle_snapshot(uuid,text[],text)') is null then
@@ -19,11 +20,26 @@ begin
   -- is accepted; any other duplicate backup/current pair remains fail-closed.
   select pg_get_functiondef(to_regprocedure('public.build_server_battle_snapshot(uuid,text[],text)'))
   into v_current;
-  if v_current is null
-     or position('build_server_battle_snapshot_00168' in v_current)=0
-     or position('canonical_equipment_runtime_projection' in v_current)=0 then
-    raise exception 'battle snapshot functions do not match the known 00170 canonical state';
+  select pg_get_functiondef(to_regprocedure('public.build_server_battle_snapshot_00168(uuid,text[],text)'))
+  into v_backup;
+  if v_current is not null
+     and position('build_server_battle_snapshot_00168' in v_current)>0
+     and position('canonical_equipment_runtime_projection' in v_current)>0 then
+    return;
   end if;
+
+  -- Applying 00168 normally to a Preview whose objects were previously
+  -- hot-applied replaces the public wrapper with the canonical 00168 base,
+  -- while the earlier backup remains. The statements below will recreate the
+  -- wrapper; accept only when both functions have the audited base markers.
+  if v_current is not null and v_backup is not null
+     and position('canonical_character_stats' in v_current)>0
+     and position('equipment_level_battle_scale' in v_current)>0
+     and position('canonical_character_stats' in v_backup)>0
+     and position('equipment_level_battle_scale' in v_backup)>0 then
+    return;
+  end if;
+  raise exception 'battle snapshot functions do not match a known 00170 canonical state';
 end;
 $converge_snapshot$;
 
