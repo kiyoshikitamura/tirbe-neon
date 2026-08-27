@@ -342,6 +342,27 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
       .map((row: any, index: number) => ({ ...row, rank_position: index + 1 })), error: null };
   }
 
+  if (funcName === "get_raid_rankings") {
+    const users = client.getStorage("users") || [];
+    const guilds = client.getStorage("guilds") || [];
+    const logs = (client.getStorage("raid_damage_logs") || []).filter((log: any) => log.raid_boss_instance_id === params?.p_instance_id);
+    const personalTotals = new Map<string, number>();
+    const guildTotals = new Map<string, { contribution: number; participants: Set<string> }>();
+    logs.forEach((log: any) => {
+      if (log.user_id) personalTotals.set(log.user_id, (personalTotals.get(log.user_id) || 0) + Number(log.raw_damage || log.damage || 0));
+      if (log.guild_id) {
+        const current = guildTotals.get(log.guild_id) || { contribution: 0, participants: new Set<string>() };
+        current.contribution += Number(log.raw_damage || log.damage || 0);
+        if (log.user_id) current.participants.add(log.user_id);
+        guildTotals.set(log.guild_id, current);
+      }
+    });
+    const individual = [...personalTotals.entries()].sort((a, b) => b[1] - a[1]).map(([userId, contribution], index) => ({ user_id: userId, username: users.find((user: any) => user.id === userId)?.username || "プレイヤー", contribution, rank_position: index + 1 }));
+    const guild = [...guildTotals.entries()].sort((a, b) => b[1].contribution - a[1].contribution).map(([guildId, total], index) => ({ guild_id: guildId, guild_name: guilds.find((entry: any) => entry.id === guildId)?.name || "ギルド", contribution: total.contribution, participant_count: total.participants.size, rank_position: index + 1 }));
+    const userId = typeof window === "undefined" ? null : localStorage.getItem("tribe_demo_uuid");
+    return { data: { individual, guild, selfRank: individual.find((row) => row.user_id === userId) || null }, error: null };
+  }
+
   if (funcName === "get_raid_season_rankings") {
     const users = client.getStorage("users") || [];
     const guilds = client.getStorage("guilds") || [];

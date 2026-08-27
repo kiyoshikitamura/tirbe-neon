@@ -89,6 +89,7 @@ export default function RankingTab() {
   const [rows, setRows] = useState<any[]>([]);
   const [guildRows, setGuildRows] = useState<any[]>([]);
   const [profiles, setProfiles] = useState<Record<string, PublicProfile>>({});
+  const [currentIdentity, setCurrentIdentity] = useState<{ userId: string; profile: PublicProfile } | null>(null);
   const [selfRank, setSelfRank] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -165,6 +166,17 @@ export default function RankingTab() {
 
   useEffect(() => { void loadRanking(); }, [loadRanking]);
   useEffect(() => {
+    const userId = session?.user?.id;
+    if (!userId) return;
+    let cancelled = false;
+    void supabase.rpc("get_public_profiles", { p_user_ids: [userId] }).then(({ data, error: profileError }) => {
+      if (cancelled || profileError) return;
+      const profile = Array.isArray(data) ? data.find((entry: PublicProfile) => entry.user_id === userId) : null;
+      if (profile) setCurrentIdentity({ userId, profile });
+    });
+    return () => { cancelled = true; };
+  }, [session?.user?.id]);
+  useEffect(() => {
     const timer = window.setInterval(() => setClock(new Date()), 1000);
     return () => window.clearInterval(timer);
   }, []);
@@ -188,7 +200,9 @@ export default function RankingTab() {
   const currentGuildId = userGuildMember?.guild_id || userGuild?.id || currentUser?.guild_members?.[0]?.guild_id;
   const currentRow = rows.find((row) => row.user_id === currentUserId);
   const currentGuildRow = guildRows.find((row) => row.guild_id === currentGuildId);
-  const currentProfile = currentUserId ? profiles[currentUserId] : undefined;
+  const currentIdentityProfile = currentIdentity && currentIdentity.userId === currentUserId ? currentIdentity.profile : null;
+  const currentProfile = currentIdentityProfile || (currentUserId ? profiles[currentUserId] : undefined);
+  const currentIdentityName = currentProfile?.username || currentUser?.username;
   const currentRank = activeTab === "guild_power" ? validRank(currentGuildRow?.rank_position) : validRank(currentRow?.rank_position ?? selfRank?.rank_position);
   const currentMetric = useMemo(() => {
     if (activeTab === "power") return Number(currentRow?.current_power || currentUser?.total_power || 0).toLocaleString();
@@ -216,7 +230,7 @@ export default function RankingTab() {
 
       <section className="ranking-current" aria-label="あなたの現在地">
         <div className="ranking-current-identity">
-          {activeTab === "guild_power" ? <div><small>YOUR GUILD</small><strong>{userGuild?.name || "未所属"}</strong></div> : <UserIdentityRow userName={currentProfile?.username || currentUser?.username || "プレイヤー"} guildName={currentProfile?.guild_name || userGuild?.name} leaderCharacterId={currentProfile?.favorite_character_id || currentUser?.favorite_character_id} onOpen={currentUserId ? () => openPlayer(currentUserId) : undefined} variant="compact" />}
+          {activeTab === "guild_power" ? <div><small>YOUR GUILD</small><strong>{userGuild?.name || "未所属"}</strong></div> : currentIdentityName ? <UserIdentityRow userName={currentIdentityName} guildName={currentProfile?.guild_name || userGuild?.name} leaderCharacterId={currentProfile?.favorite_character_id || currentUser?.favorite_character_id} onOpen={currentUserId ? () => openPlayer(currentUserId) : undefined} variant="compact" /> : <div className="ranking-current-identity-loading" role="status">ユーザー情報を取得中</div>}
         </div>
         <StatusMetric label="順位" value={<RankPresentation rank={currentRank} />} />
         <StatusMetric label={metricLabel} value={currentMetric} />

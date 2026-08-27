@@ -43,9 +43,9 @@ test.beforeEach(async ({ page }) => {
     localStorage.setItem("mock_db_user_characters", JSON.stringify(owned));
     localStorage.setItem("mock_db_user_main_formations", JSON.stringify(formations));
     localStorage.setItem("mock_db_user_power_rankings", JSON.stringify([
-      { user_id: users[1], total_power: 99100, rank_position: location.search.includes("unranked=1") ? null : 7, updated_at: now },
-      { user_id: users[2], total_power: 88200, rank_position: 8, updated_at: now },
-      { user_id: users[3], total_power: 77300, rank_position: 9, updated_at: now },
+      { user_id: users[1], total_power: 99100, rank_position: location.search.includes("unranked=1") ? null : location.search.includes("top3=1") ? 1 : 7, updated_at: now },
+      { user_id: users[2], total_power: 88200, rank_position: location.search.includes("top3=1") ? 2 : 8, updated_at: now },
+      { user_id: users[3], total_power: 77300, rank_position: location.search.includes("top3=1") ? 3 : 9, updated_at: now },
       { user_id: users[4], total_power: 66400, rank_position: 10, updated_at: now },
       { user_id: users[0], total_power: 55300, rank_position: 11, updated_at: now },
     ]));
@@ -92,6 +92,8 @@ test("Ranking categories isolate metrics and profiles preserve identity context"
   await page.locator(".ranking-user-row").first().locator(".user-identity-row").click();
   await expect(page.getByRole("dialog", { name: /非常に長いプレイヤーネーム/ })).toBeVisible();
   await expect(page.getByRole("dialog")).toContainText("NEON WOLVES");
+  await expect(page.getByRole("dialog").locator(".public-profile-deck h3")).toHaveText("DECK");
+  await expect(page.getByRole("dialog")).not.toContainText("MY DECK");
   await page.getByRole("button", { name: "閉じる" }).click();
   await expect(page.locator(".ranking-category-nav .sub-tab-item.active")).toHaveText("総合力");
 
@@ -114,7 +116,33 @@ test("Ranking categories isolate metrics and profiles preserve identity context"
   await page.locator(".ranking-current .user-identity-row").click();
   const selfProfile = page.getByRole("dialog", { name: "RankingTesterの公開プロフィール" });
   await expect(selfProfile).toBeVisible();
+  await expect(selfProfile.locator(".public-profile-deck h3")).toHaveText("MY DECK");
   await expect(selfProfile.getByRole("button", { name: "DMを送る" })).toHaveCount(0);
+});
+
+test("Top three rank stays compact beside identity and Raid Daily keeps canonical current user", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await openRanking(page, "/?top3=1");
+  await expect(page.locator(".ranking-position").nth(0)).toHaveText("1位");
+  await expect(page.locator(".ranking-position").nth(1)).toHaveText("2位");
+  await expect(page.locator(".ranking-position").nth(2)).toHaveText("3位");
+  const rankBox = await page.locator(".ranking-position").first().evaluate((node) => node.getBoundingClientRect().toJSON());
+  const leaderBox = await page.locator(".ranking-user-row .user-identity-row .character-presentation").first().evaluate((node) => node.getBoundingClientRect().toJSON());
+  expect(rankBox.width).toBeLessThanOrEqual(30);
+  expect(rankBox.height).toBeLessThanOrEqual(26);
+  expect(rankBox.width).toBeLessThanOrEqual(leaderBox.width);
+
+  await page.getByRole("button", { name: "PvP", exact: true }).click();
+  await expect(page.locator(".ranking-skeleton")).toHaveCount(0);
+  expect(await page.locator(".ranking-position").first().evaluate((node) => node.getBoundingClientRect().width)).toBeLessThanOrEqual(30);
+
+  await page.getByRole("button", { name: "レイド", exact: true }).click();
+  await page.getByRole("button", { name: "デイリー", exact: true }).click();
+  await expect(page.locator(".ranking-skeleton")).toHaveCount(0);
+  const current = page.locator(".ranking-current");
+  await expect(current).toContainText("RankingTester");
+  await expect(current).not.toContainText("プレイヤー");
+  await expect(current.locator(".character-presentation-missing")).toHaveCount(0);
 });
 
 test("RankPresentation uses 圏外 for missing server placement", async ({ page }) => {
