@@ -3921,6 +3921,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     startCardBattle: battle.startCardBattle,
     confirmPreparedPvpBattle: battle.confirmPreparedPvpBattle,
     cancelPreparedPvpBattle: battle.cancelPreparedPvpBattle,
+    confirmPreparedRaidBattle: battle.confirmPreparedRaidBattle,
+    cancelPreparedRaidBattle: battle.cancelPreparedRaidBattle,
     launchBattlePlaying: battle.launchBattlePlaying,
     skipBattlePresentation: battle.skipBattlePresentation,
     handleEndTurn: battle.handleEndTurn,

@@ -8,6 +8,7 @@ import type { BattleModeResultDetail, BattlePresentationContext } from "@/hooks/
 
 import OutlawButton from "../ui/OutlawButton";
 import CharacterPresentation from "../character/CharacterPresentation";
+import CanonicalItemIcon from "../ui/CanonicalItemIcon";
 import "./BattleResultSummary.css";
 
 type Props = {
@@ -48,6 +49,7 @@ export default function BattleResultSummary({ victory, tutorial = false, rewards
   const localizedResultLabel = tutorial
     ? (victory ? "クエストクリア" : "クエスト失敗")
     : modeResult?.resultLabel;
+  const isRaidResult = presentationContext?.mode === "RAID";
   useEffect(() => {
     if (announcedRef.current) return;
     announcedRef.current = true;
@@ -100,7 +102,10 @@ export default function BattleResultSummary({ victory, tutorial = false, rewards
       </header>
       {!tutorial && <div className="battle-result-outcome-label">{victory ? "WIN" : "LOSE"}</div>}
       {localizedResultLabel && <strong className="battle-result-mode-label">{localizedResultLabel}</strong>}
-      {mvp && (
+      {isRaidResult && modeResult?.stats?.length ? <section className="battle-result-mode-stats is-raid" aria-label="レイド戦績">
+        {modeResult.stats.map((stat) => <div key={stat.label}><small>{stat.label}</small><strong>{stat.value}</strong></div>)}
+      </section> : null}
+      {!isRaidResult && mvp && (
         <section className="battle-result-mvp" aria-label={`MVP ${mvp.participant.name} ${mvp.score.total}ポイント`}>
           <div className="battle-result-mvp-hero">
             {mvpImage && <CharacterPresentation src={mvpImage} alt={mvp.participant.name} variant="dialogue-bust" className="battle-result-mvp-character" />}
@@ -115,10 +120,10 @@ export default function BattleResultSummary({ victory, tutorial = false, rewards
           </dl>
         </section>
       )}
-      {modeResult?.stats?.length ? <section className="battle-result-mode-stats" aria-label="モード戦績">
+      {!isRaidResult && modeResult?.stats?.length ? <section className="battle-result-mode-stats" aria-label="モード戦績">
         {modeResult.stats.map((stat) => <div key={stat.label}><small>{stat.label}</small><strong>{stat.value}</strong></div>)}
       </section> : null}
-      {mvp && (
+      {!isRaidResult && mvp && (
         <section className="battle-result-comparison" aria-label="チーム戦果比較">
           <header><span>味方</span><b>戦果比較</b><span>敵</span></header>
           <div><b>{analysis.player.damage.toLocaleString()}</b><span>総ダメージ</span><b>{analysis.enemy.damage.toLocaleString()}</b></div>
@@ -135,7 +140,15 @@ export default function BattleResultSummary({ victory, tutorial = false, rewards
           </div>
         ) : <div className="battle-result-settling" role="status"><span>報酬データを準備中</span><i aria-hidden="true" /></div>
       ) : (
-        <div className="battle-result-mode-reward"><strong>{modeResult?.reward || (victory ? "勝利" : "敗北")}</strong>{modeResult?.note && <p>{modeResult.note}</p>}</div>
+        <div className="battle-result-mode-reward">
+          <strong>{modeResult?.reward || (victory ? "勝利" : "敗北")}</strong>
+          {modeResult?.rewards?.length ? <div className="battle-result-canonical-rewards" aria-label="獲得報酬">{modeResult.rewards.map((reward) => <span key={`${reward.id}-${reward.quantity}`}>
+            <CanonicalItemIcon itemId={reward.id} alt={reward.name} />
+            <b>{reward.name}</b>
+            <em>×{reward.quantity.toLocaleString()}</em>
+          </span>)}</div> : null}
+          {modeResult?.note && <p>{modeResult.note}</p>}
+        </div>
       )}
       {continueControl ?? <OutlawButton variant={victory ? "primary" : "secondary"} onClick={onContinue} className="battle-result-continue" disabled={victory && (tutorial || presentationContext?.mode === "PATROL") && !rewards}>
         {victory && (tutorial || presentationContext?.mode === "PATROL") ? (rewards ? "次へ" : "報酬確定中…") : modeResult?.continueLabel || "次へ"}

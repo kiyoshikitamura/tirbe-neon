@@ -133,7 +133,7 @@ test("M9-V0 main cycle presents growth, mission, PvP, ranking, raid and guild di
   await page.getByRole("button", { name: /マイページ/ }).click();
   await page.getByRole("button", { name: "⚠ レイド開催中", exact: true }).click();
   await expect(page.locator(".raid-boss-stage")).toContainText("極道連合組長");
-  await expect(page.locator(".raid-contribution-grid")).toContainText("個人Contribution");
+  await expect(page.locator(".raid-status-grid")).toContainText("CONTRIBUTION");
   await mobileFramePass(page, ".raid-view", "raid");
 
   await page.getByRole("button", { name: /ギルド/ }).click();

@@ -21,6 +21,7 @@ import { patrolSnapshotToParticipants, serverBattleEvents, type ServerBattleEven
 import { beginActionPerformance } from "@/utils/actionPerformance";
 import { traceTutorialJourney } from "@/utils/tutorialJourneyTrace";
 import { resolveBattleSkillLabel, safeBattleCharacterName } from "@/domain/presentation/battleSkillLabels";
+import { canonicalItemName } from "@/domain/gameplay/canonical/items";
 
 export type { UseBattleOptions, ParticipantState, CardState, SkillLogItem };
 
@@ -84,6 +85,7 @@ export type BattleModeResultDetail = {
   resultLabel?: string;
   stats?: Array<{ label: string; value: string }>;
   reward?: string;
+  rewards?: Array<{ id: string; name: string; quantity: number }>;
   note?: string;
   continueLabel?: string;
   destination?: string;
@@ -193,6 +195,8 @@ export function useBattle(options: UseBattleOptions) {
   const battleEndingInFlightRef = useRef(false);
   const pendingPvpStartRef = useRef<any[] | null>(null);
   const pvpCommitSucceededRef = useRef(false);
+  const pendingRaidStartRef = useRef<any[] | null>(null);
+  const raidCommitSucceededRef = useRef(false);
   const [settledPatrolEncounterId, setSettledPatrolEncounterId] = useState<string | null>(null);
   const activePatrolEncounterIdRef = useRef<string | null>(null);
   const [enemyTactic, setEnemyTactic] = useState<string>("OFFENSIVE");
@@ -430,6 +434,7 @@ export function useBattle(options: UseBattleOptions) {
     };
 
     // レイドボスマスターデータの取得
+    let raidInstanceCurrentHp = raidBossHp;
     let bossMaster = {
       id: "BOSS_001",
       boss_name: targetName,
@@ -465,7 +470,17 @@ export function useBattle(options: UseBattleOptions) {
 
     if (mode === "RAID") {
       try {
-        const { data: dbMaster } = await supabase.from("raid_boss_master").select("*").eq("id", "BOSS_001").maybeSingle();
+        const { data: currentRaids, error: raidsError } = await supabase.rpc("get_active_raids");
+        const currentRaid = Array.isArray(currentRaids)
+          ? currentRaids.find((entry: any) => String(entry.id) === String(areaIdOrOpponentUserId))
+          : null;
+        if (raidsError || !currentRaid) throw raidsError || new Error("Selected Raid is no longer active.");
+        const { data: dbMaster, error: masterError } = await supabase.from("raid_boss_master")
+          .select("*")
+          .eq("id", currentRaid.bossMasterId)
+          .maybeSingle();
+        if (masterError || !dbMaster) throw masterError || new Error("Raid boss master is unavailable.");
+        raidInstanceCurrentHp = Number(currentRaid.currentHp ?? dbMaster.max_hp);
         if (dbMaster) {
           bossMaster = {
             id: dbMaster.id,
@@ -481,6 +496,9 @@ export function useBattle(options: UseBattleOptions) {
         }
       } catch (err) {
         console.warn("Failed to load raid boss master:", err);
+        setBattleLoading(false);
+        setErrorMessage("レイド情報を確認できませんでした。レイド画面へ戻って、もう一度お試しください。");
+        return;
       }
 
       // 支配ギルドボーナスの判定
@@ -574,7 +592,7 @@ export function useBattle(options: UseBattleOptions) {
     let battleUserCharacters = userCharactersDbList;
     let battleUserSkills = userSkillsList;
     let battleUserEquipments = userEquipmentsList;
-    if (mode === "PVP") {
+    if (mode === "PVP" || mode === "RAID") {
       const { data: mainFormation, error: mainFormationError } = await supabase.rpc("get_current_main_formation");
       const canonicalParty = Array.isArray(mainFormation?.characters)
         ? mainFormation.characters.map((entry: any) => String(entry.character_id || "")).filter(Boolean).slice(0, 5)
@@ -1015,7 +1033,7 @@ export function useBattle(options: UseBattleOptions) {
           characterId: "BOSS",
           alignment: "CHAOS",
           level: bossMaster.level,
-          hp: raidBossHp,
+          hp: raidInstanceCurrentHp,
           maxHp: bossMaster.max_hp,
           shield: 0,
           isDead: false,
@@ -1312,11 +1330,28 @@ export function useBattle(options: UseBattleOptions) {
         if (resolveError) { const retry = await supabase.functions.invoke("resolve-battle", { body: { replaySessionId } }); resolvedReplay=retry.data; resolveError=retry.error; }
         const events=serverBattleEvents(resolvedReplay?.events);
         if(resolveError||!resolvedReplay?.winner||!events.length){setBattleLoading(false);setErrorMessage("レイド結果をサーバーで確定できませんでした。");return;}
+        const { data: grantedRewards, error: rewardProjectionError } = await supabase.rpc("get_current_raid_battle_rewards", { p_replay_id: replaySessionId });
+        if (rewardProjectionError) {
+          // Battle finalization has already succeeded. Never start another
+          // Raid attempt merely because the read-only reward projection had a
+          // transient failure; the Result remains recoverable from the replay.
+          console.warn("Failed to read finalized Raid rewards:", rewardProjectionError.message);
+        }
+        resolvedReplay = {
+          ...resolvedReplay,
+          rewardProjectionUnavailable: Boolean(rewardProjectionError),
+          grantedRewards: (!rewardProjectionError && Array.isArray(grantedRewards) ? grantedRewards : []).map((entry: any) => ({
+            itemId: String(entry.itemId || ""),
+            name: canonicalItemName(String(entry.itemId || "")),
+            quantity: Number(entry.quantity || 0),
+          })),
+        };
         initialPlayerParty=canonicalPlayers; initialEnemyParty=canonicalEnemies;
         setPlayerPartyStates(canonicalPlayers); setEnemyPartyStates(canonicalEnemies);
         setTimeline([...canonicalPlayers.map(p=>({id:p.id,name:p.name,isEnemy:false,spd:p.stats.spd})),...canonicalEnemies.map(p=>({id:p.id,name:p.name,isEnemy:true,spd:p.stats.spd}))].sort((a,b)=>b.spd-a.spd));
         officialRaidReplayIdForBattle=replaySessionId; officialRaidWinnerForBattle=resolvedReplay.winner; officialRaidEventsForBattle=events; officialRaidResultForBattle=resolvedReplay;
         setOfficialRaidReplayId(replaySessionId);setOfficialRaidWinner(resolvedReplay.winner);setOfficialRaidEvents(events);setOfficialRaidEventIndex(0);setOfficialRaidResult(resolvedReplay);
+        raidCommitSucceededRef.current = true;
         setRaidPoints?.(Number(replayCreation.data?.remaining_raid_points ?? Math.max(0, (raidPoints ?? 0) - 1)));
         setRaidFirstEntryFree?.(false);
       }
@@ -1413,9 +1448,14 @@ export function useBattle(options: UseBattleOptions) {
     const actionPerformance = beginActionPerformance("battle_start");
     try {
       actionPerformance.mark("request_start");
-      if (args[0] === "PVP") {
-        pendingPvpStartRef.current = args;
-        pvpCommitSucceededRef.current = false;
+      if (args[0] === "PVP" || args[0] === "RAID") {
+        if (args[0] === "PVP") {
+          pendingPvpStartRef.current = args;
+          pvpCommitSucceededRef.current = false;
+        } else {
+          pendingRaidStartRef.current = args;
+          raidCommitSucceededRef.current = false;
+        }
         await startCardBattleInternal(...([...args.slice(0, 12), true] as unknown as Parameters<typeof startCardBattleInternal>));
       } else {
         await startCardBattleInternal(...args);
@@ -1493,6 +1533,34 @@ export function useBattle(options: UseBattleOptions) {
   const cancelPreparedPvpBattle = () => {
     if (battleMode !== "PVP" || !pendingPvpStartRef.current || pvpCommitSucceededRef.current) return false;
     pendingPvpStartRef.current = null;
+    setBattleState(null);
+    setBattleMode(null);
+    setBattleOpponentName("");
+    setBattlePresentationContext(null);
+    setPlayerPartyStates([]);
+    setEnemyPartyStates([]);
+    setTimeline([]);
+    setBattleLoading(false);
+    return true;
+  };
+
+  const confirmPreparedRaidBattle = async () => {
+    const pending = pendingRaidStartRef.current;
+    if (!pending || battleStartInFlightRef.current) return false;
+    battleStartInFlightRef.current = true;
+    raidCommitSucceededRef.current = false;
+    try {
+      await startCardBattleInternal(...([...pending.slice(0, 12), false] as unknown as Parameters<typeof startCardBattleInternal>));
+      if (raidCommitSucceededRef.current) pendingRaidStartRef.current = null;
+      return raidCommitSucceededRef.current;
+    } finally {
+      battleStartInFlightRef.current = false;
+    }
+  };
+
+  const cancelPreparedRaidBattle = () => {
+    if (battleMode !== "RAID" || !pendingRaidStartRef.current || raidCommitSucceededRef.current) return false;
+    pendingRaidStartRef.current = null;
     setBattleState(null);
     setBattleMode(null);
     setBattleOpponentName("");
@@ -2352,10 +2420,21 @@ export function useBattle(options: UseBattleOptions) {
             { label: "個人 CONTRIBUTION", value: Number(raidResultTemp.personalContribution || 0).toLocaleString() },
             { label: "BOSS 残りHP", value: Number(raidResultTemp.remainingBossHp || 0).toLocaleString() },
           ],
-          reward: "サーバー確定報酬を反映済み",
+          reward: raidResultTemp.rewardProjectionUnavailable
+            ? "報酬はサーバーで確定済み"
+            : Array.isArray(raidResultTemp.grantedRewards) && raidResultTemp.grantedRewards.length > 0
+              ? "獲得報酬"
+              : "今回の新規報酬はありません",
+          rewards: Array.isArray(raidResultTemp.grantedRewards)
+            ? raidResultTemp.grantedRewards.map((entry: any) => ({
+                id: String(entry.itemId || ""),
+                name: String(entry.name || "報酬"),
+                quantity: Number(entry.quantity || 0),
+              })).filter((entry: any) => entry.id && entry.quantity > 0)
+            : [],
           note: userGuildMember ? "TRIBE Contributionにも所属Snapshotで反映されます。" : "TRIBE加入でGuild RankingとContributionへ参加できます。",
-          continueLabel: userGuildMember ? "レイドへ戻る" : "おすすめTRIBEを見る",
-          destination: userGuildMember ? "raid" : "guild",
+          continueLabel: "レイドへ戻る",
+          destination: "raid",
         });
         setBattleState("RESULT");
         return;
@@ -2498,7 +2577,6 @@ export function useBattle(options: UseBattleOptions) {
 
   const completeBattleResult = () => {
     if (battleState !== "RESULT") return;
-    const completedMode = battleMode;
     const destination = battleModeResultDetail?.destination;
     setBattleState(null);
     setBattleMode(null);
@@ -2512,15 +2590,6 @@ export function useBattle(options: UseBattleOptions) {
     setBattlePresentationContext(null);
     setBattleSkipPending(false);
     setBattleModeResultDetail(null);
-    if (completedMode === "RAID" && destination === "guild") {
-      void supabase.rpc("record_client_funnel_event", {
-        p_event_name: "raid_to_guild_cta",
-        p_source_screen: "raid_result",
-        p_source_cta: "guild",
-        p_object_id: null,
-        p_metadata: {},
-      });
-    }
     if (destination) navigateTab?.(destination);
   };
 
@@ -2621,6 +2690,8 @@ export function useBattle(options: UseBattleOptions) {
     startCardBattle,
     confirmPreparedPvpBattle,
     cancelPreparedPvpBattle,
+    confirmPreparedRaidBattle,
+    cancelPreparedRaidBattle,
     launchBattlePlaying,
     skipBattlePresentation,
     handleEndTurn,

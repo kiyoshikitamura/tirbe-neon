@@ -190,3 +190,41 @@
 .setup-tactic-current span{font-size:10px}.setup-tactic-current strong{color:var(--ui-accent)}
 .setup-tactic-current button{min-width:70px;padding:7px;border:1px solid var(--ui-accent);color:var(--ui-accent);background:transparent;font-weight:900}.setup-tactic-current button:disabled{opacity:.45}
 .tactic-dialog-options{display:grid;gap:7px;padding:12px}.tactic-dialog-options .tactic-btn{width:100%}
+.raid-battle-setup {
+  box-sizing: border-box;
+  min-height: 100dvh;
+  padding: max(14px, env(safe-area-inset-top)) 14px max(14px, env(safe-area-inset-bottom));
+  overflow-y: auto;
+  background: radial-gradient(circle at 82% 10%, rgba(255, 0, 92, .2), transparent 34%), linear-gradient(160deg, #180b12, #070a10 72%);
+}
+.raid-battle-setup__header { display: grid; gap: 2px; margin-bottom: 10px; }
+.raid-battle-setup__header small { color: var(--ui-danger); font-size: 9px; font-weight: 900; letter-spacing: .16em; }
+.raid-battle-setup__header strong { color: #fff; font-size: 19px; }
+.raid-battle-setup__body { display: grid; gap: 10px; }
+.raid-battle-target, .raid-battle-deck, .raid-battle-resource { border: 1px solid rgba(104, 134, 164, .3); background: rgba(5, 9, 16, .84); box-shadow: 0 12px 24px rgba(0,0,0,.18); }
+.raid-battle-target { display: grid; grid-template-columns: 62px minmax(0, 1fr); gap: 9px; padding: 10px; align-items: center; }
+.raid-battle-target > img { width: 58px; height: 58px; object-fit: contain; filter: drop-shadow(0 0 10px rgba(255, 0, 92, .42)); }
+.raid-battle-target > div { display: grid; min-width: 0; gap: 2px; }
+.raid-battle-target > div small { color: var(--ui-danger); font-size: 8px; font-weight: 900; letter-spacing: .12em; }
+.raid-battle-target > div strong { overflow: hidden; color: #fff; font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }
+.raid-battle-target > div span { color: var(--ui-text-secondary); font-size: 9px; }
+.raid-battle-target dl { grid-column: 1 / -1; display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 6px; margin: 0; }
+.raid-battle-target dl div { display: grid; gap: 1px; min-width: 0; }
+.raid-battle-target dt { color: var(--ui-text-secondary); font-size: 8px; }
+.raid-battle-target dd { overflow: hidden; margin: 0; color: #fff; font-size: 10px; font-weight: 800; text-overflow: ellipsis; }
+.raid-battle-deck { padding: 10px; }
+.raid-battle-deck > header { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 7px; }
+.raid-battle-deck > header strong { color: #fff; font-size: 11px; }
+.raid-battle-deck > header span { color: var(--neon-cyan); font-size: 10px; font-weight: 800; }
+.raid-battle-deck .pvp-deck-presentation { margin: 0; }
+.raid-battle-resource { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 9px 10px; }
+.raid-battle-resource > div { display: grid; gap: 2px; }
+.raid-battle-resource small { color: var(--ui-text-secondary); font-size: 8px; }
+.raid-battle-resource strong { color: var(--neon-cyan); font-size: 14px; }
+.raid-battle-resource > span { color: var(--ui-text-secondary); font-size: 9px; text-align: right; }
+.raid-battle-setup__actions { display: grid; gap: 7px; margin-top: 10px; }
+.raid-battle-setup__actions button { width: 100%; min-height: 44px; }
+
+@media (min-width: 410px) {
+  .raid-battle-setup { padding-inline: 18px; }
+}

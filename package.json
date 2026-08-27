@@ -58,6 +58,7 @@
     "generate:raid-boss-master": "node --experimental-strip-types scripts/generate_raid_boss_master.mjs",
     "generate:pvp-raid-production-db-migration": "node scripts/generate_pvp_raid_production_db_migration.mjs",
     "verify:pvp-raid-production": "node --experimental-strip-types scripts/verify_pvp_raid_production.mjs",
+    "verify:raid-activation": "node scripts/verify_raid_activation_contract.mjs",
     "verify:pvp-r8": "node scripts/verify_pvp_r8_contract.mjs",
     "verify:pvp-r8:preview": "node scripts/verify_pvp_r8_preview.mjs",
     "verify:pvp-r9": "node scripts/verify_pvp_r9_contract.mjs",

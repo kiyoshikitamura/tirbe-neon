@@ -55,6 +55,10 @@ export default function CardBattleView() {
     launchBattlePlaying,
     confirmPreparedPvpBattle,
     cancelPreparedPvpBattle,
+    confirmPreparedRaidBattle,
+    cancelPreparedRaidBattle,
+    raidPoints,
+    raidFirstEntryFree,
     skipBattlePresentation,
     endBattleSession,
     completeBattleResult,
@@ -118,6 +122,13 @@ export default function CardBattleView() {
     setSetupLaunching(true);
     if (battleMode === "PVP") {
       const committed = await confirmPreparedPvpBattle();
+      if (!committed) {
+        battleLaunchRef.current = false;
+        setSetupLaunching(false);
+        return;
+      }
+    } else if (battleMode === "RAID") {
+      const committed = await confirmPreparedRaidBattle();
       if (!committed) {
         battleLaunchRef.current = false;
         setSetupLaunching(false);
@@ -206,6 +217,42 @@ export default function CardBattleView() {
         <div className="tutorial-battle-party-icons" aria-label="出撃パーティ">{playerPartyStates.map((member: any) => <CharacterPresentation key={member.id} src={getBattleCharacterImage(member.characterId)} alt={member.name} variant="battle" className="character-presentation-battle-party" />)}</div>
         <div className="tutorial-battle-strategy"><small>STRATEGY</small><b>{tactic === "ATTACK_PRIORITY" ? "攻撃優先" : tactic === "HEAL_PRIORITY" ? "回復優先" : tactic === "SKILL_PRIORITY" ? "スキル優先" : tactic === "WEAKNESS_FOCUS" ? "弱点集中" : "バランス"}</b></div>
         <button className="start-battle-btn semantic-cta semantic-cta--primary active-scale-effect tutorial-primary-target" onClick={launchBattleOnce}>バトルスタート</button>
+      </div>;
+    }
+
+    if (battleMode === "RAID") {
+      const boss = enemyPartyStates[0];
+      return <div className="battle-screen" onClick={handleFirstUserInteraction}>
+        <div className="raid-battle-setup scroll-container" style={battleBackgroundStyle}>
+          <header className="raid-battle-setup__header">
+            <small>RAID BRIEFING</small>
+            <strong>制圧準備</strong>
+          </header>
+          <main className="raid-battle-setup__body">
+            <section className="raid-battle-target" aria-label="レイド対象">
+              <img src="/menu/raid.png" alt="" />
+              <div><small>RAID BOSS</small><strong>{battleOpponentName}</strong><span>Lv.{boss?.level || 1}</span></div>
+              <dl><div><dt>HP</dt><dd>{Number(boss?.hp || 0).toLocaleString()} / {Number(boss?.maxHp || 0).toLocaleString()}</dd></div><div><dt>ATK</dt><dd>{Number(boss?.stats?.atk || 0).toLocaleString()}</dd></div><div><dt>DEF</dt><dd>{Number(boss?.stats?.def || 0).toLocaleString()}</dd></div></dl>
+            </section>
+            <section className="raid-battle-deck" aria-label="自分のデッキ">
+              <header><strong>MY DECK</strong><span>総合力 {playerPower.toLocaleString()}</span></header>
+              <PvpDeckPresentation ariaLabel="自分のデッキ" members={playerPartyStates.map((member: any, index: number) => ({
+                key: member.id || `raid-player-${index}`,
+                characterId: member.characterId,
+                name: member.name,
+                level: member.level,
+              }))} />
+            </section>
+            <section className="raid-battle-resource" aria-label="レイド挑戦資源">
+              <div><small>RAID POINT</small><strong>{raidFirstEntryFree ? "初回無料" : `${raidPoints} / 5`}</strong></div>
+              <span>{raidFirstEntryFree ? "この挑戦ではRPを消費しません" : "討伐開始時にRPを1消費"}</span>
+            </section>
+          </main>
+          <footer className="raid-battle-setup__actions">
+            <button type="button" className="start-battle-btn semantic-cta semantic-cta--primary active-scale-effect" onClick={launchRegularBattle} disabled={setupLaunching} aria-busy={setupLaunching}>{setupLaunching ? "BATTLE START" : "討伐開始"}</button>
+            <button type="button" className="cancel-battle-btn semantic-cta semantic-cta--secondary" disabled={setupLaunching} onClick={() => { if (cancelPreparedRaidBattle()) playSe("UI_BACK"); }}>レイドへ戻る</button>
+          </footer>
+        </div>
       </div>;
     }
 
