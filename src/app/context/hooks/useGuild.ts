@@ -22,7 +22,7 @@ export function useGuild(
   const [guildMembersList, setGuildMembersList] = useState<any[]>([]);
   const [newGuildName, setNewGuildName] = useState<string>("");
   const [allGuildsDbList, setAllGuildsDbList] = useState<any[]>([]);
-  const [guildSubTab, setGuildSubTab] = useState<"members" | "settings" | "join">("members");
+  const [guildSubTab, setGuildSubTab] = useState<"home" | "members" | "settings">("home");
   const [guildLevelMaster, setGuildLevelMaster] = useState<any[]>([]);
   const [guildXpActionMaster, setGuildXpActionMaster] = useState<any[]>([]);
   const [updatingAlignment, setUpdatingAlignment] = useState<boolean>(false);
@@ -136,8 +136,8 @@ export function useGuild(
 
   const handleUpdateGuildAlignment = async (mainAlign: string, subAlign: string) => {
     if (!session || !userGuild || !userGuildMember) return;
-    if (userGuildMember.role !== "MASTER") {
-      setConfirmDialogConfig({ isOpen: true, title: "属性変更", message: "ギルドマスターのみ属性を変更できます。", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
+    if (!canEditGuildSettings(userGuildMember.role)) {
+      setConfirmDialogConfig({ isOpen: true, title: "属性変更", message: "ギルドマスターまたは副団長のみ属性を変更できます。", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
       return;
     }
     setUpdatingAlignment(true);
@@ -313,10 +313,10 @@ export function useGuild(
     }
     setConfirmDialogConfig({
       isOpen: true,
-      title: isMaster ? "ギルド解散確認" : "ギルド脱退確認",
+      title: isMaster ? "ギルドを解散" : "ギルドを脱退",
       message: isMaster
-        ? "ギルドを解散します。この操作は取り消せません。"
-        : "ギルドから脱退します。脱退後24時間は加入・作成できません。",
+        ? `『${userGuild.name}』を解散しますか？この操作は取り消せません。`
+        : `『${userGuild.name}』を脱退しますか？`,
       onConfirm: () => {
         setConfirmDialogConfig(null);
         void executeLeaveGuild();
@@ -325,6 +325,7 @@ export function useGuild(
       confirmText: isMaster ? "解散する" : "脱退する",
       cancelText: "キャンセル",
       isDanger: true,
+      presentation: "canonical",
     });
   };
 

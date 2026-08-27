@@ -18,7 +18,8 @@ const guildUi = readFileSync(new URL("../src/app/components/GuildTab.tsx", impor
 const rankingUi = readFileSync(new URL("../src/app/components/RankingTab.tsx", import.meta.url), "utf8");
 const context = readFileSync(new URL("../src/app/context/GameContext.tsx", import.meta.url), "utf8");
 assert.ok(guildUi.includes('value="OPEN_JOIN"') && guildUi.includes('value="APPLICATION_REQUIRED"') && guildUi.includes('value="CLOSED"'));
-assert.ok(guildUi.includes("5,000キャッシュを献金してギルドEXPを20"));
+assert.ok(guildUi.includes("資金＆ショップ") && guildUi.includes("COMING SOON"));
+assert.ok(!guildUi.includes("ギルド献金") && !guildUi.includes("装飾ショップ"));
 assert.ok(!guildUi.includes("GvG / PRE-OPEN"));
 assert.ok(!guildUi.includes("HP +20% / ATK +20% ボーナス"));
 assert.ok(!guildUi.includes("友達") && !guildUi.includes("Friend"));

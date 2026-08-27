@@ -2,21 +2,12 @@
 
 import React, { useEffect, useState } from "react";
 import { useGame } from "../context/GameContext";
-import { CHARACTERS_MASTER } from "@/utils/game_constants";
 import "./GuildTab.css";
-import SubTabNav from "./ui/SubTabNav";
 import OutlawCard from "./ui/OutlawCard";
 import OutlawButton from "./ui/OutlawButton";
-import FullScreenPanel from "./ui/FullScreenPanel";
+import UserIdentityRow from "./profile/UserIdentityRow";
 import { supabase } from "@/utils/supabase";
 import { GUILD_PRODUCTION, guildMemberCap, guildRecruitmentMode, type GuildRecruitmentMode } from "@/domain/gameplay/canonical/guild_production";
-
-const DECORATIONS_SHOP = [
-  { id: "bg_neon_kabukicho", name: "歌舞伎町ネオン背景", cost: 5000, type: "DECORATION", desc: "鈍く光るネオン街の夜背景" },
-  { id: "bg_industrial_docks", name: "インダストリアルドック背景", cost: 10000, type: "DECORATION", desc: "鉄錆とナイロンギアが似合う倉庫街" },
-  { id: "banner_neon_reign", name: "ネオンレイン称号バナー", cost: 3000, type: "BANNER", desc: "銀の金属ベゼル装飾バナー" },
-  { id: "banner_kabukicho_king", name: "歌舞伎町キング称号バナー", cost: 8000, type: "BANNER", desc: "鈍い光沢を放つ金のバナー" }
-];
 
 function guildRoleLabel(role?: string | null): string {
   if (role === "MASTER") return "ギルドマスター";
@@ -56,20 +47,13 @@ export default function GuildTab() {
     gvgResetLoading,
     getGuildPenaltyState,
     playCyberSe,
-    // 追加の新機能
-    handleDonateToGuild,
-    handleBuyGuildDecoration,
-    handleEquipGuildDecoration,
     guildLevelMaster,
     fetchGuildDetail,
     setShowTribeChatPanel,
-    navigateTab,
     setChatChannel,
-    setChatInput
+    fetchPlayerDetail,
   } = useGame();
 
-  const [selectedMember, setSelectedMember] = useState<any | null>(null);
-  const donateAmount = GUILD_PRODUCTION.donation.cashCost;
   const [guildSearchQuery, setGuildSearchQuery] = useState("");
   const [guildDescriptionDraft, setGuildDescriptionDraft] = useState(userGuild?.description || "");
   const [recruitmentModeDraft, setRecruitmentModeDraft] = useState<GuildRecruitmentMode>(guildRecruitmentMode(userGuild?.recruitment_mode, Boolean(userGuild?.approval_required)));
@@ -80,6 +64,7 @@ export default function GuildTab() {
   const [recommendationsLoading, setRecommendationsLoading] = useState(false);
   const [searchLoading, setSearchLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
+  const [activeMembers7d, setActiveMembers7d] = useState<number | null>(null);
   useEffect(() => {
     if (userGuild) return;
     setRecommendationsLoading(true);
@@ -105,12 +90,19 @@ export default function GuildTab() {
   useEffect(() => {
     setWelcomeDraft(userGuild?.welcome_message || "");
   }, [userGuild?.id, userGuild?.welcome_message]);
+  useEffect(() => {
+    if (!userGuild?.id) {
+      setActiveMembers7d(null);
+      return;
+    }
+    void supabase.rpc("get_public_guild_detail", { p_guild_id: userGuild.id }).then(({ data }) => {
+      setActiveMembers7d(typeof data?.active_members_7d === "number" ? data.active_members_7d : null);
+    });
+  }, [userGuild?.id]);
   const penalty = getGuildPenaltyState();
 
   const isMaster = userGuildMember?.role === "MASTER";
   const isSubMaster = userGuildMember?.role === "SUBMASTER" || userGuildMember?.role === "SUB_MASTER";
-  const canPurchaseDecorations = isMaster || isSubMaster;
-  const canChangeDecorations = isMaster;
   const saveWelcomeMessage = async () => {
     if ((!isMaster && !isSubMaster) || savingWelcome) return;
     setSavingWelcome(true);
@@ -292,85 +284,47 @@ export default function GuildTab() {
 
   return (
     <div className={`view-container guild-main-container ${borderClass} ${decorationClass}`}>
-      
-      {/* ギルド情報ヘッダーエリア */}
-      <div className={`guild-header-hud bg-black-80 p-3 rounded border-bottom-edge ${bannerClass}`}>
-        <div className="flex-row-space-between align-center">
-          <div>
-            <h2 className="guild-title-name text-white font-weight-bold font-size-12">
-              {userGuild.name}
-            </h2>
-            <div className="font-size-8 text-secondary mt-1">
-              レベル: <span className="text-white font-bold">{userGuild.level}</span> (XP: {userGuild.xp}{xpNeeded > 0 ? ` / ${xpNeeded}` : " / MAX"})
+      {guildSubTab === "home" && <div className="guild-my-page-scroll">
+        <section className={`guild-visual-identity ${bannerClass}`} aria-label="ギルド情報">
+          <div className="guild-identity-main">
+            {userGuild.logo_icon && userGuild.logo_icon !== "guild_icon_default.png"
+              ? <img className="guild-identity-icon" src={userGuild.logo_icon} alt="" />
+              : <span className="guild-identity-icon is-default" aria-hidden="true" />}
+            <div className="guild-identity-copy">
+              <strong>{userGuild.name}</strong>
+              <span>Lv.{userGuild.level}　{guildMembersList.length}/{userGuild.member_limit || guildMemberCap(Number(userGuild.level || 1))}人</span>
             </div>
+            <small>{guildRoleLabel(userGuildMember?.role)}</small>
           </div>
-          <div className="text-right">
-            <div className="font-size-7 text-secondary">ギルド資金</div>
-            <div className="font-size-10 text-color-cyan font-bold">
-              {(userGuild.funds || 0).toLocaleString()} キャッシュ
-            </div>
-          </div>
-        </div>
+          <div className="guild-identity-attributes"><span>メイン属性 <b>{guildAlignmentLabel(userGuild.main_alignment)}</b></span><i>×</i><span>サブ属性 <b>{guildAlignmentLabel(userGuild.sub_alignment)}</b></span></div>
+          <div className="guild-level-progress"><span>Lv EXP</span><div className="xp-bar-container"><div className="xp-bar-fill" style={{ width: `${xpPercent}%` }} /></div><small>{xpNeeded > 0 ? `${userGuild.xp} / ${xpNeeded}` : "MAX"}</small></div>
+        </section>
 
-        {/* XPバー */}
-        <div className="xp-bar-container mt-2">
-          <div className="xp-bar-fill" style={{ width: `${xpPercent}%` }} />
-        </div>
-      </div>
+        <section className="guild-status-strip" aria-label="ギルド状況">
+          <div><small>戦績</small><strong>準備中</strong></div>
+          <div><small>直近7日アクティブ</small><strong>{activeMembers7d ?? "-"}人</strong></div>
+          <div><small>資金</small><strong>{Number(userGuild.funds || 0).toLocaleString()}</strong></div>
+        </section>
 
-      <section className="guild-welcome-card" aria-label="TRIBEへようこそ">
-        <div className="guild-welcome-heading">
-          <div><small>歓迎メッセージ</small><strong>{userGuild.name}へようこそ</strong></div>
-          {(isMaster || isSubMaster) && !editingWelcome && (
-            <OutlawButton variant="secondary" onClick={() => setEditingWelcome(true)}>編集</OutlawButton>
-          )}
-        </div>
-        {(isMaster || isSubMaster) && editingWelcome ? (
-          <div className="guild-welcome-editor">
-            <label htmlFor="guild-welcome-message">新メンバーへの歓迎メッセージ</label>
-            <textarea
-              id="guild-welcome-message"
-              value={welcomeDraft}
-              onChange={(event) => setWelcomeDraft(event.target.value)}
-              maxLength={120}
-              rows={3}
-              disabled={savingWelcome}
-            />
-            <div className="guild-welcome-editor-meta"><span>{welcomeDraft.length}/120</span><span>加入後の最初の案内として表示されます。</span></div>
-            <div className="guild-welcome-editor-actions">
-              <OutlawButton variant="secondary" disabled={savingWelcome} onClick={() => { setWelcomeDraft(userGuild.welcome_message || ""); setEditingWelcome(false); }}>キャンセル</OutlawButton>
-              <OutlawButton variant="primary" disabled={savingWelcome} onClick={() => void saveWelcomeMessage()}>{savingWelcome ? "保存中…" : "歓迎文を保存"}</OutlawButton>
-            </div>
-          </div>
-        ) : (
+        <section className="guild-welcome-compact">
+          <strong>ようこそ {userGuild.name} へ</strong>
           <p>{userGuild.welcome_message || "歓迎メッセージは未設定です。"}</p>
-        )}
-        <OutlawButton variant="primary" onClick={() => {
-          setChatChannel("GUILD");
-          setChatInput("はじめまして！よろしくお願いします！");
-          setShowTribeChatPanel(true);
-        }}>挨拶する</OutlawButton>
-        <small>定型文は送信前に編集できます。自動送信されません。</small>
-      </section>
-      <section className="guild-membership-summary" aria-label="所属TRIBE">
-        <div><small>所属情報</small><strong>{userGuild.name}</strong><span>{guildMembersList.length}/{userGuild.member_limit || guildMemberCap(Number(userGuild.level || 1))}名 ・ あなたの役職：{guildRoleLabel(userGuildMember?.role)}</span></div>
-        <div className="guild-membership-actions"><OutlawButton variant="primary" onClick={() => { setChatChannel("GUILD"); setShowTribeChatPanel(true); }}>ギルドチャット</OutlawButton><OutlawButton variant="secondary" onClick={() => navigateTab("raid")}>レイドへ</OutlawButton></div>
-      </section>
-      
-      {/* サブタブメニュー */}
-      <div className="mt-3">
-        <SubTabNav
-          tabs={[
-            { id: "members", label: "メンバー" },
-            { id: "settings", label: "属性設定" },
-            { id: "shop", label: "資金＆ショップ" },
-          ]}
-          activeTabId={guildSubTab}
-          onSelect={setGuildSubTab}
-        />
-      </div>
+        </section>
 
-      <div className="scroll-container flex-1 mt-2">
+        <nav className="guild-action-grid" aria-label="ギルド機能">
+          <button type="button" onClick={() => { setChatChannel("GUILD"); setShowTribeChatPanel(true); }}><strong>ギルドチャット</strong><span>メンバーと話す</span></button>
+          <button type="button" onClick={() => setGuildSubTab("members")}><strong>メンバー</strong><span>{guildMembersList.length}人</span></button>
+          <button type="button" className="is-coming-soon" disabled><strong>抗争</strong><span>準備中</span></button>
+          <button type="button" className="is-coming-soon" disabled><strong>資金＆ショップ</strong><span>COMING SOON</span></button>
+        </nav>
+
+        {(isMaster || isSubMaster) && <button type="button" className="guild-settings-link" onClick={() => setGuildSubTab("settings")}>ギルド設定</button>}
+        <section className="guild-membership-settings"><span>所属設定</span><button type="button" onClick={handleLeaveGuild} disabled={gvgResetLoading}>ギルドを脱退</button></section>
+      </div>}
+
+      {guildSubTab !== "home" && <div className="guild-secondary-view">
+        <div className="guild-secondary-heading"><button type="button" onClick={() => setGuildSubTab("home")} aria-label="ギルドマイページへ戻る">←</button><strong>{guildSubTab === "members" ? "メンバー" : "ギルド設定"}</strong></div>
+        <div className="scroll-container flex-1">
         
         {/* 1. メンバーリスト表示 */}
         {guildSubTab === "members" && (
@@ -394,62 +348,33 @@ export default function GuildTab() {
                 </div>
               </OutlawCard>
             )}
-            <div className="flex justify-between items-center guild-quit-btn-row p-1">
-              <span className="font-size-8 text-secondary">メンバー階級と貢献度（タップで詳細）</span>
-              <OutlawButton 
-                variant="danger"
-                onClick={handleLeaveGuild} 
-                disabled={gvgResetLoading}
-                className="font-size-8 py-1 px-3"
-              >
-                {gvgResetLoading ? <div className="spinner" /> : isMaster ? "解散 / 脱退" : "ギルド脱退"}
-              </OutlawButton>
-            </div>
+            <p className="guild-member-list-note">ギルドマスター、副団長、メンバーの順に表示します。</p>
 
-            <div className="list-container">
-              {guildMembersList.map((m: any) => {
+            <div className="guild-member-list">
+              {[...guildMembersList].sort((a: any, b: any) => {
+                const order = (role: string) => role === "MASTER" ? 0 : ["SUBMASTER", "SUB_MASTER"].includes(role) ? 1 : 2;
+                return order(a.role) - order(b.role);
+              }).map((m: any) => {
                 const isMe = m.user_id === userGuildMember.user_id;
                 const isLoaderPending = m.userLevel === null;
 
                 return (
                   <div 
                     key={m.id} 
-                    className="list-item flex-col-gap-1 p-2 guild-member-card interactive-member-item active-scale-effect"
-                    onClick={() => {
-                      if (!isLoaderPending) {
-                        setSelectedMember(m);
-                        playCyberSe("click");
-                      }
-                    }}
+                    className="guild-member-row"
                   >
-                    <div className="flex-row-space-between align-center w-full">
-                      <div className="flex items-center gap-2 guild-member-info">
-                        <img 
-                          src={m.users?.avatar_url || "/reiji_transparent_asset.png"} 
-                          className="rounded-full border-subtle guild-member-img"
-                          alt={m.users?.username} 
-                        />
-                        <div className="flex flex-col">
-                          <span className="font-size-9 font-weight-bold text-white">{m.users?.username || "名無しの幹部"}</span>
-                          {isLoaderPending ? (
-                            <div className="member-loading-spinner" />
-                          ) : (
-                            <span className="font-size-7 text-secondary">
-                              Lv.{m.userLevel} ｜ 総合力: {m.userPower?.toLocaleString() ?? 0}
-                            </span>
-                          )}
-                        </div>
-                        {isMe && <span className="font-size-7 text-color-cyan font-bold">(あなた)</span>}
-                      </div>
-                      <span className="font-size-8 bg-black-60 px-2 py-0.5 rounded text-secondary border border-gray-800">
-                        {guildRoleLabel(m.role)}
-                      </span>
-                    </div>
-
-                    <div className="flex-row-space-between align-center mt-2 font-size-8 text-secondary border-t border-gray-900 pt-2 w-full">
-                      <span>週間貢献度: <span className="text-white font-bold">{m.weekly_contribution || 0}</span></span>
+                    <UserIdentityRow
+                      userName={m.users?.username || "プレイヤー"}
+                      guildName={userGuild.name}
+                      title={isMe ? "あなた" : undefined}
+                      leaderCharacterId={m.users?.favorite_character_id}
+                      onOpen={!isLoaderPending ? () => { playCyberSe("click"); void fetchPlayerDetail(m.user_id); } : undefined}
+                      variant="compact"
+                    />
+                    <span className="guild-member-role">{guildRoleLabel(m.role)}</span>
+                    {(isMaster || isSubMaster) && !isMe && <div className="guild-member-management">
                       {isMaster && !isMe && (
-                        <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+                        <>
                           <OutlawButton 
                             variant="secondary"
                             className="font-size-7 py-0.5 px-2" 
@@ -471,10 +396,10 @@ export default function GuildTab() {
                           >
                             追放
                           </OutlawButton>
-                        </div>
+                        </>
                       )}
                       {isSubMaster && !isMe && (
-                        <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+                        <>
                           {m.role === "MEMBER" ? (
                             <OutlawButton 
                               variant="danger"
@@ -486,9 +411,9 @@ export default function GuildTab() {
                           ) : (
                             <span className="font-size-7 text-secondary">権限なし</span>
                           )}
-                        </div>
+                        </>
                       )}
-                    </div>
+                    </div>}
                   </div>
                 );
               })}
@@ -499,6 +424,18 @@ export default function GuildTab() {
         {/* 2. 属性設定表示 */}
         {guildSubTab === "settings" && (
           <div className="flex-col-gap-3">
+            <OutlawCard>
+              <div className="font-bold text-neon-cyan mb-2">歓迎メッセージ</div>
+              {!editingWelcome ? <>
+                <p className="font-size-8 text-secondary">{userGuild.welcome_message || "歓迎メッセージは未設定です。"}</p>
+                <OutlawButton variant="secondary" className="width-100 mt-2" onClick={() => setEditingWelcome(true)}>編集</OutlawButton>
+              </> : <div className="guild-welcome-editor">
+                <label htmlFor="guild-welcome-message">新メンバーへの歓迎メッセージ</label>
+                <textarea id="guild-welcome-message" value={welcomeDraft} onChange={(event) => setWelcomeDraft(event.target.value)} maxLength={120} rows={3} disabled={savingWelcome} />
+                <div className="guild-welcome-editor-meta"><span>{welcomeDraft.length}/120</span><span>マイページに1〜2行で表示されます。</span></div>
+                <div className="guild-welcome-editor-actions"><OutlawButton variant="secondary" disabled={savingWelcome} onClick={() => { setWelcomeDraft(userGuild.welcome_message || ""); setEditingWelcome(false); }}>キャンセル</OutlawButton><OutlawButton variant="primary" disabled={savingWelcome} onClick={() => void saveWelcomeMessage()}>{savingWelcome ? "保存中…" : "保存"}</OutlawButton></div>
+              </div>}
+            </OutlawCard>
             <OutlawCard>
               <div className="font-bold text-neon-cyan mb-2">加入・公開設定</div>
               <textarea
@@ -542,7 +479,7 @@ export default function GuildTab() {
                         <OutlawButton 
                           key={val}
                           variant={isSel ? "neon" : "secondary"}
-                          disabled={!isMaster}
+                          disabled={!isMaster && !isSubMaster}
                           onClick={() => handleUpdateGuildAlignment(val, userGuild.sub_alignment)}
                           className="flex-1 font-size-8 py-2 font-bold"
                         >
@@ -563,7 +500,7 @@ export default function GuildTab() {
                         <OutlawButton 
                           key={val}
                           variant={isSel ? "neon" : "secondary"}
-                          disabled={!isMaster}
+                          disabled={!isMaster && !isSubMaster}
                           onClick={() => handleUpdateGuildAlignment(userGuild.main_alignment, val)}
                           className="flex-1 font-size-8 py-2 font-bold"
                         >
@@ -578,182 +515,8 @@ export default function GuildTab() {
           </div>
         )}
 
-        {/* 3. ギルド資金＆装飾ショップ */}
-        {guildSubTab === "shop" && (
-          <div className="flex-col-gap-3 p-1">
-            
-            {/* 献金モジュール */}
-            <OutlawCard glowLine="left">
-              <div className="font-bold text-neon-cyan mb-1">ギルド献金</div>
-              <p className="font-size-8 text-secondary mt-1 mb-3">
-                1日1回、5,000キャッシュを献金してギルドEXPを20獲得します。
-              </p>
-              
-              <div className="flex align-center justify-between gap-3 mt-2">
-                <div className="bg-black-60 border-subtle text-white font-size-9 p-2 rounded flex-1">5,000キャッシュ → ギルドEXP +20</div>
-                <OutlawButton 
-                  variant="primary"
-                  onClick={() => handleDonateToGuild(donateAmount)}
-                  disabled={cash < donateAmount || gvgResetLoading}
-                >
-                  献金する
-                </OutlawButton>
-              </div>
-              <div className="font-size-7 text-secondary mt-2 text-right">
-                あなたの所持金: <span className="text-white font-bold">{cash.toLocaleString()}キャッシュ</span>
-              </div>
-            </OutlawCard>
-
-            {/* 装飾ショップモジュール */}
-            <OutlawCard>
-              <div className="font-bold mb-1">装飾ショップ</div>
-              <p className="font-size-8 text-secondary mt-1 mb-3">
-                ギルド資金を使用して、マイページ背景装飾や称号バナーを購入します。購入はマスター／副マスター、適用・解除はマスターのみ行えます。
-              </p>
-
-              <div className="flex-col-gap-2">
-                {DECORATIONS_SHOP.map(item => {
-                  const unlockField = item.type === "DECORATION" ? "unlocked_decorations" : "unlocked_banners";
-                  const equipField = item.type === "DECORATION" ? "equipped_decoration" : "equipped_banner";
-                  
-                  const unlockedList = Array.isArray(userGuild[unlockField]) ? userGuild[unlockField] : [];
-                  const isUnlocked = unlockedList.includes(item.id);
-                  const isEquipped = userGuild[equipField] === item.id;
-
-                  const canAfford = (userGuild.funds || 0) >= item.cost;
-
-                  return (
-                    <div key={item.id} className="shop-item-card p-3 rounded bg-black-60 border border-gray-800 mt-2 flex-row-space-between align-center">
-                      <div>
-                        <div className="font-size-9 font-weight-bold text-white flex items-center gap-2">
-                          {item.name}
-                          <span className="font-size-7 text-secondary bg-gray-900 border border-gray-800 px-2 py-0.5 rounded">
-                            {item.type === "DECORATION" ? "背景" : "バナー"}
-                          </span>
-                        </div>
-                        <div className="font-size-8 text-secondary mt-1">{item.desc}</div>
-                        <div className="font-size-8 text-color-cyan font-bold mt-1">コスト: {item.cost.toLocaleString()} 資金</div>
-                      </div>
-
-                      <div className="flex gap-2">
-                        {!isUnlocked ? (
-                          <OutlawButton 
-                            variant="secondary"
-                            disabled={!canPurchaseDecorations || !canAfford || gvgResetLoading}
-                            onClick={() => handleBuyGuildDecoration(item.id, item.cost, item.type as any)}
-                            className="font-size-8 px-3 py-1 text-neon-magenta"
-                          >
-                            購入
-                          </OutlawButton>
-                        ) : isEquipped ? (
-                          <OutlawButton 
-                            variant="secondary"
-                            disabled={!canChangeDecorations || gvgResetLoading}
-                            onClick={() => handleEquipGuildDecoration(item.type as any, null)}
-                            className="font-size-8 px-3 py-1 text-gray-400"
-                          >
-                            解除
-                          </OutlawButton>
-                        ) : (
-                          <OutlawButton 
-                            variant="primary"
-                            disabled={!canChangeDecorations || gvgResetLoading}
-                            onClick={() => handleEquipGuildDecoration(item.type as any, item.id)}
-                            className="font-size-8 px-3 py-1"
-                          >
-                            適用
-                          </OutlawButton>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </OutlawCard>
-
-          </div>
-        )}
-
-      </div>
-
-      {/* --- 構成員詳細プロフィール紹介ポップアップモーダル --- */}
-      {selectedMember && (
-        <FullScreenPanel
-          onClose={() => setSelectedMember(null)}
-          title="メンバープロフィール"
-        >
-          <div className="p-4 text-left">
-            {/* 基本情報 */}
-            <div className="flex items-center gap-3">
-              <img 
-                src={selectedMember.users?.avatar_url || "/reiji_transparent_asset.png"} 
-                className="rounded-full border-cyan modal-profile-img" 
-                alt="profile"
-              />
-              <div>
-                <h3 className="font-size-11 font-weight-bold text-white">
-                  {selectedMember.users?.username || "名無しの幹部"}
-                </h3>
-                <div className="flex gap-2 mt-1 align-center">
-                  <span className="font-size-7 bg-gray-900 border border-gray-800 px-2 py-0.5 rounded text-secondary">
-                    {guildRoleLabel(selectedMember.role)}
-                  </span>
-                  <span className="font-size-8 text-white font-bold">
-                    Lv.{selectedMember.userLevel || 1}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* 自己紹介(bio) */}
-            <div className="mt-3 p-2 rounded bg-black-60 border border-gray-800 font-size-8 text-secondary">
-              {selectedMember.users?.bio || "自己紹介は登録されていません。"}
-            </div>
-
-            {/* ステータス */}
-            <div className="grid grid-cols-2 gap-2 mt-3 font-size-8">
-              <div className="p-2 rounded bg-gray-900 border border-gray-800 flex justify-between">
-                <span className="text-secondary">総合力</span>
-                <span className="text-white font-bold">{(selectedMember.userPower || 0).toLocaleString()}</span>
-              </div>
-              <div className="p-2 rounded bg-gray-900 border border-gray-800 flex justify-between">
-                <span className="text-secondary">累積貢献度</span>
-                <span className="text-white font-bold">{(selectedMember.total_contribution || 0).toLocaleString()}</span>
-              </div>
-              <div className="p-2 rounded bg-gray-900 border border-gray-800 flex justify-between col-span-2">
-                <span className="text-secondary">週間貢献度</span>
-                <span className="text-color-cyan font-bold">{(selectedMember.weekly_contribution || 0).toLocaleString()}</span>
-              </div>
-            </div>
-
-            {/* 現状パーティ(5名)表示 */}
-            <div className="mt-4 pt-3 border-t border-gray-800">
-              <span className="font-size-8 text-secondary font-bold block mb-2">防衛パーティ（現状編成）</span>
-              <div className="flex justify-between gap-1">
-                {Array.isArray(selectedMember.partyCharIds) && selectedMember.partyCharIds.length > 0 ? (
-                  selectedMember.partyCharIds.map((charId: string, idx: number) => {
-                    const master = CHARACTERS_MASTER.find(c => c.id === charId);
-                    return (
-                      <div key={idx} className="party-slot-avatar flex flex-col items-center flex-1">
-                        <img 
-                          src={master?.img || "/reiji_transparent_asset.png"} 
-                          className="rounded border border-gray-800 bg-black-80 w-10 h-10 object-cover"
-                          alt={master?.jpName}
-                        />
-                        <span className="font-size-7 text-secondary mt-1 truncate w-full text-center">
-                          {master?.jpName || "不明"}
-                        </span>
-                      </div>
-                    );
-                  })
-                ) : (
-                  <span className="font-size-8 text-secondary text-center w-full py-2">未編成またはロード中...</span>
-                )}
-              </div>
-            </div>
-          </div>
-        </FullScreenPanel>
-      )}
+        </div>
+      </div>}
 
     </div>
   );
