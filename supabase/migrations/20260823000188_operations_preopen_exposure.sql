@@ -88,31 +88,56 @@ begin
 end $$;
 
 -- Preserve the pre-freeze implementations under service-only core names.
-alter function public.search_user_by_name(text) rename to search_user_by_name_core_20260823;
-alter function public.send_friend_request(uuid) rename to send_friend_request_core_20260823;
-alter function public.accept_friend_request(uuid) rename to accept_friend_request_core_20260823;
-alter function public.reject_friend_request(uuid) rename to reject_friend_request_core_20260823;
-alter function public.remove_friend(uuid) rename to remove_friend_core_20260823;
-alter function public.get_friend_helper_loadout(uuid) rename to get_friend_helper_loadout_core_20260823;
+do $converge_feature_wrappers$
+declare
+  v_signatures text[]:=array[
+    'search_user_by_name(text)','send_friend_request(uuid)','accept_friend_request(uuid)',
+    'reject_friend_request(uuid)','remove_friend(uuid)','get_friend_helper_loadout(uuid)',
+    'buy_normal_shop_product(uuid,text)','purchase_monthly_pass(uuid)','claim_daily_pass_reward(uuid)'
+  ];
+  v_core_names text[]:=array[
+    'search_user_by_name_core_20260823','send_friend_request_core_20260823','accept_friend_request_core_20260823',
+    'reject_friend_request_core_20260823','remove_friend_core_20260823','get_friend_helper_loadout_core_20260823',
+    'buy_normal_shop_product_core_20260823','purchase_monthly_pass_core_20260823','claim_daily_pass_reward_core_20260823'
+  ];
+  v_index integer;
+  v_current text;
+  v_core_signature text;
+begin
+  for v_index in 1..array_length(v_signatures,1) loop
+    v_core_signature:=v_core_names[v_index]||substring(v_signatures[v_index] from position('(' in v_signatures[v_index]));
+    if to_regprocedure('public.'||v_core_signature) is null then
+      if to_regprocedure('public.'||v_signatures[v_index]) is null then
+        raise exception 'required feature function is missing: %',v_signatures[v_index] using errcode='P0002';
+      end if;
+      execute format('alter function public.%s rename to %I',v_signatures[v_index],v_core_names[v_index]);
+    else
+      select pg_get_functiondef(to_regprocedure('public.'||v_signatures[v_index])) into v_current;
+      if v_current is null
+         or position(v_core_names[v_index] in v_current)=0
+         or position('assert_feature_mutation_allowed' in v_current)=0 then
+        raise exception 'feature wrapper does not match known 00188 state: %',v_signatures[v_index];
+      end if;
+    end if;
+  end loop;
+end;
+$converge_feature_wrappers$;
 
-create function public.search_user_by_name(p_username text)
+create or replace function public.search_user_by_name(p_username text)
 returns table(id uuid,username text,avatar_url text,level integer)
 language plpgsql security definer set search_path=public as $$ begin
  perform public.assert_feature_mutation_allowed('FRIEND');
  return query select * from public.search_user_by_name_core_20260823(p_username);
 end $$;
-create function public.send_friend_request(p_receiver_id uuid) returns jsonb language plpgsql security definer set search_path=public as $$ begin perform public.assert_feature_mutation_allowed('FRIEND'); return public.send_friend_request_core_20260823(p_receiver_id); end $$;
-create function public.accept_friend_request(p_request_id uuid) returns jsonb language plpgsql security definer set search_path=public as $$ begin perform public.assert_feature_mutation_allowed('FRIEND'); return public.accept_friend_request_core_20260823(p_request_id); end $$;
-create function public.reject_friend_request(p_request_id uuid) returns jsonb language plpgsql security definer set search_path=public as $$ begin perform public.assert_feature_mutation_allowed('FRIEND'); return public.reject_friend_request_core_20260823(p_request_id); end $$;
-create function public.remove_friend(p_friend_id uuid) returns jsonb language plpgsql security definer set search_path=public as $$ begin perform public.assert_feature_mutation_allowed('FRIEND'); return public.remove_friend_core_20260823(p_friend_id); end $$;
-create function public.get_friend_helper_loadout(p_friend_user_id uuid) returns jsonb language plpgsql security definer set search_path=public as $$ begin perform public.assert_feature_mutation_allowed('FRIEND_HELPER'); return public.get_friend_helper_loadout_core_20260823(p_friend_user_id); end $$;
+create or replace function public.send_friend_request(p_receiver_id uuid) returns jsonb language plpgsql security definer set search_path=public as $$ begin perform public.assert_feature_mutation_allowed('FRIEND'); return public.send_friend_request_core_20260823(p_receiver_id); end $$;
+create or replace function public.accept_friend_request(p_request_id uuid) returns jsonb language plpgsql security definer set search_path=public as $$ begin perform public.assert_feature_mutation_allowed('FRIEND'); return public.accept_friend_request_core_20260823(p_request_id); end $$;
+create or replace function public.reject_friend_request(p_request_id uuid) returns jsonb language plpgsql security definer set search_path=public as $$ begin perform public.assert_feature_mutation_allowed('FRIEND'); return public.reject_friend_request_core_20260823(p_request_id); end $$;
+create or replace function public.remove_friend(p_friend_id uuid) returns jsonb language plpgsql security definer set search_path=public as $$ begin perform public.assert_feature_mutation_allowed('FRIEND'); return public.remove_friend_core_20260823(p_friend_id); end $$;
+create or replace function public.get_friend_helper_loadout(p_friend_user_id uuid) returns jsonb language plpgsql security definer set search_path=public as $$ begin perform public.assert_feature_mutation_allowed('FRIEND_HELPER'); return public.get_friend_helper_loadout_core_20260823(p_friend_user_id); end $$;
 
-alter function public.buy_normal_shop_product(uuid,text) rename to buy_normal_shop_product_core_20260823;
-alter function public.purchase_monthly_pass(uuid) rename to purchase_monthly_pass_core_20260823;
-alter function public.claim_daily_pass_reward(uuid) rename to claim_daily_pass_reward_core_20260823;
-create function public.buy_normal_shop_product(p_user_id uuid,p_product_id text) returns jsonb language plpgsql security definer set search_path=public as $$ begin perform public.assert_feature_mutation_allowed('SHOP'); return public.buy_normal_shop_product_core_20260823(p_user_id,p_product_id); end $$;
-create function public.purchase_monthly_pass(p_user_id uuid) returns jsonb language plpgsql security definer set search_path=public as $$ begin perform public.assert_feature_mutation_allowed('PAYMENT'); return public.purchase_monthly_pass_core_20260823(p_user_id); end $$;
-create function public.claim_daily_pass_reward(p_user_id uuid) returns jsonb language plpgsql security definer set search_path=public as $$ begin perform public.assert_feature_mutation_allowed('PAYMENT'); return public.claim_daily_pass_reward_core_20260823(p_user_id); end $$;
+create or replace function public.buy_normal_shop_product(p_user_id uuid,p_product_id text) returns jsonb language plpgsql security definer set search_path=public as $$ begin perform public.assert_feature_mutation_allowed('SHOP'); return public.buy_normal_shop_product_core_20260823(p_user_id,p_product_id); end $$;
+create or replace function public.purchase_monthly_pass(p_user_id uuid) returns jsonb language plpgsql security definer set search_path=public as $$ begin perform public.assert_feature_mutation_allowed('PAYMENT'); return public.purchase_monthly_pass_core_20260823(p_user_id); end $$;
+create or replace function public.claim_daily_pass_reward(p_user_id uuid) returns jsonb language plpgsql security definer set search_path=public as $$ begin perform public.assert_feature_mutation_allowed('PAYMENT'); return public.claim_daily_pass_reward_core_20260823(p_user_id); end $$;
 
 revoke all on function public.search_user_by_name_core_20260823(text),public.send_friend_request_core_20260823(uuid),
  public.accept_friend_request_core_20260823(uuid),public.reject_friend_request_core_20260823(uuid),public.remove_friend_core_20260823(uuid),
