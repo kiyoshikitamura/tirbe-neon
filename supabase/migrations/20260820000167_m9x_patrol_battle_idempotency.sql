@@ -41,6 +41,18 @@ declare
   end if;
 
   select patrol.*, npc.id as npc_id, npc.npc_name, npc.enemy_data$replacement$;
+  v_later_needle text := $later_needle$ if p_tactic_id not in ('ATTACK_PRIORITY','HEAL_PRIORITY','SKILL_PRIORITY','BALANCED','WEAKNESS_FOCUS') then raise exception 'invalid tactic' using errcode='22023'; end if;
+ select patrol.*,encounter.enemy_tactic,jsonb_array_length(encounter.members) expected_members into v_patrol$later_needle$;
+  v_later_replacement text := $later_replacement$ if p_tactic_id not in ('ATTACK_PRIORITY','HEAL_PRIORITY','SKILL_PRIORITY','BALANCED','WEAKNESS_FOCUS') then raise exception 'invalid tactic' using errcode='22023'; end if;
+ perform pg_advisory_xact_lock(hashtextextended(p_patrol_id::text,0));
+ select replay.id,replay.player_snapshot,replay.enemy_snapshot into v_replay,v_player,v_enemy
+ from public.battle_replay_sessions replay
+ where replay.requester_user_id=v_uid and replay.battle_mode='QUEST'
+   and replay.resolution_authority='PATROL_SERVER' and replay.source_reference_id=p_patrol_id
+   and replay.status in ('PENDING','RESOLVED')
+ order by replay.created_at,replay.id limit 1;
+ if found then return jsonb_build_object('replay_session_id',v_replay,'player_snapshot',v_player,'enemy_snapshot',v_enemy); end if;
+ select patrol.*,encounter.enemy_tactic,jsonb_array_length(encounter.members) expected_members into v_patrol$later_replacement$;
 begin
   select pg_get_functiondef(to_regprocedure('public.create_patrol_battle_replay(uuid,text)'))
   into v_definition;
@@ -53,17 +65,33 @@ begin
   v_definition := replace(v_definition, chr(13), '');
   v_needle := replace(v_needle, chr(13), '');
   v_replacement := replace(v_replacement, chr(13), '');
+  v_later_needle := replace(v_later_needle, chr(13), '');
+  v_later_replacement := replace(v_later_replacement, chr(13), '');
   -- Preview environments may already contain this audited patch from the
   -- earlier targeted hotfix even when migration history was not recorded.
   -- Treat that exact canonical replacement as converged instead of failing.
   if position(v_replacement in v_definition) > 0 then
     return;
   end if;
-  if position(v_needle in v_definition) = 0 then
-    raise exception 'patrol replay function does not match the expected canonical definition';
+  if position(v_needle in v_definition) > 0 then
+    v_updated := replace(v_definition, v_needle, v_replacement);
+    execute v_updated;
+    return;
   end if;
-  v_updated := replace(v_definition, v_needle, v_replacement);
-  execute v_updated;
+  -- Quest Gameplay v2 (00185), optionally reconciled by 00195, is the only
+  -- known later canonical variant accepted here. Match its exact audited
+  -- tactic/encounter boundary; unknown bodies remain fail-closed.
+  if position(v_later_replacement in v_definition) > 0 then
+    return;
+  end if;
+  if position(v_later_needle in v_definition) > 0
+     and position('public.canonical_quest_enemy_snapshot' in v_definition) > 0
+     and position('enemy_tactic_id,random_seed,player_snapshot,enemy_snapshot,resolution_authority)' in v_definition) > 0 then
+    v_updated := replace(v_definition, v_later_needle, v_later_replacement);
+    execute v_updated;
+    return;
+  end if;
+  raise exception 'patrol replay function does not match a known canonical definition';
 end;
 $migration$;
 
