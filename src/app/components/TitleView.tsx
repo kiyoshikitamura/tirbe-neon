@@ -2,15 +2,18 @@ import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useGame } from "../context/GameContext";
 import CanonicalDialog from "./ui/CanonicalDialog";
+import UserIdentityRow from "./profile/UserIdentityRow";
 import "./TitleView.css";
 import { markTitleAssetReady } from "../lib/screenAssets";
 
 export default function TitleView() {
-  const { showTitleView, setShowTitleView, authLoading, setupLoading, session, onboardingState, errorMessage, playCyberSe, handleFirstUserInteraction, handleStartNewGame, gameplayResetEligibility, gameplayResetLoading, checkGameplayResetEligibility, handleResetGameplay } = useGame();
+  const { showTitleView, setShowTitleView, authLoading, setupLoading, session, onboardingState, errorMessage, playCyberSe, handleFirstUserInteraction, handleStartNewGame, gameplayResetEligibility, gameplayResetLoading, checkGameplayResetEligibility, handleResetGameplay, username, identityLeaderCharacterId } = useGame();
   const [isGameStartTransition, setIsGameStartTransition] = useState(false);
   const [showResetWarning, setShowResetWarning] = useState(false);
   const [resetAcknowledged, setResetAcknowledged] = useState(false);
   const gameStartRef = useRef(false);
+  const resetTargetUsername = username.trim() || null;
+  const resetTargetReady = Boolean(session?.user?.id && resetTargetUsername);
 
   useEffect(() => {
     if (showTitleView) markTitleAssetReady();
@@ -57,7 +60,7 @@ export default function TitleView() {
   } as Record<string, string>)[gameplayResetEligibility?.reason || "UNSUPPORTED"];
 
   const confirmReset = async () => {
-    if (!resetAcknowledged || !gameplayResetEligibility?.eligible || gameplayResetLoading || setupLoading) return;
+    if (!resetTargetReady || !resetAcknowledged || !gameplayResetEligibility?.eligible || gameplayResetLoading || setupLoading) return;
     const succeeded = await handleResetGameplay();
     if (!succeeded) return;
     setShowResetWarning(false);
@@ -103,10 +106,13 @@ export default function TitleView() {
         onClose={() => setShowResetWarning(false)}
         actions={[
           { label: "キャンセル", semantic: "secondary", onClick: () => setShowResetWarning(false) },
-          { label: "データを初期化してはじめる", semantic: "danger", disabled: !resetAcknowledged || !gameplayResetEligibility?.eligible || gameplayResetLoading || setupLoading, onClick: () => void confirmReset() },
+          { label: "データを初期化してはじめる", semantic: "danger", disabled: !resetTargetReady || !resetAcknowledged || !gameplayResetEligibility?.eligible || gameplayResetLoading || setupLoading, onClick: () => void confirmReset() },
         ]}
       >
         <div className="title-reset-warning">
+          <div className="title-reset-target" aria-label={resetTargetUsername ? `初期化対象 ${resetTargetUsername}` : "初期化対象を確認中"}>
+            {resetTargetUsername ? <><small>対象</small><UserIdentityRow variant="compact" userName={resetTargetUsername} leaderCharacterId={identityLeaderCharacterId || null} /></> : <small role="status">対象アカウントを確認しています…</small>}
+          </div>
           <p>現在のゲームデータを初期化します。所持しているキャラクター、スキル、装備、アイテム、ゲームの進行状況は失われ、元に戻せません。</p>
           <label><input type="checkbox" checked={resetAcknowledged} onChange={(event) => setResetAcknowledged(event.target.checked)} />現在のゲームデータが初期化されることを確認しました</label>
           {gameplayResetLoading ? <small role="status">初期化できる状態か確認しています…</small> : resetReasonMessage ? <small role="alert">{resetReasonMessage}</small> : null}

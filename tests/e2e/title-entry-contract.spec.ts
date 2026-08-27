@@ -91,6 +91,9 @@ test("existing resettable save requires acknowledgement and resets through serve
   await page.getByRole("button", { name: "はじめから" }).click();
   const dialog = page.getByRole("dialog", { name: "ゲームデータの初期化" });
   await expect(dialog).toBeVisible();
+  await expect(dialog.getByLabel("初期化対象 継続確認")).toBeVisible();
+  await expect(dialog.getByText("継続確認", { exact: true })).toBeVisible();
+  await expect(dialog.getByText("ACTIVITY", { exact: true })).toHaveCount(0);
   const destructive = dialog.getByRole("button", { name: "データを初期化してはじめる" });
   await expect(destructive).toBeDisabled();
   await dialog.getByRole("checkbox").check();
