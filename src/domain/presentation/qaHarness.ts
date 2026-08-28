@@ -26,9 +26,12 @@ export const QA_PRESENTATION_SCENARIOS = [
   ["first-home-raid", "First Home / Active Raid"],
   ["first-home-guild-out", "First Home / Guild未加入"],
   ["first-home-guild-in", "First Home / Guild加入済み"],
+  ["first-home-guild-pending", "First Home / Guild申請中"],
   ["first-home-favorite-missing", "First Home / Favorite未設定"],
   ["first-home-favorite-invalid", "First Home / Favorite不正"],
   ["first-home-activity-self", "First Home / Activity Self"],
+  ["first-home-character-tall", "First Home / Tall Character"],
+  ["first-home-character-hair", "First Home / Hair Volume Character"],
 ] as const;
 
 export type QaPresentationScenarioId = typeof QA_PRESENTATION_SCENARIOS[number][0];

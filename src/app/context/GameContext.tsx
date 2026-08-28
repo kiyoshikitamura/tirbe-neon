@@ -560,6 +560,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   // back to a formation member when no favorite has been selected.
   const [identityLeaderCharacterId, setIdentityLeaderCharacterId] = useState<string>("");
   const [identityLeaderOwnerUserId, setIdentityLeaderOwnerUserId] = useState<string>("");
+  const [guildAuthorityOwnerUserId, setGuildAuthorityOwnerUserId] = useState<string>("");
   const [activePlayerDetail, setActivePlayerDetail] = useState<any | null>(null);
   const [activeGuildDetail, setActiveGuildDetail] = useState<any | null>(null);
 
@@ -1224,6 +1225,9 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         }
         setPendingGuildJoinRequests(pendingRequests || []);
       }
+      // Membership=null and pending=[] are authoritative only after both
+      // Guild projections above have completed for this authenticated user.
+      setGuildAuthorityOwnerUserId(userId);
 
       // 見回り関連データとマスタデータの同期
       const [{ data: questsData }, { data: canonicalQuestData }, { data: questPoolData }, { data: encounterData }, { data: questProgressionData }] = await Promise.all([
@@ -3748,6 +3752,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     allGuildsDbList, setAllGuildsDbList,
     guildSubTab, setGuildSubTab,
     pendingGuildJoinRequests, setPendingGuildJoinRequests,
+    guildMembershipAuthorityReady: guildAuthorityOwnerUserId === session?.user?.id,
     guildJoinRequests, setGuildJoinRequests,
     selectedLeader, setSelectedLeader,
     identityLeaderCharacterId: identityLeaderOwnerUserId === session?.user?.id ? identityLeaderCharacterId : "",

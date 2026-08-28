@@ -179,16 +179,31 @@ function PublicProfileFixture() {
   }} currentUserId="qa-self" onClose={() => setOpen(false)} onRetry={() => undefined} onDm={() => undefined} /> : <button type="button" onClick={() => setOpen(true)}>公開プロフィールを開く</button>}</GameContext.Provider>;
 }
 
-type HomeScenario = "first-home-fresh" | "first-home-raid" | "first-home-guild-out" | "first-home-guild-in" | "first-home-favorite-missing" | "first-home-favorite-invalid" | "first-home-activity-self";
+type HomeScenario = "first-home-fresh" | "first-home-raid" | "first-home-guild-out" | "first-home-guild-in" | "first-home-guild-pending" | "first-home-favorite-missing" | "first-home-favorite-invalid" | "first-home-activity-self" | "first-home-character-tall" | "first-home-character-hair";
 
 function ProductionHomeFixture({ scenario }: { scenario: HomeScenario }) {
   const [openedProfileId, setOpenedProfileId] = useState<string | null>(null);
+  const authorityStartsPending = scenario === "first-home-guild-in" || scenario === "first-home-guild-out" || scenario === "first-home-guild-pending";
+  const [ctaAuthorityReady, setCtaAuthorityReady] = useState(!authorityStartsPending);
   const homeLeader: any = findCharacter("アゲハ");
   const raidActive = scenario === "first-home-raid";
   const guildJoined = scenario === "first-home-guild-in";
-  const activationComplete = scenario === "first-home-guild-out" || guildJoined;
-  const favoriteCharacterId = scenario === "first-home-favorite-missing" ? null : scenario === "first-home-favorite-invalid" ? "invalid-character" : homeLeader.id;
+  const activationComplete = scenario === "first-home-guild-out" || scenario === "first-home-guild-pending" || guildJoined;
+  const favoriteCharacterId = scenario === "first-home-favorite-missing"
+    ? null
+    : scenario === "first-home-favorite-invalid"
+      ? "invalid-character"
+      : scenario === "first-home-character-tall"
+        ? "char_kengo_01"
+        : scenario === "first-home-character-hair"
+          ? "char_alice_01"
+          : homeLeader.id;
   const noop = () => undefined;
+  useEffect(() => {
+    if (!authorityStartsPending) return;
+    const timer = window.setTimeout(() => setCtaAuthorityReady(true), 1500);
+    return () => window.clearTimeout(timer);
+  }, [authorityStartsPending]);
   const game = {
     activeTab: "home",
     currentBaseId: "shinjuku",
@@ -214,9 +229,10 @@ function ProductionHomeFixture({ scenario }: { scenario: HomeScenario }) {
     session: null,
     activePatrols: [],
     onboardingState: { tutorial_step: "AUTHENTICATION" },
-    userGuildMember: guildJoined ? { role: "MEMBER" } : null,
-    userGuild: guildJoined ? { name: "NEON CREW" } : null,
-    pendingGuildJoinRequests: [],
+    userGuildMember: guildJoined && ctaAuthorityReady ? { role: "MEMBER" } : null,
+    userGuild: guildJoined && ctaAuthorityReady ? { name: "NEON CREW" } : null,
+    pendingGuildJoinRequests: scenario === "first-home-guild-pending" && ctaAuthorityReady ? [{ id: "qa-pending-request" }] : [],
+    guildMembershipAuthorityReady: ctaAuthorityReady,
     featureOperatingStates: [],
     username: "NEON-R",
     userLevel: 2,
@@ -239,11 +255,16 @@ function ProductionHomeFixture({ scenario }: { scenario: HomeScenario }) {
     ? ["first_pvp", "ranking_viewed", "first_raid", "guild_activation", "activation_mission_handoff"]
     : raidActive ? ["first_pvp", "ranking_viewed"] : [];
   const activityIsSelf = scenario === "first-home-activity-self";
-  const activities = [{ id: "qa-activity", activity_type: "SSR_CHARACTER", actor_user_id: activityIsSelf ? "qa-self" : "other-user", actor_display_name: activityIsSelf ? "NEON-R" : "KAI", actor_favorite_character_id: activityIsSelf ? homeLeader.id : "char_reiji_01", created_at: new Date().toISOString() }];
+  const activities = [
+    { id: "qa-activity-1", activity_type: "SSR_CHARACTER", actor_user_id: activityIsSelf ? "qa-self" : "other-user", actor_display_name: activityIsSelf ? "NEON-R" : "KAI", actor_favorite_character_id: activityIsSelf ? homeLeader.id : "char_reiji_01", actor_guild_name: "NIGHT CREW", created_at: "2026-08-28T10:15:00+09:00" },
+    { id: "qa-activity-2", activity_type: "GUILD_CREATED", actor_user_id: activityIsSelf ? "other-user" : "qa-self", actor_display_name: activityIsSelf ? "KAI" : "NEON-R", actor_favorite_character_id: activityIsSelf ? "char_reiji_01" : homeLeader.id, actor_guild_name: "NEON CREW", created_at: "2026-08-28T09:45:00+09:00" },
+    { id: "qa-activity-3", activity_type: "POWER_RANK_1", actor_user_id: "favorite-missing-user", actor_display_name: "NOIR", actor_favorite_character_id: null, actor_guild_name: null, created_at: "2026-08-27T23:30:00+09:00" },
+    ...Array.from({ length: 9 }, (_, index) => ({ id: `qa-activity-${index + 4}`, activity_type: index % 2 === 0 ? "SSR_CHARACTER" : "GUILD_CREATED", actor_user_id: `log-user-${index}`, actor_display_name: `PLAYER-${index + 1}`, actor_favorite_character_id: index % 3 === 0 ? null : "char_alice_01", actor_guild_name: index % 2 === 0 ? "NEON CREW" : null, created_at: `2026-08-${String(27 - index).padStart(2, "0")}T20:00:00+09:00` })),
+  ];
   return <GameContext.Provider value={game}>
-    <div className="qa-production-home" data-home-scenario={scenario} data-raid-active={String(raidActive)} data-guild-joined={String(guildJoined)}>
+    <div className="qa-production-home" data-home-scenario={scenario} data-raid-active={String(raidActive)} data-guild-joined={String(guildJoined)} data-cta-authority-ready={String(ctaAuthorityReady)}>
       <PageShell header={<Header />} footer={<Footer />}>
-        <HomeTab qaState={{ socialActivities: activities, funnelMilestones: milestones }} />
+        <HomeTab qaState={{ socialActivities: activities, funnelMilestones: milestones, ctaAuthorityReady }} />
         {openedProfileId && <output data-opened-profile-id={openedProfileId} />}
       </PageShell>
     </div>

@@ -5,9 +5,26 @@ const viewports = [
   { width: 412, height: 915 },
 ] as const;
 
-async function openHomeScenario(page: Page, scenario: "first-home-fresh" | "first-home-raid" | "first-home-guild-out" | "first-home-guild-in" | "first-home-favorite-missing" | "first-home-favorite-invalid" | "first-home-activity-self") {
+type HomeScenario = "first-home-fresh" | "first-home-raid" | "first-home-guild-out" | "first-home-guild-in" | "first-home-guild-pending" | "first-home-favorite-missing" | "first-home-favorite-invalid" | "first-home-activity-self" | "first-home-character-tall" | "first-home-character-hair";
+
+async function openHomeScenario(page: Page, scenario: HomeScenario) {
   await page.goto(`/qa/presentation?scenario=${scenario}`);
   await expect(page.locator(`[data-home-scenario="${scenario}"]`)).toBeVisible();
+}
+
+async function installPrimaryCtaObserver(page: Page) {
+  await page.addInitScript(() => {
+    const observed: string[] = [];
+    (window as Window & { __HOME_CTA_OBSERVED__?: string[] }).__HOME_CTA_OBSERVED__ = observed;
+    const capture = () => {
+      const text = document.querySelector<HTMLElement>(".mypage-primary-cta")?.textContent?.trim();
+      if (text) observed.push(text);
+    };
+    document.addEventListener("DOMContentLoaded", () => {
+      new MutationObserver(capture).observe(document.documentElement, { childList: true, subtree: true, characterData: true });
+      capture();
+    });
+  });
 }
 
 const resumeSnapshot = {
@@ -113,7 +130,8 @@ for (const viewport of viewports) {
 
     const activity = page.locator(".mypage-live-ticker--visual");
     await expect(activity).toContainText("ACTIVITY");
-    await expect(activity.getByRole("button", { name: "KAIのプロフィールを開く" })).toBeVisible();
+    await expect(activity).toHaveAttribute("aria-label", "アクティビティ履歴を開く");
+    await expect(activity.locator(".user-identity-row")).toContainText("KAI");
     await expect(activity).toContainText("SSRを獲得");
     await expect(page.locator(".mypage-leader-layer.is-ssr")).toBeVisible();
     await expect(page.locator(".mypage-visual-area")).not.toHaveClass(/mypage-event-raid/);
@@ -257,14 +275,39 @@ test("Home uses favorite_character_id instead of the formation leader and keeps 
       visualHeight: visual.getBoundingClientRect().height,
       objectFit: getComputedStyle(image).objectFit,
       transform: getComputedStyle(image).transform,
+      scale: getComputedStyle(figure).getPropertyValue("--character-home-scale").trim(),
+      verticalOffset: getComputedStyle(figure).getPropertyValue("--character-home-offset-y").trim(),
       overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
     };
   });
   expect(geometry.figureHeight).toBe(geometry.visualHeight);
   expect(geometry.objectFit).toBe("contain");
   expect(geometry.transform).not.toBe("none");
+  expect(geometry.scale).toBe("1.34");
+  expect(geometry.verticalOffset).toBe("6px");
   expect(geometry.overflow).toBeLessThanOrEqual(1);
 });
+
+for (const scenario of ["first-home-fresh", "first-home-character-tall", "first-home-character-hair"] as const) {
+  test(`Cowboy Shot keeps the frozen scale and lower vertical position for ${scenario}`, async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await openHomeScenario(page, scenario);
+    const geometry = await page.locator(".character-presentation-home-hero").evaluate((figure) => {
+      const image = figure.querySelector<HTMLImageElement>(".character-presentation-character")!;
+      const style = getComputedStyle(figure);
+      return {
+        scale: style.getPropertyValue("--character-home-scale").trim(),
+        verticalOffset: style.getPropertyValue("--character-home-offset-y").trim(),
+        imageTransform: getComputedStyle(image).transform,
+        overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      };
+    });
+    expect(geometry.scale).toBe("1.34");
+    expect(geometry.verticalOffset).toBe("6px");
+    expect(geometry.imageTransform).not.toBe("none");
+    expect(geometry.overflow).toBeLessThanOrEqual(1);
+  });
+}
 
 for (const scenario of ["first-home-favorite-missing", "first-home-favorite-invalid"] as const) {
   test(`Home renders the canonical placeholder without formation fallback for ${scenario}`, async ({ page }) => {
@@ -283,9 +326,25 @@ test("Activity uses shared identity and respects reduced motion", async ({ page 
   await openHomeScenario(page, "first-home-fresh");
   const ticker = page.locator(".mypage-live-ticker--visual");
   await expect(ticker.locator(".user-identity-row .character-presentation-icon")).toBeVisible();
-  await ticker.getByRole("button", { name: "KAIのプロフィールを開く" }).click();
+  await ticker.click();
+  const dialog = page.getByRole("dialog", { name: "アクティビティ履歴" });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.locator(".mypage-activity-log-row")).toHaveCount(12);
+  await expect(dialog.locator("time")).toHaveCount(12);
+  const dialogGeometry = await dialog.evaluate((node) => {
+    const body = node.querySelector<HTMLElement>(".canonical-dialog-body")!;
+    return {
+      bodyScrolls: body.scrollHeight > body.clientHeight,
+      horizontalOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    };
+  });
+  expect(dialogGeometry.bodyScrolls).toBe(true);
+  expect(dialogGeometry.horizontalOverflow).toBeLessThanOrEqual(1);
+  await dialog.getByRole("button", { name: "KAIのプロフィールを開く", exact: true }).click();
   await expect(page.locator('[data-opened-profile-id="other-user"]')).toBeAttached();
+  await expect(dialog.locator(".character-presentation-missing").first()).toBeVisible();
   expect(await ticker.evaluate((node) => getComputedStyle(node).animationName)).toContain("mypage-activity-enter");
+  await page.screenshot({ path: "test-results/first-home-activity-log-390x844.png", fullPage: false });
 
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.reload();
@@ -296,7 +355,9 @@ test("Activity uses shared identity and respects reduced motion", async ({ page 
 test("Activity self identity opens the current user profile authority", async ({ page }) => {
   await page.setViewportSize({ width: 412, height: 915 });
   await openHomeScenario(page, "first-home-activity-self");
-  const identity = page.getByRole("button", { name: "NEON-Rのプロフィールを開く" });
+  await page.locator(".mypage-live-ticker--visual").click();
+  const dialog = page.getByRole("dialog", { name: "アクティビティ履歴" });
+  const identity = dialog.getByRole("button", { name: "NEON-Rのプロフィールを開く", exact: true });
   await expect(identity.locator(".character-presentation-icon")).toBeVisible();
   await identity.click();
   await expect(page.locator('[data-opened-profile-id="qa-self"]')).toBeAttached();
@@ -310,11 +371,40 @@ test("normal Home keeps the Phase 5 Guild CTA contract", async ({ page }) => {
   await expect(page.locator(".mypage-primary-cta")).toHaveCount(0);
 });
 
+test("joined Home never renders a Guild discovery CTA before or after authority readiness", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await installPrimaryCtaObserver(page);
+  await openHomeScenario(page, "first-home-guild-in");
+  await expect(page.locator('[data-home-scenario="first-home-guild-in"]')).toHaveAttribute("data-cta-authority-ready", "false");
+  await expect(page.locator(".mypage-primary-cta")).toHaveCount(0);
+  await expect(page.locator('[data-home-scenario="first-home-guild-in"]')).toHaveAttribute("data-cta-authority-ready", "true", { timeout: 3000 });
+  await expect(page.locator(".mypage-primary-cta")).toHaveCount(0);
+  expect(await page.evaluate(() => (window as Window & { __HOME_CTA_OBSERVED__?: string[] }).__HOME_CTA_OBSERVED__ ?? [])).not.toContain("ギルドに加入しよう");
+
+  await page.reload();
+  await expect(page.locator('[data-home-scenario="first-home-guild-in"]')).toBeVisible();
+  await expect(page.locator('[data-home-scenario="first-home-guild-in"]')).toHaveAttribute("data-cta-authority-ready", "true", { timeout: 3000 });
+  expect(await page.evaluate(() => (window as Window & { __HOME_CTA_OBSERVED__?: string[] }).__HOME_CTA_OBSERVED__ ?? [])).not.toContain("ギルドに加入しよう");
+});
+
+test("unaffiliated and pending Guild CTAs wait for their authoritative projections", async ({ page }) => {
+  await page.setViewportSize({ width: 412, height: 915 });
+  await openHomeScenario(page, "first-home-guild-out");
+  await expect(page.locator('[data-home-scenario="first-home-guild-out"]')).toHaveAttribute("data-cta-authority-ready", "false");
+  await expect(page.locator(".mypage-primary-cta")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /ギルドに加入しよう/ })).toBeVisible({ timeout: 3000 });
+
+  await openHomeScenario(page, "first-home-guild-pending");
+  await expect(page.locator('[data-home-scenario="first-home-guild-pending"]')).toHaveAttribute("data-cta-authority-ready", "false");
+  await expect(page.locator(".mypage-primary-cta")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /ギルド申請を確認/ })).toBeVisible({ timeout: 3000 });
+  await expect(page.getByRole("button", { name: /ギルドに加入しよう/ })).toHaveCount(0);
+});
+
 test("existing-account login uses the shared tutorial surface and CTA geometry", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");
-  await page.getByRole("button", { name: "TAP TO START" }).click();
-  await page.getByRole("button", { name: "既存アカウントでログイン" }).click();
+  await page.getByRole("button", { name: "続きから" }).click();
   const card = page.locator(".auth-card");
   await expect(card).toBeVisible();
   await expect(page.getByRole("button", { name: "Googleでログイン" })).toHaveClass(/semantic-cta--primary/);

@@ -605,7 +605,7 @@
   border: 1px solid rgba(0, 240, 255, 0.28);
   border-radius: 5px;
   text-align: left;
-  cursor: default;
+  cursor: pointer;
 }
 .mypage-live-ticker.raid { border-color: rgba(255, 91, 66, .72); background: linear-gradient(90deg, rgba(255, 72, 48, .17), rgba(28, 15, 19, .9)); }
 .mypage-live-ticker.gvg { border-color: rgba(200, 92, 255, .72); background: linear-gradient(90deg, rgba(180, 57, 255, .17), rgba(25, 14, 31, .9)); }
@@ -620,6 +620,22 @@
 .mypage-live-ticker .user-identity-row strong { font-size:10px; }
 .mypage-live-ticker .user-identity-row small { display:none; }
 @keyframes mypage-activity-enter { from { opacity:0;transform:translateX(-18px); } to { opacity:1;transform:translateX(0); } }
+
+.mypage-activity-log{display:grid;gap:0;min-width:0;white-space:normal}
+.canonical-dialog-body:has(> .mypage-activity-log){max-height:min(64dvh,560px)}
+.mypage-activity-log-row{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:12px;min-width:0;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.09)}
+.mypage-activity-log-row:first-child{padding-top:0}
+.mypage-activity-log-row:last-child{padding-bottom:0;border-bottom:0}
+.mypage-activity-log-row .user-identity-row{min-width:0}
+.mypage-activity-log-detail{display:grid;justify-items:end;gap:2px;min-width:86px;text-align:right}
+.mypage-activity-log-detail strong{color:var(--ui-text-primary);font-size:11px;line-height:1.35}
+.mypage-activity-log-detail time{color:var(--ui-text-muted);font-size:9px;white-space:nowrap}
+.mypage-activity-empty{margin:0;padding:18px 0;text-align:center}
+
+@media(max-width:390px){
+  .mypage-activity-log-row{gap:8px}
+  .mypage-activity-log-detail{min-width:76px}
+}
 
 @media (prefers-reduced-motion: reduce) {
   .mypage-visual-loading::before,
