@@ -326,6 +326,7 @@ test("Activity uses shared identity and respects reduced motion", async ({ page 
   await openHomeScenario(page, "first-home-fresh");
   const ticker = page.locator(".mypage-live-ticker--visual");
   await expect(ticker.locator(".user-identity-row .character-presentation-icon")).toBeVisible();
+  const underlyingActivityIcon = ticker.locator(".character-presentation-icon");
   await ticker.click();
   const dialog = page.getByRole("dialog", { name: "アクティビティ履歴" });
   await expect(dialog).toBeVisible();
@@ -341,12 +342,35 @@ test("Activity uses shared identity and respects reduced motion", async ({ page 
     const bodyRect = body.getBoundingClientRect();
     const firstRect = firstRow.getBoundingClientRect();
     const footerRect = footer.getBoundingClientRect();
+    const overlay = node.parentElement!;
+    const activityIcon = document.querySelector<HTMLElement>(".mypage-live-ticker--visual .character-presentation-icon")!;
+    const activityIconRect = activityIcon.getBoundingClientRect();
+    const overlayStyle = getComputedStyle(overlay);
+    const dialogStyle = getComputedStyle(node);
+    const headerStyle = getComputedStyle(header);
+    const logStyle = getComputedStyle(scroller);
+    const animationHasOpacity = (target: Element) => target.getAnimations().some((animation) => {
+      const keyframes = animation.effect instanceof KeyframeEffect ? animation.effect.getKeyframes() : [];
+      return keyframes.some((keyframe) => typeof keyframe.opacity !== "undefined");
+    });
+    const isOpaque = (color: string) => !/rgba\([^)]*,\s*(?:0(?:\.\d+)?|\.\d+)\s*\)$/.test(color);
     return {
       bodyClips: getComputedStyle(body).overflow === "hidden",
       scrollerScrolls: scroller.scrollHeight > scroller.clientHeight,
       headerOverlap: Math.max(0, headerRect.bottom - firstRect.top),
       bodyStartsBelowHeader: bodyRect.top >= headerRect.bottom - 0.5,
       bodyEndsAboveFooter: bodyRect.bottom <= footerRect.top + 0.5,
+      underlyingActivityIntersectsHeader: activityIconRect.left < headerRect.right
+        && activityIconRect.right > headerRect.left
+        && activityIconRect.top < headerRect.bottom
+        && activityIconRect.bottom > headerRect.top,
+      overlayAnimation: overlayStyle.animationName,
+      dialogAnimation: dialogStyle.animationName,
+      overlayAnimationHasOpacity: animationHasOpacity(overlay),
+      dialogAnimationHasOpacity: animationHasOpacity(node),
+      dialogSurfaceOpaque: isOpaque(dialogStyle.backgroundColor),
+      headerSurfaceOpaque: isOpaque(headerStyle.backgroundColor),
+      bodySurfaceOpaque: isOpaque(logStyle.backgroundColor),
       horizontalOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
     };
   });
@@ -355,6 +379,14 @@ test("Activity uses shared identity and respects reduced motion", async ({ page 
   expect(dialogGeometry.headerOverlap).toBe(0);
   expect(dialogGeometry.bodyStartsBelowHeader).toBe(true);
   expect(dialogGeometry.bodyEndsAboveFooter).toBe(true);
+  expect(dialogGeometry.underlyingActivityIntersectsHeader).toBe(true);
+  expect(dialogGeometry.overlayAnimation).toBe("none");
+  expect(dialogGeometry.dialogAnimation).toBe("mypage-activity-dialog-in");
+  expect(dialogGeometry.overlayAnimationHasOpacity).toBe(false);
+  expect(dialogGeometry.dialogAnimationHasOpacity).toBe(false);
+  expect(dialogGeometry.dialogSurfaceOpaque).toBe(true);
+  expect(dialogGeometry.headerSurfaceOpaque).toBe(true);
+  expect(dialogGeometry.bodySurfaceOpaque).toBe(true);
   expect(dialogGeometry.horizontalOverflow).toBeLessThanOrEqual(1);
   const clippedScrollGeometry = await dialog.evaluate((node) => {
     const header = node.querySelector<HTMLElement>(".canonical-dialog-header")!;
@@ -382,6 +414,13 @@ test("Activity uses shared identity and respects reduced motion", async ({ page 
   expect(await ticker.evaluate((node) => getComputedStyle(node).animationName)).toContain("mypage-activity-enter");
   await page.screenshot({ path: "test-results/first-home-activity-log-390x844.png", fullPage: false });
 
+  await dialog.getByRole("button", { name: "閉じる", exact: true }).first().click();
+  await expect(dialog).toBeHidden();
+  await expect(underlyingActivityIcon).toBeVisible();
+  await ticker.click();
+  await expect(dialog).toBeVisible();
+  await expect(dialog).toHaveCSS("background-color", "rgb(21, 29, 42)");
+
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.reload();
   await expect(ticker).toBeVisible();
@@ -393,6 +432,8 @@ test("Activity self identity opens the current user profile authority", async ({
   await openHomeScenario(page, "first-home-activity-self");
   await page.locator(".mypage-live-ticker--visual").click();
   const dialog = page.getByRole("dialog", { name: "アクティビティ履歴" });
+  await expect(dialog).toHaveCSS("background-color", "rgb(21, 29, 42)");
+  await expect(dialog.locator(".canonical-dialog-header")).toHaveCSS("background-color", "rgb(21, 29, 42)");
   const clipGeometry = await dialog.evaluate((node) => {
     const header = node.querySelector<HTMLElement>(".canonical-dialog-header")!;
     const scroller = node.querySelector<HTMLElement>(".mypage-activity-log")!;
@@ -406,11 +447,13 @@ test("Activity self identity opens the current user profile authority", async ({
     return {
       firstRowClearsHeader: initialFirstTop >= headerBottom,
       lastRowClearsFooter: lastBottom <= footerTop,
+      overlayAnimation: getComputedStyle(node.parentElement!).animationName,
       horizontalOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
     };
   });
   expect(clipGeometry.firstRowClearsHeader).toBe(true);
   expect(clipGeometry.lastRowClearsFooter).toBe(true);
+  expect(clipGeometry.overlayAnimation).toBe("none");
   expect(clipGeometry.horizontalOverflow).toBeLessThanOrEqual(1);
   const identity = dialog.getByRole("button", { name: "NEON-Rのプロフィールを開く", exact: true });
   await expect(identity.locator(".character-presentation-icon")).toBeVisible();
