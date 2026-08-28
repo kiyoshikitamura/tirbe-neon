@@ -109,7 +109,8 @@ export function useAuth(
       // OAuth redirects reload the application. Keep a short-lived marker so
       // an authorized returning player can skip the title after the callback.
       localStorage.setItem(EXISTING_GOOGLE_LOGIN_INTENT_KEY, JSON.stringify({
-        startedAt: Date.now()
+        startedAt: Date.now(),
+        sourceUserId: session?.user?.id || null,
       }));
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",

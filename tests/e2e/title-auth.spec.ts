@@ -376,6 +376,66 @@ test("existing Google login returns directly to the game without the war-entry d
   await expect.poll(async () => page.evaluate(() => localStorage.getItem("tribe_existing_google_login_intent"))).toBeNull();
 });
 
+test("OAuth callback ignores the restored old session and bootstraps the exchanged Google account", async ({ page }) => {
+  await page.addInitScript(() => {
+    if (localStorage.getItem("p0_google_callback_fixture_seeded") === "true") return;
+    localStorage.setItem("p0_google_callback_fixture_seeded", "true");
+    const oldId = "00000000-0000-4000-8000-000000000301";
+    const googleId = "00000000-0000-4000-8000-000000000302";
+    localStorage.setItem("tribe_demo_uuid", oldId);
+    localStorage.setItem("mock_auth_mode", "GOOGLE");
+    localStorage.setItem("mock_oauth_callback_user_id", googleId);
+    localStorage.setItem("mock_oauth_exchange_delay_ms", "250");
+    localStorage.setItem("tribe_existing_google_login_intent", JSON.stringify({
+      startedAt: Date.now(),
+      sourceUserId: oldId,
+    }));
+    sessionStorage.setItem("tribe-neon.home-resume-visual.v1", JSON.stringify({
+      userId: oldId,
+      backgroundUrl: "/backgrounds/town_shinjuku.webp",
+      leaderImageUrl: "/characters/reiji.webp",
+      leaderName: "旧セッション",
+    }));
+    localStorage.setItem("mock_db_users", JSON.stringify([
+      { id: oldId, username: "旧セッション", current_base_id: "shinjuku", favorite_character_id: "char_reiji_01", cash: 1111, neon_diamonds: 11 },
+      { id: googleId, username: "正しいGoogle", current_base_id: "shibuya", favorite_character_id: "char_ageha_01", cash: 8765, neon_diamonds: 87 },
+    ]));
+    localStorage.setItem("mock_db_user_characters", JSON.stringify([
+      { id: `old_${oldId}`, user_id: oldId, character_id: "char_reiji_01", level: 3, awakening_level: 0 },
+      { id: `google_${googleId}`, user_id: googleId, character_id: "char_ageha_01", level: 8, awakening_level: 1 },
+    ]));
+    localStorage.setItem("mock_db_tutorial_progress", JSON.stringify([
+      { user_id: oldId, step_id: "AUTHENTICATION" },
+      { user_id: googleId, step_id: "AUTHENTICATION" },
+    ]));
+    localStorage.setItem("mock_db_user_account_auth_methods", JSON.stringify([
+      { user_id: oldId, auth_method: "GOOGLE" },
+      { user_id: googleId, auth_method: "GOOGLE" },
+    ]));
+    localStorage.setItem("mock_db_guilds", JSON.stringify([
+      { id: "guild-google-owner", name: "正しいギルド", level: 2, member_capacity: 10 },
+    ]));
+    localStorage.setItem("mock_db_guild_members", JSON.stringify([
+      { guild_id: "guild-google-owner", user_id: googleId, role: "MEMBER" },
+    ]));
+  });
+
+  await page.goto("/auth/callback?code=mock-google-code");
+  await page.waitForTimeout(100);
+  await expect(page).toHaveURL(/\/auth\/callback/);
+  await expect(page.getByText("Googleログインを完了しています...")).toBeVisible();
+
+  await expect(page).toHaveURL(/\/$/, { timeout: 10_000 });
+  await expect(page.locator(".header-mobile")).toContainText("正しいGoogle");
+  await expect(page.locator(".header-mobile")).toContainText("正しいギルド");
+  await expect(page.locator(".header-mobile-stat-cash")).toHaveText("8,765");
+  await expect(page.getByAltText("正しいGoogleのリーダー")).toBeVisible();
+  await expect(page.locator(".header-mobile")).not.toContainText("旧セッション");
+  await expect(page.locator('[data-home-resume-shell="true"]')).toHaveCount(0);
+  await expect.poll(async () => page.evaluate(() => localStorage.getItem("tribe_demo_uuid"))).toBe("00000000-0000-4000-8000-000000000302");
+  await expect.poll(async () => page.evaluate(() => localStorage.getItem("tribe_existing_google_login_intent"))).toBeNull();
+});
+
 test("Google identity collision can be cancelled without changing anonymous tutorial data", async ({ page }) => {
   await seedCompletedAnonymous(page);
   await page.addInitScript(() => localStorage.setItem("mock_google_identity_collision", "true"));

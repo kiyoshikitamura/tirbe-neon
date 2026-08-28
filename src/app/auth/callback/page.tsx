@@ -10,6 +10,7 @@ export default function AuthCallbackPage() {
   useEffect(() => {
     let active = true;
     let redirected = false;
+    let callbackExchangeStarted = false;
 
     const returnToApp = (accountSwitch?: "google") => {
       if (!active || redirected) return;
@@ -39,11 +40,18 @@ export default function AuthCallbackPage() {
 
       const code = callbackUrl.searchParams.get("code");
       if (code) {
-        const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+        callbackExchangeStarted = true;
+        const { data: exchangeData, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
         if (exchangeError) {
           setError(exchangeError.message);
           return;
         }
+        if (!exchangeData.session) {
+          setError("Googleログイン後のセッションを確認できませんでした。");
+          return;
+        }
+        returnToApp();
+        return;
       }
 
       const { data, error: sessionError } = await supabase.auth.getSession();
@@ -54,8 +62,11 @@ export default function AuthCallbackPage() {
       if (data.session) returnToApp();
     };
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session) returnToApp();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      // INITIAL_SESSION can be the account that existed before Google OAuth.
+      // Returning on that event races the PKCE code exchange and can restore
+      // the wrong player. Only an actual callback sign-in may complete here.
+      if (!callbackExchangeStarted && event === "SIGNED_IN" && session) returnToApp();
     });
     void completeCallback();
 

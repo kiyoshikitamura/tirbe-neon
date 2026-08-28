@@ -35,7 +35,7 @@ import { beginActionPerformance } from "@/utils/actionPerformance";
 import { useAudio } from "@/audio/AudioProvider";
 import type { SeEvent } from "@/audio/audioContract";
 import { beginAssetTierMetric, finishAssetTierMetric, preloadAssetManifest } from "@/app/lib/screenAssets";
-import { clearHomeResumeSnapshot, markHomeReloadStage } from "@/app/lib/homeResumePresentation";
+import { clearHomeResumeSnapshot, markHomeReloadStage, readHomeResumeSnapshot } from "@/app/lib/homeResumePresentation";
 import { canonicalMissionUiStatus } from "@/domain/gameplay/canonical/missions";
 import { canonicalItemName } from "@/domain/gameplay/canonical/items";
 import { normalizeUserBio } from "@/domain/presentation/userBio";
@@ -95,6 +95,8 @@ export const GameContext = createContext<any>(null);
 
 export function GameProvider({ children }: { children: React.ReactNode }) {
   const lastValidatedAuthUserIdRef = useRef<string | null>(null);
+  const currentAuthUserIdRef = useRef<string | null>(null);
+  const bootstrapSerialRef = useRef<Promise<void>>(Promise.resolve());
   const onboardingCheckRef = useRef<Map<string, Promise<void>>>(new Map());
   const tutorialResultCommitRef = useRef(false);
   const patrolStateRevisionRef = useRef(0);
@@ -565,6 +567,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const [identityLeaderOwnerUserId, setIdentityLeaderOwnerUserId] = useState<string>("");
   const [identityLeaderAuthorityReady, setIdentityLeaderAuthorityReady] = useState(false);
   const [guildAuthorityOwnerUserId, setGuildAuthorityOwnerUserId] = useState<string>("");
+  const [authenticatedProjectionOwnerUserId, setAuthenticatedProjectionOwnerUserId] = useState<string>("");
+  const [authenticatedProjectionError, setAuthenticatedProjectionError] = useState<string | null>(null);
   const [activePlayerDetail, setActivePlayerDetail] = useState<any | null>(null);
   const [activeGuildDetail, setActiveGuildDetail] = useState<any | null>(null);
 
@@ -658,11 +662,44 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   // Persisted sessions are restored automatically. A brand-new anonymous
   // account is created only after the player explicitly starts a new game.
   // ==========================================
+  const resetAuthenticatedProjection = (nextUserId: string | null) => {
+    if (currentAuthUserIdRef.current === nextUserId) return;
+    currentAuthUserIdRef.current = nextUserId;
+    if (readHomeResumeSnapshot()?.userId !== nextUserId) clearHomeResumeSnapshot();
+    setAuthenticatedProjectionOwnerUserId("");
+    setAuthenticatedProjectionError(null);
+    setIdentityLeaderOwnerUserId("");
+    setIdentityLeaderCharacterId("");
+    setIdentityLeaderAuthorityReady(false);
+    setGuildAuthorityOwnerUserId("");
+    setOnboardingState(null);
+    setUsername("");
+    setSelectedLeader("");
+    setUserGuild(null);
+    setUserGuildMember(null);
+    setGuildMembersList([]);
+    setPendingGuildJoinRequests([]);
+    setGuildJoinRequests([]);
+    setUserCharactersDbList([]);
+    setUserSkillsList([]);
+    setUserEquipmentsList([]);
+    setUserItems([]);
+    setCash(0);
+    setDiamonds(0);
+    setUserLevel(1);
+    setUserXp(0);
+    setDailyFreeGachaReady(false);
+    setDailyFreeGachaFlags({ CHARACTER: false, SKILL: false, EQUIPMENT: false });
+    setTotalPower(0);
+    setTotalPowerLoading(Boolean(nextUserId));
+  };
+
   useEffect(() => {
     const restoreAuthSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       markHomeReloadStage("authSessionReady");
       if (session) {
+        resetAuthenticatedProjection(session.user.id);
         setSession(session);
         lastValidatedAuthUserIdRef.current = session.user.id;
         if (isMatchingGoogleOnboardingReturn(session.user.id)) setShowTitleView(false);
@@ -670,6 +707,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         return;
       }
       lastValidatedAuthUserIdRef.current = null;
+      resetAuthenticatedProjection(null);
       clearHomeResumeSnapshot();
       setSession(null);
       setOnboardingState(null);
@@ -681,10 +719,16 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (!session) {
         lastValidatedAuthUserIdRef.current = null;
+        resetAuthenticatedProjection(null);
         setSession(null);
         setOnboardingState(null);
         setIsSetupRequired(false);
         return;
+      }
+      const authUserChanged = currentAuthUserIdRef.current !== session.user.id;
+      if (authUserChanged) {
+        setAuthLoading(true);
+        resetAuthenticatedProjection(session.user.id);
       }
       setSession((current: typeof session) => current
         && current.user.id === session.user.id
@@ -724,6 +768,9 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       const { data, error } = await supabase.rpc("get_current_onboarding_state");
       if (error) throw error;
       let nextState = data as import("./hooks/useAuth").OnboardingState;
+      if (nextState?.user_id !== userId || (currentAuthUserIdRef.current && currentAuthUserIdRef.current !== userId)) {
+        throw new Error("Authenticated player projection did not match the active session.");
+      }
       if (nextState.tutorial_step === "TUTORIAL_BATTLE") {
         // Reward claiming is authoritative and idempotent, but the tutorial
         // step is deliberately kept on TUTORIAL_BATTLE while its result modal
@@ -948,7 +995,16 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   // 4. Supabase DB実データ同期ロード
   // ==========================================
   const syncBootstrapData = async (userId: string) => {
+    const previousBootstrap = bootstrapSerialRef.current.catch(() => undefined);
+    let releaseBootstrap!: () => void;
+    bootstrapSerialRef.current = new Promise<void>((resolve) => { releaseBootstrap = resolve; });
+    await previousBootstrap;
+    if (currentAuthUserIdRef.current && currentAuthUserIdRef.current !== userId) {
+      releaseBootstrap();
+      return;
+    }
     const patrolRevisionAtStart = patrolStateRevisionRef.current;
+    let coreProjectionReady = false;
     let localGuildRec: any = null;
     let localCharIds: string[] = [];
     let localDeck: string[] = [];
@@ -1055,12 +1111,12 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
       const { data: userProfile, error: userProfileError } = await supabase
         .from("users")
-        .select("username, favorite_character_id, bio, avatar_url, sound_settings, current_base_id, daily_cash_skips_count, daily_cash_skips_reset_date, quest_free_skips_count, quest_paid_skips_count, quest_skips_reset_date, last_guild_left_at, gift_code, title_equipped, equipped_background, equipped_front_effect, selected_bg_mode, interior_item, level, xp, created_at")
+        .select("id, username, favorite_character_id, bio, avatar_url, sound_settings, current_base_id, daily_cash_skips_count, daily_cash_skips_reset_date, quest_free_skips_count, quest_paid_skips_count, quest_skips_reset_date, last_guild_left_at, gift_code, title_equipped, equipped_background, equipped_front_effect, selected_bg_mode, interior_item, level, xp, created_at")
         .eq("id", userId)
         .single();
       markHomeReloadStage("profileReady");
 
-      if (userProfileError) {
+      if (userProfileError || userProfile?.id !== userId) {
         console.warn("Current User identity authority is unavailable:", userProfileError);
       } else {
         const favoriteCharacterId = userProfile?.favorite_character_id;
@@ -1289,6 +1345,14 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       // Membership=null and pending=[] are authoritative only after both
       // Guild projections above have completed for this authenticated user.
       setGuildAuthorityOwnerUserId(userId);
+      // Core account-owned projections (profile/identity, wallet, Gacha
+      // entitlement and Guild membership) are now resolved for the same UID.
+      // Remaining gameplay bootstrap work may continue without holding the UI.
+      if ((!currentAuthUserIdRef.current || currentAuthUserIdRef.current === userId) && userProfile?.id === userId) {
+        setAuthenticatedProjectionOwnerUserId(userId);
+        setAuthenticatedProjectionError(null);
+        coreProjectionReady = true;
+      }
 
       // 見回り関連データとマスタデータの同期
       const [{ data: questsData }, { data: canonicalQuestData }, { data: questPoolData }, { data: encounterData }, { data: questProgressionData }] = await Promise.all([
@@ -1894,8 +1958,12 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
     } catch (err: any) {
       console.warn("Sync error:", err.message);
+      if (!coreProjectionReady && (!currentAuthUserIdRef.current || currentAuthUserIdRef.current === userId)) {
+        setAuthenticatedProjectionError("プレイヤーデータを確認できませんでした。再読み込みしてください。");
+      }
     } finally {
       setTotalPowerLoading(false);
+      releaseBootstrap();
     }
   };
 
@@ -3827,6 +3895,10 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     guildSubTab, setGuildSubTab,
     pendingGuildJoinRequests, setPendingGuildJoinRequests,
     guildMembershipAuthorityReady: guildAuthorityOwnerUserId === session?.user?.id,
+    authenticatedProjectionReady: Boolean(session?.user?.id)
+      && onboardingState?.user_id === session.user.id
+      && authenticatedProjectionOwnerUserId === session.user.id,
+    authenticatedProjectionError,
     guildJoinRequests, setGuildJoinRequests,
     selectedLeader, setSelectedLeader,
     identityLeaderCharacterId: identityLeaderOwnerUserId === session?.user?.id ? identityLeaderCharacterId : "",

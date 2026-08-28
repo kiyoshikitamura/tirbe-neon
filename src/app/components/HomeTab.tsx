@@ -366,7 +366,7 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
     if (!visualReady || !leaderImgUrl || !leaderMaster) return;
     markHomeReloadStage("homeVisualReady");
     if (session?.user?.id) {
-      writeHomeResumeSnapshot({ backgroundUrl: bgUrl, leaderImageUrl: leaderImgUrl, leaderName: leaderMaster.name });
+      writeHomeResumeSnapshot({ userId: session.user.id, backgroundUrl: bgUrl, leaderImageUrl: leaderImgUrl, leaderName: leaderMaster.name });
     }
   }, [bgUrl, leaderImgUrl, leaderMaster, session?.user?.id, visualReady]);
 
