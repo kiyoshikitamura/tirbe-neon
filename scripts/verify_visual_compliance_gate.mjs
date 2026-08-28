@@ -4,7 +4,7 @@ import { QA_PRESENTATION_SCENARIOS, VISUAL_COMPLIANCE_GATE, isQaHarnessAvailable
 
 const requiredScenarios = [
   "world-introduction", "name-input-error", "gacha-page", "gacha-standard-reveal", "gacha-ssr-reveal",
-  "skill-tutorial", "growth-before", "growth-result", "formation", "auto-formation", "quest-encounter",
+  "skill-tutorial", "shared-skill-presentation", "public-user-profile", "growth-before", "growth-result", "formation", "auto-formation", "quest-encounter",
   "quest-normal-battle", "quest-instant-battle", "battle-5v3",
   "battle-5v5", "battle-2x", "battle-ssr-skill", "battle-consecutive-skill", "battle-final-hit", "battle-result-win", "battle-result-lose",
   "first-home-fresh", "first-home-raid", "first-home-guild-out", "first-home-guild-in",
