@@ -621,8 +621,8 @@
 .mypage-live-ticker .user-identity-row small { display:none; }
 @keyframes mypage-activity-enter { from { opacity:0;transform:translateX(-18px); } to { opacity:1;transform:translateX(0); } }
 
-.mypage-activity-log{display:grid;gap:0;min-width:0;white-space:normal}
-.canonical-dialog-body:has(> .mypage-activity-log){max-height:min(64dvh,560px)}
+.canonical-dialog-body:has(> .mypage-activity-log){position:relative;isolation:isolate;max-height:min(64dvh,560px);overflow:hidden;padding:0}
+.mypage-activity-log{display:grid;gap:0;min-width:0;max-height:min(64dvh,560px);overflow-y:auto;padding:18px;overscroll-behavior:contain;white-space:normal}
 .mypage-activity-log-row{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:12px;min-width:0;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.09)}
 .mypage-activity-log-row:first-child{padding-top:0}
 .mypage-activity-log-row:last-child{padding-bottom:0;border-bottom:0}
@@ -633,6 +633,7 @@
 .mypage-activity-empty{margin:0;padding:18px 0;text-align:center}
 
 @media(max-width:390px){
+  .mypage-activity-log{padding:15px}
   .mypage-activity-log-row{gap:8px}
   .mypage-activity-log-detail{min-width:76px}
 }
