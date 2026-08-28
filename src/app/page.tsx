@@ -40,11 +40,12 @@ import TutorialWorldIntro from "./components/TutorialWorldIntro";
 import TutorialRuleGuide from "./components/TutorialRuleGuide";
 import TutorialAuthentication from "./components/TutorialAuthentication";
 import BrandedLoading from "./components/ui/BrandedLoading";
+import CanonicalDialog from "./components/ui/CanonicalDialog";
 import HomeResumeShell from "./components/HomeResumeShell";
 import { markHomeReloadStage, readHomeResumeSnapshot } from "./lib/homeResumePresentation";
 
 function AppContent() {
-  const { session, authLoading, authenticatedProjectionReady, authenticatedProjectionError, isSetupRequired, onboardingState, activeTab, showTitleView, battleState,
+  const { session, authLoading, authenticatedProjectionReady, authenticatedProjectionError, retryAuthenticatedProjection, isSetupRequired, onboardingState, activeTab, showTitleView, battleState,
     handleLogout,
     confirmDialogConfig,
     globalInteractionBlocking,
@@ -148,14 +149,16 @@ function AppContent() {
   if (!authenticatedProjectionReady && !isSetupRequired) {
     return (
       <div className="app-container">
-        <div className="app-loading-screen app-loading-screen--boot">
-          {authenticatedProjectionError ? (
-            <>
-              <strong>{authenticatedProjectionError}</strong>
-              <button className="semantic-cta semantic-cta--primary" onClick={() => window.location.reload()}>再読み込み</button>
-            </>
-          ) : <BrandedLoading label="プレイヤーデータを確認中" />}
-        </div>
+        {authenticatedProjectionError ? (
+          <CanonicalDialog
+            title="エラー"
+            actions={[{ label: "再試行", semantic: "primary", onClick: () => void retryAuthenticatedProjection() }]}
+          >
+            {authenticatedProjectionError}
+          </CanonicalDialog>
+        ) : (
+          <div className="app-loading-screen app-loading-screen--boot"><BrandedLoading label="プレイヤーデータを確認中" /></div>
+        )}
       </div>
     );
   }

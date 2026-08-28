@@ -326,11 +326,13 @@ test("Google OAuth redirect resumes with the same anonymous user id", async ({ p
   await seedCompletedAnonymous(page);
   await page.addInitScript(() => localStorage.setItem("mock_google_redirect_required", "true"));
   await page.goto("/");
-  await page.getByText("TAP TO START").click();
+  await page.getByRole("button", { name: "続きから" }).click();
   await page.getByRole("button", { name: "Googleアカウントを連携" }).click();
 
   const intent = await page.evaluate(() => JSON.parse(localStorage.getItem("tribe_onboarding_auth_intent") || "null"));
   expect(intent).toMatchObject({ method: "GOOGLE", userId: "00000000-0000-4000-8000-000000000099" });
+  await expect.poll(async () => page.evaluate(() => localStorage.getItem("mock_last_oauth_redirect_to")))
+    .toBe(`${new URL(page.url()).origin}/auth/callback`);
 
   await page.evaluate(() => {
     const userId = localStorage.getItem("tribe_demo_uuid");
@@ -376,7 +378,7 @@ test("existing Google login returns directly to the game without the war-entry d
   await expect.poll(async () => page.evaluate(() => localStorage.getItem("tribe_existing_google_login_intent"))).toBeNull();
 });
 
-test("a core onboarding authority failure exits checking state and remains retryable", async ({ page }) => {
+test("a core onboarding authority failure uses the canonical error dialog and retries in place", async ({ page }) => {
   await page.addInitScript(() => {
     const userId = "00000000-0000-4000-8000-000000000303";
     localStorage.setItem("tribe_demo_uuid", userId);
@@ -396,10 +398,17 @@ test("a core onboarding authority failure exits checking state and remains retry
   await page.goto("/");
   await page.getByRole("button", { name: "続きから" }).click();
 
-  await expect(page.getByText("プレイヤーデータを確認できませんでした。再読み込みしてください。")).toBeVisible();
-  await expect(page.getByRole("button", { name: "再読み込み" })).toBeVisible();
+  const errorDialog = page.getByRole("dialog", { name: "エラー" });
+  await expect(errorDialog).toBeVisible();
+  await expect(errorDialog).toContainText("プレイヤーデータを確認できませんでした。再度お試しください。");
+  await expect(errorDialog.getByRole("button", { name: "再試行" })).toBeVisible();
   await expect(page.getByText("プレイヤーデータを確認中")).toHaveCount(0);
   await expect(page.locator(".header-mobile")).toHaveCount(0);
+
+  await page.evaluate(() => localStorage.removeItem("mock_onboarding_state_error"));
+  await errorDialog.getByRole("button", { name: "再試行" }).click();
+  await expect(errorDialog).toHaveCount(0);
+  await expect(page.locator(".header-mobile")).toContainText("Authority Error");
 });
 
 test("OAuth callback ignores the restored old session and bootstraps the exchanged Google account", async ({ page }) => {
@@ -680,12 +689,13 @@ test.describe("external browsers keep normal Google OAuth behavior", () => {
       test.use({ userAgent: browserProfile.userAgent });
       test("starts Google OAuth and uses the existing intent contract", async ({ page }) => {
         await page.goto("/?invite=DIRECT-BROWSER");
-        await page.getByText("TAP TO START").click();
-        await page.getByRole("button", { name: "既存アカウントでログイン" }).click();
+        await page.getByRole("button", { name: "続きから" }).click();
         await page.locator(".auth-btn-google").click();
 
         await expect.poll(async () => page.evaluate(() => localStorage.getItem("mock_auth_mode"))).toBe("GOOGLE");
         await expect.poll(async () => page.evaluate(() => localStorage.getItem("tribe_existing_google_login_intent"))).not.toBeNull();
+        await expect.poll(async () => page.evaluate(() => localStorage.getItem("mock_last_oauth_redirect_to")))
+          .toBe(`${new URL(page.url()).origin}/auth/callback?invite=DIRECT-BROWSER`);
         await expect(page.getByText("外部ブラウザで開いてください")).toBeHidden();
       });
     });

@@ -838,7 +838,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
           // must never be treated as a ready player. Keep the account ownership
           // guard closed, but give the player a canonical retry path instead of
           // leaving the shell on an infinite checking state.
-          setAuthenticatedProjectionError("プレイヤーデータを確認できませんでした。再読み込みしてください。");
+          setAuthenticatedProjectionError("プレイヤーデータを確認できませんでした。再度お試しください。");
         }
       } finally {
         setAuthLoading(false);
@@ -850,6 +850,13 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     } finally {
       if (onboardingCheckRef.current.get(userId) === checkPromise) onboardingCheckRef.current.delete(userId);
     }
+  };
+
+  const retryAuthenticatedProjection = async () => {
+    const userId = session?.user?.id;
+    if (!userId || currentAuthUserIdRef.current !== userId) return;
+    setAuthenticatedProjectionError(null);
+    await checkIfSetupRequired(userId);
   };
 
   const syncActiveUsers = async (userId: string) => {
@@ -1966,7 +1973,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     } catch (err: any) {
       console.warn("Sync error:", err.message);
       if (!coreProjectionReady && (!currentAuthUserIdRef.current || currentAuthUserIdRef.current === userId)) {
-        setAuthenticatedProjectionError("プレイヤーデータを確認できませんでした。再読み込みしてください。");
+        setAuthenticatedProjectionError("プレイヤーデータを確認できませんでした。再度お試しください。");
       }
     } finally {
       setTotalPowerLoading(false);
@@ -3906,6 +3913,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       && onboardingState?.user_id === session.user.id
       && authenticatedProjectionOwnerUserId === session.user.id,
     authenticatedProjectionError,
+    retryAuthenticatedProjection,
     guildJoinRequests, setGuildJoinRequests,
     selectedLeader, setSelectedLeader,
     identityLeaderCharacterId: identityLeaderOwnerUserId === session?.user?.id ? identityLeaderCharacterId : "",

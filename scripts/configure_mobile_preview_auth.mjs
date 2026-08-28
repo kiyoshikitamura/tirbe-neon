@@ -1,5 +1,6 @@
 const PREVIEW_REF = "sufvuqdnqohpfzkwxohq";
 const MOBILE_PREVIEW_URL = "https://tribe-neon-mobile-preview.vercel.app";
+const PRODUCTION_URL = "https://tirbe-neon.vercel.app";
 
 if (typeof process.loadEnvFile === "function") process.loadEnvFile(".env.preview.local");
 
@@ -29,6 +30,7 @@ const allowList = new Set(
 allowList.add(`${MOBILE_PREVIEW_URL}/**`);
 allowList.add("http://localhost:3000/**");
 allowList.add("http://localhost:3100/**");
+allowList.delete(`${PRODUCTION_URL}/**`);
 
 const updateResponse = await fetch(endpoint, {
   method: "PATCH",
@@ -47,10 +49,14 @@ const updatedAllowList = String(updated.uri_allow_list || "").split(",").map((va
 if (updated.site_url !== MOBILE_PREVIEW_URL || !updatedAllowList.includes(`${MOBILE_PREVIEW_URL}/**`)) {
   throw new Error("Preview Auth config verification failed after update.");
 }
+if (updatedAllowList.includes(`${PRODUCTION_URL}/**`)) {
+  throw new Error("Preview Auth config must not allow the Production application origin.");
+}
 
 console.log(JSON.stringify({
   projectRef: PREVIEW_REF,
   siteUrl: updated.site_url,
   mobileRedirectAllowed: true,
+  productionRedirectAllowed: false,
   localhostRedirectsRetained: true,
 }));
