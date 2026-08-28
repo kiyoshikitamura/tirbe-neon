@@ -332,14 +332,50 @@ test("Activity uses shared identity and respects reduced motion", async ({ page 
   await expect(dialog.locator(".mypage-activity-log-row")).toHaveCount(12);
   await expect(dialog.locator("time")).toHaveCount(12);
   const dialogGeometry = await dialog.evaluate((node) => {
+    const header = node.querySelector<HTMLElement>(".canonical-dialog-header")!;
     const body = node.querySelector<HTMLElement>(".canonical-dialog-body")!;
+    const scroller = node.querySelector<HTMLElement>(".mypage-activity-log")!;
+    const firstRow = node.querySelector<HTMLElement>(".mypage-activity-log-row")!;
+    const footer = node.querySelector<HTMLElement>(".canonical-dialog-actions")!;
+    const headerRect = header.getBoundingClientRect();
+    const bodyRect = body.getBoundingClientRect();
+    const firstRect = firstRow.getBoundingClientRect();
+    const footerRect = footer.getBoundingClientRect();
     return {
-      bodyScrolls: body.scrollHeight > body.clientHeight,
+      bodyClips: getComputedStyle(body).overflow === "hidden",
+      scrollerScrolls: scroller.scrollHeight > scroller.clientHeight,
+      headerOverlap: Math.max(0, headerRect.bottom - firstRect.top),
+      bodyStartsBelowHeader: bodyRect.top >= headerRect.bottom - 0.5,
+      bodyEndsAboveFooter: bodyRect.bottom <= footerRect.top + 0.5,
       horizontalOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
     };
   });
-  expect(dialogGeometry.bodyScrolls).toBe(true);
+  expect(dialogGeometry.bodyClips).toBe(true);
+  expect(dialogGeometry.scrollerScrolls).toBe(true);
+  expect(dialogGeometry.headerOverlap).toBe(0);
+  expect(dialogGeometry.bodyStartsBelowHeader).toBe(true);
+  expect(dialogGeometry.bodyEndsAboveFooter).toBe(true);
   expect(dialogGeometry.horizontalOverflow).toBeLessThanOrEqual(1);
+  const clippedScrollGeometry = await dialog.evaluate((node) => {
+    const header = node.querySelector<HTMLElement>(".canonical-dialog-header")!;
+    const scroller = node.querySelector<HTMLElement>(".mypage-activity-log")!;
+    const footer = node.querySelector<HTMLElement>(".canonical-dialog-actions")!;
+    const rows = Array.from(node.querySelectorAll<HTMLElement>(".mypage-activity-log-row"));
+    scroller.scrollTop = scroller.scrollHeight;
+    const lastRect = rows.at(-1)!.getBoundingClientRect();
+    const headerRect = header.getBoundingClientRect();
+    const footerRect = footer.getBoundingClientRect();
+    const elementInsideHeader = document.elementFromPoint(
+      headerRect.left + 24,
+      headerRect.top + headerRect.height / 2,
+    );
+    return {
+      activityInsideHeader: Boolean(elementInsideHeader?.closest(".mypage-activity-log-row")),
+      footerOverlap: Math.max(0, lastRect.bottom - footerRect.top),
+    };
+  });
+  expect(clippedScrollGeometry.activityInsideHeader).toBe(false);
+  expect(clippedScrollGeometry.footerOverlap).toBe(0);
   await dialog.getByRole("button", { name: "KAIのプロフィールを開く", exact: true }).click();
   await expect(page.locator('[data-opened-profile-id="other-user"]')).toBeAttached();
   await expect(dialog.locator(".character-presentation-missing").first()).toBeVisible();
@@ -357,6 +393,25 @@ test("Activity self identity opens the current user profile authority", async ({
   await openHomeScenario(page, "first-home-activity-self");
   await page.locator(".mypage-live-ticker--visual").click();
   const dialog = page.getByRole("dialog", { name: "アクティビティ履歴" });
+  const clipGeometry = await dialog.evaluate((node) => {
+    const header = node.querySelector<HTMLElement>(".canonical-dialog-header")!;
+    const scroller = node.querySelector<HTMLElement>(".mypage-activity-log")!;
+    const footer = node.querySelector<HTMLElement>(".canonical-dialog-actions")!;
+    const rows = Array.from(node.querySelectorAll<HTMLElement>(".mypage-activity-log-row"));
+    const initialFirstTop = rows[0].getBoundingClientRect().top;
+    const headerBottom = header.getBoundingClientRect().bottom;
+    scroller.scrollTop = scroller.scrollHeight;
+    const lastBottom = rows.at(-1)!.getBoundingClientRect().bottom;
+    const footerTop = footer.getBoundingClientRect().top;
+    return {
+      firstRowClearsHeader: initialFirstTop >= headerBottom,
+      lastRowClearsFooter: lastBottom <= footerTop,
+      horizontalOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    };
+  });
+  expect(clipGeometry.firstRowClearsHeader).toBe(true);
+  expect(clipGeometry.lastRowClearsFooter).toBe(true);
+  expect(clipGeometry.horizontalOverflow).toBeLessThanOrEqual(1);
   const identity = dialog.getByRole("button", { name: "NEON-Rのプロフィールを開く", exact: true });
   await expect(identity.locator(".character-presentation-icon")).toBeVisible();
   await identity.click();
