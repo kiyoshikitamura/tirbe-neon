@@ -3185,6 +3185,13 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         ? (scoutType === "SKILL_NORMAL" || scoutType === "SKILL_SPECIAL" ? scoutType : "SKILL_SPECIAL")
         : (scoutType === "EQUIP_NORMAL" || scoutType === "EQUIP_SPECIAL" ? scoutType : "EQUIP_SPECIAL");
       const serverCurrency = useCurrency === "FREE" ? "free" : useCurrency === "DIAMOND" ? "diamonds" : useCurrency === "TICKET" ? "ticket" : "cash";
+      const assetTransitionStartedAt = typeof performance !== "undefined" ? performance.now() : Date.now();
+      setScoutResults([]);
+      setScoutFlashingColor("BLUE");
+      setScoutAnimationState("PROCESSING");
+      actionPerformance.mark("state_update");
+      actionPerformance.markVisualReady();
+      reportScoutTiming("animation_start", { category, phase: "processing" });
       actionPerformance.mark("request_start");
       const drawResult = await supabase.rpc("execute_asset_gacha", { p_user_id: session.user.id, p_gacha_id: assetGachaId, p_pull_count: scoutCount, p_currency_type: serverCurrency, p_request_id: requestId });
       if (drawResult.error || drawResult.data?.error) throw drawResult.error || new Error(drawResult.data.error);
@@ -3213,7 +3220,9 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       if (typeof drawResult.data?.diamonds === "number") setDiamonds(drawResult.data.diamonds);
       if (useCurrency === "FREE") setDailyFreeGachaFlags(prev => ({ ...prev, [category]: false }));
       reportScoutTiming("result_confirmed", { resultCount: assetResults.length });
-      const bootstrapPromise = syncBootstrapData(session.user.id).then(() => reportScoutTiming("bootstrap_complete"));
+      const bootstrapPromise = syncBootstrapData(session.user.id)
+        .then(() => reportScoutTiming("bootstrap_complete"))
+        .catch((bootstrapError) => console.warn("Post-gacha bootstrap failed:", bootstrapError));
       if (useCurrency === "FREE" && scoutType === "SKILL_NORMAL" && scoutCount === 10) {
         const { data: nextTutorialStep, error: tutorialAdvanceError } = await supabase.rpc("advance_tutorial_progress", {
           p_expected_step: "FREE_GACHA",
@@ -3227,17 +3236,21 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         }
       }
       setScoutResults(assetResults);
-      setScoutFlashingColor(assetResults.some((r: { rarity: string }) => r.rarity === "SSR") ? "GOLD" : assetResults.some((r: { rarity: string }) => r.rarity === "SR") ? "PURPLE" : "BLUE");
-      reportScoutTiming("asset_ready", { assetWaitMs: 0, reason: "css-only tutorial animation" });
-      setScoutAnimationState("FLASHING");
-      actionPerformance.mark("state_update");
-      actionPerformance.markVisualReady();
-      reportScoutTiming("animation_start", { resultCount: assetResults.length });
-      setTimeout(() => {
-        reportScoutTiming("result_display");
-        setScoutAnimationState("SHOW_RESULTS");
-      }, 1800);
       await bootstrapPromise;
+      const elapsedTransitionMs = (typeof performance !== "undefined" ? performance.now() : Date.now()) - assetTransitionStartedAt;
+      const minimumTransitionRemainingMs = Math.max(0, 420 - elapsedTransitionMs);
+      if (minimumTransitionRemainingMs > 0) {
+        await new Promise((resolve) => window.setTimeout(resolve, minimumTransitionRemainingMs));
+      }
+      const hasSsr = assetResults.some((result: { rarity: string }) => result.rarity === "SSR");
+      if (hasSsr) {
+        setScoutFlashingColor("GOLD");
+        setScoutAnimationState("FLASHING");
+        reportScoutTiming("ssr_presence");
+        await new Promise((resolve) => window.setTimeout(resolve, 280));
+      }
+      reportScoutTiming("result_display", { hasSsr });
+      setScoutAnimationState("SHOW_RESULTS");
       return;
 
       if (useCurrency === "FREE") {

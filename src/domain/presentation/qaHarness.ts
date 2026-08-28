@@ -3,6 +3,7 @@ export const QA_PRESENTATION_SCENARIOS = [
   ["name-input-error", "Name duplicate → retry"],
   ["gacha-page", "Gacha Page"],
   ["gacha-production", "Gacha Production / 6 surfaces"],
+  ["gacha-asset-transition", "Gacha Skill / Equipment transition"],
   ["gacha-authority-loading", "Gacha / Daily authority loading"],
   ["gacha-entitlement-empty", "Gacha / Daily free consumed"],
   ["gacha-resource-empty", "Gacha / No CASH or tickets"],

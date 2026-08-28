@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import { QA_PRESENTATION_SCENARIOS, VISUAL_COMPLIANCE_GATE, isQaHarnessAvailable } from "../src/domain/presentation/qaHarness.ts";
 
 const requiredScenarios = [
-  "world-introduction", "name-input-error", "gacha-page", "gacha-production", "gacha-authority-loading", "gacha-entitlement-empty", "gacha-resource-empty", "gacha-skill-result", "gacha-skill-result-one", "gacha-equipment-result", "gacha-equipment-result-one", "gacha-standard-reveal", "gacha-ssr-reveal",
+  "world-introduction", "name-input-error", "gacha-page", "gacha-production", "gacha-asset-transition", "gacha-authority-loading", "gacha-entitlement-empty", "gacha-resource-empty", "gacha-skill-result", "gacha-skill-result-one", "gacha-equipment-result", "gacha-equipment-result-one", "gacha-standard-reveal", "gacha-ssr-reveal",
   "skill-tutorial", "shared-skill-presentation", "public-user-profile", "growth-before", "growth-result", "formation", "auto-formation", "quest-encounter",
   "quest-normal-battle", "quest-instant-battle", "battle-5v3",
   "battle-5v5", "battle-2x", "battle-ssr-skill", "battle-consecutive-skill", "battle-final-hit", "battle-result-win", "battle-result-lose",

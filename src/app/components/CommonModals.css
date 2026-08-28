@@ -82,7 +82,11 @@
 .gacha-asset-short-effect strong { font-size:34px; letter-spacing:.14em; text-shadow:0 0 20px rgba(0,240,255,.72); }
 .gacha-asset-short-effect.has-ssr strong { color:#fff3ae; text-shadow:0 0 9px #fff,0 0 30px rgba(242,201,95,.9); }
 .gacha-asset-short-effect span { color:#bed0da; font-size:11px; font-weight:900; letter-spacing:.1em; }
+.gacha-presentation-stage.is-ssr-presence .gacha-flash-effect { animation:gacha-ssr-presence .28s cubic-bezier(.16,.84,.2,1) both; }
+.gacha-presentation-stage.is-ssr-presence .gacha-presentation-rings { animation:gacha-ssr-ring-pulse .28s ease-out both; }
 @keyframes gacha-asset-short-in { from{transform:scale(.82);opacity:0} 55%{transform:scale(1.06);opacity:1} to{transform:scale(1);opacity:1} }
+@keyframes gacha-ssr-presence { from{transform:translate(-50%,-50%) scale(.7);opacity:.38} 58%{transform:translate(-50%,-50%) scale(3.1);opacity:1} to{transform:translate(-50%,-50%) scale(4.2);opacity:0} }
+@keyframes gacha-ssr-ring-pulse { from{transform:scale(.88);filter:brightness(1)} 58%{transform:scale(1.05);filter:brightness(2.2)} to{transform:scale(1.12);filter:brightness(1.35)} }
 .gacha-presentation-stage.is-pull-started .gacha-presentation-rings { animation:gacha-pull-spin .72s linear infinite; }
 @keyframes gacha-pull-prompt { from{opacity:.48} to{opacity:1;text-shadow:0 0 12px rgba(240,0,255,.8)} }
 @keyframes gacha-pull-sequence { 0%{transform:scale(.18);opacity:0;filter:brightness(.25)} 32%{transform:scale(.46);opacity:.42;filter:brightness(.8)} 72%{transform:scale(.88);opacity:1;filter:brightness(2.1)} 100%{transform:scale(1.24);opacity:.94;filter:brightness(3)} }

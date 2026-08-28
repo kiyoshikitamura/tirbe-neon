@@ -252,15 +252,15 @@ export default function CommonModals() {
 
       {/* 🎰 ガチャ演出モーダル (FLASHING / SHOW_RESULTS) */}
       {scoutAnimationState !== null && (
-        <div className="modal-overlay background-black-95" style={{ zIndex: 20000 }}>
-          {scoutAnimationState === "FLASHING" || scoutAnimationState === "READY" ? (
-            <div className={`gacha-presentation-stage gacha-presentation-${scoutFlashingColor.toLowerCase()} ${tutorialPullStarted ? "is-pull-started" : "is-awaiting-pull"}`}>
+        <div className="modal-overlay background-black-95" style={{ zIndex: 20000 }} data-gacha-transition-state={scoutAnimationState.toLowerCase()}>
+          {scoutAnimationState === "PROCESSING" || scoutAnimationState === "FLASHING" || scoutAnimationState === "READY" ? (
+            <div className={`gacha-presentation-stage gacha-presentation-${scoutFlashingColor.toLowerCase()} ${tutorialPullStarted ? "is-pull-started" : "is-awaiting-pull"} ${scoutAnimationState === "FLASHING" && scoutFlashingColor === "GOLD" && !isCharacterReveal ? "is-ssr-presence" : ""}`}>
               <div className={`gacha-flash-effect flash-${scoutFlashingColor.toLowerCase()}`} />
               <div className="gacha-presentation-rings" aria-hidden="true"><i /><i /><i /></div>
               {!isCharacterReveal ? (
-                <div className={`gacha-asset-short-effect ${scoutFlashingColor === "GOLD" ? "has-ssr" : ""}`} role="status" aria-label="ガチャ演出中">
+                <div className={`gacha-asset-short-effect ${scoutFlashingColor === "GOLD" ? "has-ssr" : ""}`} role="status" aria-live="polite" aria-label="スキル・装備ガチャ抽選中" data-gacha-short-effect>
                   <strong>{scoutFlashingColor === "GOLD" ? "SSR" : "DRAW"}</strong>
-                  <span>抽選結果を確認中</span>
+                  <span>{scoutFlashingColor === "GOLD" ? "レアリティ反応" : "抽選中…"}</span>
                 </div>
               ) : !tutorialPullStarted ? (
                 <button

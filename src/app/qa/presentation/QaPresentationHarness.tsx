@@ -203,6 +203,100 @@ function GachaProductionFixture({ authorityState = "ready", resourcesAvailable =
   return <GameContext.Provider value={game as any}><div className="qa-gacha-production" data-gacha-production-fixture><GachaTab /><Footer /></div></GameContext.Provider>;
 }
 
+function GachaAssetTransitionFixture() {
+  const query = useMemo(() => new URLSearchParams(typeof window === "undefined" ? "" : window.location.search), []);
+  const responseDelayMs = Math.max(0, Number(query.get("delay") || 0));
+  const forcedRarity = query.get("rarity") === "ssr" ? "SSR" : "R";
+  const shouldFail = query.get("outcome") === "error";
+  const [freeFlags, setFreeFlags] = useState({ CHARACTER: true, SKILL: true, EQUIPMENT: true });
+  const [pending, setPending] = useState(false);
+  const [mutationCount, setMutationCount] = useState(0);
+  const [ssrPulseCount, setSsrPulseCount] = useState(0);
+  const [scoutAnimationState, setScoutAnimationState] = useState<null | "PROCESSING" | "FLASHING" | "SHOW_RESULTS">(null);
+  const [scoutFlashingColor, setScoutFlashingColor] = useState<"BLUE" | "GOLD">("BLUE");
+  const [scoutResults, setScoutResults] = useState<any[]>([]);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const game = {
+    activeTab: "gacha",
+    navigateTab: () => undefined,
+    playCyberSe: () => undefined,
+    playSe: () => undefined,
+    dailyFreeGachaReady: true,
+    dailyFreeGachaFlags: freeFlags,
+    refreshDailyFreeGachaAuthority: () => Promise.resolve(false),
+    gachaRarityRates: ["CHAR_NORMAL", "SKILL_NORMAL", "EQUIP_NORMAL"].flatMap((gacha_id) => [
+      { gacha_id, rarity: "N", weight: 55 }, { gacha_id, rarity: "R", weight: 30 },
+      { gacha_id, rarity: "SR", weight: 13 }, { gacha_id, rarity: "SSR", weight: 2 },
+    ]),
+    gachaMasters: ["CHAR", "SKILL", "EQUIP"].map((prefix) => ({ id: `${prefix}_NORMAL`, cost_cash: 1000 })),
+    userItems: [
+      { item_id: "NORMAL_GACHA_TICKET_CHARACTER", quantity: 20 },
+      { item_id: "NORMAL_GACHA_TICKET_SKILL", quantity: 20 },
+      { item_id: "NORMAL_GACHA_TICKET_EQUIPMENT", quantity: 20 },
+    ],
+    cash: 100_000,
+    upgradeLoading: pending,
+    onboardingState: { tutorial_step: "AUTHENTICATION" },
+    scoutAnimationState,
+    setScoutAnimationState,
+    scoutFlashingColor,
+    scoutResults,
+    errorMessage,
+    setErrorMessage,
+    handleScout: async (gachaId: string, count: number, currency: string) => {
+      const category = gachaId.startsWith("SKILL") ? "SKILL" : gachaId.startsWith("EQUIP") ? "EQUIPMENT" : "CHARACTER";
+      if (category === "CHARACTER") return;
+      const startedAt = performance.now();
+      setMutationCount((current) => current + 1);
+      setPending(true);
+      setScoutResults([]);
+      setScoutFlashingColor("BLUE");
+      setScoutAnimationState("PROCESSING");
+      try {
+        await new Promise((resolve) => window.setTimeout(resolve, responseDelayMs));
+        if (shouldFail) throw new Error("QA fixture draw failure");
+        const source = category === "SKILL" ? CANONICAL_SKILL_VIEW : CANONICAL_EQUIPMENT_VIEW;
+        const canonical = source.find((entry: any) => entry.rarity === forcedRarity) || source[0];
+        const results = Array.from({ length: count }, (_, index) => ({
+          type: category,
+          itemId: canonical.id,
+          name: canonical.name,
+          rarity: forcedRarity,
+          assetPath: category === "SKILL" ? getCanonicalSkillIcon(canonical.id) : (canonical as any).assetPath,
+          converted: index > 0,
+          progressionLevel: index > 0 ? 1 : null,
+          convertReward: index > 0 ? "限界突破 +1" : "新規獲得",
+        }));
+        setScoutResults(results);
+        const minimumRemainingMs = Math.max(0, 420 - (performance.now() - startedAt));
+        if (minimumRemainingMs > 0) await new Promise((resolve) => window.setTimeout(resolve, minimumRemainingMs));
+        if (forcedRarity === "SSR") {
+          setSsrPulseCount((current) => current + 1);
+          setScoutFlashingColor("GOLD");
+          setScoutAnimationState("FLASHING");
+          await new Promise((resolve) => window.setTimeout(resolve, 280));
+        }
+        if (currency === "FREE") setFreeFlags((current) => ({ ...current, [category]: false }));
+        setScoutAnimationState("SHOW_RESULTS");
+      } catch {
+        setScoutAnimationState(null);
+        setErrorMessage("ガチャの実行に失敗しました。通信状態を確認して、もう一度お試しください。");
+      } finally {
+        setPending(false);
+      }
+    },
+  };
+
+  return <GameContext.Provider value={game as any}>
+    <div className="qa-gacha-production" data-gacha-asset-transition-fixture data-mutation-count={mutationCount} data-ssr-pulse-count={ssrPulseCount}>
+      <GachaTab />
+      <Footer />
+      <CommonModals />
+    </div>
+  </GameContext.Provider>;
+}
+
 function GachaAssetResultFixture({ type, pulls = 10 }: { type: "SKILL" | "EQUIPMENT"; pulls?: 1 | 10 }) {
   const source = type === "SKILL" ? CANONICAL_SKILL_VIEW : CANONICAL_EQUIPMENT_VIEW;
   const raritySequence = ["N", "R", "SR", "SSR", "N", "R", "SR", "SSR", "R", "SR"];
@@ -368,6 +462,7 @@ function Scenario({ id }: { id: QaPresentationScenarioId }) {
   if (id === "auto-formation") return <AutoFormationFixture />;
   if (id === "formation") return <SimpleFixture kind={id} />;
   if (id === "gacha-production") return <GachaProductionFixture />;
+  if (id === "gacha-asset-transition") return <GachaAssetTransitionFixture />;
   if (id === "gacha-authority-loading") return <GachaProductionFixture authorityState="loading" />;
   if (id === "gacha-entitlement-empty") return <GachaProductionFixture authorityState="consumed" />;
   if (id === "gacha-resource-empty") return <GachaProductionFixture resourcesAvailable={false} />;
@@ -392,6 +487,6 @@ export default function QaPresentationHarness() {
     if (QA_PRESENTATION_SCENARIOS.some(([id]) => id === requested)) setScenario(requested as QaPresentationScenarioId);
   }, []);
   const label = useMemo(() => QA_PRESENTATION_SCENARIOS.find(([id]) => id === scenario)?.[1], [scenario]);
-  const fullscreenHome = scenario.startsWith("first-home-") || scenario.startsWith("gacha-production") || scenario.startsWith("gacha-authority-") || scenario.startsWith("gacha-entitlement-") || scenario.startsWith("gacha-skill-") || scenario.startsWith("gacha-equipment-");
+  const fullscreenHome = scenario.startsWith("first-home-") || scenario.startsWith("gacha-production") || scenario.startsWith("gacha-asset-") || scenario.startsWith("gacha-authority-") || scenario.startsWith("gacha-entitlement-") || scenario.startsWith("gacha-skill-") || scenario.startsWith("gacha-equipment-");
   return <main className={`qa-harness${fullscreenHome ? " is-home-preview" : ""}`} data-qa-harness="presentation"><header><div><small>PREVIEW / DEVELOPMENT ONLY</small><h1>Human QA Harness</h1><p>{label}</p></div><a href="#compliance">Visual Compliance</a></header><nav aria-label="QA scenarios">{QA_PRESENTATION_SCENARIOS.map(([id, name]) => <button key={id} className={scenario === id ? "is-active" : ""} aria-pressed={scenario === id} onClick={() => setScenario(id)} data-scenario-id={id}>{name}</button>)}</nav><section className="qa-stage" data-active-scenario={scenario}><Scenario key={scenario} id={scenario} /></section><section id="compliance" className="qa-compliance"><h2>Visual Compliance Precheck</h2><p>客観的Contractは自動検証。見た目の品質はHuman ReviewまでPASSにしません。</p>{VISUAL_COMPLIANCE_GATE.map((item) => <article key={item.id} data-compliance-id={item.id} data-status={item.status}><div><strong>{item.specification}</strong><small>AUTO {item.automatedPrecheck}</small></div><b>{item.status}</b><p>{item.evidence}</p></article>)}</section></main>;
 }
