@@ -252,7 +252,7 @@ export default function CommonModals() {
 
       {/* 🎰 ガチャ演出モーダル (FLASHING / SHOW_RESULTS) */}
       {scoutAnimationState !== null && (
-        <div className="modal-overlay background-black-95" style={{ zIndex: 20000 }} data-gacha-transition-state={scoutAnimationState.toLowerCase()}>
+        <div className={`modal-overlay background-black-95 ${scoutAnimationState === "PROCESSING" ? "gacha-processing-overlay" : ""}`} style={{ zIndex: 20000 }} data-gacha-transition-state={scoutAnimationState.toLowerCase()}>
           {scoutAnimationState === "PROCESSING" || scoutAnimationState === "FLASHING" || scoutAnimationState === "READY" ? (
             <div className={`gacha-presentation-stage gacha-presentation-${scoutFlashingColor.toLowerCase()} ${tutorialPullStarted ? "is-pull-started" : "is-awaiting-pull"} ${scoutAnimationState === "FLASHING" && scoutFlashingColor === "GOLD" && !isCharacterReveal ? "is-ssr-presence" : ""}`}>
               <div className={`gacha-flash-effect flash-${scoutFlashingColor.toLowerCase()}`} />

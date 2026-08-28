@@ -13,6 +13,62 @@ const openTransitionFixture = async (
   return page.locator("[data-gacha-asset-transition-fixture]");
 };
 
+const readFirstPaintedProcessingSurface = (page: Page) => page.evaluate(() => new Promise<Record<string, unknown>>((resolve) => {
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    const overlay = document.querySelector<HTMLElement>('[data-gacha-transition-state="processing"]');
+    const effect = overlay?.querySelector<HTMLElement>("[data-gacha-short-effect]");
+    const stage = overlay?.querySelector<HTMLElement>(".gacha-presentation-stage");
+    const fieldset = document.querySelector<HTMLFieldSetElement>("fieldset.gacha-view-root");
+    const style = overlay ? getComputedStyle(overlay) : null;
+    const rect = overlay?.getBoundingClientRect();
+    const hit = overlay && rect ? document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2) : null;
+    const motion = stage ? getComputedStyle(stage, "::before") : null;
+    resolve({
+      state: overlay?.dataset.gachaTransitionState ?? null,
+      mounted: Boolean(effect),
+      domExists: Boolean(overlay),
+      pending: fieldset?.disabled ?? false,
+      display: style?.display ?? null,
+      visibility: style?.visibility ?? null,
+      opacity: style?.opacity ?? null,
+      zIndex: style?.zIndex ?? null,
+      position: style?.position ?? null,
+      width: rect?.width ?? 0,
+      height: rect?.height ?? 0,
+      topmost: Boolean(hit && overlay?.contains(hit)),
+      motionState: motion?.animationPlayState ?? null,
+      motionName: motion?.animationName ?? null,
+    });
+  }));
+}));
+
+for (const category of ["SKILL", "EQUIPMENT"] as const) {
+  test(`${category} free draw first painted post-tap state is the topmost processing surface`, async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await openTransitionFixture(page, { delay: 1500 });
+    await page.locator(`[data-gacha-category="${category}"]`).click();
+    await page.getByRole("button", { name: "本日10連無料" }).click();
+    const painted = await readFirstPaintedProcessingSurface(page);
+    expect(painted).toMatchObject({
+      state: "processing",
+      mounted: true,
+      domExists: true,
+      pending: true,
+      display: "grid",
+      visibility: "visible",
+      opacity: "1",
+      zIndex: "20000",
+      position: "fixed",
+      topmost: true,
+      motionState: "running",
+      motionName: "gacha-star-tunnel",
+    });
+    expect(Number(painted.width)).toBeGreaterThanOrEqual(389);
+    expect(Number(painted.height)).toBeGreaterThanOrEqual(843);
+    await expect(page.locator(".gacha-result-card")).toHaveCount(10);
+  });
+}
+
 for (const category of ["SKILL", "EQUIPMENT"] as const) {
   for (const delay of [0, 500, 1500, 3000]) {
     test(`${category} ${delay}ms response keeps foreground processing feedback`, async ({ page }) => {

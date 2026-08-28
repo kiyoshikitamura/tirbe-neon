@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from "react";
+import { flushSync } from "react-dom";
 import { supabase } from "@/utils/supabase";
 import { CANONICAL_SKILL_VIEW } from "@/utils/skills_master_data";
 import { CANONICAL_EQUIPMENT_VIEW } from "@/utils/equipments_master_data";
@@ -39,6 +40,7 @@ import { clearHomeResumeSnapshot, markHomeReloadStage, readHomeResumeSnapshot } 
 import { canonicalMissionUiStatus } from "@/domain/gameplay/canonical/missions";
 import { canonicalItemName } from "@/domain/gameplay/canonical/items";
 import { normalizeUserBio } from "@/domain/presentation/userBio";
+import { waitForBrowserPaint } from "@/domain/presentation/browserPaint";
 import {
   CANONICAL_QUEST_ENCOUNTERS,
   CANONICAL_QUEST_REWARD_POOLS,
@@ -3186,12 +3188,16 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         : (scoutType === "EQUIP_NORMAL" || scoutType === "EQUIP_SPECIAL" ? scoutType : "EQUIP_SPECIAL");
       const serverCurrency = useCurrency === "FREE" ? "free" : useCurrency === "DIAMOND" ? "diamonds" : useCurrency === "TICKET" ? "ticket" : "cash";
       const assetTransitionStartedAt = typeof performance !== "undefined" ? performance.now() : Date.now();
-      setScoutResults([]);
-      setScoutFlashingColor("BLUE");
-      setScoutAnimationState("PROCESSING");
+      flushSync(() => {
+        setScoutResults([]);
+        setScoutFlashingColor("BLUE");
+        setScoutAnimationState("PROCESSING");
+      });
       actionPerformance.mark("state_update");
+      reportScoutTiming("animation_committed", { category, phase: "processing" });
+      await waitForBrowserPaint();
       actionPerformance.markVisualReady();
-      reportScoutTiming("animation_start", { category, phase: "processing" });
+      reportScoutTiming("animation_painted", { category, phase: "processing" });
       actionPerformance.mark("request_start");
       const drawResult = await supabase.rpc("execute_asset_gacha", { p_user_id: session.user.id, p_gacha_id: assetGachaId, p_pull_count: scoutCount, p_currency_type: serverCurrency, p_request_id: requestId });
       if (drawResult.error || drawResult.data?.error) throw drawResult.error || new Error(drawResult.data.error);

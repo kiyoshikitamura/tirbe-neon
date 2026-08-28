@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { flushSync } from "react-dom";
 import BattleMatchupPresentation from "@/app/components/battle/BattleMatchupPresentation";
 import BattleResultSummary from "@/app/components/battle/BattleResultSummary";
 import QuestBattleViewer from "@/app/components/battle/QuestBattleViewer";
@@ -23,6 +24,7 @@ import { WORLD_STAGES } from "@/app/components/SetupView";
 import { QA_PRESENTATION_SCENARIOS, VISUAL_COMPLIANCE_GATE, type QaPresentationScenarioId } from "@/domain/presentation/qaHarness";
 import { resolveSsrGachaQuote } from "@/domain/presentation/ssrGachaQuotes";
 import { getCharacterLocationBackground } from "@/utils/characterVisualAssets";
+import { waitForBrowserPaint } from "@/domain/presentation/browserPaint";
 import { CHARACTERS_MASTER, getCharacterTransparentImg } from "@/utils/game_constants";
 import "@/app/components/SetupView.css";
 import "@/app/components/TutorialWorldIntro.css";
@@ -250,10 +252,13 @@ function GachaAssetTransitionFixture() {
       const startedAt = performance.now();
       setMutationCount((current) => current + 1);
       setPending(true);
-      setScoutResults([]);
-      setScoutFlashingColor("BLUE");
-      setScoutAnimationState("PROCESSING");
+      flushSync(() => {
+        setScoutResults([]);
+        setScoutFlashingColor("BLUE");
+        setScoutAnimationState("PROCESSING");
+      });
       try {
+        await waitForBrowserPaint();
         await new Promise((resolve) => window.setTimeout(resolve, responseDelayMs));
         if (shouldFail) throw new Error("QA fixture draw failure");
         const source = category === "SKILL" ? CANONICAL_SKILL_VIEW : CANONICAL_EQUIPMENT_VIEW;

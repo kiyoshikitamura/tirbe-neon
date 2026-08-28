@@ -63,6 +63,7 @@
   overflow: hidden;
   background: radial-gradient(circle at center, rgba(0, 229, 255, .16), #02050a 58%);
 }
+.gacha-processing-overlay { position:fixed; inset:0 auto 0 50%; display:grid; width:min(100vw,430px); height:100dvh; padding:0; transform:translateX(-50%); visibility:visible; opacity:1; isolation:isolate; overflow:hidden; background:#02050a; -webkit-backdrop-filter:none; backdrop-filter:none; }
 .gacha-presentation-stage::before { position:absolute; inset:-42%; z-index:0; content:""; background:repeating-conic-gradient(from 2deg,transparent 0 3.2deg,rgba(0,240,255,.68) 3.45deg 3.8deg,transparent 4.1deg 7deg,rgba(240,0,255,.58) 7.2deg 7.55deg,transparent 7.9deg 11deg,rgba(242,201,95,.58) 11.2deg 11.6deg,transparent 12deg 16deg); mask-image:radial-gradient(circle,transparent 0 6%,rgba(0,0,0,.95) 18%,#000 62%,transparent 78%); filter:drop-shadow(0 0 8px rgba(0,240,255,.48)); animation:gacha-star-tunnel 7s linear infinite; }
 .gacha-presentation-stage::after { position:absolute; inset:0; z-index:1; content:""; pointer-events:none; background:radial-gradient(circle at 50% 50%,rgba(255,255,255,.98) 0 1px,rgba(242,201,95,.54) 2px,transparent 7%),radial-gradient(circle at 50% 50%,transparent 0 12%,rgba(0,240,255,.26) 13%,transparent 23%),radial-gradient(circle at 50% 50%,transparent 0 28%,rgba(240,0,255,.2) 29%,transparent 39%),radial-gradient(circle at 20% 24%,#00f0ff 0 1px,transparent 2px),radial-gradient(circle at 78% 70%,#f000ff 0 1px,transparent 2px),radial-gradient(circle at 68% 18%,#f2c95f 0 1px,transparent 2px); background-size:auto,auto,auto,37px 37px,61px 61px,83px 83px; opacity:.9; animation:gacha-star-drift 1.05s linear infinite; }
 .gacha-presentation-gold { background: radial-gradient(circle at center, rgba(242, 201, 95, .22), #070501 60%); }
@@ -84,7 +85,7 @@
 .gacha-asset-short-effect span { color:#bed0da; font-size:11px; font-weight:900; letter-spacing:.1em; }
 .gacha-presentation-stage.is-ssr-presence .gacha-flash-effect { animation:gacha-ssr-presence .28s cubic-bezier(.16,.84,.2,1) both; }
 .gacha-presentation-stage.is-ssr-presence .gacha-presentation-rings { animation:gacha-ssr-ring-pulse .28s ease-out both; }
-@keyframes gacha-asset-short-in { from{transform:scale(.82);opacity:0} 55%{transform:scale(1.06);opacity:1} to{transform:scale(1);opacity:1} }
+@keyframes gacha-asset-short-in { from{transform:scale(.94);opacity:1} 55%{transform:scale(1.06);opacity:1} to{transform:scale(1);opacity:1} }
 @keyframes gacha-ssr-presence { from{transform:translate(-50%,-50%) scale(.7);opacity:.38} 58%{transform:translate(-50%,-50%) scale(3.1);opacity:1} to{transform:translate(-50%,-50%) scale(4.2);opacity:0} }
 @keyframes gacha-ssr-ring-pulse { from{transform:scale(.88);filter:brightness(1)} 58%{transform:scale(1.05);filter:brightness(2.2)} to{transform:scale(1.12);filter:brightness(1.35)} }
 .gacha-presentation-stage.is-pull-started .gacha-presentation-rings { animation:gacha-pull-spin .72s linear infinite; }
