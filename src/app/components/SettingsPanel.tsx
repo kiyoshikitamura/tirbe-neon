@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { supabase } from "@/utils/supabase";
 import { PROFILE_BACKGROUNDS, PROFILE_FRONT_EFFECTS, PROFILE_INTERIORS } from "@/utils/game_constants";
 import { useGame } from "../context/GameContext";
@@ -6,6 +6,7 @@ import FullScreenPanel from "./ui/FullScreenPanel";
 import OutlawButton from "./ui/OutlawButton";
 import "./SettingsPanel.css";
 import { USER_BIO_MAX_LENGTH } from "@/domain/presentation/userBio";
+import EditableSettingSection, { ChoiceGroup } from "./ui/EditableSettingSection";
 
 const QA_EMAIL = "izasama39@gmail.com";
 const QA_TOOLS_ENABLED = process.env.NEXT_PUBLIC_APP_ENV === "development"
@@ -26,8 +27,14 @@ function getSupabaseErrorMessage(error: unknown): string {
 export default function SettingsPanel() {
   const game = useGame();
   const [qaLoading, setQaLoading] = useState(false);
-  const [bioDraft, setBioDraft] = useState<string | null>(null);
-  const displayedBio = bioDraft ?? game.bio;
+  const [profileEditing, setProfileEditing] = useState(false);
+  const [homeEditing, setHomeEditing] = useState(false);
+  const [usernameDraft, setUsernameDraft] = useState("");
+  const [bioDraft, setBioDraft] = useState("");
+  const [titleDraft, setTitleDraft] = useState("title_none");
+  const [backgroundDraft, setBackgroundDraft] = useState("auto");
+  const [foregroundDraft, setForegroundDraft] = useState("effect_none");
+  const [interiorDraft, setInteriorDraft] = useState("none");
   const isOpen = game.showSettingsPanel;
   const canProvisionQa = QA_TOOLS_ENABLED && game.session?.user?.email === QA_EMAIL;
   const hasSharedCosmetic = (id: string) => game.ownedHomeCosmeticIds === null || game.ownedHomeCosmeticIds.includes(id);
@@ -35,12 +42,38 @@ export default function SettingsPanel() {
   const availableFrontEffects = PROFILE_FRONT_EFFECTS.filter((item) => hasSharedCosmetic(item.id));
   const availableInteriors = PROFILE_INTERIORS.filter((item) => hasSharedCosmetic(item.id === "none" ? "interior_none" : item.id));
 
+  const resetDrafts = () => {
+    setUsernameDraft(game.username);
+    setBioDraft(game.bio);
+    setTitleDraft(game.titleEquipped);
+    setBackgroundDraft(game.selectedBgMode);
+    setForegroundDraft(game.equippedFrontEffect);
+    setInteriorDraft(game.interiorItem);
+  };
+
+  useEffect(() => {
+    if (!isOpen) return;
+    resetDrafts();
+    setProfileEditing(false);
+    setHomeEditing(false);
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   const close = () => {
     game.setErrorMessage("");
-    setBioDraft(null);
+    resetDrafts();
     game.setShowSettingsPanel(false);
+  };
+
+  const saveProfile = async () => {
+    const saved = await game.handleUpdateProfile({ username: usernameDraft, bio: bioDraft, title: titleDraft });
+    if (saved) setProfileEditing(false);
+  };
+
+  const saveHome = async () => {
+    const saved = await game.handleUpdateProfile({ background: backgroundDraft, foreground: foregroundDraft, interior: interiorDraft });
+    if (saved) setHomeEditing(false);
   };
 
   const provisionQa = async () => {
@@ -66,24 +99,23 @@ export default function SettingsPanel() {
   };
 
   return (
-    <FullScreenPanel title="設定 / プロフィール" onClose={close}>
+    <FullScreenPanel title="設定 / プロフィール" onClose={() => { if (!game.profileLoading) close(); }}>
       <div className="settings-panel-container-inner">
         {game.errorMessage && <div className="settings-error-message">{game.errorMessage}</div>}
 
-        <section className="settings-section">
-          <h4 className="settings-section-title">プロフィール設定</h4>
-          <div className="settings-field"><label>プレイヤー名</label><input className="settings-input" value={game.username} maxLength={8} onChange={(event) => game.setUsername(event.target.value)} /></div>
-          <div className="settings-field settings-bio-field"><label htmlFor="profile-bio">自己紹介</label><textarea id="profile-bio" className="settings-textarea" value={displayedBio} maxLength={USER_BIO_MAX_LENGTH} rows={4} placeholder="自己紹介を入力" onChange={(event) => setBioDraft(event.target.value)} /><div className="settings-bio-meta"><span>{Array.from(displayedBio).length} / {USER_BIO_MAX_LENGTH}</span><OutlawButton variant="primary" disabled={game.profileLoading || displayedBio.trim() === game.bio} onClick={() => void game.handleUpdateBio(displayedBio)}>保存</OutlawButton></div></div>
-          <div className="settings-field"><label>称号</label><select className="settings-select" value={game.titleEquipped} onChange={(event) => game.setTitleEquipped(event.target.value)}><option value="title_none">称号なし</option>{game.ownedTitles.map((title: { id: string; name: string }) => <option key={title.id} value={title.id}>{title.name}</option>)}</select></div>
-        </section>
+        <EditableSettingSection title="プロフィール" editing={profileEditing} pending={game.profileLoading} onEdit={() => setProfileEditing(true)} summary={<dl className="settings-summary"><div><dt>プレイヤー名</dt><dd>{game.username}</dd></div><div><dt>自己紹介</dt><dd>{game.bio || "未設定"}</dd></div><div><dt>称号</dt><dd>{game.userTitle}</dd></div></dl>}>
+          <div className="settings-field"><label htmlFor="profile-name">プレイヤー名</label><input id="profile-name" className="settings-input" value={usernameDraft} maxLength={8} disabled={game.profileLoading} onChange={(event) => setUsernameDraft(event.target.value)} /></div>
+          <div className="settings-field settings-bio-field"><label htmlFor="profile-bio">自己紹介</label><textarea id="profile-bio" className="settings-textarea" value={bioDraft} maxLength={USER_BIO_MAX_LENGTH} rows={4} placeholder="自己紹介を入力" disabled={game.profileLoading} onChange={(event) => setBioDraft(event.target.value)} /><span>{Array.from(bioDraft).length} / {USER_BIO_MAX_LENGTH}</span></div>
+          <ChoiceGroup label="称号" value={titleDraft} disabled={game.profileLoading} onChange={setTitleDraft} options={[{ value: "title_none", label: "称号なし" }, ...game.ownedTitles.filter((title: { id: string }) => title.id !== "title_none").map((title: { id: string; name: string }) => ({ value: title.id, label: title.name }))]} />
+          <div className="settings-edit-actions"><OutlawButton variant="secondary" disabled={game.profileLoading} onClick={() => { resetDrafts(); setProfileEditing(false); }}>キャンセル</OutlawButton><OutlawButton variant="primary" isLoading={game.profileLoading} loadingLabel="保存中…" disabled={!usernameDraft.trim()} onClick={() => void saveProfile()}>保存</OutlawButton></div>
+        </EditableSettingSection>
 
-        <section className="settings-section">
-          <h4 className="settings-section-title">ホーム演出</h4>
-          <p className="settings-help-text">所持中の装飾のみ選択できます。未所持品はイベント・ランキング・ギルド報酬などで追加されます。</p>
-          <div className="settings-field"><label>背景</label><select className="settings-select" value={game.selectedBgMode} onChange={(event) => { game.setSelectedBgMode(event.target.value); game.setEquippedBackground(event.target.value); }}><option value="auto">現在地に合わせる</option>{availableBackgrounds.map((item) => <option key={item.id} value={item.id}>{item.name} — {item.desc}</option>)}</select></div>
-          <div className="settings-field"><label>前景エフェクト</label><select className="settings-select" value={game.equippedFrontEffect} onChange={(event) => game.setEquippedFrontEffect(event.target.value)}>{availableFrontEffects.map((item) => <option key={item.id} value={item.id}>{item.name} — {item.desc}</option>)}</select></div>
-          <div className="settings-field"><label>内装オブジェクト</label><select className="settings-select" value={game.interiorItem} onChange={(event) => game.setInteriorItem(event.target.value)}>{availableInteriors.map((item) => <option key={item.id} value={item.id}>{item.name} — {item.desc}</option>)}</select></div>
-        </section>
+        <EditableSettingSection title="ホーム演出" helper="所持中の装飾を選択できます" editing={homeEditing} pending={game.profileLoading} onEdit={() => setHomeEditing(true)} summary={<dl className="settings-summary"><div><dt>背景</dt><dd>{game.selectedBgMode === "auto" ? "現在地に合わせる" : availableBackgrounds.find((item) => item.id === game.selectedBgMode)?.name || "未設定"}</dd></div><div><dt>前景</dt><dd>{availableFrontEffects.find((item) => item.id === game.equippedFrontEffect)?.name || "なし"}</dd></div><div><dt>内装</dt><dd>{availableInteriors.find((item) => item.id === game.interiorItem)?.name || "なし"}</dd></div></dl>}>
+          <ChoiceGroup label="背景" value={backgroundDraft} disabled={game.profileLoading} onChange={setBackgroundDraft} options={[{ value: "auto", label: "現在地に合わせる" }, ...availableBackgrounds.filter((item) => item.id !== "auto").map((item) => ({ value: item.id, label: item.name }))]} />
+          <ChoiceGroup label="前景エフェクト" value={foregroundDraft} disabled={game.profileLoading} onChange={setForegroundDraft} options={availableFrontEffects.map((item) => ({ value: item.id, label: item.name }))} />
+          <ChoiceGroup label="内装オブジェクト" value={interiorDraft} disabled={game.profileLoading} onChange={setInteriorDraft} options={availableInteriors.map((item) => ({ value: item.id, label: item.name }))} />
+          <div className="settings-edit-actions"><OutlawButton variant="secondary" disabled={game.profileLoading} onClick={() => { resetDrafts(); setHomeEditing(false); }}>キャンセル</OutlawButton><OutlawButton variant="primary" isLoading={game.profileLoading} loadingLabel="保存中…" onClick={() => void saveHome()}>保存</OutlawButton></div>
+        </EditableSettingSection>
 
         {canProvisionQa && <section className="settings-section"><h4 className="settings-section-title">QAテストデータ</h4><p className="settings-help-text">このアカウントのテスト用所持データを再投入します。</p><OutlawButton variant="secondary" fullWidth disabled={qaLoading} onClick={() => void provisionQa()}>{qaLoading ? "投入中..." : "テストデータを投入"}</OutlawButton></section>}
         <section className="settings-section">
@@ -107,7 +139,6 @@ export default function SettingsPanel() {
           <p className="settings-help-text">この端末のブラウザに保存されます。</p>
         </section>
         <div className="settings-panel-footer">
-          <OutlawButton variant="primary" fullWidth disabled={game.profileLoading} onClick={() => void game.handleUpdateProfile()}>{game.profileLoading ? "保存中..." : "保存する"}</OutlawButton>
           <OutlawButton
             variant="danger"
             fullWidth

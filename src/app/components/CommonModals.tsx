@@ -19,6 +19,7 @@ import TypewriterText from "./tutorial/TypewriterText";
 import CanonicalDialog from "./ui/CanonicalDialog";
 import PublicUserProfile from "./profile/PublicUserProfile";
 import UserIdentityRow from "./profile/UserIdentityRow";
+import { SkillIcon } from "./skill/SkillPresentation";
 
 function gachaLocationBackground(result: any): string {
   const master = CHARACTERS_MASTER.find((character: any) => character.id === result?.characterId);
@@ -47,6 +48,7 @@ export default function CommonModals() {
     activeSkillSlot,
     userSkillsList,
     handleEquipSkill,
+    upgradeLoading,
     scoutAnimationState,
     setScoutAnimationState,
     scoutFlashingColor,
@@ -169,18 +171,7 @@ export default function CommonModals() {
     <>
       {/* 🛡️ 装備選択モーダル */}
       {showGearModal && activeGearSlot !== null && (
-        <div className="modal-overlay">
-          <div className="modal-card select-modal-layout">
-            <div className="modal-title flex items-center justify-between pb-2 border-bottom-subtle">
-              <span>装備カード選択 (スロット {activeGearSlot})</span>
-              <button 
-                className="sub-btn font-size-7 py-0.5 active-scale-effect"
-                onClick={() => { setShowGearModal(false); playCyberSe("click"); }}
-              >
-                閉じる
-              </button>
-            </div>
-            
+        <CanonicalDialog title={`装備選択（スロット${activeGearSlot + 1}）`} size="large" onClose={upgradeLoading ? undefined : () => { setShowGearModal(false); playCyberSe("click"); }}>
             <div className="list-container scroll-container max-h-300 mt-2">
               {userEquipmentsList
                 .filter((eq: any) => eq.equipped_character_id === null)
@@ -188,16 +179,17 @@ export default function CommonModals() {
                   const master = CANONICAL_EQUIPMENT_VIEW.find((m: any) => m.id === eq.equipment_id);
                   return (
                     <div key={eq.id} className="list-item">
-                      {master && <img className="equipment-list-art" src={master.assetPath} alt="" aria-hidden="true" />}
+                      <div className="equipment-list-visual">{master && <><img className="equipment-list-art" src={master.assetPath} alt="" aria-hidden="true" /><img className="production-rarity-item-frame" src={getRarityFrameAsset("equipment", master.rarity)} alt="" aria-hidden="true" /></>}</div>
                       <div className="item-left">
-                        <span className="item-title">{master?.name || eq.equipment_id}</span>
-                        <span className="item-desc">Lv.{eq.level} ｜ Rarity: {master?.rarity}</span>
+                        <span className="item-title">{master?.name || "未確認の装備"}</span>
+                        <span className="item-desc">Lv.{eq.level}</span>
                       </div>
                       <button 
                         className="action-btn claim active-scale-effect font-size-8 px-3"
+                        disabled={upgradeLoading}
                         onClick={() => handleEquipGear(eq.id)}
                       >
-                        装備
+                        {upgradeLoading ? "装備中…" : "装備"}
                       </button>
                     </div>
                   );
@@ -206,24 +198,12 @@ export default function CommonModals() {
                 <div className="font-size-8 text-secondary text-center py-4">未装備の装備品がありません。</div>
               )}
             </div>
-          </div>
-        </div>
+        </CanonicalDialog>
       )}
 
       {/* 🎴 スキルカード選択モーダル */}
       {showSkillModal && activeSkillSlot !== null && (
-        <div className="modal-overlay">
-          <div className="modal-card select-modal-layout">
-            <div className="modal-title flex items-center justify-between pb-2 border-bottom-subtle">
-              <span>スキルカード選択 (スロット {activeSkillSlot+1})</span>
-              <button 
-                className="sub-btn font-size-7 py-0.5 active-scale-effect"
-                onClick={() => { setShowSkillModal(false); playCyberSe("click"); }}
-              >
-                閉じる
-              </button>
-            </div>
-
+        <CanonicalDialog title={`スキル選択（スロット${activeSkillSlot + 1}）`} size="large" onClose={upgradeLoading ? undefined : () => { setShowSkillModal(false); playCyberSe("click"); }}>
             <div className="list-container scroll-container max-h-300 mt-2">
               {userSkillsList
                 .filter((us: any) => us.equipped_character_id === null)
@@ -231,15 +211,17 @@ export default function CommonModals() {
                   const master = CANONICAL_SKILL_VIEW.find((s: any) => s.id === us.skill_card_id);
                   return (
                     <div key={us.id} className="list-item">
+                      <SkillIcon skill={master} />
                       <div className="item-left">
-                        <span className="item-title">{master?.name || us.skill_card_id}</span>
-                        <span className="item-desc">Rarity: {master?.rarity} ｜ 突破: +{us.plus_val}</span>
+                        <span className="item-title">{master?.name || "未確認のスキル"}</span>
+                        <span className="item-desc">限界突破 +{us.plus_val}</span>
                       </div>
                       <button 
                         className="action-btn claim active-scale-effect font-size-8 px-3"
+                        disabled={upgradeLoading}
                         onClick={() => handleEquipSkill(us.id)}
                       >
-                        装備
+                        {upgradeLoading ? "装備中…" : "装備"}
                       </button>
                     </div>
                   );
@@ -248,8 +230,7 @@ export default function CommonModals() {
                 <div className="font-size-8 text-secondary text-center py-4">未装備のスキルカードがありません。</div>
               )}
             </div>
-          </div>
-        </div>
+        </CanonicalDialog>
       )}
 
       {/* 🎰 ガチャ演出モーダル (FLASHING / SHOW_RESULTS) */}

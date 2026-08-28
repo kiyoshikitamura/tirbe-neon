@@ -230,6 +230,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     presentsPrefetched, setPresentsPrefetched,
     presentsSyncing, setPresentsSyncing,
     presentClaimLoading, setPresentClaimLoading,
+    itemUseLoading,
     missionClaimLoading, setMissionClaimLoading,
     handleUseItem,
     handleClaimPresent,
@@ -2327,7 +2328,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
 
   const handleMoveBase = async (baseId: string) => {
-    if (!session) return;
+    if (!session || movingAreaLoading) return false;
+    setMovingAreaLoading(true);
     playCyberSe("click");
 
     const prevBase = currentBaseId;
@@ -2343,11 +2345,14 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         .eq("id", session.user.id);
 
       if (error) throw error;
-
+      return true;
     } catch (err: any) {
       console.warn("Move base failed, rolling back:", err.message);
       setCurrentBaseId(prevBase);
       setErrorMessage("拠点移動の同期に失敗しました。");
+      return false;
+    } finally {
+      setMovingAreaLoading(false);
     }
   };
 
@@ -4009,6 +4014,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     presentsPrefetched, setPresentsPrefetched,
     presentsSyncing, setPresentsSyncing,
     presentClaimLoading, setPresentClaimLoading,
+    itemUseLoading,
     missionClaimLoading, setMissionClaimLoading,
 
     // ログインボーナス

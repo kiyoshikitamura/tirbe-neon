@@ -57,6 +57,11 @@ export function useInventory(
     beginAction: beginMissionClaim,
     endAction: endMissionClaim
   } = useImmediateActionLock();
+  const {
+    isLocked: itemUseLoading,
+    beginAction: beginItemUse,
+    endAction: endItemUse
+  } = useImmediateActionLock();
   const setPresentClaimLoading = (loading: boolean) => {
     if (loading) beginPresentClaim();
     else endPresentClaim();
@@ -73,15 +78,16 @@ export function useInventory(
       : /already|claimed/i.test(detail)
         ? "すでに処理済みです。最新の状態へ更新します。"
         : "処理を完了できませんでした。時間をおいて再度お試しください。";
-    setConfirmDialogConfig({ isOpen: true, title, message, confirmText: "閉じる", cancelText: "", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null), isDanger: true });
+    setConfirmDialogConfig({ isOpen: true, title, message, confirmText: "閉じる", cancelText: "", presentation: "canonical", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
   };
 
   const handleUseItem = async (itemId: string) => {
-    if (!session) return;
+    if (!session || !beginItemUse()) return;
+    try {
     
     if (itemId === "ENERGY_DRINK") {
       if (!canUseEnergyDrink(vitality)) {
-        setConfirmDialogConfig({ isOpen: true, title: "使用不可", message: "使用後のスタミナが上限500を超えるため使用できません。", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
+        setConfirmDialogConfig({ isOpen: true, title: "使用不可", message: "使用後のスタミナが上限500を超えるため使用できません。", confirmText: "OK", cancelText: "", presentation: "canonical", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
         return;
       }
       
@@ -98,11 +104,11 @@ export function useInventory(
         if (res.data?.error) throw new Error(res.data.error);
 
         await syncBootstrapData(session.user.id);
-        setConfirmDialogConfig({ isOpen: true, title: "アイテム使用", message: `エナジードリンクを使用しました。スタミナが 50 回復しました！ (${prevVitality} => ${nextVitality})`, onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
+        setConfirmDialogConfig({ isOpen: true, title: "アイテム使用", message: `エナジードリンクを使用しました。スタミナが50回復しました。（${prevVitality} → ${nextVitality}）`, confirmText: "OK", cancelText: "", presentation: "canonical", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
       } catch (err: any) {
         setEnergyDrinks(prevQuantity);
         setVitality(prevVitality);
-        setConfirmDialogConfig({ isOpen: true, title: "使用失敗", message: "使用に失敗しました: " + err.message, onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
+        showActionError("アイテムを使用できませんでした", err);
       }
     } else if (itemId === "PVP_POINT_TICKET" || itemId === "RAID_POINT_TICKET") {
       try {
@@ -111,12 +117,15 @@ export function useInventory(
         if (res.data?.error) throw new Error(res.data.error);
         await syncBootstrapData(session.user.id);
         const resourceName = itemId === "PVP_POINT_TICKET" ? "PvPポイント" : "レイドポイント";
-        setConfirmDialogConfig({ isOpen: true, title: "アイテム使用", message: `${resourceName}が1回復しました。`, onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
+        setConfirmDialogConfig({ isOpen: true, title: "アイテム使用", message: `${resourceName}が1回復しました。`, confirmText: "OK", cancelText: "", presentation: "canonical", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
       } catch (err: any) {
-        setConfirmDialogConfig({ isOpen: true, title: "使用失敗", message: "使用に失敗しました: " + err.message, onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
+        showActionError("アイテムを使用できませんでした", err);
       }
     } else {
-      setConfirmDialogConfig({ isOpen: true, title: "アイテム使用", message: "このアイテムは強化・限界突破画面で使用してください。", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
+      setConfirmDialogConfig({ isOpen: true, title: "アイテム使用", message: "このアイテムは強化・限界突破画面で使用してください。", confirmText: "OK", cancelText: "", presentation: "canonical", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
+    }
+    } finally {
+      endItemUse();
     }
   };
 
@@ -153,6 +162,7 @@ export function useInventory(
           rewards: [{ id: targetPresent.itemId || targetPresent.item_id, name: canonicalItemName(String(targetPresent.itemId || targetPresent.item_id || "")), quantity: Number(targetPresent.qty || targetPresent.quantity || 0) }],
           confirmText: "閉じる",
           cancelText: "",
+          presentation: "canonical",
           onConfirm: () => setConfirmDialogConfig(null),
           onCancel: () => setConfirmDialogConfig(null),
         });
@@ -197,7 +207,7 @@ export function useInventory(
         const itemId = String(present.itemId || present.item_id || "");
         rewardByItem.set(itemId, (rewardByItem.get(itemId) || 0) + Number(present.qty || present.quantity || 0));
       });
-      setConfirmDialogConfig({ isOpen: true, title: "報酬獲得", message: "プレゼントを一括で受け取りました。", kind: "reward", rewards: Array.from(rewardByItem, ([id, quantity]) => ({ id, name: canonicalItemName(id), quantity })), confirmText: "閉じる", cancelText: "", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
+      setConfirmDialogConfig({ isOpen: true, title: "報酬獲得", message: "プレゼントを一括で受け取りました。", kind: "reward", rewards: Array.from(rewardByItem, ([id, quantity]) => ({ id, name: canonicalItemName(id), quantity })), confirmText: "閉じる", cancelText: "", presentation: "canonical", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
     } catch (err: any) {
       console.warn(err.message);
       setPresents(prev => prev.map(p => ({ ...p, loading: false })));
@@ -226,7 +236,7 @@ export function useInventory(
       setMissions(prev => prev.filter(m => m.id !== id));
       playCyberSe("MISSION_REWARD");
       await syncBootstrapData(session.user.id);
-      setConfirmDialogConfig({ isOpen: true, title: "報酬獲得", message: "報酬はプレゼントへ送られました。", kind: "reward", delivery: "PRESENT", rewards: [{ id: targetMission.reward_item || targetMission.rewardItemId, name: canonicalMissionRewardName(String(targetMission.reward_item || targetMission.rewardItemId || "")), quantity: Number(targetMission.reward_amount || targetMission.rewardQty || 0) }], confirmText: "プレゼントを確認", cancelText: "閉じる", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
+      setConfirmDialogConfig({ isOpen: true, title: "報酬獲得", message: "報酬はプレゼントへ送られました。", kind: "reward", delivery: "PRESENT", rewards: [{ id: targetMission.reward_item || targetMission.rewardItemId, name: canonicalMissionRewardName(String(targetMission.reward_item || targetMission.rewardItemId || "")), quantity: Number(targetMission.reward_amount || targetMission.rewardQty || 0) }], confirmText: "OK", cancelText: "", presentation: "canonical", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
     } catch (err) {
       console.warn(err);
       setMissions(prev => prev.map(m => m.id === id ? { ...m, loading: false } : m));
@@ -261,7 +271,7 @@ export function useInventory(
         const itemId = String(mission.reward_item || mission.rewardItemId || "");
         rewardByItem.set(itemId, (rewardByItem.get(itemId) || 0) + Number(mission.reward_amount || mission.rewardQty || 0));
       });
-      setConfirmDialogConfig({ isOpen: true, title: "クリア報酬", message: "すべての報酬はプレゼントへ送られました。", kind: "reward", delivery: "PRESENT", rewards: Array.from(rewardByItem, ([id, quantity]) => ({ id, name: canonicalMissionRewardName(id), quantity })), confirmText: "閉じる", cancelText: "", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
+      setConfirmDialogConfig({ isOpen: true, title: "クリア報酬", message: "すべての報酬はプレゼントへ送られました。", kind: "reward", delivery: "PRESENT", rewards: Array.from(rewardByItem, ([id, quantity]) => ({ id, name: canonicalMissionRewardName(id), quantity })), confirmText: "閉じる", cancelText: "", presentation: "canonical", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
     } catch (err: any) {
       console.warn(err.message);
       setMissions(prev => prev.map(m => ({ ...m, loading: false })));
@@ -294,6 +304,7 @@ export function useInventory(
     presentsPrefetched, setPresentsPrefetched,
     presentsSyncing, setPresentsSyncing,
     presentClaimLoading, setPresentClaimLoading,
+    itemUseLoading,
     missionClaimLoading, setMissionClaimLoading,
     handleUseItem,
     handleClaimPresent,

@@ -3,6 +3,9 @@ import { useGame } from "../context/GameContext";
 import FullScreenPanel from "./ui/FullScreenPanel";
 import SubTabNav from "./ui/SubTabNav";
 import OutlawButton from "./ui/OutlawButton";
+import CanonicalDialog from "./ui/CanonicalDialog";
+import CanonicalItemIcon from "./ui/CanonicalItemIcon";
+import { canonicalItemName } from "@/domain/gameplay/canonical/items";
 import "./InboxPanel.css";
 
 export default function InboxPanel() {
@@ -74,7 +77,7 @@ export default function InboxPanel() {
             <div key={p.id} className="inbox-present-item">
               <div className="inbox-present-info">
                 <div className="inbox-present-title">{p.title || p.message}</div>
-                <div className="inbox-present-reward">{p.reward || `${p.item_id} x${p.quantity}`}</div>
+                <div className="inbox-present-reward"><CanonicalItemIcon itemId={String(p.item_id || "")} alt="" className="inbox-present-reward-icon" /><span>{p.item_id ? canonicalItemName(String(p.item_id)) : p.reward} ×{Number(p.quantity || 0).toLocaleString()}</span></div>
                 <div className="inbox-present-expire">{p.expireText || "期限なし"}</div>
               </div>
               <OutlawButton
@@ -111,19 +114,10 @@ export default function InboxPanel() {
         </div>
       </FullScreenPanel>
 
-      {/* お知らせ詳細モーダル */}
       {selectedNews && (
-        <div className="inbox-news-modal-overlay" onClick={() => setSelectedNews(null)}>
-          <div className="inbox-news-modal-content active-scale-effect-none" onClick={e => e.stopPropagation()}>
-            <div className="inbox-news-modal-header">
-              <h3>{selectedNews.title}</h3>
-              <button className="inbox-news-modal-close" onClick={() => setSelectedNews(null)}>✕</button>
-            </div>
-            <div className="inbox-news-modal-body scroll-container custom-scrollbar">
-              <p className="inbox-news-modal-text">{selectedNews.content || selectedNews.desc}</p>
-            </div>
-          </div>
-        </div>
+        <CanonicalDialog title={selectedNews.title} onClose={() => setSelectedNews(null)} actions={[{ label: "閉じる", semantic: "secondary", onClick: () => setSelectedNews(null) }]}>
+          <p className="inbox-news-modal-text">{selectedNews.content || selectedNews.desc}</p>
+        </CanonicalDialog>
       )}
     </>
   );

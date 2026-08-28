@@ -7,7 +7,7 @@ test("normal Quest becomes claimable without reload after natural expiry", async
     const userId = "00000000-0000-4000-8000-000000000925";
     const now = Date.now();
     localStorage.setItem("tribe_demo_uuid", userId);
-    localStorage.setItem("mock_auth_mode", "EMAIL");
+    localStorage.setItem("mock_auth_mode", "GOOGLE");
     localStorage.setItem("mock_db_users", JSON.stringify([{
       id: userId,
       username: "通常クエストQA",
@@ -19,7 +19,8 @@ test("normal Quest becomes claimable without reload after natural expiry", async
       favorite_character_id: "char_reiji_01",
     }]));
     localStorage.setItem("mock_db_tutorial_progress", JSON.stringify([{ user_id: userId, step_id: "AUTHENTICATION" }]));
-    localStorage.setItem("mock_db_user_account_auth_methods", JSON.stringify([{ user_id: userId, auth_method: "EMAIL" }]));
+    localStorage.setItem("mock_db_user_account_auth_methods", JSON.stringify([{ user_id: userId, auth_method: "GOOGLE" }]));
+    localStorage.setItem("mock_db_auth_identities", JSON.stringify([{ user_id: userId, provider: "google" }]));
     localStorage.setItem("mock_db_user_characters", JSON.stringify([{
       id: `starter_${userId}`,
       user_id: userId,
@@ -52,10 +53,8 @@ test("normal Quest becomes claimable without reload after natural expiry", async
   });
 
   await page.goto("/");
-  const titleAction = page.getByRole("button", { name: "TAP TO START" });
+  await page.getByRole("button", { name: "続きから" }).click();
   const header = page.locator(".header-mobile");
-  await expect(titleAction.or(header)).toBeVisible();
-  if (await titleAction.isVisible()) await titleAction.click();
   await expect(header).toBeVisible();
 
   await page.locator(".circle-menu-btn.conquest").click();

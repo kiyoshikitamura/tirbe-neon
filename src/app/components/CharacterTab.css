@@ -516,14 +516,7 @@
   font-weight: 700;
 }
 
-.char-style-field select {
-  min-height: 38px;
-  border: 1px solid rgba(110, 154, 183, .45);
-  border-radius: 7px;
-  padding: 0 10px;
-  color: #fff;
-  background: #090e18;
-}
+.char-style-field .choice-group-options { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 
 /* Z-10: 背景 (クッキリ夜景表示) */
 .char-layer-bg {

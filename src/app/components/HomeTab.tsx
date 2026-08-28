@@ -385,17 +385,17 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
       onClick: () => setShowMissionPanel(true)
     },
     {
-      id: "ranking",
-      label: "ランキング",
-      icon: "/ui/icon_ranking.png",
-      onClick: () => navigateTab("ranking")
-    },
-    {
       id: "community",
       label: "コミュニティ",
       icon: "/ui/icon_community.png",
       badge: unreadCommunityCount,
       onClick: () => navigateTab("bbs")
+    },
+    {
+      id: "ranking",
+      label: "ランキング",
+      icon: "/ui/icon_ranking.png",
+      onClick: () => navigateTab("ranking")
     }
   ];
 
@@ -433,10 +433,9 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
     }
   ];
 
-  // Ranking is reached from the power panel, and raid is surfaced from the
-  // header only while active. Keep the home rails focused on six direct
-  // personal, social, inbox, and system actions.
-  const visibleLeftSubIcons = leftSubIcons.filter((item) => item.id !== "ranking");
+  // Ranking remains available below Community as a direct daily route. The
+  // power panel is an additional contextual route, not its replacement.
+  const visibleLeftSubIcons = leftSubIcons;
   const visibleRightSubIcons = rightSubIcons.filter((item) => item.id !== "raid");
 
   const latestActivity = socialActivities[0];
@@ -530,7 +529,7 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
             className="mypage-base-overlay-move active-scale-effect"
             onClick={() => { setShowMoveBaseModal(true); playCyberSe("click"); }}
           >
-            <img src="/ui/icon_map.png" alt="Map" className="overlay-map-icon" />
+            <img src="/ui/icon_map.png" alt="拠点" className="overlay-map-icon" />
             拠点移動
           </button>
         </div>
@@ -562,7 +561,7 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
             <span className={`mypage-power-val${totalPowerLoading ? " is-loading" : ""}`}>
               {totalPowerLoading ? "—" : totalPower.toLocaleString()}
             </span>
-            <span className="mypage-power-rank-link">RANK</span>
+            <span className="mypage-power-rank-link">順位</span>
           </div>
         </div>
 

@@ -95,7 +95,9 @@ export default function ConfirmDialog({
           { label: pending ? confirmPendingText : confirmText, semantic: isDanger ? "danger" as const : "primary" as const, disabled: pending, onClick: () => runAndDismiss(onConfirm) },
         ]}
       >
-        {message}
+        {kind === "reward" && rewards.length > 0
+          ? <RewardReceipt items={rewards} delivery={delivery} note={typeof message === "string" ? message : undefined} />
+          : message}
       </CanonicalDialog>
     );
   }

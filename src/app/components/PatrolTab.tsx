@@ -3,6 +3,8 @@
 import React from "react";
 import { useGame } from "../context/GameContext";
 import { CHARACTERS_MASTER } from "@/utils/game_constants";
+import { CANONICAL_SKILL_VIEW } from "@/utils/skills_master_data";
+import { canonicalItemName } from "@/domain/gameplay/canonical/items";
 import { getCharacterBaseStats } from "@/utils/stats_calculator";
 import OutlawCard from "./ui/OutlawCard";
 import OutlawButton from "./ui/OutlawButton";
@@ -204,7 +206,7 @@ export default function PatrolTab() {
 
   const activeCourse = patrolCourses.find((c: any) => c.id === selectedCourse);
   const formatRewardItems = (items: any[] = []) => items
-    .map((item) => `${item.item_id} ×${item.quantity}${Number(item.probability_bp) < 10000 ? ` (${Number(item.probability_bp) / 100}%)` : ""}`)
+    .map((item) => `${canonicalItemName(String(item.item_id || ""))} ×${item.quantity}${Number(item.probability_bp) < 10000 ? ` (${Number(item.probability_bp) / 100}%)` : ""}`)
     .join(" / ");
   const townTabs = [
     { id: "shinjuku", label: "新宿" },
@@ -215,6 +217,11 @@ export default function PatrolTab() {
     { id: "kawasaki", label: "川崎" },
     { id: "yokohama", label: "横浜" }
   ];
+  const selectedTownLabel = townTabs.find((town) => town.id === selectedTown)?.label || "街";
+  const enemyName = (characterId: string) => CHARACTERS_MASTER.find((character) => character.id === characterId)?.jpName || "未確認の敵";
+  const skillName = (skillId: string) => CANONICAL_SKILL_VIEW.find((skill) => skill.id === skillId)?.name || "未確認のスキル";
+  const attributeName = (attribute: string) => ({ JUSTICE: "正義", EVIL: "悪", ORDER: "秩序", CHAOS: "混沌" }[attribute] || "未設定");
+  const tacticName = (tactic: string) => ({ ATTACK_PRIORITY: "攻撃優先", DEFENSE_PRIORITY: "防御優先", BALANCED: "バランス" }[tactic] || "標準");
 
   const handleStart = async () => {
     if (questActionRef.current) return;
@@ -523,7 +530,7 @@ export default function PatrolTab() {
         {/* コース選択 */}
         {!isTutorialQuestStep && <div className="patrol-courses-grid mb-3">
           <div className="patrol-town-clear-progress" aria-label="街のクエストクリア進捗">
-            Town Clear {patrolCourses.filter((course: any) => course.town_id === selectedTown && course.is_first_cleared).length} / 3
+            クリア {patrolCourses.filter((course: any) => course.town_id === selectedTown && course.is_first_cleared).length} / 3
           </div>
           {patrolCourses.filter((c: any) => c.town_id === selectedTown).map((c: any) => (
             <div 
@@ -535,8 +542,8 @@ export default function PatrolTab() {
               <div className={`course-badge badge-${String(c.level_type || "").toLowerCase()}`}>
                 {c.level_type === "EASY" ? "初級" : c.level_type === "NORMAL" ? "中級" : c.level_type === "HARD" ? "上級" : c.level_type}
               </div>
-              {c.is_unlocked === false && <div className="course-lock">LOCKED — 同じ街の前難易度を初回クリア</div>}
-              {c.is_first_cleared && <div className="course-clear">CLEAR</div>}
+              {c.is_unlocked === false && <div className="course-lock">未開放 — 同じ街の前難易度を初回クリア</div>}
+              {c.is_first_cleared && <div className="course-clear">クリア済</div>}
             </div>
           ))}
         </div>}
@@ -548,17 +555,17 @@ export default function PatrolTab() {
               <div><span>派遣先</span><strong>{activeCourse.name}</strong></div>
               <dl>
                 <div><dt>所要</dt><dd>{activeCourse.duration_seconds >= 60 ? String(activeCourse.duration_seconds / 60) + "分" : String(activeCourse.duration_seconds) + "秒"}</dd></div>
-                <div><dt>消費</dt><dd>Vitality {activeCourse.cost_vitality}</dd></div>
-                <div><dt>基本報酬</dt><dd>{activeCourse.reward_cash.toLocaleString()} CASH / User EXP {activeCourse.reward_xp.toLocaleString()}</dd></div>
+                <div><dt>消費</dt><dd>スタミナ {activeCourse.cost_vitality}</dd></div>
+                <div><dt>基本報酬</dt><dd>{activeCourse.reward_cash.toLocaleString()} CASH / プレイヤーEXP {activeCourse.reward_xp.toLocaleString()}</dd></div>
                 <div><dt>主要ドロップ</dt><dd>{formatRewardItems(activeCourse.reward_items) || "なし"}</dd></div>
-                <div><dt>初回クリア</dt><dd>User EXP +{Number(activeCourse.first_clear_user_exp || 0).toLocaleString()} / {formatRewardItems(activeCourse.first_clear_items) || "なし"}</dd></div>
+                <div><dt>初回クリア</dt><dd>プレイヤーEXP +{Number(activeCourse.first_clear_user_exp || 0).toLocaleString()} / {formatRewardItems(activeCourse.first_clear_items) || "なし"}</dd></div>
                 <div><dt>敵編成</dt><dd>{activeCourse.enemy_member_count || "-"}人 / 推奨Lv {activeCourse.recommended_level || "-"}</dd></div>
-                <div><dt>Enemy Preview</dt><dd>{(activeCourse.enemy_members || []).map((member: any) => member.characterId).join(" / ") || "-"}</dd></div>
-                <div><dt>推奨Power</dt><dd>{Number(activeCourse.recommended_power || 0).toLocaleString()}</dd></div>
-                <div><dt>Attribute</dt><dd>{(activeCourse.enemy_attributes || []).join(" / ") || "-"}</dd></div>
-                <div><dt>敵方針</dt><dd>{activeCourse.enemy_tactic || "-"}</dd></div>
-                <div><dt>代表Skill</dt><dd>{(activeCourse.enemy_members || []).flatMap((member: any) => member.skillLoadout || []).slice(0, 3).join(" / ") || "-"}</dd></div>
-                {activeCourse.level_type === "HARD" && <div><dt>敗北時</dt><dd>Character Growth / Skill / Formationを見直してRetry</dd></div>}
+                <div><dt>出現する敵</dt><dd>{(activeCourse.enemy_members || []).map((member: any) => enemyName(member.characterId)).join(" / ") || "-"}</dd></div>
+                <div><dt>推奨総合力</dt><dd>{Number(activeCourse.recommended_power || 0).toLocaleString()}</dd></div>
+                <div><dt>敵属性</dt><dd>{(activeCourse.enemy_attributes || []).map(attributeName).join(" / ") || "-"}</dd></div>
+                <div><dt>敵方針</dt><dd>{tacticName(activeCourse.enemy_tactic)}</dd></div>
+                <div><dt>代表スキル</dt><dd>{(activeCourse.enemy_members || []).flatMap((member: any) => member.skillLoadout || []).slice(0, 3).map(skillName).join(" / ") || "-"}</dd></div>
+                {activeCourse.level_type === "HARD" && <div><dt>敗北時</dt><dd>キャラクター育成・スキル・編成を見直して再挑戦</dd></div>}
                 <div><dt>時短</dt><dd>{tutorialStep === "DISPATCH" ? "今回無料" : "利用可"}</dd></div>
               </dl>
             </div>
@@ -613,11 +620,11 @@ export default function PatrolTab() {
             </div>}
             <OutlawButton 
               onClick={handleStart}
-              disabled={dispatchLoading || tutorialStep !== "DISPATCH" || !selectedCourse || !selectedPatrolMember || activePatrols.length >= 5 || activeCourse.is_unlocked === false}
+              disabled={dispatchLoading || (isTutorialQuestStep && tutorialStep !== "DISPATCH") || !selectedCourse || !selectedPatrolMember || activePatrols.length >= 5 || activeCourse.is_unlocked === false}
               fullWidth
               variant="primary"
             >
-              {dispatchLoading ? "派遣準備中..." : "新宿へ派遣する"}
+              {dispatchLoading ? "派遣準備中..." : `${selectedTownLabel}へ派遣する`}
             </OutlawButton>
           </OutlawCard>
         )}
@@ -814,10 +821,10 @@ export default function PatrolTab() {
                     <div className="font-size-7 text-color-gray pl-2 mt-1">
                       <div>敗北したため、追加報酬はありません。</div>
                       {activeCourse?.level_type === "HARD" && <div className="flex-row-gap-2 mt-2 quest-hard-recovery-actions">
-                        <OutlawButton onClick={() => setActiveTab("character")} variant="secondary">Character Growth</OutlawButton>
-                        <OutlawButton onClick={() => setActiveTab("character")} variant="secondary">Skill</OutlawButton>
-                        <OutlawButton onClick={() => setActiveTab("character")} variant="secondary">Formation</OutlawButton>
-                        <OutlawButton onClick={() => void closeRewardResult()} variant="primary">Retry</OutlawButton>
+                        <OutlawButton onClick={() => setActiveTab("character")} variant="secondary">キャラクター育成</OutlawButton>
+                        <OutlawButton onClick={() => setActiveTab("character")} variant="secondary">スキル</OutlawButton>
+                        <OutlawButton onClick={() => setActiveTab("character")} variant="secondary">編成</OutlawButton>
+                        <OutlawButton onClick={() => void closeRewardResult()} variant="primary">再挑戦</OutlawButton>
                       </div>}
                     </div>
                   )}

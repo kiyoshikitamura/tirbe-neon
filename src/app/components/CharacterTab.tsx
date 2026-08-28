@@ -21,6 +21,7 @@ import CharacterPresentation from "./character/CharacterPresentation";
 import { getRarityFrameAsset } from "@/utils/rarityAssets";
 import { getCharacterLocationBackground } from "@/utils/characterVisualAssets";
 import CanonicalItemIcon from "./ui/CanonicalItemIcon";
+import { ChoiceGroup } from "./ui/EditableSettingSection";
 import "./CharacterTab.css";
 
 const SKILL_EFFECT_LABELS: Record<string, string> = {
@@ -361,7 +362,7 @@ export default function CharacterTab() {
 
         {previewGear ? (
           <>
-            <div className="slot-gear-name">{gearMaster?.name || previewGear.equipment_id}</div>
+            <div className="slot-gear-name">{gearMaster?.name || "未確認の装備"}</div>
             <div className="slot-footer-row">
               <span className="slot-gear-lv">Lv.{previewGear.level}</span>
               {previewGear.plus_val > 0 && (
@@ -468,7 +469,8 @@ export default function CharacterTab() {
         <button className="char-slider-arrow" onClick={handlePrevChar}>◀</button>
         <div className="char-slider-track">
           {(userCharactersDbList || []).map((uc: any) => {
-            const master = CHARACTERS_MASTER.find(m => m.id === uc.character_id) || CHARACTERS_MASTER[0];
+            const master = CHARACTERS_MASTER.find(m => m.id === uc.character_id);
+            if (!master) return null;
             const isSelected = uc.character_id === activeCharMaster.id;
             const deckIndex = selectedMembers.indexOf(uc.character_id);
             const isInDeck = deckIndex !== -1;
@@ -575,7 +577,7 @@ export default function CharacterTab() {
                 }}
               >
                 <span>SK{slotIdx + 1}</span>
-                <strong>{unlocked ? (skillMaster?.name || "未装着") : "LOCK"}</strong>
+                <strong>{unlocked ? (skillMaster?.name || "未装着") : "未開放"}</strong>
               </button>
             );
           })}
@@ -588,10 +590,10 @@ export default function CharacterTab() {
       </div>
 
       <div className="char-identity-summary" aria-label="キャラクター情報">
-        <span><small>RARITY</small><strong>{activeCharMaster.rarity || "N"}</strong></span>
-        <span><small>ORIGIN</small><strong>{activeCharMaster.homeTown || "東京"}</strong></span>
-        <span><small>ATTRIBUTE</small><strong>{alignInfo.label}</strong></span>
-        <span><small>AWAKEN</small><strong>+{awakeningLevel} / +5</strong></span>
+        <span><small>レアリティ</small><strong>{activeCharMaster.rarity || "N"}</strong></span>
+        <span><small>出身</small><strong>{activeCharMaster.homeTown || "東京"}</strong></span>
+        <span><small>属性</small><strong>{alignInfo.label}</strong></span>
+        <span><small>覚醒</small><strong>+{awakeningLevel} / +5</strong></span>
       </div>
 
       <div className="char-main-actions">
@@ -827,7 +829,20 @@ export default function CharacterTab() {
                 ].map(([slot, label, fallback]) => {
                   const options = getCharacterCosmeticsForSlot(slot);
                   const value = getEquippedCharacterCosmetic(slot, fallback);
-                  return <label className="char-style-field" key={slot}>{label}<select value={value} disabled={characterCosmeticLoading || options.length === 0} onChange={(event) => void equipCharacterCosmetic(slot, event.target.value)}>{options.map((item) => <option key={item.cosmetic_id} value={item.cosmetic_id}>{item.cosmetic_master?.display_name || item.cosmetic_id} [{item.cosmetic_master?.rarity || "COMMON"}]</option>)}</select></label>;
+                  return (
+                    <div className="char-style-field" key={slot}>
+                      <ChoiceGroup
+                        label={label}
+                        value={value}
+                        options={options.map((item) => ({
+                          value: item.cosmetic_id,
+                          label: item.cosmetic_master?.display_name || "未確認の装飾",
+                        }))}
+                        disabled={characterCosmeticLoading || options.length === 0}
+                        onChange={(nextValue) => void equipCharacterCosmetic(slot, nextValue)}
+                      />
+                    </div>
+                  );
                 })}
               </div>
             )}
@@ -1059,8 +1074,8 @@ export default function CharacterTab() {
                             >
                               {gearMaster && <img className="production-rarity-item-frame" src={getRarityFrameAsset("equipment", gearMaster.rarity)} alt="" aria-hidden="true" />}
                               {gearMaster && <img className="production-equipment-art" src={gearMaster.assetPath} alt="" aria-hidden="true" />}
-                              <span className="char-tile-name">{gearMaster?.name || eq.equipment_id}</span>
-                              <span className="char-tile-spec">{gearMaster?.rarity || "N"} ・ {equipmentParameter(gearMaster)}</span>
+                              <span className="char-tile-name">{gearMaster?.name || "未確認の装備"}</span>
+                              <span className="char-tile-spec">{equipmentParameter(gearMaster)}</span>
                               <span className="char-tile-lv-label">Lv.{eq.level} ・ {eq.equipped_character_id ? "装備中" : "未装備"}</span>
                             </div>
                           );
@@ -1111,8 +1126,8 @@ export default function CharacterTab() {
                         >
                           {master && <img className="production-rarity-item-frame" src={getRarityFrameAsset("equipment", master.rarity)} alt="" aria-hidden="true" />}
                           {master && <img className="production-equipment-art" src={master.assetPath} alt="" aria-hidden="true" />}
-                          <span>{master?.name || equipment.equipment_id}</span>
-                          <small>{master ? `${master.rarity} ・ ${equipmentParameter(master)}` : "詳細未取得"}</small>
+                          <span>{master?.name || "未確認の装備"}</span>
+                          <small>{master ? equipmentParameter(master) : "詳細未取得"}</small>
                           <b>Lv.{equipment.level || 1} / +{equipment.plus_val || 0}</b>
                         </button>
                       );

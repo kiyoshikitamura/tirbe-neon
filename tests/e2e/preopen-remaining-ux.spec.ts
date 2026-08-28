@@ -1,0 +1,154 @@
+import { expect, test, type Page } from "@playwright/test";
+
+const USER_ID = "00000000-0000-4000-8000-000000000829";
+const OTHER_ID = "00000000-0000-4000-8000-000000000830";
+
+test.setTimeout(120_000);
+
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(({ userId, otherId }) => {
+    const now = new Date().toISOString();
+    localStorage.setItem("tribe_demo_uuid", userId);
+    localStorage.setItem("mock_auth_mode", "GOOGLE");
+    localStorage.setItem("mock_db_users", JSON.stringify([
+      { id: userId, username: "Sweep検証", level: 10, xp: 0, cash: 50000, vitality: 100, current_base_id: "shinjuku", favorite_character_id: "char_reiji_01", bio: "プレオープン検証" },
+      { id: otherId, username: "掲示板ユーザー", level: 8, current_base_id: "shibuya", favorite_character_id: "char_mio_01" },
+    ]));
+    localStorage.setItem("mock_db_tutorial_progress", JSON.stringify([{ user_id: userId, step_id: "AUTHENTICATION" }]));
+    localStorage.setItem("mock_db_user_account_auth_methods", JSON.stringify([{ user_id: userId, auth_method: "GOOGLE" }]));
+    localStorage.setItem("mock_db_auth_identities", JSON.stringify([{ user_id: userId, provider: "google" }]));
+    localStorage.setItem("mock_db_user_characters", JSON.stringify([
+      { id: "10000000-0000-4000-8000-000000000829", user_id: userId, character_id: "char_reiji_01", level: 10, awakening_level: 1, awakening_progress: 0, created_at: now },
+      { id: "10000000-0000-4000-8000-000000000830", user_id: otherId, character_id: "char_mio_01", level: 8, awakening_level: 0, awakening_progress: 0, created_at: now },
+    ]));
+    localStorage.setItem("mock_db_user_main_formations", JSON.stringify([{ user_id: userId, slot: 1, user_character_id: "10000000-0000-4000-8000-000000000829" }]));
+    localStorage.setItem("mock_db_user_skills", JSON.stringify([{ id: "skill-sweep", user_id: userId, skill_card_id: "SKILL_001", equipped_character_id: "10000000-0000-4000-8000-000000000829", slot_index: 0, plus_val: 0 }]));
+    localStorage.setItem("mock_db_skill_battle_master", JSON.stringify([{ skill_id: "SKILL_001", display_name: "ストリートパンチ", enabled: true, kind: "ATTACK", target: "ENEMY_SINGLE", cooldown: 2 }]));
+    localStorage.setItem("mock_db_user_equipments", JSON.stringify([{ id: "equipment-sweep", user_id: userId, equipment_id: "WEAPON_001", equipped_character_id: "10000000-0000-4000-8000-000000000829", slot_index: 0, level: 1, plus_val: 0, created_at: now }]));
+    localStorage.setItem("mock_db_user_items", JSON.stringify([{ id: "item-sweep", user_id: userId, item_id: "CHAR_EXP_S", quantity: 3 }]));
+    localStorage.setItem("mock_db_quests", JSON.stringify([{
+      id: "q_shinjuku_1", name: "歌舞伎町 夜間見回り", town_id: "shinjuku", level_type: "EASY", duration_seconds: 60, cost_vitality: 5,
+      cash_reward: 300, exp_reward: 100, recommended_level: 1, recommended_power: 1000, enemy_member_count: 1,
+      enemy_members: [{ characterId: "char_takeshi_01", skillLoadout: ["SKILL_001"] }], enemy_attributes: ["EVIL"], enemy_tactic: "BALANCED",
+      reward_items: [{ item_id: "CHAR_EXP_S", quantity: 1, probability_bp: 10000 }], first_clear_items: [], first_clear_user_exp: 100,
+    }]));
+    localStorage.setItem("mock_db_user_patrols", "[]");
+    localStorage.setItem("mock_db_bbs_threads", JSON.stringify([{ id: "bbs-sweep", category: "RECRUIT", title: "仲間募集", content: "一緒に遊びましょう", user_id: otherId, author_name: "旧表示名", created_at: now, updated_at: now }]));
+    localStorage.setItem("mock_db_bbs_posts", "[]");
+    const cycleDate = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Tokyo" });
+    const mission = { id: "ob_daily_patrol_01", title: "街の見回り", description: "クエストを1回完了", category: "DAILY", trigger_type: "PATROL_CLEAR", target_value: 1, reward_item_id: "CHAR_EXP_M", reward_quantity: 2, condition_params: { cta_tab: "patrol", cta_label: "クエストへ" }, display_order: 20, is_enabled: true, is_provisional: false };
+    localStorage.setItem("mock_db_missions", JSON.stringify([mission]));
+    localStorage.setItem("mock_db_user_missions", JSON.stringify([{ id: "mission-sweep", user_id: userId, mission_id: mission.id, cycle_date: cycleDate, current_progress: 1, status: "CLEAR", claimed_at: null, missions: mission }]));
+    localStorage.setItem("mock_db_presents", JSON.stringify([{ id: "present-sweep", user_id: userId, item_id: "EQUIP_EXP_M", quantity: 2, message: "Sweep検証プレゼント", status: "UNCLAIMED", created_at: now }]));
+  }, { userId: USER_ID, otherId: OTHER_ID });
+});
+
+async function enterGame(page: Page) {
+  await page.goto("/");
+  const continueButton = page.getByRole("button", { name: "続きから" });
+  await expect(continueButton).toBeVisible();
+  await continueButton.click();
+  await expect(page.locator(".header-mobile")).toBeVisible();
+}
+
+async function expectNoOverflow(page: Page, selector: string) {
+  const result = await page.locator(selector).first().evaluate((node) => {
+    const root = node.getBoundingClientRect();
+    const offenders = Array.from(node.querySelectorAll<HTMLElement>("*")).flatMap((element) => {
+      const rect = element.getBoundingClientRect();
+      return rect.right > root.right + 1 || rect.left < root.left - 1
+        ? [{ className: element.className, left: rect.left, right: rect.right }]
+        : [];
+    }).slice(0, 8);
+    return { clientWidth: node.clientWidth, scrollWidth: node.scrollWidth, offenders };
+  });
+  expect(result.scrollWidth, JSON.stringify(result.offenders)).toBeLessThanOrEqual(result.clientWidth + 1);
+}
+
+for (const viewport of [{ width: 390, height: 844 }, { width: 412, height: 915 }]) {
+  test(`Home routes and editable Settings remain mobile-safe at ${viewport.width}`, async ({ page }) => {
+    await page.setViewportSize(viewport);
+    await enterGame(page);
+
+    const community = page.locator(".mypage-sub-icons-left .sub-icon-unit").filter({ hasText: "コミュニティ" });
+    const ranking = page.locator(".mypage-sub-icons-left .sub-icon-unit").filter({ hasText: "ランキング" });
+    await expect(community).toBeVisible();
+    await expect(ranking).toBeVisible();
+    expect((await ranking.boundingBox())!.y).toBeGreaterThan((await community.boundingBox())!.y);
+    await ranking.click();
+    await expect(page.locator(".ranking-tab-view")).toBeVisible();
+
+    await page.getByRole("button", { name: /マイページ/ }).click();
+    await page.getByRole("button", { name: "拠点移動" }).click();
+    const moveDialog = page.getByRole("dialog", { name: "拠点移動" });
+    await expect(moveDialog.getByText("横浜", { exact: true })).toBeVisible();
+    await expect(moveDialog.getByText("ジャンクバザール")).toHaveCount(0);
+    await moveDialog.getByRole("button", { name: "閉じる" }).click();
+
+    await page.locator(".mypage-sub-icons-right .sub-icon-unit").filter({ hasText: "設定" }).click();
+    await expect(page.getByText("設定 / プロフィール", { exact: true })).toBeVisible();
+    await expect(page.locator(".settings-panel-container-inner select")).toHaveCount(0);
+    await page.locator(".editable-setting-section").first().getByRole("button", { name: "編集" }).click();
+    await expect(page.getByLabel("プレイヤー名")).toBeVisible();
+    await expect(page.getByRole("radiogroup", { name: "称号" })).toBeVisible();
+    await page.getByLabel("自己紹介").fill(`保存確認${viewport.width}`);
+    await page.locator(".editable-setting-section").first().getByRole("button", { name: "保存", exact: true }).click();
+    const saved = page.getByRole("dialog", { name: "保存完了" });
+    await expect(saved).toContainText("設定を保存しました");
+    await saved.getByRole("button", { name: "OK" }).click();
+    await expect(page.locator(".editable-setting-section").first()).toContainText(`保存確認${viewport.width}`);
+    await expectNoOverflow(page, ".settings-panel-container-inner");
+  });
+}
+
+test("Quest, Character and BBS consume canonical presentation contracts", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await enterGame(page);
+
+  await page.locator(".circle-menu-btn.conquest").click();
+  await expect(page.locator(".course-name", { hasText: "歌舞伎町 夜間見回り" })).toBeVisible();
+  await page.locator(".patrol-char-item:not(.locked)").first().click();
+  const dispatch = page.getByRole("button", { name: "新宿へ派遣する" });
+  await expect(dispatch).toBeEnabled();
+  await expect(page.locator(".patrol-container")).not.toContainText("CHAR_EXP_S");
+  await expect(page.locator(".patrol-container")).toContainText("強化ドリンク・小");
+  await expectNoOverflow(page, ".patrol-container");
+
+  await page.getByRole("button", { name: /キャラ/ }).click();
+  await expect(page.locator(".char-tab-container")).not.toContainText("WEAPON_001");
+  await expect(page.locator(".char-firstview-skill.is-locked")).toHaveCount(2);
+  await expect(page.locator(".char-firstview-skills")).not.toContainText("LOCK");
+  await page.locator(".char-main-stage").evaluate((node) => Promise.all(node.getAnimations().map((animation) => animation.finished)));
+  await expectNoOverflow(page, ".char-tab-container");
+
+  await page.getByRole("button", { name: /マイページ/ }).click();
+  await page.locator(".mypage-sub-icons-left .sub-icon-unit").filter({ hasText: "コミュニティ" }).click();
+  const thread = page.locator(".bbs-thread-card").filter({ hasText: "仲間募集" });
+  await expect(thread).toBeVisible();
+  await expect(thread.locator(".user-identity-row")).toContainText("掲示板ユーザー");
+  await expect(thread.locator(".character-presentation-character")).toHaveAttribute("src", /mio_transparent_asset/);
+  await expectNoOverflow(page, ".bbs-view-container");
+});
+
+test("Mission and Present mutations retain canonical item receipts", async ({ page }) => {
+  await page.setViewportSize({ width: 412, height: 915 });
+  await enterGame(page);
+
+  await page.locator(".mypage-sub-icons-left .sub-icon-unit").filter({ hasText: "ミッション" }).click();
+  await page.getByRole("button", { name: "受け取る", exact: true }).click();
+  const missionReceipt = page.getByRole("dialog", { name: "報酬獲得" });
+  await expect(missionReceipt).toContainText("強化ドリンク・中");
+  await expect(missionReceipt).not.toContainText("CHAR_EXP_M");
+  await missionReceipt.getByRole("button", { name: "OK" }).click();
+  await page.getByRole("button", { name: "閉じる" }).click();
+
+  await page.locator(".mypage-sub-icons-right .sub-icon-unit").filter({ hasText: "プレゼント" }).click();
+  const present = page.locator(".inbox-present-item").filter({ hasText: "Sweep検証プレゼント" });
+  await expect(present).toContainText("カスタムオイル・中");
+  await expect(present).not.toContainText("EQUIP_EXP_M");
+  await expect(present.locator(".inbox-present-reward-icon")).toBeVisible();
+  await present.getByRole("button", { name: "受け取る", exact: true }).click();
+  const presentReceipt = page.getByRole("dialog", { name: "報酬獲得" });
+  await expect(presentReceipt).toContainText("カスタムオイル・中");
+  await expectNoOverflow(page, ".canonical-dialog");
+});

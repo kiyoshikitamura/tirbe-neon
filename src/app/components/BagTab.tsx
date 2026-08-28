@@ -4,6 +4,7 @@ import React, { useState, useMemo } from "react";
 import { useGame } from "../context/GameContext";
 import { canUseEnergyDrink } from "@/domain/gameplay/canonical/action_resources";
 import { ITEMS_MASTER_DATA, ItemMaster } from "@/utils/items_master_data";
+import CanonicalDialog from "./ui/CanonicalDialog";
 import "./BagTab.css";
 
 export default function BagTab() {
@@ -17,6 +18,7 @@ export default function BagTab() {
     equipExpL,
     userItems,
     handleUseItem,
+    itemUseLoading,
     vitality,
     playCyberSe,
     setConfirmDialogConfig
@@ -58,13 +60,13 @@ export default function BagTab() {
     playCyberSe("click");
     const qty = itemQuantities[item.id] || 0;
     if (qty <= 0) {
-      setConfirmDialogConfig({ isOpen: true, title: "アイテム使用", message: "このアイテムを所持していません。", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
+      setConfirmDialogConfig({ isOpen: true, title: "アイテム使用", message: "このアイテムを所持していません。", confirmText: "OK", cancelText: "", presentation: "canonical", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
       return;
     }
 
     if (item.id === "ENERGY_DRINK") {
       if (!canUseEnergyDrink(vitality)) {
-        setConfirmDialogConfig({ isOpen: true, title: "使用不可", message: "使用後のスタミナが上限500を超えるため使用できません。", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
+        setConfirmDialogConfig({ isOpen: true, title: "使用不可", message: "使用後のスタミナが上限500を超えるため使用できません。", confirmText: "OK", cancelText: "", presentation: "canonical", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
         return;
       }
       await handleUseItem(item.id);
@@ -143,9 +145,9 @@ export default function BagTab() {
                     <button
                       className="item-use-btn active-scale-effect"
                       onClick={(e) => { e.stopPropagation(); handleUseButtonClick(item); }}
-                      disabled={isEnergyDrinkDisabled}
+                      disabled={isEnergyDrinkDisabled || itemUseLoading}
                     >
-                      使用
+                      {itemUseLoading ? "使用中…" : "使用"}
                     </button>
                   ) : (
                     <span className="item-material-label">強化画面で使用</span>
@@ -159,12 +161,8 @@ export default function BagTab() {
 
       {/* アイテム詳細ダイアログモーダル */}
       {selectedItem && (
-        <div className="recover-modal-overlay" onClick={() => setSelectedItem(null)}>
-          <div className="recover-modal-box" onClick={(e) => e.stopPropagation()}>
-            <div className="recover-modal-header">
-              <h3>{selectedItem.name}</h3>
-            </div>
-            <div className="recover-modal-body p-3 text-center">
+        <CanonicalDialog title={selectedItem.name} onClose={itemUseLoading ? undefined : () => setSelectedItem(null)}>
+            <div className="recover-modal-body text-center">
               <img className="item-production-art item-production-art--detail" src={selectedItem.assetPath} alt="" aria-hidden="true" />
               <p className="text-gray-300 font-size-8 mb-3">{selectedItem.description}</p>
               <div className="font-size-8 text-cyan-400 font-bold mb-4">
@@ -179,21 +177,21 @@ export default function BagTab() {
                       setSelectedItem(null);
                       handleUseButtonClick(item);
                     }}
-                    disabled={selectedItem.id === "ENERGY_DRINK" && (!canUseEnergyDrink(vitality) || (itemQuantities[selectedItem.id] || 0) <= 0)}
+                    disabled={itemUseLoading || (selectedItem.id === "ENERGY_DRINK" && (!canUseEnergyDrink(vitality) || (itemQuantities[selectedItem.id] || 0) <= 0))}
                   >
-                    使用する
+                    {itemUseLoading ? "使用中…" : "使用する"}
                   </button>
                 )}
                 <button
                   className="sub-btn flex-1 py-2 active-scale-effect"
                   onClick={() => setSelectedItem(null)}
+                  disabled={itemUseLoading}
                 >
                   閉じる
                 </button>
               </div>
             </div>
-          </div>
-        </div>
+        </CanonicalDialog>
       )}
     </div>
   );

@@ -111,7 +111,11 @@
   font-size: 12px;
   color: var(--neon-gold);
   margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
 }
+.inbox-present-reward-icon { width: 28px; height: 28px; flex: none; object-fit: contain; }
 .inbox-present-expire {
   font-size: 11px;
   color: var(--text-secondary);
@@ -173,4 +177,5 @@
   color: var(--text-primary);
   line-height: 1.6;
   white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }

@@ -1,15 +1,15 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useGame } from "../context/GameContext";
-import { supabase } from "@/utils/supabase"; // もし supabase クライアントが別にあれば
+import { supabase } from "@/utils/supabase";
+import UserIdentityRow from "./profile/UserIdentityRow";
+import CanonicalDialog from "./ui/CanonicalDialog";
 import "./BbsTab.css";
 
 export default function BbsTab() {
   const {
     session,
-    username,
-    selectedLeader,
     bbsThreads,
     setBbsThreads,
     bbsActiveThread,
@@ -41,8 +41,48 @@ export default function BbsTab() {
   // 返信用
   const [replyContent, setReplyContent] = useState<string>("");
   const [replying, setReplying] = useState<boolean>(false);
+  const [identityByUserId, setIdentityByUserId] = useState<Record<string, any>>({});
+  const [resolvedIdentityKey, setResolvedIdentityKey] = useState("");
 
   const postsEndRef = useRef<HTMLDivElement>(null);
+
+  const identityUserIds = useMemo(() => Array.from(new Set([
+    ...bbsThreads.map((thread: any) => thread.user_id),
+    ...(bbsActiveThread?.user_id ? [bbsActiveThread.user_id] : []),
+    ...bbsPosts.map((post: any) => post.user_id),
+  ].filter(Boolean))).sort(), [bbsActiveThread, bbsPosts, bbsThreads]);
+  const identityKey = identityUserIds.join("|");
+  const identityReady = identityUserIds.length === 0 || resolvedIdentityKey === identityKey;
+
+  useEffect(() => {
+    let active = true;
+    if (!session?.user?.id || identityUserIds.length === 0) {
+      return () => { active = false; };
+    }
+    void supabase.rpc("get_public_profiles", { p_user_ids: identityUserIds }).then(({ data, error }) => {
+      if (!active) return;
+      if (error) {
+        setIdentityByUserId({});
+      } else {
+        setIdentityByUserId(Object.fromEntries((data || []).map((profile: any) => [profile.user_id || profile.id, profile])));
+      }
+      setResolvedIdentityKey(identityKey);
+    });
+    return () => { active = false; };
+  }, [identityKey, identityUserIds, session?.user?.id]);
+
+  const renderIdentity = (entry: any) => {
+    const profile = identityByUserId[entry?.user_id];
+    return <UserIdentityRow
+      userName={String(profile?.username || "ユーザー")}
+      guildName={profile?.guild_name}
+      title={profile?.title_name}
+      leaderCharacterId={profile?.favorite_character_id}
+      identityReady={identityReady}
+      onOpen={entry?.user_id ? () => fetchPlayerDetail(entry.user_id) : undefined}
+      variant="compact"
+    />;
+  };
 
   // カテゴリ変更時にスレッド取得
   useEffect(() => {
@@ -263,19 +303,8 @@ export default function BbsTab() {
 
           <div className="bbs-thread-main-card">
             <div className="bbs-post-author-row">
-              <div className="bbs-author-avatar-wrapper">
-                <img
-                  src={bbsActiveThread.author_avatar_url || "/reiji_transparent_asset.png"}
-                  alt=""
-                  className="bbs-author-avatar"
-                />
-              </div>
-              <div className="bbs-author-info">
-                <button type="button" className="bbs-author-name bbs-author-profile-link" onClick={() => bbsActiveThread.user_id && fetchPlayerDetail(bbsActiveThread.user_id)}>
-                  {bbsActiveThread.author_name}
-                </button>
-                <span className="bbs-post-time">{formatTime(bbsActiveThread.created_at)}</span>
-              </div>
+              {renderIdentity(bbsActiveThread)}
+              <span className="bbs-post-time">{formatTime(bbsActiveThread.created_at)}</span>
             </div>
             <h3 className="bbs-thread-main-title">{bbsActiveThread.title}</h3>
             <p className="bbs-thread-main-content">{bbsActiveThread.content}</p>
@@ -289,19 +318,8 @@ export default function BbsTab() {
               bbsPosts.map((post: any) => (
                 <div key={post.id} className="bbs-post-card">
                   <div className="bbs-post-author-row">
-                    <div className="bbs-author-avatar-wrapper">
-                      <img
-                        src={post.author_avatar_url || "/reiji_transparent_asset.png"}
-                        alt=""
-                        className="bbs-author-avatar"
-                      />
-                    </div>
-                    <div className="bbs-author-info">
-                      <button type="button" className="bbs-author-name bbs-author-profile-link" onClick={() => post.user_id && fetchPlayerDetail(post.user_id)}>
-                        {post.author_name}
-                      </button>
-                      <span className="bbs-post-time">{formatTime(post.created_at)}</span>
-                    </div>
+                    {renderIdentity(post)}
+                    <span className="bbs-post-time">{formatTime(post.created_at)}</span>
                   </div>
                   <p className="bbs-post-content">{post.content}</p>
                 </div>
@@ -382,9 +400,7 @@ export default function BbsTab() {
                     <span className="bbs-thread-date">{formatTime(thread.updated_at)}</span>
                   </div>
                   <p className="bbs-thread-preview">{thread.content}</p>
-                  <div className="bbs-thread-footer">
-                    <span className="bbs-thread-author">投稿者: {thread.author_name}</span>
-                  </div>
+                  <div className="bbs-thread-footer">{renderIdentity(thread)}</div>
                 </div>
               ))
             )}
@@ -394,20 +410,7 @@ export default function BbsTab() {
 
       {/* スレッド作成モーダル */}
       {showCreateModal && (
-        <div className="bbs-modal-overlay">
-          <div className="bbs-modal-content">
-            <div className="bbs-modal-header">
-              <h3>スレッド作成</h3>
-              <button
-                className="bbs-modal-close-btn active-scale-effect"
-                onClick={() => {
-                  playCyberSe("click");
-                  setShowCreateModal(false);
-                }}
-              >
-                ×
-              </button>
-            </div>
+        <CanonicalDialog title="スレッド作成" size="large" onClose={creating ? undefined : () => setShowCreateModal(false)}>
             <form onSubmit={handleCreateThread}>
               <div className="bbs-form-group">
                 <label>スレッドタイトル</label>
@@ -450,8 +453,7 @@ export default function BbsTab() {
                 </button>
               </div>
             </form>
-          </div>
-        </div>
+        </CanonicalDialog>
       )}
     </div>
   );

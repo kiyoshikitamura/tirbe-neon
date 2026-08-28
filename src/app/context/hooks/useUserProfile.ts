@@ -112,31 +112,41 @@ export function useUserProfile(
   const [selectedLeader, setSelectedLeader] = useState<string>("");
   const [upgradeSelectedCharId, setUpgradeSelectedCharId] = useState<string>("");
 
-  const handleUpdateProfile = async () => {
-    if (!session) return;
-    if (!username.trim()) {
+  const handleUpdateProfile = async (overrides: Partial<{
+    username: string;
+    bio: string;
+    title: string;
+    background: string;
+    foreground: string;
+    interior: string;
+  }> = {}) => {
+    if (!session || profileLoading) return false;
+    const nextUsername = (overrides.username ?? username).trim();
+    const nextBio = (overrides.bio ?? bio).trim();
+    if (!nextUsername) {
       setErrorMessage("ユーザー名は空欄にできません。");
-      return;
+      return false;
     }
-    if (Array.from(username.trim()).length > 8) {
+    if (Array.from(nextUsername).length > 8) {
       setErrorMessage("ユーザー名は8文字以内で入力してください。");
-      return;
+      return false;
+    }
+    if (Array.from(nextBio).length > USER_BIO_MAX_LENGTH) {
+      setErrorMessage(`自己紹介は${USER_BIO_MAX_LENGTH}文字以内で入力してください。`);
+      return false;
     }
     setProfileLoading(true);
     playCyberSe("click");
 
     // 🛡️ チート対策: 未解放の背景・称号・装飾の不正設定をバリデーション遮断
-    let safeBg = selectedBgMode;
-    const safeTitle = titleEquipped;
-    const safeInterior = interiorItem;
+    let safeBg = overrides.background ?? selectedBgMode;
+    const safeTitle = overrides.title ?? titleEquipped;
+    const safeForeground = overrides.foreground ?? equippedFrontEffect;
+    const safeInterior = overrides.interior ?? interiorItem;
 
     if (safeBg === "bg_kabukicho" && userLevel < 5) safeBg = "auto";
     if (safeBg === "bg_wharf" && !userGuild) safeBg = "auto";
     if (safeBg === "bg_bazar" && cash < 20000) safeBg = "auto";
-
-    setSelectedBgMode(safeBg);
-    setTitleEquipped(safeTitle);
-    setInteriorItem(safeInterior);
 
     try {
       const { error: titleError } = await supabase.rpc("equip_owned_title", { p_title_id: safeTitle });
@@ -144,13 +154,13 @@ export function useUserProfile(
       const { error } = await supabase
         .from("users")
         .update({
-          username,
-          bio,
+          username: nextUsername,
+          bio: nextBio,
           avatar_url: avatarUrl,
           current_base_id: currentBaseId,
           favorite_character_id: selectedLeader,
-          equipped_background: equippedBackground,
-          equipped_front_effect: equippedFrontEffect,
+          equipped_background: safeBg === "auto" ? equippedBackground : safeBg,
+          equipped_front_effect: safeForeground,
           selected_bg_mode: safeBg,
           interior_item: safeInterior
         })
@@ -160,20 +170,27 @@ export function useUserProfile(
         if (error.code === "23505") {
           setErrorMessage("このユーザー名は既に他のプレイヤーが登録しています。");
           setProfileLoading(false);
-          return;
+          return false;
         }
         throw error;
       }
 
       await syncSharedHomeCosmetics({
         background: safeBg,
-        foreground: equippedFrontEffect,
+        foreground: safeForeground,
         interior: safeInterior
       });
 
+      setUsername(nextUsername);
+      setBio(nextBio);
+      setSelectedBgMode(safeBg);
+      if (safeBg !== "auto") setEquippedBackground(safeBg);
+      setEquippedFrontEffect(safeForeground);
+      setTitleEquipped(safeTitle);
+      setInteriorItem(safeInterior);
       await syncBootstrapData(session.user.id);
-      setShowSettingsPanel(false);
-      setConfirmDialogConfig({ isOpen: true, title: "保存完了", message: "プロフィールを同期保存しました。", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
+      setConfirmDialogConfig({ isOpen: true, title: "保存完了", message: "設定を保存しました。", confirmText: "OK", cancelText: "", presentation: "canonical", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
+      return true;
     } catch (err: any) {
       console.warn("Profile update failed:", err.message);
       if (err.message?.includes("Username can only be changed once per day")) {
@@ -183,6 +200,7 @@ export function useUserProfile(
       } else {
         setErrorMessage("プロフィールの更新に失敗しました。");
       }
+      return false;
     } finally {
       setProfileLoading(false);
     }
@@ -210,7 +228,7 @@ export function useUserProfile(
       if (error) throw error;
       setBio(nextBio);
       await syncBootstrapData(session.user.id);
-      setConfirmDialogConfig({ isOpen: true, title: "保存完了", message: "自己紹介を保存しました。", confirmText: "OK", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
+      setConfirmDialogConfig({ isOpen: true, title: "保存完了", message: "自己紹介を保存しました。", confirmText: "OK", cancelText: "", presentation: "canonical", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
       return true;
     } catch (error: any) {
       if (error.message?.includes("Bio can only be changed once per day")) setErrorMessage("自己紹介は1日1回まで変更できます。");

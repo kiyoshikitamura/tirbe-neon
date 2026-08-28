@@ -40,19 +40,19 @@
   margin-bottom: 8px;
 }
 
-.settings-input, .settings-textarea, .settings-select {
+.settings-input, .settings-textarea {
   width: 100%;
   background: rgba(0, 0, 0, 0.5);
   border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 8px;
   color: #fff;
   padding: 12px;
-  font-size: 14px;
+  font-size: 16px;
   font-family: inherit;
   transition: border-color 0.2s;
 }
 
-.settings-input:focus, .settings-textarea:focus, .settings-select:focus {
+.settings-input:focus, .settings-textarea:focus {
   outline: none;
   border-color: var(--neon-cyan);
 }
@@ -61,6 +61,8 @@
   resize: vertical;
 }
 .settings-bio-meta{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:8px;color:var(--text-secondary);font-size:11px}.settings-bio-meta button{min-width:104px}
+.settings-bio-field>span{display:block;margin-top:6px;color:var(--text-secondary);font-size:11px;text-align:right}
+.settings-summary{display:grid;gap:8px;margin:0}.settings-summary>div{display:grid;grid-template-columns:minmax(88px,.42fr) minmax(0,1fr);gap:10px}.settings-summary dt{color:var(--ui-text-secondary);font-size:11px}.settings-summary dd{min-width:0;margin:0;color:#fff;font-size:12px;overflow-wrap:anywhere}.settings-edit-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}.settings-panel-container-inner>.editable-setting-section{margin-bottom:12px}.settings-panel-container-inner .choice-group-options{grid-template-columns:repeat(2,minmax(0,1fr))}
 
 .settings-toggle-group {
   display: flex;

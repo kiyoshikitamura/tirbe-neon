@@ -165,8 +165,9 @@
 .bbs-thread-footer {
   font-size: 10px;
   color: #71717a;
-  text-align: right;
+  text-align: left;
 }
+.bbs-thread-footer .user-identity-row { max-width: 210px; }
 
 /* 詳細パネル */
 .bbs-detail-panel {
@@ -222,9 +223,12 @@
 .bbs-post-author-row {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 10px;
   margin-bottom: 10px;
 }
+.bbs-post-author-row .user-identity-row { flex: 1 1 auto; min-width: 0; }
+.bbs-post-author-row .bbs-post-time { flex: none; }
 
 .bbs-author-avatar-wrapper {
   width: 28px;
@@ -409,6 +413,7 @@
 .bbs-form-group {
   margin-bottom: 14px;
 }
+.canonical-dialog .bbs-form-group:first-child { padding-top: 2px; }
 
 .bbs-form-group label {
   display: block;
@@ -426,7 +431,7 @@
   border-radius: 4px;
   color: #ffffff;
   padding: 10px;
-  font-size: 12px;
+  font-size: 16px;
   font-family: inherit;
   box-sizing: border-box;
 }

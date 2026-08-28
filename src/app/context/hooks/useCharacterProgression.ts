@@ -140,6 +140,9 @@ export function useCharacterProgression(
           createElement("p", { className: "growth-result-level" }, `Lv.${previousLevel} → Lv.${newLevel}`),
           createElement("small", { className: "growth-result-power" }, `総合力 ${powerBefore.toLocaleString()} → ${powerAfter.toLocaleString()}（+${Math.max(0, powerAfter - powerBefore).toLocaleString()}）`),
         ),
+        confirmText: "OK",
+        cancelText: "",
+        presentation: "canonical",
         onConfirm: () => setConfirmDialogConfig(null),
         onCancel: () => setConfirmDialogConfig(null)
       };
@@ -189,6 +192,9 @@ export function useCharacterProgression(
         message: res.data?.outcome === "awakening"
           ? `覚醒 +${level} になりました。次の進捗 ${progress}/${required}`
           : `覚醒進捗が ${progress}/${required} になりました。`,
+        confirmText: "OK",
+        cancelText: "",
+        presentation: "canonical",
         onConfirm: () => setConfirmDialogConfig(null),
         onCancel: () => setConfirmDialogConfig(null),
       });
@@ -230,6 +236,7 @@ export function useCharacterProgression(
       setConfirmDialogConfig({
         isOpen: true, title: "装備変更結果",
         message: `${equippedName}をスロット${slotIndex + 1}へ装備しました。編成戦力へ反映されます。`,
+        confirmText: "OK", cancelText: "", presentation: "canonical",
         onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null)
       });
     } catch (err) {
@@ -287,6 +294,7 @@ export function useCharacterProgression(
       setConfirmDialogConfig({
         isOpen: true, title: "スキル変更結果",
         message: `${equippedName}をスロット${slotIndex + 1}へ装備しました。次回バトルから効果が反映されます。`,
+        confirmText: "OK", cancelText: "", presentation: "canonical",
         onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null)
       });
     } catch (err) {
@@ -563,6 +571,9 @@ export function useCharacterProgression(
         isOpen: true,
         title: "レベルアップ結果",
         message: `${equipmentName} が Lv.${previousLevel} → Lv.${newLevel} になりました。\n装備戦力 ${powerBefore.toLocaleString()} → ${powerAfter.toLocaleString()}（+${Math.max(0, powerAfter - powerBefore).toLocaleString()}）`,
+        confirmText: "OK",
+        cancelText: "",
+        presentation: "canonical",
         onConfirm: () => setConfirmDialogConfig(null),
         onCancel: () => setConfirmDialogConfig(null)
       });
@@ -622,7 +633,7 @@ export function useCharacterProgression(
       }
 
       await syncBootstrapData(session.user.id);
-      setConfirmDialogConfig({ isOpen: true, title: "限界突破", message: `限界突破完了！ (+${nextLb})`, onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
+      setConfirmDialogConfig({ isOpen: true, title: "限界突破", message: `限界突破が+${nextLb}になりました。`, confirmText: "OK", cancelText: "", presentation: "canonical", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
     } catch (err: any) {
       console.warn(err.message);
     } finally {
@@ -690,7 +701,7 @@ export function useCharacterProgression(
       const nextLb = selectedSkill.plus_val + 1;
       await syncBootstrapData(session.user.id);
       setSelectedSkill((prev: any) => prev ? { ...prev, plus_val: nextLb } : null);
-      setConfirmDialogConfig({ isOpen: true, title: "限界突破", message: `スキルカードの限界突破完了！ (+${nextLb})`, onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
+      setConfirmDialogConfig({ isOpen: true, title: "限界突破", message: `スキルカードの限界突破が+${nextLb}になりました。`, confirmText: "OK", cancelText: "", presentation: "canonical", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
     } catch (err: any) {
       console.warn(err.message);
     } finally {
