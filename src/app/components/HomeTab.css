@@ -621,6 +621,9 @@
 .mypage-live-ticker .user-identity-row small { display:none; }
 @keyframes mypage-activity-enter { from { opacity:0;transform:translateX(-18px); } to { opacity:1;transform:translateX(0); } }
 
+.canonical-dialog-overlay:has(.mypage-activity-log){isolation:isolate;background:rgba(0,0,0,.84);animation:none}
+.canonical-dialog:has(.mypage-activity-log){isolation:isolate;background:#151d2a;animation:mypage-activity-dialog-in .2s cubic-bezier(.2,.8,.25,1)}
+.canonical-dialog:has(.mypage-activity-log) :is(.canonical-dialog-header,.canonical-dialog-body,.mypage-activity-log,.canonical-dialog-actions){background:#151d2a}
 .canonical-dialog-body:has(> .mypage-activity-log){position:relative;isolation:isolate;max-height:min(64dvh,560px);overflow:hidden;padding:0}
 .mypage-activity-log{display:grid;gap:0;min-width:0;max-height:min(64dvh,560px);overflow-y:auto;padding:18px;overscroll-behavior:contain;white-space:normal}
 .mypage-activity-log-row{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:12px;min-width:0;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.09)}
@@ -631,6 +634,7 @@
 .mypage-activity-log-detail strong{color:var(--ui-text-primary);font-size:11px;line-height:1.35}
 .mypage-activity-log-detail time{color:var(--ui-text-muted);font-size:9px;white-space:nowrap}
 .mypage-activity-empty{margin:0;padding:18px 0;text-align:center}
+@keyframes mypage-activity-dialog-in{from{transform:translateY(8px) scale(.98)}to{transform:none}}
 
 @media(max-width:390px){
   .mypage-activity-log{padding:15px}
