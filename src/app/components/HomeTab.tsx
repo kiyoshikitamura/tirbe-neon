@@ -171,39 +171,34 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
   }, [qaState?.socialActivities, session?.user?.id]);
 
   const primaryCta = useMemo<{
-    key: string; eyebrow: string; title: string; detail: string; tab?: string; action?: "guild_chat" | "mission" | "mission_handoff";
-  }>(() => {
+    key: string; title: string; tab?: string; action?: "guild_chat" | "mission_handoff";
+  } | null>(() => {
     const tutorialStep = onboardingState?.tutorial_step;
-    if (tutorialStep && tutorialStep !== "AUTHENTICATION") return { key: "tutorial", eyebrow: "次にすること", title: "チュートリアルを続ける", detail: "最初の成功体験を完了しよう。", tab: tutorialStep === "FREE_GACHA" ? "gacha" : tutorialStep === "AUTO_FORMATION" ? "character" : "patrol" };
-    if (!funnelMilestones.has("first_pvp")) return { key: "first_pvp", eyebrow: "次にすること", title: "最初のPvPへ挑戦", detail: "街のプレイヤーと競い、現在の強さを確かめよう。", tab: "pvp" };
-    if (!funnelMilestones.has("ranking_viewed")) return { key: "ranking_viewed", eyebrow: "次にすること", title: "ランキングを確認", detail: "初戦の順位と次の目標を確認しよう。", tab: "ranking" };
-    if (!funnelMilestones.has("first_raid") && isRaidActive) return { key: "first_raid", eyebrow: "次にすること", title: "開催中レイドへ", detail: "全プレイヤーで強敵へ挑み、貢献を残そう。", tab: "raid" };
+    if (tutorialStep && tutorialStep !== "AUTHENTICATION") return { key: "tutorial", title: "チュートリアルを続ける", tab: tutorialStep === "FREE_GACHA" ? "gacha" : tutorialStep === "AUTO_FORMATION" ? "character" : "patrol" };
+    if (!funnelMilestones.has("first_pvp")) return { key: "first_pvp", title: "最初のPvPへ挑戦", tab: "pvp" };
+    if (!funnelMilestones.has("ranking_viewed")) return { key: "ranking_viewed", title: "ランキングを確認", tab: "ranking" };
+    if (!funnelMilestones.has("first_raid") && isRaidActive) return { key: "first_raid", title: "開催中レイドへ", tab: "raid" };
     if (!userGuildMember) {
-      if (pendingGuildJoinRequests.length > 0) return { key: "guild_pending", eyebrow: "ギルド", title: "ギルド申請を確認", detail: "申請状況を確認できます。", tab: "guild" };
-      return { key: "guild_discovery", eyebrow: "ギルド", title: "ギルドに参加", detail: "おすすめギルドから仲間を探そう。", tab: "guild" };
+      if (pendingGuildJoinRequests.length > 0) return { key: "guild_pending", title: "ギルド申請を確認", tab: "guild" };
+      return { key: "guild_discovery", title: "ギルドに加入しよう", tab: "guild" };
     }
-    if (!funnelMilestones.has("guild_activation")) return { key: "guild_home", eyebrow: "SOCIAL", title: "所属TRIBEへ", detail: "加入したTRIBEの仲間と次の行動を確認しよう。", tab: "guild" };
+    if (!funnelMilestones.has("guild_activation")) return { key: "guild_home", title: "所属ギルドを確認", tab: "guild" };
     if (!funnelMilestones.has("activation_mission_handoff")) return {
       key: "activation_mission_handoff",
-      eyebrow: "次のステップ",
-      title: "あとはミッションをこなしながらゲームを進めていこう",
-      detail: "ミッションへ",
+      title: "ミッションを進めよう",
       action: "mission_handoff",
     };
-    if (unreadMissionsCount > 0) return { key: "mission_reward", eyebrow: "報酬", title: "達成報酬を受け取る", detail: `受取可能なミッションが ${unreadMissionsCount} 件あります。`, action: "mission" };
-    return isRaidActive
-      ? { key: "active_raid", eyebrow: "開催中", title: "レイドへ参加", detail: "出現中の強敵へ挑戦できます。", tab: "raid" }
-      : { key: "normal_play", eyebrow: "FREE PLAY", title: "クエストへ派遣", detail: "育成素材と報酬を集めよう。", tab: "patrol" };
-  }, [funnelMilestones, onboardingState?.tutorial_step, unreadMissionsCount, userGuildMember, pendingGuildJoinRequests.length, isRaidActive]);
+    return null;
+  }, [funnelMilestones, onboardingState?.tutorial_step, userGuildMember, pendingGuildJoinRequests.length, isRaidActive]);
 
   useEffect(() => {
-    if (!session?.user?.id || lastCtaImpression.current === primaryCta.key) return;
+    if (!session?.user?.id || !primaryCta || lastCtaImpression.current === primaryCta.key) return;
     lastCtaImpression.current = primaryCta.key;
     void supabase.rpc("record_client_funnel_event", { p_event_name: "home_primary_cta_impression", p_source_screen: "home", p_source_cta: primaryCta.key, p_object_id: null, p_metadata: {} });
-  }, [primaryCta.key, session?.user?.id]);
+  }, [primaryCta, session?.user?.id]);
 
   const openPrimaryCta = async () => {
-    if (activationHandoffPending) return;
+    if (activationHandoffPending || !primaryCta) return;
     void supabase.rpc("record_client_funnel_event", { p_event_name: "home_primary_cta_click", p_source_screen: "home", p_source_cta: primaryCta.key, p_object_id: null, p_metadata: {} });
     if (primaryCta.action === "mission_handoff") {
       setActivationHandoffPending(true);
@@ -227,7 +222,6 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
       setActivationHandoffPending(false);
       setShowMissionPanel(true);
     } else if (primaryCta.action === "guild_chat") setShowTribeChatPanel(true);
-    else if (primaryCta.action === "mission") setShowMissionPanel(true);
     else if (primaryCta.tab) navigateTab(primaryCta.tab);
     playCyberSe("click");
   };
@@ -539,12 +533,10 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
       </div>
 
       <div className="mypage-lower-content">
-        <button className="mypage-primary-cta semantic-cta semantic-cta--primary active-scale-effect" onClick={() => void openPrimaryCta()} disabled={activationHandoffPending} aria-busy={activationHandoffPending}>
-          <span className="mypage-primary-cta-eyebrow">{primaryCta.eyebrow}</span>
+        {primaryCta && <button className="mypage-primary-cta semantic-cta semantic-cta--primary active-scale-effect" onClick={() => void openPrimaryCta()} disabled={activationHandoffPending} aria-busy={activationHandoffPending}>
           <strong>{activationHandoffPending ? "確認中…" : primaryCta.title}</strong>
-          <span>{primaryCta.detail}</span>
           <b aria-hidden="true">›</b>
-        </button>
+        </button>}
         {/* 月額VIPパスバナー */}
         {/* 3. イベントバナーエリア (大ボタン直下) */}
         {visibleBanners.length > 0 && <div className="mypage-event-banner-area">

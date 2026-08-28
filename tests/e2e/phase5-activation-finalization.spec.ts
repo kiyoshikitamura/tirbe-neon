@@ -20,7 +20,7 @@ async function resumeAfterReload(page: Page) {
   await expect(header).toBeVisible();
 }
 
-function seedActivationState(options: { member: boolean; completed?: boolean; pendingRequest?: boolean }) {
+function seedActivationState(options: { member: boolean; completed?: boolean; pendingRequest?: boolean; rewardAvailable?: boolean }) {
   if (localStorage.getItem("phase5_activation_seeded") === "true") return;
   localStorage.setItem("phase5_activation_seeded", "true");
   const userId = "00000000-0000-4000-8000-000000000951";
@@ -72,6 +72,31 @@ function seedActivationState(options: { member: boolean; completed?: boolean; pe
   localStorage.setItem("mock_db_guild_join_requests", JSON.stringify(options.pendingRequest
     ? [{ id: "phase5-request", guild_id: guildId, user_id: userId, status: "PENDING", requested_at: now }]
     : []));
+  if (options.rewardAvailable) {
+    const mission = {
+      id: "phase5-reward",
+      title: "受取可能な報酬",
+      description: "Homeではbadgeだけを表示します。",
+      category: "NORMAL",
+      trigger_type: "LOGIN",
+      target_value: 1,
+      reward_item_id: "CASH",
+      reward_quantity: 100,
+      display_order: 1,
+      is_enabled: true,
+    };
+    localStorage.setItem("mock_db_missions", JSON.stringify([mission]));
+    localStorage.setItem("mock_db_user_missions", JSON.stringify([{
+      id: "phase5-user-reward",
+      user_id: userId,
+      mission_id: mission.id,
+      cycle_date: now.slice(0, 10),
+      current_progress: 1,
+      status: "CLEAR",
+      claimed_at: null,
+      missions: mission,
+    }]));
+  }
 }
 
 test.describe("Phase 5 activation finalization", () => {
@@ -80,10 +105,11 @@ test.describe("Phase 5 activation finalization", () => {
     await page.addInitScript(seedActivationState, { member: true });
     await enterGame(page);
 
-    const finalGuide = page.getByText("あとはミッションをこなしながらゲームを進めていこう", { exact: true });
+    const finalGuide = page.getByText("ミッションを進めよう", { exact: true });
     await expect(finalGuide).toBeVisible();
+    await expect(page.getByText("あとはミッションをこなしながらゲームを進めていこう", { exact: true })).toHaveCount(0);
     const cta = page.locator(".mypage-primary-cta");
-    await expect(cta).toContainText("ミッションへ");
+    await expect(cta).toHaveText(/ミッションを進めよう/);
     await cta.click();
 
     await expect(page.getByRole("dialog", { name: "ミッション" })).toBeVisible();
@@ -94,16 +120,16 @@ test.describe("Phase 5 activation finalization", () => {
     expect(milestoneCount).toBe(1);
 
     await page.getByRole("button", { name: "閉じる" }).last().click();
-    await expect(finalGuide).toHaveCount(0);
+    await expect(cta).toHaveCount(0);
     await page.reload();
     await resumeAfterReload(page);
-    await expect(finalGuide).toHaveCount(0);
+    await expect(cta).toHaveCount(0);
   });
 
   test("unaffiliated and pending users receive the canonical Guild CTA", async ({ page }) => {
     await page.addInitScript(seedActivationState, { member: false, completed: true });
     await enterGame(page);
-    await expect(page.locator(".mypage-primary-cta")).toContainText("ギルドに参加");
+    await expect(page.locator(".mypage-primary-cta")).toHaveText(/ギルドに加入しよう/);
 
     await page.evaluate(() => {
       const me = localStorage.getItem("tribe_demo_uuid");
@@ -124,7 +150,7 @@ test.describe("Phase 5 activation finalization", () => {
     await page.addInitScript(seedActivationState, { member: false, completed: true });
     await enterGame(page);
     const homeCta = page.locator(".mypage-primary-cta");
-    await expect(homeCta).toContainText("ギルドに参加");
+    await expect(homeCta).toHaveText(/ギルドに加入しよう/);
     await homeCta.click();
     await expect(page.locator(".guild-lobby-view")).toBeVisible();
     await page.getByRole("button", { name: "加入する", exact: true }).first().click();
@@ -138,7 +164,7 @@ test.describe("Phase 5 activation finalization", () => {
     const closeChat = page.getByRole("button", { name: "閉じる" }).last();
     if (await closeChat.isVisible()) await closeChat.click();
     await page.getByRole("button", { name: "マイページ" }).click();
-    await expect(homeCta).not.toContainText("ギルドに参加");
+    await expect(homeCta).toHaveCount(0);
 
     await page.getByRole("button", { name: /ギルド/ }).click();
     await page.getByRole("button", { name: /ギルドを?脱退/, exact: true }).click();
@@ -146,7 +172,41 @@ test.describe("Phase 5 activation finalization", () => {
     const successOk = page.getByRole("button", { name: "OK", exact: true });
     if (await successOk.isVisible()) await successOk.click();
     await page.getByRole("button", { name: "マイページ" }).click();
-    await expect(homeCta).toContainText("ギルドに参加");
+    await expect(homeCta).toHaveText(/ギルドに加入しよう/);
+  });
+
+  test("completed joined Home never rotates rewards or route returns into the large CTA", async ({ page }) => {
+    await page.addInitScript(seedActivationState, { member: true, completed: true, rewardAvailable: true });
+    await enterGame(page);
+
+    const cta = page.locator(".mypage-primary-cta");
+    await expect(cta).toHaveCount(0);
+    const missionButton = page.locator(".sub-icon-unit").filter({ hasText: "ミッション" });
+    await expect(missionButton.locator(".small-badge-alert")).toHaveText("1");
+    await expect(page.locator(".mypage-event-banner-area")).toBeVisible();
+
+    await missionButton.evaluate((button: HTMLButtonElement) => button.click());
+    await expect(page.getByRole("dialog", { name: "ミッション" })).toBeVisible();
+    await page.getByRole("button", { name: "閉じる" }).last().click();
+    await expect(cta).toHaveCount(0);
+
+    await page.getByRole("button", { name: /ギルド/ }).click();
+    await page.getByRole("button", { name: "マイページ" }).click();
+    await expect(cta).toHaveCount(0);
+
+    await page.locator(".circle-menu-btn.fight").click();
+    await page.getByRole("button", { name: "マイページ" }).click();
+    await expect(cta).toHaveCount(0);
+
+    await page.waitForTimeout(4_500);
+    await expect(cta).toHaveCount(0);
+    await expect(page.getByText("達成報酬を受け取る", { exact: true })).toHaveCount(0);
+    await expect(page.getByText("レイドへ参加", { exact: true })).toHaveCount(0);
+    await expect(page.getByText("クエストへ派遣", { exact: true })).toHaveCount(0);
+
+    await page.reload();
+    await resumeAfterReload(page);
+    await expect(cta).toHaveCount(0);
   });
 
   for (const viewport of [{ width: 390, height: 844 }, { width: 412, height: 915 }]) {
@@ -161,10 +221,22 @@ test.describe("Phase 5 activation finalization", () => {
         height: node.getBoundingClientRect().height,
         scrollWidth: document.documentElement.scrollWidth,
         viewportWidth: document.documentElement.clientWidth,
+        whiteSpace: getComputedStyle(node.querySelector("strong")!).whiteSpace,
       }));
       expect(geometry.width).toBeLessThanOrEqual(viewport.width);
-      expect(geometry.height).toBeLessThanOrEqual(150);
+      expect(geometry.height).toBeLessThanOrEqual(60);
       expect(geometry.scrollWidth).toBeLessThanOrEqual(geometry.viewportWidth + 1);
+      expect(geometry.whiteSpace).toBe("nowrap");
+
+      await page.evaluate(() => {
+        const rows = JSON.parse(localStorage.getItem("mock_db_user_funnel_milestones") || "[]");
+        rows.push({ user_id: localStorage.getItem("tribe_demo_uuid"), milestone: "activation_mission_handoff", occurrence_count: 1 });
+        localStorage.setItem("mock_db_user_funnel_milestones", JSON.stringify(rows));
+      });
+      await page.reload();
+      await resumeAfterReload(page);
+      await expect(cta).toHaveCount(0);
+      await expect(page.locator(".mypage-event-banner-area")).toBeVisible();
     });
   }
 });
