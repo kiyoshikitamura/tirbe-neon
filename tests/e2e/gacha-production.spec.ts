@@ -49,6 +49,43 @@ test("Daily free entitlement badges are category-isolated and CASH does not cons
   await expect(page.getByLabel("無料ガチャあり")).toHaveCount(0);
 });
 
+test("Character, Skill and Equipment tabs remain interactive and drive the selected banner", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/qa/presentation?scenario=gacha-production");
+
+  for (const [category, banner] of [["CHARACTER", "gacha_normal_character"], ["SKILL", "gacha_normal_skill"], ["EQUIPMENT", "gacha_normal_equipment"]] as const) {
+    const tab = page.locator(`[data-gacha-category="${category}"]`);
+    await expect(tab).toBeEnabled();
+    await tab.click();
+    await expect(tab).toHaveAttribute("aria-pressed", "true");
+    await expect(page.locator(".gacha-product-banner img")).toHaveAttribute("src", new RegExp(banner));
+    await expect(page.getByRole("button", { name: "本日10連無料" })).toBeVisible();
+  }
+});
+
+test("Daily authority loading never renders inferred free badges or a false consumed state", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/qa/presentation?scenario=gacha-authority-loading");
+  await expect(page.getByText("無料10連の利用状況を確認中…")).toBeVisible();
+  await expect(page.locator(".gacha-category-tabs .free-badge-dot")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "本日10連無料" })).toHaveCount(0);
+  await expect(page.getByText("本日の無料10連は使用済みです")).toHaveCount(0);
+});
+
+test("No-entitlement and insufficient-resource states preserve the correct independent actions", async ({ page }) => {
+  await page.setViewportSize({ width: 412, height: 915 });
+  await page.goto("/qa/presentation?scenario=gacha-entitlement-empty");
+  await expect(page.getByText("本日の無料10連は使用済みです")).toBeVisible();
+  await expect(page.locator(".gacha-category-tabs .free-badge-dot")).toHaveCount(0);
+
+  await page.goto("/qa/presentation?scenario=gacha-resource-empty");
+  await expect(page.getByRole("button", { name: "本日10連無料" })).toBeEnabled();
+  await expect(page.getByRole("button", { name: "1回 1,000キャッシュ" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "10回 10,000キャッシュ" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: /チケット1回/ })).toBeDisabled();
+  await expect(page.getByRole("button", { name: /チケット10回/ })).toBeDisabled();
+});
+
 test("Canonical server rates are presented without client hardcoded ordering", async ({ page }) => {
   await page.goto("/qa/presentation?scenario=gacha-production");
   await page.getByRole("button", { name: "提供割合" }).click();

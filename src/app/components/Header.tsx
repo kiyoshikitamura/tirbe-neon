@@ -20,6 +20,7 @@ export default function Header() {
     userTitle,
     session,
     identityLeaderCharacterId,
+    identityLeaderAuthorityReady,
     fetchPlayerDetail
   } = useGame();
   const [now, setNow] = React.useState(() => Date.now());
@@ -47,6 +48,7 @@ export default function Header() {
             guildName={userGuild?.name}
             title={visibleTitle}
             leaderCharacterId={identityLeaderCharacterId || null}
+            identityReady={identityLeaderAuthorityReady}
             onOpen={session?.user?.id ? () => void fetchPlayerDetail(session.user.id) : undefined}
           />
           <span className="header-mobile-level-badge">Lv.{userLevel || 1} · EXP {userXp || 0}{levelRow?.requiredExp ? `/${levelRow.requiredExp}` : ""}</span>

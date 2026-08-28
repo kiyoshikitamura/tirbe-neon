@@ -166,7 +166,7 @@ function SharedSkillFixture() {
   </section></GameContext.Provider>;
 }
 
-function GachaProductionFixture() {
+function GachaProductionFixture({ authorityState = "ready", resourcesAvailable = true }: { authorityState?: "ready" | "loading" | "consumed"; resourcesAvailable?: boolean }) {
   const [freeFlags, setFreeFlags] = useState({ CHARACTER: true, SKILL: true, EQUIPMENT: true });
   const [pending, setPending] = useState(false);
   const game = {
@@ -174,18 +174,20 @@ function GachaProductionFixture() {
     navigateTab: () => undefined,
     playCyberSe: () => undefined,
     playSe: () => undefined,
-    dailyFreeGachaReady: true,
-    dailyFreeGachaFlags: freeFlags,
+    dailyFreeGachaReady: authorityState !== "loading",
+    dailyFreeGachaFlags: authorityState === "consumed" ? { CHARACTER: false, SKILL: false, EQUIPMENT: false } : freeFlags,
+    refreshDailyFreeGachaAuthority: () => Promise.resolve(false),
     gachaRarityRates: ["CHAR_NORMAL", "SKILL_NORMAL", "EQUIP_NORMAL"].flatMap((gacha_id) => [
       { gacha_id, rarity: "N", weight: 55 }, { gacha_id, rarity: "R", weight: 30 },
       { gacha_id, rarity: "SR", weight: 13 }, { gacha_id, rarity: "SSR", weight: 2 },
     ]),
     gachaMasters: ["CHAR", "SKILL", "EQUIP"].map((prefix) => ({ id: `${prefix}_NORMAL`, cost_cash: 1000 })),
-    userItems: [
+    userItems: resourcesAvailable ? [
       { item_id: "NORMAL_GACHA_TICKET_CHARACTER", quantity: 12 },
       { item_id: "NORMAL_GACHA_TICKET_SKILL", quantity: 8 },
       { item_id: "NORMAL_GACHA_TICKET_EQUIPMENT", quantity: 3 },
-    ],
+    ] : [],
+    cash: resourcesAvailable ? 100_000 : 0,
     upgradeLoading: pending,
     onboardingState: { tutorial_step: "AUTHENTICATION" },
     handleScout: async (gachaId: string, _count: number, currency: string) => {
@@ -243,10 +245,12 @@ function PublicProfileFixture() {
   }} currentUserId="qa-self" onClose={() => setOpen(false)} onRetry={() => undefined} onDm={() => undefined} /> : <button type="button" onClick={() => setOpen(true)}>公開プロフィールを開く</button>}</GameContext.Provider>;
 }
 
-type HomeScenario = "first-home-fresh" | "first-home-raid" | "first-home-guild-out" | "first-home-guild-in" | "first-home-guild-pending" | "first-home-favorite-missing" | "first-home-favorite-invalid" | "first-home-activity-self" | "first-home-character-tall" | "first-home-character-hair";
+type HomeScenario = "first-home-fresh" | "first-home-identity-loading" | "first-home-raid" | "first-home-guild-out" | "first-home-guild-in" | "first-home-guild-pending" | "first-home-favorite-missing" | "first-home-favorite-invalid" | "first-home-activity-self" | "first-home-character-tall" | "first-home-character-hair";
 
 function ProductionHomeFixture({ scenario }: { scenario: HomeScenario }) {
   const [openedProfileId, setOpenedProfileId] = useState<string | null>(null);
+  const identityStartsPending = scenario === "first-home-identity-loading";
+  const [identityAuthorityReady, setIdentityAuthorityReady] = useState(!identityStartsPending);
   const authorityStartsPending = scenario === "first-home-guild-in" || scenario === "first-home-guild-out" || scenario === "first-home-guild-pending";
   const [ctaAuthorityReady, setCtaAuthorityReady] = useState(!authorityStartsPending);
   const homeLeader: any = findCharacter("アゲハ");
@@ -268,10 +272,17 @@ function ProductionHomeFixture({ scenario }: { scenario: HomeScenario }) {
     const timer = window.setTimeout(() => setCtaAuthorityReady(true), 1500);
     return () => window.clearTimeout(timer);
   }, [authorityStartsPending]);
+  useEffect(() => {
+    if (!identityStartsPending) return;
+    const timer = window.setTimeout(() => setIdentityAuthorityReady(true), 650);
+    return () => window.clearTimeout(timer);
+  }, [identityStartsPending]);
   const game = {
     activeTab: "home",
     currentBaseId: "shinjuku",
     identityLeaderCharacterId: favoriteCharacterId,
+    identityLeaderAuthorityReady: identityAuthorityReady,
+    refreshIdentityLeaderAuthority: () => Promise.resolve(false),
     selectedLeader: playerParty[0].characterId,
     selectedMembers: playerParty.map((entry) => entry.characterId),
     unreadMissionsCount: 2,
@@ -326,7 +337,7 @@ function ProductionHomeFixture({ scenario }: { scenario: HomeScenario }) {
     ...Array.from({ length: 9 }, (_, index) => ({ id: `qa-activity-${index + 4}`, activity_type: index % 2 === 0 ? "SSR_CHARACTER" : "GUILD_CREATED", actor_user_id: `log-user-${index}`, actor_display_name: `PLAYER-${index + 1}`, actor_favorite_character_id: index % 3 === 0 ? null : "char_alice_01", actor_guild_name: index % 2 === 0 ? "NEON CREW" : null, created_at: `2026-08-${String(27 - index).padStart(2, "0")}T20:00:00+09:00` })),
   ];
   return <GameContext.Provider value={game}>
-    <div className="qa-production-home" data-home-scenario={scenario} data-raid-active={String(raidActive)} data-guild-joined={String(guildJoined)} data-cta-authority-ready={String(ctaAuthorityReady)}>
+    <div className="qa-production-home" data-home-scenario={scenario} data-raid-active={String(raidActive)} data-guild-joined={String(guildJoined)} data-cta-authority-ready={String(ctaAuthorityReady)} data-identity-authority-ready={String(identityAuthorityReady)}>
       <PageShell header={<Header />} footer={<Footer />}>
         <HomeTab qaState={{ socialActivities: activities, funnelMilestones: milestones, ctaAuthorityReady }} />
         {openedProfileId && <output data-opened-profile-id={openedProfileId} />}
@@ -352,6 +363,9 @@ function Scenario({ id }: { id: QaPresentationScenarioId }) {
   if (id === "auto-formation") return <AutoFormationFixture />;
   if (id === "formation") return <SimpleFixture kind={id} />;
   if (id === "gacha-production") return <GachaProductionFixture />;
+  if (id === "gacha-authority-loading") return <GachaProductionFixture authorityState="loading" />;
+  if (id === "gacha-entitlement-empty") return <GachaProductionFixture authorityState="consumed" />;
+  if (id === "gacha-resource-empty") return <GachaProductionFixture resourcesAvailable={false} />;
   if (id === "gacha-skill-result") return <GachaAssetResultFixture type="SKILL" />;
   if (id === "gacha-equipment-result") return <GachaAssetResultFixture type="EQUIPMENT" />;
   if (id === "growth-before" || id === "growth-result") return <SimpleFixture kind={id} />;
@@ -371,6 +385,6 @@ export default function QaPresentationHarness() {
     if (QA_PRESENTATION_SCENARIOS.some(([id]) => id === requested)) setScenario(requested as QaPresentationScenarioId);
   }, []);
   const label = useMemo(() => QA_PRESENTATION_SCENARIOS.find(([id]) => id === scenario)?.[1], [scenario]);
-  const fullscreenHome = scenario.startsWith("first-home-") || scenario === "gacha-production" || scenario.startsWith("gacha-skill-") || scenario.startsWith("gacha-equipment-");
+  const fullscreenHome = scenario.startsWith("first-home-") || scenario.startsWith("gacha-production") || scenario.startsWith("gacha-authority-") || scenario.startsWith("gacha-entitlement-") || scenario.startsWith("gacha-skill-") || scenario.startsWith("gacha-equipment-");
   return <main className={`qa-harness${fullscreenHome ? " is-home-preview" : ""}`} data-qa-harness="presentation"><header><div><small>PREVIEW / DEVELOPMENT ONLY</small><h1>Human QA Harness</h1><p>{label}</p></div><a href="#compliance">Visual Compliance</a></header><nav aria-label="QA scenarios">{QA_PRESENTATION_SCENARIOS.map(([id, name]) => <button key={id} className={scenario === id ? "is-active" : ""} aria-pressed={scenario === id} onClick={() => setScenario(id)} data-scenario-id={id}>{name}</button>)}</nav><section className="qa-stage" data-active-scenario={scenario}><Scenario key={scenario} id={scenario} /></section><section id="compliance" className="qa-compliance"><h2>Visual Compliance Precheck</h2><p>客観的Contractは自動検証。見た目の品質はHuman ReviewまでPASSにしません。</p>{VISUAL_COMPLIANCE_GATE.map((item) => <article key={item.id} data-compliance-id={item.id} data-status={item.status}><div><strong>{item.specification}</strong><small>AUTO {item.automatedPrecheck}</small></div><b>{item.status}</b><p>{item.evidence}</p></article>)}</section></main>;
 }

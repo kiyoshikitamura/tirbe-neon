@@ -5,7 +5,7 @@ const viewports = [
   { width: 412, height: 915 },
 ] as const;
 
-type HomeScenario = "first-home-fresh" | "first-home-raid" | "first-home-guild-out" | "first-home-guild-in" | "first-home-guild-pending" | "first-home-favorite-missing" | "first-home-favorite-invalid" | "first-home-activity-self" | "first-home-character-tall" | "first-home-character-hair";
+type HomeScenario = "first-home-fresh" | "first-home-identity-loading" | "first-home-raid" | "first-home-guild-out" | "first-home-guild-in" | "first-home-guild-pending" | "first-home-favorite-missing" | "first-home-favorite-invalid" | "first-home-activity-self" | "first-home-character-tall" | "first-home-character-hair";
 
 async function openHomeScenario(page: Page, scenario: HomeScenario) {
   await page.goto(`/qa/presentation?scenario=${scenario}`);
@@ -71,7 +71,7 @@ test("Home re-entry keeps the previous combined visual until current Town and Le
   await page.addInitScript((snapshot) => {
     window.sessionStorage.setItem("tribe-neon.home-resume-visual.v1", JSON.stringify(snapshot));
   }, resumeSnapshot);
-  await page.route("**/characters/ageha_transparent_asset.png", async (route) => {
+  await page.route("**/characters/ageha_transparent_asset.png*", async (route) => {
     await new Promise((resolve) => setTimeout(resolve, 1600));
     await route.continue();
   });
@@ -94,7 +94,7 @@ test("Home reveals the Town and decoded Leader as one visual on a cold load and 
   let delayedLeaderRequests = 0;
   let releaseLeader: () => void = () => undefined;
   const leaderGate = new Promise<void>((resolve) => { releaseLeader = resolve; });
-  await page.route("**/characters/ageha_transparent_asset.png", async (route) => {
+  await page.route("**/characters/ageha_transparent_asset.png*", async (route) => {
     delayedLeaderRequests += 1;
     await leaderGate;
     await route.continue();
@@ -320,6 +320,55 @@ for (const scenario of ["first-home-favorite-missing", "first-home-favorite-inva
     await expect(page.locator(".mypage-leader-layer .character-presentation-character")).toHaveCount(0);
   });
 }
+
+for (const viewport of viewports) {
+  test(`Leader authority stays loading, then replaces skeleton with canonical art ${viewport.width}x${viewport.height}`, async ({ page }) => {
+    await page.setViewportSize(viewport);
+    await page.goto("/qa/presentation?scenario=first-home-identity-loading", { waitUntil: "domcontentloaded" });
+    const fixture = page.locator('[data-home-scenario="first-home-identity-loading"]');
+    await expect(fixture).toHaveAttribute("data-identity-authority-ready", "false");
+    await expect(page.locator(".user-identity-leader-loading")).toBeVisible();
+    await expect(page.locator(".header-mobile .character-presentation-missing")).toHaveCount(0);
+    await expect(page.locator(".mypage-leader-layer .character-presentation-missing")).toHaveCount(0);
+
+    await expect(fixture).toHaveAttribute("data-identity-authority-ready", "true", { timeout: 3000 });
+    await expect(page.locator(".header-mobile .character-presentation-character")).toBeVisible();
+    await expect(page.locator(".mypage-leader-layer .character-presentation-character")).toBeVisible();
+    await expect(page.locator(".mypage-visual-area")).toHaveAttribute("data-visual-readiness", "ready");
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    expect(overflow).toBeLessThanOrEqual(1);
+  });
+}
+
+test("Leader authority lifecycle remains stable across hard reload and My Page return", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await openHomeScenario(page, "first-home-identity-loading");
+  await expect(page.locator(".mypage-leader-layer .character-presentation-character")).toBeVisible({ timeout: 3000 });
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await expect(page.locator(".user-identity-leader-loading")).toBeVisible();
+  await expect(page.locator(".mypage-leader-layer .character-presentation-character")).toBeVisible({ timeout: 3000 });
+  await page.goto("/qa/presentation?scenario=gacha-production");
+  await page.goto("/qa/presentation?scenario=first-home-identity-loading", { waitUntil: "domcontentloaded" });
+  await expect(page.locator(".mypage-leader-layer .character-presentation-character")).toBeVisible({ timeout: 3000 });
+});
+
+test("A transient canonical leader asset failure is retried instead of leaving a placeholder", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  let failedOnce = false;
+  await page.route("**/characters/ageha_transparent_asset.png*", async (route) => {
+    if (!failedOnce) {
+      failedOnce = true;
+      await route.abort("failed");
+      return;
+    }
+    await route.continue();
+  });
+  await openHomeScenario(page, "first-home-fresh");
+  await expect(page.locator(".header-mobile .character-presentation-character")).toBeVisible();
+  await expect(page.locator(".mypage-leader-layer .character-presentation-character")).toBeVisible({ timeout: 5000 });
+  await expect(page.locator(".header-mobile .character-presentation-missing")).toHaveCount(0);
+  expect(failedOnce).toBe(true);
+});
 
 test("Activity uses shared identity and respects reduced motion", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });

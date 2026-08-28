@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import "./CharacterPresentation.css";
 import { getCharacterPresentationMetadata } from "./characterPresentationMetadata";
 import { getRarityBadgeAsset, getRarityFrameAsset, type RarityFrameKind } from "@/utils/rarityAssets";
@@ -25,6 +25,13 @@ type Props = {
   className?: string;
   metadata?: boolean;
 };
+
+function ResilientCharacterImage({ src, alt }: { src: string; alt: string }) {
+  const [attempt, setAttempt] = useState(0);
+  if (attempt > 2) return <span className="character-presentation-missing" role="img" aria-label={`${alt}の画像は準備中`} />;
+  const retrySrc = attempt > 0 ? `${src}${src.includes("?") ? "&" : "?"}asset_retry=${attempt}` : src;
+  return <img key={retrySrc} className="character-presentation-character" src={retrySrc} alt={alt} onError={() => setAttempt((current) => current + 1)} />;
+}
 
 export default function CharacterPresentation({
   src,
@@ -74,7 +81,7 @@ export default function CharacterPresentation({
     <figure style={presentationStyle} className={`character-presentation character-presentation-${variant} ${rarityClass} ${frameClass} ${selected ? "is-selected" : ""} ${className}`.trim()}>
       <div className="character-presentation-art">
         {backgroundSrc && <img className="character-presentation-background" src={backgroundSrc} alt="" aria-hidden="true" />}
-        {src ? <img className="character-presentation-character" src={src} alt={alt} /> : <span className="character-presentation-missing" role="img" aria-label={`${alt}の画像は準備中`} />}
+        {src ? <ResilientCharacterImage key={src} src={src} alt={alt} /> : <span className="character-presentation-missing" role="img" aria-label={`${alt}の画像は準備中`} />}
         <span className="character-presentation-light" aria-hidden="true" />
       </div>
       {rarity && frameKind !== false && frameKind && <img className={`character-presentation-frame is-${frameKind}`} src={getRarityFrameAsset(frameKind, rarity)} alt="" aria-hidden="true" />}

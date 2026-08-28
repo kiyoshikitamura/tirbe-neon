@@ -125,6 +125,8 @@
 .gacha-rate-list span { color:var(--ui-text-secondary); font-weight:900; }
 .gacha-rate-list strong { color:#fff; font-variant-numeric:tabular-nums; }
 .gacha-free-consumed { margin:0 0 9px; padding:9px; border:1px solid rgba(0,240,255,.2); color:#a8bdc8; background:rgba(0,240,255,.04); font-size:10px; font-weight:800; text-align:center; }
+.gacha-free-loading { margin:0 0 9px; min-height:38px; padding:11px 9px; color:var(--ui-text-secondary); background:linear-gradient(105deg,rgba(255,255,255,.025),rgba(255,255,255,.07),rgba(255,255,255,.025)); background-size:200% 100%; font-size:10px; font-weight:800; text-align:center; animation:gacha-authority-loading 1.25s ease-in-out infinite; }
+@keyframes gacha-authority-loading { to { background-position:-200% 0; } }
 .gacha-payment-group { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:7px; margin-top:7px; }
 .gacha-payment-group button { display:flex; min-width:0; min-height:46px; flex-direction:column; align-items:center; justify-content:center; gap:2px; padding:6px; border:1px solid rgba(255,255,255,.15); border-radius:5px; color:#fff; background:rgba(255,255,255,.045); font-weight:900; }
 .gacha-payment-group button small { color:var(--ui-text-secondary); font-size:9px; font-weight:800; }
@@ -132,6 +134,7 @@
 .gacha-special-summary { display:flex; min-height:104px; flex-direction:column; align-items:center; justify-content:center; gap:5px; color:var(--ui-text-secondary); text-align:center; }
 .gacha-special-summary strong { color:#e8c6f2; font-size:17px; letter-spacing:.14em; }
 .gacha-special-summary span { font-size:11px; }
+@media (prefers-reduced-motion: reduce) { .gacha-free-loading { animation:none; } }
 
 .gacha-tab-btn:hover {
   background: rgba(255, 255, 255, 0.08);

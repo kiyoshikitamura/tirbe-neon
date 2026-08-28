@@ -54,8 +54,12 @@ function preloadAndDecodeHomeImage(src: string, timeoutMs = 8000): Promise<boole
     if (image.complete && image.naturalWidth > 0) decode();
   });
 
-  homeVisualAssetPromises.set(src, promise);
-  return promise;
+  const tracked = promise.then((loaded) => {
+    if (!loaded) homeVisualAssetPromises.delete(src);
+    return loaded;
+  });
+  homeVisualAssetPromises.set(src, tracked);
+  return tracked;
 }
 
 type HomeTabQaState = Readonly<{
@@ -93,6 +97,8 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
   const {
     currentBaseId,
     identityLeaderCharacterId,
+    identityLeaderAuthorityReady,
+    refreshIdentityLeaderAuthority,
     unreadMissionsCount,
     unclaimedPresentsCount,
     guildChats,
@@ -316,7 +322,8 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
     if (foundBg?.img) bgUrl = foundBg.img;
   }
 
-  const visualAssetKey = `${bgUrl}|${leaderImgUrl || "favorite-placeholder"}`;
+  const leaderAuthorityReady = identityLeaderAuthorityReady !== false;
+  const visualAssetKey = `${bgUrl}|${leaderAuthorityReady ? leaderImgUrl || "favorite-placeholder" : "leader-authority-pending"}`;
   const [resumeVisualSnapshot] = useState(readHomeResumeSnapshot);
   const currentResumeVisualSnapshot = leaderImgUrl ? resumeVisualSnapshot : null;
   const [readyVisualAssetKey, setReadyVisualAssetKey] = useState<string | null>(null);
@@ -327,22 +334,33 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
   }, []);
 
   useEffect(() => {
+    if (identityLeaderAuthorityReady === false) void refreshIdentityLeaderAuthority?.();
+  }, [identityLeaderAuthorityReady, refreshIdentityLeaderAuthority]);
+
+  useEffect(() => {
+    if (!leaderAuthorityReady) return;
     let active = true;
-    const townReady = preloadAndDecodeHomeImage(bgUrl).then((loaded) => {
-      if (loaded) markHomeReloadStage("townImageDecoded");
-      return loaded;
-    });
-    const leaderReady = leaderImgUrl ? preloadAndDecodeHomeImage(leaderImgUrl).then((loaded) => {
-      if (loaded) markHomeReloadStage("leaderImageDecoded");
-      return loaded;
-    }) : Promise.resolve(true);
-    void Promise.all([townReady, leaderReady]).then(() => {
-      if (active) setReadyVisualAssetKey(visualAssetKey);
-    });
+    let retryTimer: number | undefined;
+    const prepare = async (attempt = 0) => {
+      const [townLoaded, leaderLoaded] = await Promise.all([
+        preloadAndDecodeHomeImage(bgUrl),
+        leaderImgUrl ? preloadAndDecodeHomeImage(leaderImgUrl) : Promise.resolve(true),
+      ]);
+      if (!active) return;
+      if (townLoaded) markHomeReloadStage("townImageDecoded");
+      if (leaderImgUrl && leaderLoaded) markHomeReloadStage("leaderImageDecoded");
+      if (townLoaded && leaderLoaded) {
+        setReadyVisualAssetKey(visualAssetKey);
+        return;
+      }
+      if (attempt < 2) retryTimer = window.setTimeout(() => void prepare(attempt + 1), 220 * (attempt + 1));
+    };
+    void prepare();
     return () => {
       active = false;
+      if (retryTimer !== undefined) window.clearTimeout(retryTimer);
     };
-  }, [bgUrl, leaderImgUrl, visualAssetKey]);
+  }, [bgUrl, leaderAuthorityReady, leaderImgUrl, visualAssetKey]);
 
   useEffect(() => {
     if (!visualReady || !leaderImgUrl || !leaderMaster) return;
