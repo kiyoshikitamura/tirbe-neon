@@ -22,6 +22,7 @@
   --character-home-scale: 1.34;
   --character-home-x: 50%;
   --character-home-y: 12%;
+  --character-home-offset-y: 6px;
   position: relative;
   min-width: 0;
   margin: 0;
@@ -102,7 +103,7 @@
 .character-presentation-full-body .character-presentation-character { object-fit: contain; object-position: center bottom; }
 .character-presentation-home-hero { width:100%;height:100%;border:0;border-radius:0;background:transparent;box-shadow:none; }
 .character-presentation-home-hero .character-presentation-art::before { background:radial-gradient(ellipse at 50% 70%,rgba(0,240,255,.12),transparent 58%); }
-.character-presentation-home-hero .character-presentation-character { object-fit:contain;object-position:var(--character-home-x) bottom;transform:scale(var(--character-home-scale));transform-origin:var(--character-home-x) var(--character-home-y); }
+.character-presentation-home-hero .character-presentation-character { object-fit:contain;object-position:var(--character-home-x) bottom;transform:translateY(var(--character-home-offset-y)) scale(var(--character-home-scale));transform-origin:var(--character-home-x) var(--character-home-y); }
 .character-presentation-home-hero .character-presentation-light { display:none; }
 .character-presentation-battle { width: 100%; height: 100%; border-radius: 5px; }
 .character-presentation-battle .character-presentation-character { object-fit: cover; object-position: var(--character-battle-x) var(--character-battle-y); transform:scale(var(--character-battle-scale)); transform-origin:var(--character-battle-x) 12%; }

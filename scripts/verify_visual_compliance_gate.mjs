@@ -7,8 +7,8 @@ const requiredScenarios = [
   "skill-tutorial", "shared-skill-presentation", "public-user-profile", "growth-before", "growth-result", "formation", "auto-formation", "quest-encounter",
   "quest-normal-battle", "quest-instant-battle", "battle-5v3",
   "battle-5v5", "battle-2x", "battle-ssr-skill", "battle-consecutive-skill", "battle-final-hit", "battle-result-win", "battle-result-lose",
-  "first-home-fresh", "first-home-raid", "first-home-guild-out", "first-home-guild-in",
-  "first-home-favorite-missing", "first-home-favorite-invalid", "first-home-activity-self",
+  "first-home-fresh", "first-home-raid", "first-home-guild-out", "first-home-guild-in", "first-home-guild-pending",
+  "first-home-favorite-missing", "first-home-favorite-invalid", "first-home-activity-self", "first-home-character-tall", "first-home-character-hair",
 ];
 assert.deepEqual(QA_PRESENTATION_SCENARIOS.map(([id]) => id), requiredScenarios, "QA launcher scenario contract drifted");
 assert.equal(isQaHarnessAvailable("production", "development"), false, "Production must never expose QA harness");

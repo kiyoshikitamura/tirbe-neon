@@ -8,6 +8,7 @@ import { HOME_ACTION_PRESENTATION_SLOTS } from "@/domain/presentation/homeAction
 import { isDestinationAvailable } from "@/domain/operations/operations";
 import CharacterPresentation from "./character/CharacterPresentation";
 import UserIdentityRow from "./profile/UserIdentityRow";
+import CanonicalDialog from "./ui/CanonicalDialog";
 import {
   markHomeReloadStage,
   readHomeResumeSnapshot,
@@ -60,6 +61,7 @@ function preloadAndDecodeHomeImage(src: string, timeoutMs = 8000): Promise<boole
 type HomeTabQaState = Readonly<{
   socialActivities?: readonly any[];
   funnelMilestones?: readonly string[];
+  ctaAuthorityReady?: boolean;
 }>;
 
 type HomeActivity = {
@@ -69,8 +71,20 @@ type HomeActivity = {
   actor_display_name?: string | null;
   actor_favorite_character_id?: string | null;
   actor_guild_name?: string | null;
+  created_at?: string | null;
   [key: string]: unknown;
 };
+
+function activityDescription(activity: HomeActivity) {
+  if (activity.activity_type === "GUILD_CREATED") return "TRIBEを結成";
+  if (activity.activity_type === "POWER_RANK_1") return "総戦力ランキング1位に到達";
+  return "SSRを獲得";
+}
+
+function activityTimeLabel(value?: string | null) {
+  if (!value) return "";
+  return new Intl.DateTimeFormat("ja-JP", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(value));
+}
 
 /**
  * MainMyPage - マイページメイン画面
@@ -107,6 +121,7 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
     onboardingState,
     userGuildMember,
     pendingGuildJoinRequests,
+    guildMembershipAuthorityReady,
     featureOperatingStates,
     fetchPlayerDetail,
     setErrorMessage
@@ -122,8 +137,10 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
   const [bannerIndex, setBannerIndex] = useState(0);
   const [leaderLine, setLeaderLine] = useState<string | null>(null);
   const [funnelMilestones, setFunnelMilestones] = useState<Set<string>>(new Set(qaState?.funnelMilestones || []));
+  const [funnelAuthorityOwnerUserId, setFunnelAuthorityOwnerUserId] = useState(qaState?.funnelMilestones ? "qa" : "");
   const [activationHandoffPending, setActivationHandoffPending] = useState(false);
   const [socialActivities, setSocialActivities] = useState<HomeActivity[]>([...(qaState?.socialActivities || [])] as HomeActivity[]);
+  const [showActivityLog, setShowActivityLog] = useState(false);
   const lastCtaImpression = useRef<string | null>(null);
   const [banners, setBanners] = useState(() => PRODUCTION_MY_PAGE_CREATIVES?.map((creative) => ({
     id: creative.id,
@@ -167,8 +184,14 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
   useEffect(() => {
     if (qaState?.funnelMilestones) return;
     if (!session?.user?.id) return;
+    let active = true;
     void supabase.from("user_funnel_milestones").select("milestone").eq("user_id", session.user.id)
-      .then(({ data }) => setFunnelMilestones(new Set((data || []).map((row) => row.milestone))));
+      .then(({ data, error }) => {
+        if (!active || error) return;
+        setFunnelMilestones(new Set((data || []).map((row) => row.milestone)));
+        setFunnelAuthorityOwnerUserId(session.user.id);
+      });
+    return () => { active = false; };
   }, [qaState?.funnelMilestones, session?.user?.id, userGuildMember?.guild_id]);
 
   useEffect(() => {
@@ -205,6 +228,13 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
   const primaryCta = useMemo<{
     key: string; title: string; tab?: string; action?: "guild_chat" | "mission_handoff";
   } | null>(() => {
+    const ctaAuthorityReady = qaState
+      ? qaState.ctaAuthorityReady !== false
+      : Boolean(session?.user?.id
+        && onboardingState
+        && funnelAuthorityOwnerUserId === session.user.id
+        && guildMembershipAuthorityReady);
+    if (!ctaAuthorityReady) return null;
     const tutorialStep = onboardingState?.tutorial_step;
     if (tutorialStep && tutorialStep !== "AUTHENTICATION") return { key: "tutorial", title: "チュートリアルを続ける", tab: tutorialStep === "FREE_GACHA" ? "gacha" : tutorialStep === "AUTO_FORMATION" ? "character" : "patrol" };
     if (!funnelMilestones.has("first_pvp")) return { key: "first_pvp", title: "最初のPvPへ挑戦", tab: "pvp" };
@@ -221,7 +251,7 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
       action: "mission_handoff",
     };
     return null;
-  }, [funnelMilestones, onboardingState?.tutorial_step, userGuildMember, pendingGuildJoinRequests.length, isRaidActive]);
+  }, [funnelMilestones, funnelAuthorityOwnerUserId, guildMembershipAuthorityReady, onboardingState, pendingGuildJoinRequests.length, qaState, session?.user?.id, userGuildMember, isRaidActive]);
 
   useEffect(() => {
     if (!session?.user?.id || !primaryCta || lastCtaImpression.current === primaryCta.key) return;
@@ -392,7 +422,7 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
   const visibleRightSubIcons = rightSubIcons.filter((item) => item.id !== "raid");
 
   const latestActivity = socialActivities[0];
-  const activityText = latestActivity ? (latestActivity.activity_type === "GUILD_CREATED" ? "TRIBEを結成" : latestActivity.activity_type === "POWER_RANK_1" ? "総戦力ランキング1位に到達" : "SSRを獲得") : null;
+  const activityText = latestActivity ? activityDescription(latestActivity) : null;
 
   const interiorName = PROFILE_INTERIORS.find((item) => item.id === interiorItem)?.name;
   const homeEventState = isRaidActive ? "raid" : "calm";
@@ -406,7 +436,20 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
 
   return (
     <div className="mypage-view">
-      <section key={latestActivity?.id || "empty"} className={`mypage-live-ticker mypage-live-ticker--visual ${homeEventState}`} aria-label="街の活動">
+      <section
+        key={latestActivity?.id || "empty"}
+        className={`mypage-live-ticker mypage-live-ticker--visual ${homeEventState}`}
+        aria-label="アクティビティ履歴を開く"
+        role="button"
+        tabIndex={0}
+        onClick={() => { setShowActivityLog(true); playCyberSe("click"); }}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            setShowActivityLog(true);
+            playCyberSe("click");
+          }
+        }}
+      >
         <span className="mypage-live-ticker-label">ACTIVITY</span>
         {latestActivity ? <>
           <UserIdentityRow
@@ -414,12 +457,35 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
             userName={String(latestActivity.actor_display_name || "プレイヤー")}
             guildName={latestActivity.actor_guild_name}
             leaderCharacterId={latestActivity.actor_favorite_character_id}
-            onOpen={latestActivity.actor_user_id ? () => { void fetchPlayerDetail(latestActivity.actor_user_id!); playCyberSe("click"); } : undefined}
           />
           <span className="mypage-live-ticker-text">{activityText}</span>
           <span className="mypage-live-ticker-arrow" aria-hidden="true">›</span>
         </> : <span className="mypage-live-ticker-text">まだ街の動きはありません</span>}
       </section>
+
+      {showActivityLog && <CanonicalDialog
+        title="アクティビティ"
+        size="large"
+        ariaLabel="アクティビティ履歴"
+        onClose={() => setShowActivityLog(false)}
+        actions={[{ label: "閉じる", semantic: "secondary", onClick: () => setShowActivityLog(false) }]}
+      >
+        {socialActivities.length > 0 ? <div className="mypage-activity-log" data-testid="activity-log">
+          {socialActivities.map((activity) => <article className="mypage-activity-log-row" key={activity.id}>
+            <UserIdentityRow
+              variant="compact"
+              userName={String(activity.actor_display_name || "プレイヤー")}
+              guildName={activity.actor_guild_name}
+              leaderCharacterId={activity.actor_favorite_character_id}
+              onOpen={activity.actor_user_id ? () => { void fetchPlayerDetail(activity.actor_user_id!); playCyberSe("click"); } : undefined}
+            />
+            <div className="mypage-activity-log-detail">
+              <strong>{activityDescription(activity)}</strong>
+              {activity.created_at && <time dateTime={activity.created_at}>{activityTimeLabel(activity.created_at)}</time>}
+            </div>
+          </article>)}
+        </div> : <p className="mypage-activity-empty">まだアクティビティはありません</p>}
+      </CanonicalDialog>}
 
       {/* 1. ビジュアルエリア (50vh 固定) */}
       <div
