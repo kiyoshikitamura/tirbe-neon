@@ -2,6 +2,10 @@
   display: flex;
   flex-direction: column;
   height: 100%;
+  min-width: 0;
+  max-width: 100%;
+  padding-bottom: max(12px, env(safe-area-inset-bottom));
+  overflow-x: hidden;
 }
 
 .settings-error-message {
@@ -62,7 +66,12 @@
 }
 .settings-bio-meta{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:8px;color:var(--text-secondary);font-size:11px}.settings-bio-meta button{min-width:104px}
 .settings-bio-field>span{display:block;margin-top:6px;color:var(--text-secondary);font-size:11px;text-align:right}
-.settings-summary{display:grid;gap:8px;margin:0}.settings-summary>div{display:grid;grid-template-columns:minmax(88px,.42fr) minmax(0,1fr);gap:10px}.settings-summary dt{color:var(--ui-text-secondary);font-size:11px}.settings-summary dd{min-width:0;margin:0;color:#fff;font-size:12px;overflow-wrap:anywhere}.settings-edit-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}.settings-panel-container-inner>.editable-setting-section{margin-bottom:12px}.settings-panel-container-inner .choice-group-options{grid-template-columns:repeat(2,minmax(0,1fr))}
+.settings-summary{display:grid;gap:8px;margin:0}.settings-summary>div{display:grid;grid-template-columns:minmax(88px,.42fr) minmax(0,1fr);gap:10px}.settings-summary dt{color:var(--ui-text-secondary);font-size:11px}.settings-summary dd{min-width:0;margin:0;color:#fff;font-size:12px;overflow-wrap:anywhere}.settings-edit-actions{position:sticky;z-index:2;bottom:-1px;display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px;padding:8px 0 calc(4px + env(safe-area-inset-bottom));background:linear-gradient(180deg,transparent 0,var(--ui-surface-base) 18%)}.settings-panel-container-inner>.editable-setting-section{width:100%;min-width:0;margin-bottom:12px;box-sizing:border-box}.settings-panel-container-inner .choice-group-options{grid-template-columns:repeat(2,minmax(0,1fr))}.settings-panel-container-inner .outlaw-card,.settings-panel-container-inner .outlaw-card-inner{min-width:0;max-width:100%;box-sizing:border-box}
+
+@media(max-width:412px){.settings-panel-container-inner{width:100%}.settings-summary>div{grid-template-columns:minmax(72px,.38fr) minmax(0,1fr)}.settings-panel-container-inner .choice-group-options{grid-template-columns:repeat(2,minmax(0,1fr))}.settings-edit-actions .outlaw-button{min-width:0;width:100%}}
+
+/* Keep mobile settings choices compact even when the shared editor stacks choices. */
+.settings-panel-container-inner .choice-group-options{grid-template-columns:repeat(2,minmax(0,1fr))!important}
 
 .settings-toggle-group {
   display: flex;

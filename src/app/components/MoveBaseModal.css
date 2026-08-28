@@ -46,6 +46,12 @@
 
 .move-base-body {
   padding: 16px;
+  min-height: 0;
+  max-height: min(68dvh, 560px);
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .move-base-desc {
@@ -58,14 +64,16 @@
 .move-base-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
+  padding-bottom: max(4px, env(safe-area-inset-bottom));
 }
 
 .move-base-btn {
   background: #1a1a1f;
   border: 1px solid #333339;
   border-radius: 8px;
-  padding: 16px;
+  min-height: 56px;
+  padding: 10px 12px;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -108,4 +116,10 @@
   font-weight: bold;
   padding: 4px 8px;
   border-radius: 4px;
+}
+
+@media (max-width: 412px) {
+  .move-base-body { max-height: min(65dvh, 520px); padding: 10px 12px 12px; }
+  .move-base-desc { margin-bottom: 9px; font-size: 12px; }
+  .move-base-btn { min-height: 52px; }
 }

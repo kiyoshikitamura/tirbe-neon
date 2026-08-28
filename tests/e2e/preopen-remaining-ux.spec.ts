@@ -81,7 +81,13 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 412, height: 915 }
     await page.getByRole("button", { name: /マイページ/ }).click();
     await page.getByRole("button", { name: "拠点移動" }).click();
     const moveDialog = page.getByRole("dialog", { name: "拠点移動" });
-    await expect(moveDialog.getByText("横浜", { exact: true })).toBeVisible();
+    const baseButtons = moveDialog.locator(".move-base-btn");
+    await expect(baseButtons).toHaveCount(7);
+    const yokohama = baseButtons.filter({ hasText: "横浜" });
+    await yokohama.scrollIntoViewIfNeeded();
+    await expect(yokohama).toBeVisible();
+    const overflowY = await moveDialog.locator(".move-base-body").evaluate((node) => getComputedStyle(node).overflowY);
+    expect(overflowY).toBe("auto");
     await expect(moveDialog.getByText("ジャンクバザール")).toHaveCount(0);
     await moveDialog.getByRole("button", { name: "閉じる" }).click();
 
@@ -107,6 +113,10 @@ test("Quest, Character and BBS consume canonical presentation contracts", async 
 
   await page.locator(".circle-menu-btn.conquest").click();
   await expect(page.locator(".course-name", { hasText: "歌舞伎町 夜間見回り" })).toBeVisible();
+  await expect(page.locator(".quest-canonical-context")).toContainText("クエスト選択");
+  await expect(page.locator(".quest-canonical-brief")).toContainText("出現する敵");
+  await expect(page.locator(".quest-canonical-brief")).toContainText("所要時間");
+  await expect(page.locator(".quest-v0-summary")).toHaveCount(0);
   await page.locator(".patrol-char-item:not(.locked)").first().click();
   const dispatch = page.getByRole("button", { name: "新宿へ派遣する" });
   await expect(dispatch).toBeEnabled();
@@ -116,8 +126,19 @@ test("Quest, Character and BBS consume canonical presentation contracts", async 
 
   await page.getByRole("button", { name: /キャラ/ }).click();
   await expect(page.locator(".char-tab-container")).not.toContainText("WEAPON_001");
+  await expect(page.locator(".char-slider-item .character-frame")).toHaveCount(0);
+  await expect(page.locator(".char-slider-item .character-attribute-badge")).toHaveCount(0);
+  await expect(page.locator(".char-main-actions").getByRole("button", { name: "強化" })).toBeVisible();
+  await expect(page.locator(".char-main-actions").getByRole("button", { name: "スキル" })).toBeVisible();
+  await expect(page.locator(".char-main-actions").getByRole("button", { name: "装備" })).toBeVisible();
   await expect(page.locator(".char-firstview-skill.is-locked")).toHaveCount(2);
   await expect(page.locator(".char-firstview-skills")).not.toContainText("LOCK");
+  await expect(page.locator(".char-firstview-skill .shared-skill-icon").first()).toBeVisible();
+  await page.locator(".char-main-actions").getByRole("button", { name: "強化" }).click();
+  await expect(page.locator(".char-growth-contract")).toContainText("現在");
+  await expect(page.locator(".char-growth-contract")).toContainText("強化後");
+  await expect(page.locator(".char-growth-contract")).not.toContainText("CHAR_EXP_S");
+  await page.getByRole("button", { name: "閉じる" }).click();
   await page.locator(".char-main-stage").evaluate((node) => Promise.all(node.getAnimations().map((animation) => animation.finished)));
   await expectNoOverflow(page, ".char-tab-container");
 
@@ -135,6 +156,9 @@ test("Mission and Present mutations retain canonical item receipts", async ({ pa
   await enterGame(page);
 
   await page.locator(".mypage-sub-icons-left .sub-icon-unit").filter({ hasText: "ミッション" }).click();
+  await expect(page.locator(".sub-tab-badge")).toContainText("1");
+  const missionHeight = await page.locator(".mission-item").first().evaluate((node) => node.getBoundingClientRect().height);
+  expect(missionHeight).toBeLessThan(150);
   await page.getByRole("button", { name: "受け取る", exact: true }).click();
   const missionReceipt = page.getByRole("dialog", { name: "報酬獲得" });
   await expect(missionReceipt).toContainText("強化ドリンク・中");
@@ -147,6 +171,7 @@ test("Mission and Present mutations retain canonical item receipts", async ({ pa
   await expect(present).toContainText("カスタムオイル・中");
   await expect(present).not.toContainText("EQUIP_EXP_M");
   await expect(present.locator(".inbox-present-reward-icon")).toBeVisible();
+  expect(await present.evaluate((node) => node.getBoundingClientRect().height)).toBeLessThan(110);
   await present.getByRole("button", { name: "受け取る", exact: true }).click();
   const presentReceipt = page.getByRole("dialog", { name: "報酬獲得" });
   await expect(presentReceipt).toContainText("カスタムオイル・中");

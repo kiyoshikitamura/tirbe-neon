@@ -6,6 +6,7 @@ interface SubTabItem {
   id: string;
   label: string;
   disabled?: boolean;
+  badge?: number;
 }
 
 interface SubTabNavProps {
@@ -81,6 +82,7 @@ export default function SubTabNav({ tabs, activeTabId, onSelect, className = "" 
               disabled={tab.disabled}
             >
               {tab.label}
+              {Number(tab.badge || 0) > 0 && <span className="sub-tab-badge" aria-label={`未受取${tab.badge}件`}>{tab.badge}</span>}
               {isActive && <div className="sub-tab-indicator" />}
             </button>
           );

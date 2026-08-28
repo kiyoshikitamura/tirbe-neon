@@ -1,15 +1,15 @@
 .editable-setting-section .outlaw-card-inner { display:grid; gap:12px; }
-.editable-setting-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+.editable-setting-heading { display:flex;min-width:0;max-width:100%;align-items:flex-start;justify-content:space-between;gap:12px;overflow:hidden; }
 .editable-setting-heading > div { display:grid; min-width:0; gap:3px; }
 .editable-setting-heading strong { color:var(--neon-cyan); font-size:13px; }
 .editable-setting-heading small { color:var(--ui-text-secondary); font-size:9px; line-height:1.45; }
-.editable-setting-heading .outlaw-button { min-width:68px; min-height:40px; flex:0 0 auto; }
+.editable-setting-heading .outlaw-button { min-width:64px;max-width:88px;min-height:40px;flex:0 0 auto;padding-inline:10px; }
 .editable-setting-summary { display:grid; gap:6px; color:#fff; font-size:12px; line-height:1.55; overflow-wrap:anywhere; }
 .editable-setting-summary p { margin:0; }
 .editable-setting-summary dl { display:grid; grid-template-columns:auto minmax(0,1fr); gap:6px 12px; margin:0; }
 .editable-setting-summary dt { color:var(--ui-text-secondary); font-size:10px; }
 .editable-setting-summary dd { margin:0; text-align:right; font-weight:800; }
-.editable-setting-editor { display:grid; gap:12px; }
+.editable-setting-editor { display:grid;min-width:0;max-width:100%;gap:12px; }
 .editable-setting-editor textarea { width:100%; min-height:88px; resize:vertical; border:1px solid rgba(0,244,255,.38); border-radius:10px; background:rgba(0,0,0,.64); padding:11px 12px; color:#fff; font:inherit; font-size:16px; line-height:1.5; outline:none; }
 .editable-setting-editor textarea:focus { border-color:var(--color-cyan,#00f4ff); box-shadow:0 0 0 2px rgba(0,244,255,.12); }
 .editable-setting-actions { display:grid; grid-template-columns:1fr 1.4fr; gap:8px; }

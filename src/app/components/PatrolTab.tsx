@@ -11,8 +11,6 @@ import OutlawButton from "./ui/OutlawButton";
 import SubTabNav from "./ui/SubTabNav";
 import SectionHeader from "./ui/SectionHeader";
 import HubPage from "./ui/HubPage";
-import HeroPanel from "./ui/HeroPanel";
-import Badge from "./ui/Badge";
 import TutorialNavigator from "./TutorialNavigator";
 import CharacterPresentation from "./character/CharacterPresentation";
 import { getCharacterLocationBackground } from "@/utils/characterVisualAssets";
@@ -481,16 +479,10 @@ export default function PatrolTab() {
             <div><span>QUEST / SHINJUKU</span><h2>新宿</h2><p>初級クエスト</p></div>
           </section>
         ) : (
-          <>
-            <HeroPanel className="patrol-hero" backgroundImage={bgImage}>
-              <div className="patrol-hero-status">
-                <Badge tone="success">派遣中</Badge>
-                <strong>{activePatrols.length}<small>/5</small></strong>
-              </div>
-              <p>派遣先と所要時間を選び、空き枠へ仲間を送り出してください。</p>
-            </HeroPanel>
-            <SectionHeader title={`新規クエスト派遣 (${activePatrols.length}/5 出撃中)`} />
-          </>
+          <section className="quest-canonical-context" style={{ backgroundImage: `linear-gradient(90deg,rgba(2,5,12,.86),rgba(2,5,12,.28)),url(${bgImage})` }}>
+            <div><span>クエスト選択</span><strong>{selectedTownLabel}</strong></div>
+            <p>派遣中 <b>{activePatrols.length}</b> / 5</p>
+          </section>
         )}
 
         {isTutorialQuestStep && (
@@ -551,24 +543,13 @@ export default function PatrolTab() {
         {/* 出撃メンバー選択 */}
         {activeCourse && (
           <OutlawCard className={`mb-4 ${tutorialStep === "DISPATCH" ? "tutorial-primary-target" : ""}`}>
-            <div className="quest-v0-summary">
-              <div><span>派遣先</span><strong>{activeCourse.name}</strong></div>
-              <dl>
-                <div><dt>所要</dt><dd>{activeCourse.duration_seconds >= 60 ? String(activeCourse.duration_seconds / 60) + "分" : String(activeCourse.duration_seconds) + "秒"}</dd></div>
-                <div><dt>消費</dt><dd>スタミナ {activeCourse.cost_vitality}</dd></div>
-                <div><dt>基本報酬</dt><dd>{activeCourse.reward_cash.toLocaleString()} CASH / プレイヤーEXP {activeCourse.reward_xp.toLocaleString()}</dd></div>
-                <div><dt>主要ドロップ</dt><dd>{formatRewardItems(activeCourse.reward_items) || "なし"}</dd></div>
-                <div><dt>初回クリア</dt><dd>プレイヤーEXP +{Number(activeCourse.first_clear_user_exp || 0).toLocaleString()} / {formatRewardItems(activeCourse.first_clear_items) || "なし"}</dd></div>
-                <div><dt>敵編成</dt><dd>{activeCourse.enemy_member_count || "-"}人 / 推奨Lv {activeCourse.recommended_level || "-"}</dd></div>
-                <div><dt>出現する敵</dt><dd>{(activeCourse.enemy_members || []).map((member: any) => enemyName(member.characterId)).join(" / ") || "-"}</dd></div>
-                <div><dt>推奨総合力</dt><dd>{Number(activeCourse.recommended_power || 0).toLocaleString()}</dd></div>
-                <div><dt>敵属性</dt><dd>{(activeCourse.enemy_attributes || []).map(attributeName).join(" / ") || "-"}</dd></div>
-                <div><dt>敵方針</dt><dd>{tacticName(activeCourse.enemy_tactic)}</dd></div>
-                <div><dt>代表スキル</dt><dd>{(activeCourse.enemy_members || []).flatMap((member: any) => member.skillLoadout || []).slice(0, 3).map(skillName).join(" / ") || "-"}</dd></div>
-                {activeCourse.level_type === "HARD" && <div><dt>敗北時</dt><dd>キャラクター育成・スキル・編成を見直して再挑戦</dd></div>}
-                <div><dt>時短</dt><dd>{tutorialStep === "DISPATCH" ? "今回無料" : "利用可"}</dd></div>
-              </dl>
-            </div>
+            <section className="quest-canonical-brief" aria-label="クエスト詳細">
+              <header><div><span>{selectedTownLabel}</span><strong>{activeCourse.name}</strong></div><b>{activeCourse.level_type === "EASY" ? "初級" : activeCourse.level_type === "NORMAL" ? "中級" : "上級"}</b></header>
+              <div className="quest-canonical-metrics"><span><small>所要時間</small><strong>{activeCourse.duration_seconds >= 60 ? `${activeCourse.duration_seconds / 60}分` : `${activeCourse.duration_seconds}秒`}</strong></span><span><small>スタミナ</small><strong>{activeCourse.cost_vitality}</strong></span><span><small>推奨総合力</small><strong>{Number(activeCourse.recommended_power || 0).toLocaleString()}</strong></span></div>
+              <div className="quest-canonical-enemy"><small>出現する敵</small><strong>{(activeCourse.enemy_members || []).map((member: any) => enemyName(member.characterId)).join(" / ") || "敵情報を確認中"}</strong><p><span>属性 {(activeCourse.enemy_attributes || []).map(attributeName).join(" / ") || "—"}</span><span>代表スキル {(activeCourse.enemy_members || []).flatMap((member: any) => member.skillLoadout || []).slice(0, 3).map(skillName).join(" / ") || "—"}</span></p></div>
+              <div className="quest-canonical-rewards"><span><small>キャッシュ</small><strong>+{Number(activeCourse.reward_cash || 0).toLocaleString()}</strong></span><span><small>プレイヤーEXP</small><strong>+{Number(activeCourse.reward_xp || 0).toLocaleString()}</strong></span><span><small>獲得可能</small><strong>{formatRewardItems(activeCourse.reward_items) || "なし"}</strong></span></div>
+              {!activeCourse.is_first_cleared && <p className="quest-first-clear">初回クリア：プレイヤーEXP +{Number(activeCourse.first_clear_user_exp || 0).toLocaleString()} / {formatRewardItems(activeCourse.first_clear_items) || "追加報酬なし"}</p>}
+            </section>
             <div className="quest-v0-section-label">派遣する仲間 <b>1名</b></div>
             <div className="patrol-char-grid mb-3">
               {CHARACTERS_MASTER.filter((character: any) => !isTutorialQuestStep || character.id === selectedPatrolMember).map((c: any) => {
@@ -613,11 +594,6 @@ export default function PatrolTab() {
                 );
               })}
             </div>
-            {!isTutorialQuestStep && <div className="course-cost-info mb-3 font-size-7 text-color-gray flex-row-gap-2">
-              <span>⏱ 所要: {activeCourse.duration_seconds >= 60 ? `${activeCourse.duration_seconds / 60}分` : `${activeCourse.duration_seconds}秒`}</span>
-              <span>⚡ スタミナ: {activeCourse.cost_vitality}</span>
-              <span>💰 基本報酬: {activeCourse.reward_cash}</span>
-            </div>}
             <OutlawButton 
               onClick={handleStart}
               disabled={dispatchLoading || (isTutorialQuestStep && tutorialStep !== "DISPATCH") || !selectedCourse || !selectedPatrolMember || activePatrols.length >= 5 || activeCourse.is_unlocked === false}

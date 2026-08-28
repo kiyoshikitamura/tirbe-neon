@@ -421,3 +421,28 @@
   background: linear-gradient(90deg, #ff8800 0%, #ffd700 100%);
 }
 .tutorial-wire-sync{display:block;margin-top:8px;color:var(--ui-text-secondary);font-size:10px;text-align:center}
+
+/* Canonical mobile quest grammar: context, enemy, duration and reward before dispatch. */
+.quest-canonical-context {
+  display:flex;align-items:flex-end;justify-content:space-between;min-height:86px;margin:0 0 10px;padding:12px;
+  border:1px solid rgba(0,240,255,.28);border-radius:var(--ui-radius-md,8px);background-position:center;background-size:cover;
+  box-shadow:inset 0 -30px 50px rgba(0,0,0,.22)
+}
+.quest-canonical-context div{display:grid;gap:2px;min-width:0}.quest-canonical-context span{color:var(--neon-cyan);font-size:8px;font-weight:900;letter-spacing:.14em}
+.quest-canonical-context strong{overflow:hidden;color:#fff;font-size:19px;text-overflow:ellipsis;white-space:nowrap}.quest-canonical-context p{margin:0;color:#b7c5d0;font-size:10px}.quest-canonical-context b{color:#fff;font-size:16px}
+.quest-canonical-brief{margin-bottom:11px;overflow:hidden;border:1px solid rgba(0,240,255,.24);border-radius:8px;background:linear-gradient(145deg,rgba(0,240,255,.08),rgba(5,10,18,.9))}
+.quest-canonical-brief header{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px;border-bottom:1px solid rgba(255,255,255,.08)}
+.quest-canonical-brief header div{display:grid;gap:1px;min-width:0}.quest-canonical-brief header span{color:var(--neon-cyan);font-size:7px;font-weight:900;letter-spacing:.14em}
+.quest-canonical-brief header strong{overflow:hidden;color:#fff;font-size:15px;text-overflow:ellipsis;white-space:nowrap}.quest-canonical-brief header>b{flex:0 0 auto;padding:3px 7px;border:1px solid rgba(242,201,95,.42);border-radius:999px;color:#fff1af;font-size:8px}
+.quest-canonical-metrics,.quest-canonical-rewards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;padding:8px}
+.quest-canonical-metrics>span,.quest-canonical-rewards>span{display:grid;align-content:center;min-width:0;min-height:42px;padding:5px;border:1px solid rgba(255,255,255,.08);border-radius:5px;background:rgba(0,0,0,.25);text-align:center}
+.quest-canonical-brief small{color:#8799a8;font-size:7px}.quest-canonical-brief strong{overflow-wrap:anywhere;color:#fff;font-size:10px}
+.quest-canonical-enemy{display:grid;gap:3px;margin:0 8px;padding:8px;border-left:2px solid var(--neon-cyan);background:rgba(0,0,0,.25)}.quest-canonical-enemy>strong{font-size:11px}
+.quest-canonical-enemy p{display:flex;flex-wrap:wrap;gap:4px 8px;margin:2px 0 0;color:#aebac4;font-size:8px}.quest-canonical-rewards strong{color:#fff1af}
+.quest-first-clear{margin:0 8px 8px;padding:6px 8px;border:1px solid rgba(242,201,95,.24);color:#dbc77e;background:rgba(242,201,95,.06);font-size:8px}
+
+@media(max-width:420px){
+  .quest-canonical-context{min-height:76px;padding:10px}.quest-canonical-context strong{font-size:17px}
+  .quest-canonical-metrics,.quest-canonical-rewards{gap:4px;padding:7px}.quest-canonical-metrics>span,.quest-canonical-rewards>span{min-height:38px;padding:4px 2px}
+  .quest-canonical-brief strong{font-size:9px}.patrol-char-grid{grid-template-columns:repeat(4,minmax(0,1fr));max-height:145px}
+}

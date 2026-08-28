@@ -77,17 +77,18 @@
 .inbox-presents-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 7px;
 }
 
 .inbox-present-item {
   background: linear-gradient(135deg, rgba(20, 26, 38, 0.9), rgba(11, 15, 25, 0.9));
   border: 1px solid rgba(0, 240, 255, 0.15);
   border-radius: 8px;
-  padding: 12px;
+  min-height: 58px;
+  padding: 8px 9px;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
 }
 
 .inbox-present-info {
@@ -97,12 +98,13 @@
 
 @media (max-width: 412px) {
   .inbox-presents-actions { position: sticky; top: -16px; z-index: 3; gap: 8px; padding-block: 10px; background: var(--ui-surface-base); }
-  .inbox-present-item { align-items: stretch; flex-direction: column; }
-  .inbox-present-item .outlaw-button { width: 100%; }
+  .inbox-present-item { align-items:center;flex-direction:row; }
+  .inbox-present-item .outlaw-button { width:auto;min-width:78px;min-height:40px;padding-inline:8px;font-size:11px; }
   .inbox-present-title, .inbox-present-reward { overflow-wrap: anywhere; }
 }
 .inbox-present-title {
-  font-size: 14px;
+  overflow:hidden;
+  font-size:12px;
   font-weight: bold;
   color: var(--text-primary);
   margin-bottom: 4px;
@@ -110,12 +112,14 @@
 .inbox-present-reward {
   font-size: 12px;
   color: var(--neon-gold);
-  margin-bottom: 4px;
+  margin-bottom:2px;
+  text-overflow:ellipsis;
+  white-space:nowrap;
   display: flex;
   align-items: center;
   gap: 7px;
 }
-.inbox-present-reward-icon { width: 28px; height: 28px; flex: none; object-fit: contain; }
+.inbox-present-reward-icon { width:24px;height:24px;flex:none;object-fit:contain; }
 .inbox-present-expire {
   font-size: 11px;
   color: var(--text-secondary);

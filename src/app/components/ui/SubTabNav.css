@@ -45,6 +45,7 @@
   -webkit-tap-highlight-color: transparent;
   scroll-snap-align: start;
 }
+.sub-tab-badge { display:inline-grid;min-width:18px;height:18px;margin-left:6px;padding:0 5px;place-items:center;border-radius:999px;color:#071016;background:var(--neon-gold);font-size:10px;font-weight:900;line-height:1;vertical-align:middle; }
 
 .sub-tab-scroll-button {
   display: grid;

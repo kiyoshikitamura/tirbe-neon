@@ -12,7 +12,7 @@ import {
 import { CANONICAL_SKILL_VIEW } from "@/utils/skills_master_data";
 import { CANONICAL_EQUIPMENT_VIEW } from "@/utils/equipments_master_data";
 import { getCharacterTotalStats } from "@/utils/stats_calculator";
-import { canonicalCharacterAwakeningRequired } from "@/domain/gameplay/canonical/awakening";
+import { applyCharacterAwakeningCopyEquivalent } from "@/domain/gameplay/canonical/awakening";
 import { canonicalSkillSlotCount } from "@/domain/gameplay/canonical/calculations";
 import { useImagePreloader } from "../hooks/useImagePreloader";
 import { CHARACTER_LOADOUT_RARITY_ASSETS } from "../lib/screenManifests";
@@ -20,8 +20,11 @@ import TutorialNavigator from "./TutorialNavigator";
 import CharacterPresentation from "./character/CharacterPresentation";
 import { getRarityFrameAsset } from "@/utils/rarityAssets";
 import { getCharacterLocationBackground } from "@/utils/characterVisualAssets";
+import { getAttributeLabel } from "@/utils/attributeAssets";
 import CanonicalItemIcon from "./ui/CanonicalItemIcon";
 import { ChoiceGroup } from "./ui/EditableSettingSection";
+import CanonicalDialog from "./ui/CanonicalDialog";
+import { SkillDetailDialog, SkillIcon } from "./skill/SkillPresentation";
 import "./CharacterTab.css";
 
 const SKILL_EFFECT_LABELS: Record<string, string> = {
@@ -32,7 +35,6 @@ const SKILL_EFFECT_LABELS: Record<string, string> = {
   JAMMER: "妨害",
 };
 const SKILL_TARGET_DISPLAY: Record<string, string> = { ENEMY_SINGLE: "敵単体", ENEMY_ALL: "敵全体", ALLY_SINGLE: "味方単体", ALLY_ALL: "味方全体", SELF: "自身", ATTACKER_WHO_DAMAGED_SELF: "攻撃者" };
-const SKILL_STATUS_DISPLAY: Record<string, string> = { POISON: "毒", BLIND: "暗闇", SILENCE: "沈黙", STUN: "気絶" };
 
 function equipmentParameter(master: any) {
   return [["HP", master?.hp], ["ATK", master?.atk], ["DEF", master?.def], ["SPD", master?.spd], ["LUK", master?.luk]]
@@ -56,8 +58,8 @@ export default function CharacterTab() {
     setSelectedLeader,
     handleCharacterLevelUp,
     handleCharacterAwaken,
-    cash,
     charExpS,
+    awakeningBooks,
     equipExpS,
     equipLbParts,
     skillManuals,
@@ -81,7 +83,6 @@ export default function CharacterTab() {
     handleAutoFormation,
     handleTogglePartyMember,
     playCyberSe,
-    currentBaseId,
     session,
     onboardingState,
     syncBootstrapData,
@@ -97,6 +98,8 @@ export default function CharacterTab() {
   // モーダル内部でのインライン選択中スロット枠 index (0~6: 装備, 0~5: スキル)
   const [selectedEquipSlotIdx, setSelectedEquipSlotIdx] = useState<number | null>(null);
   const [selectedSkillSlotIdx, setSelectedSkillSlotIdx] = useState<number | null>(null);
+  const [skillDetail, setSkillDetail] = useState<any>(null);
+  const [equipmentDetail, setEquipmentDetail] = useState<{ master: any; record: any } | null>(null);
   const [formationEditMode, setFormationEditMode] = useState(false);
   const [formationSubmitting, setFormationSubmitting] = useState(false);
   const [tutorialFormationPreviewReady, setTutorialFormationPreviewReady] = useState(false);
@@ -184,17 +187,16 @@ export default function CharacterTab() {
     return getCharacterTotalStats(activeCharRecord, userEquipmentsList);
   }, [activeCharRecord, userEquipmentsList]);
   const characterPower = charStats.hp + charStats.atk + charStats.def;
-  const safeCash = Number.isFinite(Number(cash)) ? Number(cash) : 0;
 
   const alignInfo = getAlignmentShortJp(activeCharMaster?.alignment || "");
+  const attributeLabel = getAttributeLabel(activeCharMaster?.alignment);
   const awakeningLevel = activeCharRecord?.awakening_level || 0;
-  const characterRarity = (activeCharMaster?.rarity || "N").toLowerCase();
+  const awakeningProgress = Number(activeCharRecord?.awakening_progress || 0);
+  const awakeningAfter = applyCharacterAwakeningCopyEquivalent(awakeningLevel, awakeningProgress, 1);
   const isCurrentLeader = selectedLeader === activeCharMaster?.id;
   const maxSkillSlots = canonicalSkillSlotCount(Math.max(0, Math.min(5, awakeningLevel)));
   const activeCharacterDbId = activeCharRecord?.id;
 
-  // 見た目の豪華さは、テストアカウントではなく実際に装着されている編成から判定する。
-  // 本番アセット確定後に色を調整しても、この到達度判定とレイヤー構成は共通で使える。
   const equippedGearBySlot = useMemo(() => {
     const equipped = new Map<number, any>();
     if (!activeCharacterDbId) return equipped;
@@ -216,24 +218,6 @@ export default function CharacterTab() {
     });
     return equipped;
   }, [activeCharacterDbId, userSkillsList]);
-
-  const loadoutState = useMemo(() => {
-    const gear = Array.from(equippedGearBySlot.values());
-    const skills = Array.from(equippedSkillsBySlot.entries())
-      .filter(([slot]) => slot < maxSkillSlots)
-      .map(([, item]) => item);
-    const isSsrGear = gear.length === GEAR_SLOTS_MASTER.length && gear.every((item) =>
-      CANONICAL_EQUIPMENT_VIEW.find((master: any) => master.id === item.equipment_id)?.rarity === "SSR"
-    );
-    const isSsrSkills = skills.length === maxSkillSlots && skills.every((item) =>
-      CANONICAL_SKILL_VIEW.find((master: any) => master.id === (item.skill_card_id || item.skill_id))?.rarity === "SSR"
-    );
-    const averagePlus = [...gear, ...skills].reduce((total, item) => total + (item.plus_val || 0), 0) / Math.max(1, gear.length + skills.length);
-    const isMax = isSsrGear && isSsrSkills && awakeningLevel >= 3 && averagePlus >= 8;
-    const isComplete = gear.length === GEAR_SLOTS_MASTER.length && skills.length === maxSkillSlots;
-    const tier = isMax ? "MAX" : isComplete ? "COMPLETE" : gear.length + skills.length >= 5 ? "GROWING" : "BASE";
-    return { gearCount: gear.length, skillCount: skills.length, tier, isMax };
-  }, [awakeningLevel, equippedGearBySlot, equippedSkillsBySlot, maxSkillSlots]);
 
   const partyMembers = useMemo(() => selectedMembers.slice(0, 5).map((characterId: string) => {
     const record = (userCharactersDbList || []).find((item: any) => item.character_id === characterId);
@@ -312,18 +296,8 @@ export default function CharacterTab() {
     playCyberSe("click");
   };
 
-  // キャラ画面は個人ホーム装飾ではなく、現在地に対応する既存ステージ背景を使う。
-  const stageBackgroundByBase: Record<string, string> = {
-    shinjuku: "/bg/bg_base_neontower.png",
-    neontower: "/bg/bg_base_neontower.png",
-    shibuya: "/bg/bg_base_deepdock.png",
-    deepdock: "/bg/bg_base_deepdock.png",
-    ikebukuro: "/bg/bg_base_junkbazaar.png",
-    junkbazaar: "/bg/bg_base_junkbazaar.png",
-    roppongi: "/bg/bg_base_kitakuragate.png",
-    kitakuragate: "/bg/bg_base_kitakuragate.png"
-  };
-  const bgImgUrl = stageBackgroundByBase[currentBaseId] || "/bg/bg_base_neontower.png";
+  // Character identity follows the canonical hometown/location authority.
+  const bgImgUrl = getCharacterLocationBackground(activeCharMaster?.homeTown);
 
   // --------------------------------------------------------------------------
   // 装備スロット レンダリング補助 (左右 7スロット)
@@ -334,17 +308,12 @@ export default function CharacterTab() {
     const gearMaster = previewGear ? CANONICAL_EQUIPMENT_VIEW.find((m: any) => m.id === previewGear.equipment_id) : null;
     const rarity = (gearMaster?.rarity || "N").toUpperCase();
 
-    let rarityClass = "slot-n";
-    let ribbonClass = "ribbon-n";
-
-    if (rarity === "SSR") { rarityClass = "slot-ssr"; ribbonClass = "ribbon-ssr"; }
-    else if (rarity === "SR") { rarityClass = "slot-sr"; ribbonClass = "ribbon-sr"; }
-    else if (rarity === "R") { rarityClass = "slot-r"; ribbonClass = "ribbon-r"; }
-
     return (
-      <div
+      <button
+        type="button"
         key={slotDef.index}
-        className={`char-equip-slot ${previewGear ? rarityClass : "slot-empty"} active-scale-effect`}
+        className={`char-equip-slot ${previewGear ? "is-equipped" : "slot-empty"} active-scale-effect`}
+        aria-label={previewGear ? `${slotDef.label}: ${gearMaster?.name || "装備"}` : `${slotDef.label}: 未装備`}
         onClick={() => {
           setSelectedEquipSlotIdx(slotDef.index);
           setBottomModalTab("GEAR");
@@ -353,27 +322,9 @@ export default function CharacterTab() {
       >
         {previewGear && <img className="production-rarity-item-frame" src={getRarityFrameAsset("equipment", rarity)} alt="" aria-hidden="true" />}
         {gearMaster && <img className="production-equipment-art" src={gearMaster.assetPath} alt="" aria-hidden="true" />}
-        <div className="slot-header-row">
-          <span className="slot-label">{slotDef.label}</span>
-          {previewGear && (
-            <span className={`slot-rarity-ribbon ${ribbonClass}`}>{rarity}</span>
-          )}
-        </div>
-
-        {previewGear ? (
-          <>
-            <div className="slot-gear-name">{gearMaster?.name || "未確認の装備"}</div>
-            <div className="slot-footer-row">
-              <span className="slot-gear-lv">Lv.{previewGear.level}</span>
-              {previewGear.plus_val > 0 && (
-                <span className="slot-plus-badge">+{previewGear.plus_val}</span>
-              )}
-            </div>
-          </>
-        ) : (
-          <div className="slot-empty-icon">＋</div>
-        )}
-      </div>
+        {previewGear ? <>{previewGear.plus_val > 0 && <span className="slot-plus-badge">+{previewGear.plus_val}</span>}</> : <div className="slot-empty-icon">＋</div>}
+        <span className="slot-label">{slotDef.label}</span>
+      </button>
     );
   };
 
@@ -489,10 +440,6 @@ export default function CharacterTab() {
                   src={getCharacterTransparentImg(master.name)}
                   alt={master.jpName}
                   variant="thumbnail"
-                  rarity={(master as any).rarity || "N"}
-                  attribute={(master as any).alignment}
-                  backgroundSrc={getCharacterLocationBackground((master as any).homeTown)}
-                  attributeBadge
                   className="char-slider-avatar"
                 />
                 {isLeader && <span className="char-slider-badge-leader">リーダー</span>}
@@ -509,7 +456,7 @@ export default function CharacterTab() {
 
       <div className={`char-character-info-bar char-plate-style-${getEquippedCharacterCosmetic("CHARACTER_NAMEPLATE", "char_plate_none")}`}>
         <div className="char-hud-left-group">
-          <span className={`char-hud-align-badge char-hud-align-${alignInfo.colorClass}`}>{alignInfo.label}</span>
+          <span className={`char-hud-align-badge char-hud-align-${alignInfo.colorClass}`}>{attributeLabel}</span>
           <span className="char-hud-name">{activeCharMaster.jpName}</span>
           {awakeningLevel > 0 && <span className="char-hud-awaken">+{awakeningLevel}</span>}
           <span className="char-hud-level">Lv.{activeCharRecord?.level || 1}</span>
@@ -523,16 +470,11 @@ export default function CharacterTab() {
       </div>
 
       {/* 2. 中央: 大画面5層レイヤーキャンバス (高さ360px絶対固定) */}
-      <div key={activeCharRecord?.id || activeCharMaster.id} className={`char-main-stage char-rarity-${characterRarity} char-loadout-${loadoutState.tier.toLowerCase()} ${loadoutState.isMax ? "char-loadout-max" : ""} char-style-${getEquippedCharacterCosmetic("CHARACTER_FRAME", "char_frame_none")} char-aura-style-${getEquippedCharacterCosmetic("CHARACTER_AURA", "char_aura_none")} `}>
+      <div key={activeCharRecord?.id || activeCharMaster.id} className="char-main-stage">
         {/* Z-10: 背景 */}
         <div className="char-layer-bg" style={{ backgroundImage: `url(${bgImgUrl})` }}>
           <div className="char-layer-bg-overlay" />
         </div>
-
-        {/* Z-20: 足元覚醒オーラ */}
-        {awakeningLevel > 0 && (
-          <div className={`char-layer-aura ${awakeningLevel >= 5 ? "char-aura-max" : "char-aura-small"}`} />
-        )}
 
         {/* Z-30: メインキャラクター透過立ち絵 (サイズ固定) */}
         <div className="char-layer-character">
@@ -544,11 +486,6 @@ export default function CharacterTab() {
             className="char-character-img"
           />
         </div>
-
-        {/* Z-40: 前面エフェクト */}
-        <div className="char-layer-front-effect" />
-        {loadoutState.isMax && <div className="char-max-loadout-effect" aria-hidden="true" />}
-        <div className="char-cosmetic-aura" aria-hidden="true" />
 
         {/* 左側 装備スロット 3枠 */}
         <div className="char-equip-column char-equip-column-left">
@@ -571,13 +508,19 @@ export default function CharacterTab() {
                 className={`char-firstview-skill ${skillMaster ? `is-${(skillMaster.rarity || "N").toLowerCase()}` : ""} ${!unlocked ? "is-locked" : ""} active-scale-effect`}
                 onClick={() => {
                   if (!unlocked) return;
+                  if (skillMaster) {
+                    setSkillDetail(skillMaster);
+                    playCyberSe("click");
+                    return;
+                  }
                   setSelectedSkillSlotIdx(slotIdx);
                   setBottomModalTab("SKILL");
                   playCyberSe("click");
                 }}
               >
-                <span>SK{slotIdx + 1}</span>
-                <strong>{unlocked ? (skillMaster?.name || "未装着") : "未開放"}</strong>
+                {skillMaster && <img className="production-rarity-item-frame" src={getRarityFrameAsset("skill", skillMaster.rarity)} alt="" aria-hidden="true" />}
+                {skillMaster ? <SkillIcon skill={skillMaster} /> : <strong>{unlocked ? "＋" : "未開放"}</strong>}
+                <span>枠{slotIdx + 1}</span>
               </button>
             );
           })}
@@ -592,7 +535,7 @@ export default function CharacterTab() {
       <div className="char-identity-summary" aria-label="キャラクター情報">
         <span><small>レアリティ</small><strong>{activeCharMaster.rarity || "N"}</strong></span>
         <span><small>出身</small><strong>{activeCharMaster.homeTown || "東京"}</strong></span>
-        <span><small>属性</small><strong>{alignInfo.label}</strong></span>
+        <span><small>属性</small><strong>{attributeLabel}</strong></span>
         <span><small>覚醒</small><strong>+{awakeningLevel} / +5</strong></span>
       </div>
 
@@ -606,6 +549,8 @@ export default function CharacterTab() {
         >
           強化
         </button>
+        <button className="char-main-action-btn active-scale-effect" onClick={() => { setBottomModalTab("SKILL"); playCyberSe("click"); }}>スキル</button>
+        <button className="char-main-action-btn active-scale-effect" onClick={() => { setBottomModalTab("GEAR"); playCyberSe("click"); }}>装備</button>
       </div>
 
       {formationEditMode && (
@@ -765,6 +710,20 @@ export default function CharacterTab() {
             {/* モーダルコンテンツ: タブA 育成 */}
             {bottomModalTab === "STATUS" && (
               <div>
+                <section className="char-growth-contract" aria-label="キャラクター強化">
+                  <div className="char-growth-target">
+                    <CharacterPresentation src={getCharacterTransparentImg(activeCharMaster.name)} alt={activeCharMaster.jpName} variant="thumbnail" />
+                    <div><small>強化対象</small><strong>{activeCharMaster.jpName}</strong></div>
+                  </div>
+                  <div className="char-growth-comparison">
+                    <div><small>現在のレベル</small><strong>Lv.{Number(activeCharRecord.level || 1)}</strong></div>
+                    <i>→</i>
+                    <div><small>強化後</small><strong>Lv.{Number(activeCharRecord.level || 1) + 1}</strong></div>
+                    <div><small>現在の覚醒</small><strong>+{awakeningLevel}</strong></div>
+                    <i>→</i>
+                    <div><small>素材使用後</small><strong>+{awakeningAfter.awakeningLevel}<em>{awakeningAfter.awakeningProgress > 0 ? ` (${awakeningAfter.awakeningProgress}/${awakeningAfter.nextRequired})` : ""}</em></strong></div>
+                  </div>
+                </section>
                 <div className="char-status-grid">
                   <div className="char-status-card">
                     <span className="char-status-label">HP</span>
@@ -797,22 +756,24 @@ export default function CharacterTab() {
                       if (activeCharRecord) void handleCharacterLevelUp("CHAR_EXP_S", 1);
                     }}
                   >
-                    <span>{upgradeLoading ? "強化中..." : "レベルアップ"}</span>
-                    <span className="char-upgrade-sub char-material-copy"><CanonicalItemIcon itemId="CHAR_EXP_S" alt="" className="char-material-art" />強化ドリンク・小 {Math.max(0, Number(charExpS) || 0)} / CASH {safeCash.toLocaleString()}</span>
+                    <span>{upgradeLoading ? "強化中…" : "レベルを強化"}</span>
+                    <span className="char-upgrade-sub char-material-copy"><CanonicalItemIcon itemId="CHAR_EXP_S" alt="" className="char-material-art" />必要 強化ドリンク・小 ×1（所持 {Math.max(0, Number(charExpS) || 0)}）</span>
                   </button>
                   <button
                     className="char-upgrade-btn awaken active-scale-effect"
-                    disabled={upgradeLoading || awakeningLevel >= 5}
+                    disabled={upgradeLoading || awakeningLevel >= 5 || Number(awakeningBooks || 0) < 1}
+                    aria-busy={upgradeLoading}
                     onClick={() => {
                       if (activeCharRecord) void handleCharacterAwaken(activeCharRecord.id);
                       playCyberSe("click");
                     }}
                   >
-                    <span>覚醒進捗</span>
-                    <span className="char-upgrade-sub">
+                    <span>{upgradeLoading ? "覚醒中…" : "覚醒素材を使う"}</span>
+                    <span className="char-upgrade-sub char-material-copy">
+                      <CanonicalItemIcon itemId="AWAKENING_BOOK" alt="" className="char-material-art" />
                       {awakeningLevel >= 5
                         ? "覚醒 MAX"
-                        : `覚醒の書 ×1 / +${awakeningLevel} ・ ${Number(activeCharRecord.awakening_progress || 0)}/${canonicalCharacterAwakeningRequired(awakeningLevel)}`}
+                        : `必要 覚醒の書 ×1（所持 ${Number(awakeningBooks || 0)}）`}
                     </span>
                   </button>
                 </div>
@@ -850,13 +811,12 @@ export default function CharacterTab() {
             {/* モーダルコンテンツ: タブB スキルデッキ */}
             {bottomModalTab === "SKILL" && (
               <div>
-                <p className="char-loadout-help">装備枠を選び、表示されたスキルをタップすると、その枠へすぐ装備されます。</p>
+                <p className="char-loadout-help">装備枠を選び、アイコンで詳細を確認してから「装備」で設定します。</p>
                 <div className="char-skills-grid">
                   {Array.from({ length: 6 }).map((_, slotIdx) => {
                     const isUnlocked = slotIdx < maxSkillSlots;
                     const previewSkillRecord = equippedSkillsBySlot.get(slotIdx) || null;
                     const skillMaster = previewSkillRecord ? CANONICAL_SKILL_VIEW.find((m: any) => m.id === (previewSkillRecord.skill_card_id || previewSkillRecord.skill_id)) : null;
-                    const skillDisplay = previewSkillRecord ? skillDisplayById[previewSkillRecord.skill_card_id || previewSkillRecord.skill_id] : null;
                     const skillRarity = (skillMaster?.rarity || "N").toLowerCase();
                     
                     const limitBreakPlus = previewSkillRecord?.plus_val || 0;
@@ -881,9 +841,8 @@ export default function CharacterTab() {
                         {isUnlocked ? (
                           previewSkillRecord && skillMaster ? (
                             <>
-                              <div className="char-skill-name">{skillDisplay?.display_name || skillMaster.name}</div>
-                              <div className="char-skill-cost">{skillDisplay?.rarity || skillMaster.rarity} ・ {SKILL_EFFECT_LABELS[skillMaster.effect_type] || "特殊"}</div>
-                              <div className="char-skill-spec"><span>対象 {SKILL_TARGET_DISPLAY[skillMaster.target] || "特殊"}</span><span>再使用 {skillMaster.cooldown === null ? "—" : `${skillMaster.cooldown}T`}</span>{skillDisplay?.status_effect && <span>状態効果 {SKILL_STATUS_DISPLAY[skillDisplay.status_effect] || "特殊効果"}</span>}</div>
+                              <SkillIcon skill={skillMaster} size="regular" onSelect={setSkillDetail} />
+                              <div className="char-slot-summary"><span>枠 {slotIdx + 1}</span><b>+{limitBreakPlus}</b></div>
                             </>
                           ) : (
                             <div className="char-skill-empty-label">未装備<small>タップして選択</small></div>
@@ -908,7 +867,7 @@ export default function CharacterTab() {
                         閉じる
                       </button>
                     </div>
-                    <p className="char-inline-help">候補をタップすると即時に装備します。現在の枠のスキルは自動で入れ替わります。</p>
+                    <p className="char-inline-help">アイコンで詳細を確認し、「装備」で選択中の枠へ設定します。</p>
                     <div className="char-inline-grid">
                       <div
                         className="char-tile-item active-scale-effect"
@@ -935,19 +894,12 @@ export default function CharacterTab() {
                             <div
                               key={sk.id}
                               className="char-tile-item active-scale-effect"
-                              onClick={() => {
-                                void handleEquipSkill(sk.id, selectedSkillSlotIdx);
-                                setSelectedSkillSlotIdx(null);
-                              }}
                             >
                               {mData && <img className="production-rarity-item-frame" src={getRarityFrameAsset("skill", display?.rarity || mData.rarity)} alt="" aria-hidden="true" />}
-                              <span className="char-tile-name">{display?.display_name || mData?.name || "スキル"}</span>
-                              {mData && <span className="char-tile-spec">{display?.rarity || mData.rarity} ・ {display?.display_effect || SKILL_EFFECT_LABELS[mData.effect_type] || "特殊"}<br />対象 {SKILL_TARGET_DISPLAY[mData.target] || "特殊"} ・ 再使用 {mData.cooldown === null ? "—" : `${mData.cooldown}T`}</span>}
-                              <span className="char-tile-equip-label">
-                                {sk.equipped_character_id === activeCharRecord?.id && Number.isInteger(sk.slot_index)
-                                  ? `装備中: 枠${sk.slot_index + 1}`
-                                  : "タップで装備"}
-                              </span>
+                              {mData ? <SkillIcon skill={mData} size="regular" onSelect={setSkillDetail} /> : <span className="char-tile-missing">未確認</span>}
+                              <button type="button" className="char-tile-equip-action" disabled={upgradeLoading || !mData} onClick={() => { void handleEquipSkill(sk.id, selectedSkillSlotIdx); setSelectedSkillSlotIdx(null); }}>
+                                {sk.equipped_character_id === activeCharRecord?.id && Number.isInteger(sk.slot_index) ? `枠${sk.slot_index + 1}に装備中` : "装備"}
+                              </button>
                             </div>
                           );
                         })}
@@ -995,8 +947,8 @@ export default function CharacterTab() {
                           disabled={upgradeLoading}
                         >
                           {master && <img className="production-rarity-item-frame" src={getRarityFrameAsset("skill", master.rarity)} alt="" aria-hidden="true" />}
-                          <span>{master?.name || skillMasterId}</span>
-                          <small>{master ? `${SKILL_EFFECT_LABELS[master.effect_type] || "特殊"} / ${master.power}%` : "詳細未取得"}</small>
+                          {master && <SkillIcon skill={master} />}
+                          <span>{master?.name || "スキル情報を確認中"}</span>
                           <b>+{skill.plus_val || 0}</b>
                         </button>
                       );
@@ -1065,18 +1017,14 @@ export default function CharacterTab() {
                             <div
                               key={eq.id}
                               className="char-tile-item active-scale-effect"
-                              onClick={() => {
-                                // 正規フロー: まずContextのactiveGearSlotを設定してから1引数で呼び出し
-                                setActiveGearSlot(selectedEquipSlotIdx);
-                                handleEquipGear(eq.id, selectedEquipSlotIdx);
-                                setSelectedEquipSlotIdx(null);
-                              }}
                             >
                               {gearMaster && <img className="production-rarity-item-frame" src={getRarityFrameAsset("equipment", gearMaster.rarity)} alt="" aria-hidden="true" />}
-                              {gearMaster && <img className="production-equipment-art" src={gearMaster.assetPath} alt="" aria-hidden="true" />}
-                              <span className="char-tile-name">{gearMaster?.name || "未確認の装備"}</span>
-                              <span className="char-tile-spec">{equipmentParameter(gearMaster)}</span>
-                              <span className="char-tile-lv-label">Lv.{eq.level} ・ {eq.equipped_character_id ? "装備中" : "未装備"}</span>
+                              <button type="button" className="char-tile-detail-action" disabled={!gearMaster} onClick={() => gearMaster && setEquipmentDetail({ master: gearMaster, record: eq })} aria-label={`${gearMaster?.name || "装備"}の詳細`}>
+                                {gearMaster && <img className="production-equipment-art" src={gearMaster.assetPath} alt="" aria-hidden="true" />}
+                              </button>
+                              <button type="button" className="char-tile-equip-action" disabled={upgradeLoading || !gearMaster} onClick={() => { setActiveGearSlot(selectedEquipSlotIdx); handleEquipGear(eq.id, selectedEquipSlotIdx); setSelectedEquipSlotIdx(null); }}>
+                                {eq.equipped_character_id ? "装備中" : "装備"}
+                              </button>
                             </div>
                           );
                         })}
@@ -1146,6 +1094,19 @@ export default function CharacterTab() {
             )}
           </div>
         </div>
+      )}
+      {skillDetail && <SkillDetailDialog skill={skillDetail} onClose={() => setSkillDetail(null)} />}
+      {equipmentDetail && (
+        <CanonicalDialog title="装備詳細" onClose={() => setEquipmentDetail(null)} actions={[{ label: "閉じる", semantic: "secondary", onClick: () => setEquipmentDetail(null) }]}>
+          <div className="char-equipment-detail">
+            <div className="char-equipment-detail-art">
+              <img className="production-rarity-item-frame" src={getRarityFrameAsset("equipment", equipmentDetail.master.rarity)} alt="" aria-hidden="true" />
+              <img className="production-equipment-art" src={equipmentDetail.master.assetPath} alt="" />
+            </div>
+            <div><strong>{equipmentDetail.master.name}</strong><small>Lv.{Number(equipmentDetail.record.level || 1)} / 限界突破 +{Number(equipmentDetail.record.plus_val || 0)}</small></div>
+            <dl><div><dt>装備箇所</dt><dd>{GEAR_SLOTS_MASTER.find((slot: any) => slot.type === equipmentDetail.master.slot_type)?.label || "装備"}</dd></div><div><dt>パラメータ</dt><dd>{equipmentParameter(equipmentDetail.master)}</dd></div></dl>
+          </div>
+        </CanonicalDialog>
       )}
     </div>
   );

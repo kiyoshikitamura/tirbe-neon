@@ -37,6 +37,10 @@ export default function MissionPanel() {
 
   const currentMissions = (missions || []).filter((m: any) => m.category === missionTab);
   const clearMissionsCount = currentMissions.filter((m: any) => m.status === "CLEAR").length;
+  const clearCounts = {
+    DAILY: (missions || []).filter((m: any) => m.category === "DAILY" && m.status === "CLEAR").length,
+    NORMAL: (missions || []).filter((m: any) => m.category === "NORMAL" && m.status === "CLEAR").length,
+  };
 
   const handleMissionCta = (mission: any) => {
     playCyberSe("click");
@@ -57,8 +61,8 @@ export default function MissionPanel() {
       <div className="mission-panel-container-inner">
         <SubTabNav
           tabs={[
-            { id: "DAILY", label: "デイリー" },
-            { id: "NORMAL", label: "ノーマル" }
+            { id: "DAILY", label: "デイリー", badge: clearCounts.DAILY },
+            { id: "NORMAL", label: "シーズン", badge: clearCounts.NORMAL }
           ]}
           activeTabId={missionTab}
           onSelect={(id) => setMissionTab(id as any)}
