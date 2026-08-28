@@ -833,6 +833,13 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       } catch (err) {
         console.warn("Check setup required failed:", err);
         setTotalPowerLoading(false);
+        if (!currentAuthUserIdRef.current || currentAuthUserIdRef.current === userId) {
+          // A core onboarding projection failure is not an unfinished load and
+          // must never be treated as a ready player. Keep the account ownership
+          // guard closed, but give the player a canonical retry path instead of
+          // leaving the shell on an infinite checking state.
+          setAuthenticatedProjectionError("プレイヤーデータを確認できませんでした。再読み込みしてください。");
+        }
       } finally {
         setAuthLoading(false);
       }

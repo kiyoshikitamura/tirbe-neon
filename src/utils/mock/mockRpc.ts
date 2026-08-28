@@ -1138,6 +1138,9 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
   if (funcName === "get_current_onboarding_state") {
     const userId = typeof window === "undefined" ? null : localStorage.getItem("tribe_demo_uuid");
     if (!userId) return { data: null, error: { message: "Authentication is required" } };
+    if (localStorage.getItem("mock_onboarding_state_error") === "true") {
+      return { data: null, error: { message: "Could not find the function public.get_current_onboarding_state", code: "PGRST202" } };
+    }
     const users = client.getStorage("users") || [];
     const progress = (client.getStorage("tutorial_progress") || []).find((entry: any) => entry.user_id === userId);
     const method = (client.getStorage("user_account_auth_methods") || []).find((entry: any) => entry.user_id === userId);

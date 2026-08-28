@@ -125,6 +125,7 @@
     "verify:supabase-target": "node scripts/verify_supabase_target.mjs",
     "verify:supabase-target:development": "node scripts/verify_supabase_target.mjs --environment development",
     "verify:supabase-target:preview": "node scripts/verify_supabase_target.mjs --environment preview",
+    "verify:fixed-preview-parity": "node scripts/verify_fixed_preview_schema_parity.mjs",
     "supabase:guarded": "node scripts/run_guarded_supabase.mjs",
     "supabase:link:guarded": "node scripts/link_guarded_supabase.mjs",
     "supabase:link:development": "node scripts/link_guarded_supabase.mjs --environment development",

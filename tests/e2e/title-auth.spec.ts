@@ -376,6 +376,32 @@ test("existing Google login returns directly to the game without the war-entry d
   await expect.poll(async () => page.evaluate(() => localStorage.getItem("tribe_existing_google_login_intent"))).toBeNull();
 });
 
+test("a core onboarding authority failure exits checking state and remains retryable", async ({ page }) => {
+  await page.addInitScript(() => {
+    const userId = "00000000-0000-4000-8000-000000000303";
+    localStorage.setItem("tribe_demo_uuid", userId);
+    localStorage.setItem("mock_auth_mode", "GOOGLE");
+    localStorage.setItem("mock_onboarding_state_error", "true");
+    localStorage.setItem("tribe_existing_google_login_intent", JSON.stringify({ startedAt: Date.now(), sourceUserId: userId }));
+    localStorage.setItem("mock_db_users", JSON.stringify([{
+      id: userId,
+      username: "Authority Error",
+      current_base_id: "shinjuku",
+      favorite_character_id: "char_reiji_01",
+    }]));
+    localStorage.setItem("mock_db_tutorial_progress", JSON.stringify([{ user_id: userId, step_id: "AUTHENTICATION" }]));
+    localStorage.setItem("mock_db_user_account_auth_methods", JSON.stringify([{ user_id: userId, auth_method: "GOOGLE" }]));
+  });
+
+  await page.goto("/");
+  await page.getByRole("button", { name: "続きから" }).click();
+
+  await expect(page.getByText("プレイヤーデータを確認できませんでした。再読み込みしてください。")).toBeVisible();
+  await expect(page.getByRole("button", { name: "再読み込み" })).toBeVisible();
+  await expect(page.getByText("プレイヤーデータを確認中")).toHaveCount(0);
+  await expect(page.locator(".header-mobile")).toHaveCount(0);
+});
+
 test("OAuth callback ignores the restored old session and bootstraps the exchanged Google account", async ({ page }) => {
   await page.addInitScript(() => {
     if (localStorage.getItem("p0_google_callback_fixture_seeded") === "true") return;
