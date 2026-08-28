@@ -374,10 +374,16 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
 
   if (funcName === "request_guild_join") {
     const userId = typeof window === "undefined" ? null : localStorage.getItem("tribe_demo_uuid");
+    const users = client.getStorage("users") || [];
+    const user = users.find((entry: any) => entry.id === userId);
+    const leftAt = user?.last_guild_left_at ? new Date(user.last_guild_left_at).getTime() : 0;
     const guilds = client.getStorage("guilds") || [];
     const guild = guilds.find((entry: any) => entry.id === params?.p_guild_id && !entry.is_disbanded);
     const memberships = client.getStorage("guild_members") || [];
     const requests = client.getStorage("guild_join_requests") || [];
+    if (leftAt > 0 && Date.now() - leftAt < 24 * 60 * 60 * 1000) {
+      return { data: null, error: { code: "P0001", details: "GUILD_JOIN_COOLDOWN_ACTIVE", message: "Guild rejoin cooldown is active" } };
+    }
     if (!userId || !guild || (guild.recruitment_mode || (guild.approval_required ? "APPLICATION_REQUIRED" : "OPEN_JOIN")) !== "APPLICATION_REQUIRED" || memberships.some((entry: any) => entry.user_id === userId)) {
       return { data: null, error: { message: "Guild application requirements are not met" } };
     }
@@ -3274,8 +3280,11 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     const members = client.getStorage("guild_members") || [];
     const memberLimit = guild?.member_limit || (guild?.level >= 5 ? 20 : guild?.level === 4 ? 17 : guild?.level === 3 ? 14 : guild?.level === 2 ? 12 : 10);
     const leftAt = user?.last_guild_left_at ? new Date(user.last_guild_left_at).getTime() : 0;
+    if (leftAt > 0 && Date.now() - leftAt < 24 * 60 * 60 * 1000) {
+      return { data: null, error: { code: "P0001", details: "GUILD_JOIN_COOLDOWN_ACTIVE", message: "Guild rejoin cooldown is active" } };
+    }
     if (!user || user.level < 3 || !guild || guild.is_disbanded || (guild.recruitment_mode || (guild.approval_required ? "APPLICATION_REQUIRED" : "OPEN_JOIN")) !== "OPEN_JOIN" || members.some((entry: any) => entry.user_id === currentUserId)
-      || (leftAt > 0 && Date.now() - leftAt < 24 * 60 * 60 * 1000) || members.filter((entry: any) => entry.guild_id === p_guild_id).length >= memberLimit) {
+      || members.filter((entry: any) => entry.guild_id === p_guild_id).length >= memberLimit) {
       return { data: null, error: { message: "Guild joining requirements are not met" } };
     }
     members.push({ id: `gm_${Date.now()}`, guild_id: p_guild_id, user_id: currentUserId, role: "MEMBER", weekly_contribution: 0, total_contribution: 0 });

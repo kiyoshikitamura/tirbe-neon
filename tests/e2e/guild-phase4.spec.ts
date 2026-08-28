@@ -11,15 +11,15 @@ const openMember = "00000000-0000-4000-8000-000000004014";
 const openGuild = "30000000-0000-4000-8000-000000004001";
 const approvalGuild = "30000000-0000-4000-8000-000000004002";
 
-async function seedGuildVisitor(page: Page, level = 5, initialGuildRole: string | null = null, cash = 10000) {
-  await page.addInitScript(({ me, openLeader, approvalLeader, openSubmaster, openMember, openGuild, approvalGuild, level, initialGuildRole, cash }) => {
+async function seedGuildVisitor(page: Page, level = 5, initialGuildRole: string | null = null, cash = 10000, lastGuildLeftAt: string | null = null) {
+  await page.addInitScript(({ me, openLeader, approvalLeader, openSubmaster, openMember, openGuild, approvalGuild, level, initialGuildRole, cash, lastGuildLeftAt }) => {
     if (sessionStorage.getItem("phase4_guild_seeded") === "1") return;
     sessionStorage.setItem("phase4_guild_seeded", "1");
     const now = new Date().toISOString();
     localStorage.setItem("tribe_demo_uuid", me);
     localStorage.setItem("mock_auth_mode", "EMAIL");
     localStorage.setItem("mock_db_users", JSON.stringify([
-      { id: me, username: "Guild Visitor", level, cash, current_base_id: "shinjuku", last_active_at: now, favorite_character_id: "char_reiji_01", guild_id: initialGuildRole ? openGuild : null },
+      { id: me, username: "Guild Visitor", level, cash, current_base_id: "shinjuku", last_active_at: now, last_guild_left_at: lastGuildLeftAt, favorite_character_id: "char_reiji_01", guild_id: initialGuildRole ? openGuild : null },
       { id: openLeader, username: "Open Leader", level: 20, cash: 10000, current_base_id: "shinjuku", last_active_at: now, favorite_character_id: "char_kengo_01", guild_id: openGuild },
       { id: approvalLeader, username: "Approval Leader", level: 18, cash: 10000, current_base_id: "shinjuku", last_active_at: now, favorite_character_id: "char_chang_01", guild_id: approvalGuild },
       { id: openSubmaster, username: "Neon Submaster", level: 16, cash: 10000, current_base_id: "shinjuku", last_active_at: now, favorite_character_id: "char_haruka_01", guild_id: openGuild },
@@ -43,7 +43,7 @@ async function seedGuildVisitor(page: Page, level = 5, initialGuildRole: string 
     ]));
     localStorage.setItem("mock_db_guild_join_requests", "[]");
     localStorage.setItem("mock_db_board_posts", "[]");
-  }, { me, openLeader, approvalLeader, openSubmaster, openMember, openGuild, approvalGuild, level, initialGuildRole, cash });
+  }, { me, openLeader, approvalLeader, openSubmaster, openMember, openGuild, approvalGuild, level, initialGuildRole, cash, lastGuildLeftAt });
 }
 
 async function enterGuild(page: Page) {
@@ -162,6 +162,45 @@ test("direct join refreshes membership and opens persistent Guild Chat without r
     await page.setViewportSize(viewport);
     await expectNoOverflow(page, ".tribe-modal-container-inner");
   }
+});
+
+test("24-hour leave cooldown uses the same canonical dialog for join and application but never blocks creation", async ({ page }) => {
+  await seedGuildVisitor(page, 5, null, 10000, new Date().toISOString());
+  await enterGuild(page);
+  await expect.poll(() => page.evaluate(({ me }) => JSON.parse(localStorage.getItem("mock_db_users") || "[]").find((user: any) => user.id === me)?.last_guild_left_at || null, { me })).not.toBeNull();
+
+  await page.locator(".guild-detail-trigger").filter({ hasText: "OPEN NEON" }).click();
+  await page.getByRole("button", { name: "このギルドに加入する" }).click();
+  const cooldownDialog = page.locator(".canonical-dialog");
+  await expect(cooldownDialog).toContainText("ギルドに加入できません");
+  await expect(cooldownDialog).toContainText("ギルド脱退後24時間は、別のギルドに加入できません。");
+  await expect(cooldownDialog.getByRole("button", { name: "OK" })).toHaveCount(1);
+  await expect(cooldownDialog.getByRole("button", { name: "キャンセル" })).toHaveCount(0);
+  await cooldownDialog.getByRole("button", { name: "OK" }).click();
+
+  await page.getByPlaceholder("ギルド名で検索").fill("承認制ギルド");
+  await page.getByRole("button", { name: "検索", exact: true }).click();
+  await page.locator(".guild-search-results .guild-detail-trigger").click();
+  await page.getByRole("button", { name: "加入申請する" }).click();
+  await page.getByRole("button", { name: "申請する" }).click();
+  await expect(cooldownDialog).toContainText("ギルドに加入できません");
+  await expect(cooldownDialog).toContainText("ギルド脱退後24時間は、別のギルドに加入できません。");
+  for (const viewport of [{ width: 390, height: 844 }, { width: 412, height: 915 }]) {
+    await page.setViewportSize(viewport);
+    await expectNoOverflow(page, ".canonical-dialog");
+  }
+  await cooldownDialog.getByRole("button", { name: "OK" }).click();
+  const deniedState = await page.evaluate(({ me }) => ({
+    memberships: JSON.parse(localStorage.getItem("mock_db_guild_members") || "[]").filter((row: any) => row.user_id === me).length,
+    requests: JSON.parse(localStorage.getItem("mock_db_guild_join_requests") || "[]").filter((row: any) => row.user_id === me).length,
+  }), { me });
+  expect(deniedState).toEqual({ memberships: 0, requests: 0 });
+
+  await page.locator(".guild-lobby-create summary").click();
+  await page.getByPlaceholder("ギルド名を入力 (12文字)").fill("COOL NEON");
+  await page.getByRole("button", { name: "創設する" }).click();
+  await page.getByRole("button", { name: "設立する" }).click();
+  await expect(cooldownDialog).toContainText("「COOL NEON」を設立しました。");
 });
 
 test("member leave uses a destructive canonical dialog and returns to unaffiliated state", async ({ page }) => {

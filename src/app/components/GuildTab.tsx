@@ -45,7 +45,6 @@ export default function GuildTab() {
     handleUpdateGuildAlignment,
     handleUpdateGuildSettings,
     gvgResetLoading,
-    getGuildPenaltyState,
     playCyberSe,
     guildLevelMaster,
     fetchGuildDetail,
@@ -105,8 +104,6 @@ export default function GuildTab() {
       setActiveMembers7d(typeof data?.active_members_7d === "number" ? data.active_members_7d : null);
     });
   }, [userGuild?.id]);
-  const penalty = getGuildPenaltyState();
-
   const isMaster = userGuildMember?.role === "MASTER";
   const isSubMaster = userGuildMember?.role === "SUBMASTER" || userGuildMember?.role === "SUB_MASTER";
   const saveWelcomeMessage = async () => {
@@ -169,7 +166,7 @@ export default function GuildTab() {
   };
 
   if (!userGuild) {
-    const joinUnlocked = userLevel >= 3 && !penalty.isPenalty;
+    const joinUnlocked = userLevel >= 3;
     const createUnlocked = userLevel >= GUILD_PRODUCTION.creation.userLevel
       && cash >= GUILD_PRODUCTION.creation.cashCost;
     const renderGuildCard = (g: any) => {
@@ -211,10 +208,6 @@ export default function GuildTab() {
       <div className="view-container guild-lobby-view">
         <h1 className="sr-only">ギルド</h1>
         <div className="scroll-container flex-1 guild-lobby-scroll">
-          {penalty.isPenalty && (
-            <div className="guild-lobby-notice">脱退後の参加制限中です。残り {Math.ceil(penalty.secondsLeft / 3600)} 時間</div>
-          )}
-
           <details className={`guild-lobby-create ${createUnlocked ? "is-ready" : ""}`}>
             <summary>ギルドを設立する <small>Lv.{GUILD_PRODUCTION.creation.userLevel} / {GUILD_PRODUCTION.creation.cashCost.toLocaleString()}キャッシュ</small></summary>
             <div className="guild-create-form">

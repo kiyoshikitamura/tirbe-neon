@@ -122,6 +122,27 @@ export function useGuild(
     }
   };
 
+  const openGuildJoinCooldownDialog = () => {
+    setConfirmDialogConfig({
+      isOpen: true,
+      title: "ギルドに加入できません",
+      message: "ギルド脱退後24時間は、別のギルドに加入できません。",
+      confirmText: "OK",
+      cancelText: "",
+      presentation: "canonical",
+      onConfirm: () => setConfirmDialogConfig(null),
+      onCancel: () => setConfirmDialogConfig(null),
+    });
+  };
+
+  const isGuildJoinCooldownError = (error: any) => {
+    const authority = [error?.code, error?.details, error?.hint, error?.message]
+      .filter(Boolean)
+      .join(" ");
+    return authority.includes("GUILD_JOIN_COOLDOWN_ACTIVE")
+      || /Guild rejoin cooldown is active/i.test(authority);
+  };
+
   const handleCreateGuild = () => {
     if (!session) return;
     const guildName = newGuildName.trim();
@@ -250,12 +271,6 @@ export function useGuild(
       setErrorMessage("ギルド加入にはプレイヤーレベル3以上が必要です。");
       return null;
     }
-    const penalty = getGuildPenaltyState();
-    if (penalty.isPenalty) {
-      setErrorMessage("ギルド脱退後のペナルティ制限期間中です。");
-      return null;
-    }
-
     setGvgResetLoading(true);
     playCyberSe("click");
     try {
@@ -295,12 +310,15 @@ export function useGuild(
       return requiresApproval ? "pending" : "joined";
     } catch (err: any) {
       console.warn(err.message);
+      if (isGuildJoinCooldownError(err)) {
+        openGuildJoinCooldownDialog();
+        return null;
+      }
       const message = String(err?.message || "");
       setErrorMessage(
         /cap|full|上限|満員/i.test(message) ? "このギルドは満員です。" :
         /pending|申請/i.test(message) ? "加入申請はすでに送信済みです。" :
         /already|所属/i.test(message) ? "すでにギルドへ所属しています。" :
-        /cooldown|制限/i.test(message) ? "脱退後の参加制限中です。時間をおいてもう一度お試しください。" :
         "ギルドへの加入処理に失敗しました。"
       );
       return null;

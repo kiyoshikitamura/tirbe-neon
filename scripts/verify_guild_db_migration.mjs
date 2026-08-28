@@ -7,6 +7,7 @@ const activationSql = readFileSync(new URL("../supabase/migrations/2026082700020
 const remediationSql = readFileSync(new URL("../supabase/migrations/20260828000204_guild_human_acceptance_projection.sql", import.meta.url), "utf8");
 const round2Sql = readFileSync(new URL("../supabase/migrations/20260828000205_guild_attribute_submaster_authority.sql", import.meta.url), "utf8");
 const creationSql = readFileSync(new URL("../supabase/migrations/20260828000206_guild_creation_level5_authority.sql", import.meta.url), "utf8");
+const cooldownSql = readFileSync(new URL("../supabase/migrations/20260828000207_guild_join_cooldown_authority.sql", import.meta.url), "utf8");
 const required = [
   "canonical_guild_progression_master", "guild_exp_daily_ledger", "unique(guild_id,user_id,source,jst_date)",
   "LOGIN',10", "FIRST_GUILD_CHAT',10", "QUEST_3_CLEAR',10", "PVP_FINALIZED',10", "RAID_FINALIZED',15", "DONATION',20",
@@ -39,6 +40,10 @@ assert.ok(creationSql.includes("p_creation_cost <> 5000"));
 assert.ok(creationSql.includes("pg_advisory_xact_lock"));
 assert.ok(!creationSql.includes("Guild rejoin cooldown is active"));
 assert.ok(creationSql.includes("level = 5 then '[\"GUILD_CREATION\"]'::jsonb"));
+assert.ok(cooldownSql.includes("create or replace function public.join_guild"));
+assert.ok(cooldownSql.includes("create or replace function public.request_guild_join"));
+assert.equal(cooldownSql.match(/detail = 'GUILD_JOIN_COOLDOWN_ACTIVE'/g)?.length, 2);
+assert.ok(!cooldownSql.includes("create_guild_v2"));
 for (const key of ["active_member_7d", "raid_participant_7d", "chat_member_7d", "activity_contributor_7d", "target_fill_bonus", "instant_join_bonus", "raid_contribution_scale", "guild_power_scale", "inactive_14d_penalty", "stale_request_penalty", "rotation_range"]) {
   assert.ok(sql.includes(key), `recommendation weight is missing ${key}`);
 }
