@@ -20,9 +20,14 @@ const readFirstPaintedProcessingSurface = (page: Page) => page.evaluate(() => ne
     const stage = overlay?.querySelector<HTMLElement>(".gacha-presentation-stage");
     const fieldset = document.querySelector<HTMLFieldSetElement>("fieldset.gacha-view-root");
     const style = overlay ? getComputedStyle(overlay) : null;
+    const stageStyle = stage ? getComputedStyle(stage) : null;
     const rect = overlay?.getBoundingClientRect();
+    const stageRect = stage?.getBoundingClientRect();
     const hit = overlay && rect ? document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2) : null;
-    const motion = stage ? getComputedStyle(stage, "::before") : null;
+    const leftHit = overlay && rect ? document.elementFromPoint(rect.left + 2, rect.top + rect.height / 2) : null;
+    const rightHit = overlay && rect ? document.elementFromPoint(rect.right - 2, rect.top + rect.height / 2) : null;
+    const removedTunnel = stage ? getComputedStyle(stage, "::before") : null;
+    const surfaceMotion = stage ? getComputedStyle(stage, "::after") : null;
     resolve({
       state: overlay?.dataset.gachaTransitionState ?? null,
       mounted: Boolean(effect),
@@ -35,9 +40,17 @@ const readFirstPaintedProcessingSurface = (page: Page) => page.evaluate(() => ne
       position: style?.position ?? null,
       width: rect?.width ?? 0,
       height: rect?.height ?? 0,
+      stageWidth: stageRect?.width ?? 0,
+      stageHeight: stageRect?.height ?? 0,
+      visual: overlay?.dataset.gachaVisual ?? null,
+      surfaceBackgroundSize: style?.backgroundSize ?? null,
+      stageBackground: stageStyle?.backgroundImage ?? null,
       topmost: Boolean(hit && overlay?.contains(hit)),
-      motionState: motion?.animationPlayState ?? null,
-      motionName: motion?.animationName ?? null,
+      leftTopmost: Boolean(leftHit && overlay?.contains(leftHit)),
+      rightTopmost: Boolean(rightHit && overlay?.contains(rightHit)),
+      tunnelContent: removedTunnel?.content ?? null,
+      motionState: surfaceMotion?.animationPlayState ?? null,
+      motionName: surfaceMotion?.animationName ?? null,
     });
   }));
 }));
@@ -59,12 +72,20 @@ for (const category of ["SKILL", "EQUIPMENT"] as const) {
       opacity: "1",
       zIndex: "20000",
       position: "fixed",
+      visual: "asset-short",
+      stageBackground: "none",
       topmost: true,
+      leftTopmost: true,
+      rightTopmost: true,
+      tunnelContent: "none",
       motionState: "running",
-      motionName: "gacha-star-tunnel",
+      motionName: "gacha-asset-surface-pulse",
     });
     expect(Number(painted.width)).toBeGreaterThanOrEqual(389);
     expect(Number(painted.height)).toBeGreaterThanOrEqual(843);
+    expect(Number(painted.stageWidth)).toBeCloseTo(Number(painted.width), 0);
+    expect(Number(painted.stageHeight)).toBeCloseTo(Number(painted.height), 0);
+    expect(String(painted.surfaceBackgroundSize).split(",").every((size) => size.trim() === "100% 100%")).toBe(true);
     await expect(page.locator(".gacha-result-card")).toHaveCount(10);
   });
 }

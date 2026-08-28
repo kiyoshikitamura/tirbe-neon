@@ -81,6 +81,8 @@ export default function CommonModals() {
   const tutorialRevealAdvanceRef = useRef(false);
   const isCharacterReveal = scoutResults.length > 0
     && scoutResults.every((result: any) => result?.type === "CHARACTER" && result?.characterId);
+  const isAssetShortTransition = scoutAnimationState === "PROCESSING"
+    || (scoutAnimationState === "FLASHING" && !isCharacterReveal);
   const tutorialRevealResult = scoutResults[tutorialRevealIndex];
   const tutorialRevealRarity = String(tutorialRevealResult?.rarity || "N").toUpperCase();
   const tutorialRevealQuote = tutorialRevealRarity === "SSR"
@@ -252,7 +254,7 @@ export default function CommonModals() {
 
       {/* 🎰 ガチャ演出モーダル (FLASHING / SHOW_RESULTS) */}
       {scoutAnimationState !== null && (
-        <div className={`modal-overlay background-black-95 ${scoutAnimationState === "PROCESSING" ? "gacha-processing-overlay" : ""}`} style={{ zIndex: 20000 }} data-gacha-transition-state={scoutAnimationState.toLowerCase()}>
+        <div className={`modal-overlay background-black-95 ${scoutAnimationState === "PROCESSING" ? "gacha-processing-overlay" : ""} ${isAssetShortTransition ? "gacha-asset-transition-overlay" : ""}`} style={{ zIndex: 20000 }} data-gacha-transition-state={scoutAnimationState.toLowerCase()} data-gacha-visual={isAssetShortTransition ? "asset-short" : undefined}>
           {scoutAnimationState === "PROCESSING" || scoutAnimationState === "FLASHING" || scoutAnimationState === "READY" ? (
             <div className={`gacha-presentation-stage gacha-presentation-${scoutFlashingColor.toLowerCase()} ${tutorialPullStarted ? "is-pull-started" : "is-awaiting-pull"} ${scoutAnimationState === "FLASHING" && scoutFlashingColor === "GOLD" && !isCharacterReveal ? "is-ssr-presence" : ""}`}>
               <div className={`gacha-flash-effect flash-${scoutFlashingColor.toLowerCase()}`} />
