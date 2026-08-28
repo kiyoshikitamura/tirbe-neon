@@ -179,18 +179,21 @@ function PublicProfileFixture() {
   }} currentUserId="qa-self" onClose={() => setOpen(false)} onRetry={() => undefined} onDm={() => undefined} /> : <button type="button" onClick={() => setOpen(true)}>公開プロフィールを開く</button>}</GameContext.Provider>;
 }
 
-type HomeScenario = "first-home-fresh" | "first-home-raid" | "first-home-guild-out" | "first-home-guild-in";
+type HomeScenario = "first-home-fresh" | "first-home-raid" | "first-home-guild-out" | "first-home-guild-in" | "first-home-favorite-missing" | "first-home-favorite-invalid" | "first-home-activity-self";
 
 function ProductionHomeFixture({ scenario }: { scenario: HomeScenario }) {
+  const [openedProfileId, setOpenedProfileId] = useState<string | null>(null);
   const homeLeader: any = findCharacter("アゲハ");
   const raidActive = scenario === "first-home-raid";
   const guildJoined = scenario === "first-home-guild-in";
   const activationComplete = scenario === "first-home-guild-out" || guildJoined;
+  const favoriteCharacterId = scenario === "first-home-favorite-missing" ? null : scenario === "first-home-favorite-invalid" ? "invalid-character" : homeLeader.id;
   const noop = () => undefined;
   const game = {
     activeTab: "home",
     currentBaseId: "shinjuku",
-    selectedLeader: homeLeader.id,
+    identityLeaderCharacterId: favoriteCharacterId,
+    selectedLeader: playerParty[0].characterId,
     selectedMembers: playerParty.map((entry) => entry.characterId),
     unreadMissionsCount: 2,
     unclaimedPresentsCount: 1,
@@ -213,6 +216,7 @@ function ProductionHomeFixture({ scenario }: { scenario: HomeScenario }) {
     onboardingState: { tutorial_step: "AUTHENTICATION" },
     userGuildMember: guildJoined ? { role: "MEMBER" } : null,
     userGuild: guildJoined ? { name: "NEON CREW" } : null,
+    pendingGuildJoinRequests: [],
     featureOperatingStates: [],
     username: "NEON-R",
     userLevel: 2,
@@ -229,14 +233,18 @@ function ProductionHomeFixture({ scenario }: { scenario: HomeScenario }) {
     setShowTribeChatPanel: noop,
     navigateTab: noop,
     playCyberSe: noop,
-    fetchPlayerDetail: noop,
+    fetchPlayerDetail: (userId: string) => setOpenedProfileId(userId),
   };
-  const milestones = activationComplete || raidActive ? ["first_pvp", "ranking_viewed"] : [];
-  const activities = [{ id: "qa-activity", activity_type: "SSR_CHARACTER", actor_user_id: "other-user", actor_display_name: "KAI", created_at: new Date().toISOString() }];
+  const milestones = activationComplete
+    ? ["first_pvp", "ranking_viewed", "first_raid", "guild_activation", "activation_mission_handoff"]
+    : raidActive ? ["first_pvp", "ranking_viewed"] : [];
+  const activityIsSelf = scenario === "first-home-activity-self";
+  const activities = [{ id: "qa-activity", activity_type: "SSR_CHARACTER", actor_user_id: activityIsSelf ? "qa-self" : "other-user", actor_display_name: activityIsSelf ? "NEON-R" : "KAI", actor_favorite_character_id: activityIsSelf ? homeLeader.id : "char_reiji_01", created_at: new Date().toISOString() }];
   return <GameContext.Provider value={game}>
     <div className="qa-production-home" data-home-scenario={scenario} data-raid-active={String(raidActive)} data-guild-joined={String(guildJoined)}>
       <PageShell header={<Header />} footer={<Footer />}>
         <HomeTab qaState={{ socialActivities: activities, funnelMilestones: milestones }} />
+        {openedProfileId && <output data-opened-profile-id={openedProfileId} />}
       </PageShell>
     </div>
   </GameContext.Provider>;

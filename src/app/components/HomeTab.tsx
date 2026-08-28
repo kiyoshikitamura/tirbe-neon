@@ -6,6 +6,8 @@ import { supabase } from "@/utils/supabase";
 import { resolveAvailableMyPageCreatives } from "@/domain/presentation/production_creatives";
 import { HOME_ACTION_PRESENTATION_SLOTS } from "@/domain/presentation/homeActionPresentation";
 import { isDestinationAvailable } from "@/domain/operations/operations";
+import CharacterPresentation from "./character/CharacterPresentation";
+import UserIdentityRow from "./profile/UserIdentityRow";
 import {
   markHomeReloadStage,
   readHomeResumeSnapshot,
@@ -60,14 +62,23 @@ type HomeTabQaState = Readonly<{
   funnelMilestones?: readonly string[];
 }>;
 
+type HomeActivity = {
+  id: string;
+  activity_type?: string | null;
+  actor_user_id?: string | null;
+  actor_display_name?: string | null;
+  actor_favorite_character_id?: string | null;
+  actor_guild_name?: string | null;
+  [key: string]: unknown;
+};
+
 /**
  * MainMyPage - マイページメイン画面
  */
 function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
   const {
     currentBaseId,
-    selectedLeader,
-    selectedMembers,
+    identityLeaderCharacterId,
     unreadMissionsCount,
     unclaimedPresentsCount,
     guildChats,
@@ -112,7 +123,7 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
   const [leaderLine, setLeaderLine] = useState<string | null>(null);
   const [funnelMilestones, setFunnelMilestones] = useState<Set<string>>(new Set(qaState?.funnelMilestones || []));
   const [activationHandoffPending, setActivationHandoffPending] = useState(false);
-  const [socialActivities, setSocialActivities] = useState<any[]>([...(qaState?.socialActivities || [])]);
+  const [socialActivities, setSocialActivities] = useState<HomeActivity[]>([...(qaState?.socialActivities || [])] as HomeActivity[]);
   const lastCtaImpression = useRef<string | null>(null);
   const [banners, setBanners] = useState(() => PRODUCTION_MY_PAGE_CREATIVES?.map((creative) => ({
     id: creative.id,
@@ -163,11 +174,32 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
   useEffect(() => {
     if (qaState?.socialActivities) return;
     if (!session?.user?.id) return;
-    void supabase.from("social_activity_feed").select("id,activity_type,actor_user_id,actor_display_name,guild_id,object_master_id,display_payload,permanent,created_at")
-      .order("permanent", { ascending: false }).order("created_at", { ascending: false }).limit(20)
-      .then(({ data, error }) => {
-        if (!error) setSocialActivities((data || []).filter((event: any) => !["FRIEND", "GVG", "SHOP", "PAYMENT"].includes(String(event.activity_type || "").toUpperCase())));
-      });
+    let active = true;
+    void (async () => {
+      const { data, error } = await supabase.from("social_activity_feed").select("id,activity_type,actor_user_id,actor_display_name,guild_id,object_master_id,display_payload,permanent,created_at")
+        .order("permanent", { ascending: false }).order("created_at", { ascending: false }).limit(20);
+      if (error || !active) return;
+      const visible = (data || []).filter((event: HomeActivity) => !["FRIEND", "GVG", "SHOP", "PAYMENT"].includes(String(event.activity_type || "").toUpperCase()));
+      const actorIds = [...new Set(visible.map((event: HomeActivity) => event.actor_user_id).filter((id): id is string => Boolean(id)))];
+      const profilesById = new Map<string, { username?: string | null; favorite_character_id?: string | null; guild_name?: string | null }>();
+      if (actorIds.length > 0) {
+        const { data: profiles } = await supabase.rpc("get_public_profiles", { p_user_ids: actorIds });
+        if (Array.isArray(profiles)) {
+          for (const profile of profiles) profilesById.set(String(profile.user_id || profile.id), profile);
+        }
+      }
+      if (!active) return;
+      setSocialActivities(visible.map((event: HomeActivity) => {
+        const profile = event.actor_user_id ? profilesById.get(event.actor_user_id) : undefined;
+        return {
+          ...event,
+          actor_display_name: profile?.username || event.actor_display_name,
+          actor_favorite_character_id: profile?.favorite_character_id || null,
+          actor_guild_name: profile?.guild_name || null,
+        };
+      }));
+    })();
+    return () => { active = false; };
   }, [qaState?.socialActivities, session?.user?.id]);
 
   const primaryCta = useMemo<{
@@ -240,7 +272,7 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
   const baseName = currentBase.name;
 
   // リーダーキャラクター立ち絵URL
-  const leaderCharacterId = selectedLeader || selectedMembers?.[0] || null;
+  const leaderCharacterId = identityLeaderCharacterId || null;
   const leaderMaster = leaderCharacterId
     ? CHARACTERS_MASTER.find((c) => c.id === leaderCharacterId)
     : undefined;
@@ -254,26 +286,26 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
     if (foundBg?.img) bgUrl = foundBg.img;
   }
 
-  const visualAssetKey = leaderImgUrl ? `${bgUrl}|${leaderImgUrl}` : null;
+  const visualAssetKey = `${bgUrl}|${leaderImgUrl || "favorite-placeholder"}`;
   const [resumeVisualSnapshot] = useState(readHomeResumeSnapshot);
+  const currentResumeVisualSnapshot = leaderImgUrl ? resumeVisualSnapshot : null;
   const [readyVisualAssetKey, setReadyVisualAssetKey] = useState<string | null>(null);
-  const visualReady = visualAssetKey !== null && readyVisualAssetKey === visualAssetKey;
+  const visualReady = readyVisualAssetKey === visualAssetKey;
 
   useEffect(() => {
     markHomeReloadStage("homeShellReady");
   }, []);
 
   useEffect(() => {
-    if (!visualAssetKey || !leaderImgUrl) return;
     let active = true;
     const townReady = preloadAndDecodeHomeImage(bgUrl).then((loaded) => {
       if (loaded) markHomeReloadStage("townImageDecoded");
       return loaded;
     });
-    const leaderReady = preloadAndDecodeHomeImage(leaderImgUrl).then((loaded) => {
+    const leaderReady = leaderImgUrl ? preloadAndDecodeHomeImage(leaderImgUrl).then((loaded) => {
       if (loaded) markHomeReloadStage("leaderImageDecoded");
       return loaded;
-    });
+    }) : Promise.resolve(true);
     void Promise.all([townReady, leaderReady]).then(() => {
       if (active) setReadyVisualAssetKey(visualAssetKey);
     });
@@ -360,10 +392,7 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
   const visibleRightSubIcons = rightSubIcons.filter((item) => item.id !== "raid");
 
   const latestActivity = socialActivities[0];
-  const activityText = latestActivity ? `${latestActivity.actor_display_name}：${latestActivity.activity_type === "GUILD_CREATED" ? "TRIBEを結成" : latestActivity.activity_type === "POWER_RANK_1" ? "総戦力ランキング1位に到達" : "SSRを獲得"}` : null;
-  const latestTicker = latestActivity
-    ? { text: activityText!, onClick: () => latestActivity.actor_user_id ? fetchPlayerDetail(latestActivity.actor_user_id) : undefined }
-    : { text: "まだ街の動きはありません", onClick: () => undefined };
+  const activityText = latestActivity ? (latestActivity.activity_type === "GUILD_CREATED" ? "TRIBEを結成" : latestActivity.activity_type === "POWER_RANK_1" ? "総戦力ランキング1位に到達" : "SSRを獲得") : null;
 
   const interiorName = PROFILE_INTERIORS.find((item) => item.id === interiorItem)?.name;
   const homeEventState = isRaidActive ? "raid" : "calm";
@@ -377,23 +406,31 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
 
   return (
     <div className="mypage-view">
-      <button className={`mypage-live-ticker mypage-live-ticker--visual ${homeEventState} active-scale-effect`} onClick={() => { latestTicker.onClick(); playCyberSe("click"); }}>
+      <section key={latestActivity?.id || "empty"} className={`mypage-live-ticker mypage-live-ticker--visual ${homeEventState}`} aria-label="街の活動">
         <span className="mypage-live-ticker-label">ACTIVITY</span>
-        <span className="mypage-live-ticker-icon" aria-hidden="true">◆</span>
-        <span className="mypage-live-ticker-text">{latestTicker.text}</span>
-        <span className="mypage-live-ticker-arrow" aria-hidden="true">›</span>
-      </button>
+        {latestActivity ? <>
+          <UserIdentityRow
+            variant="compact"
+            userName={String(latestActivity.actor_display_name || "プレイヤー")}
+            guildName={latestActivity.actor_guild_name}
+            leaderCharacterId={latestActivity.actor_favorite_character_id}
+            onOpen={latestActivity.actor_user_id ? () => { void fetchPlayerDetail(latestActivity.actor_user_id!); playCyberSe("click"); } : undefined}
+          />
+          <span className="mypage-live-ticker-text">{activityText}</span>
+          <span className="mypage-live-ticker-arrow" aria-hidden="true">›</span>
+        </> : <span className="mypage-live-ticker-text">まだ街の動きはありません</span>}
+      </section>
 
       {/* 1. ビジュアルエリア (50vh 固定) */}
       <div
         key={visualAssetKey || bgUrl}
-        className={`mypage-visual-area ${visualReady ? "is-ready mypage-background-enter" : `is-preparing ${resumeVisualSnapshot ? "has-resume-snapshot" : ""}`} mypage-event-${homeEventState}`}
-        style={{ backgroundImage: visualReady ? `url(${bgUrl})` : resumeVisualSnapshot ? `url(${resumeVisualSnapshot.backgroundUrl})` : "none" }}
+        className={`mypage-visual-area ${visualReady ? "is-ready mypage-background-enter" : `is-preparing ${currentResumeVisualSnapshot ? "has-resume-snapshot" : ""}`} mypage-event-${homeEventState}`}
+        style={{ backgroundImage: visualReady ? `url(${bgUrl})` : currentResumeVisualSnapshot ? `url(${currentResumeVisualSnapshot.backgroundUrl})` : "none" }}
         data-visual-readiness={visualReady ? "ready" : "preparing"}
         aria-busy={!visualReady}
       >
         {!visualReady && <div className="mypage-visual-loading" aria-label="リーダーを準備中">
-          {resumeVisualSnapshot && <img className="mypage-visual-loading-leader" src={resumeVisualSnapshot.leaderImageUrl} alt="" aria-hidden="true" />}
+          {currentResumeVisualSnapshot && <img className="mypage-visual-loading-leader" src={currentResumeVisualSnapshot.leaderImageUrl} alt="" aria-hidden="true" />}
           <span />
         </div>}
         {/* 背景グラデーションオーバーレイ */}
@@ -487,11 +524,11 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
         )}
 
         {/* 層構造装飾: z-3 リーダー立ち絵キャラクター */}
-        {visualReady && leaderMaster && leaderImgUrl && <>
-          <div className={`mypage-leader-layer ${isSsrLeader ? "is-ssr" : ""}`}>
-            <img src={leaderImgUrl} alt={leaderMaster.name} className="mypage-leader-img" loading="eager" decoding="async" />
+        {visualReady && <>
+          <div className={`mypage-leader-layer ${isSsrLeader ? "is-ssr" : ""}`} data-character-authority={leaderMaster ? leaderCharacterId : "placeholder"}>
+            <CharacterPresentation src={leaderImgUrl || undefined} alt={leaderMaster?.name || "お気に入りキャラクター未設定"} variant="home-hero" rarity={leaderMaster?.rarity} frameKind={false} metadata={false} />
           </div>
-          <button className="mypage-leader-tap-target" onClick={handleLeaderTap} aria-label="リーダーに話しかける" />
+          {leaderMaster && <button className="mypage-leader-tap-target" onClick={handleLeaderTap} aria-label="リーダーに話しかける" />}
         </>}
         {leaderLine && <div className="mypage-leader-line">{leaderLine}</div>}
 

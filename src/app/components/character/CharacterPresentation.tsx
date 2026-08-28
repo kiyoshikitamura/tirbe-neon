@@ -6,7 +6,7 @@ import { getCharacterPresentationMetadata } from "./characterPresentationMetadat
 import { getRarityBadgeAsset, getRarityFrameAsset, type RarityFrameKind } from "@/utils/rarityAssets";
 import { getAttributeBadgeAsset, getAttributeLabel } from "@/utils/attributeAssets";
 
-export type CharacterPresentationVariant = "portrait" | "dialogue" | "dialogue-bust" | "reveal" | "quest" | "battle-leader" | "card" | "gacha-result-compact" | "thumbnail" | "full-body" | "battle" | "icon";
+export type CharacterPresentationVariant = "portrait" | "dialogue" | "dialogue-bust" | "reveal" | "quest" | "battle-leader" | "card" | "gacha-result-compact" | "thumbnail" | "full-body" | "home-hero" | "battle" | "icon";
 
 type Props = {
   src?: string;
@@ -65,6 +65,9 @@ export default function CharacterPresentation({
     "--character-battle-scale": framing.battleScale,
     "--character-battle-x": `${framing.battleX}%`,
     "--character-battle-y": `${framing.battleY}%`,
+    "--character-home-scale": framing.homeScale,
+    "--character-home-x": `${framing.homeX}%`,
+    "--character-home-y": `${framing.homeY}%`,
   } as React.CSSProperties;
   const frameClass = frameKind ? `has-rarity-frame is-frame-${frameKind}` : "";
   return (

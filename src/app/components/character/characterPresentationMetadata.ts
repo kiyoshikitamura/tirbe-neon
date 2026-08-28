@@ -18,6 +18,9 @@ export type CharacterPresentationMetadata = {
   battleScale: number;
   battleX: number;
   battleY: number;
+  homeScale: number;
+  homeX: number;
+  homeY: number;
 };
 
 const DEFAULT_METADATA: CharacterPresentationMetadata = {
@@ -40,6 +43,9 @@ const DEFAULT_METADATA: CharacterPresentationMetadata = {
   battleScale: 1.08,
   battleX: 50,
   battleY: 0,
+  homeScale: 1.34,
+  homeX: 50,
+  homeY: 12,
 };
 
 // Visual framing only. Gameplay and character master data remain server-side.
@@ -85,5 +91,6 @@ export function getCharacterPresentationMetadata(src: string): CharacterPresenta
     compactY: override.compactY ?? thumbnailY,
     revealX: override.revealX ?? focalX,
     battleX: override.battleX ?? focalX,
+    homeX: override.homeX ?? focalX,
   };
 }

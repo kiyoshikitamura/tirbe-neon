@@ -5,7 +5,7 @@ const viewports = [
   { width: 412, height: 915 },
 ] as const;
 
-async function openHomeScenario(page: Page, scenario: "first-home-fresh" | "first-home-raid") {
+async function openHomeScenario(page: Page, scenario: "first-home-fresh" | "first-home-raid" | "first-home-guild-out" | "first-home-guild-in" | "first-home-favorite-missing" | "first-home-favorite-invalid" | "first-home-activity-self") {
   await page.goto(`/qa/presentation?scenario=${scenario}`);
   await expect(page.locator(`[data-home-scenario="${scenario}"]`)).toBeVisible();
 }
@@ -113,7 +113,8 @@ for (const viewport of viewports) {
 
     const activity = page.locator(".mypage-live-ticker--visual");
     await expect(activity).toContainText("ACTIVITY");
-    await expect(activity).toContainText("KAI：SSRを獲得");
+    await expect(activity.getByRole("button", { name: "KAIのプロフィールを開く" })).toBeVisible();
+    await expect(activity).toContainText("SSRを獲得");
     await expect(page.locator(".mypage-leader-layer.is-ssr")).toBeVisible();
     await expect(page.locator(".mypage-visual-area")).not.toHaveClass(/mypage-event-raid/);
     await expect(page.locator(".header-mobile")).not.toContainText("自然回復停止");
@@ -150,7 +151,10 @@ for (const viewport of viewports) {
         bannerStartsAboveFooter: banner.top < footer.top,
         shortcutWidth,
         horizontalOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
-        ctaDetailDisplay: getComputedStyle(document.querySelector(".mypage-primary-cta > span:not(.mypage-primary-cta-eyebrow)")!).display,
+        ctaDetailDisplay: (() => {
+          const detail = document.querySelector(".mypage-primary-cta > span:not(.mypage-primary-cta-eyebrow)");
+          return detail ? getComputedStyle(detail).display : "none";
+        })(),
         ctaWrap: getComputedStyle(document.querySelector<HTMLElement>(".mypage-primary-cta")!).flexWrap,
         bannerFilter: getComputedStyle(document.querySelector(".banner-bg-img")!).filter,
         townBackgroundPosition: getComputedStyle(document.querySelector(".mypage-visual-area")!).backgroundPosition,
@@ -211,7 +215,8 @@ test("raid messaging only appears in the authoritative active-raid Home scenario
   await openHomeScenario(page, "first-home-raid");
   await expect(page.locator(".mypage-event-chip.raid")).toBeVisible();
   await expect(page.locator(".banner-dots .dot")).toHaveCount(3);
-  await expect(page.locator(".mypage-live-ticker--visual")).toContainText("KAI：SSRを獲得");
+  await expect(page.locator(".mypage-live-ticker--visual")).toContainText("KAI");
+  await expect(page.locator(".mypage-live-ticker--visual")).toContainText("SSRを獲得");
   const hudDoesNotOverlap = await page.evaluate(() => {
     const raid = document.querySelector<HTMLElement>(".mypage-event-chip.raid")!.getBoundingClientRect();
     const power = document.querySelector<HTMLElement>(".mypage-power-panel")!.getBoundingClientRect();
@@ -236,6 +241,73 @@ test("SSR leader effect keeps a static aura when reduced motion is requested", a
   expect(effect.auraAnimation).toBe("none");
   expect(effect.auraOpacity).toBeGreaterThan(0);
   expect(effect.sweepAnimation).toBe("none");
+});
+
+test("Home uses favorite_character_id instead of the formation leader and keeps cowboy-shot geometry", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await openHomeScenario(page, "first-home-fresh");
+  const leader = page.locator(".mypage-leader-layer");
+  await expect(leader).toHaveAttribute("data-character-authority", "char_ageha_01");
+  const geometry = await leader.evaluate((node) => {
+    const figure = node.querySelector<HTMLElement>(".character-presentation-home-hero")!;
+    const image = node.querySelector<HTMLImageElement>(".character-presentation-character")!;
+    const visual = document.querySelector<HTMLElement>(".mypage-visual-area")!;
+    return {
+      figureHeight: figure.getBoundingClientRect().height,
+      visualHeight: visual.getBoundingClientRect().height,
+      objectFit: getComputedStyle(image).objectFit,
+      transform: getComputedStyle(image).transform,
+      overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    };
+  });
+  expect(geometry.figureHeight).toBe(geometry.visualHeight);
+  expect(geometry.objectFit).toBe("contain");
+  expect(geometry.transform).not.toBe("none");
+  expect(geometry.overflow).toBeLessThanOrEqual(1);
+});
+
+for (const scenario of ["first-home-favorite-missing", "first-home-favorite-invalid"] as const) {
+  test(`Home renders the canonical placeholder without formation fallback for ${scenario}`, async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await openHomeScenario(page, scenario);
+    const visual = page.locator(".mypage-visual-area");
+    await expect(visual).toHaveAttribute("data-visual-readiness", "ready");
+    await expect(page.locator('.mypage-leader-layer[data-character-authority="placeholder"]')).toBeVisible();
+    await expect(page.locator(".mypage-leader-layer .character-presentation-missing")).toBeVisible();
+    await expect(page.locator(".mypage-leader-layer .character-presentation-character")).toHaveCount(0);
+  });
+}
+
+test("Activity uses shared identity and respects reduced motion", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await openHomeScenario(page, "first-home-fresh");
+  const ticker = page.locator(".mypage-live-ticker--visual");
+  await expect(ticker.locator(".user-identity-row .character-presentation-icon")).toBeVisible();
+  await ticker.getByRole("button", { name: "KAIのプロフィールを開く" }).click();
+  await expect(page.locator('[data-opened-profile-id="other-user"]')).toBeAttached();
+  expect(await ticker.evaluate((node) => getComputedStyle(node).animationName)).toContain("mypage-activity-enter");
+
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.reload();
+  await expect(ticker).toBeVisible();
+  expect(await ticker.evaluate((node) => getComputedStyle(node).animationName)).toBe("none");
+});
+
+test("Activity self identity opens the current user profile authority", async ({ page }) => {
+  await page.setViewportSize({ width: 412, height: 915 });
+  await openHomeScenario(page, "first-home-activity-self");
+  const identity = page.getByRole("button", { name: "NEON-Rのプロフィールを開く" });
+  await expect(identity.locator(".character-presentation-icon")).toBeVisible();
+  await identity.click();
+  await expect(page.locator('[data-opened-profile-id="qa-self"]')).toBeAttached();
+});
+
+test("normal Home keeps the Phase 5 Guild CTA contract", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await openHomeScenario(page, "first-home-guild-out");
+  await expect(page.getByRole("button", { name: /ギルドに加入しよう/ })).toBeVisible();
+  await openHomeScenario(page, "first-home-guild-in");
+  await expect(page.locator(".mypage-primary-cta")).toHaveCount(0);
 });
 
 test("existing-account login uses the shared tutorial surface and CTA geometry", async ({ page }) => {
