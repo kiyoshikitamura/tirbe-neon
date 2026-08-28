@@ -40,11 +40,12 @@ import TutorialWorldIntro from "./components/TutorialWorldIntro";
 import TutorialRuleGuide from "./components/TutorialRuleGuide";
 import TutorialAuthentication from "./components/TutorialAuthentication";
 import BrandedLoading from "./components/ui/BrandedLoading";
+import CanonicalDialog from "./components/ui/CanonicalDialog";
 import HomeResumeShell from "./components/HomeResumeShell";
 import { markHomeReloadStage, readHomeResumeSnapshot } from "./lib/homeResumePresentation";
 
 function AppContent() {
-  const { session, authLoading, isSetupRequired, onboardingState, activeTab, showTitleView, battleState,
+  const { session, authLoading, authenticatedProjectionReady, authenticatedProjectionError, retryAuthenticatedProjection, isSetupRequired, onboardingState, activeTab, showTitleView, battleState,
     handleLogout,
     confirmDialogConfig,
     globalInteractionBlocking,
@@ -72,6 +73,9 @@ function AppContent() {
     return () => window.cancelAnimationFrame(frame);
   }, [activeTab]);
   const bootAssets = useAssetTierPreloader(BOOT_CRITICAL_ASSETS, "BOOT_CRITICAL");
+  const ownedHomeResumeSnapshot = homeResumeSnapshot?.userId === session?.user?.id
+    ? homeResumeSnapshot
+    : null;
   useAssetTierPreloader(TUTORIAL_CRITICAL_ASSETS, "TUTORIAL_CRITICAL", bootAssets.ready);
   useAssetTierPreloader(
     DEFERRED_ASSETS,
@@ -90,8 +94,8 @@ function AppContent() {
 
 
   if (!bootAssets.ready) {
-    if (homeResumeSnapshot && !(bootAssets.settled && bootAssets.requiredFailed)) {
-      return <HomeResumeShell snapshot={homeResumeSnapshot} />;
+    if (ownedHomeResumeSnapshot && !(bootAssets.settled && bootAssets.requiredFailed)) {
+      return <HomeResumeShell snapshot={ownedHomeResumeSnapshot} />;
     }
     return (
       <div className="app-container">
@@ -109,8 +113,8 @@ function AppContent() {
     );
   }
 
-  if (authLoading && homeResumeSnapshot) {
-    return <HomeResumeShell snapshot={homeResumeSnapshot} />;
+  if (authLoading && ownedHomeResumeSnapshot) {
+    return <HomeResumeShell snapshot={ownedHomeResumeSnapshot} />;
   }
 
   // 1. タイトル画面 (一番最初に表示)
@@ -136,6 +140,25 @@ function AppContent() {
     return (
       <div className="app-container">
         <AuthView />
+      </div>
+    );
+  }
+
+  // Never expose a profile, wallet, Guild, Gacha entitlement, or identity
+  // projection until both auth.uid() and public.users.id belong to this session.
+  if (!authenticatedProjectionReady && !isSetupRequired) {
+    return (
+      <div className="app-container">
+        {authenticatedProjectionError ? (
+          <CanonicalDialog
+            title="エラー"
+            actions={[{ label: "再試行", semantic: "primary", onClick: () => void retryAuthenticatedProjection() }]}
+          >
+            {authenticatedProjectionError}
+          </CanonicalDialog>
+        ) : (
+          <div className="app-loading-screen app-loading-screen--boot"><BrandedLoading label="プレイヤーデータを確認中" /></div>
+        )}
       </div>
     );
   }

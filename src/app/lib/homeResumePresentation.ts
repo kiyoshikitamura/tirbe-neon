@@ -1,6 +1,7 @@
 export const HOME_RESUME_SNAPSHOT_KEY = "tribe-neon.home-resume-visual.v1";
 
 export type HomeResumeSnapshot = Readonly<{
+  userId: string;
   backgroundUrl: string;
   leaderImageUrl: string;
   leaderName: string;
@@ -28,7 +29,7 @@ export function readHomeResumeSnapshot(): HomeResumeSnapshot | null {
   if (typeof window === "undefined") return null;
   try {
     const parsed = JSON.parse(window.sessionStorage.getItem(HOME_RESUME_SNAPSHOT_KEY) || "null");
-    if (!parsed || typeof parsed.backgroundUrl !== "string" || typeof parsed.leaderImageUrl !== "string" || typeof parsed.leaderName !== "string") return null;
+    if (!parsed || typeof parsed.userId !== "string" || typeof parsed.backgroundUrl !== "string" || typeof parsed.leaderImageUrl !== "string" || typeof parsed.leaderName !== "string") return null;
     return parsed;
   } catch {
     return null;

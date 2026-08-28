@@ -7,8 +7,9 @@ assert.equal(process.env.SUPABASE_PREVIEW_PROJECT_REF, PREVIEW_REF, "Preview ref
 const token = process.env.SUPABASE_ACCESS_TOKEN?.trim();
 assert.ok(token, "SUPABASE_ACCESS_TOKEN is required");
 
-const sql = await readFile(new URL("../supabase/migrations/20260825000196_account_switch_lifecycle.sql", import.meta.url), "utf8");
-assert.match(sql, /discard_current_anonymous_account_for_switch\(\)/);
+const sql = await readFile(new URL("../supabase/migrations/20260828000209_account_switch_power_projection_delete_guard.sql", import.meta.url), "utf8");
+assert.match(sql, /refresh_user_power_projection\(p_user_id uuid\)/);
+assert.match(sql, /if not exists\(select 1 from public\.users where id = p_user_id\)/i);
 assert.doesNotMatch(sql, /supabase_migrations|migration history/i, "Migration history must not be repaired");
 
 const response = await fetch(`https://api.supabase.com/v1/projects/${PREVIEW_REF}/database/query`, {
@@ -18,4 +19,4 @@ const response = await fetch(`https://api.supabase.com/v1/projects/${PREVIEW_REF
 });
 if (!response.ok) throw new Error(`${response.status} ${await response.text()}`);
 await response.json();
-console.log(JSON.stringify({ status: "APPLIED", projectRef: PREVIEW_REF, migration: "00196", production: false }));
+console.log(JSON.stringify({ status: "APPLIED", projectRef: PREVIEW_REF, migration: "00209", production: false }));

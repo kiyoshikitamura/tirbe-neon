@@ -127,8 +127,9 @@ export class MockSupabaseClient {
       const { data } = await this.auth.getSession();
       return { data: { user: data.session?.user || {}, session: data.session }, error: null };
     },
-    signInWithOAuth: async () => {
+    signInWithOAuth: async ({ options }: any = {}) => {
       if (typeof window !== "undefined") {
+        localStorage.setItem("mock_last_oauth_redirect_to", String(options?.redirectTo || ""));
         const existingId = localStorage.getItem("mock_existing_google_user_id");
         if (existingId) localStorage.setItem("tribe_demo_uuid", existingId);
         localStorage.setItem("mock_auth_mode", "GOOGLE");
@@ -175,8 +176,22 @@ export class MockSupabaseClient {
       return { data: { user: { id: userId, email, is_anonymous: false, identities: [{ provider: "email", email }] } }, error: null };
     },
     refreshSession: async () => this.auth.getSession(),
-    linkIdentity: async () => {
+    exchangeCodeForSession: async () => {
+      if (typeof window !== "undefined") {
+        const delayMs = Number(localStorage.getItem("mock_oauth_exchange_delay_ms") || 0);
+        if (delayMs > 0) await new Promise((resolve) => setTimeout(resolve, delayMs));
+        const callbackUserId = localStorage.getItem("mock_oauth_callback_user_id");
+        if (callbackUserId) {
+          localStorage.setItem("tribe_demo_uuid", callbackUserId);
+          localStorage.setItem("mock_auth_mode", "GOOGLE");
+        }
+      }
+      const { data } = await this.auth.getSession();
+      return { data: { session: data.session, user: data.session?.user || null }, error: null };
+    },
+    linkIdentity: async ({ options }: any = {}) => {
       if (typeof window === "undefined") return { data: { provider: "google", url: null }, error: { message: "Browser storage is unavailable" } };
+      localStorage.setItem("mock_last_oauth_redirect_to", String(options?.redirectTo || ""));
       if (localStorage.getItem("mock_manual_linking_disabled") === "true") {
         return { data: { provider: "google", url: null }, error: { message: "Manual linking is disabled", code: "manual_linking_disabled" } };
       }

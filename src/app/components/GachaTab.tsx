@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useGame } from "../context/GameContext";
 import TutorialNavigator from "./TutorialNavigator";
 import CanonicalDialog from "./ui/CanonicalDialog";
@@ -19,7 +19,7 @@ const CATEGORY_META: Readonly<Record<GachaCategory, { label: string; prefix: "CH
 };
 
 export default function GachaTab() {
-  const { handleScout, gachaMasters, gachaRarityRates, dailyFreeGachaFlags, dailyFreeGachaReady, userItems, upgradeLoading, onboardingState, playSe } = useGame();
+  const { handleScout, gachaMasters, gachaRarityRates, dailyFreeGachaFlags, dailyFreeGachaReady, refreshDailyFreeGachaAuthority, userItems, cash, upgradeLoading, onboardingState, playSe } = useGame();
   const isTutorialScout = onboardingState?.tutorial_step === "FREE_GACHA";
   const [activeCategory, setActiveCategory] = useState<GachaCategory>("CHARACTER");
   const [activeSurface, setActiveSurface] = useState<GachaSurface>("NORMAL");
@@ -36,10 +36,6 @@ export default function GachaTab() {
   const tickets = Number(userItems?.find((item: any) => item.item_id === meta.ticketId)?.quantity || 0);
   const currentRates = (gachaRarityRates || []).filter((rate: any) => rate.gacha_id === normalGachaId);
   const rateWeightTotal = currentRates.reduce((sum: number, rate: any) => sum + Number(rate.weight || 0), 0);
-  const categoryAvailable = (category: GachaCategory) => {
-    const prefix = CATEGORY_META[category].prefix;
-    return Boolean(gachaMasters?.some((g: any) => g.id === `${prefix}_NORMAL`));
-  };
   const formatCost = (value: unknown, pulls: number) => {
     const amount = Number(value);
     return Number.isFinite(amount) ? (amount * pulls).toLocaleString("ja-JP") : "--";
@@ -54,6 +50,10 @@ export default function GachaTab() {
       endAction();
     }
   };
+
+  useEffect(() => {
+    if (!dailyFreeGachaReady) void refreshDailyFreeGachaAuthority?.();
+  }, [dailyFreeGachaReady, refreshDailyFreeGachaAuthority]);
 
   if (isTutorialScout) {
     return (
@@ -82,7 +82,7 @@ export default function GachaTab() {
 
         <nav className="gacha-category-tabs" aria-label="ガチャカテゴリ">
           {(Object.keys(CATEGORY_META) as GachaCategory[]).map((category) => (
-            <button key={category} className={`gacha-tab-btn ${activeCategory === category ? "is-active" : ""}`} onClick={() => setActiveCategory(category)} disabled={!categoryAvailable(category)} aria-pressed={activeCategory === category}>
+            <button key={category} className={`gacha-tab-btn ${activeCategory === category ? "is-active" : ""}`} onClick={() => setActiveCategory(category)} aria-pressed={activeCategory === category} data-gacha-category={category}>
               {CATEGORY_META[category].label}
               {dailyFreeGachaReady && dailyFreeGachaFlags[category] && <span className="free-badge-dot">無料</span>}
             </button>
@@ -106,7 +106,9 @@ export default function GachaTab() {
               <button type="button" className="gacha-rate-link" onClick={() => setShowRates(true)}>提供割合</button>
             </header>
 
-            {hasDailyFree ? (
+            {!dailyFreeGachaReady ? (
+              <p className="gacha-free-loading" role="status">無料10連の利用状況を確認中…</p>
+            ) : hasDailyFree ? (
               <button className="semantic-cta semantic-cta--primary gacha-free-btn" onClick={() => void runScout(10, "FREE")} disabled={!normalGacha || pending} aria-busy={pending}>
                 <span>{pending ? "抽選中…" : "本日10連無料"}</span>
                 {!pending && <small>消費なし</small>}
@@ -114,8 +116,8 @@ export default function GachaTab() {
             ) : null}
 
             <div className="gacha-payment-group" aria-label="キャッシュで引く">
-              <button onClick={() => void runScout(1, "CASH")} disabled={!normalGacha || pending}><span>1回</span><small>{formatCost(normalGacha?.cost_cash, 1)}キャッシュ</small></button>
-              <button onClick={() => void runScout(10, "CASH")} disabled={!normalGacha || pending}><span>10回</span><small>{formatCost(normalGacha?.cost_cash, 10)}キャッシュ</small></button>
+              <button onClick={() => void runScout(1, "CASH")} disabled={!normalGacha || Number(cash || 0) < Number(normalGacha?.cost_cash || Infinity) || pending}><span>1回</span><small>{formatCost(normalGacha?.cost_cash, 1)}キャッシュ</small></button>
+              <button onClick={() => void runScout(10, "CASH")} disabled={!normalGacha || Number(cash || 0) < Number(normalGacha?.cost_cash || Infinity) * 10 || pending}><span>10回</span><small>{formatCost(normalGacha?.cost_cash, 10)}キャッシュ</small></button>
             </div>
             <div className="gacha-payment-group" aria-label="チケットで引く">
               <button onClick={() => void runScout(1, "TICKET")} disabled={!normalGacha || tickets < 1 || pending}><span>チケット1回</span><small>所持 {tickets.toLocaleString("ja-JP")}枚</small></button>

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, useRef } from "react";
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/utils/supabase";
 import { CANONICAL_SKILL_VIEW } from "@/utils/skills_master_data";
 import { CANONICAL_EQUIPMENT_VIEW } from "@/utils/equipments_master_data";
@@ -35,7 +35,7 @@ import { beginActionPerformance } from "@/utils/actionPerformance";
 import { useAudio } from "@/audio/AudioProvider";
 import type { SeEvent } from "@/audio/audioContract";
 import { beginAssetTierMetric, finishAssetTierMetric, preloadAssetManifest } from "@/app/lib/screenAssets";
-import { clearHomeResumeSnapshot, markHomeReloadStage } from "@/app/lib/homeResumePresentation";
+import { clearHomeResumeSnapshot, markHomeReloadStage, readHomeResumeSnapshot } from "@/app/lib/homeResumePresentation";
 import { canonicalMissionUiStatus } from "@/domain/gameplay/canonical/missions";
 import { canonicalItemName } from "@/domain/gameplay/canonical/items";
 import { normalizeUserBio } from "@/domain/presentation/userBio";
@@ -95,6 +95,8 @@ export const GameContext = createContext<any>(null);
 
 export function GameProvider({ children }: { children: React.ReactNode }) {
   const lastValidatedAuthUserIdRef = useRef<string | null>(null);
+  const currentAuthUserIdRef = useRef<string | null>(null);
+  const bootstrapSerialRef = useRef<Promise<void>>(Promise.resolve());
   const onboardingCheckRef = useRef<Map<string, Promise<void>>>(new Map());
   const tutorialResultCommitRef = useRef(false);
   const patrolStateRevisionRef = useRef(0);
@@ -563,7 +565,10 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   // back to a formation member when no favorite has been selected.
   const [identityLeaderCharacterId, setIdentityLeaderCharacterId] = useState<string>("");
   const [identityLeaderOwnerUserId, setIdentityLeaderOwnerUserId] = useState<string>("");
+  const [identityLeaderAuthorityReady, setIdentityLeaderAuthorityReady] = useState(false);
   const [guildAuthorityOwnerUserId, setGuildAuthorityOwnerUserId] = useState<string>("");
+  const [authenticatedProjectionOwnerUserId, setAuthenticatedProjectionOwnerUserId] = useState<string>("");
+  const [authenticatedProjectionError, setAuthenticatedProjectionError] = useState<string | null>(null);
   const [activePlayerDetail, setActivePlayerDetail] = useState<any | null>(null);
   const [activeGuildDetail, setActiveGuildDetail] = useState<any | null>(null);
 
@@ -581,6 +586,68 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const [totalPower, setTotalPower] = useState<number>(0);
   // A displayed zero is valid only after the character and deck data has loaded.
   const [totalPowerLoading, setTotalPowerLoading] = useState<boolean>(true);
+  const identityAuthorityRequestRef = useRef(0);
+  const dailyFreeAuthorityRequestRef = useRef(0);
+
+  const refreshIdentityLeaderAuthority = useCallback(async (explicitUserId?: string) => {
+    const userId = explicitUserId || session?.user?.id;
+    if (!userId) return false;
+    const requestId = ++identityAuthorityRequestRef.current;
+    setIdentityLeaderAuthorityReady(false);
+
+    // Identity is needed by the first paint. Fetch it independently from the
+    // heavier bootstrap so login bonus, guild and mission work cannot delay it.
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const { data, error } = await supabase
+        .from("users")
+        .select("favorite_character_id")
+        .eq("id", userId)
+        .single();
+      if (requestId !== identityAuthorityRequestRef.current) return false;
+      if (error) {
+        if (attempt === 0) continue;
+        console.warn("Current User leader authority is unavailable:", error);
+        return false;
+      }
+      const favoriteCharacterId = data?.favorite_character_id;
+      setIdentityLeaderOwnerUserId(userId);
+      setIdentityLeaderCharacterId(
+        favoriteCharacterId && CHARACTERS_MASTER.some((character) => character.id === favoriteCharacterId)
+          ? favoriteCharacterId
+          : ""
+      );
+      setIdentityLeaderAuthorityReady(true);
+      return true;
+    }
+    return false;
+  }, [session?.user?.id]);
+
+  const refreshDailyFreeGachaAuthority = useCallback(async (explicitUserId?: string) => {
+    const userId = explicitUserId || session?.user?.id;
+    if (!userId) return false;
+    const requestId = ++dailyFreeAuthorityRequestRef.current;
+    setDailyFreeGachaReady(false);
+    const { data, error } = await supabase
+      .from("user_daily_gacha_claims")
+      .select("gacha_type,last_claimed_date")
+      .eq("user_id", userId);
+    if (requestId !== dailyFreeAuthorityRequestRef.current) return false;
+    if (error) {
+      console.warn("Daily free Gacha authority is unavailable:", error);
+      return false;
+    }
+    const today = getJstDateString();
+    const next = { CHARACTER: true, SKILL: true, EQUIPMENT: true };
+    for (const claim of data || []) {
+      if (claim.last_claimed_date !== today) continue;
+      if (claim.gacha_type === "CHARACTER") next.CHARACTER = false;
+      if (claim.gacha_type === "SKILL") next.SKILL = false;
+      if (claim.gacha_type === "EQUIPMENT") next.EQUIPMENT = false;
+    }
+    setDailyFreeGachaFlags(next);
+    setDailyFreeGachaReady(true);
+    return true;
+  }, [session?.user?.id, setDailyFreeGachaFlags, setDailyFreeGachaReady]);
 
 
 
@@ -595,11 +662,44 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   // Persisted sessions are restored automatically. A brand-new anonymous
   // account is created only after the player explicitly starts a new game.
   // ==========================================
+  const resetAuthenticatedProjection = (nextUserId: string | null) => {
+    if (currentAuthUserIdRef.current === nextUserId) return;
+    currentAuthUserIdRef.current = nextUserId;
+    if (readHomeResumeSnapshot()?.userId !== nextUserId) clearHomeResumeSnapshot();
+    setAuthenticatedProjectionOwnerUserId("");
+    setAuthenticatedProjectionError(null);
+    setIdentityLeaderOwnerUserId("");
+    setIdentityLeaderCharacterId("");
+    setIdentityLeaderAuthorityReady(false);
+    setGuildAuthorityOwnerUserId("");
+    setOnboardingState(null);
+    setUsername("");
+    setSelectedLeader("");
+    setUserGuild(null);
+    setUserGuildMember(null);
+    setGuildMembersList([]);
+    setPendingGuildJoinRequests([]);
+    setGuildJoinRequests([]);
+    setUserCharactersDbList([]);
+    setUserSkillsList([]);
+    setUserEquipmentsList([]);
+    setUserItems([]);
+    setCash(0);
+    setDiamonds(0);
+    setUserLevel(1);
+    setUserXp(0);
+    setDailyFreeGachaReady(false);
+    setDailyFreeGachaFlags({ CHARACTER: false, SKILL: false, EQUIPMENT: false });
+    setTotalPower(0);
+    setTotalPowerLoading(Boolean(nextUserId));
+  };
+
   useEffect(() => {
     const restoreAuthSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       markHomeReloadStage("authSessionReady");
       if (session) {
+        resetAuthenticatedProjection(session.user.id);
         setSession(session);
         lastValidatedAuthUserIdRef.current = session.user.id;
         if (isMatchingGoogleOnboardingReturn(session.user.id)) setShowTitleView(false);
@@ -607,6 +707,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         return;
       }
       lastValidatedAuthUserIdRef.current = null;
+      resetAuthenticatedProjection(null);
       clearHomeResumeSnapshot();
       setSession(null);
       setOnboardingState(null);
@@ -618,10 +719,16 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (!session) {
         lastValidatedAuthUserIdRef.current = null;
+        resetAuthenticatedProjection(null);
         setSession(null);
         setOnboardingState(null);
         setIsSetupRequired(false);
         return;
+      }
+      const authUserChanged = currentAuthUserIdRef.current !== session.user.id;
+      if (authUserChanged) {
+        setAuthLoading(true);
+        resetAuthenticatedProjection(session.user.id);
       }
       setSession((current: typeof session) => current
         && current.user.id === session.user.id
@@ -661,6 +768,9 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       const { data, error } = await supabase.rpc("get_current_onboarding_state");
       if (error) throw error;
       let nextState = data as import("./hooks/useAuth").OnboardingState;
+      if (nextState?.user_id !== userId || (currentAuthUserIdRef.current && currentAuthUserIdRef.current !== userId)) {
+        throw new Error("Authenticated player projection did not match the active session.");
+      }
       if (nextState.tutorial_step === "TUTORIAL_BATTLE") {
         // Reward claiming is authoritative and idempotent, but the tutorial
         // step is deliberately kept on TUTORIAL_BATTLE while its result modal
@@ -723,6 +833,13 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       } catch (err) {
         console.warn("Check setup required failed:", err);
         setTotalPowerLoading(false);
+        if (!currentAuthUserIdRef.current || currentAuthUserIdRef.current === userId) {
+          // A core onboarding projection failure is not an unfinished load and
+          // must never be treated as a ready player. Keep the account ownership
+          // guard closed, but give the player a canonical retry path instead of
+          // leaving the shell on an infinite checking state.
+          setAuthenticatedProjectionError("プレイヤーデータを確認できませんでした。再度お試しください。");
+        }
       } finally {
         setAuthLoading(false);
       }
@@ -733,6 +850,13 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     } finally {
       if (onboardingCheckRef.current.get(userId) === checkPromise) onboardingCheckRef.current.delete(userId);
     }
+  };
+
+  const retryAuthenticatedProjection = async () => {
+    const userId = session?.user?.id;
+    if (!userId || currentAuthUserIdRef.current !== userId) return;
+    setAuthenticatedProjectionError(null);
+    await checkIfSetupRequired(userId);
   };
 
   const syncActiveUsers = async (userId: string) => {
@@ -885,11 +1009,23 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   // 4. Supabase DB実データ同期ロード
   // ==========================================
   const syncBootstrapData = async (userId: string) => {
+    const previousBootstrap = bootstrapSerialRef.current.catch(() => undefined);
+    let releaseBootstrap!: () => void;
+    bootstrapSerialRef.current = new Promise<void>((resolve) => { releaseBootstrap = resolve; });
+    await previousBootstrap;
+    if (currentAuthUserIdRef.current && currentAuthUserIdRef.current !== userId) {
+      releaseBootstrap();
+      return;
+    }
     const patrolRevisionAtStart = patrolStateRevisionRef.current;
+    let coreProjectionReady = false;
     let localGuildRec: any = null;
     let localCharIds: string[] = [];
     let localDeck: string[] = [];
     setTotalPowerLoading(true);
+    if (identityLeaderOwnerUserId !== userId) setIdentityLeaderAuthorityReady(false);
+    const identityAuthorityPromise = refreshIdentityLeaderAuthority(userId);
+    const dailyFreeAuthorityPromise = refreshDailyFreeGachaAuthority(userId);
 
     // The Home HUD reads the canonical server projection without waiting for
     // rankings, chat, raids, or the rest of the bootstrap.
@@ -987,20 +1123,26 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         setDiamonds(row.out_diamonds);
       }
 
-      const { data: userProfile } = await supabase
+      const { data: userProfile, error: userProfileError } = await supabase
         .from("users")
-        .select("username, favorite_character_id, bio, avatar_url, sound_settings, current_base_id, daily_cash_skips_count, daily_cash_skips_reset_date, quest_free_skips_count, quest_paid_skips_count, quest_skips_reset_date, last_guild_left_at, gift_code, title_equipped, equipped_background, equipped_front_effect, selected_bg_mode, interior_item, level, xp, created_at")
+        .select("id, username, favorite_character_id, bio, avatar_url, sound_settings, current_base_id, daily_cash_skips_count, daily_cash_skips_reset_date, quest_free_skips_count, quest_paid_skips_count, quest_skips_reset_date, last_guild_left_at, gift_code, title_equipped, equipped_background, equipped_front_effect, selected_bg_mode, interior_item, level, xp, created_at")
         .eq("id", userId)
         .single();
       markHomeReloadStage("profileReady");
 
-      const favoriteCharacterId = userProfile?.favorite_character_id;
-      setIdentityLeaderOwnerUserId(userId);
-      setIdentityLeaderCharacterId(
-        favoriteCharacterId && CHARACTERS_MASTER.some((character) => character.id === favoriteCharacterId)
-          ? favoriteCharacterId
-          : ""
-      );
+      if (userProfileError || userProfile?.id !== userId) {
+        console.warn("Current User identity authority is unavailable:", userProfileError);
+      } else {
+        const favoriteCharacterId = userProfile?.favorite_character_id;
+        setIdentityLeaderOwnerUserId(userId);
+        setIdentityLeaderCharacterId(
+          favoriteCharacterId && CHARACTERS_MASTER.some((character) => character.id === favoriteCharacterId)
+            ? favoriteCharacterId
+            : ""
+        );
+        setIdentityLeaderAuthorityReady(true);
+      }
+      await identityAuthorityPromise;
       
       if (userProfile) {
         setUsername(userProfile.username);
@@ -1047,25 +1189,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       }
 
       // 無料ガチャ利用状況 ＆ 天井Ptのフェッチ
-      setDailyFreeGachaReady(false);
       try {
-        const todayStr = getJstDateString();
-        const { data: claimsData } = await supabase
-          .from("user_daily_gacha_claims")
-          .select("*")
-          .eq("user_id", userId);
-
-        if (claimsData) {
-          const flags = { CHARACTER: true, SKILL: true, EQUIPMENT: true };
-          claimsData.forEach((c: any) => {
-            if (c.last_claimed_date === todayStr) {
-              if (c.gacha_type === "CHARACTER") flags.CHARACTER = false;
-              if (c.gacha_type === "SKILL") flags.SKILL = false;
-              if (c.gacha_type === "EQUIPMENT") flags.EQUIPMENT = false;
-            }
-          });
-          setDailyFreeGachaFlags(flags);
-        }
+        await dailyFreeAuthorityPromise;
 
         const { data: pityData } = await supabase
           .from("user_gacha_pity_points")
@@ -1079,8 +1204,6 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         }
       } catch (gachaErr) {
         console.warn("Gacha daily/pity fetch warning:", gachaErr);
-      } finally {
-        setDailyFreeGachaReady(true);
       }
 
       // --- アバターデータの同期 ---
@@ -1236,6 +1359,14 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       // Membership=null and pending=[] are authoritative only after both
       // Guild projections above have completed for this authenticated user.
       setGuildAuthorityOwnerUserId(userId);
+      // Core account-owned projections (profile/identity, wallet, Gacha
+      // entitlement and Guild membership) are now resolved for the same UID.
+      // Remaining gameplay bootstrap work may continue without holding the UI.
+      if ((!currentAuthUserIdRef.current || currentAuthUserIdRef.current === userId) && userProfile?.id === userId) {
+        setAuthenticatedProjectionOwnerUserId(userId);
+        setAuthenticatedProjectionError(null);
+        coreProjectionReady = true;
+      }
 
       // 見回り関連データとマスタデータの同期
       const [{ data: questsData }, { data: canonicalQuestData }, { data: questPoolData }, { data: encounterData }, { data: questProgressionData }] = await Promise.all([
@@ -1841,8 +1972,12 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
     } catch (err: any) {
       console.warn("Sync error:", err.message);
+      if (!coreProjectionReady && (!currentAuthUserIdRef.current || currentAuthUserIdRef.current === userId)) {
+        setAuthenticatedProjectionError("プレイヤーデータを確認できませんでした。再度お試しください。");
+      }
     } finally {
       setTotalPowerLoading(false);
+      releaseBootstrap();
     }
   };
 
@@ -3775,9 +3910,15 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     guildSubTab, setGuildSubTab,
     pendingGuildJoinRequests, setPendingGuildJoinRequests,
     guildMembershipAuthorityReady: guildAuthorityOwnerUserId === session?.user?.id,
+    authenticatedProjectionReady: Boolean(session?.user?.id)
+      && onboardingState?.user_id === session.user.id
+      && authenticatedProjectionOwnerUserId === session.user.id,
+    authenticatedProjectionError,
+    retryAuthenticatedProjection,
     guildJoinRequests, setGuildJoinRequests,
     selectedLeader, setSelectedLeader,
     identityLeaderCharacterId: identityLeaderOwnerUserId === session?.user?.id ? identityLeaderCharacterId : "",
+    identityLeaderAuthorityReady: identityLeaderOwnerUserId === session?.user?.id && identityLeaderAuthorityReady,
     upgradeSelectedCharId, setUpgradeSelectedCharId,
     characterLevel, setCharacterLevel,
     characterAwaken, setCharacterAwaken,
@@ -4032,6 +4173,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     featureOperatingStates,
     dailyFreeGachaFlags,
     dailyFreeGachaReady,
+    refreshDailyFreeGachaAuthority,
+    refreshIdentityLeaderAuthority,
     specialPityPoints,
     handleExchangePityReward,
     handleBuyPack,

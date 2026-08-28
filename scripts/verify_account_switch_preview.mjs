@@ -20,6 +20,11 @@ const [row] = await query(`
     'projectRef', '${PREVIEW_REF}',
     'migrationVersion', (select max(version) from supabase_migrations.schema_migrations),
     'functionExists', to_regprocedure('public.discard_current_anonymous_account_for_switch()') is not null,
+    'powerProjectionDeleteGuard', position(
+      'if not exists' in lower(pg_get_functiondef('public.refresh_user_power_projection(uuid)'::regprocedure))
+    ) > 0 and position(
+      'public.users' in lower(pg_get_functiondef('public.refresh_user_power_projection(uuid)'::regprocedure))
+    ) > 0,
     'missingGuardTables', (
       select coalesce(jsonb_agg(name), '[]'::jsonb)
       from unnest(array['user_account_auth_methods','payment_transactions','user_monthly_passes','user_invitations','user_friends','guild_members','guilds','guild_exp_daily_ledger','guild_exp_daily_progress','raid_damage_logs','raid_reward_grants','raid_production_reward_grants','raid_completion_xp_grants','raid_instance_user_progress','user_raid_daily_attempts','pvp_defense_logs','pvp_ranking_reward_grants','pvp_daily_wins','gvg_attack_logs','gvg_individual_season_rankings']) name
@@ -36,6 +41,7 @@ const [row] = await query(`
 if (process.argv.includes("--post-apply")) {
   assert.deepEqual(row.audit.missingGuardTables, [], "Preview schema is missing a protected-history table");
   assert.equal(row.audit.functionExists, true, "00196 RPC is missing");
+  assert.equal(row.audit.powerProjectionDeleteGuard, true, "00209 deleted-user power projection guard is missing");
   const [contract] = await query(`
     select
       prosecdef as security_definer,

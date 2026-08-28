@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
 const migration = await readFile(new URL("../supabase/migrations/20260825000196_account_switch_lifecycle.sql", import.meta.url), "utf8");
+const deleteGuardMigration = await readFile(new URL("../supabase/migrations/20260828000209_account_switch_power_projection_delete_guard.sql", import.meta.url), "utf8");
 const tutorial = await readFile(new URL("../src/app/components/TutorialAuthentication.tsx", import.meta.url), "utf8");
 const callback = await readFile(new URL("../src/app/auth/callback/page.tsx", import.meta.url), "utf8");
 
@@ -14,6 +15,12 @@ for (const guard of ["payment_transactions", "user_monthly_passes", "user_invita
 }
 assert.ok(migration.indexOf("delete from public.users") < migration.indexOf("delete from auth.users"));
 assert.match(migration, /gameplayMerged', false/);
+assert.match(deleteGuardMigration, /if not exists\(select 1 from public\.users where id = p_user_id\)/i);
+assert.ok(
+  deleteGuardMigration.indexOf("if not exists(select 1 from public.users where id = p_user_id)")
+    < deleteGuardMigration.indexOf("insert into public.user_power_rankings"),
+  "deleted-user guard must run before the ranking projection insert",
+);
 assert.match(tutorial, /既存のゲームデータが見つかりました/);
 assert.match(tutorial, /既存データで続ける/);
 assert.match(tutorial, /キャンセル/);
