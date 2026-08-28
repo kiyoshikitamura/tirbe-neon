@@ -13,6 +13,7 @@ for (const id of ["CHAR_NORMAL", "CHAR_SPECIAL", "SKILL_NORMAL", "SKILL_SPECIAL"
 }
 assert.match(page, /activeSurface/);
 assert.match(page, /本日10連無料/);
+assert.doesNotMatch(page, /本日の無料10連は使用済みです/);
 assert.match(page, /COMING SOON/);
 assert.doesNotMatch(page, /runScout\([^\n]+"DIAMOND"/);
 assert.match(footer, /dailyFreeGachaReady/);
@@ -21,6 +22,10 @@ assert.match(context, /conversion_item_id/);
 assert.match(context, /canonicalItemName\(conversionItemId\)/);
 assert.match(modal, /is-character-results/);
 assert.match(modal, /is-asset-results/);
+assert.match(modal, /getRarityFrameAsset/);
+assert.match(modal, /gacha-result-rarity-frame/);
+assert.match(modal, /getAcquisitionBadgeAsset\("NEW"\)/);
+assert.match(modal, /gacha-result-asset-badge is-progression/);
 assert.match(migration, /SKILL_MANUAL/);
 assert.match(migration, /conversion_quantity/);
 assert.doesNotMatch(migration.replaceAll("'TRAINING_MANUAL'", ""), /TRAINING_MANUAL/);

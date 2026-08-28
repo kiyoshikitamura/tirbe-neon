@@ -8,7 +8,7 @@ import { CHARACTERS_MASTER } from "@/utils/game_constants";
 import CharacterPresentation from "./character/CharacterPresentation";
 import OutlawButton from "./ui/OutlawButton";
 import TutorialNavigator from "./TutorialNavigator";
-import { getAcquisitionBadgeAsset } from "@/utils/rarityAssets";
+import { getAcquisitionBadgeAsset, getAwakeningBadgeAsset, getRarityFrameAsset } from "@/utils/rarityAssets";
 import { GACHA_RARITY_ASSETS } from "../lib/screenManifests";
 import { preloadAssetManifest } from "../lib/screenAssets";
 import { getCharacterLocationBackground } from "@/utils/characterVisualAssets";
@@ -151,6 +151,12 @@ export default function CommonModals() {
     if (result.converted || outcome.includes("抗争の掟")) return "重複 / 掟+1";
     if (outcome.includes("限界突破")) return outcome;
     return outcome || "獲得";
+  };
+  const assetProgressionLevel = (result: any) => {
+    const projectedLevel = Math.trunc(Number(result.progressionLevel));
+    if (Number.isFinite(projectedLevel) && projectedLevel > 0) return projectedLevel;
+    const match = String(result.convertReward || "").match(/限界突破\s*\+(\d+)/);
+    return match ? Number(match[1]) : null;
   };
   const formatRevealParameter = (value: unknown) => {
     const numeric = Number(value);
@@ -366,14 +372,31 @@ export default function CommonModals() {
                       />
                     ) : (
                       res.assetPath || (res.type === "EQUIPMENT" && CANONICAL_EQUIPMENT_VIEW.find((item) => item.id === (res.equipmentId || res.itemId))) ? (
-                        <div className={`gacha-result-asset-art is-${String(res.type).toLowerCase()}`}><img src={res.assetPath || CANONICAL_EQUIPMENT_VIEW.find((item) => item.id === (res.equipmentId || res.itemId))?.assetPath} alt={res.name} /></div>
+                        <div className={`gacha-result-asset-art is-${String(res.type).toLowerCase()}`}>
+                          <img className="gacha-result-item-asset" src={res.assetPath || CANONICAL_EQUIPMENT_VIEW.find((item) => item.id === (res.equipmentId || res.itemId))?.assetPath} alt={res.name} />
+                          <img
+                            className="gacha-result-rarity-frame"
+                            src={getRarityFrameAsset(res.type === "SKILL" ? "skill" : "equipment", res.rarity)}
+                            alt={`${res.rarity}レアリティフレーム`}
+                          />
+                          {res.convertReward === "新規獲得" ? (
+                            <img className="gacha-result-asset-badge is-new" src={getAcquisitionBadgeAsset("NEW") || ""} alt="NEW" />
+                          ) : assetProgressionLevel(res) ? (
+                            <span className="gacha-result-asset-badge is-progression" aria-label={`限界突破 +${assetProgressionLevel(res)}`}>
+                              {getAwakeningBadgeAsset(assetProgressionLevel(res)) ? (
+                                <img src={getAwakeningBadgeAsset(assetProgressionLevel(res)) || ""} alt="" aria-hidden="true" />
+                              ) : (
+                                <b>+{assetProgressionLevel(res)}</b>
+                              )}
+                            </span>
+                          ) : null}
+                        </div>
                       ) : <div className="gacha-result-asset-placeholder"><span>{res.type === "SKILL" ? "スキル" : "装備"}</span><strong>{res.name}</strong></div>
                     )}
                     {res.type !== "CHARACTER" && <div className="gacha-result-name" title={res.name}>{res.name}</div>}
                     {res.type === "CHARACTER" && getAcquisitionBadgeAsset(res.convertReward === "新規獲得" ? "NEW" : "AWAKENING", res.awakeningLevel) && (
                       <img className="gacha-result-acquisition-badge" src={getAcquisitionBadgeAsset(res.convertReward === "新規獲得" ? "NEW" : "AWAKENING", res.awakeningLevel) || ""} alt={compactGachaOutcome(res)} />
                     )}
-                    {res.type !== "CHARACTER" && <div className={`gacha-result-outcome ${res.convertReward === "新規獲得" ? "is-new" : "is-duplicate"}`}>{compactGachaOutcome(res)}</div>}
                   </article>
                 ))}
               </div>

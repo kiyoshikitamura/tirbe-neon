@@ -4,7 +4,7 @@
 }
 
 .tutorial-gacha-reveal.is-advancing .tutorial-gacha-reveal-body { animation: tutorial-reveal-out .24s ease-in both; }
-.equipment-list-art{width:44px;height:44px;object-fit:contain;flex:0 0 auto}.gacha-result-asset-art{display:grid;width:100%;aspect-ratio:1;place-items:center;background:radial-gradient(circle,rgba(0,240,255,.16),rgba(3,7,14,.92) 70%)}.gacha-result-asset-art img{width:76%;height:76%;object-fit:contain;filter:drop-shadow(0 4px 12px rgba(0,0,0,.62))}.gacha-result-asset-art.is-skill img{width:86%;height:86%;border-radius:8px}
+.equipment-list-art{width:44px;height:44px;object-fit:contain;flex:0 0 auto}.gacha-result-asset-art{position:relative;display:grid;width:100%;aspect-ratio:1;place-items:center;overflow:hidden;background:radial-gradient(circle,rgba(0,240,255,.16),rgba(3,7,14,.92) 70%)}.gacha-result-asset-art .gacha-result-item-asset{position:relative;z-index:1;width:76%;height:76%;object-fit:contain;filter:drop-shadow(0 4px 12px rgba(0,0,0,.62))}.gacha-result-asset-art.is-skill .gacha-result-item-asset{width:86%;height:86%;border-radius:8px}.gacha-result-rarity-frame{position:absolute;z-index:2;inset:0;width:100%;height:100%;object-fit:fill;pointer-events:none}.gacha-result-asset-badge{position:absolute;z-index:4;right:1px;bottom:1px;pointer-events:none;filter:drop-shadow(0 2px 4px rgba(0,0,0,.82))}.gacha-result-asset-badge.is-new{width:58%;height:auto}.gacha-result-asset-badge.is-progression{width:38%;height:30%;overflow:hidden}.gacha-result-asset-badge.is-progression img{position:absolute;right:0;bottom:0;width:190%;height:auto;max-width:none}.gacha-result-asset-badge.is-progression b{position:absolute;right:1px;bottom:1px;color:#fff0a8;font-size:11px;font-weight:1000;line-height:1;text-shadow:0 1px 2px #000,0 0 5px #d90082}
 @keyframes tutorial-reveal-out { to { opacity:0; transform:translateY(-8px) scale(.975); filter:brightness(1.5) blur(2px); } }
 
 .max-h-300 {
@@ -193,14 +193,11 @@
 .gacha-result-card{--result-rarity-accent:#9da9b7;--gacha-result-glint-delay:0s;isolation:isolate;padding:0;overflow:hidden;border-radius:4px;background:rgba(3,6,11,.96);box-shadow:0 0 12px color-mix(in srgb,var(--result-rarity-accent) 22%,transparent)}
 .gacha-result-card.rarity-r{--result-rarity-accent:#27c8ff}.gacha-result-card.rarity-sr{--result-rarity-accent:#c66dff}.gacha-result-card.rarity-ssr{--result-rarity-accent:#f2c95f}
 .gacha-result-card>.character-presentation{position:relative;z-index:5}
-.gacha-result-card.rarity-sr .gacha-result-rarity-frame{animation:gacha-result-frame-sweep 2s ease-in-out infinite alternate}.gacha-result-card.rarity-ssr .gacha-result-rarity-frame{animation:gacha-result-ssr-sweep 1.35s ease-in-out infinite alternate}
 .gacha-result-card.rarity-ssr::before{position:absolute;z-index:7;top:-28%;bottom:-28%;left:-58%;width:34%;content:"";pointer-events:none;transform:skewX(-18deg);background:linear-gradient(90deg,transparent,rgba(255,250,205,.2),rgba(255,255,255,.86),rgba(255,230,129,.28),transparent);filter:blur(.2px);opacity:0;animation:gacha-result-ssr-glint 1.2s var(--gacha-result-glint-delay) ease-out 1 both}
 .gacha-result-card .character-presentation{border:0;border-radius:3px}.gacha-result-card .character-presentation-rarity-badge{top:2px;left:2px;width:36%}.gacha-result-card .character-presentation-attribute-badge{top:2px;right:2px;width:27%}.gacha-result-attribute{z-index:7;top:9px;left:8px;max-width:54px;font-size:8px}.gacha-result-outcome{font-size:9px}
 .gacha-result-card .gacha-result-acquisition-badge{top:auto;right:2px;bottom:3px;width:58%;max-height:26%;object-fit:contain;object-position:right bottom}
 @keyframes gacha-frame-pulse{from{filter:drop-shadow(0 0 7px rgba(198,109,255,.36))}to{filter:drop-shadow(0 0 18px rgba(240,0,255,.7)) brightness(1.12)}}
 @keyframes gacha-ssr-frame-pulse{from{filter:drop-shadow(0 0 9px rgba(242,201,95,.46))}to{filter:drop-shadow(0 0 24px rgba(242,201,95,.92)) brightness(1.2)}}
-@keyframes gacha-result-frame-sweep{to{filter:drop-shadow(0 0 10px rgba(198,109,255,.74)) brightness(1.12)}}
-@keyframes gacha-result-ssr-sweep{to{filter:drop-shadow(0 0 13px rgba(242,201,95,.96)) brightness(1.2)}}
 @keyframes gacha-result-ssr-glint{0%,72%{left:-58%;opacity:0}76%{opacity:.82}88%{left:126%;opacity:.62}92%,100%{left:126%;opacity:0}}
 @media(prefers-reduced-motion:reduce){.gacha-result-card.rarity-ssr::before{display:none}.gacha-result-card.rarity-ssr{box-shadow:0 0 16px rgba(242,201,95,.42)}.gacha-asset-short-effect{animation:none}}
 @media(prefers-reduced-motion:reduce){.tutorial-ssr-flash::before,.tutorial-ssr-flash::after{animation:none}}

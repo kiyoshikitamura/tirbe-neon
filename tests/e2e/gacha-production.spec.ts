@@ -10,6 +10,10 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 412, height: 915 }
     await expect(page.locator(".gacha-product-banner img")).toHaveAttribute("src", /gacha_normal_character/);
     await expect(page.getByRole("button", { name: "本日10連無料" })).toBeVisible();
     await expect(page.locator(".gacha-category-tabs .free-badge-dot")).toHaveCount(3);
+    const freeCta = page.getByRole("button", { name: "本日10連無料" });
+    const offer = page.locator(".gacha-normal-offer");
+    const freeGeometry = await Promise.all([freeCta.boundingBox(), offer.boundingBox()]);
+    expect(freeGeometry[0]!.width).toBeGreaterThan(freeGeometry[1]!.width - 28);
 
     await page.getByRole("button", { name: "スペシャル" }).click();
     await expect(page.locator(".gacha-product-banner img")).toHaveAttribute("src", /gacha_sp_character/);
@@ -33,7 +37,8 @@ test("Daily free entitlement badges are category-isolated and CASH does not cons
   await page.goto("/qa/presentation?scenario=gacha-production");
 
   await page.getByRole("button", { name: "本日10連無料" }).click();
-  await expect(page.getByText("本日の無料10連は使用済みです")).toBeVisible();
+  await expect(page.getByRole("button", { name: "本日10連無料" })).toHaveCount(0);
+  await expect(page.getByText("本日の無料10連は使用済みです")).toHaveCount(0);
   await expect(page.locator(".gacha-category-tabs .free-badge-dot")).toHaveCount(2);
   await expect(page.getByLabel("無料ガチャあり")).toBeVisible();
 
@@ -65,14 +70,33 @@ for (const resultType of ["skill", "equipment"] as const) {
     const result = page.locator(`[data-gacha-result-type="${resultType.toUpperCase()}"]`);
     await expect(result.locator(".gacha-result-card")).toHaveCount(10);
     await expect(result.locator(".gacha-result-name")).toHaveCount(10);
-    await expect(result.getByText("NEW")).toHaveCount(3);
-    await expect(result.getByText("限界突破 +3")).toBeVisible();
+    await expect(result.locator(".gacha-result-rarity-frame")).toHaveCount(10);
+    await expect(result.locator(`.gacha-result-rarity-frame[src*="${resultType}-frame-n.png"]`)).toHaveCount(2);
+    await expect(result.locator(`.gacha-result-rarity-frame[src*="${resultType}-frame-r.png"]`)).toHaveCount(3);
+    await expect(result.locator(`.gacha-result-rarity-frame[src*="${resultType}-frame-sr.png"]`)).toHaveCount(3);
+    await expect(result.locator(`.gacha-result-rarity-frame[src*="${resultType}-frame-ssr.png"]`)).toHaveCount(2);
+    await expect(result.locator('.gacha-result-asset-badge.is-new[src*="badge-new.png"]')).toHaveCount(3);
+    await expect(result.locator('.gacha-result-asset-badge.is-progression[aria-label="限界突破 +3"]')).toBeVisible();
+    await expect(result.locator('.gacha-result-asset-badge.is-progression img[src*="badge-awakening-plus-3.png"]')).toBeVisible();
+    await expect(result.locator('.gacha-result-card.rarity-ssr[data-ssr-glint="enabled"]')).toHaveCount(2);
     const geometry = await result.locator(".gacha-result-panel").evaluate((node) => ({
       scrollWidth: node.scrollWidth,
       clientWidth: node.clientWidth,
       columns: getComputedStyle(node.querySelector(".gacha-result-grid")!).gridTemplateColumns.split(" ").length,
+      frameAnimation: getComputedStyle(node.querySelector(".gacha-result-rarity-frame")!).animationName,
     }));
     expect(geometry.scrollWidth).toBeLessThanOrEqual(geometry.clientWidth);
     expect(geometry.columns).toBe(5);
+    expect(geometry.frameAnimation).toBe("none");
+  });
+
+  test(`${resultType} one-pull keeps canonical frame and badge parity`, async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto(`/qa/presentation?scenario=gacha-${resultType}-result-one`);
+    const result = page.locator(`[data-gacha-result-type="${resultType.toUpperCase()}"]`);
+    await expect(result.locator(".gacha-result-card")).toHaveCount(1);
+    await expect(result.locator(`.gacha-result-rarity-frame[src*="${resultType}-frame-n.png"]`)).toBeVisible();
+    await expect(result.locator('.gacha-result-asset-badge.is-new[src*="badge-new.png"]')).toBeVisible();
+    await expect(result.locator(".gacha-result-name")).toHaveCount(1);
   });
 }

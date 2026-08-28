@@ -201,17 +201,22 @@ function GachaProductionFixture() {
   return <GameContext.Provider value={game as any}><div className="qa-gacha-production" data-gacha-production-fixture><GachaTab /><Footer /></div></GameContext.Provider>;
 }
 
-function GachaAssetResultFixture({ type }: { type: "SKILL" | "EQUIPMENT" }) {
+function GachaAssetResultFixture({ type, pulls = 10 }: { type: "SKILL" | "EQUIPMENT"; pulls?: 1 | 10 }) {
   const source = type === "SKILL" ? CANONICAL_SKILL_VIEW : CANONICAL_EQUIPMENT_VIEW;
-  const results = source.slice(0, 10).map((item: any, index) => ({
-    type,
-    itemId: item.id,
-    name: item.name,
-    rarity: index === 4 ? "SSR" : item.rarity,
-    assetPath: type === "SKILL" ? getCanonicalSkillIcon(item.id) : item.assetPath,
-    converted: false,
-    convertReward: index < 3 ? "新規獲得" : index === 8 ? "限界突破 +3" : "限界突破 +1",
-  }));
+  const raritySequence = ["N", "R", "SR", "SSR", "N", "R", "SR", "SSR", "R", "SR"];
+  const results = raritySequence.slice(0, pulls).map((rarity, index) => {
+    const item: any = source.find((candidate: any) => candidate.rarity === rarity) || source[index];
+    return {
+      type,
+      itemId: item.id,
+      name: item.name,
+      rarity,
+      assetPath: type === "SKILL" ? getCanonicalSkillIcon(item.id) : item.assetPath,
+      converted: false,
+      progressionLevel: index < 3 ? null : index === 8 ? 3 : 1,
+      convertReward: index < 3 ? "新規獲得" : index === 8 ? "限界突破 +3" : "限界突破 +1",
+    };
+  });
   const game = {
     scoutAnimationState: "SHOW_RESULTS",
     setScoutAnimationState: () => undefined,
@@ -353,7 +358,9 @@ function Scenario({ id }: { id: QaPresentationScenarioId }) {
   if (id === "formation") return <SimpleFixture kind={id} />;
   if (id === "gacha-production") return <GachaProductionFixture />;
   if (id === "gacha-skill-result") return <GachaAssetResultFixture type="SKILL" />;
+  if (id === "gacha-skill-result-one") return <GachaAssetResultFixture type="SKILL" pulls={1} />;
   if (id === "gacha-equipment-result") return <GachaAssetResultFixture type="EQUIPMENT" />;
+  if (id === "gacha-equipment-result-one") return <GachaAssetResultFixture type="EQUIPMENT" pulls={1} />;
   if (id === "growth-before" || id === "growth-result") return <SimpleFixture kind={id} />;
   if (id === "skill-tutorial") return <SimpleFixture kind={id} />;
   if (id === "shared-skill-presentation") return <SharedSkillFixture />;

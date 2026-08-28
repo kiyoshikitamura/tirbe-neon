@@ -3066,6 +3066,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
           rarity: result.rarity || master?.rarity || "R",
           assetPath: result.type === "SKILL" ? getCanonicalSkillIcon(result.item_id) : (master as any)?.assetPath,
           converted: result.outcome === "converted",
+          progressionLevel: result.outcome === "limit_break" ? Number(result.plus_val || 1) : null,
           convertReward: result.outcome === "converted"
             ? conversionItemId
               ? `${canonicalItemName(conversionItemId)} ×${Number(result.conversion_quantity || 1)}`

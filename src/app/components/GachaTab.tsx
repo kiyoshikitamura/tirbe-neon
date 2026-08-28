@@ -111,8 +111,6 @@ export default function GachaTab() {
                 <span>{pending ? "抽選中…" : "本日10連無料"}</span>
                 {!pending && <small>消費なし</small>}
               </button>
-            ) : dailyFreeGachaReady ? (
-              <p className="gacha-free-consumed">本日の無料10連は使用済みです</p>
             ) : null}
 
             <div className="gacha-payment-group" aria-label="キャッシュで引く">
