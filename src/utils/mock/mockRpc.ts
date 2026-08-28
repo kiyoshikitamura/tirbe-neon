@@ -306,6 +306,30 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     return { data: null, error: null };
   }
 
+  if (funcName === "complete_activation_mission_handoff") {
+    const userId = typeof window === "undefined" ? null : localStorage.getItem("tribe_demo_uuid");
+    if (!userId) return { data: null, error: { message: "authentication required", code: "42501" } };
+    const members = client.getStorage("guild_members") || [];
+    const milestones = client.getStorage("user_funnel_milestones") || [];
+    const isGuildMember = members.some((entry: any) => entry.user_id === userId);
+    const hasGuildActivation = milestones.some((entry: any) => entry.user_id === userId && entry.milestone === "guild_activation");
+    if (!isGuildMember || !hasGuildActivation) {
+      return { data: null, error: { message: "activation prerequisites not met", code: "55000" } };
+    }
+    if (!milestones.some((entry: any) => entry.user_id === userId && entry.milestone === "activation_mission_handoff")) {
+      milestones.push({
+        user_id: userId,
+        milestone: "activation_mission_handoff",
+        occurrence_count: 1,
+        metadata: { source: "home", destination: "mission" },
+        first_occurred_at: new Date().toISOString(),
+        last_occurred_at: new Date().toISOString(),
+      });
+      client.setStorage("user_funnel_milestones", milestones);
+    }
+    return { data: true, error: null };
+  }
+
   if (funcName === "get_public_power_rankings") {
     const users = client.getStorage("users") || [];
     const rankings = client.getStorage("user_power_rankings") || [];

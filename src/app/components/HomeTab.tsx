@@ -95,8 +95,10 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
     activePatrols,
     onboardingState,
     userGuildMember,
+    pendingGuildJoinRequests,
     featureOperatingStates,
-    fetchPlayerDetail
+    fetchPlayerDetail,
+    setErrorMessage
   } = useGame();
 
   const equippedTitleName = ownedTitles.find((title: { id: string }) => title.id === titleEquipped)?.name || titleEquipped;
@@ -109,6 +111,7 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
   const [bannerIndex, setBannerIndex] = useState(0);
   const [leaderLine, setLeaderLine] = useState<string | null>(null);
   const [funnelMilestones, setFunnelMilestones] = useState<Set<string>>(new Set(qaState?.funnelMilestones || []));
+  const [activationHandoffPending, setActivationHandoffPending] = useState(false);
   const [socialActivities, setSocialActivities] = useState<any[]>([...(qaState?.socialActivities || [])]);
   const lastCtaImpression = useRef<string | null>(null);
   const [banners, setBanners] = useState(() => PRODUCTION_MY_PAGE_CREATIVES?.map((creative) => ({
@@ -155,7 +158,7 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
     if (!session?.user?.id) return;
     void supabase.from("user_funnel_milestones").select("milestone").eq("user_id", session.user.id)
       .then(({ data }) => setFunnelMilestones(new Set((data || []).map((row) => row.milestone))));
-  }, [qaState?.funnelMilestones, session?.user?.id]);
+  }, [qaState?.funnelMilestones, session?.user?.id, userGuildMember?.guild_id]);
 
   useEffect(() => {
     if (qaState?.socialActivities) return;
@@ -168,20 +171,30 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
   }, [qaState?.socialActivities, session?.user?.id]);
 
   const primaryCta = useMemo<{
-    key: string; eyebrow: string; title: string; detail: string; tab?: string; action?: "guild_chat" | "mission";
+    key: string; eyebrow: string; title: string; detail: string; tab?: string; action?: "guild_chat" | "mission" | "mission_handoff";
   }>(() => {
     const tutorialStep = onboardingState?.tutorial_step;
     if (tutorialStep && tutorialStep !== "AUTHENTICATION") return { key: "tutorial", eyebrow: "次にすること", title: "チュートリアルを続ける", detail: "最初の成功体験を完了しよう。", tab: tutorialStep === "FREE_GACHA" ? "gacha" : tutorialStep === "AUTO_FORMATION" ? "character" : "patrol" };
     if (!funnelMilestones.has("first_pvp")) return { key: "first_pvp", eyebrow: "次にすること", title: "最初のPvPへ挑戦", detail: "街のプレイヤーと競い、現在の強さを確かめよう。", tab: "pvp" };
     if (!funnelMilestones.has("ranking_viewed")) return { key: "ranking_viewed", eyebrow: "次にすること", title: "ランキングを確認", detail: "初戦の順位と次の目標を確認しよう。", tab: "ranking" };
     if (!funnelMilestones.has("first_raid") && isRaidActive) return { key: "first_raid", eyebrow: "次にすること", title: "開催中レイドへ", detail: "全プレイヤーで強敵へ挑み、貢献を残そう。", tab: "raid" };
-    if (!userGuildMember) return { key: "guild_discovery", eyebrow: "SOCIAL", title: "おすすめTRIBEを見る", detail: "活動中の仲間と出会い、レイド貢献を共有しよう。", tab: "guild" };
+    if (!userGuildMember) {
+      if (pendingGuildJoinRequests.length > 0) return { key: "guild_pending", eyebrow: "ギルド", title: "ギルド申請を確認", detail: "申請状況を確認できます。", tab: "guild" };
+      return { key: "guild_discovery", eyebrow: "ギルド", title: "ギルドに参加", detail: "おすすめギルドから仲間を探そう。", tab: "guild" };
+    }
     if (!funnelMilestones.has("guild_activation")) return { key: "guild_home", eyebrow: "SOCIAL", title: "所属TRIBEへ", detail: "加入したTRIBEの仲間と次の行動を確認しよう。", tab: "guild" };
+    if (!funnelMilestones.has("activation_mission_handoff")) return {
+      key: "activation_mission_handoff",
+      eyebrow: "次のステップ",
+      title: "あとはミッションをこなしながらゲームを進めていこう",
+      detail: "ミッションへ",
+      action: "mission_handoff",
+    };
     if (unreadMissionsCount > 0) return { key: "mission_reward", eyebrow: "報酬", title: "達成報酬を受け取る", detail: `受取可能なミッションが ${unreadMissionsCount} 件あります。`, action: "mission" };
     return isRaidActive
       ? { key: "active_raid", eyebrow: "開催中", title: "レイドへ参加", detail: "出現中の強敵へ挑戦できます。", tab: "raid" }
       : { key: "normal_play", eyebrow: "FREE PLAY", title: "クエストへ派遣", detail: "育成素材と報酬を集めよう。", tab: "patrol" };
-  }, [funnelMilestones, onboardingState?.tutorial_step, unreadMissionsCount, userGuildMember, isRaidActive]);
+  }, [funnelMilestones, onboardingState?.tutorial_step, unreadMissionsCount, userGuildMember, pendingGuildJoinRequests.length, isRaidActive]);
 
   useEffect(() => {
     if (!session?.user?.id || lastCtaImpression.current === primaryCta.key) return;
@@ -189,9 +202,31 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
     void supabase.rpc("record_client_funnel_event", { p_event_name: "home_primary_cta_impression", p_source_screen: "home", p_source_cta: primaryCta.key, p_object_id: null, p_metadata: {} });
   }, [primaryCta.key, session?.user?.id]);
 
-  const openPrimaryCta = () => {
+  const openPrimaryCta = async () => {
+    if (activationHandoffPending) return;
     void supabase.rpc("record_client_funnel_event", { p_event_name: "home_primary_cta_click", p_source_screen: "home", p_source_cta: primaryCta.key, p_object_id: null, p_metadata: {} });
-    if (primaryCta.action === "guild_chat") setShowTribeChatPanel(true);
+    if (primaryCta.action === "mission_handoff") {
+      setActivationHandoffPending(true);
+      const { error } = await supabase.rpc("complete_activation_mission_handoff");
+      if (error) {
+        setActivationHandoffPending(false);
+        setErrorMessage("ミッションへの案内を完了できませんでした。もう一度お試しください。");
+        return;
+      }
+      const { data, error: projectionError } = await supabase.from("user_funnel_milestones")
+        .select("milestone")
+        .eq("user_id", session.user.id)
+        .eq("milestone", "activation_mission_handoff")
+        .maybeSingle();
+      if (projectionError || !data) {
+        setActivationHandoffPending(false);
+        setErrorMessage("最新状態を確認できませんでした。もう一度お試しください。");
+        return;
+      }
+      setFunnelMilestones((current) => new Set(current).add("activation_mission_handoff"));
+      setActivationHandoffPending(false);
+      setShowMissionPanel(true);
+    } else if (primaryCta.action === "guild_chat") setShowTribeChatPanel(true);
     else if (primaryCta.action === "mission") setShowMissionPanel(true);
     else if (primaryCta.tab) navigateTab(primaryCta.tab);
     playCyberSe("click");
@@ -504,9 +539,9 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
       </div>
 
       <div className="mypage-lower-content">
-        <button className="mypage-primary-cta semantic-cta semantic-cta--primary active-scale-effect" onClick={openPrimaryCta}>
+        <button className="mypage-primary-cta semantic-cta semantic-cta--primary active-scale-effect" onClick={() => void openPrimaryCta()} disabled={activationHandoffPending} aria-busy={activationHandoffPending}>
           <span className="mypage-primary-cta-eyebrow">{primaryCta.eyebrow}</span>
-          <strong>{primaryCta.title}</strong>
+          <strong>{activationHandoffPending ? "確認中…" : primaryCta.title}</strong>
           <span>{primaryCta.detail}</span>
           <b aria-hidden="true">›</b>
         </button>
