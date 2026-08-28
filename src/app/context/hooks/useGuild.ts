@@ -91,16 +91,22 @@ export function useGuild(
       });
 
       if (res.error) {
-        setErrorMessage(res.error.message || "ギルド作成に失敗しました。");
-        setGvgResetLoading(false);
+        setConfirmDialogConfig(null);
+        setErrorMessage("ギルドの設立に失敗しました。入力内容を確認して、もう一度お試しください。");
         return;
       }
       if (res.data?.error) {
-        setErrorMessage(res.data.error);
-        setGvgResetLoading(false);
+        setConfirmDialogConfig(null);
+        setErrorMessage("ギルドの設立に失敗しました。入力内容を確認して、もう一度お試しください。");
         return;
       }
 
+      const createdGuildId = res.data?.guild_id;
+      if (createdGuildId && typeof window !== "undefined") {
+        // Creation has its own success contract. Do not race it with the
+        // first-join welcome dialog while bootstrap projects membership.
+        window.sessionStorage.setItem(`tribe-neon:guild-welcome-shown:${session.user.id}:${createdGuildId}`, "1");
+      }
       setNewGuildName("");
       await syncBootstrapData(session.user.id);
       setGuildSubTab("home");
@@ -116,7 +122,8 @@ export function useGuild(
       });
     } catch (err: any) {
       console.warn(err.message);
-      setErrorMessage("ギルドの設立に失敗しました。");
+      setConfirmDialogConfig(null);
+      setErrorMessage("ギルドの設立に失敗しました。時間をおいて、もう一度お試しください。");
     } finally {
       setGvgResetLoading(false);
     }
@@ -167,21 +174,19 @@ export function useGuild(
       title: "ギルドを設立",
       message: `「${guildName}」を設立しますか？\n設立には${GUILD_PRODUCTION.creation.cashCost.toLocaleString()}キャッシュが必要です。`,
       confirmText: "設立する",
+      confirmPendingText: "作成中…",
       cancelText: "キャンセル",
       presentation: "canonical",
-      onConfirm: () => {
-        setConfirmDialogConfig(null);
-        void executeCreateGuild(guildName);
-      },
+      onConfirm: () => executeCreateGuild(guildName),
       onCancel: () => setConfirmDialogConfig(null),
     });
   };
 
-  const handleUpdateGuildAlignment = async (mainAlign: string, subAlign: string) => {
-    if (!session || !userGuild || !userGuildMember) return;
+  const handleUpdateGuildAlignment = async (mainAlign: string, subAlign: string): Promise<boolean> => {
+    if (!session || !userGuild || !userGuildMember) return false;
     if (!canEditGuildSettings(userGuildMember.role)) {
       setConfirmDialogConfig({ isOpen: true, title: "属性変更", message: "ギルドマスターまたは副団長のみ属性を変更できます。", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
-      return;
+      return false;
     }
     setUpdatingAlignment(true);
     playCyberSe("click");
@@ -220,9 +225,11 @@ export function useGuild(
         onConfirm: () => setConfirmDialogConfig(null),
         onCancel: () => setConfirmDialogConfig(null),
       });
+      return true;
     } catch (e: any) {
       console.warn("Update alignment failed:", e.message);
       setErrorMessage("属性の更新に失敗しました。");
+      return false;
     } finally {
       setUpdatingAlignment(false);
     }
@@ -378,8 +385,8 @@ export function useGuild(
     });
   };
 
-  const handleUpdateGuildSettings = async (description: string, mode: GuildRecruitmentMode | boolean) => {
-    if (!session || !userGuild || !canEditGuildSettings(userGuildMember?.role)) return;
+  const handleUpdateGuildSettings = async (description: string, mode: GuildRecruitmentMode | boolean): Promise<boolean> => {
+    if (!session || !userGuild || !canEditGuildSettings(userGuildMember?.role)) return false;
     const recruitmentMode = typeof mode === "boolean" ? (mode ? "APPLICATION_REQUIRED" : "OPEN_JOIN") : mode;
     setGvgResetLoading(true);
     try {
@@ -394,11 +401,17 @@ export function useGuild(
         isOpen: true,
         title: "ギルド設定",
         message: "ギルド設定を更新しました。",
+        confirmText: "OK",
+        cancelText: "",
+        presentation: "canonical",
         onConfirm: () => setConfirmDialogConfig(null),
         onCancel: () => setConfirmDialogConfig(null),
       });
+      return true;
     } catch (err: any) {
-      setErrorMessage(err.message || "ギルド設定の更新に失敗しました。");
+      console.warn("Update guild settings failed:", err.message);
+      setErrorMessage("ギルド設定の更新に失敗しました。");
+      return false;
     } finally {
       setGvgResetLoading(false);
     }

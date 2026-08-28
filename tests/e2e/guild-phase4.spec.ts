@@ -232,8 +232,19 @@ test("Lv5 user creates a Guild, becomes master, and persists saved attributes", 
   await expect(confirmation).toContainText("5,000キャッシュ");
   await expect(confirmation.getByRole("button", { name: "キャンセル" })).toBeVisible();
   await expect(confirmation.getByRole("button", { name: "設立する" })).not.toHaveClass(/danger/);
+  await page.evaluate(() => localStorage.setItem("mock_guild_mutation_delay_ms", "250"));
   await confirmation.getByRole("button", { name: "設立する" }).click();
+  await expect(confirmation.getByRole("button", { name: "作成中…" })).toBeDisabled();
+  await expect(confirmation).toContainText("「FINAL NEON」を設立しますか？");
   await expect(confirmation).toContainText("「FINAL NEON」を設立しました。");
+  await page.evaluate(() => localStorage.removeItem("mock_guild_mutation_delay_ms"));
+  const creationState = await page.evaluate(() => {
+    const guilds = JSON.parse(localStorage.getItem("mock_db_guilds") || "[]").filter((guild: any) => guild.name === "FINAL NEON");
+    const user = JSON.parse(localStorage.getItem("mock_db_users") || "[]")[0];
+    const membership = JSON.parse(localStorage.getItem("mock_db_guild_members") || "[]").find((row: any) => row.user_id === user.id && row.guild_id === guilds[0]?.id);
+    return { guildCount: guilds.length, cash: user.cash, role: membership?.role };
+  });
+  expect(creationState).toEqual({ guildCount: 1, cash: 5000, role: "MASTER" });
   await expect(confirmation.getByRole("button", { name: "キャンセル" })).toHaveCount(0);
   await confirmation.getByRole("button", { name: "OK" }).click();
   await expect(page.locator(".guild-visual-identity")).toContainText("FINAL NEON");
@@ -243,10 +254,16 @@ test("Lv5 user creates a Guild, becomes master, and persists saved attributes", 
   await expect(page.locator(".guild-member-row")).toContainText("ギルドマスター");
   await page.getByRole("button", { name: "ギルドマイページへ戻る" }).click();
   await page.getByRole("button", { name: "ギルド設定" }).click();
-  await page.getByRole("button", { name: "悪", exact: true }).first().click();
-  await page.getByRole("button", { name: "混沌", exact: true }).last().click();
+  await expect(page.locator(".guild-settings-sections textarea")).toHaveCount(0);
+  await expect(page.locator(".guild-settings-sections select")).toHaveCount(0);
+  await page.locator(".editable-setting-section").filter({ hasText: "ギルド属性" }).getByRole("button", { name: "編集" }).click();
+  await page.getByRole("radio", { name: "悪", exact: true }).first().click();
+  await page.getByRole("radio", { name: "混沌", exact: true }).last().click();
+  await page.evaluate(() => localStorage.setItem("mock_guild_mutation_delay_ms", "250"));
   await page.getByRole("button", { name: "属性を保存" }).click();
+  await expect(page.getByRole("button", { name: "保存中…" })).toBeDisabled();
   await expect(confirmation).toContainText("ギルド属性を保存しました。");
+  await page.evaluate(() => localStorage.removeItem("mock_guild_mutation_delay_ms"));
   await confirmation.getByRole("button", { name: "OK" }).click();
   await page.getByRole("button", { name: "ギルドマイページへ戻る" }).click();
   await expect(page.locator(".guild-identity-attributes")).toContainText("メイン属性 悪");
@@ -281,7 +298,9 @@ test("Guild creation entry is first and Lv4 or insufficient CASH remains gated",
   });
   await page.reload();
   const continueAction = page.getByRole("button", { name: "続きから" });
-  if (await continueAction.isVisible()) await continueAction.click();
+  await expect(continueAction).toBeVisible();
+  await continueAction.click();
+  await expect(page.locator(".header-mobile")).toBeVisible();
   await page.getByRole("button", { name: "ギルド", exact: true }).click();
   await page.locator(".guild-lobby-create summary").click();
   await expect(page.locator(".guild-lobby-create").getByRole("button", { name: "資金不足" })).toBeDisabled();
@@ -302,13 +321,80 @@ test("Guild My Page geometry is compact at 390 and 412", async ({ page }) => {
   }
 });
 
+test("Guild settings share read, edit, pending, save, and cancel semantics", async ({ page }) => {
+  await seedGuildVisitor(page, 8, "MASTER");
+  await enterGuild(page);
+  await page.getByRole("button", { name: "ギルド設定" }).click();
+
+  const welcome = page.locator(".editable-setting-section").filter({ hasText: "歓迎メッセージ" });
+  const publicSettings = page.locator(".editable-setting-section").filter({ hasText: "加入・公開設定" });
+  const attributes = page.locator(".editable-setting-section").filter({ hasText: "ギルド属性" });
+  await expect(welcome.getByRole("button", { name: "編集" })).toBeVisible();
+  await expect(publicSettings.getByRole("button", { name: "編集" })).toBeVisible();
+  await expect(attributes.getByRole("button", { name: "編集" })).toBeVisible();
+  await expect(page.locator(".guild-settings-sections textarea")).toHaveCount(0);
+  await expect(page.locator(".guild-settings-sections select")).toHaveCount(0);
+
+  await welcome.getByRole("button", { name: "編集" }).click();
+  await page.getByLabel("新メンバーへの歓迎メッセージ").fill("ようこそ、OPEN NEONへ！");
+  await page.evaluate(() => localStorage.setItem("mock_guild_mutation_delay_ms", "250"));
+  await welcome.getByRole("button", { name: "保存" }).click();
+  await expect(welcome.getByRole("button", { name: "保存中…" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "ギルドマイページへ戻る" })).toBeDisabled();
+  await expect(welcome).toContainText("保存しました。");
+  await page.evaluate(() => localStorage.removeItem("mock_guild_mutation_delay_ms"));
+  await expect(welcome.getByLabel("新メンバーへの歓迎メッセージ")).toHaveCount(0);
+
+  await publicSettings.getByRole("button", { name: "編集" }).click();
+  await expect(publicSettings.locator("select")).toHaveCount(0);
+  await expect(publicSettings.getByRole("radio", { name: "即時加入" })).toBeChecked();
+  await publicSettings.getByRole("radio", { name: "加入申請・承認制" }).click();
+  await page.evaluate(() => localStorage.setItem("mock_guild_mutation_delay_ms", "250"));
+  await publicSettings.getByRole("button", { name: "設定を保存" }).click();
+  await expect(publicSettings.getByRole("button", { name: "保存中…" })).toBeDisabled();
+  const success = page.locator(".canonical-dialog");
+  await expect(success).toContainText("ギルド設定を更新しました。");
+  await page.evaluate(() => localStorage.removeItem("mock_guild_mutation_delay_ms"));
+  await success.getByRole("button", { name: "OK" }).click();
+  await expect(publicSettings).toContainText("加入申請・承認制");
+
+  await publicSettings.getByRole("button", { name: "編集" }).click();
+  await page.getByLabel("ギルド紹介").fill("失敗後も残す入力値");
+  await page.evaluate(({ me, openGuild }) => {
+    const memberships = JSON.parse(localStorage.getItem("mock_db_guild_members") || "[]");
+    localStorage.setItem("mock_db_guild_members", JSON.stringify(memberships.map((row: any) => row.user_id === me && row.guild_id === openGuild ? { ...row, role: "MEMBER" } : row)));
+  }, { me, openGuild });
+  await publicSettings.getByRole("button", { name: "設定を保存" }).click();
+  await expect(page.locator(".canonical-dialog")).toContainText("ギルド設定の更新に失敗しました。");
+  await page.locator(".canonical-dialog").getByRole("button", { name: "閉じる" }).last().click();
+  await expect(page.getByLabel("ギルド紹介")).toHaveValue("失敗後も残す入力値");
+  await publicSettings.getByRole("button", { name: "キャンセル" }).click();
+
+  for (const viewport of [{ width: 390, height: 844 }, { width: 412, height: 915 }]) {
+    await page.setViewportSize(viewport);
+    await welcome.getByRole("button", { name: "編集" }).click();
+    await expectNoOverflow(page, ".guild-secondary-view");
+    await welcome.getByRole("button", { name: "キャンセル" }).click();
+    await publicSettings.getByRole("button", { name: "編集" }).click();
+    await expect(publicSettings.locator("select")).toHaveCount(0);
+    await expectNoOverflow(page, ".guild-secondary-view");
+    await publicSettings.getByRole("button", { name: "キャンセル" }).click();
+    await attributes.getByRole("button", { name: "編集" }).click();
+    await expect(attributes.getByRole("radio", { name: "混沌" })).toHaveCount(2);
+    await expectNoOverflow(page, ".guild-secondary-view");
+    await attributes.getByRole("button", { name: "キャンセル" }).click();
+    await expect(attributes.getByRole("radio")).toHaveCount(0);
+  }
+});
+
 test("role navigation exposes settings to submasters and master leave remains safe", async ({ page }) => {
   await seedGuildVisitor(page, 8, "SUB_MASTER");
   await enterGuild(page);
   await expect(page.locator(".guild-visual-identity")).toContainText("副団長");
   await page.getByRole("button", { name: "ギルド設定" }).click();
-  await expect(page.getByText("GvGで使用するメイン属性とサブ属性です。")).toBeVisible();
-  await expect(page.getByRole("button", { name: "正義", exact: true }).first()).toBeEnabled();
+  await expect(page.getByText("GvGでのみ有効")).toBeVisible();
+  await page.locator(".editable-setting-section").filter({ hasText: "ギルド属性" }).getByRole("button", { name: "編集" }).click();
+  await expect(page.getByRole("radio", { name: "正義", exact: true }).first()).toBeEnabled();
 
   await page.evaluate(({ me, openGuild }) => {
     const rows = JSON.parse(localStorage.getItem("mock_db_guild_members") || "[]");

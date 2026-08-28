@@ -5,6 +5,7 @@ import { useGame } from "../context/GameContext";
 import "./GuildTab.css";
 import OutlawCard from "./ui/OutlawCard";
 import OutlawButton from "./ui/OutlawButton";
+import EditableSettingSection, { ChoiceGroup } from "./ui/EditableSettingSection";
 import UserIdentityRow from "./profile/UserIdentityRow";
 import { supabase } from "@/utils/supabase";
 import { GUILD_PRODUCTION, guildMemberCap, guildRecruitmentMode, type GuildRecruitmentMode } from "@/domain/gameplay/canonical/guild_production";
@@ -18,6 +19,25 @@ function guildRoleLabel(role?: string | null): string {
 const guildAlignmentLabel = (value?: string | null) => ({
   JUSTICE: "正義", EVIL: "悪", ORDER: "秩序", CHAOS: "混沌",
 }[String(value || "").toUpperCase()] || "未設定");
+
+const recruitmentModeLabel = (mode: GuildRecruitmentMode) => ({
+  OPEN_JOIN: "即時加入",
+  APPLICATION_REQUIRED: "加入申請・承認制",
+  CLOSED: "募集停止",
+}[mode]);
+
+const recruitmentModeOptions = [
+  { value: "OPEN_JOIN", label: "即時加入" },
+  { value: "APPLICATION_REQUIRED", label: "加入申請・承認制" },
+  { value: "CLOSED", label: "募集停止" },
+] satisfies { value: GuildRecruitmentMode; label: string }[];
+
+const alignmentOptions = [
+  { value: "JUSTICE", label: "正義" },
+  { value: "EVIL", label: "悪" },
+  { value: "ORDER", label: "秩序" },
+  { value: "CHAOS", label: "混沌" },
+];
 
 export default function GuildTab() {
   const {
@@ -59,6 +79,11 @@ export default function GuildTab() {
   const [welcomeDraft, setWelcomeDraft] = useState(userGuild?.welcome_message || "");
   const [editingWelcome, setEditingWelcome] = useState(false);
   const [savingWelcome, setSavingWelcome] = useState(false);
+  const [welcomeFeedback, setWelcomeFeedback] = useState("");
+  const [editingGuildSettings, setEditingGuildSettings] = useState(false);
+  const [savingGuildSettings, setSavingGuildSettings] = useState(false);
+  const [editingAttributes, setEditingAttributes] = useState(false);
+  const [savingAttributes, setSavingAttributes] = useState(false);
   const [recommendedGuilds, setRecommendedGuilds] = useState<any[]>([]);
   const [recommendationsLoading, setRecommendationsLoading] = useState(false);
   const [searchLoading, setSearchLoading] = useState(false);
@@ -106,9 +131,11 @@ export default function GuildTab() {
   }, [userGuild?.id]);
   const isMaster = userGuildMember?.role === "MASTER";
   const isSubMaster = userGuildMember?.role === "SUBMASTER" || userGuildMember?.role === "SUB_MASTER";
+  const settingsMutationPending = savingWelcome || savingGuildSettings || savingAttributes;
   const saveWelcomeMessage = async () => {
     if ((!isMaster && !isSubMaster) || savingWelcome) return;
     setSavingWelcome(true);
+    setWelcomeFeedback("");
     try {
       const { data, error } = await supabase.rpc("set_current_guild_welcome_message", {
         p_message: welcomeDraft,
@@ -118,9 +145,11 @@ export default function GuildTab() {
       setUserGuild((current: any) => current ? { ...current, welcome_message: welcomeMessage } : current);
       setWelcomeDraft(welcomeMessage);
       setEditingWelcome(false);
+      setWelcomeFeedback("保存しました。");
       playCyberSe("click");
     } catch (error) {
       console.warn("Failed to update guild welcome message:", error);
+      setWelcomeFeedback("保存できませんでした。もう一度お試しください。");
     } finally {
       setSavingWelcome(false);
     }
@@ -157,12 +186,26 @@ export default function GuildTab() {
     }
   };
 
-  // アライメント変換マップ
-  const alignmentEnToJp: { [key: string]: string } = {
-    JUSTICE: "正義",
-    EVIL: "悪",
-    ORDER: "秩序",
-    CHAOS: "混沌"
+  const saveGuildSettings = async () => {
+    if (savingGuildSettings) return;
+    setSavingGuildSettings(true);
+    try {
+      const saved = await handleUpdateGuildSettings(guildDescriptionDraft, recruitmentModeDraft);
+      if (saved) setEditingGuildSettings(false);
+    } finally {
+      setSavingGuildSettings(false);
+    }
+  };
+
+  const saveGuildAttributes = async () => {
+    if (savingAttributes) return;
+    setSavingAttributes(true);
+    try {
+      const saved = await handleUpdateGuildAlignment(mainAlignmentDraft, subAlignmentDraft);
+      if (saved) setEditingAttributes(false);
+    } finally {
+      setSavingAttributes(false);
+    }
   };
 
   if (!userGuild) {
@@ -318,7 +361,7 @@ export default function GuildTab() {
       </div>}
 
       {guildSubTab !== "home" && <div className="guild-secondary-view">
-        <div className="guild-secondary-heading"><button type="button" onClick={() => setGuildSubTab("home")} aria-label="ギルドマイページへ戻る">←</button><strong>{guildSubTab === "members" ? "メンバー" : "ギルド設定"}</strong></div>
+        <div className="guild-secondary-heading"><button type="button" disabled={settingsMutationPending} onClick={() => setGuildSubTab("home")} aria-label="ギルドマイページへ戻る">←</button><strong>{guildSubTab === "members" ? "メンバー" : "ギルド設定"}</strong></div>
         <div className="scroll-container flex-1">
         
         {/* 1. メンバーリスト表示 */}
@@ -418,103 +461,49 @@ export default function GuildTab() {
 
         {/* 2. 属性設定表示 */}
         {guildSubTab === "settings" && (
-          <div className="flex-col-gap-3">
-            <OutlawCard>
-              <div className="font-bold text-neon-cyan mb-2">歓迎メッセージ</div>
-              {!editingWelcome ? <>
-                <p className="font-size-8 text-secondary">{userGuild.welcome_message || "歓迎メッセージは未設定です。"}</p>
-                <OutlawButton variant="secondary" className="width-100 mt-2" onClick={() => setEditingWelcome(true)}>編集</OutlawButton>
-              </> : <div className="guild-welcome-editor">
-                <label htmlFor="guild-welcome-message">新メンバーへの歓迎メッセージ</label>
-                <textarea id="guild-welcome-message" value={welcomeDraft} onChange={(event) => setWelcomeDraft(event.target.value)} maxLength={120} rows={3} disabled={savingWelcome} />
-                <div className="guild-welcome-editor-meta"><span>{welcomeDraft.length}/120</span><span>マイページに1〜2行で表示されます。</span></div>
-                <div className="guild-welcome-editor-actions"><OutlawButton variant="secondary" disabled={savingWelcome} onClick={() => { setWelcomeDraft(userGuild.welcome_message || ""); setEditingWelcome(false); }}>キャンセル</OutlawButton><OutlawButton variant="primary" disabled={savingWelcome} onClick={() => void saveWelcomeMessage()}>{savingWelcome ? "保存中…" : "保存"}</OutlawButton></div>
-              </div>}
-            </OutlawCard>
-            <OutlawCard>
-              <div className="font-bold text-neon-cyan mb-2">加入・公開設定</div>
-              <textarea
-                value={guildDescriptionDraft}
-                onChange={(event) => setGuildDescriptionDraft(event.target.value)}
-                maxLength={200}
-                disabled={(!isMaster && !isSubMaster) || gvgResetLoading}
-                placeholder="ギルド紹介（200文字以内）"
-                className="width-100 bg-black-60 border-subtle text-white font-size-8 p-2 rounded outline-none"
-              />
-              <label className="flex flex-col gap-2 mt-3 font-size-8 text-secondary">
-                募集モード
-                <select value={recruitmentModeDraft} onChange={(event) => setRecruitmentModeDraft(event.target.value as GuildRecruitmentMode)} disabled={(!isMaster && !isSubMaster) || gvgResetLoading} className="bg-black-60 border-subtle text-white font-size-9 p-2 rounded outline-none">
-                  <option value="OPEN_JOIN">即時加入</option>
-                  <option value="APPLICATION_REQUIRED">加入申請・承認制</option>
-                  <option value="CLOSED">募集停止</option>
-                </select>
-              </label>
-              {(isMaster || isSubMaster) && (
-                <OutlawButton
-                  variant="primary"
-                  className="width-100 mt-3"
-                  disabled={gvgResetLoading}
-                  onClick={() => void handleUpdateGuildSettings(guildDescriptionDraft, recruitmentModeDraft)}
-                >
-                  設定を保存
-                </OutlawButton>
-              )}
-            </OutlawCard>
-            <OutlawCard glowLine="right">
-              <div className="font-bold text-neon-magenta mb-1">ギルド属性</div>
-              <p className="font-size-8 text-secondary mt-1 mb-4">GvGで使用するメイン属性とサブ属性です。通常バトルには適用されません。</p>
-              <div className="flex-col-gap-3 text-left">
-                <div>
-                  <label className="font-size-8 text-secondary block font-bold mb-1">メイン属性</label>
-                  <div className="guild-attribute-options mt-1">
-                    {["JUSTICE", "EVIL", "ORDER", "CHAOS"].map(val => {
-                      const jpVal = alignmentEnToJp[val] || val;
-                      const isSel = mainAlignmentDraft === val;
-                      return (
-                        <OutlawButton 
-                          key={val}
-                          variant={isSel ? "neon" : "secondary"}
-                          disabled={!isMaster && !isSubMaster}
-                          onClick={() => setMainAlignmentDraft(val)}
-                          className="flex-1 font-size-8 py-2 font-bold"
-                        >
-                          {jpVal}
-                        </OutlawButton>
-                      );
-                    })}
-                  </div>
-                </div>
+          <div className={`guild-settings-sections ${settingsMutationPending ? "is-mutation-pending" : ""}`}>
+            <EditableSettingSection
+              title="歓迎メッセージ"
+              editing={editingWelcome}
+              pending={savingWelcome}
+              canEdit={(isMaster || isSubMaster) && !settingsMutationPending}
+              onEdit={() => { setWelcomeFeedback(""); setEditingGuildSettings(false); setEditingAttributes(false); setEditingWelcome(true); }}
+              summary={<><p>{userGuild.welcome_message || "未設定"}</p>{welcomeFeedback && <span className="editable-setting-feedback" role="status">{welcomeFeedback}</span>}</>}
+            >
+              <label className="editable-setting-label" htmlFor="guild-welcome-message">新メンバーへの歓迎メッセージ</label>
+              <textarea id="guild-welcome-message" value={welcomeDraft} onChange={(event) => setWelcomeDraft(event.target.value)} maxLength={120} rows={3} disabled={savingWelcome} />
+              <div className="editable-setting-meta"><span>{welcomeDraft.length}/120</span><span>マイページに1〜2行で表示されます。</span></div>
+              <div className="editable-setting-actions"><OutlawButton variant="secondary" disabled={savingWelcome} onClick={() => { setWelcomeDraft(userGuild.welcome_message || ""); setEditingWelcome(false); }}>キャンセル</OutlawButton><OutlawButton variant="primary" isLoading={savingWelcome} loadingLabel="保存中…" disabled={savingWelcome} onClick={saveWelcomeMessage}>保存</OutlawButton></div>
+            </EditableSettingSection>
 
-                <div className="mt-2">
-                  <label className="font-size-8 text-secondary block font-bold mb-1">サブ属性</label>
-                  <div className="guild-attribute-options mt-1">
-                    {["JUSTICE", "EVIL", "ORDER", "CHAOS"].map(val => {
-                      const jpVal = alignmentEnToJp[val] || val;
-                      const isSel = subAlignmentDraft === val;
-                      return (
-                        <OutlawButton 
-                          key={val}
-                          variant={isSel ? "neon" : "secondary"}
-                          disabled={!isMaster && !isSubMaster}
-                          onClick={() => setSubAlignmentDraft(val)}
-                          className="flex-1 font-size-8 py-2 font-bold"
-                        >
-                          {jpVal}
-                        </OutlawButton>
-                      );
-                    })}
-                  </div>
-                </div>
-                <OutlawButton
-                  variant="primary"
-                  className="width-100 mt-3"
-                  disabled={gvgResetLoading || (!isMaster && !isSubMaster)}
-                  onClick={() => void handleUpdateGuildAlignment(mainAlignmentDraft, subAlignmentDraft)}
-                >
-                  属性を保存
-                </OutlawButton>
-              </div>
-            </OutlawCard>
+            <EditableSettingSection
+              title="加入・公開設定"
+              editing={editingGuildSettings}
+              pending={savingGuildSettings}
+              canEdit={(isMaster || isSubMaster) && !settingsMutationPending}
+              onEdit={() => { setEditingWelcome(false); setEditingAttributes(false); setEditingGuildSettings(true); }}
+              summary={<dl><dt>ギルド紹介</dt><dd>{userGuild.description || "未設定"}</dd><dt>募集モード</dt><dd>{recruitmentModeLabel(guildRecruitmentMode(userGuild.recruitment_mode, Boolean(userGuild.approval_required)))}</dd></dl>}
+            >
+              <label className="editable-setting-label" htmlFor="guild-description">ギルド紹介</label>
+              <textarea id="guild-description" value={guildDescriptionDraft} onChange={(event) => setGuildDescriptionDraft(event.target.value)} maxLength={200} disabled={savingGuildSettings} placeholder="ギルド紹介（200文字以内）" />
+              <div className="editable-setting-meta"><span>{guildDescriptionDraft.length}/200</span></div>
+              <ChoiceGroup label="募集モード" value={recruitmentModeDraft} options={recruitmentModeOptions} disabled={savingGuildSettings} onChange={setRecruitmentModeDraft} />
+              <div className="editable-setting-actions"><OutlawButton variant="secondary" disabled={savingGuildSettings} onClick={() => { setGuildDescriptionDraft(userGuild.description || ""); setRecruitmentModeDraft(guildRecruitmentMode(userGuild.recruitment_mode, Boolean(userGuild.approval_required))); setEditingGuildSettings(false); }}>キャンセル</OutlawButton><OutlawButton variant="primary" isLoading={savingGuildSettings} loadingLabel="保存中…" disabled={savingGuildSettings} onClick={saveGuildSettings}>設定を保存</OutlawButton></div>
+            </EditableSettingSection>
+
+            <EditableSettingSection
+              title="ギルド属性"
+              helper="GvGでのみ有効"
+              editing={editingAttributes}
+              pending={savingAttributes}
+              canEdit={(isMaster || isSubMaster) && !settingsMutationPending}
+              onEdit={() => { setEditingWelcome(false); setEditingGuildSettings(false); setEditingAttributes(true); }}
+              summary={<dl><dt>メイン属性</dt><dd>{guildAlignmentLabel(userGuild.main_alignment)}</dd><dt>サブ属性</dt><dd>{guildAlignmentLabel(userGuild.sub_alignment)}</dd></dl>}
+            >
+              <ChoiceGroup label="メイン属性" value={mainAlignmentDraft} options={alignmentOptions} disabled={savingAttributes} onChange={setMainAlignmentDraft} />
+              <ChoiceGroup label="サブ属性" value={subAlignmentDraft} options={alignmentOptions} disabled={savingAttributes} onChange={setSubAlignmentDraft} />
+              <div className="editable-setting-actions"><OutlawButton variant="secondary" disabled={savingAttributes} onClick={() => { setMainAlignmentDraft(["JUSTICE", "EVIL", "ORDER", "CHAOS"].includes(userGuild.main_alignment) ? userGuild.main_alignment : "JUSTICE"); setSubAlignmentDraft(["JUSTICE", "EVIL", "ORDER", "CHAOS"].includes(userGuild.sub_alignment) ? userGuild.sub_alignment : "ORDER"); setEditingAttributes(false); }}>キャンセル</OutlawButton><OutlawButton variant="primary" isLoading={savingAttributes} loadingLabel="保存中…" disabled={savingAttributes} onClick={saveGuildAttributes}>属性を保存</OutlawButton></div>
+            </EditableSettingSection>
           </div>
         )}
 

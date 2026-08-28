@@ -94,19 +94,22 @@ test("Guild master edits the welcome message through the existing secure contrac
   await seedAuthenticatedPlayer(page, true);
   await enterHome(page);
   await page.getByRole("button", { name: "ギルド" }).click();
-  await expect(page.locator(".guild-welcome-card")).toContainText("来てくれてありがとう");
-  await page.getByRole("button", { name: "編集" }).click();
+  await expect(page.locator(".guild-welcome-compact")).toContainText("来てくれてありがとう");
+  await page.getByRole("button", { name: "ギルド設定" }).click();
+  const welcome = page.locator(".editable-setting-section").filter({ hasText: "歓迎メッセージ" });
+  await welcome.getByRole("button", { name: "編集" }).click();
   await page.getByLabel("新メンバーへの歓迎メッセージ").fill("ようこそ。挨拶のあと、みんなでレイドへ行こう！");
-  await page.getByRole("button", { name: "歓迎文を保存" }).click();
-  await expect(page.locator(".guild-welcome-card")).toContainText("みんなでレイドへ行こう");
-  await assertMobileWave(page, ".guild-welcome-card", "guild-welcome-editor");
+  await welcome.getByRole("button", { name: "保存" }).click();
+  await expect(welcome).toContainText("みんなでレイドへ行こう");
+  await assertMobileWave(page, ".guild-secondary-view", "guild-welcome-editor");
+  await page.getByRole("button", { name: "ギルドマイページへ戻る" }).click();
   await page.reload();
   const titleAction = page.getByRole("button", { name: "TAP TO START" });
   if (await titleAction.isVisible()) await titleAction.click();
   const continueAction = page.getByRole("button", { name: "続きから" });
   if (await continueAction.isVisible()) await continueAction.click();
   await page.getByRole("button", { name: "ギルド" }).click();
-  await expect(page.locator(".guild-welcome-card")).toContainText("みんなでレイドへ行こう");
+  await expect(page.locator(".guild-welcome-compact")).toContainText("みんなでレイドへ行こう");
 });
 
 test("Title to Guild human response journey remains visible across every mobile wave", async ({ page }) => {

@@ -13,8 +13,9 @@ export interface ConfirmDialogConfig {
   confirmText?: string;
   confirmVariant?: "primary" | "secondary" | "ghost" | "danger" | "neon";
   cancelText?: string;
-  onConfirm: () => void;
-  onCancel: () => void;
+  onConfirm: () => void | Promise<void>;
+  onCancel: () => void | Promise<void>;
+  confirmPendingText?: string;
   isDanger?: boolean;
   kind?: "confirm" | "reward" | "result";
   rewards?: RewardReceiptItem[];
@@ -36,23 +37,40 @@ export default function ConfirmDialog({
   rewards = [],
   delivery = "INVENTORY",
   presentation = "legacy",
+  confirmPendingText = "処理中…",
 }: ConfirmDialogConfig) {
   const [dismissed, setDismissed] = useState(false);
+  const [pending, setPending] = useState(false);
   const actionStartedRef = useRef(false);
 
   useEffect(() => {
     if (!isOpen) return;
     actionStartedRef.current = false;
     setDismissed(false);
+    setPending(false);
   }, [isOpen, title, message]);
 
-  const runAndDismiss = (action: () => void) => {
+  const runAndDismiss = (action: () => void | Promise<void>) => {
     if (actionStartedRef.current) return;
     actionStartedRef.current = true;
-    // Remove the dialog in this input event. Parent cleanup and any async work
-    // may continue without making the close button appear unresponsive.
+    let result: void | Promise<void>;
+    try {
+      result = action();
+    } catch (error) {
+      actionStartedRef.current = false;
+      throw error;
+    }
+    if (result && typeof result.then === "function") {
+      setPending(true);
+      void result.catch(() => {
+        actionStartedRef.current = false;
+        setPending(false);
+      });
+      return;
+    }
+    // Synchronous actions close in the same input event. Async mutation
+    // handlers keep the dialog mounted and replace it with their result state.
     flushSync(() => setDismissed(true));
-    action();
   };
 
   if (!isOpen || dismissed) return null;
@@ -71,10 +89,10 @@ export default function ConfirmDialog({
     return (
       <CanonicalDialog
         title={title}
-        onClose={() => runAndDismiss(onCancel)}
+        onClose={pending ? undefined : () => runAndDismiss(onCancel)}
         actions={[
-          ...(cancelText ? [{ label: cancelText, semantic: "secondary" as const, onClick: () => runAndDismiss(onCancel) }] : []),
-          { label: confirmText, semantic: isDanger ? "danger" as const : "primary" as const, onClick: () => runAndDismiss(onConfirm) },
+          ...(cancelText ? [{ label: cancelText, semantic: "secondary" as const, disabled: pending, onClick: () => runAndDismiss(onCancel) }] : []),
+          { label: pending ? confirmPendingText : confirmText, semantic: isDanger ? "danger" as const : "primary" as const, disabled: pending, onClick: () => runAndDismiss(onConfirm) },
         ]}
       >
         {message}
@@ -95,12 +113,12 @@ export default function ConfirmDialog({
 
           <div className="confirm-actions">
             {onCancel && cancelText && (
-              <OutlawButton variant="secondary" onClick={() => runAndDismiss(onCancel)} className="confirm-btn flex-1">
+              <OutlawButton variant="secondary" disabled={pending} onClick={() => runAndDismiss(onCancel)} className="confirm-btn flex-1">
                 {cancelText}
               </OutlawButton>
             )}
-            <OutlawButton variant={confirmVariant} onClick={() => runAndDismiss(onConfirm)} className="confirm-btn flex-1">
-              {confirmText}
+            <OutlawButton variant={confirmVariant} disabled={pending} onClick={() => runAndDismiss(onConfirm)} className="confirm-btn flex-1">
+              {pending ? confirmPendingText : confirmText}
             </OutlawButton>
           </div>
         </div>
