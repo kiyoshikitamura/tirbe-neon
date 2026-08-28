@@ -4,6 +4,7 @@ import React, { createContext, useContext, useState, useEffect, useRef } from "r
 import { supabase } from "@/utils/supabase";
 import { CANONICAL_SKILL_VIEW } from "@/utils/skills_master_data";
 import { CANONICAL_EQUIPMENT_VIEW } from "@/utils/equipments_master_data";
+import { getCanonicalSkillIcon } from "@/utils/skillVisualAssets";
 import {
   TEST_SKILL_ID,
   CHARACTERS_MASTER,
@@ -424,7 +425,9 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     featureOperatingStates, setFeatureOperatingStates,
     gachaMasters, setGachaMasters,
     gachaItemsMaster, setGachaItemsMaster,
+    gachaRarityRates, setGachaRarityRates,
     dailyFreeGachaFlags, setDailyFreeGachaFlags,
+    dailyFreeGachaReady, setDailyFreeGachaReady,
     specialPityPoints, setSpecialPityPoints,
     scoutAnimationState, setScoutAnimationState,
     scoutFlashingColor, setScoutFlashingColor,
@@ -912,9 +915,10 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         supabase.from("equipment_limit_break_master").select("*"),
         supabase.from("gacha_masters").select("*"),
         supabase.from("gacha_items_master").select("*"),
+        supabase.from("gacha_rarity_rates").select("gacha_id,rarity,weight"),
         supabase.from("feature_operating_states").select("feature_key,state"),
         supabase.from("login_bonus_master").select("*").order("day_number", { ascending: true })
-      ]).then(([lvlRes, xpRes, skillLbrRes, eqLvlRes, eqLbrRes, gachaRes, gachaItemsRes, featureStatesRes, loginBonusRes]) => {
+      ]).then(([lvlRes, xpRes, skillLbrRes, eqLvlRes, eqLbrRes, gachaRes, gachaItemsRes, gachaRatesRes, featureStatesRes, loginBonusRes]) => {
         if (lvlRes.data) setGuildLevelMaster(lvlRes.data);
         if (xpRes.data) setGuildXpActionMaster(xpRes.data);
         if (skillLbrRes.data) setSkillLimitBreakMaster(skillLbrRes.data);
@@ -922,6 +926,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         if (eqLbrRes.data) setEquipmentLimitBreakMaster(eqLbrRes.data);
         if (gachaRes.data) setGachaMasters(gachaRes.data);
         if (gachaItemsRes.data) setGachaItemsMaster(gachaItemsRes.data);
+        if (gachaRatesRes.data) setGachaRarityRates(gachaRatesRes.data);
         if (featureStatesRes.data) {
           setFeatureOperatingStates(mergeServerOperationsState(featureStatesRes.data));
         }
@@ -1042,6 +1047,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       }
 
       // 無料ガチャ利用状況 ＆ 天井Ptのフェッチ
+      setDailyFreeGachaReady(false);
       try {
         const todayStr = getJstDateString();
         const { data: claimsData } = await supabase
@@ -1073,6 +1079,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         }
       } catch (gachaErr) {
         console.warn("Gacha daily/pity fetch warning:", gachaErr);
+      } finally {
+        setDailyFreeGachaReady(true);
       }
 
       // --- アバターデータの同期 ---
@@ -3048,9 +3056,22 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       reportScoutTiming("server_response");
       actionPerformance.mark("response");
       const serverResults = drawResult.data?.results || [];
-      const assetResults = serverResults.map((result: { type: string; item_id: string; outcome: string; rarity?: string }) => {
+      const assetResults = serverResults.map((result: { type: string; item_id: string; outcome: string; rarity?: string; plus_val?: number; conversion_item_id?: string; conversion_quantity?: number }) => {
         const master = result.type === "SKILL" ? CANONICAL_SKILL_VIEW.find(s => s.id === result.item_id) : CANONICAL_EQUIPMENT_VIEW.find(e => e.id === result.item_id);
-        return { type: result.type, itemId: result.item_id, name: master?.name || result.item_id, rarity: result.rarity || master?.rarity || "R", converted: result.outcome === "converted", convertReward: result.outcome === "converted" ? "育成素材へ変換" : result.outcome === "limit_break" ? "限界突破 +1" : "新規獲得" };
+        const conversionItemId = result.conversion_item_id;
+        return {
+          type: result.type,
+          itemId: result.item_id,
+          name: master?.name || result.item_id,
+          rarity: result.rarity || master?.rarity || "R",
+          assetPath: result.type === "SKILL" ? getCanonicalSkillIcon(result.item_id) : (master as any)?.assetPath,
+          converted: result.outcome === "converted",
+          convertReward: result.outcome === "converted"
+            ? conversionItemId
+              ? `${canonicalItemName(conversionItemId)} ×${Number(result.conversion_quantity || 1)}`
+              : "育成素材へ変換"
+            : result.outcome === "limit_break" ? `限界突破 +${Number(result.plus_val || 1)}` : "新規獲得",
+        };
       });
       if (typeof drawResult.data?.cash === "number") setCash(drawResult.data.cash);
       if (typeof drawResult.data?.diamonds === "number") setDiamonds(drawResult.data.diamonds);
@@ -4009,11 +4030,13 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     handleScout,
     featureOperatingStates,
     dailyFreeGachaFlags,
+    dailyFreeGachaReady,
     specialPityPoints,
     handleExchangePityReward,
     handleBuyPack,
     gachaMasters,
     gachaItemsMaster,
+    gachaRarityRates,
     handleSendChat,
     handleClaimPresent,
     handleClaimAllPresents,

@@ -251,7 +251,12 @@ export default function CommonModals() {
             <div className={`gacha-presentation-stage gacha-presentation-${scoutFlashingColor.toLowerCase()} ${tutorialPullStarted ? "is-pull-started" : "is-awaiting-pull"}`}>
               <div className={`gacha-flash-effect flash-${scoutFlashingColor.toLowerCase()}`} />
               <div className="gacha-presentation-rings" aria-hidden="true"><i /><i /><i /></div>
-              {!tutorialPullStarted ? (
+              {!isCharacterReveal ? (
+                <div className={`gacha-asset-short-effect ${scoutFlashingColor === "GOLD" ? "has-ssr" : ""}`} role="status" aria-label="ガチャ演出中">
+                  <strong>{scoutFlashingColor === "GOLD" ? "SSR" : "DRAW"}</strong>
+                  <span>抽選結果を確認中</span>
+                </div>
+              ) : !tutorialPullStarted ? (
                 <button
                   type="button"
                   className="gacha-pull-gate"
@@ -338,7 +343,7 @@ export default function CommonModals() {
                 <p>{scoutResults.length}件の獲得結果</p>
               </header>
 
-              <div className={`gacha-result-grid ${scoutResults.length >= 10 ? "is-ten-pull" : ""}`}>
+              <div className={`gacha-result-grid ${isCharacterReveal ? "is-character-results" : "is-asset-results"} ${scoutResults.length >= 10 ? "is-ten-pull" : ""}`}>
                 {scoutResults.map((res: any, idx: number) => (
                   <article
                     key={`${res.name}-${idx}`}
@@ -347,7 +352,7 @@ export default function CommonModals() {
                     style={{ "--gacha-result-glint-delay": `${(idx % 5) * -0.17}s` } as React.CSSProperties}
                     className={`gacha-result-card rarity-${String(res.rarity).toLowerCase()} ${res.convertReward === "新規獲得" ? "is-new" : "is-duplicate"}`}
                   >
-                    {res.imageUrl ? (
+                    {res.type === "CHARACTER" && res.imageUrl ? (
                       <CharacterPresentation
                         src={res.imageUrl}
                         alt={res.name}
@@ -360,10 +365,11 @@ export default function CommonModals() {
                         attributeBadge
                       />
                     ) : (
-                      res.type === "EQUIPMENT" && CANONICAL_EQUIPMENT_VIEW.find((item) => item.id === (res.equipmentId || res.itemId)) ? (
-                        <div className="gacha-result-equipment-art"><img src={CANONICAL_EQUIPMENT_VIEW.find((item) => item.id === (res.equipmentId || res.itemId))?.assetPath} alt={res.name} /></div>
+                      res.assetPath || (res.type === "EQUIPMENT" && CANONICAL_EQUIPMENT_VIEW.find((item) => item.id === (res.equipmentId || res.itemId))) ? (
+                        <div className={`gacha-result-asset-art is-${String(res.type).toLowerCase()}`}><img src={res.assetPath || CANONICAL_EQUIPMENT_VIEW.find((item) => item.id === (res.equipmentId || res.itemId))?.assetPath} alt={res.name} /></div>
                       ) : <div className="gacha-result-asset-placeholder"><span>{res.type === "SKILL" ? "スキル" : "装備"}</span><strong>{res.name}</strong></div>
                     )}
+                    {res.type !== "CHARACTER" && <div className="gacha-result-name" title={res.name}>{res.name}</div>}
                     {res.type === "CHARACTER" && getAcquisitionBadgeAsset(res.convertReward === "新規獲得" ? "NEW" : "AWAKENING", res.awakeningLevel) && (
                       <img className="gacha-result-acquisition-badge" src={getAcquisitionBadgeAsset(res.convertReward === "新規獲得" ? "NEW" : "AWAKENING", res.awakeningLevel) || ""} alt={compactGachaOutcome(res)} />
                     )}
@@ -382,7 +388,7 @@ export default function CommonModals() {
                   }
                 }}
               >
-                {onboardingState?.tutorial_step === "AUTO_FORMATION" ? "編成へ進む" : "閉じる"}
+                {onboardingState?.tutorial_step === "AUTO_FORMATION" ? "編成へ進む" : "ガチャへ戻る"}
               </button>
             </div>
           )}

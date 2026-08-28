@@ -5,6 +5,8 @@ import BattleMatchupPresentation from "@/app/components/battle/BattleMatchupPres
 import BattleResultSummary from "@/app/components/battle/BattleResultSummary";
 import QuestBattleViewer from "@/app/components/battle/QuestBattleViewer";
 import Footer from "@/app/components/Footer";
+import GachaTab from "@/app/components/GachaTab";
+import CommonModals from "@/app/components/CommonModals";
 import Header from "@/app/components/Header";
 import HomeTab from "@/app/components/HomeTab";
 import CharacterPresentation from "@/app/components/character/CharacterPresentation";
@@ -12,6 +14,9 @@ import PageShell from "@/app/components/ui/PageShell";
 import TypewriterText from "@/app/components/tutorial/TypewriterText";
 import { SkillDetailDialog, SkillIconGrid } from "@/app/components/skill/SkillPresentation";
 import type { SkillCardMaster } from "@/utils/skills_master_data";
+import { CANONICAL_SKILL_VIEW } from "@/utils/skills_master_data";
+import { CANONICAL_EQUIPMENT_VIEW } from "@/utils/equipments_master_data";
+import { getCanonicalSkillIcon } from "@/utils/skillVisualAssets";
 import PublicUserProfile from "@/app/components/profile/PublicUserProfile";
 import { GameContext } from "@/app/context/GameContext";
 import { WORLD_STAGES } from "@/app/components/SetupView";
@@ -161,6 +166,65 @@ function SharedSkillFixture() {
   </section></GameContext.Provider>;
 }
 
+function GachaProductionFixture() {
+  const [freeFlags, setFreeFlags] = useState({ CHARACTER: true, SKILL: true, EQUIPMENT: true });
+  const [pending, setPending] = useState(false);
+  const game = {
+    activeTab: "gacha",
+    navigateTab: () => undefined,
+    playCyberSe: () => undefined,
+    playSe: () => undefined,
+    dailyFreeGachaReady: true,
+    dailyFreeGachaFlags: freeFlags,
+    gachaRarityRates: ["CHAR_NORMAL", "SKILL_NORMAL", "EQUIP_NORMAL"].flatMap((gacha_id) => [
+      { gacha_id, rarity: "N", weight: 55 }, { gacha_id, rarity: "R", weight: 30 },
+      { gacha_id, rarity: "SR", weight: 13 }, { gacha_id, rarity: "SSR", weight: 2 },
+    ]),
+    gachaMasters: ["CHAR", "SKILL", "EQUIP"].map((prefix) => ({ id: `${prefix}_NORMAL`, cost_cash: 1000 })),
+    userItems: [
+      { item_id: "NORMAL_GACHA_TICKET_CHARACTER", quantity: 12 },
+      { item_id: "NORMAL_GACHA_TICKET_SKILL", quantity: 8 },
+      { item_id: "NORMAL_GACHA_TICKET_EQUIPMENT", quantity: 3 },
+    ],
+    upgradeLoading: pending,
+    onboardingState: { tutorial_step: "AUTHENTICATION" },
+    handleScout: async (gachaId: string, _count: number, currency: string) => {
+      setPending(true);
+      await new Promise((resolve) => window.setTimeout(resolve, 120));
+      if (currency === "FREE") {
+        const category = gachaId.startsWith("CHAR") ? "CHARACTER" : gachaId.startsWith("SKILL") ? "SKILL" : "EQUIPMENT";
+        setFreeFlags((current) => ({ ...current, [category]: false }));
+      }
+      setPending(false);
+    },
+  };
+  return <GameContext.Provider value={game as any}><div className="qa-gacha-production" data-gacha-production-fixture><GachaTab /><Footer /></div></GameContext.Provider>;
+}
+
+function GachaAssetResultFixture({ type }: { type: "SKILL" | "EQUIPMENT" }) {
+  const source = type === "SKILL" ? CANONICAL_SKILL_VIEW : CANONICAL_EQUIPMENT_VIEW;
+  const results = source.slice(0, 10).map((item: any, index) => ({
+    type,
+    itemId: item.id,
+    name: item.name,
+    rarity: index === 4 ? "SSR" : item.rarity,
+    assetPath: type === "SKILL" ? getCanonicalSkillIcon(item.id) : item.assetPath,
+    converted: false,
+    convertReward: index < 3 ? "新規獲得" : index === 8 ? "限界突破 +3" : "限界突破 +1",
+  }));
+  const game = {
+    scoutAnimationState: "SHOW_RESULTS",
+    setScoutAnimationState: () => undefined,
+    scoutFlashingColor: "GOLD",
+    scoutResults: results,
+    playSe: () => undefined,
+    playCyberSe: () => undefined,
+    onboardingState: { tutorial_step: "AUTHENTICATION" },
+    navigateTab: () => undefined,
+  };
+  return <GameContext.Provider value={game as any}><div className="qa-gacha-result" data-gacha-result-type={type}><CommonModals /></div></GameContext.Provider>;
+}
+
 function PublicProfileFixture() {
   const [open, setOpen] = useState(true);
   return <GameContext.Provider value={{ playCyberSe: () => undefined } as any}>{open ? <PublicUserProfile profile={{
@@ -287,6 +351,9 @@ function Scenario({ id }: { id: QaPresentationScenarioId }) {
   if (id === "quest-instant-battle") return <QuestTransitionFixture instant />;
   if (id === "auto-formation") return <AutoFormationFixture />;
   if (id === "formation") return <SimpleFixture kind={id} />;
+  if (id === "gacha-production") return <GachaProductionFixture />;
+  if (id === "gacha-skill-result") return <GachaAssetResultFixture type="SKILL" />;
+  if (id === "gacha-equipment-result") return <GachaAssetResultFixture type="EQUIPMENT" />;
   if (id === "growth-before" || id === "growth-result") return <SimpleFixture kind={id} />;
   if (id === "skill-tutorial") return <SimpleFixture kind={id} />;
   if (id === "shared-skill-presentation") return <SharedSkillFixture />;
@@ -304,6 +371,6 @@ export default function QaPresentationHarness() {
     if (QA_PRESENTATION_SCENARIOS.some(([id]) => id === requested)) setScenario(requested as QaPresentationScenarioId);
   }, []);
   const label = useMemo(() => QA_PRESENTATION_SCENARIOS.find(([id]) => id === scenario)?.[1], [scenario]);
-  const fullscreenHome = scenario.startsWith("first-home-");
+  const fullscreenHome = scenario.startsWith("first-home-") || scenario === "gacha-production" || scenario.startsWith("gacha-skill-") || scenario.startsWith("gacha-equipment-");
   return <main className={`qa-harness${fullscreenHome ? " is-home-preview" : ""}`} data-qa-harness="presentation"><header><div><small>PREVIEW / DEVELOPMENT ONLY</small><h1>Human QA Harness</h1><p>{label}</p></div><a href="#compliance">Visual Compliance</a></header><nav aria-label="QA scenarios">{QA_PRESENTATION_SCENARIOS.map(([id, name]) => <button key={id} className={scenario === id ? "is-active" : ""} aria-pressed={scenario === id} onClick={() => setScenario(id)} data-scenario-id={id}>{name}</button>)}</nav><section className="qa-stage" data-active-scenario={scenario}><Scenario key={scenario} id={scenario} /></section><section id="compliance" className="qa-compliance"><h2>Visual Compliance Precheck</h2><p>客観的Contractは自動検証。見た目の品質はHuman ReviewまでPASSにしません。</p>{VISUAL_COMPLIANCE_GATE.map((item) => <article key={item.id} data-compliance-id={item.id} data-status={item.status}><div><strong>{item.specification}</strong><small>AUTO {item.automatedPrecheck}</small></div><b>{item.status}</b><p>{item.evidence}</p></article>)}</section></main>;
 }

@@ -5,7 +5,8 @@ import { useGame } from "../context/GameContext";
 import "./Footer.css";
 
 export default function Footer() {
-  const { activeTab, navigateTab, playCyberSe } = useGame();
+  const { activeTab, navigateTab, playCyberSe, dailyFreeGachaFlags, dailyFreeGachaReady } = useGame();
+  const hasFreeGacha = dailyFreeGachaReady && Object.values(dailyFreeGachaFlags).some(Boolean);
 
   const navItems = [
     { id: "home", label: "マイページ", icon: "/ui/icon_footer_mypage.png" },
@@ -33,6 +34,7 @@ export default function Footer() {
             }}
           >
             <img src={item.icon} alt={item.label} className="footer-icon" />
+            {item.id === "gacha" && hasFreeGacha && <span className="footer-notification-badge" aria-label="無料ガチャあり">無料</span>}
             <span className="footer-label">{item.label.split("\n").map((line) => <React.Fragment key={line}><span>{line}</span></React.Fragment>)}</span>
           </button>
         );

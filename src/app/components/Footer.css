@@ -13,6 +13,7 @@
 }
 
 .footer-item {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -23,6 +24,24 @@
   padding: 4px 0;
   opacity: 0.6;
   transition: opacity 0.2s ease, transform 0.1s ease;
+}
+
+.footer-notification-badge {
+  position: absolute;
+  top: 0;
+  left: calc(50% + 7px);
+  z-index: 2;
+  min-width: 25px;
+  padding: 1px 4px;
+  border: 1px solid rgba(255,255,255,.5);
+  border-radius: 999px;
+  color: #fff;
+  background: #e83261;
+  box-shadow: 0 0 8px rgba(232,50,97,.55);
+  font-size: 8px;
+  font-weight: 900;
+  line-height: 1.2;
+  pointer-events: none;
 }
 
 .footer-item.active {

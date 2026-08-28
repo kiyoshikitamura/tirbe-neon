@@ -20,14 +20,14 @@ assert.equal(PRODUCTION_CREATIVES.length, 9, "Production Creative slot count mus
 assert.equal(new Set(PRODUCTION_CREATIVES.map((creative) => creative.id)).size, 9, "Creative IDs must be unique");
 assert.equal(new Set(PRODUCTION_CREATIVES.map((creative) => creative.assetPath)).size, 9, "Creative paths must be unique");
 assert.ok(PRODUCTION_CREATIVES.every((creative) => creative.enabled), "All frozen slots must be enabled");
-assert.ok(PRODUCTION_CREATIVES.filter((creative) => creative.slot.startsWith("GACHA_")).every((creative) => !creative.available), "Gacha assets must remain unavailable before delivery");
+assert.ok(PRODUCTION_CREATIVES.filter((creative) => creative.slot.startsWith("GACHA_")).every((creative) => creative.available), "All six delivered Gacha banners must be available");
 
 for (const [gachaId, expectedPath] of Object.entries(expectedGachaPaths)) {
   const slot = PRODUCTION_CREATIVE_BY_GACHA_ID[gachaId];
   const creative = PRODUCTION_CREATIVES.find((candidate) => candidate.slot === slot);
   assert.equal(creative?.assetPath, expectedPath, `${gachaId} path mismatch`);
   assert.deepEqual([creative?.width, creative?.height], [1200, 300], `${gachaId} dimensions mismatch`);
-  assert.equal(resolveAvailableGachaCreative(gachaId), null, `${gachaId} must use fallback before delivery`);
+  assert.equal(resolveAvailableGachaCreative(gachaId)?.assetPath, expectedPath, `${gachaId} must resolve its approved banner`);
 }
 
 const productionMyPage = resolveAvailableMyPageCreatives();

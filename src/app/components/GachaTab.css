@@ -8,6 +8,30 @@
   height: 100%;
 }
 
+.gacha-scroll-shell {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 9px;
+  min-height: 0;
+  padding-bottom: 14px;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.gacha-product-banner {
+  position: relative;
+  flex: 0 0 auto;
+  width: 100%;
+  aspect-ratio: 4 / 1;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,.13);
+  border-radius: var(--ui-radius-md);
+  background: #05080d;
+}
+.gacha-product-banner img { object-fit: cover; }
+.gacha-banner-fallback { display:grid; height:100%; place-items:center; color:var(--ui-text-secondary); font-size:13px; font-weight:900; }
+
 .tutorial-gacha-page {
   gap: 12px;
   overflow-y: auto;
@@ -61,10 +85,16 @@
 /* 🎰 ガチャカテゴリ切り替えタブ */
 .gacha-category-tabs {
   display: flex;
-  gap: 8px;
+  flex: 0 0 auto;
+  gap: 6px;
 }
 
 .gacha-tab-btn {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  min-height: 42px;
+  padding: 8px 4px;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.1);
   color: #a0a0b0;
@@ -72,6 +102,36 @@
   cursor: pointer;
   transition: all 0.2s ease;
 }
+
+.gacha-tab-btn.is-active {
+  border-color: var(--ui-accent);
+  color: #fff;
+  background: rgba(0,240,255,.12);
+  box-shadow: inset 0 -2px 0 var(--ui-accent);
+}
+
+.gacha-surface-switch { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:5px; padding:3px; border:1px solid var(--ui-border); border-radius:var(--ui-radius-sm); background:rgba(0,0,0,.28); }
+.gacha-surface-switch button { min-height:38px; border:0; border-radius:4px; color:var(--ui-text-secondary); background:transparent; font-size:12px; font-weight:900; }
+.gacha-surface-switch button.is-active { color:#071318; background:var(--ui-accent); box-shadow:0 0 12px rgba(0,240,255,.25); }
+
+.gacha-normal-offer,.gacha-special-summary { padding:12px; border:1px solid var(--ui-border); border-radius:var(--ui-radius-md); background:var(--ui-bg-surface); }
+.gacha-normal-offer>header { display:flex; align-items:flex-start; justify-content:space-between; gap:8px; margin-bottom:10px; }
+.gacha-normal-offer>header div { display:flex; min-width:0; flex-direction:column; gap:2px; }
+.gacha-normal-offer>header strong { color:#fff; font-size:14px; }
+.gacha-normal-offer>header span { color:var(--ui-text-secondary); font-size:10px; }
+.gacha-rate-link { min-height:32px; padding:5px 7px; border:1px solid rgba(255,255,255,.16); border-radius:4px; color:var(--ui-text-secondary); background:rgba(255,255,255,.035); font-size:10px; font-weight:800; white-space:nowrap; }
+.gacha-rate-list { display:grid; gap:6px; }
+.gacha-rate-list div { display:flex; align-items:center; justify-content:space-between; padding:8px 10px; border:1px solid var(--ui-border); background:rgba(255,255,255,.035); }
+.gacha-rate-list span { color:var(--ui-text-secondary); font-weight:900; }
+.gacha-rate-list strong { color:#fff; font-variant-numeric:tabular-nums; }
+.gacha-free-consumed { margin:0 0 9px; padding:9px; border:1px solid rgba(0,240,255,.2); color:#a8bdc8; background:rgba(0,240,255,.04); font-size:10px; font-weight:800; text-align:center; }
+.gacha-payment-group { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:7px; margin-top:7px; }
+.gacha-payment-group button { display:flex; min-width:0; min-height:46px; flex-direction:column; align-items:center; justify-content:center; gap:2px; padding:6px; border:1px solid rgba(255,255,255,.15); border-radius:5px; color:#fff; background:rgba(255,255,255,.045); font-weight:900; }
+.gacha-payment-group button small { color:var(--ui-text-secondary); font-size:9px; font-weight:800; }
+.gacha-payment-group button:disabled { opacity:.42; }
+.gacha-special-summary { display:flex; min-height:104px; flex-direction:column; align-items:center; justify-content:center; gap:5px; color:var(--ui-text-secondary); text-align:center; }
+.gacha-special-summary strong { color:#e8c6f2; font-size:17px; letter-spacing:.14em; }
+.gacha-special-summary span { font-size:11px; }
 
 .gacha-tab-btn:hover {
   background: rgba(255, 255, 255, 0.08);
@@ -99,8 +159,8 @@
 /* 🔴 FREE バッジ (タブ右上) */
 .free-badge-dot {
   position: absolute;
-  top: -4px;
-  right: -4px;
+  top: -3px;
+  right: 2px;
   background: #ff3366;
   color: #ffffff;
   font-size: 9px;
@@ -108,6 +168,12 @@
   padding: 1px 5px;
   border-radius: 8px;
   box-shadow: 0 0 6px rgba(255, 51, 102, 0.6);
+}
+
+@media (max-width: 390px) {
+  .gacha-scroll-shell { gap:7px; }
+  .gacha-tab-btn { font-size:11px; }
+  .gacha-normal-offer { padding:10px; }
 }
 
 /* 🎰 天井Ptステータスカード */
