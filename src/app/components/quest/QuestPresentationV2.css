@@ -19,3 +19,22 @@
 .quest-v2-hometown-note,.quest-v2-result-bonus{margin:0;padding:7px 9px;border-left:3px solid #f2c95f;color:#ffe698;background:rgba(242,201,95,.09);font-size:9px;font-weight:900;text-align:left}
 .quest-v2-selection-return{position:relative;z-index:8;margin-top:8px}
 .quest-v2-state-surface .tutorial-wire-encounter .quest-v2-selection-return{grid-column:1/3}
+
+/* Battle-entry P1: normal Quest must not inherit the tutorial's 70vh encounter card. */
+.quest-v2-battle-ready{display:grid;min-height:min(570px,calc(100dvh - 184px));padding:14px;background-color:#080b14;background-image:linear-gradient(180deg,rgba(1,3,9,.4),rgba(1,3,9,.9)),var(--quest-state-background);background-position:center;background-size:cover}
+.quest-v2-battle-ready .tutorial-wire-encounter{display:grid;grid-template-columns:42px minmax(0,1fr);align-content:center;align-items:center;justify-items:stretch;gap:10px 12px;width:100%;min-height:0;padding:14px;border:1px solid rgba(255,55,116,.3);border-radius:7px;background:rgba(3,6,13,.82);overflow:visible;text-align:left}
+.quest-v2-battle-ready .tutorial-wire-encounter::before{border-radius:inherit;background:linear-gradient(135deg,rgba(255,28,104,.11),transparent 42%)}
+.quest-v2-battle-ready .tutorial-wire-glitch{grid-row:1;width:42px;height:38px;border:1px solid #ff4380;font-size:20px;filter:drop-shadow(0 0 8px rgba(255,32,128,.48))}
+.quest-v2-battle-ready-identity{position:relative;z-index:1;display:grid;gap:2px;min-width:0}
+.quest-v2-battle-ready .quest-v2-battle-ready-identity small{color:#d9a7c0;font-size:8px;letter-spacing:.08em}
+.quest-v2-battle-ready .quest-v2-battle-ready-identity h2{overflow:hidden;margin:0;font-size:clamp(22px,6.4vw,27px);line-height:1.05;letter-spacing:.04em;white-space:nowrap;text-overflow:ellipsis}
+.quest-v2-battle-ready-identity strong{overflow:hidden;color:#dce5ed;font-size:10px;line-height:1.35;text-overflow:ellipsis;white-space:nowrap}
+.quest-v2-battle-enemies{position:relative;z-index:1;grid-column:1/3;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;width:100%;min-width:0}
+.quest-v2-battle-enemies article{display:grid;grid-template-columns:44px minmax(0,1fr);align-items:center;gap:6px;min-width:0;padding:5px;border:1px solid rgba(255,255,255,.1);border-radius:4px;background:rgba(4,8,15,.88)}
+.quest-v2-battle-enemies .character-presentation{width:44px;height:44px;border-radius:3px}
+.quest-v2-battle-enemies article>span{display:grid;gap:2px;min-width:0}
+.quest-v2-battle-enemies strong{overflow:hidden;font-size:8px;text-overflow:ellipsis;white-space:nowrap}
+.quest-v2-battle-ready .quest-v2-battle-enemies small{color:#bac5cf;font-family:var(--font-display);font-size:8px;letter-spacing:.02em}
+.quest-v2-battle-ready .tutorial-wire-encounter>.semantic-cta{grid-column:1/3;width:100%;min-height:44px;margin:0;align-self:auto}
+.quest-v2-battle-ready .tutorial-wire-encounter>.quest-v2-selection-return{margin-top:-2px}
+@media(max-width:390px){.quest-v2-battle-ready{min-height:min(556px,calc(100dvh - 176px));padding:10px}.quest-v2-battle-ready .tutorial-wire-encounter{padding:12px}.quest-v2-battle-enemies article{grid-template-columns:40px minmax(0,1fr)}.quest-v2-battle-enemies .character-presentation{width:40px;height:40px}}

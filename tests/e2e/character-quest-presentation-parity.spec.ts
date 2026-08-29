@@ -159,9 +159,32 @@ test("Normal Quest uses the tutorial-passed identity, enemy, reward and progress
   await page.locator(".quest-v2-character-grid button.deployed").first().click();
   await expect(page.locator('[data-quest-state="PROGRESS"]')).toBeVisible();
   await page.getByRole("button", { name: "無料時短", exact: true }).click();
-  await expect(page.locator('[data-quest-state="BATTLE_READY"], [data-quest-state="RESULT_READY"]')).toBeVisible();
+  const battleReady = page.locator('[data-quest-state="BATTLE_READY"]');
+  await expect(battleReady).toBeVisible();
+  await expect(page.locator('[data-quest-state="PROGRESS"]')).toHaveCount(0);
+  await expect(battleReady.locator(".quest-v2-battle-ready-identity h2")).toHaveText("バトル発生");
+  await expect(battleReady.locator(".quest-v2-battle-enemies article").first()).toContainText(/Lv \d+/);
+  const battleGeometry390 = await page.evaluate(() => {
+    const state = document.querySelector<HTMLElement>('[data-quest-state="BATTLE_READY"]')!;
+    const title = state.querySelector<HTMLElement>("h2")!;
+    const cta = [...state.querySelectorAll<HTMLButtonElement>("button")].find((button) => button.textContent?.trim() === "バトルへ")!;
+    const footer = document.querySelector<HTMLElement>(".footer-mobile")!;
+    const titleStyle = getComputedStyle(title);
+    return { stateWidth: state.scrollWidth, stateClientWidth: state.clientWidth, titleHeight: title.getBoundingClientRect().height, titleLineHeight: parseFloat(titleStyle.lineHeight), titleWhiteSpace: titleStyle.whiteSpace, ctaBottom: cta.getBoundingClientRect().bottom, footerTop: footer.getBoundingClientRect().top };
+  });
+  expect(battleGeometry390.stateWidth).toBeLessThanOrEqual(battleGeometry390.stateClientWidth + 1);
+  expect(battleGeometry390.titleWhiteSpace).toBe("nowrap");
+  expect(battleGeometry390.titleHeight).toBeLessThanOrEqual(battleGeometry390.titleLineHeight * 1.2);
+  expect(battleGeometry390.ctaBottom).toBeLessThanOrEqual(battleGeometry390.footerTop);
 
   await page.setViewportSize({ width: 412, height: 915 });
   await expectMobileGeometry(page, ".quest-v2-shell");
+  const battleGeometry412 = await page.evaluate(() => {
+    const cta = [...document.querySelectorAll<HTMLButtonElement>('[data-quest-state="BATTLE_READY"] button')].find((button) => button.textContent?.trim() === "バトルへ")!;
+    const footer = document.querySelector<HTMLElement>(".footer-mobile")!;
+    return { ctaBottom: cta.getBoundingClientRect().bottom, footerTop: footer.getBoundingClientRect().top, overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth };
+  });
+  expect(battleGeometry412.ctaBottom).toBeLessThanOrEqual(battleGeometry412.footerTop);
+  expect(battleGeometry412.overflow).toBeLessThanOrEqual(0);
   await page.screenshot({ path: test.info().outputPath("quest-parity-412.png"), fullPage: true });
 });
