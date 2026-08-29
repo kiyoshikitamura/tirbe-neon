@@ -11,9 +11,14 @@ import { canonicalEquipmentFlatStat, canonicalSkillSlotCount } from "@/domain/ga
 import type { ConfirmDialogConfig } from "@/app/components/ui/ConfirmDialog";
 import { beginActionPerformance } from "@/utils/actionPerformance";
 import { CHARACTERS_MASTER } from "@/utils/game_constants";
+import { runCompositeOperation } from "@/domain/async/runCompositeOperation";
 
 const sumPower = (stats: { hp: number; atk: number; def: number; spd: number; luk: number }) =>
   stats.hp + stats.atk + stats.def;
+
+type GrowthRequest = { itemId: string; count: number };
+type AutoEquipTarget = { characterDbId: string; masterCharId: string };
+type OwnedUpgradeOptions = { lockOwned?: boolean; refresh?: boolean };
 
 export function useCharacterProgression(
   session: any,
@@ -64,7 +69,8 @@ export function useCharacterProgression(
   const {
     isLocked: upgradeLoading,
     beginAction: beginUpgradeAction,
-    endAction: endUpgradeAction
+    endAction: endUpgradeAction,
+    endActionAfterPaint: endUpgradeActionAfterPaint,
   } = useImmediateActionLock();
   const setUpgradeLoading = (loading: boolean) => {
     if (loading) beginUpgradeAction();
@@ -160,6 +166,63 @@ export function useCharacterProgression(
       return false;
     } finally {
       endUpgradeAction();
+    }
+  };
+
+  const handleCharacterGrowthBatch = async (requested: GrowthRequest[]) => {
+    const requests = requested.filter((entry) => entry.count > 0);
+    const character = userCharactersDbList.find((entry) => entry.character_id === upgradeSelectedCharId);
+    if (!session || !character || requests.length === 0) return { complete: false, completedItemIds: [] as string[] };
+    const ownedByItem: Record<string, number> = { CHAR_EXP_S: charExpS, CHAR_EXP_M: charExpM, CHAR_EXP_L: charExpL };
+    if (requests.some((entry) => Number(ownedByItem[entry.itemId] || 0) < entry.count)) {
+      setErrorMessage("該当する経験の書が不足しています。");
+      return { complete: false, completedItemIds: [] as string[] };
+    }
+    if (cash < requests.reduce((total, entry) => total + entry.count * 100, 0)) {
+      setErrorMessage("キャッシュ不足です。");
+      return { complete: false, completedItemIds: [] as string[] };
+    }
+    if (!beginUpgradeAction()) return { complete: false, completedItemIds: [] as string[] };
+    const completedItemIds: string[] = [];
+    const previousLevel = Number(character.level || characterLevel || 1);
+    let newLevel = previousLevel;
+    playCyberSe("GROWTH_START");
+    try {
+      const operation = await runCompositeOperation(requests, async (request) => {
+        const res = await supabase.rpc("level_up_character", {
+          p_character_id: character.id,
+          p_exp_item_id: request.itemId,
+          p_count: request.count,
+        });
+        if (res.error || res.data?.error) {
+          setErrorMessage(res.error?.message || res.data?.error || "レベルアップに失敗しました。");
+          return false;
+        }
+        newLevel = Number(res.data?.level ?? newLevel);
+        completedItemIds.push(request.itemId);
+        return true;
+      });
+      await syncBootstrapData(session.user.id);
+      setCharacterLevel(newLevel);
+      const complete = operation.complete;
+      if (complete) {
+        playCyberSe("LEVEL_UP");
+        const characterName = CHARACTERS_MASTER.find((entry) => entry.id === character.character_id)?.jpName || "キャラクター";
+        setConfirmDialogConfig({
+          isOpen: true,
+          title: "レベルアップ結果",
+          message: `${characterName} が Lv.${previousLevel} → Lv.${newLevel} になりました。`,
+          confirmText: "OK", cancelText: "", presentation: "canonical",
+          onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null),
+        });
+      }
+      return { complete, completedItemIds };
+    } catch (error) {
+      console.warn(error);
+      setErrorMessage("レベルアップに失敗しました。もう一度お試しください。");
+      return { complete: false, completedItemIds };
+    } finally {
+      endUpgradeActionAfterPaint();
     }
   };
 
@@ -345,9 +408,10 @@ export function useCharacterProgression(
     }
   };
 
-  const handleEquipGearBulkRecommended = async (characterDbId: string, masterCharId: string) => {
+  const handleEquipGearBulkRecommended = async (characterDbId: string, masterCharId: string, options: OwnedUpgradeOptions = {}) => {
     if (!session || !characterDbId) return;
-    if (!beginUpgradeAction()) return;
+    const ownsLock = !options.lockOwned;
+    if (ownsLock && !beginUpgradeAction()) return false;
     playCyberSe("click");
     try {
       const availableGears = userEquipmentsList.filter((e: any) => {
@@ -403,14 +467,17 @@ export function useCharacterProgression(
         });
         if (error) {
           setErrorMessage(error.message || "おすすめ装備の適用に失敗しました。");
-          return;
+          return false;
         }
-        await syncBootstrapData(session.user.id);
+        if (options.refresh !== false) await syncBootstrapData(session.user.id);
       }
+      return true;
     } catch (err) {
       console.warn("Failed equip_gear_bulk:", err);
+      setErrorMessage("おすすめ装備の適用に失敗しました。");
+      return false;
     } finally {
-      endUpgradeAction();
+      if (ownsLock) endUpgradeAction();
     }
   };
 
@@ -436,15 +503,16 @@ export function useCharacterProgression(
     }
   };
 
-  const handleEquipSkillBulkRecommended = async (characterDbId: string, masterCharId?: string) => {
+  const handleEquipSkillBulkRecommended = async (characterDbId: string, masterCharId?: string, options: OwnedUpgradeOptions = {}) => {
     if (!session || !characterDbId) return;
     const targetCharacter = userCharactersDbList.find((character: any) => character.id === characterDbId);
     const resolvedMasterCharId = masterCharId || targetCharacter?.character_id;
     if (!resolvedMasterCharId) {
       setErrorMessage("装備先のキャラクターが見つかりません。");
-      return;
+      return false;
     }
-    if (!beginUpgradeAction()) return;
+    const ownsLock = !options.lockOwned;
+    if (ownsLock && !beginUpgradeAction()) return false;
     playCyberSe("click");
     try {
       const availableSkills = userSkillsList.filter((s: any) => {
@@ -484,16 +552,48 @@ export function useCharacterProgression(
         });
         if (error) {
           setErrorMessage(error.message || "推奨スキルの一括装備に失敗しました。");
-          return;
+          return false;
         }
-        await syncBootstrapData(session.user.id);
+        if (options.refresh !== false) await syncBootstrapData(session.user.id);
+        return true;
       } else {
         setErrorMessage("装備できるOpen Beta対応スキルがありません。");
+        return false;
       }
     } catch (err) {
       console.warn("Failed equip_skill_bulk:", err);
+      setErrorMessage("推奨スキルの一括装備に失敗しました。");
+      return false;
     } finally {
-      endUpgradeAction();
+      if (ownsLock) endUpgradeAction();
+    }
+  };
+
+  const handleAutoEquipComposite = async (targets: AutoEquipTarget[]) => {
+    if (!session || targets.length === 0 || !beginUpgradeAction()) return { complete: false, completedTargetIds: [] as string[] };
+    const completedTargetIds: string[] = [];
+    playCyberSe("click");
+    try {
+      const operation = await runCompositeOperation(targets, async (target) => {
+        const skillsApplied = await handleEquipSkillBulkRecommended(target.characterDbId, target.masterCharId, { lockOwned: true, refresh: false });
+        if (!skillsApplied) return false;
+        const gearApplied = await handleEquipGearBulkRecommended(target.characterDbId, target.masterCharId, { lockOwned: true, refresh: false });
+        if (!gearApplied) return false;
+        completedTargetIds.push(target.characterDbId);
+        return true;
+      });
+      await syncBootstrapData(session.user.id);
+      const complete = operation.complete;
+      if (complete) {
+        setConfirmDialogConfig({ isOpen: true, title: "おまかせ装備", message: "スキルと装備を適用しました。", confirmText: "OK", cancelText: "", presentation: "canonical", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
+      }
+      return { complete, completedTargetIds };
+    } catch (error) {
+      console.warn("Failed composite auto equip:", error);
+      setErrorMessage("おまかせ装備を完了できませんでした。");
+      return { complete: false, completedTargetIds };
+    } finally {
+      endUpgradeActionAfterPaint();
     }
   };
 
@@ -581,6 +681,57 @@ export function useCharacterProgression(
       console.warn(err);
     } finally {
       endUpgradeAction();
+    }
+  };
+
+  const handleEquipmentGrowthBatch = async (requested: GrowthRequest[]) => {
+    const requests = requested.filter((entry) => entry.count > 0);
+    const equipment = selectedEquipment;
+    if (!session || !equipment || requests.length === 0) return { complete: false, completedItemIds: [] as string[] };
+    const ownedByItem: Record<string, number> = { EQUIP_EXP_S: equipExpS, EQUIP_EXP_M: equipExpM, EQUIP_EXP_L: equipExpL };
+    if (requests.some((entry) => Number(ownedByItem[entry.itemId] || 0) < entry.count)) {
+      setErrorMessage("該当するカスタムオイルが不足しています。");
+      return { complete: false, completedItemIds: [] as string[] };
+    }
+    if (cash < requests.reduce((total, entry) => total + entry.count * 50, 0)) {
+      setErrorMessage("キャッシュ不足です。");
+      return { complete: false, completedItemIds: [] as string[] };
+    }
+    if (!beginUpgradeAction()) return { complete: false, completedItemIds: [] as string[] };
+    const completedItemIds: string[] = [];
+    const previousLevel = Number(equipment.level || equipmentLevel || 1);
+    let newLevel = previousLevel;
+    playCyberSe("click");
+    try {
+      const operation = await runCompositeOperation(requests, async (request) => {
+        const res = await supabase.rpc("level_up_equipment", {
+          p_equipment_id: equipment.id,
+          p_exp_item_id: request.itemId,
+          p_count: request.count,
+        });
+        if (res.error || res.data?.error) {
+          setErrorMessage(res.error?.message || res.data?.error || "装備強化に失敗しました。");
+          return false;
+        }
+        newLevel = Number(res.data?.level ?? newLevel);
+        completedItemIds.push(request.itemId);
+        return true;
+      });
+      await syncBootstrapData(session.user.id);
+      setEquipmentLevel(newLevel);
+      setSelectedEquipment((previous: any) => previous ? { ...previous, level: newLevel } : null);
+      const complete = operation.complete;
+      if (complete) {
+        const equipmentName = CANONICAL_EQUIPMENT_VIEW.find((entry: any) => entry.id === equipment.equipment_id)?.name || "装備";
+        setConfirmDialogConfig({ isOpen: true, title: "レベルアップ結果", message: `${equipmentName} が Lv.${previousLevel} → Lv.${newLevel} になりました。`, confirmText: "OK", cancelText: "", presentation: "canonical", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
+      }
+      return { complete, completedItemIds };
+    } catch (error) {
+      console.warn(error);
+      setErrorMessage("装備強化に失敗しました。もう一度お試しください。");
+      return { complete: false, completedItemIds };
+    } finally {
+      endUpgradeActionAfterPaint();
     }
   };
 
@@ -731,6 +882,7 @@ export function useCharacterProgression(
     upgradeSubTab, setUpgradeSubTab,
     upgradeLoading, setUpgradeLoading,
     handleCharacterLevelUp,
+    handleCharacterGrowthBatch,
     handleCharacterAwaken,
     handleEquipGear,
     handleUnequipGear,
@@ -740,8 +892,10 @@ export function useCharacterProgression(
     handleEquipGearBulkRecommended,
     handleUnequipSkillBulk,
     handleEquipSkillBulkRecommended,
+    handleAutoEquipComposite,
     handleSellGearBulk,
     handleEquipmentLevelUp,
+    handleEquipmentGrowthBatch,
     handleEquipmentLimitBreak,
     handleSkillUpgrade
   };

@@ -411,6 +411,23 @@ test("role navigation exposes settings to submasters and master leave remains sa
   await expect(page.locator(".guild-lobby-view")).toHaveCount(0);
 });
 
+test("privileged member mutation owns the management cluster through projection paint", async ({ page }) => {
+  await seedGuildVisitor(page, 8, "MASTER");
+  await enterGuild(page);
+  await page.locator(".guild-action-grid button").filter({ hasText: /^メンバー/ }).click();
+  await page.evaluate(() => localStorage.setItem("mock_rpc_delay_ms:set_guild_member_role", "500"));
+  const targetRow = page.locator(".guild-member-row").filter({ hasText: "Long Guild Member Name" });
+  await targetRow.getByRole("button", { name: "昇格", exact: true }).click();
+  await expect(page.locator(".guild-member-management button").first()).toBeDisabled();
+  await expect(page.locator(".guild-member-management button").last()).toBeDisabled();
+  await expect(page.locator(".canonical-dialog")).toContainText("役職を副団長へ変更しました");
+  await expect(page.locator(".guild-member-management button").first()).toBeEnabled();
+  const savedRole = await page.evaluate(({ openMember }) => JSON.parse(localStorage.getItem("mock_db_guild_members") || "[]").find((row: any) => row.user_id === openMember)?.role, { openMember });
+  expect(savedRole).toBe("SUB_MASTER");
+  await page.setViewportSize({ width: 412, height: 915 });
+  await expectNoOverflow(page, ".guild-secondary-view");
+});
+
 test("master can review a pending join request from the member view", async ({ page }) => {
   await seedGuildVisitor(page, 8, "MASTER");
   await page.addInitScript(({ openGuild }) => {

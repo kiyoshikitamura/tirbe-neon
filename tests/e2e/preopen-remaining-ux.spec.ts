@@ -159,11 +159,17 @@ test("Mission and Present mutations retain canonical item receipts", async ({ pa
   await expect(page.locator(".sub-tab-badge")).toContainText("1");
   const missionHeight = await page.locator(".mission-item").first().evaluate((node) => node.getBoundingClientRect().height);
   expect(missionHeight).toBeLessThan(150);
+  await page.evaluate(() => localStorage.setItem("mock_rpc_delay_ms:claim_mission_reward", "500"));
   await page.getByRole("button", { name: "受け取る", exact: true }).click();
+  await expect(page.locator(".mission-operation-surface")).toHaveAttribute("disabled", "");
+  await expect(page.locator(".mission-operation-surface")).toHaveAttribute("aria-busy", "true");
+  await expect(page.locator(".fullscreen-close-btn")).toBeDisabled();
   const missionReceipt = page.getByRole("dialog", { name: "報酬獲得" });
   await expect(missionReceipt).toContainText("強化ドリンク・中");
   await expect(missionReceipt).not.toContainText("CHAR_EXP_M");
   await missionReceipt.getByRole("button", { name: "OK" }).click();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expectNoOverflow(page, ".mission-panel-container-inner");
   await page.getByRole("button", { name: "閉じる" }).click();
 
   await page.locator(".mypage-sub-icons-right .sub-icon-unit").filter({ hasText: "プレゼント" }).click();

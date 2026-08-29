@@ -55,10 +55,12 @@ async function seedAuthenticatedPlayer(page: Page, asMaster = false) {
 async function enterHome(page: Page) {
   await page.goto("/");
   const titleAction = page.getByRole("button", { name: "TAP TO START" });
-  if (await titleAction.isVisible()) await titleAction.click();
   const continueAction = page.getByRole("button", { name: "続きから" });
+  const header = page.locator(".header-mobile");
+  await expect(titleAction.or(continueAction).or(header)).toBeVisible();
+  if (await titleAction.isVisible()) await titleAction.click();
   if (await continueAction.isVisible()) await continueAction.click();
-  await expect(page.locator(".header-mobile")).toBeVisible();
+  await expect(header).toBeVisible();
 }
 
 test("NPC mock battle reuses the viewer without PvP economy or record mutations", async ({ page }) => {
@@ -88,6 +90,30 @@ test("NPC mock battle reuses the viewer without PvP economy or record mutations"
     presents: JSON.parse(localStorage.getItem("mock_db_presents") || "[]").length,
   }));
   expect(after).toEqual(before);
+});
+
+test("PvP defense save locks its form snapshot until authoritative projection paint", async ({ page }) => {
+  await seedAuthenticatedPlayer(page);
+  await enterHome(page);
+  await page.getByRole("button", { name: "バトル / PvP", exact: true }).click();
+  await page.getByRole("button", { name: "防衛・履歴" }).click();
+  await page.locator(".pvp-defense-member").first().click();
+  await page.locator("select").selectOption("HEAL_PRIORITY");
+  await page.evaluate(() => localStorage.setItem("mock_rpc_delay_ms:save_pvp_defense_deck", "500"));
+  await page.getByRole("button", { name: "防衛設定を保存" }).click();
+  await expect(page.locator(".pvp-defense-save-surface")).toHaveAttribute("disabled", "");
+  await expect(page.locator(".pvp-defense-save-surface")).toHaveAttribute("aria-busy", "true");
+  await expect(page.getByRole("button", { name: "対戦" })).toBeDisabled();
+  await expect(page.getByText("防衛デッキおよび作戦を保存しました。", { exact: true })).toBeVisible();
+  await expect(page.locator(".pvp-defense-save-surface")).not.toHaveAttribute("disabled", "");
+  const saved = await page.evaluate(({ me }) => JSON.parse(localStorage.getItem("mock_db_pvp_defense_decks") || "[]").find((row: any) => row.user_id === me), { me });
+  expect(saved?.tactic).toBe("HEAL_PRIORITY");
+  for (const viewport of [{ width: 390, height: 844 }, { width: 412, height: 915 }]) {
+    await page.setViewportSize(viewport);
+    const metrics = await page.locator(".pvp-defense-save-surface").evaluate((node) => ({ scrollWidth: node.scrollWidth, clientWidth: node.clientWidth, right: node.getBoundingClientRect().right, viewport: innerWidth }));
+    expect(metrics.scrollWidth).toBeLessThanOrEqual(metrics.clientWidth + 1);
+    expect(metrics.right).toBeLessThanOrEqual(metrics.viewport + 1);
+  }
 });
 
 test("Guild master edits the welcome message through the existing secure contract", async ({ page }) => {

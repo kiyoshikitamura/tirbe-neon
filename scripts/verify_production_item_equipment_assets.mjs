@@ -9,13 +9,17 @@ const equipments = JSON.parse(await readFile(resolve(root, "src/domain/gameplay/
 assert.equal(items.length, 18, "Canonical Item count must remain 18");
 assert.equal(equipments.length, 170, "Canonical Equipment count must remain 170");
 
-const anomalies = [];
+const pngSignature = Buffer.from([137,80,78,71,13,10,26,10]);
+function assertPngSignature(bytes, assetPath) {
+  assert.ok(bytes.subarray(0, 8).equals(pngSignature), `PNG extension/body mismatch: ${assetPath}`);
+}
+assert.throws(() => assertPngSignature(Buffer.from([255,216,255,224]), "failure-contract.png"), /extension\/body mismatch/, "Format anomaly must fail verification");
+
 async function verifyImage(assetPath, { requireAlpha = false, dimensions = null } = {}) {
   const absolute = resolve(root, "public", assetPath.replace(/^\//, ""));
   assert.ok((await stat(absolute)).isFile(), `Missing asset: ${assetPath}`);
   const bytes = await readFile(absolute);
-  const isPngBody = bytes.subarray(0, 8).equals(Buffer.from([137,80,78,71,13,10,26,10]));
-  if (!isPngBody) anomalies.push(`${assetPath}: extension/body mismatch`);
+  assertPngSignature(bytes, assetPath);
   const image = await Jimp.read(absolute);
   assert.ok(image.bitmap.width > 0 && image.bitmap.height > 0, `Undecodable asset: ${assetPath}`);
   if (dimensions) assert.deepEqual([image.bitmap.width, image.bitmap.height], dimensions, `Dimension mismatch: ${assetPath}`);
@@ -35,4 +39,4 @@ const equipmentPaths = equipments.map((equipment) => {
 assert.equal(new Set(equipmentPaths).size, 170, "Equipment paths must be unique");
 for (const assetPath of equipmentPaths) await verifyImage(assetPath);
 
-console.log(JSON.stringify({ status: "PASS", items: 18, equipments: 170, broken: 0, missing: 0, wrongMapping: 0, p1FormatAnomalies: anomalies }, null, 2));
+console.log(JSON.stringify({ status: "PASS", items: 18, equipments: 170, broken: 0, missing: 0, wrongMapping: 0, p1FormatAnomalies: [] }, null, 2));

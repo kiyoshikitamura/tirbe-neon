@@ -134,3 +134,9 @@
   font-size: 14px;
 }
 .mission-reward-art { flex:0 0 auto;width:22px;height:22px;object-fit:contain; }
+.mission-operation-surface {
+  min-inline-size: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}

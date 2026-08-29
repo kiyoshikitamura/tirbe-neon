@@ -57,8 +57,8 @@ export default function MissionPanel() {
   };
 
   return (
-    <FullScreenPanel title="ミッション" onClose={handleClose}>
-      <div className="mission-panel-container-inner">
+    <FullScreenPanel title="ミッション" onClose={handleClose} closeDisabled={missionClaimLoading}>
+      <fieldset className="mission-panel-container-inner mission-operation-surface" disabled={missionClaimLoading} aria-busy={missionClaimLoading}>
         <SubTabNav
           tabs={[
             { id: "DAILY", label: "デイリー", badge: clearCounts.DAILY },
@@ -137,7 +137,7 @@ export default function MissionPanel() {
             })
           )}
         </div>
-      </div>
+      </fieldset>
     </FullScreenPanel>
   );
 }

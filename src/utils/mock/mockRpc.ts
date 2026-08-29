@@ -102,6 +102,10 @@ const applyMockCharacterAwakeningEquivalent = (character: any) => {
 };
 
 export async function executeMockRpc(client: any, funcName: string, params: any): Promise<any> {
+  const qaDelay = typeof window === "undefined" ? 0 : Number(localStorage.getItem(`mock_rpc_delay_ms:${funcName}`) || 0);
+  if (Number.isFinite(qaDelay) && qaDelay > 0) {
+    await new Promise((resolve) => window.setTimeout(resolve, Math.min(qaDelay, 5000)));
+  }
   if (typeof window !== "undefined" && ["create_guild_v2", "set_current_guild_welcome_message", "update_guild_recruitment", "update_guild_alignment"].includes(funcName)) {
     const mutationDelay = Number(localStorage.getItem("mock_guild_mutation_delay_ms") || 0);
     if (mutationDelay > 0) await new Promise((resolve) => window.setTimeout(resolve, mutationDelay));

@@ -55,7 +55,8 @@ export function useInventory(
   const {
     isLocked: missionClaimLoading,
     beginAction: beginMissionClaim,
-    endAction: endMissionClaim
+    endAction: endMissionClaim,
+    endActionAfterPaint: endMissionClaimAfterPaint
   } = useImmediateActionLock();
   const {
     isLocked: itemUseLoading,
@@ -248,7 +249,7 @@ export function useInventory(
       setMissions(prev => prev.map(m => m.id === id ? { ...m, loading: false } : m));
       showActionError("報酬を受け取れませんでした", err);
     } finally {
-      endMissionClaim();
+      endMissionClaimAfterPaint();
     }
   };
 
@@ -283,7 +284,7 @@ export function useInventory(
       setMissions(prev => prev.map(m => ({ ...m, loading: false })));
       showActionError("一括受け取りに失敗しました", err);
     } finally {
-      endMissionClaim();
+      endMissionClaimAfterPaint();
     }
   };
 

@@ -42,7 +42,7 @@ export default function PvpTab() {
     pvpSubView,
     setPvpSubView,
     battleLoading,
-    upgradeLoading,
+    pvpDefenseSaveLoading,
     pvpOpponents,
     opponentsLoading,
     fetchPvpOpponents,
@@ -252,8 +252,8 @@ export default function PvpTab() {
 
         <SubTabNav
           tabs={[
-            { id: "opponents", label: "対戦" },
-            { id: "defense", label: "防衛・履歴" },
+            { id: "opponents", label: "対戦", disabled: pvpDefenseSaveLoading },
+            { id: "defense", label: "防衛・履歴", disabled: pvpDefenseSaveLoading },
           ]}
           activeTabId={pvpSubView}
           onSelect={setPvpSubView}
@@ -359,6 +359,7 @@ export default function PvpTab() {
             {pvpSubView === "defense" && (
               <div className="flex flex-col gap-4">
                 {/* 防衛デッキ・作戦設定パネル */}
+                <fieldset className="pvp-defense-save-surface" disabled={pvpDefenseSaveLoading} aria-busy={pvpDefenseSaveLoading}>
                 <OutlawCard glowLine="left">
                   <h3 className="font-bold text-white mb-3 flex items-center gap-2">
                     防衛デッキ・作戦設定
@@ -410,11 +411,14 @@ export default function PvpTab() {
                     variant="primary" 
                     fullWidth 
                     onClick={handleSaveDeck} 
-                    disabled={upgradeLoading}
+                    disabled={pvpDefenseSaveLoading}
+                    isLoading={pvpDefenseSaveLoading}
+                    loadingLabel="保存中…"
                   >
-                    {upgradeLoading ? "保存中..." : "防衛設定を保存"}
+                    防衛設定を保存
                   </OutlawButton>
                 </OutlawCard>
+                </fieldset>
 
                 {/* 防衛履歴リスト */}
                 <div className="flex flex-col gap-2">

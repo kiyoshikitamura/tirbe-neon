@@ -25,5 +25,15 @@ export function useImmediateActionLock() {
     }, 0);
   }, []);
 
-  return { isLocked, beginAction, endAction };
+  const endActionAfterPaint = useCallback(() => {
+    if (typeof window === "undefined" || typeof window.requestAnimationFrame !== "function") {
+      endAction();
+      return;
+    }
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(endAction);
+    });
+  }, [endAction]);
+
+  return { isLocked, beginAction, endAction, endActionAfterPaint };
 }

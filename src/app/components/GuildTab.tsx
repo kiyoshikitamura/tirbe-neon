@@ -61,6 +61,7 @@ export default function GuildTab() {
     guildMembersList,
     handleUpdateMemberRole,
     handleKickMember,
+    guildPrivilegedOperation,
     handleLeaveGuild,
     handleUpdateGuildAlignment,
     handleUpdateGuildSettings,
@@ -395,6 +396,8 @@ export default function GuildTab() {
               }).map((m: any) => {
                 const isMe = m.user_id === userGuildMember.user_id;
                 const isLoaderPending = m.userLevel === null;
+                const managementLocked = Boolean(guildPrivilegedOperation);
+                const targetPending = guildPrivilegedOperation?.targetUserId === m.user_id;
 
                 return (
                   <div 
@@ -406,7 +409,7 @@ export default function GuildTab() {
                       guildName={userGuild.name}
                       title={isMe ? "あなた" : undefined}
                       leaderCharacterId={m.users?.favorite_character_id}
-                      onOpen={!isLoaderPending ? () => { playCyberSe("click"); void fetchPlayerDetail(m.user_id); } : undefined}
+                      onOpen={!isLoaderPending && !managementLocked ? () => { playCyberSe("click"); void fetchPlayerDetail(m.user_id); } : undefined}
                       variant="compact"
                     />
                     <span className="guild-member-role">{guildRoleLabel(m.role)}</span>
@@ -416,6 +419,8 @@ export default function GuildTab() {
                           <OutlawButton 
                             variant="secondary"
                             className="font-size-7 py-0.5 px-2" 
+                            disabled={managementLocked}
+                            isLoading={targetPending && guildPrivilegedOperation?.key !== "transfer" && guildPrivilegedOperation?.key !== "kick"}
                             onClick={() => handleUpdateMemberRole(m.user_id, m.users?.username, ["SUBMASTER", "SUB_MASTER"].includes(m.role) ? "MEMBER" : "SUB_MASTER")}
                           >
                             {["SUBMASTER", "SUB_MASTER"].includes(m.role) ? "降格" : "昇格"}
@@ -423,6 +428,8 @@ export default function GuildTab() {
                           <OutlawButton
                             variant="secondary"
                             className="font-size-7 py-0.5 px-2"
+                            disabled={managementLocked}
+                            isLoading={targetPending && guildPrivilegedOperation?.key === "transfer"}
                             onClick={() => handleUpdateMemberRole(m.user_id, m.users?.username, "MASTER")}
                           >
                             団長を交代
@@ -430,6 +437,8 @@ export default function GuildTab() {
                           <OutlawButton 
                             variant="danger"
                             className="font-size-7 py-0.5 px-2" 
+                            disabled={managementLocked}
+                            isLoading={targetPending && guildPrivilegedOperation?.key === "kick"}
                             onClick={() => handleKickMember(m.user_id, m.users?.username)}
                           >
                             追放
@@ -442,6 +451,8 @@ export default function GuildTab() {
                             <OutlawButton 
                               variant="danger"
                               className="font-size-7 py-0.5 px-2" 
+                              disabled={managementLocked}
+                              isLoading={targetPending && guildPrivilegedOperation?.key === "kick"}
                               onClick={() => handleKickMember(m.user_id, m.users?.username)}
                             >
                               追放

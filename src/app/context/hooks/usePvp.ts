@@ -3,10 +3,10 @@
 import { useRef, useState } from "react";
 import { supabase } from "@/utils/supabase";
 import { CHARACTERS_MASTER } from "@/utils/game_constants";
+import { useImmediateActionLock } from "@/hooks/useImmediateActionLock";
 
 export function usePvp(
   session: any,
-  setUpgradeLoading: (loading: boolean) => void,
   setErrorMessage: (msg: string | null) => void,
   playCyberSe: (type: string) => void,
   syncBootstrapData: (userId: string) => Promise<void>,
@@ -26,6 +26,11 @@ export function usePvp(
   const [pvpSeasonLoading, setPvpSeasonLoading] = useState<boolean>(false);
   const [pvpDefenseLogs, setPvpDefenseLogs] = useState<any[]>([]);
   const [simulatingDefense, setSimulatingDefense] = useState<boolean>(false);
+  const {
+    isLocked: pvpDefenseSaveLoading,
+    beginAction: beginPvpDefenseSave,
+    endActionAfterPaint: endPvpDefenseSaveAfterPaint,
+  } = useImmediateActionLock();
   const opponentsRequestRef = useRef<Promise<any[]> | null>(null);
   const opponentsNextOffsetRef = useRef(0);
 
@@ -79,13 +84,15 @@ export function usePvp(
 
   const savePvpDefenseDeck = async (members: string[], tactic: string = "ATTACK_PRIORITY") => {
     if (!session?.user?.id) return { success: false, message: "ログインが必要です。" };
-    setUpgradeLoading(true);
+    if (!beginPvpDefenseSave()) return { success: false, message: "保存処理中です。" };
+    const memberSnapshot = [...members];
+    const tacticSnapshot = tactic;
     playCyberSe("click");
 
     try {
       const { error } = await supabase.rpc("save_pvp_defense_deck", {
-        p_character_ids: members,
-        p_tactic: tactic,
+        p_character_ids: memberSnapshot,
+        p_tactic: tacticSnapshot,
       });
 
       if (error) throw error;
@@ -98,7 +105,7 @@ export function usePvp(
       setErrorMessage("防衛デッキの保存に失敗しました。");
       return { success: false, message: err.message };
     } finally {
-      setUpgradeLoading(false);
+      endPvpDefenseSaveAfterPaint();
     }
   };
 
@@ -128,6 +135,7 @@ export function usePvp(
     pvpSeasonLoading, setPvpSeasonLoading,
     pvpDefenseLogs, setPvpDefenseLogs,
     simulatingDefense, setSimulatingDefense,
+    pvpDefenseSaveLoading,
     fetchPvpOpponents,
     savePvpDefenseDeck,
     syncUserPower

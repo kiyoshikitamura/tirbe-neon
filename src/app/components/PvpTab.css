@@ -141,3 +141,9 @@
 .scroll-container::-webkit-scrollbar-thumb:hover {
   background: rgba(160, 160, 170, 0.5);
 }
+.pvp-defense-save-surface {
+  min-inline-size: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}

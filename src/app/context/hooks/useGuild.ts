@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/utils/supabase";
 import { guildMemberCap, guildRecruitmentMode, canEditGuildSettings, canManageGuildApplications, GUILD_PRODUCTION, type GuildRecruitmentMode } from "@/domain/gameplay/canonical/guild_production";
+import { useImmediateActionLock } from "@/hooks/useImmediateActionLock";
 
 export function useGuild(
   session: any,
@@ -28,6 +29,26 @@ export function useGuild(
   const [updatingAlignment, setUpdatingAlignment] = useState<boolean>(false);
   const [pendingGuildJoinRequests, setPendingGuildJoinRequests] = useState<any[]>([]);
   const [guildJoinRequests, setGuildJoinRequests] = useState<any[]>([]);
+  const [guildPrivilegedOperation, setGuildPrivilegedOperation] = useState<{ key: "promote" | "demote" | "transfer" | "kick"; targetUserId: string } | null>(null);
+  const {
+    beginAction: beginGuildPrivilegedMutation,
+    endActionAfterPaint: endGuildPrivilegedMutationAfterPaint,
+  } = useImmediateActionLock();
+
+  const beginPrivilegedOperation = (key: "promote" | "demote" | "transfer" | "kick", targetUserId: string) => {
+    if (!beginGuildPrivilegedMutation()) return false;
+    setGuildPrivilegedOperation({ key, targetUserId });
+    return true;
+  };
+
+  const endPrivilegedOperation = () => {
+    if (typeof window !== "undefined" && typeof window.requestAnimationFrame === "function") {
+      window.requestAnimationFrame(() => window.requestAnimationFrame(() => setGuildPrivilegedOperation(null)));
+    } else {
+      setGuildPrivilegedOperation(null);
+    }
+    endGuildPrivilegedMutationAfterPaint();
+  };
 
   const openGuildWelcome = (guildId: string, guildName: string) => {
     setConfirmDialogConfig({
@@ -470,7 +491,8 @@ export function useGuild(
 
   const handleUpdateMemberRole = async (targetUserId: string, targetName: string, newRole: string) => {
     if (!session || !userGuildMember || userGuildMember.role !== "MASTER") return;
-    setGvgResetLoading(true);
+    const operationKey = newRole === "MASTER" ? "transfer" : ["SUB_MASTER", "SUBMASTER"].includes(newRole) ? "promote" : "demote";
+    if (!beginPrivilegedOperation(operationKey, targetUserId)) return;
     playCyberSe("click");
 
     try {
@@ -481,7 +503,6 @@ export function useGuild(
           p_new_id: targetUserId
         });
         if (error) throw error;
-        setConfirmDialogConfig({ isOpen: true, title: "マスター交代", message: `マスター権限を「${targetName}」へ譲渡しました。`, confirmText: "OK", cancelText: "", presentation: "canonical", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
       } else {
         const { error } = await supabase.rpc("set_guild_member_role", {
           p_guild_id: userGuild.id,
@@ -489,14 +510,18 @@ export function useGuild(
           p_new_role: newRole
         });
         if (error) throw error;
+      }
+      await syncBootstrapData(session.user.id);
+      if (newRole === "MASTER") {
+        setConfirmDialogConfig({ isOpen: true, title: "マスター交代", message: `マスター権限を「${targetName}」へ譲渡しました。`, confirmText: "OK", cancelText: "", presentation: "canonical", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
+      } else {
         const roleLabel = ["SUB_MASTER", "SUBMASTER"].includes(newRole) ? "副団長" : "メンバー";
         setConfirmDialogConfig({ isOpen: true, title: "役職変更", message: `「${targetName}」の役職を${roleLabel}へ変更しました。`, confirmText: "OK", cancelText: "", presentation: "canonical", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
       }
-      await syncBootstrapData(session.user.id);
     } catch (err: any) {
       console.warn(err.message);
     } finally {
-      setGvgResetLoading(false);
+      endPrivilegedOperation();
     }
   };
 
@@ -521,8 +546,8 @@ export function useGuild(
       isDanger: true,
       presentation: "canonical",
       onConfirm: async () => {
+        if (!beginPrivilegedOperation("kick", targetUserId)) return;
         setConfirmDialogConfig(null);
-        setGvgResetLoading(true);
         playCyberSe("click");
         try {
           const { error } = await supabase.rpc("kick_guild_member", {
@@ -530,12 +555,12 @@ export function useGuild(
             p_user_id: targetUserId
           });
           if (error) throw error;
-          setConfirmDialogConfig({ isOpen: true, title: "追放完了", message: `「${targetName}」を追放しました。`, confirmText: "OK", cancelText: "", presentation: "canonical", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
           await syncBootstrapData(session.user.id);
+          setConfirmDialogConfig({ isOpen: true, title: "追放完了", message: `「${targetName}」を追放しました。`, confirmText: "OK", cancelText: "", presentation: "canonical", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
         } catch (err: any) {
           console.warn(err.message);
         } finally {
-          setGvgResetLoading(false);
+          endPrivilegedOperation();
         }
       },
       onCancel: () => setConfirmDialogConfig(null)
@@ -679,6 +704,7 @@ export function useGuild(
     updatingAlignment, setUpdatingAlignment,
     pendingGuildJoinRequests, setPendingGuildJoinRequests,
     guildJoinRequests, setGuildJoinRequests,
+    guildPrivilegedOperation,
     getGuildPenaltyState,
     handleCreateGuild,
     handleUpdateGuildAlignment,

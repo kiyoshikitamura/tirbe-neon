@@ -10,6 +10,7 @@ interface FullScreenPanelProps {
   onClose: () => void;
   className?: string;
   showCloseButton?: boolean;
+  closeDisabled?: boolean;
 }
 
 export default function FullScreenPanel({
@@ -18,6 +19,7 @@ export default function FullScreenPanel({
   onClose,
   className = "",
   showCloseButton = true,
+  closeDisabled = false,
 }: FullScreenPanelProps) {
   const { playCyberSe } = useGame();
 
@@ -31,7 +33,7 @@ export default function FullScreenPanel({
       title={title}
       className={`outlaw-fullscreen-panel ${className}`}
       footer={showCloseButton ? (
-          <OutlawButton variant="secondary" onClick={handleClose} fullWidth className="fullscreen-close-btn">
+          <OutlawButton variant="secondary" onClick={handleClose} disabled={closeDisabled} fullWidth className="fullscreen-close-btn">
             閉じる
           </OutlawButton>
       ) : undefined}
