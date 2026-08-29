@@ -1,7 +1,7 @@
 .settings-panel-container-inner {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  min-height: 100%;
   min-width: 0;
   max-width: 100%;
   padding-bottom: max(12px, env(safe-area-inset-bottom));
@@ -51,6 +51,7 @@
   border-radius: 8px;
   color: #fff;
   padding: 12px;
+  min-height: 48px;
   font-size: 16px;
   font-family: inherit;
   transition: border-color 0.2s;
@@ -62,6 +63,7 @@
 }
 
 .settings-textarea {
+  min-height: 104px;
   resize: vertical;
 }
 .settings-bio-meta{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:8px;color:var(--text-secondary);font-size:11px}.settings-bio-meta button{min-width:104px}
