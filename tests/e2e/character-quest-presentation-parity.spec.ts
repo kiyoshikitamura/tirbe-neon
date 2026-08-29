@@ -38,7 +38,11 @@ test.beforeEach(async ({ page }) => {
       { id: "item-awaken", user_id: userId, item_id: "AWAKENING_BOOK", quantity: 1 },
       { id: "item-equip-s", user_id: userId, item_id: "EQUIP_EXP_S", quantity: 5 },
     ]));
-    localStorage.setItem("mock_db_quests", JSON.stringify([{ id: "q_shinjuku_1", name: "歌舞伎町 夜間見回り", town_id: "shinjuku", level_type: "EASY", duration_seconds: 900, cost_vitality: 5, cash_reward: 300, exp_reward: 100 }]));
+    localStorage.setItem("mock_db_quests", JSON.stringify([
+      { id: "q_shinjuku_1", name: "歌舞伎町 夜間見回り", town_id: "shinjuku", level_type: "EASY", duration_seconds: 900, cost_vitality: 5, cash_reward: 300, exp_reward: 100 },
+      { id: "q_shinjuku_2", name: "繁華街 警戒任務", town_id: "shinjuku", level_type: "NORMAL", duration_seconds: 1200, cost_vitality: 8, cash_reward: 450, exp_reward: 140 },
+    ]));
+    localStorage.setItem("mock_db_user_quest_first_clears", JSON.stringify([{ user_id: userId, quest_id: "q_shinjuku_1", cleared_at: now }]));
   });
 });
 
@@ -120,18 +124,40 @@ test("Normal Quest uses the tutorial-passed identity, enemy, reward and progress
   await enterGame(page);
   await page.locator('.footer-item[aria-label="クエスト"]').click();
   await expect(page.locator(".quest-v2-shell")).toBeVisible();
+  await expect(page.locator(".quest-v2-shell > .ui-page-header")).toHaveCount(0);
   await expect(page.locator(".quest-v2-identity")).toContainText("クエスト選択");
   await expect(page.locator(".quest-v2-metrics")).toContainText("所要時間");
   await expect(page.locator(".quest-v2-enemies")).toContainText("出現する敵");
+  await expect(page.locator(".quest-v2-enemies article > span").first()).toContainText(/^Lv /);
+  await expect(page.locator(".quest-v2-enemies article > span").first()).not.toContainText(/^(N|R|SR|SSR)$/);
   await expect(page.locator(".quest-v2-rewards").first()).toBeVisible();
   await expect(page.getByRole("button", { name: "新宿へ派遣する", exact: true })).toBeVisible();
   await expect(page.locator("[data-quest-state]" )).toHaveCount(0);
   await expectMobileGeometry(page, ".quest-v2-shell");
 
-  await page.locator(".quest-v2-character-grid button").first().click();
+  const hometownCharacter = page.locator('.quest-v2-character-grid button[aria-label*="地元一致ボーナス"]').first();
+  await expect(hometownCharacter).toBeVisible();
+  await hometownCharacter.click();
+  await expect(page.locator(".quest-v2-hometown-note")).toContainText("地元一致ボーナス対象");
   await page.getByRole("button", { name: "新宿へ派遣する", exact: true }).click();
   await expect(page.locator('[data-quest-state="PROGRESS"]')).toBeVisible();
   await expect(page.locator(".quest-v2-identity")).toHaveCount(0);
+  await page.getByRole("button", { name: "別のクエストへ派遣", exact: true }).click();
+  await expect(page.locator(".quest-v2-identity")).toBeVisible();
+  const deployed = page.locator(".quest-v2-character-grid button.deployed");
+  await expect(deployed).toHaveCount(1);
+  await expect(deployed.locator(".quest-v2-character-visual > b")).toHaveText("派遣中");
+  await deployed.click();
+  await expect(page.locator('[data-quest-state="PROGRESS"]')).toBeVisible();
+  await page.getByRole("button", { name: "別のクエストへ派遣", exact: true }).click();
+  await page.locator(".quest-v2-courses").getByRole("button", { name: /中級/ }).click();
+  await page.locator(".quest-v2-character-grid button:not(.deployed)").first().click();
+  await page.getByRole("button", { name: "新宿へ派遣する", exact: true }).click();
+  await expect(page.locator('[data-quest-state="PROGRESS"]')).toBeVisible();
+  await page.getByRole("button", { name: "別のクエストへ派遣", exact: true }).click();
+  await expect(page.locator(".quest-v2-character-grid button.deployed")).toHaveCount(2);
+  await page.locator(".quest-v2-character-grid button.deployed").first().click();
+  await expect(page.locator('[data-quest-state="PROGRESS"]')).toBeVisible();
   await page.getByRole("button", { name: "無料時短", exact: true }).click();
   await expect(page.locator('[data-quest-state="BATTLE_READY"], [data-quest-state="RESULT_READY"]')).toBeVisible();
 

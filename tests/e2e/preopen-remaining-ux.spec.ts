@@ -177,3 +177,22 @@ test("Mission and Present mutations retain canonical item receipts", async ({ pa
   await expect(presentReceipt).toContainText("カスタムオイル・中");
   await expectNoOverflow(page, ".canonical-dialog");
 });
+
+test("Present bulk claim locks its surface through the canonical receipt", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await enterGame(page);
+  await page.locator(".mypage-sub-icons-right .sub-icon-unit").filter({ hasText: "プレゼント" }).click();
+  const reward = page.locator(".inbox-present-reward").first();
+  await expect(reward.locator(".inbox-present-reward-icon")).toBeVisible();
+  await expect(reward).toContainText("× 2");
+  await expect(reward).not.toContainText("EQUIP_EXP_M");
+  const bulkClaim = page.getByRole("button", { name: "一括受け取り", exact: true });
+  await bulkClaim.click();
+  const receipt = page.getByRole("dialog", { name: "報酬獲得" });
+  await expect(receipt).toBeVisible();
+  await expect(page.locator(".inbox-panel-pending")).toHaveCount(1);
+  await expect(receipt).toContainText("カスタムオイル・中");
+  await expect(receipt.locator(".reward-receipt-mark")).toBeVisible();
+  await receipt.locator(".canonical-dialog-actions").getByRole("button", { name: "閉じる", exact: true }).click();
+  await expect(page.locator(".inbox-panel-pending")).toHaveCount(0);
+});

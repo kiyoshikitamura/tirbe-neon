@@ -264,9 +264,7 @@ export default function CommonModals() {
                 </div>
               ) : (
                 <div className="gacha-opening-status" role="status" aria-live="polite" aria-label="ガチャ抽選結果を同期中" data-gacha-short-effect>
-                  <span>TOKYO NIGHT</span>
-                  <strong>NEON LINK</strong>
-                  <small>抽選結果を同期中</small>
+                  <small>抽選中…</small>
                 </div>
               )}
               {scoutAnimationState === "READY" && isCharacterReveal && !tutorialPullStarted && (

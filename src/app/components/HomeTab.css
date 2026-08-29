@@ -583,12 +583,12 @@
   z-index: 15;
   padding: 7px 10px 6px;
   overflow: visible;
-  border: 1px solid rgba(255, 255, 255, .13);
+  border: 1px solid rgba(255, 255, 255, .065);
   border-radius: 28px;
-  background: linear-gradient(180deg, rgba(16, 21, 29, .58), rgba(2, 6, 11, .84));
-  box-shadow: 0 12px 28px rgba(0, 0, 0, .62), inset 0 1px 0 rgba(255, 255, 255, .07);
-  -webkit-backdrop-filter: blur(10px) saturate(.9);
-  backdrop-filter: blur(10px) saturate(.9);
+  background: linear-gradient(180deg, rgba(16, 21, 29, .27), rgba(2, 6, 11, .5));
+  box-shadow: 0 8px 18px rgba(0, 0, 0, .32), inset 0 1px 0 rgba(255, 255, 255, .025);
+  -webkit-backdrop-filter: blur(7px) saturate(.82);
+  backdrop-filter: blur(7px) saturate(.82);
 }
 
 /* Do not let generic layout utility classes distribute the banner over the
@@ -688,8 +688,9 @@
   overflow: visible;
 }
 
-.circle-menu-btn.upcoming .circle-menu-img { opacity:.68; filter:brightness(.58) saturate(.78); }
-.circle-menu-state-overlay { position:absolute;inset:4px;display:grid;place-items:center;border:1px solid rgba(242,201,95,.42);border-radius:50%;color:#fff0bd;background:rgba(3,4,7,.48);font-size:9px;font-weight:900;letter-spacing:.06em;text-shadow:0 2px 5px #000; }
+.circle-menu-btn.upcoming::after{position:absolute;z-index:1;inset:4px;content:"";pointer-events:none;border-radius:50%;background:rgba(2,3,7,.48)}
+.circle-menu-btn.upcoming .circle-menu-img { opacity:.76; filter:brightness(.62) saturate(.72); }
+.circle-menu-state-overlay { position:absolute;z-index:2;right:0;bottom:5px;padding:3px 5px;border:0;border-left:2px solid #f2c95f;border-radius:2px;color:#fff0bd;background:rgba(3,4,7,.9);font-size:7px;font-weight:900;line-height:1.15;letter-spacing:.04em;text-shadow:0 2px 5px #000; }
 
 .circle-menu-alert-badge {
   position: absolute;

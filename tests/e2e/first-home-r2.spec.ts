@@ -148,6 +148,14 @@ for (const viewport of viewports) {
     await expect(page.locator('[data-action-slot="conquest"] img')).toHaveAttribute("src", "/menu/home_main_quest.png");
     await expect(page.locator('[data-action-slot="war"] img')).toHaveAttribute("src", "/menu/home_main_guild_battle_gvg.png");
     await expect(page.getByRole("button", { name: "ギルドバトル / GvGは準備中です" })).toBeDisabled();
+    const deckStyle = await page.locator(".mypage-circle-menu-area").evaluate((node) => ({
+      background: getComputedStyle(node).backgroundImage,
+      borderAlpha: getComputedStyle(node).borderColor,
+    }));
+    expect(deckStyle.background).toContain("0.27");
+    expect(Number(deckStyle.borderAlpha.match(/[\d.]+(?=\))/)?.[0] || 1)).toBeLessThanOrEqual(.08);
+    const comingSoon = page.locator(".circle-menu-state-overlay");
+    await expect(comingSoon).toHaveCSS("border-radius", "2px");
 
     const geometry = await page.evaluate(() => {
       const box = (selector: string) => document.querySelector<HTMLElement>(selector)!.getBoundingClientRect();

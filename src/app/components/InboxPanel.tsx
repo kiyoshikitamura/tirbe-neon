@@ -8,6 +8,12 @@ import CanonicalItemIcon from "./ui/CanonicalItemIcon";
 import { canonicalItemName } from "@/domain/gameplay/canonical/items";
 import "./InboxPanel.css";
 
+function PresentRewardIcon({ itemId }: { itemId: string }) {
+  if (itemId === "CASH") return <img src="/ui/icon_cash.png" alt="" className="inbox-present-reward-icon" />;
+  if (itemId === "DIA" || itemId === "DIAMOND") return <img src="/ui/icon_dia.png" alt="" className="inbox-present-reward-icon" />;
+  return <CanonicalItemIcon itemId={itemId} alt="" className="inbox-present-reward-icon" />;
+}
+
 export default function InboxPanel() {
   const {
     showInboxPanel,
@@ -27,6 +33,7 @@ export default function InboxPanel() {
   if (!showInboxPanel) return null;
 
   const handleClose = () => {
+    if (presentClaimLoading) return;
     setShowInboxPanel(false);
   };
 
@@ -77,7 +84,7 @@ export default function InboxPanel() {
             <div key={p.id} className="inbox-present-item">
               <div className="inbox-present-info">
                 <div className="inbox-present-title">{p.title || p.message}</div>
-                <div className="inbox-present-reward"><CanonicalItemIcon itemId={String(p.item_id || "")} alt="" className="inbox-present-reward-icon" /><span>{p.item_id ? canonicalItemName(String(p.item_id)) : p.reward} ×{Number(p.quantity || 0).toLocaleString()}</span></div>
+                <div className="inbox-present-reward">{(() => { const itemId = String(p.itemId || p.item_id || ""); const quantity = Number(p.qty ?? p.quantity ?? 0); return <><PresentRewardIcon itemId={itemId} /><span>{canonicalItemName(itemId)} <strong>× {quantity.toLocaleString()}</strong></span></>; })()}</div>
                 <div className="inbox-present-expire">{p.expireText || "期限なし"}</div>
               </div>
               <OutlawButton
@@ -98,15 +105,15 @@ export default function InboxPanel() {
 
   return (
     <>
-      <FullScreenPanel title="受信箱" onClose={handleClose}>
-        <div className="inbox-panel-container-inner">
+      <FullScreenPanel title="受信箱" onClose={handleClose} className={presentClaimLoading ? "inbox-panel-pending" : ""}>
+        <div className="inbox-panel-container-inner" aria-busy={presentClaimLoading}>
           <SubTabNav
             tabs={[
               { id: "news", label: "お知らせ" },
               { id: "presents", label: "プレゼント" }
             ]}
             activeTabId={inboxPanelTab}
-            onSelect={(id) => setInboxPanelTab(id as any)}
+            onSelect={(id) => { if (!presentClaimLoading) setInboxPanelTab(id as any); }}
             className="mb-3"
           />
 

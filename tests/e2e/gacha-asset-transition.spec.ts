@@ -17,9 +17,35 @@ const completeCommonOpening = async (page: Page) => {
   const gate = page.locator("[data-gacha-logo-gate]");
   await expect(gate).toBeVisible();
   await expect(gate.locator('img[src="/branding/tribe-neon-logo.png"]')).toBeVisible();
+  await expect(gate).toContainText("TAP!");
+  const promptFont = await gate.locator("span").evaluate((node) => getComputedStyle(node).fontFamily);
+  expect(promptFont).toContain("Rajdhani");
   await gate.click();
   await expect(page.locator('[data-gacha-transition-state="show_results"]')).toBeVisible();
 };
+
+test("opening neon grammar and bottom-right SKIP remain safe at iPhone 14 geometry", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await openTransitionFixture(page, { delay: 500 });
+  await page.locator('[data-gacha-category="CHARACTER"]').click();
+  await page.getByRole("button", { name: "10回 10,000キャッシュ" }).click();
+  const opening = page.locator("[data-gacha-common-opening]");
+  await expect(opening).toBeVisible();
+  await expect(opening).not.toContainText("NEON LINK");
+  await expect(opening).not.toContainText("TOKYO NIGHT");
+  await expect(page.locator(".gacha-opening-neon")).toHaveCSS("mix-blend-mode", "screen");
+  const skip = page.locator(".gacha-opening-skip");
+  await expect(page.locator("[data-gacha-logo-gate]")).toBeVisible();
+  await expect(skip).toBeVisible();
+  const geometry = await page.evaluate(() => {
+    const skipRect = document.querySelector<HTMLElement>(".gacha-opening-skip")!.getBoundingClientRect();
+    return { right: skipRect.right, bottom: skipRect.bottom, width: innerWidth, height: innerHeight, scrollWidth: document.documentElement.scrollWidth };
+  });
+  expect(geometry.right).toBeLessThanOrEqual(geometry.width);
+  expect(geometry.bottom).toBeLessThanOrEqual(geometry.height);
+  expect(geometry.bottom).toBeGreaterThan(geometry.height - 100);
+  expect(geometry.scrollWidth).toBeLessThanOrEqual(geometry.width);
+});
 
 const readFirstPaintedProcessingSurface = (page: Page) => page.evaluate(() => new Promise<Record<string, unknown>>((resolve) => {
   requestAnimationFrame(() => requestAnimationFrame(() => {

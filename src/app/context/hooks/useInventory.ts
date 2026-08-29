@@ -182,6 +182,7 @@ export function useInventory(
     if (unclaimed.length === 0) return;
 
     if (!beginPresentClaim()) return;
+    let receiptOwnsLock = false;
     setPresents(prev => prev.map(p => p.status === "UNCLAIMED" ? { ...p, loading: true } : p));
     playCyberSe("gacha");
 
@@ -207,13 +208,18 @@ export function useInventory(
         const itemId = String(present.itemId || present.item_id || "");
         rewardByItem.set(itemId, (rewardByItem.get(itemId) || 0) + Number(present.qty || present.quantity || 0));
       });
-      setConfirmDialogConfig({ isOpen: true, title: "報酬獲得", message: "プレゼントを一括で受け取りました。", kind: "reward", rewards: Array.from(rewardByItem, ([id, quantity]) => ({ id, name: canonicalItemName(id), quantity })), confirmText: "閉じる", cancelText: "", presentation: "canonical", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
+      const closeReceipt = () => {
+        setConfirmDialogConfig(null);
+        endPresentClaim();
+      };
+      receiptOwnsLock = true;
+      setConfirmDialogConfig({ isOpen: true, title: "報酬獲得", message: "プレゼントを一括で受け取りました。", kind: "reward", rewards: Array.from(rewardByItem, ([id, quantity]) => ({ id, name: canonicalItemName(id), quantity })), confirmText: "閉じる", cancelText: "", presentation: "canonical", onConfirm: closeReceipt, onCancel: closeReceipt });
     } catch (err: any) {
       console.warn(err.message);
       setPresents(prev => prev.map(p => ({ ...p, loading: false })));
       showActionError("一括受け取りに失敗しました", err);
     } finally {
-      endPresentClaim();
+      if (!receiptOwnsLock) endPresentClaim();
     }
   };
 
