@@ -1,0 +1,120 @@
+import { expect, test } from "@playwright/test";
+
+test.setTimeout(120_000);
+
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => {
+    const userId = "00000000-0000-4000-8000-000000000829";
+    const now = new Date().toISOString();
+    localStorage.setItem("tribe_demo_uuid", userId);
+    localStorage.setItem("mock_auth_mode", "EMAIL");
+    localStorage.setItem("mock_db_users", JSON.stringify([{ id: userId, username: "Presentation QA", current_base_id: "shinjuku", favorite_character_id: "char_reiji_01", level: 10, cash: 50000, vitality: 100 }]));
+    localStorage.setItem("mock_db_user_characters", JSON.stringify([
+      { id: "character-owned-1", user_id: userId, character_id: "char_reiji_01", level: 12, awakening_level: 3, created_at: now },
+      { id: "character-owned-2", user_id: userId, character_id: "char_rui_01", level: 10, awakening_level: 1, created_at: now },
+      { id: "character-owned-3", user_id: userId, character_id: "char_chang_01", level: 9, awakening_level: 0, created_at: now },
+    ]));
+    localStorage.setItem("mock_db_user_main_formations", JSON.stringify([
+      { user_id: userId, slot: 1, user_character_id: "character-owned-1" },
+      { user_id: userId, slot: 2, user_character_id: "character-owned-2" },
+      { user_id: userId, slot: 3, user_character_id: "character-owned-3" },
+    ]));
+    localStorage.setItem("mock_db_user_skills", JSON.stringify([
+      { id: "skill-owned-1", user_id: userId, skill_card_id: "SKILL_001", level: 4, plus_val: 3, equipped_character_id: "character-owned-1", slot_index: 0 },
+      { id: "skill-owned-2", user_id: userId, skill_card_id: "SKILL_005", level: 2, plus_val: 1, equipped_character_id: null, slot_index: null },
+    ]));
+    localStorage.setItem("mock_db_skill_battle_master", JSON.stringify([
+      { skill_id: "SKILL_001", display_name: "ストリートパンチ", enabled: true, kind: "ATTACK", target: "ENEMY_SINGLE", cooldown: 2 },
+      { skill_id: "SKILL_005", display_name: "毒針", enabled: true, kind: "ATTACK", target: "ENEMY_SINGLE", cooldown: 2 },
+    ]));
+    localStorage.setItem("mock_db_user_equipments", JSON.stringify([
+      { id: "equipment-owned-1", user_id: userId, equipment_id: "WEAPON_001", level: 8, plus_val: 2, equipped_character_id: "character-owned-1", slot_index: 0, created_at: now },
+      { id: "equipment-owned-2", user_id: userId, equipment_id: "BODY_001", level: 4, plus_val: 0, equipped_character_id: null, slot_index: null, created_at: now },
+    ]));
+    localStorage.setItem("mock_db_user_items", JSON.stringify([
+      { id: "item-char-s", user_id: userId, item_id: "CHAR_EXP_S", quantity: 10 },
+      { id: "item-char-m", user_id: userId, item_id: "CHAR_EXP_M", quantity: 5 },
+      { id: "item-char-l", user_id: userId, item_id: "CHAR_EXP_L", quantity: 2 },
+      { id: "item-awaken", user_id: userId, item_id: "AWAKENING_BOOK", quantity: 1 },
+      { id: "item-equip-s", user_id: userId, item_id: "EQUIP_EXP_S", quantity: 5 },
+    ]));
+    localStorage.setItem("mock_db_quests", JSON.stringify([{ id: "q_shinjuku_1", name: "歌舞伎町 夜間見回り", town_id: "shinjuku", level_type: "EASY", duration_seconds: 900, cost_vitality: 5, cash_reward: 300, exp_reward: 100 }]));
+  });
+});
+
+async function enterGame(page: import("@playwright/test").Page) {
+  await page.goto("/");
+  await page.getByRole("button", { name: /TAP TO START|続きから/ }).click();
+  await expect(page.locator(".header-mobile")).toBeVisible();
+}
+
+async function expectMobileGeometry(page: import("@playwright/test").Page, selector: string) {
+  const geometry = await page.locator(selector).evaluate((node) => ({
+    scrollWidth: node.scrollWidth,
+    clientWidth: node.clientWidth,
+    left: node.getBoundingClientRect().left,
+    right: node.getBoundingClientRect().right,
+    viewport: window.innerWidth,
+  }));
+  expect(geometry.scrollWidth).toBeLessThanOrEqual(geometry.clientWidth + 1);
+  expect(geometry.left).toBeGreaterThanOrEqual(-1);
+  expect(geometry.right).toBeLessThanOrEqual(geometry.viewport + 1);
+}
+
+test("Character, Party, Growth, Skill and Equipment follow the fixed mobile hierarchy", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await enterGame(page);
+  await page.locator('.footer-item[aria-label="キャラ"]').click();
+  await expect(page.locator(".character-v2-shell")).toBeVisible();
+  await expect(page.locator(".character-v2-character-grid .character-v2-card")).toHaveCount(3);
+  await expectMobileGeometry(page, ".character-v2-shell");
+
+  await page.locator(".character-v2-character-grid .character-v2-card").first().click();
+  for (const label of ["HP", "ATK", "DEF", "SPD", "LUK"]) await expect(page.locator(".character-v2-stats")).toContainText(label);
+  await expect(page.getByText("装備中Skill", { exact: true })).toBeVisible();
+  await expect(page.getByText("装備中Equipment", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "強化", exact: true }).click();
+  await expect(page.getByText("強化ドリンク・小", { exact: true })).toBeVisible();
+  await expect(page.getByText("強化ドリンク・中", { exact: true })).toBeVisible();
+  await expect(page.getByText("強化ドリンク・大", { exact: true })).toBeVisible();
+  await expect(page.getByText("覚醒の書", { exact: true })).toBeVisible();
+  await expect(page.getByText("同一Character Duplicate取得時は自動覚醒します。", { exact: true })).toBeVisible();
+
+  await page.locator(".character-v2-main-nav").getByRole("button", { name: "パーティ", exact: true }).click();
+  await expect(page.locator(".character-v2-party-slots > *")).toHaveCount(5);
+  await expect(page.getByRole("button", { name: "おまかせ編成", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "おまかせ装備", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "パーティ保存", exact: true })).toBeVisible();
+
+  await page.locator(".character-v2-main-nav").getByRole("button", { name: "スキル", exact: true }).click();
+  await expect(page.locator(".character-v2-asset-grid .character-v2-asset-card")).toHaveCount(2);
+  await page.locator(".character-v2-asset-grid .character-v2-asset-card").first().click();
+  await expect(page.locator(".character-v2-mini-detail")).toBeVisible();
+  await page.locator(".canonical-dialog-close").click();
+
+  await page.locator(".character-v2-main-nav").getByRole("button", { name: "装備", exact: true }).click();
+  await expect(page.locator(".character-v2-asset-grid .character-v2-asset-card")).toHaveCount(2);
+  await expectMobileGeometry(page, ".character-v2-shell");
+
+  await page.setViewportSize({ width: 412, height: 915 });
+  await expectMobileGeometry(page, ".character-v2-shell");
+  await page.screenshot({ path: test.info().outputPath("character-system-412.png"), fullPage: true });
+});
+
+test("Normal Quest uses the tutorial-passed identity, enemy, reward and progress grammar", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await enterGame(page);
+  await page.locator('.footer-item[aria-label="クエスト"]').click();
+  await expect(page.locator(".quest-v2-shell")).toBeVisible();
+  await expect(page.locator(".quest-v2-identity")).toContainText("クエスト選択");
+  await expect(page.locator(".quest-v2-metrics")).toContainText("所要時間");
+  await expect(page.locator(".quest-v2-enemies")).toContainText("出現する敵");
+  await expect(page.locator(".tutorial-wire-rewards").first()).toBeVisible();
+  await expect(page.getByRole("button", { name: "新宿へ派遣する", exact: true })).toBeVisible();
+  await expect(page.getByText("進行中クエスト", { exact: true })).toBeVisible();
+  await expectMobileGeometry(page, ".quest-v2-shell");
+
+  await page.setViewportSize({ width: 412, height: 915 });
+  await expectMobileGeometry(page, ".quest-v2-shell");
+  await page.screenshot({ path: test.info().outputPath("quest-parity-412.png"), fullPage: true });
+});

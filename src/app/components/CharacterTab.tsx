@@ -25,6 +25,7 @@ import CanonicalItemIcon from "./ui/CanonicalItemIcon";
 import { ChoiceGroup } from "./ui/EditableSettingSection";
 import CanonicalDialog from "./ui/CanonicalDialog";
 import { SkillDetailDialog, SkillIcon } from "./skill/SkillPresentation";
+import CharacterSystemV2 from "./character/CharacterSystemV2";
 import "./CharacterTab.css";
 
 const SKILL_EFFECT_LABELS: Record<string, string> = {
@@ -330,6 +331,7 @@ export default function CharacterTab() {
 
   const leftSlots = GEAR_SLOTS_MASTER.slice(0, 3);
   const rightSlots = GEAR_SLOTS_MASTER.slice(3, 7);
+  if (!isTutorialStep) return <CharacterSystemV2 />;
   if (!activeCharRecord || !activeCharMaster) {
     return <div className="char-tab-container char-data-unavailable" role="status">キャラクターデータを確認しています。</div>;
   }

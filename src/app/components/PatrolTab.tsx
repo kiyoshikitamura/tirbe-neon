@@ -19,6 +19,7 @@ import { useScreenReadiness } from "../hooks/useScreenReadiness";
 import { SCREEN_ASSET_MANIFESTS } from "../lib/screenManifests";
 import "./PatrolTab.css";
 import { traceTutorialJourney } from "@/utils/tutorialJourneyTrace";
+import QuestPresentationV2 from "./quest/QuestPresentationV2";
 
 export default function PatrolTab() {
   const {
@@ -464,6 +465,9 @@ export default function PatrolTab() {
     );
   }
 
+  return <QuestPresentationV2 />;
+
+  /* Legacy normal Quest presentation is intentionally unreachable. */
   return (
     <HubPage
       className="patrol-container"

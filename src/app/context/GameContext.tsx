@@ -3723,6 +3723,33 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     return true;
   };
 
+  const handleSetPartyLeader = async (charId: string) => {
+    if (!selectedMembers.includes(charId)) {
+      setErrorMessage("パーティに編成中のキャラクターを選択してください。");
+      return false;
+    }
+    const nextParty = [charId, ...selectedMembers.filter((id) => id !== charId)];
+    const saveError = await persistPartyFormation(nextParty);
+    if (saveError) {
+      console.warn("Failed to update party leader:", saveError);
+      setErrorMessage("パーティリーダーの変更に失敗しました。");
+      return false;
+    }
+    setSelectedMembers(nextParty);
+    setUpgradeSelectedCharId(charId);
+    return true;
+  };
+
+  const handleSaveParty = async () => {
+    const saveError = await persistPartyFormation(selectedMembers.slice(0, 5));
+    if (saveError) {
+      console.warn("Failed to save party:", saveError);
+      setErrorMessage("パーティの保存に失敗しました。");
+      return false;
+    }
+    return true;
+  };
+
   const handleAutoFormation = async ({ navigateAfter = true, presentationDelayMs = 0, onPreviewReady, waitForTutorialContinue }: { navigateAfter?: boolean; presentationDelayMs?: number; onPreviewReady?: () => void; waitForTutorialContinue?: (result: any) => Promise<void> } = {}) => {
     const actionPerformance = beginActionPerformance("formation_save");
     let committedParty = [...userCharactersDbList]
@@ -4214,6 +4241,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     selectUpgradeEquipment,
     togglePatrolMemberSelection,
     handleTogglePartyMember,
+    handleSetPartyLeader,
+    handleSaveParty,
     handleAutoFormation,
     navigateTab,
     getGuildPenaltyState,

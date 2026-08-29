@@ -59,9 +59,9 @@ test("normal Quest becomes claimable without reload after natural expiry", async
 
   await page.locator(".circle-menu-btn.conquest").click();
   await expect(page.locator(".patrol-container")).toBeVisible();
-  await expect(page.getByText(/残り \d+秒/)).toBeVisible();
-  await expect(page.getByRole("button", { name: "戦闘開始" })).toBeVisible({ timeout: 20_000 });
-  await expect(page.getByText("帰還完了")).toBeVisible();
+  await expect(page.getByText(/残り時間 00:\d{2}/)).toBeVisible();
+  await expect(page.getByRole("button", { name: "バトルへ" })).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByText("クエスト完了")).toBeVisible();
 
   const geometry = await page.locator(".patrol-container").evaluate((node) => ({
     scrollWidth: node.scrollWidth,
