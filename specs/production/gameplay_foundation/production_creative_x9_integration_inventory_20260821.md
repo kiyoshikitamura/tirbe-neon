@@ -80,11 +80,11 @@ No file has been created at these paths.
 | Creative slot | Expected repository path | Current asset | Runtime reference | Replacement/connection method | UI component | CTA/destination | Human acceptance |
 |---|---|---|---|---|---|---|---|
 | SP Character | `/promotion/gacha_sp_character.png` | Text-only | `CHAR_SPECIAL` | Minimal shared image slot + static category mapping | `GachaTab.tsx` | Existing Character SP pull controls; image itself non-CTA | Required |
-| SP Skill | `/promotion/gacha_sp_skill.png` | Text-only | `SKILL_SPECIAL` | Same | `GachaTab.tsx` | Existing Skill SP pull controls; image itself non-CTA | Required |
-| SP Equipment | `/promotion/gacha_sp_equipment.png` | Text-only | `EQUIP_SPECIAL` | Same | `GachaTab.tsx` | Existing Equipment SP pull controls; image itself non-CTA | Required |
+| SP Skill | `/promotion/gacha_sp_skill.jpg` | Text-only | `SKILL_SPECIAL` | Same | `GachaTab.tsx` | Existing Skill SP pull controls; image itself non-CTA | Required |
+| SP Equipment | `/promotion/gacha_sp_equipment.jpg` | Text-only | `EQUIP_SPECIAL` | Same | `GachaTab.tsx` | Existing Equipment SP pull controls; image itself non-CTA | Required |
 | Normal Character | `/promotion/gacha_normal_character.png` | Shared `/gacha/bg_gacha_normal.png` | `CHAR_NORMAL` | Category-specific static mapping into existing Normal visual zone | `GachaTab.tsx` | Existing Character Normal pull controls; image itself non-CTA | Required |
-| Normal Skill | `/promotion/gacha_normal_skill.png` | Shared `/gacha/bg_gacha_normal.png` | `SKILL_NORMAL` | Same | `GachaTab.tsx` | Existing Skill Normal pull controls; image itself non-CTA | Required |
-| Normal Equipment | `/promotion/gacha_normal_equipment.png` | Shared `/gacha/bg_gacha_normal.png` | `EQUIP_NORMAL` | Same | `GachaTab.tsx` | Existing Equipment Normal pull controls; image itself non-CTA | Required |
+| Normal Skill | `/promotion/gacha_normal_skill.jpg` | Shared `/gacha/bg_gacha_normal.png` | `SKILL_NORMAL` | Same | `GachaTab.tsx` | Existing Skill Normal pull controls; image itself non-CTA | Required |
+| Normal Equipment | `/promotion/gacha_normal_equipment.jpg` | Shared `/gacha/bg_gacha_normal.png` | `EQUIP_NORMAL` | Same | `GachaTab.tsx` | Existing Equipment Normal pull controls; image itself non-CTA | Required |
 | My Page 01 | `/promotion/mypage_banner_01.png` | `pickup_ssr_go` fallback/master | Carousel index 0 | Replace via approved three-entry static/config manifest | `HomeTab.tsx` | Await Creative delivery manifest | Required |
 | My Page 02 | `/promotion/mypage_banner_02.png` | `raid_raijin` fallback/master | Carousel index 1 | Same | `HomeTab.tsx` | Await Creative delivery manifest | Required |
 | My Page 03 | `/promotion/mypage_banner_03.png` | None | None | Add third item to the same manifest/array | `HomeTab.tsx` | Await Creative delivery manifest | Required |

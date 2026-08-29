@@ -47,7 +47,7 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 412, height: 915 }
             borderBottom: Number.parseFloat(containerStyle.borderBottomWidth),
           };
         });
-        expect(bannerGeometry.naturalRatio).toBe(4);
+        expect(bannerGeometry.naturalRatio).toBe(2);
         expect(bannerGeometry.renderedRatio).toBeCloseTo(bannerGeometry.naturalRatio, 2);
         expect(bannerGeometry.objectFit).toBe("contain");
         expect(bannerGeometry.width).toBeLessThanOrEqual(bannerGeometry.containerWidth);

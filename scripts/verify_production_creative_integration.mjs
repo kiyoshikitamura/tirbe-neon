@@ -8,11 +8,11 @@ import {
 
 const expectedGachaPaths = {
   CHAR_SPECIAL: "/promotion/gacha_sp_character.png",
-  SKILL_SPECIAL: "/promotion/gacha_sp_skill.png",
-  EQUIP_SPECIAL: "/promotion/gacha_sp_equipment.png",
+  SKILL_SPECIAL: "/promotion/gacha_sp_skill.jpg",
+  EQUIP_SPECIAL: "/promotion/gacha_sp_equipment.jpg",
   CHAR_NORMAL: "/promotion/gacha_normal_character.png",
-  SKILL_NORMAL: "/promotion/gacha_normal_skill.png",
-  EQUIP_NORMAL: "/promotion/gacha_normal_equipment.png"
+  SKILL_NORMAL: "/promotion/gacha_normal_skill.jpg",
+  EQUIP_NORMAL: "/promotion/gacha_normal_equipment.jpg"
 };
 const expectedMyPagePaths = [1, 2, 3].map((order) => `/promotion/mypage_banner_0${order}.png`);
 
@@ -26,7 +26,7 @@ for (const [gachaId, expectedPath] of Object.entries(expectedGachaPaths)) {
   const slot = PRODUCTION_CREATIVE_BY_GACHA_ID[gachaId];
   const creative = PRODUCTION_CREATIVES.find((candidate) => candidate.slot === slot);
   assert.equal(creative?.assetPath, expectedPath, `${gachaId} path mismatch`);
-  assert.deepEqual([creative?.width, creative?.height], [1200, 300], `${gachaId} dimensions mismatch`);
+  assert.deepEqual([creative?.width, creative?.height], [1280, 640], `${gachaId} dimensions mismatch`);
   assert.equal(resolveAvailableGachaCreative(gachaId)?.assetPath, expectedPath, `${gachaId} must resolve its approved banner`);
 }
 

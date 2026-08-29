@@ -1,7 +1,7 @@
 # Production Creative x9 Integration Contract
 
 Date: 2026-08-21
-Status: **INTEGRATION CONTRACT FROZEN / ASSETS DEFERRED TO FINAL DEVICE ACCEPTANCE**
+Status: **INTEGRATION CONTRACT FROZEN / GACHA REPLACEMENT ASSETS DELIVERED 2026-08-29**
 
 ## Authority and scope
 
@@ -13,17 +13,17 @@ No image was generated, inferred, copied, renamed, or adopted. Existing `public/
 
 | Slot | Canonical path | Dimensions | Ratio | Availability |
 |---|---|---:|---:|---|
-| SP Character / `CHAR_SPECIAL` | `/promotion/gacha_sp_character.png` | 1200x300 | 4:1 | Pending |
-| SP Skill / `SKILL_SPECIAL` | `/promotion/gacha_sp_skill.png` | 1200x300 | 4:1 | Pending |
-| SP Equipment / `EQUIP_SPECIAL` | `/promotion/gacha_sp_equipment.png` | 1200x300 | 4:1 | Pending |
-| Normal Character / `CHAR_NORMAL` | `/promotion/gacha_normal_character.png` | 1200x300 | 4:1 | Pending |
-| Normal Skill / `SKILL_NORMAL` | `/promotion/gacha_normal_skill.png` | 1200x300 | 4:1 | Pending |
-| Normal Equipment / `EQUIP_NORMAL` | `/promotion/gacha_normal_equipment.png` | 1200x300 | 4:1 | Pending |
+| SP Character / `CHAR_SPECIAL` | `/promotion/gacha_sp_character.png` | 1280x640 | 2:1 | Delivered (RGBA) |
+| SP Skill / `SKILL_SPECIAL` | `/promotion/gacha_sp_skill.jpg` | 1280x640 | 2:1 | Delivered |
+| SP Equipment / `EQUIP_SPECIAL` | `/promotion/gacha_sp_equipment.jpg` | 1280x640 | 2:1 | Delivered |
+| Normal Character / `CHAR_NORMAL` | `/promotion/gacha_normal_character.png` | 1280x640 | 2:1 | Delivered (RGBA) |
+| Normal Skill / `SKILL_NORMAL` | `/promotion/gacha_normal_skill.jpg` | 1280x640 | 2:1 | Delivered |
+| Normal Equipment / `EQUIP_NORMAL` | `/promotion/gacha_normal_equipment.jpg` | 1280x640 | 2:1 | Delivered |
 | My Page 01 | `/promotion/mypage_banner_01.png` | 1200x200 | 6:1 | Pending |
 | My Page 02 | `/promotion/mypage_banner_02.png` | 1200x200 | 6:1 | Pending |
 | My Page 03 | `/promotion/mypage_banner_03.png` | 1200x200 | 6:1 | Pending |
 
-All files are PNG/RGB and require no alpha. Gacha targets <=500KB (practical max 750KB); My Page targets <=300KB (practical max 500KB). Critical Creative content stays in the central 80% horizontal and 70% vertical safe area. Runtime rendering uses `width: 100%`, `object-fit: cover`, and centered positioning.
+Gacha replacement files preserve their delivered 1280x640 canvas. Character banners use PNG/RGBA so the supplied white canvas bands can be transparent without cutting the figures; Skill and Equipment retain the supplied JPEG bytes. Runtime rendering uses intrinsic dimensions with `width: 100%`, `height: auto`, and `object-fit: contain`.
 
 ## Availability and fallback
 
