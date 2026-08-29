@@ -143,51 +143,64 @@ export function useUserProfile(
     const safeTitle = overrides.title ?? titleEquipped;
     const safeForeground = overrides.foreground ?? equippedFrontEffect;
     const safeInterior = overrides.interior ?? interiorItem;
+    const updatesProfile = ["username", "bio", "title"].some((key) => Object.prototype.hasOwnProperty.call(overrides, key));
+    const updatesHome = ["background", "foreground", "interior"].some((key) => Object.prototype.hasOwnProperty.call(overrides, key));
 
     if (safeBg === "bg_kabukicho" && userLevel < 5) safeBg = "auto";
     if (safeBg === "bg_wharf" && !userGuild) safeBg = "auto";
     if (safeBg === "bg_bazar" && cash < 20000) safeBg = "auto";
 
     try {
-      const { error: titleError } = await supabase.rpc("equip_owned_title", { p_title_id: safeTitle });
-      if (titleError) throw titleError;
-      const { error } = await supabase
-        .from("users")
-        .update({
-          username: nextUsername,
-          bio: nextBio,
-          avatar_url: avatarUrl,
-          current_base_id: currentBaseId,
-          favorite_character_id: selectedLeader,
-          equipped_background: safeBg === "auto" ? equippedBackground : safeBg,
-          equipped_front_effect: safeForeground,
-          selected_bg_mode: safeBg,
-          interior_item: safeInterior
-        })
-        .eq("id", session.user.id);
-      
-      if (error) {
-        if (error.code === "23505") {
-          setErrorMessage("このユーザー名は既に他のプレイヤーが登録しています。");
-          setProfileLoading(false);
-          return false;
-        }
-        throw error;
+      if (updatesProfile && safeTitle !== titleEquipped) {
+        const { error: titleError } = await supabase.rpc("equip_owned_title", { p_title_id: safeTitle });
+        if (titleError) throw titleError;
       }
 
-      await syncSharedHomeCosmetics({
-        background: safeBg,
-        foreground: safeForeground,
-        interior: safeInterior
-      });
+      if (updatesProfile) {
+        const { error } = await supabase
+          .from("users")
+          .update({ username: nextUsername, bio: nextBio })
+          .eq("id", session.user.id);
 
-      setUsername(nextUsername);
-      setBio(nextBio);
-      setSelectedBgMode(safeBg);
-      if (safeBg !== "auto") setEquippedBackground(safeBg);
-      setEquippedFrontEffect(safeForeground);
-      setTitleEquipped(safeTitle);
-      setInteriorItem(safeInterior);
+        if (error) {
+          if (error.code === "23505") {
+            setErrorMessage("このユーザー名は既に他のプレイヤーが登録しています。");
+            return false;
+          }
+          throw error;
+        }
+      }
+
+      if (updatesHome) {
+        const { error } = await supabase
+          .from("users")
+          .update({
+            equipped_background: safeBg === "auto" ? equippedBackground : safeBg,
+            equipped_front_effect: safeForeground,
+            selected_bg_mode: safeBg,
+            interior_item: safeInterior
+          })
+          .eq("id", session.user.id);
+        if (error) throw error;
+
+        await syncSharedHomeCosmetics({
+          background: safeBg,
+          foreground: safeForeground,
+          interior: safeInterior
+        });
+      }
+
+      if (updatesProfile) {
+        setUsername(nextUsername);
+        setBio(nextBio);
+        setTitleEquipped(safeTitle);
+      }
+      if (updatesHome) {
+        setSelectedBgMode(safeBg);
+        if (safeBg !== "auto") setEquippedBackground(safeBg);
+        setEquippedFrontEffect(safeForeground);
+        setInteriorItem(safeInterior);
+      }
       await syncBootstrapData(session.user.id);
       setConfirmDialogConfig({ isOpen: true, title: "保存完了", message: "設定を保存しました。", confirmText: "OK", cancelText: "", presentation: "canonical", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
       return true;
