@@ -23,13 +23,12 @@
   position: relative;
   flex: 0 0 auto;
   width: 100%;
-  aspect-ratio: 4 / 1;
   overflow: hidden;
   border: 1px solid rgba(255,255,255,.13);
   border-radius: var(--ui-radius-md);
   background: #05080d;
 }
-.gacha-product-banner img { object-fit: cover; }
+.gacha-product-banner img { display:block; width:100%; height:auto; max-width:100%; object-fit:contain; }
 .gacha-banner-fallback { display:grid; height:100%; place-items:center; color:var(--ui-text-secondary); font-size:13px; font-weight:900; }
 
 .tutorial-gacha-page {

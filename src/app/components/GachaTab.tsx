@@ -76,8 +76,8 @@ export default function GachaTab() {
   return (
     <fieldset className="view-container relative gacha-view-root gacha-action-fieldset" disabled={pending} aria-busy={pending}>
       <div className="gacha-scroll-shell">
-        <section className="gacha-product-banner" aria-label={`${meta.label}${activeSurface === "NORMAL" ? "ノーマル" : "スペシャル"}ガチャ`}>
-          {creative ? <Image src={creative.assetPath} alt="" fill priority sizes="(max-width: 430px) 100vw, 430px" /> : <div className="gacha-banner-fallback">{meta.label}ガチャ</div>}
+        <section className="gacha-product-banner" style={{ aspectRatio: creative ? `${creative.width} / ${creative.height}` : "4 / 1" }} aria-label={`${meta.label}${activeSurface === "NORMAL" ? "ノーマル" : "スペシャル"}ガチャ`}>
+          {creative ? <Image src={creative.assetPath} alt="" width={creative.width} height={creative.height} unoptimized priority sizes="(max-width: 430px) 100vw, 430px" /> : <div className="gacha-banner-fallback">{meta.label}ガチャ</div>}
         </section>
 
         <nav className="gacha-category-tabs" aria-label="ガチャカテゴリ">
