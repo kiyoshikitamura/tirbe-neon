@@ -617,17 +617,18 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         return false;
       }
       const favoriteCharacterId = data?.favorite_character_id;
-      setIdentityLeaderOwnerUserId(userId);
-      setIdentityLeaderCharacterId(
+      const canonicalFavoriteCharacterId =
         favoriteCharacterId && CHARACTERS_MASTER.some((character) => character.id === favoriteCharacterId)
           ? favoriteCharacterId
-          : ""
-      );
+          : "";
+      setIdentityLeaderOwnerUserId(userId);
+      setIdentityLeaderCharacterId(canonicalFavoriteCharacterId);
+      setSelectedLeader(canonicalFavoriteCharacterId);
       setIdentityLeaderAuthorityReady(true);
       return true;
     }
     return false;
-  }, [session?.user?.id]);
+  }, [session?.user?.id, setSelectedLeader]);
 
   const refreshDailyFreeGachaAuthority = useCallback(async (explicitUserId?: string) => {
     const userId = explicitUserId || session?.user?.id;
@@ -3727,6 +3728,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   };
 
   const handleSetPartyLeader = async (charId: string) => {
+    if (!session?.user?.id) return false;
     if (!selectedMembers.includes(charId)) {
       setErrorMessage("パーティに編成中のキャラクターを選択してください。");
       return false;
@@ -3736,6 +3738,20 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     if (saveError) {
       console.warn("Failed to update party leader:", saveError);
       setErrorMessage("パーティリーダーの変更に失敗しました。");
+      return false;
+    }
+    const { error: identityLeaderError } = await supabase
+      .from("users")
+      .update({ favorite_character_id: charId })
+      .eq("id", session.user.id);
+    if (identityLeaderError) {
+      console.warn("Failed to update identity leader:", identityLeaderError);
+      setErrorMessage("リーダーの変更に失敗しました。");
+      return false;
+    }
+    const identityRefreshed = await refreshIdentityLeaderAuthority(session.user.id);
+    if (!identityRefreshed) {
+      setErrorMessage("リーダーの最新状態を確認できませんでした。");
       return false;
     }
     setSelectedMembers(nextParty);

@@ -8,7 +8,9 @@ test.beforeEach(async ({ page }) => {
     const now = new Date().toISOString();
     localStorage.setItem("tribe_demo_uuid", userId);
     localStorage.setItem("mock_auth_mode", "EMAIL");
-    localStorage.setItem("mock_db_users", JSON.stringify([{ id: userId, username: "Presentation QA", current_base_id: "shinjuku", favorite_character_id: "char_reiji_01", level: 10, cash: 50000, vitality: 100 }]));
+    if (!localStorage.getItem("mock_db_users")) {
+      localStorage.setItem("mock_db_users", JSON.stringify([{ id: userId, username: "Presentation QA", current_base_id: "shinjuku", favorite_character_id: "char_reiji_01", level: 10, cash: 50000, vitality: 100 }]));
+    }
     localStorage.setItem("mock_db_user_characters", JSON.stringify([
       { id: "character-owned-1", user_id: userId, character_id: "char_reiji_01", level: 12, awakening_level: 3, created_at: now },
       { id: "character-owned-2", user_id: userId, character_id: "char_rui_01", level: 10, awakening_level: 1, created_at: now },
@@ -117,6 +119,51 @@ test("Character, Party, Growth, Skill and Equipment follow the fixed mobile hier
   await page.setViewportSize({ width: 412, height: 915 });
   await expectMobileGeometry(page, ".character-v2-shell");
   await page.screenshot({ path: test.info().outputPath("character-system-412.png"), fullPage: true });
+});
+
+test("canonical Leader changes update Home and Header immediately and persist across navigation and reload", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await enterGame(page);
+  await expect(page.locator('.mypage-leader-layer[data-character-authority="char_reiji_01"]')).toBeVisible();
+  await expect(page.locator('.header-mobile img[alt="Presentation QAのリーダー"]')).toHaveAttribute("src", /reiji_transparent_asset/);
+
+  await page.locator('.footer-item[aria-label="キャラ"]').click();
+  await page.locator(".character-v2-main-nav").getByRole("button", { name: "パーティ", exact: true }).click();
+  await page.getByRole("button", { name: "リーダー変更", exact: true }).first().click();
+  await expect.poll(async () => page.evaluate(() => JSON.parse(localStorage.getItem("mock_db_users") || "[]")[0]?.favorite_character_id)).toBe("char_rui_01");
+  await expect(page.locator('.header-mobile img[alt="Presentation QAのリーダー"]')).toHaveAttribute("src", /rui_transparent_asset/);
+
+  await page.locator('.footer-item[aria-label="マイページ"]').click();
+  await expect(page.locator('.mypage-leader-layer[data-character-authority="char_rui_01"]')).toBeVisible();
+  await page.locator('.footer-item[aria-label="キャラ"]').click();
+  await page.locator('.footer-item[aria-label="マイページ"]').click();
+  await expect(page.locator('.mypage-leader-layer[data-character-authority="char_rui_01"]')).toBeVisible();
+
+  await page.setViewportSize({ width: 412, height: 915 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
+  await page.reload();
+  const titleAction = page.getByRole("button", { name: /TAP TO START|続きから/ });
+  if (await titleAction.isVisible()) await titleAction.click();
+  await expect(page.locator('.mypage-leader-layer[data-character-authority="char_rui_01"]')).toBeVisible();
+  await expect(page.locator('.header-mobile img[alt="Presentation QAのリーダー"]')).toHaveAttribute("src", /rui_transparent_asset/);
+
+  await page.locator('.footer-item[aria-label="キャラ"]').click();
+  await page.locator(".character-v2-main-nav").getByRole("button", { name: "パーティ", exact: true }).click();
+  await page.getByRole("button", { name: "リーダー変更", exact: true }).last().click();
+  await page.locator('.footer-item[aria-label="マイページ"]').click();
+  await expect(page.locator('.mypage-leader-layer[data-character-authority="char_chang_01"]')).toBeVisible();
+  await expect(page.locator('.header-mobile img[alt="Presentation QAのリーダー"]')).toHaveAttribute("src", /chang_transparent_asset/);
+
+  await page.evaluate(() => {
+    const users = JSON.parse(localStorage.getItem("mock_db_users") || "[]");
+    users[0].favorite_character_id = "invalid_character";
+    localStorage.setItem("mock_db_users", JSON.stringify(users));
+  });
+  await page.reload();
+  const restartAction = page.getByRole("button", { name: /TAP TO START|続きから/ });
+  if (await restartAction.isVisible()) await restartAction.click();
+  await expect(page.locator('.mypage-leader-layer[data-character-authority="placeholder"]')).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
 });
 
 test("Normal Quest uses the tutorial-passed identity, enemy, reward and progress grammar", async ({ page }) => {

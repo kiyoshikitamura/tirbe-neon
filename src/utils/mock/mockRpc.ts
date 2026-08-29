@@ -520,15 +520,20 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
   if (funcName === "save_main_formation") {
     const userId = typeof window === "undefined" ? null : localStorage.getItem("tribe_demo_uuid");
     if (!userId) return { data: null, error: { message: "authentication required", code: "42501" } };
-    const ids = Array.isArray(params?.p_user_character_ids) ? params.p_user_character_ids.filter(Boolean) : [];
-    if (ids.length > 5 || new Set(ids).size !== ids.length) return { data: null, error: { message: "invalid main formation", code: "22023" } };
+    const requested = Array.isArray(params?.p_character_ids)
+      ? params.p_character_ids.filter(Boolean)
+      : Array.isArray(params?.p_user_character_ids)
+        ? params.p_user_character_ids.filter(Boolean)
+        : [];
     const owned = client.getStorage("user_characters") || [];
+    const ids = requested.map((id: string) => owned.find((character: any) => character.user_id === userId && (character.id === id || character.character_id === id))?.id || id);
+    if (ids.length > 5 || new Set(ids).size !== ids.length) return { data: null, error: { message: "invalid main formation", code: "22023" } };
     if (ids.some((id: string) => !owned.some((character: any) => character.user_id === userId && character.id === id))) return { data: null, error: { message: "formation character is not owned", code: "42501" } };
     const formations = (client.getStorage("user_main_formations") || []).filter((row: any) => row.user_id !== userId);
     ids.forEach((id: string, index: number) => formations.push({ user_id: userId, slot: index + 1, user_character_id: id, updated_at: new Date().toISOString() }));
     client.setStorage("user_main_formations", formations);
     const power = (client.getStorage("user_power_rankings") || []).find((entry: any) => entry.user_id === userId)?.total_power || 0;
-    return { data: { total_power: Number(power), slots: ids.length }, error: null };
+    return { data: { total_power: Number(power), slots: ids.length, character_ids: requested }, error: null };
   }
 
   if (funcName === "get_current_main_formation") {

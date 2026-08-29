@@ -325,7 +325,11 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
   const leaderAuthorityReady = identityLeaderAuthorityReady !== false;
   const visualAssetKey = `${bgUrl}|${leaderAuthorityReady ? leaderImgUrl || "favorite-placeholder" : "leader-authority-pending"}`;
   const [resumeVisualSnapshot] = useState(readHomeResumeSnapshot);
-  const currentResumeVisualSnapshot = leaderImgUrl ? resumeVisualSnapshot : null;
+  const currentResumeVisualSnapshot = leaderImgUrl
+    && resumeVisualSnapshot?.leaderImageUrl === leaderImgUrl
+    && resumeVisualSnapshot.backgroundUrl === bgUrl
+      ? resumeVisualSnapshot
+      : null;
   const [readyVisualAssetKey, setReadyVisualAssetKey] = useState<string | null>(null);
   const visualReady = readyVisualAssetKey === visualAssetKey;
 

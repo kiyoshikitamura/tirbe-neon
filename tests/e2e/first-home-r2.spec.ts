@@ -66,7 +66,7 @@ test("reload uses the stable Home resume shell instead of branded boot loading",
   expect(resumeStages?.homeShellReady).toBeGreaterThanOrEqual(0);
 });
 
-test("Home re-entry keeps the previous combined visual until current Town and Leader are decoded", async ({ page }) => {
+test("Home re-entry never presents a different cached Leader while the canonical Leader is decoded", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.addInitScript((snapshot) => {
     window.sessionStorage.setItem("tribe-neon.home-resume-visual.v1", JSON.stringify(snapshot));
@@ -79,9 +79,9 @@ test("Home re-entry keeps the previous combined visual until current Town and Le
   await page.goto("/qa/presentation?scenario=first-home-fresh", { waitUntil: "domcontentloaded" });
   const visual = page.locator(".mypage-visual-area");
   await expect(visual).toHaveAttribute("data-visual-readiness", "preparing");
-  await expect(visual).toHaveClass(/has-resume-snapshot/);
-  expect(await visual.evaluate((node) => getComputedStyle(node).backgroundImage)).toContain("bg_street_shibuya.png");
-  await expect(page.locator(".mypage-visual-loading-leader")).toHaveAttribute("src", "/characters/reiji_transparent_asset.png");
+  await expect(visual).not.toHaveClass(/has-resume-snapshot/);
+  expect(await visual.evaluate((node) => getComputedStyle(node).backgroundImage)).toBe("none");
+  await expect(page.locator(".mypage-visual-loading-leader")).toHaveCount(0);
   await page.screenshot({ path: "test-results/first-home-r5-reentry-placeholder-390x844.png", fullPage: false });
 
   await expect(visual).toHaveAttribute("data-visual-readiness", "ready");
