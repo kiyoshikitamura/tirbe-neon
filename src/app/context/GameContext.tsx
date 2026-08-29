@@ -3043,8 +3043,22 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     const isNormal = scoutType.endsWith("_NORMAL");
     const isSpecial = scoutType.endsWith("_SPECIAL");
     const isLimit = scoutType.startsWith("LIMIT_");
+    const presentationStartedAt = typeof performance !== "undefined" ? performance.now() : Date.now();
 
     try {
+      // Common FA opening owns the foreground for every category while the
+      // existing server-authoritative mutation proceeds behind it.
+      flushSync(() => {
+        setScoutResults([]);
+        setScoutFlashingColor("BLUE");
+        setScoutAnimationState("PROCESSING");
+      });
+      actionPerformance.mark("state_update");
+      reportScoutTiming("animation_committed", { category, phase: "common_opening" });
+      await waitForBrowserPaint();
+      actionPerformance.markVisualReady();
+      reportScoutTiming("animation_painted", { category, phase: "common_opening" });
+
       if ((category as string) === "CHARACTER") {
         actionPerformance.mark("request_start");
         const serverCurrency = useCurrency === "FREE" ? "free" : useCurrency === "DIAMOND" ? "diamonds" : useCurrency === "TICKET" ? "ticket" : "cash";
@@ -3178,10 +3192,11 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
             failedAssets: assetResults.filter((asset) => asset.status === "failed").length,
           });
         });
-        const presentationPromise = new Promise((resolve) => window.setTimeout(resolve, 1800));
+        const elapsedOpeningMs = (typeof performance !== "undefined" ? performance.now() : Date.now()) - presentationStartedAt;
+        const presentationPromise = new Promise((resolve) => window.setTimeout(resolve, Math.max(0, 1800 - elapsedOpeningMs)));
         void Promise.all([resultImagePromise, presentationPromise]).then(() => {
           reportScoutTiming("result_display");
-          setScoutAnimationState(isTutorialTenPull ? "READY" : "SHOW_RESULTS");
+          setScoutAnimationState("READY");
         });
         void bootstrapPromise;
         return;
@@ -3192,17 +3207,6 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         ? (scoutType === "SKILL_NORMAL" || scoutType === "SKILL_SPECIAL" ? scoutType : "SKILL_SPECIAL")
         : (scoutType === "EQUIP_NORMAL" || scoutType === "EQUIP_SPECIAL" ? scoutType : "EQUIP_SPECIAL");
       const serverCurrency = useCurrency === "FREE" ? "free" : useCurrency === "DIAMOND" ? "diamonds" : useCurrency === "TICKET" ? "ticket" : "cash";
-      const assetTransitionStartedAt = typeof performance !== "undefined" ? performance.now() : Date.now();
-      flushSync(() => {
-        setScoutResults([]);
-        setScoutFlashingColor("BLUE");
-        setScoutAnimationState("PROCESSING");
-      });
-      actionPerformance.mark("state_update");
-      reportScoutTiming("animation_committed", { category, phase: "processing" });
-      await waitForBrowserPaint();
-      actionPerformance.markVisualReady();
-      reportScoutTiming("animation_painted", { category, phase: "processing" });
       actionPerformance.mark("request_start");
       const drawResult = await supabase.rpc("execute_asset_gacha", { p_user_id: session.user.id, p_gacha_id: assetGachaId, p_pull_count: scoutCount, p_currency_type: serverCurrency, p_request_id: requestId });
       if (drawResult.error || drawResult.data?.error) throw drawResult.error || new Error(drawResult.data.error);
@@ -3247,21 +3251,16 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         }
       }
       setScoutResults(assetResults);
+      setScoutFlashingColor(assetResults.some((result: { rarity: string }) => result.rarity === "SSR") ? "GOLD" : assetResults.some((result: { rarity: string }) => result.rarity === "SR") ? "PURPLE" : "BLUE");
       await bootstrapPromise;
-      const elapsedTransitionMs = (typeof performance !== "undefined" ? performance.now() : Date.now()) - assetTransitionStartedAt;
-      const minimumTransitionRemainingMs = Math.max(0, 420 - elapsedTransitionMs);
+      const elapsedTransitionMs = (typeof performance !== "undefined" ? performance.now() : Date.now()) - presentationStartedAt;
+      const minimumTransitionRemainingMs = Math.max(0, 1400 - elapsedTransitionMs);
       if (minimumTransitionRemainingMs > 0) {
         await new Promise((resolve) => window.setTimeout(resolve, minimumTransitionRemainingMs));
       }
       const hasSsr = assetResults.some((result: { rarity: string }) => result.rarity === "SSR");
-      if (hasSsr) {
-        setScoutFlashingColor("GOLD");
-        setScoutAnimationState("FLASHING");
-        reportScoutTiming("ssr_presence");
-        await new Promise((resolve) => window.setTimeout(resolve, 280));
-      }
-      reportScoutTiming("result_display", { hasSsr });
-      setScoutAnimationState("SHOW_RESULTS");
+      reportScoutTiming("opening_ready", { hasSsr });
+      setScoutAnimationState("READY");
       return;
 
       if (useCurrency === "FREE") {

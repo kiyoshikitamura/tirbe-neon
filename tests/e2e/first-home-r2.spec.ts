@@ -141,10 +141,13 @@ for (const viewport of viewports) {
     const actionOrder = await page.locator(".mypage-circle-menu-area > button").evaluateAll((buttons) =>
       buttons.map((button) => button.getAttribute("aria-label") || button.querySelector("img")?.getAttribute("alt")),
     );
-    expect(actionOrder).toEqual(["連合", "喧嘩", "制圧", "抗争は準備中です"]);
-    await expect(page.locator(".mypage-circle-menu-area")).toHaveAttribute("data-home-action-assets", "pending-production-delivery");
-    await expect(page.locator('[data-action-slot="war"] img')).toHaveAttribute("src", "/menu/menu_war.png");
-    await expect(page.getByRole("button", { name: "抗争は準備中です" })).toBeDisabled();
+    expect(actionOrder).toEqual(["ギルド / GUILD", "バトル / PvP", "クエスト / QUEST", "ギルドバトル / GvGは準備中です"]);
+    await expect(page.locator(".mypage-circle-menu-area")).toHaveAttribute("data-home-action-assets", "production-delivered");
+    await expect(page.locator('[data-action-slot="guild"] img')).toHaveAttribute("src", "/menu/home_main_guild.png");
+    await expect(page.locator('[data-action-slot="fight"] img')).toHaveAttribute("src", "/menu/home_main_battle_pvp.png");
+    await expect(page.locator('[data-action-slot="conquest"] img')).toHaveAttribute("src", "/menu/home_main_quest.png");
+    await expect(page.locator('[data-action-slot="war"] img')).toHaveAttribute("src", "/menu/home_main_guild_battle_gvg.png");
+    await expect(page.getByRole("button", { name: "ギルドバトル / GvGは準備中です" })).toBeDisabled();
 
     const geometry = await page.evaluate(() => {
       const box = (selector: string) => document.querySelector<HTMLElement>(selector)!.getBoundingClientRect();

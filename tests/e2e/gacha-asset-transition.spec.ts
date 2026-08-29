@@ -13,11 +13,20 @@ const openTransitionFixture = async (
   return page.locator("[data-gacha-asset-transition-fixture]");
 };
 
+const completeCommonOpening = async (page: Page) => {
+  const gate = page.locator("[data-gacha-logo-gate]");
+  await expect(gate).toBeVisible();
+  await expect(gate.locator('img[src="/branding/tribe-neon-logo.png"]')).toBeVisible();
+  await gate.click();
+  await expect(page.locator('[data-gacha-transition-state="show_results"]')).toBeVisible();
+};
+
 const readFirstPaintedProcessingSurface = (page: Page) => page.evaluate(() => new Promise<Record<string, unknown>>((resolve) => {
   requestAnimationFrame(() => requestAnimationFrame(() => {
     const overlay = document.querySelector<HTMLElement>('[data-gacha-transition-state="processing"]');
     const effect = overlay?.querySelector<HTMLElement>("[data-gacha-short-effect]");
-    const stage = overlay?.querySelector<HTMLElement>(".gacha-presentation-stage");
+    const stage = overlay?.querySelector<HTMLElement>("[data-gacha-common-opening]");
+    const city = overlay?.querySelector<HTMLElement>(".gacha-opening-city");
     const fieldset = document.querySelector<HTMLFieldSetElement>("fieldset.gacha-view-root");
     const style = overlay ? getComputedStyle(overlay) : null;
     const stageStyle = stage ? getComputedStyle(stage) : null;
@@ -26,8 +35,7 @@ const readFirstPaintedProcessingSurface = (page: Page) => page.evaluate(() => ne
     const hit = overlay && rect ? document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2) : null;
     const leftHit = overlay && rect ? document.elementFromPoint(rect.left + 2, rect.top + rect.height / 2) : null;
     const rightHit = overlay && rect ? document.elementFromPoint(rect.right - 2, rect.top + rect.height / 2) : null;
-    const removedTunnel = stage ? getComputedStyle(stage, "::before") : null;
-    const surfaceMotion = stage ? getComputedStyle(stage, "::after") : null;
+    const cityStyle = city ? getComputedStyle(city) : null;
     resolve({
       state: overlay?.dataset.gachaTransitionState ?? null,
       mounted: Boolean(effect),
@@ -48,9 +56,9 @@ const readFirstPaintedProcessingSurface = (page: Page) => page.evaluate(() => ne
       topmost: Boolean(hit && overlay?.contains(hit)),
       leftTopmost: Boolean(leftHit && overlay?.contains(leftHit)),
       rightTopmost: Boolean(rightHit && overlay?.contains(rightHit)),
-      tunnelContent: removedTunnel?.content ?? null,
-      motionState: surfaceMotion?.animationPlayState ?? null,
-      motionName: surfaceMotion?.animationName ?? null,
+      cityBackground: cityStyle?.backgroundImage ?? null,
+      motionState: cityStyle?.animationPlayState ?? null,
+      motionName: cityStyle?.animationName ?? null,
     });
   }));
 }));
@@ -72,20 +80,20 @@ for (const category of ["SKILL", "EQUIPMENT"] as const) {
       opacity: "1",
       zIndex: "20000",
       position: "fixed",
-      visual: "asset-short",
+      visual: "tokyo-night-opening",
       stageBackground: "none",
       topmost: true,
       leftTopmost: true,
       rightTopmost: true,
-      tunnelContent: "none",
       motionState: "running",
-      motionName: "gacha-asset-surface-pulse",
+      motionName: "gacha-city-wake",
     });
+    expect(String(painted.cityBackground)).toContain("bg_street_shibuya.png");
     expect(Number(painted.width)).toBeGreaterThanOrEqual(389);
     expect(Number(painted.height)).toBeGreaterThanOrEqual(843);
     expect(Number(painted.stageWidth)).toBeCloseTo(Number(painted.width), 0);
     expect(Number(painted.stageHeight)).toBeCloseTo(Number(painted.height), 0);
-    expect(String(painted.surfaceBackgroundSize).split(",").every((size) => size.trim() === "100% 100%")).toBe(true);
+    await completeCommonOpening(page);
     await expect(page.locator(".gacha-result-card")).toHaveCount(10);
   });
 }
@@ -99,12 +107,12 @@ for (const category of ["SKILL", "EQUIPMENT"] as const) {
       const draw = page.getByRole("button", { name: "1回 1,000キャッシュ" });
       await draw.click();
       await expect(page.locator('[data-gacha-transition-state="processing"]')).toBeVisible();
-      await expect(page.locator("[data-gacha-short-effect]")).toContainText("抽選中");
+      await expect(page.locator("[data-gacha-short-effect]")).toContainText("抽選結果を同期中");
       if (delay >= 500) {
         await page.waitForTimeout(Math.min(Math.max(100, delay - 300), 900));
         await expect(page.locator('[data-gacha-transition-state="processing"]')).toBeVisible();
       }
-      await expect(page.locator('[data-gacha-transition-state="show_results"]')).toBeVisible({ timeout: delay + 2_000 });
+      await completeCommonOpening(page);
       await expect(page.locator(".gacha-result-card")).toHaveCount(1);
       await expect(fixture).toHaveAttribute("data-mutation-count", "1");
     });
@@ -120,6 +128,7 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 412, height: 915 }
     await expect(page.locator("[data-gacha-short-effect]")).toBeVisible();
     const geometry = await fixture.evaluate((node) => ({ scrollWidth: node.scrollWidth, clientWidth: node.clientWidth }));
     expect(geometry.scrollWidth).toBeLessThanOrEqual(geometry.clientWidth);
+    await completeCommonOpening(page);
     await expect(page.locator(".gacha-result-card")).toHaveCount(10);
   });
 }
@@ -130,8 +139,9 @@ test("fast response retains a recognizable minimum transition", async ({ page })
   const startedAt = Date.now();
   await page.getByRole("button", { name: "1回 1,000キャッシュ" }).click();
   await expect(page.locator("[data-gacha-short-effect]")).toBeVisible();
-  await expect(page.locator('[data-gacha-transition-state="show_results"]')).toBeVisible();
-  expect(Date.now() - startedAt).toBeGreaterThanOrEqual(360);
+  await expect(page.locator("[data-gacha-logo-gate]")).toBeVisible();
+  expect(Date.now() - startedAt).toBeGreaterThanOrEqual(1250);
+  await completeCommonOpening(page);
 });
 
 test("server-authoritative SSR adds only the brief pre-result presence pulse", async ({ page }) => {
@@ -140,6 +150,7 @@ test("server-authoritative SSR adds only the brief pre-result presence pulse", a
   await page.getByRole("button", { name: "1回 1,000キャッシュ" }).click();
   await expect(page.locator('[data-gacha-transition-state="processing"]')).toBeVisible();
   await expect(fixture).toHaveAttribute("data-ssr-pulse-count", "1");
+  await completeCommonOpening(page);
   await expect(page.locator('[data-gacha-transition-state="show_results"] .rarity-ssr')).toHaveCount(1);
 });
 
@@ -161,6 +172,7 @@ test("double tap remains exactly once while the transition owns the foreground",
   await draw.dblclick();
   await expect(page.locator("[data-gacha-short-effect]")).toBeVisible();
   await expect(fixture).toHaveAttribute("data-mutation-count", "1");
+  await completeCommonOpening(page);
   await expect(page.locator(".gacha-result-card")).toHaveCount(1);
 });
 
@@ -177,7 +189,23 @@ for (const category of ["SKILL", "EQUIPMENT"] as const) {
       await page.locator(`[data-gacha-category="${category}"]`).click();
       await page.getByRole("button", { name: draw.name }).click();
       await expect(page.locator("[data-gacha-short-effect]")).toBeVisible();
+      await completeCommonOpening(page);
       await expect(page.locator(".gacha-result-card")).toHaveCount(draw.count);
     });
   }
+}
+
+for (const count of [1, 10] as const) {
+  test(`CHARACTER ${count}-pull uses one common opening before per-character reveal`, async ({ page }) => {
+    await openTransitionFixture(page);
+    await page.locator('[data-gacha-category="CHARACTER"]').click();
+    await page.getByRole("button", { name: count === 1 ? "1回 1,000キャッシュ" : "10回 10,000キャッシュ" }).click();
+    await expect(page.locator("[data-gacha-common-opening]")).toBeVisible();
+    await completeCommonOpening(page);
+    await expect(page.locator(".tutorial-gacha-reveal")).toBeVisible();
+    if (count === 10) {
+      await page.locator(".tutorial-gacha-skip").click();
+      await expect(page.locator(".gacha-result-card")).toHaveCount(10);
+    }
+  });
 }

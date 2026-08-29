@@ -78,13 +78,16 @@ export default function CommonModals() {
   const [tutorialSsrStage, setTutorialSsrStage] = React.useState<"STANDARD" | "QUOTE" | "FLASH" | "REVEAL">("STANDARD");
   const [tutorialRevealAdvancing, setTutorialRevealAdvancing] = React.useState(false);
   const [tutorialRevealCanAdvance, setTutorialRevealCanAdvance] = React.useState(false);
+  const [tutorialRevealGateOpen, setTutorialRevealGateOpen] = React.useState(false);
   const [tutorialPullStarted, setTutorialPullStarted] = React.useState(false);
   const [tutorialPullBurst, setTutorialPullBurst] = React.useState(false);
   const tutorialRevealAdvanceRef = useRef(false);
+  const tutorialSkipRequestedRef = useRef(false);
   const isCharacterReveal = scoutResults.length > 0
     && scoutResults.every((result: any) => result?.type === "CHARACTER" && result?.characterId);
-  const isAssetShortTransition = scoutAnimationState === "PROCESSING"
-    || (scoutAnimationState === "FLASHING" && !isCharacterReveal);
+  const isCommonOpening = scoutAnimationState === "PROCESSING"
+    || scoutAnimationState === "FLASHING"
+    || scoutAnimationState === "READY";
   const tutorialRevealResult = scoutResults[tutorialRevealIndex];
   const tutorialRevealRarity = String(tutorialRevealResult?.rarity || "N").toUpperCase();
   const tutorialRevealQuote = tutorialRevealRarity === "SSR"
@@ -104,6 +107,7 @@ export default function CommonModals() {
       announcedScoutResultRef.current = null;
       setTutorialPullStarted(false);
       setTutorialPullBurst(false);
+      setTutorialRevealGateOpen(false);
     }
   }, [scoutAnimationState]);
 
@@ -121,26 +125,25 @@ export default function CommonModals() {
 
   useEffect(() => {
     if (scoutAnimationState === "SHOW_RESULTS") {
-      setTutorialRevealIndex(0);
-      setTutorialSsrStage("STANDARD");
+      setTutorialRevealIndex(tutorialSkipRequestedRef.current ? scoutResults.length : 0);
+      tutorialSkipRequestedRef.current = false;
+      const firstRarity = String(scoutResults[0]?.rarity || "N").toUpperCase();
+      setTutorialSsrStage(firstRarity === "SSR" && isCharacterReveal ? "QUOTE" : "STANDARD");
       setTutorialRevealAdvancing(false);
+      setTutorialRevealGateOpen(false);
       tutorialRevealAdvanceRef.current = false;
     }
-  }, [scoutAnimationState, scoutResults]);
-
-  useEffect(() => {
-    if (!isCharacterReveal || scoutAnimationState !== "SHOW_RESULTS") return;
-    setTutorialSsrStage(tutorialRevealRarity === "SSR" ? "QUOTE" : "STANDARD");
-  }, [isCharacterReveal, scoutAnimationState, tutorialRevealIndex, tutorialRevealRarity]);
+  }, [isCharacterReveal, scoutAnimationState, scoutResults]);
 
   useEffect(() => {
     if (!isCharacterReveal || scoutAnimationState !== "SHOW_RESULTS") return;
     setTutorialRevealCanAdvance(false);
+    if (tutorialRevealGateOpen) return;
     if (tutorialSsrStage === "QUOTE" || tutorialSsrStage === "FLASH") return;
     const dwellMs = tutorialRevealRarity === "SSR" ? 900 : tutorialRevealRarity === "SR" ? 1600 : tutorialRevealRarity === "R" ? 1100 : 650;
     const timer = window.setTimeout(() => setTutorialRevealCanAdvance(true), dwellMs);
     return () => window.clearTimeout(timer);
-  }, [isCharacterReveal, scoutAnimationState, tutorialRevealIndex, tutorialRevealRarity, tutorialSsrStage]);
+  }, [isCharacterReveal, scoutAnimationState, tutorialRevealGateOpen, tutorialRevealIndex, tutorialRevealRarity, tutorialSsrStage]);
 
   useEffect(() => {
     if (tutorialSsrStage !== "FLASH") return;
@@ -235,35 +238,57 @@ export default function CommonModals() {
 
       {/* 🎰 ガチャ演出モーダル (FLASHING / SHOW_RESULTS) */}
       {scoutAnimationState !== null && (
-        <div className={`modal-overlay background-black-95 ${scoutAnimationState === "PROCESSING" ? "gacha-processing-overlay" : ""} ${isAssetShortTransition ? "gacha-asset-transition-overlay" : ""}`} style={{ zIndex: 20000 }} data-gacha-transition-state={scoutAnimationState.toLowerCase()} data-gacha-visual={isAssetShortTransition ? "asset-short" : undefined}>
+        <div className={`modal-overlay background-black-95 ${isCommonOpening ? "gacha-processing-overlay gacha-common-opening-overlay" : ""}`} style={{ zIndex: 20000 }} data-gacha-transition-state={scoutAnimationState.toLowerCase()} data-gacha-visual={isCommonOpening ? "tokyo-night-opening" : undefined}>
           {scoutAnimationState === "PROCESSING" || scoutAnimationState === "FLASHING" || scoutAnimationState === "READY" ? (
-            <div className={`gacha-presentation-stage gacha-presentation-${scoutFlashingColor.toLowerCase()} ${tutorialPullStarted ? "is-pull-started" : "is-awaiting-pull"} ${scoutAnimationState === "FLASHING" && scoutFlashingColor === "GOLD" && !isCharacterReveal ? "is-ssr-presence" : ""}`}>
-              <div className={`gacha-flash-effect flash-${scoutFlashingColor.toLowerCase()}`} />
-              <div className="gacha-presentation-rings" aria-hidden="true"><i /><i /><i /></div>
-              {!isCharacterReveal ? (
-                <div className={`gacha-asset-short-effect ${scoutFlashingColor === "GOLD" ? "has-ssr" : ""}`} role="status" aria-live="polite" aria-label="スキル・装備ガチャ抽選中" data-gacha-short-effect>
-                  <strong>{scoutFlashingColor === "GOLD" ? "SSR" : "DRAW"}</strong>
-                  <span>{scoutFlashingColor === "GOLD" ? "レアリティ反応" : "抽選中…"}</span>
-                </div>
-              ) : !tutorialPullStarted ? (
+            <div className={`gacha-opening-stage rarity-${scoutFlashingColor.toLowerCase()} ${scoutAnimationState === "READY" ? "is-ready" : "is-processing"} ${tutorialPullStarted ? "is-pull-started" : ""} ${tutorialPullStarted && scoutFlashingColor === "GOLD" && !isCharacterReveal ? "is-ssr-presence" : ""}`} data-gacha-common-opening>
+              <div className="gacha-opening-city" aria-hidden="true" />
+              <div className="gacha-opening-neon" aria-hidden="true"><i /><i /><i /></div>
+              {scoutAnimationState === "READY" && !tutorialPullStarted ? (
                 <button
                   type="button"
-                  className="gacha-pull-gate"
+                  className="gacha-opening-logo-gate"
                   onClick={() => {
                     setTutorialPullStarted(true);
                     playCyberSe("click");
                   }}
+                  aria-label="TRIBE NEON ガチャ結果を開く"
+                  data-gacha-logo-gate
                 >
-                  <strong>10 PLAYERS</strong>
-                  <span>TAP TO START</span>
+                  <img src="/branding/tribe-neon-logo.png" alt="TRIBE NEON" />
+                  <span>TAP!</span>
                 </button>
-              ) : (
-                <div className={`gacha-pull-burst ${tutorialPullBurst ? "is-ready" : ""}`} role="status" aria-label="ガチャ演出中">
-                  <strong>PULL!</strong>
+              ) : scoutAnimationState === "READY" ? (
+                <div className={`gacha-opening-release ${tutorialPullBurst ? "is-ready" : ""}`} role="status" aria-label="ガチャ結果を表示中">
+                  <img src="/branding/tribe-neon-logo.png" alt="" aria-hidden="true" />
+                  <i />
                 </div>
+              ) : (
+                <div className="gacha-opening-status" role="status" aria-live="polite" aria-label="ガチャ抽選結果を同期中" data-gacha-short-effect>
+                  <span>TOKYO NIGHT</span>
+                  <strong>NEON LINK</strong>
+                  <small>抽選結果を同期中</small>
+                </div>
+              )}
+              {scoutAnimationState === "READY" && isCharacterReveal && !tutorialPullStarted && (
+                <button type="button" className="gacha-opening-skip" onClick={() => { tutorialSkipRequestedRef.current = true; setScoutAnimationState("SHOW_RESULTS"); }}>
+                  SKIP
+                </button>
               )}
             </div>
           ) : isCharacterReveal && tutorialRevealIndex < scoutResults.length ? (
+            <div className="tutorial-gacha-reveal-shell">
+              <button type="button" className="tutorial-gacha-skip" onClick={() => setTutorialRevealIndex(scoutResults.length)}>SKIP</button>
+              {tutorialRevealGateOpen ? (
+                <button type="button" className="gacha-character-logo-gate" onClick={() => {
+                  setTutorialRevealGateOpen(false);
+                  setTutorialSsrStage(tutorialRevealRarity === "SSR" ? "QUOTE" : "STANDARD");
+                  playCyberSe("click");
+                }} aria-label={`${tutorialRevealIndex + 1}人目を表示`}>
+                  <span>{tutorialRevealIndex + 1} / {scoutResults.length}</span>
+                  <img src="/branding/tribe-neon-logo.png" alt="TRIBE NEON" />
+                  <strong>TAP!</strong>
+                </button>
+              ) : (
             <button
               type="button"
               className={`tutorial-gacha-reveal rarity-${String(tutorialRevealResult?.rarity || "N").toLowerCase()} ${tutorialRevealResult?.convertReward === "新規獲得" ? "acquisition-new" : "acquisition-duplicate"} ${tutorialRevealAdvancing ? "is-advancing" : ""} ${tutorialRevealIndex === 9 ? "is-guaranteed" : ""} ${tutorialSsrStage === "QUOTE" ? "is-ssr-quote" : ""} ${tutorialSsrStage === "FLASH" ? "is-ssr-flash" : ""} ${tutorialSsrStage === "REVEAL" ? "is-ssr-reveal" : ""}`}
@@ -279,7 +304,10 @@ export default function CommonModals() {
                 setTutorialRevealAdvancing(true);
                 playCyberSe("click");
                 window.setTimeout(() => {
-                  setTutorialRevealIndex(value => Math.min(scoutResults.length, value + 1));
+                  const nextIndex = Math.min(scoutResults.length, tutorialRevealIndex + 1);
+                  setTutorialRevealIndex(nextIndex);
+                  setTutorialRevealGateOpen(nextIndex < scoutResults.length);
+                  setTutorialSsrStage("STANDARD");
                   tutorialRevealAdvanceRef.current = false;
                   setTutorialRevealAdvancing(false);
                 }, 280);
@@ -322,6 +350,8 @@ export default function CommonModals() {
                 </div>
               )}
             </button>
+              )}
+            </div>
           ) : (
             <div className="gacha-result-panel">
               {onboardingState?.tutorial_step === "AUTO_FORMATION" && (

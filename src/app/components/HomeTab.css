@@ -570,17 +570,25 @@
 @keyframes mypage-sparks { from { background-position: 0 0, 20px -10px; } to { background-position: -38px 110px, 42px 90px; } }
 @keyframes mypage-smoke { from { transform: translateX(-4%) scale(1); opacity: 0.62; } to { transform: translateX(5%) scale(1.12); opacity: 1; } }
 
-/* 2. 丸型漢字メニューボタン (連合 / 喧嘩 / 制圧) */
+/* Home FA: Character下部へ重ねる薄いSmoke Black Glass Deck。 */
 .mypage-circle-menu-area {
   position: relative;
   display: flex;
   justify-content: center;
-  align-items: flex-end;
-  gap: 8px;
-  /* iPhoneではビジュアル下端へ重ね、速報・バナーの表示領域を確保する。 */
-  margin: -36px 0 0;
+  align-items: center;
+  gap: clamp(5px, 1.8vw, 9px);
+  width: calc(100% - 18px);
+  min-height: 82px;
+  margin: -52px auto 0;
   z-index: 15;
-  padding: 0 10px;
+  padding: 7px 10px 6px;
+  overflow: visible;
+  border: 1px solid rgba(255, 255, 255, .13);
+  border-radius: 28px;
+  background: linear-gradient(180deg, rgba(16, 21, 29, .58), rgba(2, 6, 11, .84));
+  box-shadow: 0 12px 28px rgba(0, 0, 0, .62), inset 0 1px 0 rgba(255, 255, 255, .07);
+  -webkit-backdrop-filter: blur(10px) saturate(.9);
+  backdrop-filter: blur(10px) saturate(.9);
 }
 
 /* Do not let generic layout utility classes distribute the banner over the
@@ -663,8 +671,11 @@
 }
 
 .circle-menu-btn {
-  width: 72px;
-  height: 72px;
+  flex: 1 1 0;
+  width: auto;
+  max-width: 76px;
+  min-width: 0;
+  min-height: 68px;
   background: transparent;
   border: none;
   border-radius: 50%;
@@ -674,16 +685,16 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  overflow: hidden;
+  overflow: visible;
 }
 
-.circle-menu-btn.upcoming .circle-menu-img { filter: grayscale(1) brightness(.42); }
-.circle-menu-state-overlay { position:absolute;inset:0;display:grid;place-items:center;border:1px solid rgba(194,144,255,.35);border-radius:50%;color:#f0e7ff;background:rgba(6,7,12,.38);font-size:10px;font-weight:900;letter-spacing:.08em;text-shadow:0 2px 5px #000; }
+.circle-menu-btn.upcoming .circle-menu-img { opacity:.68; filter:brightness(.58) saturate(.78); }
+.circle-menu-state-overlay { position:absolute;inset:4px;display:grid;place-items:center;border:1px solid rgba(242,201,95,.42);border-radius:50%;color:#fff0bd;background:rgba(3,4,7,.48);font-size:9px;font-weight:900;letter-spacing:.06em;text-shadow:0 2px 5px #000; }
 
 .circle-menu-alert-badge {
   position: absolute;
-  top: 1px;
-  right: 1px;
+  top: 0;
+  right: 0;
   z-index: 3;
   display: grid;
   place-items: center;
@@ -703,10 +714,17 @@
 }
 
 .circle-menu-img {
-  width: 72px;
-  height: 72px;
+  width: min(100%, 68px);
+  height: auto;
+  aspect-ratio: 1;
   object-fit: contain;
   filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.8));
+}
+
+@media (max-width: 390px) {
+  .mypage-circle-menu-area { gap:5px; width:calc(100% - 14px); padding-inline:8px; }
+  .circle-menu-btn { min-height:64px; }
+  .circle-menu-img { width:min(100%,64px); }
 }
 
 /* 3. イベントバナーエリア (大ボタン直下) */

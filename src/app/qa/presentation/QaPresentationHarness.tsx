@@ -214,7 +214,7 @@ function GachaAssetTransitionFixture() {
   const [pending, setPending] = useState(false);
   const [mutationCount, setMutationCount] = useState(0);
   const [ssrPulseCount, setSsrPulseCount] = useState(0);
-  const [scoutAnimationState, setScoutAnimationState] = useState<null | "PROCESSING" | "FLASHING" | "SHOW_RESULTS">(null);
+  const [scoutAnimationState, setScoutAnimationState] = useState<null | "PROCESSING" | "FLASHING" | "READY" | "SHOW_RESULTS">(null);
   const [scoutFlashingColor, setScoutFlashingColor] = useState<"BLUE" | "GOLD">("BLUE");
   const [scoutResults, setScoutResults] = useState<any[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -248,7 +248,6 @@ function GachaAssetTransitionFixture() {
     setErrorMessage,
     handleScout: async (gachaId: string, count: number, currency: string) => {
       const category = gachaId.startsWith("SKILL") ? "SKILL" : gachaId.startsWith("EQUIP") ? "EQUIPMENT" : "CHARACTER";
-      if (category === "CHARACTER") return;
       const startedAt = performance.now();
       setMutationCount((current) => current + 1);
       setPending(true);
@@ -261,29 +260,42 @@ function GachaAssetTransitionFixture() {
         await waitForBrowserPaint();
         await new Promise((resolve) => window.setTimeout(resolve, responseDelayMs));
         if (shouldFail) throw new Error("QA fixture draw failure");
-        const source = category === "SKILL" ? CANONICAL_SKILL_VIEW : CANONICAL_EQUIPMENT_VIEW;
-        const canonical = source.find((entry: any) => entry.rarity === forcedRarity) || source[0];
-        const results = Array.from({ length: count }, (_, index) => ({
+        const assetSource = category === "SKILL" ? CANONICAL_SKILL_VIEW : CANONICAL_EQUIPMENT_VIEW;
+        const assetCanonical = assetSource.find((entry: any) => entry.rarity === forcedRarity) || assetSource[0];
+        const characterCanonical: any = CHARACTERS_MASTER.find((entry: any) => entry.rarity === forcedRarity) || CHARACTERS_MASTER[0];
+        const results = Array.from({ length: count }, (_, index) => category === "CHARACTER" ? {
+          type: "CHARACTER",
+          characterId: characterCanonical.id,
+          name: characterCanonical.jpName,
+          rarity: characterCanonical.rarity,
+          imageUrl: getCharacterTransparentImg(characterCanonical.name),
+          attributeKey: characterCanonical.alignment,
+          attribute: "秩序",
+          role: characterCanonical.homeTown,
+          hp: 1200,
+          atk: 240,
+          def: 180,
+          awakeningLevel: index > 0 ? 1 : 0,
+          convertReward: index > 0 ? "覚醒 +1" : "新規獲得",
+        } : {
           type: category,
-          itemId: canonical.id,
-          name: canonical.name,
+          itemId: assetCanonical.id,
+          name: assetCanonical.name,
           rarity: forcedRarity,
-          assetPath: category === "SKILL" ? getCanonicalSkillIcon(canonical.id) : (canonical as any).assetPath,
+          assetPath: category === "SKILL" ? getCanonicalSkillIcon(assetCanonical.id) : (assetCanonical as any).assetPath,
           converted: index > 0,
           progressionLevel: index > 0 ? 1 : null,
           convertReward: index > 0 ? "限界突破 +1" : "新規獲得",
-        }));
+        });
         setScoutResults(results);
-        const minimumRemainingMs = Math.max(0, 420 - (performance.now() - startedAt));
+        const minimumRemainingMs = Math.max(0, 1400 - (performance.now() - startedAt));
         if (minimumRemainingMs > 0) await new Promise((resolve) => window.setTimeout(resolve, minimumRemainingMs));
         if (forcedRarity === "SSR") {
           setSsrPulseCount((current) => current + 1);
           setScoutFlashingColor("GOLD");
-          setScoutAnimationState("FLASHING");
-          await new Promise((resolve) => window.setTimeout(resolve, 280));
         }
         if (currency === "FREE") setFreeFlags((current) => ({ ...current, [category]: false }));
-        setScoutAnimationState("SHOW_RESULTS");
+        setScoutAnimationState("READY");
       } catch {
         setScoutAnimationState(null);
         setErrorMessage("ガチャの実行に失敗しました。通信状態を確認して、もう一度お試しください。");

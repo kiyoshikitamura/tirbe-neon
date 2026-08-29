@@ -630,8 +630,8 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
         )}
       </div>
 
-      {/* 2. 丸型漢字メニューボタン (4個均等配置・ネガティブマージン -48px 重ね配置) */}
-      <div className="mypage-circle-menu-area" data-home-action-assets="pending-production-delivery">
+      {/* Characterを主役に保つHome FA Glass Deck */}
+      <nav className="mypage-circle-menu-area" data-home-action-assets="production-delivered" aria-label="メインナビゲーション">
         {HOME_ACTION_PRESENTATION_SLOTS.map((action) => {
           const upcoming = action.exposure === "UPCOMING";
           return (
@@ -650,7 +650,7 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
             </button>
           );
         })}
-      </div>
+      </nav>
 
       <div className="mypage-lower-content">
         {primaryCta && <button className="mypage-primary-cta semantic-cta semantic-cta--primary active-scale-effect" onClick={() => void openPrimaryCta()} disabled={activationHandoffPending} aria-busy={activationHandoffPending}>
