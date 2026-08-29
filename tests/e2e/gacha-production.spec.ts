@@ -26,22 +26,33 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 412, height: 915 }
       for (const surface of ["ノーマル", "スペシャル"] as const) {
         await page.getByRole("button", { name: surface, exact: true }).click();
         const bannerImage = page.locator(".gacha-product-banner img");
-        await expect.poll(() => bannerImage.evaluate((image) => image.complete && image.naturalWidth > 0)).toBe(true);
+        await expect.poll(() => bannerImage.evaluate((image) => {
+          const banner = image as HTMLImageElement;
+          return banner.complete && banner.naturalWidth > 0;
+        })).toBe(true);
         const bannerGeometry = await page.locator(".gacha-product-banner").evaluate((node) => {
           const image = node.querySelector<HTMLImageElement>("img")!;
           const rect = image.getBoundingClientRect();
+          const containerRect = node.getBoundingClientRect();
+          const containerStyle = getComputedStyle(node);
           return {
             naturalRatio: image.naturalWidth / image.naturalHeight,
             renderedRatio: rect.width / rect.height,
             objectFit: getComputedStyle(image).objectFit,
             width: rect.width,
-            containerWidth: node.getBoundingClientRect().width,
+            containerWidth: containerRect.width,
+            topInset: rect.top - containerRect.top,
+            bottomInset: containerRect.bottom - rect.bottom,
+            borderTop: Number.parseFloat(containerStyle.borderTopWidth),
+            borderBottom: Number.parseFloat(containerStyle.borderBottomWidth),
           };
         });
         expect(bannerGeometry.naturalRatio).toBe(4);
         expect(bannerGeometry.renderedRatio).toBeCloseTo(bannerGeometry.naturalRatio, 2);
         expect(bannerGeometry.objectFit).toBe("contain");
         expect(bannerGeometry.width).toBeLessThanOrEqual(bannerGeometry.containerWidth);
+        expect(bannerGeometry.topInset).toBeGreaterThanOrEqual(bannerGeometry.borderTop - 0.1);
+        expect(bannerGeometry.bottomInset).toBeGreaterThanOrEqual(bannerGeometry.borderBottom - 0.1);
       }
     }
     await page.getByRole("button", { name: "ノーマル", exact: true }).click();
@@ -49,11 +60,8 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 412, height: 915 }
     const geometry = await fixture.evaluate((node) => ({
       scrollWidth: node.scrollWidth,
       clientWidth: node.clientWidth,
-      bannerRatio: (() => { const rect = node.querySelector(".gacha-product-banner")!.getBoundingClientRect(); return rect.width / rect.height; })(),
     }));
     expect(geometry.scrollWidth).toBeLessThanOrEqual(geometry.clientWidth);
-    expect(geometry.bannerRatio).toBeGreaterThan(3.9);
-    expect(geometry.bannerRatio).toBeLessThan(4.1);
   });
 }
 
