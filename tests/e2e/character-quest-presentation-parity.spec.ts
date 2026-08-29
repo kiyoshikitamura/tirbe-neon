@@ -68,17 +68,23 @@ test("Character, Party, Growth, Skill and Equipment follow the fixed mobile hier
   await expect(page.locator(".character-v2-shell")).toBeVisible();
   await expect(page.locator(".character-v2-character-grid .character-v2-card")).toHaveCount(3);
   await expectMobileGeometry(page, ".character-v2-shell");
+  await page.screenshot({ path: test.info().outputPath("character-list-390.png") });
 
   await page.locator(".character-v2-character-grid .character-v2-card").first().click();
   for (const label of ["HP", "ATK", "DEF", "SPD", "LUK"]) await expect(page.locator(".character-v2-stats")).toContainText(label);
   await expect(page.getByText("装備中Skill", { exact: true })).toBeVisible();
-  await expect(page.getByText("装備中Equipment", { exact: true })).toBeVisible();
+  await expect(page.getByText("装備中アイテム", { exact: true })).toBeVisible();
+  await expect(page.getByText(/^(正義|悪|秩序|混沌)$/)).toBeVisible();
+  await page.screenshot({ path: test.info().outputPath("character-detail-390.png"), fullPage: true });
   await page.getByRole("button", { name: "強化", exact: true }).click();
   await expect(page.getByText("強化ドリンク・小", { exact: true })).toBeVisible();
   await expect(page.getByText("強化ドリンク・中", { exact: true })).toBeVisible();
   await expect(page.getByText("強化ドリンク・大", { exact: true })).toBeVisible();
   await expect(page.getByText("覚醒の書", { exact: true })).toBeVisible();
-  await expect(page.getByText("同一Character Duplicate取得時は自動覚醒します。", { exact: true })).toBeVisible();
+  await expect(page.getByText("同一Character Duplicate取得時は自動覚醒します。", { exact: true })).toHaveCount(0);
+  await page.locator(".character-v2-material").first().locator("button").last().click();
+  await expect(page.locator(".character-v2-current-after").first()).toContainText("Lv.13");
+  await expect(page.locator(".character-v2-preview-stats")).toBeVisible();
 
   await page.locator(".character-v2-main-nav").getByRole("button", { name: "パーティ", exact: true }).click();
   await expect(page.locator(".character-v2-party-slots > *")).toHaveCount(5);
@@ -90,10 +96,18 @@ test("Character, Party, Growth, Skill and Equipment follow the fixed mobile hier
   await expect(page.locator(".character-v2-asset-grid .character-v2-asset-card")).toHaveCount(2);
   await page.locator(".character-v2-asset-grid .character-v2-asset-card").first().click();
   await expect(page.locator(".character-v2-mini-detail")).toBeVisible();
-  await page.locator(".canonical-dialog-close").click();
+  await expect(page.locator(".canonical-dialog-close")).toHaveCount(0);
+  await page.getByRole("button", { name: "強化", exact: true }).click();
+  await expect(page.locator(".character-v2-asset-growth")).toBeVisible();
+  await expect(page.locator(".character-v2-current-after")).toContainText("After");
+  await page.getByRole("button", { name: "戻る", exact: true }).click();
 
   await page.locator(".character-v2-main-nav").getByRole("button", { name: "装備", exact: true }).click();
   await expect(page.locator(".character-v2-asset-grid .character-v2-asset-card")).toHaveCount(2);
+  await page.locator(".character-v2-asset-grid .character-v2-asset-card").first().click();
+  await page.getByRole("button", { name: "強化", exact: true }).click();
+  await expect(page.locator(".character-v2-asset-growth")).toBeVisible();
+  await expect(page.locator(".character-v2-current-after").first()).toContainText("After");
   await expectMobileGeometry(page, ".character-v2-shell");
 
   await page.setViewportSize({ width: 412, height: 915 });
@@ -109,10 +123,17 @@ test("Normal Quest uses the tutorial-passed identity, enemy, reward and progress
   await expect(page.locator(".quest-v2-identity")).toContainText("クエスト選択");
   await expect(page.locator(".quest-v2-metrics")).toContainText("所要時間");
   await expect(page.locator(".quest-v2-enemies")).toContainText("出現する敵");
-  await expect(page.locator(".tutorial-wire-rewards").first()).toBeVisible();
+  await expect(page.locator(".quest-v2-rewards").first()).toBeVisible();
   await expect(page.getByRole("button", { name: "新宿へ派遣する", exact: true })).toBeVisible();
-  await expect(page.getByText("進行中クエスト", { exact: true })).toBeVisible();
+  await expect(page.locator("[data-quest-state]" )).toHaveCount(0);
   await expectMobileGeometry(page, ".quest-v2-shell");
+
+  await page.locator(".quest-v2-character-grid button").first().click();
+  await page.getByRole("button", { name: "新宿へ派遣する", exact: true }).click();
+  await expect(page.locator('[data-quest-state="PROGRESS"]')).toBeVisible();
+  await expect(page.locator(".quest-v2-identity")).toHaveCount(0);
+  await page.getByRole("button", { name: "無料時短", exact: true }).click();
+  await expect(page.locator('[data-quest-state="BATTLE_READY"], [data-quest-state="RESULT_READY"]')).toBeVisible();
 
   await page.setViewportSize({ width: 412, height: 915 });
   await expectMobileGeometry(page, ".quest-v2-shell");
