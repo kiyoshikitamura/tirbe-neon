@@ -807,7 +807,7 @@ export function useBattle(options: UseBattleOptions) {
       }
     }
 
-    // 抗争 (GvG) リアル対戦相手（または演習相手）のロード
+    // GvG リアル対戦相手（または演習相手）のロード
     if (mode === "GVG" && officialGvgDefenseDeck) {
       initialEnemyParty = gvgDefenseSnapshotToParticipants(officialGvgDefenseDeck);
       loadedRealEnemy = initialEnemyParty.length > 0;
@@ -898,7 +898,7 @@ export function useBattle(options: UseBattleOptions) {
                   junk_bazar: "ジャンクバザール",
                   kitakura_gate: "キタクラゲート"
                 };
-                const baseName = baseNames[areaIdOrOpponentUserId] || "抗争地区";
+                const baseName = baseNames[areaIdOrOpponentUserId] || "GvGエリア";
                 const teamLabel = isPractice ? "防衛演習" : `${baseName}防衛チーム`;
 
                 initialEnemyParty = sortedChars.map((charRecord: any, idx) => {
@@ -953,8 +953,8 @@ export function useBattle(options: UseBattleOptions) {
                   const myUser = session.user.user_metadata?.username || "他ギルドのプレイヤー";
                   await supabase.from("board_posts").insert({
                     user_id: session.user.id,
-                    author_name: "抗争警報",
-                    content: `【抗争警告】他ギルドの ${myUser} から、我がギルドの守備メンバー ${oppUsername} への侵攻攻撃を受けました！`,
+                    author_name: "GvG警報",
+                    content: `【GvG警告】他ギルドの ${myUser} から、我がギルドの守備メンバー ${oppUsername} への攻撃を受けました！`,
                     target_type: "GUILD",
                     target_id: oppGuildId,
                     is_system: true
@@ -990,7 +990,7 @@ export function useBattle(options: UseBattleOptions) {
           junk_bazar: "ジャンクバザール",
           kitakura_gate: "キタクラゲート"
         };
-        const baseName = (mode === "GVG" && areaIdOrOpponentUserId) ? baseNames[areaIdOrOpponentUserId] || "抗争地区" : "抗争地区";
+        const baseName = (mode === "GVG" && areaIdOrOpponentUserId) ? baseNames[areaIdOrOpponentUserId] || "GvGエリア" : "GvGエリア";
         const teamLabel = isPractice ? "防衛演習" : `${baseName}防衛チーム`;
 
         if (mode === "GVG") {
@@ -2558,8 +2558,8 @@ export function useBattle(options: UseBattleOptions) {
               if (setConfirmDialogConfig) {
                 setConfirmDialogConfig!({
                   isOpen: true,
-                  title: "抗争結果",
-                  message: "侵攻勝利！ 自組織の抗争ポイント +250。個人抗争ポイント +250。",
+                  title: "GvG結果",
+                  message: "攻撃成功！ ギルドGvGポイント +250。個人GvGポイント +250。",
                   onConfirm: () => setConfirmDialogConfig!(null),
                   onCancel: () => setConfirmDialogConfig!(null)
                 });
@@ -2568,8 +2568,8 @@ export function useBattle(options: UseBattleOptions) {
               if (setConfirmDialogConfig) {
                 setConfirmDialogConfig!({
                   isOpen: true,
-                  title: "抗争結果",
-                  message: "侵攻失敗... 自組織の抗争ポイント -100。個人抗争ポイント -100。相手ギルド防衛ポイント +100。",
+                  title: "GvG結果",
+                  message: "攻撃失敗… ギルドGvGポイント -100。個人GvGポイント -100。相手ギルド防衛ポイント +100。",
                   onConfirm: () => setConfirmDialogConfig!(null),
                   onCancel: () => setConfirmDialogConfig!(null)
                 });

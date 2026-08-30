@@ -353,7 +353,7 @@ export default function GuildTab() {
         <nav className="guild-action-grid" aria-label="ギルド機能">
           <button type="button" onClick={() => { setChatChannel("GUILD"); setShowTribeChatPanel(true); }}><strong>ギルドチャット</strong><span>メンバーと話す</span></button>
           <button type="button" onClick={() => setGuildSubTab("members")}><strong>メンバー</strong><span>{guildMembersList.length}人</span></button>
-          <button type="button" className="is-coming-soon" disabled><strong>抗争</strong><span>準備中</span></button>
+          <button type="button" className="is-coming-soon" disabled><strong>ギルドバトル</strong><span>準備中</span></button>
           <button type="button" className="is-coming-soon" disabled><strong>資金＆ショップ</strong><span>COMING SOON</span></button>
         </nav>
 

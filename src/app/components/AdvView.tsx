@@ -27,7 +27,7 @@ export default function AdvView() {
       <div className="adv-dialog-box border-magenta-glow background-black-90 shadow-magenta-20 relative">
         <div className="flex justify-between items-center pb-2 border-bottom-subtle mb-3 adv-header-layout">
           <span className="font-size-9 font-weight-bold text-color-magenta text-uppercase tracking-wider">
-            暗号通信: {activeStorySession.status === "INTRO_TALK" ? "前哨交渉" : "制圧後処理"}
+            暗号通信: {activeStorySession.status === "INTRO_TALK" ? "前哨交渉" : "完了処理"}
           </span>
           <span className="font-size-7 text-secondary">
             {activeStorySession.currentNodeId + 1} / {currentList.length}

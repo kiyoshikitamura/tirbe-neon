@@ -138,7 +138,8 @@
     "supabase:dump:guarded": "node scripts/dump_guarded_schema.mjs",
     "supabase:postflight:guarded": "node scripts/run_guarded_postflight.mjs",
     "supabase:migration-file:guarded": "node scripts/run_guarded_migration_file.mjs",
-    "verify:owner-rls": "node scripts/verify_owner_rls.mjs"
+    "verify:owner-rls": "node scripts/verify_owner_rls.mjs",
+    "verify:master-freeze-20260830": "node scripts/verify_master_freeze_20260830.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.110.2",

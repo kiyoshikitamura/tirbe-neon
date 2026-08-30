@@ -41,11 +41,7 @@ import { canonicalMissionUiStatus } from "@/domain/gameplay/canonical/missions";
 import { canonicalItemName } from "@/domain/gameplay/canonical/items";
 import { normalizeUserBio } from "@/domain/presentation/userBio";
 import { waitForBrowserPaint } from "@/domain/presentation/browserPaint";
-import {
-  CANONICAL_QUEST_ENCOUNTERS,
-  CANONICAL_QUEST_REWARD_POOLS,
-  CANONICAL_QUESTS,
-} from "@/domain/gameplay/canonical/quests";
+import { CANONICAL_QUEST_REWARD_POOLS, CANONICAL_QUESTS } from "@/domain/gameplay/canonical/quests";
 import {
   isFeatureOpen,
   isMaintenanceEnabled,
@@ -1081,10 +1077,12 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
             reward_amount: mission.reward_quantity || 0,
             rewardItemId: mission.reward_item_id || "CASH",
             rewardQty: mission.reward_quantity || 0,
+            cashReward: Number(mission.cash_reward || 0),
             current_progress: userMission?.current_progress || 0,
             target_value: mission.target_value || 1,
             display_order: mission.display_order || 0,
             category: mission.category || "DAILY",
+            displayGroup: mission.display_group || "PROGRESS",
             conditionParams: mission.condition_params || {},
             prerequisiteMissionId: mission.prerequisite_mission_id || null,
             ctaTab: mission.condition_params?.cta_tab || null,
@@ -1446,7 +1444,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         supabase.from("quests").select("*"),
         supabase.from("canonical_quest_master").select("*"),
         supabase.from("canonical_quest_reward_pool_items").select("*"),
-        supabase.from("canonical_quest_encounter_master").select("*"),
+        Promise.resolve({ data: [] as any[] }),
         supabase.rpc("get_canonical_quest_progression"),
       ]);
       if (questsData) {
@@ -1501,13 +1499,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         setRaidFirstEntryFree(Boolean(raidAttemptState.firstEntryFree));
       }
 
-      const encounterRows = encounterData?.length ? encounterData : CANONICAL_QUEST_ENCOUNTERS.map((encounter) => ({
-        encounter_id: encounter.encounterId,
-        quest_id: encounter.questId,
-        town_id: encounter.townId,
-        difficulty: encounter.difficulty,
-        members: encounter.members,
-      }));
+      const encounterRows = encounterData?.length ? encounterData : [];
       const canonicalEncounterProjection = encounterRows.map((encounter: any) => ({
         id: encounter.encounter_id,
         quest_id: encounter.quest_id,
@@ -1656,7 +1648,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         setGvgBases(mappedBases);
       }
 
-      // GvG (抗争) 状態の同期
+      // GvG状態の同期
       try {
         const { data: dayRec } = await supabase.from("gvg_season_status").select("current_day").eq("id", 1).maybeSingle();
         const currentDay = dayRec?.current_day || 1;
@@ -2829,7 +2821,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
                   user_id: member.user_id,
                   item_id: "DIAMOND",
                   quantity: 50,
-                  message: `抗争デイリー支配報酬 [拠点: ${baseId}]`,
+                  message: `GvGデイリー報酬 [拠点: ${baseId}]`,
                   status: "UNCLAIMED",
                   sent_at: now.toISOString(),
                   expire_at: expire.toISOString()
@@ -2838,7 +2830,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
                   user_id: member.user_id,
                   item_id: "CASH",
                   quantity: 5000,
-                  message: `抗争デイリー支配報酬 [拠点: ${baseId}]`,
+                  message: `GvGデイリー報酬 [拠点: ${baseId}]`,
                   status: "UNCLAIMED",
                   sent_at: now.toISOString(),
                   expire_at: expire.toISOString()
@@ -2943,7 +2935,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       setGvgSeasonDay(1);
 
       await syncBootstrapData(session.user.id);
-      setConfirmDialogConfig({ isOpen: true, title: "リセット完了", message: "【GvG抗争 シーズンリセット完了】\n\nシーズン個人ランキングの最終順位に応じてダイヤ報酬を全員に配布しました。\n決戦進出ギルドへ最終順位報酬（ギルド資金、特別装飾背景）を付与しました。\n全ての累積支配日数・個人ポイントをリセットし、シーズン1日目へ移行しました。", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
+      setConfirmDialogConfig({ isOpen: true, title: "リセット完了", message: "【GvG シーズンリセット完了】\n\nシーズン結果を確定し、累積日数・個人ポイントをリセットして次シーズンへ移行しました。", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
     } catch (err: any) {
       console.warn("GvG season reset failed:", err.message);
     } finally {

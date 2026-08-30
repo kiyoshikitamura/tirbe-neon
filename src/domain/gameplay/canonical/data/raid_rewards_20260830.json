@@ -1,0 +1,60 @@
+{
+  "version": "2026-08-30",
+  "delivery": "PRESENT_EXACTLY_ONCE",
+  "participation": {
+    "finalizedBattles": 1,
+    "rewards": [
+      {
+        "itemId": "EQUIP_EXP_S",
+        "quantity": 1
+      }
+    ]
+  },
+  "daily": {
+    "finalizedBattles": 3,
+    "rewards": [
+      {
+        "itemId": "CHAR_EXP_M",
+        "quantity": 1
+      },
+      {
+        "itemId": "CASH",
+        "quantity": 40
+      }
+    ]
+  },
+  "fullParticipation": {
+    "raidPointsConsumed": 5,
+    "rewards": [
+      {
+        "itemId": "EQUIP_LB_PART",
+        "quantity": 1
+      }
+    ]
+  },
+  "clear": {
+    "uniqueBoundary": [
+      "raidDayKey",
+      "userId",
+      "CLEAR_REWARD"
+    ],
+    "eligibility": "FINALIZED_BEFORE_INSTANCE_CLEAR",
+    "rewards": [
+      {
+        "itemId": "SKILL_MANUAL",
+        "quantity": 1,
+        "probabilityBp": 10000
+      },
+      {
+        "itemId": "NORMAL_GACHA_TICKET_RANDOM",
+        "quantity": 1,
+        "probabilityBp": 3000
+      },
+      {
+        "itemId": "AWAKENING_BOOK",
+        "quantity": 1,
+        "probabilityBp": 100
+      }
+    ]
+  }
+}

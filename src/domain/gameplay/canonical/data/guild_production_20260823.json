@@ -44,7 +44,7 @@
       "rotation_range": 9
     }
   },
-  "creation": { "userLevel": 5, "cashCost": 5000, "nameMin": 1, "nameMax": 12 },
+  "creation": { "userLevel": 5, "cashCost": 500, "nameMin": 1, "nameMax": 12 },
   "combatBuffEnabled": false,
   "gvgState": "CLOSED",
   "friendState": "OMIT"

@@ -243,7 +243,9 @@ export function useInventory(
       setMissions(prev => prev.filter(m => m.id !== id));
       playCyberSe("MISSION_REWARD");
       await syncBootstrapData(session.user.id);
-      setConfirmDialogConfig({ isOpen: true, title: "報酬獲得", message: "報酬はプレゼントへ送られました。", kind: "reward", delivery: "PRESENT", rewards: [{ id: targetMission.reward_item || targetMission.rewardItemId, name: canonicalMissionRewardName(String(targetMission.reward_item || targetMission.rewardItemId || "")), quantity: Number(targetMission.reward_amount || targetMission.rewardQty || 0) }], confirmText: "OK", cancelText: "", presentation: "canonical", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
+      const rewards = [{ id: targetMission.reward_item || targetMission.rewardItemId, name: canonicalMissionRewardName(String(targetMission.reward_item || targetMission.rewardItemId || "")), quantity: Number(targetMission.reward_amount || targetMission.rewardQty || 0) }];
+      if (Number(targetMission.cashReward || 0) > 0) rewards.push({ id: "CASH", name: "キャッシュ", quantity: Number(targetMission.cashReward) });
+      setConfirmDialogConfig({ isOpen: true, title: "報酬獲得", message: "報酬はプレゼントへ送られました。", kind: "reward", delivery: "PRESENT", rewards, confirmText: "OK", cancelText: "", presentation: "canonical", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
     } catch (err) {
       console.warn(err);
       setMissions(prev => prev.map(m => m.id === id ? { ...m, loading: false } : m));
@@ -277,6 +279,7 @@ export function useInventory(
       clearMissions.forEach((mission) => {
         const itemId = String(mission.reward_item || mission.rewardItemId || "");
         rewardByItem.set(itemId, (rewardByItem.get(itemId) || 0) + Number(mission.reward_amount || mission.rewardQty || 0));
+        if (Number(mission.cashReward || 0) > 0) rewardByItem.set("CASH", (rewardByItem.get("CASH") || 0) + Number(mission.cashReward));
       });
       setConfirmDialogConfig({ isOpen: true, title: "クリア報酬", message: "すべての報酬はプレゼントへ送られました。", kind: "reward", delivery: "PRESENT", rewards: Array.from(rewardByItem, ([id, quantity]) => ({ id, name: canonicalMissionRewardName(id), quantity })), confirmText: "閉じる", cancelText: "", presentation: "canonical", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
     } catch (err: any) {

@@ -4,7 +4,7 @@ import { CANONICAL_CHARACTERS, CANONICAL_EQUIPMENTS, CANONICAL_MISSIONS, CANONIC
 import { canonicalCharacterStats, canonicalEquipmentFlatStat, canonicalEquipmentLevelCap, canonicalSkillSlotCount } from "../../domain/gameplay/canonical/calculations.ts";
 import { applyCharacterAwakeningCopyEquivalent } from "../../domain/gameplay/canonical/awakening.ts";
 import { applyFrozenUserXp, canUseEnergyDrink, recoverCanonicalResource } from "../../domain/gameplay/canonical/action_resources.ts";
-import { CANONICAL_QUEST_ENCOUNTERS, canonicalQuestById, rollCanonicalQuestItems } from "../../domain/gameplay/canonical/quests.ts";
+import { CANONICAL_QUESTS, canonicalQuestById, generateCanonicalQuestEncounter, rollCanonicalQuestItems } from "../../domain/gameplay/canonical/quests.ts";
 import { parseCanonicalEffects } from "../../domain/battle/canonical_effects.ts";
 import { DEFAULT_OPERATIONS_STATE, type OperationsFeatureKey } from "../../domain/operations/operations.ts";
 import {
@@ -23,18 +23,34 @@ const canonicalMissionRows = (): MissionMasterRow[] => CANONICAL_MISSIONS.map((m
   trigger_type: mission.triggerType,
   target_value: mission.targetValue,
   prerequisite_mission_id: mission.prerequisiteMissionId,
-  is_enabled: mission.isEnabled,
+  is_enabled: mission.isEnabled && mission.preopen,
   reward_item_id: mission.rewardItemId,
   reward_quantity: mission.rewardQuantity,
+  cash_reward: mission.cashReward,
+  display_group: mission.displayGroup,
+  preopen: mission.preopen,
 }));
 
-const canonicalQuestEnemySnapshot = (questId: string) => {
-  const encounter = CANONICAL_QUEST_ENCOUNTERS.find((entry) => entry.questId === questId && entry.isProductionEnabled);
+const resolveCanonicalRewardItem = (rewardId: string): string => {
+  if (rewardId === "NORMAL_GACHA_TICKET_RANDOM") {
+    return ["NORMAL_GACHA_TICKET_CHARACTER", "NORMAL_GACHA_TICKET_SKILL", "NORMAL_GACHA_TICKET_EQUIPMENT"][Math.floor(Math.random() * 3)];
+  }
+  if (rewardId === "SPECIAL_TICKET_RANDOM") {
+    return ["SPECIAL_TICKET_CHARACTER", "SPECIAL_TICKET_SKILL", "SPECIAL_TICKET_EQUIPMENT"][Math.floor(Math.random() * 3)];
+  }
+  if (rewardId === "SPECIAL_TICKET_SKILL_OR_EQUIPMENT") {
+    return ["SPECIAL_TICKET_SKILL", "SPECIAL_TICKET_EQUIPMENT"][Math.floor(Math.random() * 2)];
+  }
+  return rewardId;
+};
+
+const canonicalQuestEnemySnapshot = (questId: string, encounterOverride?: ReturnType<typeof generateCanonicalQuestEncounter>) => {
+  const encounter = encounterOverride ?? (canonicalQuestById(questId) ? generateCanonicalQuestEncounter(questId) : null);
   if (!encounter) return null;
   return encounter.members.map((member) => {
     const character = CANONICAL_CHARACTERS.find((entry) => entry.character_id === member.characterId);
     if (!character) throw new Error(`Canonical Quest encounter references unknown Character: ${member.characterId}`);
-    const stats = canonicalCharacterStats(character.lv1, character.lv100, member.level, member.awakening);
+    const stats = member.stats;
     return {
       id: `${encounter.encounterId}_${member.slot}`,
       name: character.name,
@@ -977,7 +993,7 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
       && entry.has_battle_event
       && !entry.battle_resolved
     );
-    const encounter = patrol ? CANONICAL_QUEST_ENCOUNTERS.find((entry) => entry.questId === (patrol.course_id || patrol.quest_id)) : null;
+    const encounter = patrol?.encounter_snapshot ?? null;
     if (!patrol || !encounter) {
       return { data: null, error: { message: "eligible patrol encounter not found", code: "P0002" } };
     }
@@ -1076,7 +1092,7 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
         skills: skillRefs,
       };
     });
-    const canonicalEnemySnapshot = canonicalQuestEnemySnapshot(patrol.course_id);
+    const canonicalEnemySnapshot = canonicalQuestEnemySnapshot(patrol.course_id, patrol.encounter_snapshot);
     // Non-Production mock fixtures may still exercise historical arbitrary
     // quest IDs. Every Canonical Quest takes the shared Character snapshot path.
     const enemySnapshot = canonicalEnemySnapshot || (() => {
@@ -1099,7 +1115,7 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     })();
     const sessions = client.getStorage("battle_replay_sessions") || [];
     const id = `replay_${Date.now()}`;
-    const encounter = CANONICAL_QUEST_ENCOUNTERS.find((entry) => entry.questId === patrol.course_id);
+    const encounter = patrol.encounter_snapshot;
     sessions.push({ id, requester_user_id: userId, battle_mode: "QUEST", tactic_id: params.p_tactic_id, enemy_tactic_id: encounter?.enemyTactic ?? null, random_seed: Date.now(), source_reference_id: patrol.id, resolution_authority: "PATROL_SERVER", status: "PENDING", player_snapshot: playerSnapshot, enemy_snapshot: enemySnapshot });
     client.setStorage("battle_replay_sessions", sessions);
     return { data: { replay_session_id: id, player_snapshot: playerSnapshot, enemy_snapshot: enemySnapshot, enemy_tactic: encounter?.enemyTactic ?? null }, error: null };
@@ -2640,7 +2656,7 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     const { p_user_id, p_guild_name, p_guild_description, p_guild_logo, p_guild_color, p_creation_cost } = params;
     const users = client.getStorage("users");
     const user = users.find((u: any) => u.id === p_user_id);
-    if (!user || user.cash < p_creation_cost) return { error: { message: "キャッシュが不足しています。" } };
+    if (!user || Number(user.level || 1) < 5 || p_creation_cost !== 500 || user.cash < 500) return { error: { message: "ギルド設立条件を満たしていません。" } };
     
     const guilds = client.getStorage("guilds") || [];
     const newGuildId = "guild_" + Date.now();
@@ -2797,8 +2813,11 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
       ? canonicalQuest.userExp + (isFirstClear ? canonicalQuest.firstClearUserExp : 0)
       : Math.max(0, Number(quest.exp_reward || 0));
     const cashReward = canonicalQuest ? canonicalQuest.cashReward : Math.max(0, Number(quest.cash_reward || 0));
+    const dailyClaims = client.getStorage("canonical_daily_activity_claims") || [];
+    const gameDay = jstCycleDate();
+    const hardDailyCash = canonicalQuest?.difficulty === "HARD" && !dailyClaims.some((entry: any) => entry.user_id === userId && entry.game_day === gameDay && entry.source_key === "QUEST_HARD_FIRST") ? 20 : 0;
     const awardedItems = canonicalQuest
-      ? [...rollCanonicalQuestItems(canonicalQuest.rewardPoolId), ...(isFirstClear ? rollCanonicalQuestItems(canonicalQuest.firstClearRewardPoolId) : [])]
+      ? [...rollCanonicalQuestItems(canonicalQuest.rewardPoolId), ...(isFirstClear && canonicalQuest.firstClearRewardPoolId ? rollCanonicalQuestItems(canonicalQuest.firstClearRewardPoolId) : [])]
       : [];
     user.level = user.level || 1;
     const progression = applyFrozenUserXp(user.level, Math.max(0, Number(user.xp || 0)), rewardXp);
@@ -2806,7 +2825,7 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     user.xp = progression.xp;
 
     const presents = client.getStorage("presents") || [];
-    presents.push({
+    if (cashReward > 0) presents.push({
       id: `patrol_reward_${p_patrol_id}`,
       user_id: userId,
       item_id: "CASH",
@@ -2828,6 +2847,11 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
         expire_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
       });
     }
+    if (hardDailyCash > 0) {
+      dailyClaims.push({ game_day: gameDay, user_id: userId, source_key: "QUEST_HARD_FIRST", source_ref: p_patrol_id, reward_payload: [{ itemId: "CASH", quantity: 20 }] });
+      presents.push({ id:`quest_hard_daily_${userId}_${gameDay}`,user_id:userId,item_id:"CASH",quantity:20,message:"HARDクエスト本日初回報酬",status:"UNCLAIMED",sent_at:new Date().toISOString() });
+      client.setStorage("canonical_daily_activity_claims",dailyClaims);
+    }
     if (isFirstClear) {
       firstClears.push({ user_id: userId, quest_id: quest.id, cleared_at: new Date().toISOString() });
       client.setStorage("user_quest_first_clears", firstClears);
@@ -2835,7 +2859,7 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     patrol.status = "COMPLETED";
     patrol.has_battle_event = false;
     patrol.battle_resolved = true;
-    patrol.rewards_accrued = { course_name: quest.name, cash: cashReward, xp: rewardXp, items: awardedItems, first_clear: isFirstClear };
+    patrol.rewards_accrued = { course_name: quest.name, cash: cashReward, daily_cash: hardDailyCash, xp: rewardXp, items: awardedItems, first_clear: isFirstClear };
     client.setStorage("users", users);
     client.setStorage("presents", presents);
     client.setStorage("user_patrols", patrols);
@@ -2847,6 +2871,7 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
         patrol_id: p_patrol_id,
         course_name: quest.name,
         cash: cashReward,
+        daily_cash: hardDailyCash,
         xp: rewardXp,
         items: awardedItems,
         first_clear: isFirstClear,
@@ -3269,7 +3294,7 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     const user = users.find((u: any) => u.id === p_user_id);
     const cleanName = String(p_guild_name || "").trim();
     const members = client.getStorage("guild_members") || [];
-    if (!user || Number(user.level || 1) < 5 || user.cash < p_creation_cost || p_creation_cost !== 5000 || Array.from(cleanName).length < 1 || Array.from(cleanName).length > 12) return { error: { message: "Guild creation requirements are not met" } };
+    if (!user || Number(user.level || 1) < 5 || user.cash < p_creation_cost || p_creation_cost !== 500 || Array.from(cleanName).length < 1 || Array.from(cleanName).length > 12) return { error: { message: "Guild creation requirements are not met" } };
     if (user.guild_id || members.some((member: any) => member.user_id === p_user_id)) return { error: { message: "Leave the current guild before creating another guild" } };
     
     const guilds = client.getStorage("guilds") || [];
@@ -3697,7 +3722,7 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     const p_user_id = typeof window === "undefined" ? null : localStorage.getItem("tribe_demo_uuid");
     if (!p_user_id) return { data: null, error: { message: "authentication required", code: "42501" } };
     const userMissions = client.getStorage("user_missions") || [];
-    const master = CANONICAL_MISSIONS.find((mission) => mission.id === p_mission_id && mission.isEnabled);
+    const master = CANONICAL_MISSIONS.find((mission) => mission.id === p_mission_id && mission.isEnabled && mission.preopen);
     const um = userMissions.find((m: any) => m.user_id === p_user_id && m.mission_id === p_mission_id && m.status === "CLEAR");
     if (!um) return { error: { message: "ミッションが見つからないか未達成です。" } };
     if (!master) return { error: { message: "Canonical Mission Masterが見つかりません。" } };
@@ -3712,12 +3737,15 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     presents.push({
       id: `mission_reward_${p_user_id}_${p_mission_id}`,
       user_id: p_user_id,
-      item_id: master.rewardItemId,
+      item_id: resolveCanonicalRewardItem(master.rewardItemId),
       quantity: master.rewardQuantity,
       message: "ミッション報酬",
       status: "UNCLAIMED",
       sent_at: new Date().toISOString(),
     });
+    if (master.cashReward > 0) {
+      presents.push({ id:`mission_cash_${p_user_id}_${p_mission_id}`,user_id:p_user_id,item_id:"CASH",quantity:master.cashReward,message:"ミッション報酬",status:"UNCLAIMED",sent_at:new Date().toISOString() });
+    }
     unlockClaimedMissionChildren(canonicalMissionRows(), userMissions, p_user_id, p_mission_id, achievedFunnelTriggers(client, p_user_id));
     client.setStorage("user_missions", userMissions);
     client.setStorage("presents", presents);
@@ -3731,7 +3759,7 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     const userMissions = client.getStorage("user_missions") || [];
     const presents = client.getStorage("presents") || [];
     const candidates = userMissions.filter((um: any) => um.user_id === p_user_id && p_mission_ids.includes(um.mission_id) && um.status === "CLEAR");
-    if (candidates.some((um: any) => !CANONICAL_MISSIONS.some((mission) => mission.id === um.mission_id && mission.isEnabled))) {
+    if (candidates.some((um: any) => !CANONICAL_MISSIONS.some((mission) => mission.id === um.mission_id && mission.isEnabled && mission.preopen))) {
       return { error: { message: "Canonical Mission Masterが見つかりません。" } };
     }
     let count = 0;
@@ -3744,12 +3772,13 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
         presents.push({
           id: `mission_reward_${p_user_id}_${um.mission_id}`,
           user_id: p_user_id,
-          item_id: master.rewardItemId,
+          item_id: resolveCanonicalRewardItem(master.rewardItemId),
           quantity: master.rewardQuantity,
           message: "ミッション一括報酬",
           status: "UNCLAIMED",
           sent_at: new Date().toISOString(),
         });
+        if (master.cashReward > 0) presents.push({ id:`mission_cash_${p_user_id}_${um.mission_id}`,user_id:p_user_id,item_id:"CASH",quantity:master.cashReward,message:"ミッション一括報酬",status:"UNCLAIMED",sent_at:new Date().toISOString() });
         unlockClaimedMissionChildren(canonicalMissionRows(), userMissions, p_user_id, um.mission_id, achievedFunnelTriggers(client, p_user_id));
         count++;
     });
@@ -3776,8 +3805,8 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
   if (funcName === "get_canonical_quest_progression") {
     const userId = typeof window === "undefined" ? null : localStorage.getItem("tribe_demo_uuid");
     const firstClears = client.getStorage("user_quest_first_clears") || [];
-    return { data: CANONICAL_QUEST_ENCOUNTERS.map((encounter) => {
-      const quest = canonicalQuestById(encounter.questId)!;
+    return { data: CANONICAL_QUESTS.map((quest) => {
+      const encounter = generateCanonicalQuestEncounter(quest.questId, () => 0.37);
       const condition = quest.unlockCondition;
       const prerequisite = condition.type === "FIRST_CLEAR" ? condition.questId : null;
       const memberCharacters = encounter.members.map((member) => CANONICAL_CHARACTERS.find((entry) => entry.character_id === member.characterId)!);
@@ -3800,9 +3829,8 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     const canonicalQuest = canonicalQuestById(p_course_id);
     const firstClears = client.getStorage("user_quest_first_clears") || [];
     if (canonicalQuest?.unlockCondition.type === "FIRST_CLEAR" && !firstClears.some((entry: any) => entry.user_id === currentUserId && entry.quest_id === canonicalQuest.unlockCondition.questId)) return { data:null, error:{ message:"Quest is locked", code:"23514" } };
-    const level = String(p_course_id).match(/_(\d)$/)?.[1];
-    const durationSeconds = Number(quest?.duration_seconds ?? (level === "1" ? 60 : level === "2" ? 180 : 300));
-    const costVitality = Number(quest?.cost_vitality ?? (level === "1" ? 5 : level === "2" ? 10 : 15));
+    const durationSeconds = Number(canonicalQuest?.durationSec ?? quest?.duration_seconds ?? 300);
+    const costVitality = Number(canonicalQuest?.vitalityCost ?? quest?.cost_vitality ?? 3);
     if (user.vitality < costVitality) return { data: null, error: { message: "スタミナが不足しています。", code: "23514" } };
 
     const patrols = client.getStorage("user_patrols") || [];
@@ -3816,6 +3844,8 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
 
     const hasBattle = true;
     const newId = `patrol_${Date.now()}`;
+    const previous = [...patrols].reverse().find((entry: any) => entry.user_id === currentUserId && entry.course_id === p_course_id)?.encounter_snapshot?.partySignature ?? null;
+    const encounterSnapshot = canonicalQuest ? generateCanonicalQuestEncounter(p_course_id, Math.random, previous) : null;
     patrols.push({
       id: newId,
       user_id: currentUserId,
@@ -3826,6 +3856,7 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
       status: "ONGOING",
       has_battle_event: hasBattle,
       battle_resolved: false,
+      encounter_snapshot: encounterSnapshot,
     });
     user.vitality -= costVitality;
     client.setStorage("users", users);
@@ -3884,7 +3915,7 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
       user_id: p_user_id,
       item_id: "CASH",
       quantity: p_cash,
-      message: `見回り完了報酬 (${p_course_name}${p_is_victory ? '・バトル勝利' : ''})`,
+      message: `クエスト完了報酬 (${p_course_name}${p_is_victory ? '・バトル勝利' : ''})`,
       status: "UNCLAIMED"
     });
     
@@ -3894,7 +3925,7 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
         user_id: p_user_id,
         item_id: p_reward_item_id,
         quantity: p_reward_qty,
-        message: `見回りドロップ報酬 (${p_course_name})`,
+        message: `クエストドロップ報酬 (${p_course_name})`,
         status: "UNCLAIMED"
       });
     }
@@ -3905,7 +3936,7 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
         user_id: p_user_id,
         item_id: "WEAPON_001",
         quantity: 1,
-        message: `見回り追加ドロップ装備 (${p_course_name})`,
+        message: `クエスト追加ドロップ装備 (${p_course_name})`,
         status: "UNCLAIMED"
       });
     }
@@ -3916,7 +3947,7 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
         user_id: p_user_id,
         item_id: p_battle_reward_item_id,
         quantity: p_battle_reward_qty,
-        message: `見回りバトル勝利追加報酬 (${p_course_name})`,
+        message: `クエストバトル勝利追加報酬 (${p_course_name})`,
         status: "UNCLAIMED"
       });
     }

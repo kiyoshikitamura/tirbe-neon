@@ -1,0 +1,3154 @@
+{
+  "version": "2026-08-30",
+  "authority": "M7_Enemy_Contract + M7_Enemy_Pools",
+  "contract": {
+    "partySize": {
+      "EASY": 3,
+      "NORMAL": 5,
+      "HARD": 5
+    },
+    "rarityTemplate": {
+      "EASY": {
+        "N": 2,
+        "R": 1
+      },
+      "NORMAL": {
+        "N_R": 3,
+        "SR_MIN": 1,
+        "SR_MAX": 2
+      },
+      "HARD": {
+        "R_SR": 5,
+        "SR_MIN": 2,
+        "SR_MAX": 3
+      }
+    },
+    "baseStats": {
+      "EASY": {
+        "hp": 14000,
+        "atk": 1600,
+        "def": 1200,
+        "spdMin": 80,
+        "spdMax": 105
+      },
+      "NORMAL": {
+        "hp": 22000,
+        "atk": 2400,
+        "def": 1800,
+        "spdMin": 90,
+        "spdMax": 120
+      },
+      "HARD": {
+        "hp": 34000,
+        "atk": 3400,
+        "def": 2600,
+        "spdMin": 100,
+        "spdMax": 135
+      }
+    },
+    "equipment": "NONE",
+    "repeatGuardRerolls": 1
+  },
+  "areaModifiers": {
+    "SHINJUKU": {
+      "hp": 1,
+      "atk": 1.1,
+      "def": 0.95,
+      "spd": 1
+    },
+    "SHIBUYA": {
+      "hp": 0.95,
+      "atk": 1,
+      "def": 0.95,
+      "spd": 1.1
+    },
+    "IKEBUKURO": {
+      "hp": 1.05,
+      "atk": 0.95,
+      "def": 1.08,
+      "spd": 0.95
+    },
+    "ROPPONGI": {
+      "hp": 1.02,
+      "atk": 0.97,
+      "def": 1.08,
+      "spd": 1
+    },
+    "AKIHABARA": {
+      "hp": 0.98,
+      "atk": 0.98,
+      "def": 0.95,
+      "spd": 1.05
+    },
+    "KAWASAKI": {
+      "hp": 1.05,
+      "atk": 1.08,
+      "def": 0.95,
+      "spd": 0.95
+    },
+    "YOKOHAMA": {
+      "hp": 1.05,
+      "atk": 0.98,
+      "def": 1.05,
+      "spd": 1
+    }
+  },
+  "growthModifiers": {
+    "ATTACKER": {
+      "hp": 0.95,
+      "atk": 1.1,
+      "def": 0.9,
+      "spd": 1
+    },
+    "DEFENDER": {
+      "hp": 1.1,
+      "atk": 0.9,
+      "def": 1.12,
+      "spd": 0.9
+    },
+    "SPEEDSTER": {
+      "hp": 0.92,
+      "atk": 1,
+      "def": 0.9,
+      "spd": 1.15
+    },
+    "LUCKY_STAR": {
+      "hp": 1,
+      "atk": 0.95,
+      "def": 0.95,
+      "spd": 1.05
+    },
+    "BALANCED": {
+      "hp": 1,
+      "atk": 1,
+      "def": 1,
+      "spd": 1
+    }
+  },
+  "entries": [
+    {
+      "areaId": "SHINJUKU",
+      "difficulty": "EASY",
+      "rarity": "N",
+      "characterId": "char_tomoya_01",
+      "name": "トモヤ",
+      "growthPattern": "BALANCED",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_008"
+      ],
+      "eligibleSlot": "N"
+    },
+    {
+      "areaId": "SHINJUKU",
+      "difficulty": "EASY",
+      "rarity": "N",
+      "characterId": "char_naoto_01",
+      "name": "ナオト",
+      "growthPattern": "SPEEDSTER",
+      "weight": 1,
+      "localAffinity": "CROSS_AREA",
+      "skillLoadout": [
+        "SKILL_004"
+      ],
+      "eligibleSlot": "N"
+    },
+    {
+      "areaId": "SHINJUKU",
+      "difficulty": "EASY",
+      "rarity": "N",
+      "characterId": "char_tatsuya_01",
+      "name": "タツヤ",
+      "growthPattern": "DEFENDER",
+      "weight": 1,
+      "localAffinity": "CROSS_AREA",
+      "skillLoadout": [
+        "SKILL_006"
+      ],
+      "eligibleSlot": "N"
+    },
+    {
+      "areaId": "SHINJUKU",
+      "difficulty": "EASY",
+      "rarity": "N",
+      "characterId": "char_kenji_01",
+      "name": "ケンジ",
+      "growthPattern": "ATTACKER",
+      "weight": 1,
+      "localAffinity": "CROSS_AREA",
+      "skillLoadout": [
+        "SKILL_001"
+      ],
+      "eligibleSlot": "N"
+    },
+    {
+      "areaId": "SHINJUKU",
+      "difficulty": "EASY",
+      "rarity": "R",
+      "characterId": "char_shin_01",
+      "name": "シン",
+      "growthPattern": "DEFENDER",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_006"
+      ],
+      "eligibleSlot": "R"
+    },
+    {
+      "areaId": "SHINJUKU",
+      "difficulty": "EASY",
+      "rarity": "R",
+      "characterId": "char_yuki_01",
+      "name": "ユウキ",
+      "growthPattern": "DEFENDER",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_006"
+      ],
+      "eligibleSlot": "R"
+    },
+    {
+      "areaId": "SHINJUKU",
+      "difficulty": "EASY",
+      "rarity": "R",
+      "characterId": "char_jihoon_01",
+      "name": "ジフン",
+      "growthPattern": "SPEEDSTER",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_004"
+      ],
+      "eligibleSlot": "R"
+    },
+    {
+      "areaId": "SHINJUKU",
+      "difficulty": "EASY",
+      "rarity": "R",
+      "characterId": "char_serika_01",
+      "name": "セリカ",
+      "growthPattern": "LUCKY_STAR",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_005"
+      ],
+      "eligibleSlot": "R"
+    },
+    {
+      "areaId": "SHINJUKU",
+      "difficulty": "NORMAL",
+      "rarity": "N",
+      "characterId": "char_tomoya_01",
+      "name": "トモヤ",
+      "growthPattern": "BALANCED",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_012"
+      ],
+      "eligibleSlot": "N"
+    },
+    {
+      "areaId": "SHINJUKU",
+      "difficulty": "NORMAL",
+      "rarity": "N",
+      "characterId": "char_naoto_01",
+      "name": "ナオト",
+      "growthPattern": "SPEEDSTER",
+      "weight": 1,
+      "localAffinity": "CROSS_AREA",
+      "skillLoadout": [
+        "SKILL_020"
+      ],
+      "eligibleSlot": "N"
+    },
+    {
+      "areaId": "SHINJUKU",
+      "difficulty": "NORMAL",
+      "rarity": "N",
+      "characterId": "char_tatsuya_01",
+      "name": "タツヤ",
+      "growthPattern": "DEFENDER",
+      "weight": 1,
+      "localAffinity": "CROSS_AREA",
+      "skillLoadout": [
+        "SKILL_016"
+      ],
+      "eligibleSlot": "N"
+    },
+    {
+      "areaId": "SHINJUKU",
+      "difficulty": "NORMAL",
+      "rarity": "N",
+      "characterId": "char_kenji_01",
+      "name": "ケンジ",
+      "growthPattern": "ATTACKER",
+      "weight": 1,
+      "localAffinity": "CROSS_AREA",
+      "skillLoadout": [
+        "SKILL_011"
+      ],
+      "eligibleSlot": "N"
+    },
+    {
+      "areaId": "SHINJUKU",
+      "difficulty": "NORMAL",
+      "rarity": "R",
+      "characterId": "char_shin_01",
+      "name": "シン",
+      "growthPattern": "DEFENDER",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_016"
+      ],
+      "eligibleSlot": "R"
+    },
+    {
+      "areaId": "SHINJUKU",
+      "difficulty": "NORMAL",
+      "rarity": "R",
+      "characterId": "char_yuki_01",
+      "name": "ユウキ",
+      "growthPattern": "DEFENDER",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_016"
+      ],
+      "eligibleSlot": "R"
+    },
+    {
+      "areaId": "SHINJUKU",
+      "difficulty": "NORMAL",
+      "rarity": "R",
+      "characterId": "char_jihoon_01",
+      "name": "ジフン",
+      "growthPattern": "SPEEDSTER",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_020"
+      ],
+      "eligibleSlot": "R"
+    },
+    {
+      "areaId": "SHINJUKU",
+      "difficulty": "NORMAL",
+      "rarity": "R",
+      "characterId": "char_serika_01",
+      "name": "セリカ",
+      "growthPattern": "LUCKY_STAR",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_015"
+      ],
+      "eligibleSlot": "R"
+    },
+    {
+      "areaId": "SHINJUKU",
+      "difficulty": "NORMAL",
+      "rarity": "SR",
+      "characterId": "char_takuro_01",
+      "name": "タクロウ",
+      "growthPattern": "ATTACKER",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_011"
+      ],
+      "eligibleSlot": "SR"
+    },
+    {
+      "areaId": "SHINJUKU",
+      "difficulty": "NORMAL",
+      "rarity": "SR",
+      "characterId": "char_leon_01",
+      "name": "レオン",
+      "growthPattern": "ATTACKER",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_011"
+      ],
+      "eligibleSlot": "SR"
+    },
+    {
+      "areaId": "SHINJUKU",
+      "difficulty": "NORMAL",
+      "rarity": "SR",
+      "characterId": "char_kageyama_01",
+      "name": "カゲヤマ",
+      "growthPattern": "BALANCED",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_012"
+      ],
+      "eligibleSlot": "SR"
+    },
+    {
+      "areaId": "SHINJUKU",
+      "difficulty": "NORMAL",
+      "rarity": "SR",
+      "characterId": "char_martina_01",
+      "name": "マルティナ",
+      "growthPattern": "BALANCED",
+      "weight": 1,
+      "localAffinity": "CROSS_AREA",
+      "skillLoadout": [
+        "SKILL_012"
+      ],
+      "eligibleSlot": "SR"
+    },
+    {
+      "areaId": "SHINJUKU",
+      "difficulty": "HARD",
+      "rarity": "R",
+      "characterId": "char_shin_01",
+      "name": "シン",
+      "growthPattern": "DEFENDER",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_024",
+        "SKILL_031"
+      ],
+      "eligibleSlot": "R"
+    },
+    {
+      "areaId": "SHINJUKU",
+      "difficulty": "HARD",
+      "rarity": "R",
+      "characterId": "char_yuki_01",
+      "name": "ユウキ",
+      "growthPattern": "DEFENDER",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_024",
+        "SKILL_031"
+      ],
+      "eligibleSlot": "R"
+    },
+    {
+      "areaId": "SHINJUKU",
+      "difficulty": "HARD",
+      "rarity": "R",
+      "characterId": "char_jihoon_01",
+      "name": "ジフン",
+      "growthPattern": "SPEEDSTER",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_033",
+        "SKILL_034"
+      ],
+      "eligibleSlot": "R"
+    },
+    {
+      "areaId": "SHINJUKU",
+      "difficulty": "HARD",
+      "rarity": "R",
+      "characterId": "char_serika_01",
+      "name": "セリカ",
+      "growthPattern": "LUCKY_STAR",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_025",
+        "SKILL_032"
+      ],
+      "eligibleSlot": "R"
+    },
+    {
+      "areaId": "SHINJUKU",
+      "difficulty": "HARD",
+      "rarity": "R",
+      "characterId": "char_chang_01",
+      "name": "チャン",
+      "growthPattern": "ATTACKER",
+      "weight": 1,
+      "localAffinity": "CROSS_AREA",
+      "skillLoadout": [
+        "SKILL_021",
+        "SKILL_027"
+      ],
+      "eligibleSlot": "R"
+    },
+    {
+      "areaId": "SHINJUKU",
+      "difficulty": "HARD",
+      "rarity": "SR",
+      "characterId": "char_takuro_01",
+      "name": "タクロウ",
+      "growthPattern": "ATTACKER",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_021",
+        "SKILL_027"
+      ],
+      "eligibleSlot": "SR"
+    },
+    {
+      "areaId": "SHINJUKU",
+      "difficulty": "HARD",
+      "rarity": "SR",
+      "characterId": "char_leon_01",
+      "name": "レオン",
+      "growthPattern": "ATTACKER",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_021",
+        "SKILL_027"
+      ],
+      "eligibleSlot": "SR"
+    },
+    {
+      "areaId": "SHINJUKU",
+      "difficulty": "HARD",
+      "rarity": "SR",
+      "characterId": "char_kageyama_01",
+      "name": "カゲヤマ",
+      "growthPattern": "BALANCED",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_022",
+        "SKILL_026"
+      ],
+      "eligibleSlot": "SR"
+    },
+    {
+      "areaId": "SHINJUKU",
+      "difficulty": "HARD",
+      "rarity": "SR",
+      "characterId": "char_martina_01",
+      "name": "マルティナ",
+      "growthPattern": "BALANCED",
+      "weight": 1,
+      "localAffinity": "CROSS_AREA",
+      "skillLoadout": [
+        "SKILL_022",
+        "SKILL_026"
+      ],
+      "eligibleSlot": "SR"
+    },
+    {
+      "areaId": "SHINJUKU",
+      "difficulty": "HARD",
+      "rarity": "SR",
+      "characterId": "char_sora_01",
+      "name": "ソラ",
+      "growthPattern": "SPEEDSTER",
+      "weight": 1,
+      "localAffinity": "CROSS_AREA",
+      "skillLoadout": [
+        "SKILL_065",
+        "SKILL_034"
+      ],
+      "eligibleSlot": "SR"
+    },
+    {
+      "areaId": "SHIBUYA",
+      "difficulty": "EASY",
+      "rarity": "N",
+      "characterId": "char_naoto_01",
+      "name": "ナオト",
+      "growthPattern": "SPEEDSTER",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_004"
+      ],
+      "eligibleSlot": "N"
+    },
+    {
+      "areaId": "SHIBUYA",
+      "difficulty": "EASY",
+      "rarity": "N",
+      "characterId": "char_tomoya_01",
+      "name": "トモヤ",
+      "growthPattern": "BALANCED",
+      "weight": 1,
+      "localAffinity": "CROSS_AREA",
+      "skillLoadout": [
+        "SKILL_008"
+      ],
+      "eligibleSlot": "N"
+    },
+    {
+      "areaId": "SHIBUYA",
+      "difficulty": "EASY",
+      "rarity": "N",
+      "characterId": "char_sawat_01",
+      "name": "サワット",
+      "growthPattern": "SPEEDSTER",
+      "weight": 1,
+      "localAffinity": "CROSS_AREA",
+      "skillLoadout": [
+        "SKILL_004"
+      ],
+      "eligibleSlot": "N"
+    },
+    {
+      "areaId": "SHIBUYA",
+      "difficulty": "EASY",
+      "rarity": "N",
+      "characterId": "char_masato_01",
+      "name": "マサト",
+      "growthPattern": "LUCKY_STAR",
+      "weight": 1,
+      "localAffinity": "CROSS_AREA",
+      "skillLoadout": [
+        "SKILL_005"
+      ],
+      "eligibleSlot": "N"
+    },
+    {
+      "areaId": "SHIBUYA",
+      "difficulty": "EASY",
+      "rarity": "R",
+      "characterId": "char_minami_01",
+      "name": "ミナミ",
+      "growthPattern": "SPEEDSTER",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_004"
+      ],
+      "eligibleSlot": "R"
+    },
+    {
+      "areaId": "SHIBUYA",
+      "difficulty": "EASY",
+      "rarity": "R",
+      "characterId": "char_yukina_01",
+      "name": "ユキナ",
+      "growthPattern": "SPEEDSTER",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_004"
+      ],
+      "eligibleSlot": "R"
+    },
+    {
+      "areaId": "SHIBUYA",
+      "difficulty": "EASY",
+      "rarity": "R",
+      "characterId": "char_ren_male_01",
+      "name": "カズヤ",
+      "growthPattern": "DEFENDER",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_006"
+      ],
+      "eligibleSlot": "R"
+    },
+    {
+      "areaId": "SHIBUYA",
+      "difficulty": "EASY",
+      "rarity": "R",
+      "characterId": "char_jihoon_01",
+      "name": "ジフン",
+      "growthPattern": "SPEEDSTER",
+      "weight": 1,
+      "localAffinity": "CROSS_AREA",
+      "skillLoadout": [
+        "SKILL_004"
+      ],
+      "eligibleSlot": "R"
+    },
+    {
+      "areaId": "SHIBUYA",
+      "difficulty": "NORMAL",
+      "rarity": "N",
+      "characterId": "char_naoto_01",
+      "name": "ナオト",
+      "growthPattern": "SPEEDSTER",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_020"
+      ],
+      "eligibleSlot": "N"
+    },
+    {
+      "areaId": "SHIBUYA",
+      "difficulty": "NORMAL",
+      "rarity": "N",
+      "characterId": "char_tomoya_01",
+      "name": "トモヤ",
+      "growthPattern": "BALANCED",
+      "weight": 1,
+      "localAffinity": "CROSS_AREA",
+      "skillLoadout": [
+        "SKILL_012"
+      ],
+      "eligibleSlot": "N"
+    },
+    {
+      "areaId": "SHIBUYA",
+      "difficulty": "NORMAL",
+      "rarity": "N",
+      "characterId": "char_sawat_01",
+      "name": "サワット",
+      "growthPattern": "SPEEDSTER",
+      "weight": 1,
+      "localAffinity": "CROSS_AREA",
+      "skillLoadout": [
+        "SKILL_020"
+      ],
+      "eligibleSlot": "N"
+    },
+    {
+      "areaId": "SHIBUYA",
+      "difficulty": "NORMAL",
+      "rarity": "N",
+      "characterId": "char_masato_01",
+      "name": "マサト",
+      "growthPattern": "LUCKY_STAR",
+      "weight": 1,
+      "localAffinity": "CROSS_AREA",
+      "skillLoadout": [
+        "SKILL_015"
+      ],
+      "eligibleSlot": "N"
+    },
+    {
+      "areaId": "SHIBUYA",
+      "difficulty": "NORMAL",
+      "rarity": "R",
+      "characterId": "char_minami_01",
+      "name": "ミナミ",
+      "growthPattern": "SPEEDSTER",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_020"
+      ],
+      "eligibleSlot": "R"
+    },
+    {
+      "areaId": "SHIBUYA",
+      "difficulty": "NORMAL",
+      "rarity": "R",
+      "characterId": "char_yukina_01",
+      "name": "ユキナ",
+      "growthPattern": "SPEEDSTER",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_020"
+      ],
+      "eligibleSlot": "R"
+    },
+    {
+      "areaId": "SHIBUYA",
+      "difficulty": "NORMAL",
+      "rarity": "R",
+      "characterId": "char_ren_male_01",
+      "name": "カズヤ",
+      "growthPattern": "DEFENDER",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_016"
+      ],
+      "eligibleSlot": "R"
+    },
+    {
+      "areaId": "SHIBUYA",
+      "difficulty": "NORMAL",
+      "rarity": "R",
+      "characterId": "char_jihoon_01",
+      "name": "ジフン",
+      "growthPattern": "SPEEDSTER",
+      "weight": 1,
+      "localAffinity": "CROSS_AREA",
+      "skillLoadout": [
+        "SKILL_020"
+      ],
+      "eligibleSlot": "R"
+    },
+    {
+      "areaId": "SHIBUYA",
+      "difficulty": "NORMAL",
+      "rarity": "SR",
+      "characterId": "char_sora_01",
+      "name": "ソラ",
+      "growthPattern": "SPEEDSTER",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_065",
+        "SKILL_020"
+      ],
+      "eligibleSlot": "SR"
+    },
+    {
+      "areaId": "SHIBUYA",
+      "difficulty": "NORMAL",
+      "rarity": "SR",
+      "characterId": "char_reina_01",
+      "name": "レイナ",
+      "growthPattern": "SPEEDSTER",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_066",
+        "SKILL_020"
+      ],
+      "eligibleSlot": "SR"
+    },
+    {
+      "areaId": "SHIBUYA",
+      "difficulty": "NORMAL",
+      "rarity": "SR",
+      "characterId": "char_noa_01",
+      "name": "ノア",
+      "growthPattern": "SPEEDSTER",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_020"
+      ],
+      "eligibleSlot": "SR"
+    },
+    {
+      "areaId": "SHIBUYA",
+      "difficulty": "NORMAL",
+      "rarity": "SR",
+      "characterId": "char_martina_01",
+      "name": "マルティナ",
+      "growthPattern": "BALANCED",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_012"
+      ],
+      "eligibleSlot": "SR"
+    },
+    {
+      "areaId": "SHIBUYA",
+      "difficulty": "HARD",
+      "rarity": "R",
+      "characterId": "char_minami_01",
+      "name": "ミナミ",
+      "growthPattern": "SPEEDSTER",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_033",
+        "SKILL_034"
+      ],
+      "eligibleSlot": "R"
+    },
+    {
+      "areaId": "SHIBUYA",
+      "difficulty": "HARD",
+      "rarity": "R",
+      "characterId": "char_yukina_01",
+      "name": "ユキナ",
+      "growthPattern": "SPEEDSTER",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_033",
+        "SKILL_034"
+      ],
+      "eligibleSlot": "R"
+    },
+    {
+      "areaId": "SHIBUYA",
+      "difficulty": "HARD",
+      "rarity": "R",
+      "characterId": "char_ren_male_01",
+      "name": "カズヤ",
+      "growthPattern": "DEFENDER",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_024",
+        "SKILL_031"
+      ],
+      "eligibleSlot": "R"
+    },
+    {
+      "areaId": "SHIBUYA",
+      "difficulty": "HARD",
+      "rarity": "R",
+      "characterId": "char_jihoon_01",
+      "name": "ジフン",
+      "growthPattern": "SPEEDSTER",
+      "weight": 1,
+      "localAffinity": "CROSS_AREA",
+      "skillLoadout": [
+        "SKILL_033",
+        "SKILL_034"
+      ],
+      "eligibleSlot": "R"
+    },
+    {
+      "areaId": "SHIBUYA",
+      "difficulty": "HARD",
+      "rarity": "R",
+      "characterId": "char_mei_01",
+      "name": "メイ",
+      "growthPattern": "LUCKY_STAR",
+      "weight": 1,
+      "localAffinity": "CROSS_AREA",
+      "skillLoadout": [
+        "SKILL_025",
+        "SKILL_032"
+      ],
+      "eligibleSlot": "R"
+    },
+    {
+      "areaId": "SHIBUYA",
+      "difficulty": "HARD",
+      "rarity": "SR",
+      "characterId": "char_sora_01",
+      "name": "ソラ",
+      "growthPattern": "SPEEDSTER",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_065",
+        "SKILL_034"
+      ],
+      "eligibleSlot": "SR"
+    },
+    {
+      "areaId": "SHIBUYA",
+      "difficulty": "HARD",
+      "rarity": "SR",
+      "characterId": "char_reina_01",
+      "name": "レイナ",
+      "growthPattern": "SPEEDSTER",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_066",
+        "SKILL_034"
+      ],
+      "eligibleSlot": "SR"
+    },
+    {
+      "areaId": "SHIBUYA",
+      "difficulty": "HARD",
+      "rarity": "SR",
+      "characterId": "char_noa_01",
+      "name": "ノア",
+      "growthPattern": "SPEEDSTER",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_033",
+        "SKILL_034"
+      ],
+      "eligibleSlot": "SR"
+    },
+    {
+      "areaId": "SHIBUYA",
+      "difficulty": "HARD",
+      "rarity": "SR",
+      "characterId": "char_martina_01",
+      "name": "マルティナ",
+      "growthPattern": "BALANCED",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_022",
+        "SKILL_026"
+      ],
+      "eligibleSlot": "SR"
+    },
+    {
+      "areaId": "SHIBUYA",
+      "difficulty": "HARD",
+      "rarity": "SR",
+      "characterId": "char_alice_01",
+      "name": "アリス",
+      "growthPattern": "LUCKY_STAR",
+      "weight": 1,
+      "localAffinity": "CROSS_AREA",
+      "skillLoadout": [
+        "SKILL_067",
+        "SKILL_032"
+      ],
+      "eligibleSlot": "SR"
+    },
+    {
+      "areaId": "IKEBUKURO",
+      "difficulty": "EASY",
+      "rarity": "N",
+      "characterId": "char_kenji_01",
+      "name": "ケンジ",
+      "growthPattern": "ATTACKER",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_001"
+      ],
+      "eligibleSlot": "N"
+    },
+    {
+      "areaId": "IKEBUKURO",
+      "difficulty": "EASY",
+      "rarity": "N",
+      "characterId": "char_shun_01",
+      "name": "シュン",
+      "growthPattern": "DEFENDER",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_006"
+      ],
+      "eligibleSlot": "N"
+    },
+    {
+      "areaId": "IKEBUKURO",
+      "difficulty": "EASY",
+      "rarity": "N",
+      "characterId": "char_tomoya_01",
+      "name": "トモヤ",
+      "growthPattern": "BALANCED",
+      "weight": 1,
+      "localAffinity": "CROSS_AREA",
+      "skillLoadout": [
+        "SKILL_008"
+      ],
+      "eligibleSlot": "N"
+    },
+    {
+      "areaId": "IKEBUKURO",
+      "difficulty": "EASY",
+      "rarity": "N",
+      "characterId": "char_gou_01",
+      "name": "ダイスケ",
+      "growthPattern": "ATTACKER",
+      "weight": 1,
+      "localAffinity": "CROSS_AREA",
+      "skillLoadout": [
+        "SKILL_001"
+      ],
+      "eligibleSlot": "N"
+    },
+    {
+      "areaId": "IKEBUKURO",
+      "difficulty": "EASY",
+      "rarity": "R",
+      "characterId": "char_chang_01",
+      "name": "チャン",
+      "growthPattern": "ATTACKER",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_001"
+      ],
+      "eligibleSlot": "R"
+    },
+    {
+      "areaId": "IKEBUKURO",
+      "difficulty": "EASY",
+      "rarity": "R",
+      "characterId": "char_momoko_01",
+      "name": "モモコ",
+      "growthPattern": "BALANCED",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_008"
+      ],
+      "eligibleSlot": "R"
+    },
+    {
+      "areaId": "IKEBUKURO",
+      "difficulty": "EASY",
+      "rarity": "R",
+      "characterId": "char_shin_01",
+      "name": "シン",
+      "growthPattern": "DEFENDER",
+      "weight": 1,
+      "localAffinity": "CROSS_AREA",
+      "skillLoadout": [
+        "SKILL_006"
+      ],
+      "eligibleSlot": "R"
+    },
+    {
+      "areaId": "IKEBUKURO",
+      "difficulty": "EASY",
+      "rarity": "R",
+      "characterId": "char_yuki_01",
+      "name": "ユウキ",
+      "growthPattern": "DEFENDER",
+      "weight": 1,
+      "localAffinity": "CROSS_AREA",
+      "skillLoadout": [
+        "SKILL_006"
+      ],
+      "eligibleSlot": "R"
+    },
+    {
+      "areaId": "IKEBUKURO",
+      "difficulty": "NORMAL",
+      "rarity": "N",
+      "characterId": "char_kenji_01",
+      "name": "ケンジ",
+      "growthPattern": "ATTACKER",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_011"
+      ],
+      "eligibleSlot": "N"
+    },
+    {
+      "areaId": "IKEBUKURO",
+      "difficulty": "NORMAL",
+      "rarity": "N",
+      "characterId": "char_shun_01",
+      "name": "シュン",
+      "growthPattern": "DEFENDER",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_016"
+      ],
+      "eligibleSlot": "N"
+    },
+    {
+      "areaId": "IKEBUKURO",
+      "difficulty": "NORMAL",
+      "rarity": "N",
+      "characterId": "char_tomoya_01",
+      "name": "トモヤ",
+      "growthPattern": "BALANCED",
+      "weight": 1,
+      "localAffinity": "CROSS_AREA",
+      "skillLoadout": [
+        "SKILL_012"
+      ],
+      "eligibleSlot": "N"
+    },
+    {
+      "areaId": "IKEBUKURO",
+      "difficulty": "NORMAL",
+      "rarity": "N",
+      "characterId": "char_gou_01",
+      "name": "ダイスケ",
+      "growthPattern": "ATTACKER",
+      "weight": 1,
+      "localAffinity": "CROSS_AREA",
+      "skillLoadout": [
+        "SKILL_011"
+      ],
+      "eligibleSlot": "N"
+    },
+    {
+      "areaId": "IKEBUKURO",
+      "difficulty": "NORMAL",
+      "rarity": "R",
+      "characterId": "char_chang_01",
+      "name": "チャン",
+      "growthPattern": "ATTACKER",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_011"
+      ],
+      "eligibleSlot": "R"
+    },
+    {
+      "areaId": "IKEBUKURO",
+      "difficulty": "NORMAL",
+      "rarity": "R",
+      "characterId": "char_momoko_01",
+      "name": "モモコ",
+      "growthPattern": "BALANCED",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_012"
+      ],
+      "eligibleSlot": "R"
+    },
+    {
+      "areaId": "IKEBUKURO",
+      "difficulty": "NORMAL",
+      "rarity": "R",
+      "characterId": "char_shin_01",
+      "name": "シン",
+      "growthPattern": "DEFENDER",
+      "weight": 1,
+      "localAffinity": "CROSS_AREA",
+      "skillLoadout": [
+        "SKILL_016"
+      ],
+      "eligibleSlot": "R"
+    },
+    {
+      "areaId": "IKEBUKURO",
+      "difficulty": "NORMAL",
+      "rarity": "R",
+      "characterId": "char_yuki_01",
+      "name": "ユウキ",
+      "growthPattern": "DEFENDER",
+      "weight": 1,
+      "localAffinity": "CROSS_AREA",
+      "skillLoadout": [
+        "SKILL_016"
+      ],
+      "eligibleSlot": "R"
+    },
+    {
+      "areaId": "IKEBUKURO",
+      "difficulty": "NORMAL",
+      "rarity": "SR",
+      "characterId": "char_takeshi_01",
+      "name": "タケシ",
+      "growthPattern": "DEFENDER",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_016"
+      ],
+      "eligibleSlot": "SR"
+    },
+    {
+      "areaId": "IKEBUKURO",
+      "difficulty": "NORMAL",
+      "rarity": "SR",
+      "characterId": "char_riki_01",
+      "name": "リキ",
+      "growthPattern": "DEFENDER",
+      "weight": 1,
+      "localAffinity": "CROSS_AREA",
+      "skillLoadout": [
+        "SKILL_016"
+      ],
+      "eligibleSlot": "SR"
+    },
+    {
+      "areaId": "IKEBUKURO",
+      "difficulty": "NORMAL",
+      "rarity": "SR",
+      "characterId": "char_sakura_01",
+      "name": "サクラ",
+      "growthPattern": "BALANCED",
+      "weight": 1,
+      "localAffinity": "CROSS_AREA",
+      "skillLoadout": [
+        "SKILL_069",
+        "SKILL_012"
+      ],
+      "eligibleSlot": "SR"
+    },
+    {
+      "areaId": "IKEBUKURO",
+      "difficulty": "NORMAL",
+      "rarity": "SR",
+      "characterId": "char_cecile_01",
+      "name": "セシル",
+      "growthPattern": "BALANCED",
+      "weight": 1,
+      "localAffinity": "CROSS_AREA",
+      "skillLoadout": [
+        "SKILL_070",
+        "SKILL_012"
+      ],
+      "eligibleSlot": "SR"
+    },
+    {
+      "areaId": "IKEBUKURO",
+      "difficulty": "HARD",
+      "rarity": "R",
+      "characterId": "char_chang_01",
+      "name": "チャン",
+      "growthPattern": "ATTACKER",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_021",
+        "SKILL_027"
+      ],
+      "eligibleSlot": "R"
+    },
+    {
+      "areaId": "IKEBUKURO",
+      "difficulty": "HARD",
+      "rarity": "R",
+      "characterId": "char_momoko_01",
+      "name": "モモコ",
+      "growthPattern": "BALANCED",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_022",
+        "SKILL_026"
+      ],
+      "eligibleSlot": "R"
+    },
+    {
+      "areaId": "IKEBUKURO",
+      "difficulty": "HARD",
+      "rarity": "R",
+      "characterId": "char_shin_01",
+      "name": "シン",
+      "growthPattern": "DEFENDER",
+      "weight": 1,
+      "localAffinity": "CROSS_AREA",
+      "skillLoadout": [
+        "SKILL_024",
+        "SKILL_031"
+      ],
+      "eligibleSlot": "R"
+    },
+    {
+      "areaId": "IKEBUKURO",
+      "difficulty": "HARD",
+      "rarity": "R",
+      "characterId": "char_yuki_01",
+      "name": "ユウキ",
+      "growthPattern": "DEFENDER",
+      "weight": 1,
+      "localAffinity": "CROSS_AREA",
+      "skillLoadout": [
+        "SKILL_024",
+        "SKILL_031"
+      ],
+      "eligibleSlot": "R"
+    },
+    {
+      "areaId": "IKEBUKURO",
+      "difficulty": "HARD",
+      "rarity": "R",
+      "characterId": "char_joe_01",
+      "name": "ジョー",
+      "growthPattern": "DEFENDER",
+      "weight": 1,
+      "localAffinity": "CROSS_AREA",
+      "skillLoadout": [
+        "SKILL_024",
+        "SKILL_031"
+      ],
+      "eligibleSlot": "R"
+    },
+    {
+      "areaId": "IKEBUKURO",
+      "difficulty": "HARD",
+      "rarity": "SR",
+      "characterId": "char_takeshi_01",
+      "name": "タケシ",
+      "growthPattern": "DEFENDER",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_024",
+        "SKILL_031"
+      ],
+      "eligibleSlot": "SR"
+    },
+    {
+      "areaId": "IKEBUKURO",
+      "difficulty": "HARD",
+      "rarity": "SR",
+      "characterId": "char_riki_01",
+      "name": "リキ",
+      "growthPattern": "DEFENDER",
+      "weight": 1,
+      "localAffinity": "CROSS_AREA",
+      "skillLoadout": [
+        "SKILL_024",
+        "SKILL_031"
+      ],
+      "eligibleSlot": "SR"
+    },
+    {
+      "areaId": "IKEBUKURO",
+      "difficulty": "HARD",
+      "rarity": "SR",
+      "characterId": "char_sakura_01",
+      "name": "サクラ",
+      "growthPattern": "BALANCED",
+      "weight": 1,
+      "localAffinity": "CROSS_AREA",
+      "skillLoadout": [
+        "SKILL_069",
+        "SKILL_026"
+      ],
+      "eligibleSlot": "SR"
+    },
+    {
+      "areaId": "IKEBUKURO",
+      "difficulty": "HARD",
+      "rarity": "SR",
+      "characterId": "char_cecile_01",
+      "name": "セシル",
+      "growthPattern": "BALANCED",
+      "weight": 1,
+      "localAffinity": "CROSS_AREA",
+      "skillLoadout": [
+        "SKILL_070",
+        "SKILL_026"
+      ],
+      "eligibleSlot": "SR"
+    },
+    {
+      "areaId": "IKEBUKURO",
+      "difficulty": "HARD",
+      "rarity": "SR",
+      "characterId": "char_kageyama_01",
+      "name": "カゲヤマ",
+      "growthPattern": "BALANCED",
+      "weight": 1,
+      "localAffinity": "CROSS_AREA",
+      "skillLoadout": [
+        "SKILL_022",
+        "SKILL_026"
+      ],
+      "eligibleSlot": "SR"
+    },
+    {
+      "areaId": "ROPPONGI",
+      "difficulty": "EASY",
+      "rarity": "N",
+      "characterId": "char_tatsuya_01",
+      "name": "タツヤ",
+      "growthPattern": "DEFENDER",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_006"
+      ],
+      "eligibleSlot": "N"
+    },
+    {
+      "areaId": "ROPPONGI",
+      "difficulty": "EASY",
+      "rarity": "N",
+      "characterId": "char_naoto_01",
+      "name": "ナオト",
+      "growthPattern": "SPEEDSTER",
+      "weight": 1,
+      "localAffinity": "CROSS_AREA",
+      "skillLoadout": [
+        "SKILL_004"
+      ],
+      "eligibleSlot": "N"
+    },
+    {
+      "areaId": "ROPPONGI",
+      "difficulty": "EASY",
+      "rarity": "N",
+      "characterId": "char_souta_01",
+      "name": "ソウタ",
+      "growthPattern": "BALANCED",
+      "weight": 1,
+      "localAffinity": "CROSS_AREA",
+      "skillLoadout": [
+        "SKILL_008"
+      ],
+      "eligibleSlot": "N"
+    },
+    {
+      "areaId": "ROPPONGI",
+      "difficulty": "EASY",
+      "rarity": "N",
+      "characterId": "char_sawat_01",
+      "name": "サワット",
+      "growthPattern": "SPEEDSTER",
+      "weight": 1,
+      "localAffinity": "CROSS_AREA",
+      "skillLoadout": [
+        "SKILL_004"
+      ],
+      "eligibleSlot": "N"
+    },
+    {
+      "areaId": "ROPPONGI",
+      "difficulty": "EASY",
+      "rarity": "R",
+      "characterId": "char_kaito_01",
+      "name": "カイト",
+      "growthPattern": "SPEEDSTER",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_004"
+      ],
+      "eligibleSlot": "R"
+    },
+    {
+      "areaId": "ROPPONGI",
+      "difficulty": "EASY",
+      "rarity": "R",
+      "characterId": "char_makoto_01",
+      "name": "マコト",
+      "growthPattern": "BALANCED",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_008"
+      ],
+      "eligibleSlot": "R"
+    },
+    {
+      "areaId": "ROPPONGI",
+      "difficulty": "EASY",
+      "rarity": "R",
+      "characterId": "char_rin_01",
+      "name": "リン",
+      "growthPattern": "BALANCED",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_008"
+      ],
+      "eligibleSlot": "R"
+    },
+    {
+      "areaId": "ROPPONGI",
+      "difficulty": "EASY",
+      "rarity": "R",
+      "characterId": "char_shion_01",
+      "name": "シオン",
+      "growthPattern": "BALANCED",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_008"
+      ],
+      "eligibleSlot": "R"
+    },
+    {
+      "areaId": "ROPPONGI",
+      "difficulty": "NORMAL",
+      "rarity": "N",
+      "characterId": "char_tatsuya_01",
+      "name": "タツヤ",
+      "growthPattern": "DEFENDER",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_016"
+      ],
+      "eligibleSlot": "N"
+    },
+    {
+      "areaId": "ROPPONGI",
+      "difficulty": "NORMAL",
+      "rarity": "N",
+      "characterId": "char_naoto_01",
+      "name": "ナオト",
+      "growthPattern": "SPEEDSTER",
+      "weight": 1,
+      "localAffinity": "CROSS_AREA",
+      "skillLoadout": [
+        "SKILL_020"
+      ],
+      "eligibleSlot": "N"
+    },
+    {
+      "areaId": "ROPPONGI",
+      "difficulty": "NORMAL",
+      "rarity": "N",
+      "characterId": "char_souta_01",
+      "name": "ソウタ",
+      "growthPattern": "BALANCED",
+      "weight": 1,
+      "localAffinity": "CROSS_AREA",
+      "skillLoadout": [
+        "SKILL_012"
+      ],
+      "eligibleSlot": "N"
+    },
+    {
+      "areaId": "ROPPONGI",
+      "difficulty": "NORMAL",
+      "rarity": "N",
+      "characterId": "char_sawat_01",
+      "name": "サワット",
+      "growthPattern": "SPEEDSTER",
+      "weight": 1,
+      "localAffinity": "CROSS_AREA",
+      "skillLoadout": [
+        "SKILL_020"
+      ],
+      "eligibleSlot": "N"
+    },
+    {
+      "areaId": "ROPPONGI",
+      "difficulty": "NORMAL",
+      "rarity": "R",
+      "characterId": "char_kaito_01",
+      "name": "カイト",
+      "growthPattern": "SPEEDSTER",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_020"
+      ],
+      "eligibleSlot": "R"
+    },
+    {
+      "areaId": "ROPPONGI",
+      "difficulty": "NORMAL",
+      "rarity": "R",
+      "characterId": "char_makoto_01",
+      "name": "マコト",
+      "growthPattern": "BALANCED",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_012"
+      ],
+      "eligibleSlot": "R"
+    },
+    {
+      "areaId": "ROPPONGI",
+      "difficulty": "NORMAL",
+      "rarity": "R",
+      "characterId": "char_rin_01",
+      "name": "リン",
+      "growthPattern": "BALANCED",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_012"
+      ],
+      "eligibleSlot": "R"
+    },
+    {
+      "areaId": "ROPPONGI",
+      "difficulty": "NORMAL",
+      "rarity": "R",
+      "characterId": "char_shion_01",
+      "name": "シオン",
+      "growthPattern": "BALANCED",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_012"
+      ],
+      "eligibleSlot": "R"
+    },
+    {
+      "areaId": "ROPPONGI",
+      "difficulty": "NORMAL",
+      "rarity": "SR",
+      "characterId": "char_taiga_01",
+      "name": "タイガ",
+      "growthPattern": "SPEEDSTER",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_020"
+      ],
+      "eligibleSlot": "SR"
+    },
+    {
+      "areaId": "ROPPONGI",
+      "difficulty": "NORMAL",
+      "rarity": "SR",
+      "characterId": "char_maya_01",
+      "name": "マヤ",
+      "growthPattern": "LUCKY_STAR",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_068",
+        "SKILL_015"
+      ],
+      "eligibleSlot": "SR"
+    },
+    {
+      "areaId": "ROPPONGI",
+      "difficulty": "NORMAL",
+      "rarity": "SR",
+      "characterId": "char_seiya_01",
+      "name": "セイヤ",
+      "growthPattern": "LUCKY_STAR",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_015"
+      ],
+      "eligibleSlot": "SR"
+    },
+    {
+      "areaId": "ROPPONGI",
+      "difficulty": "NORMAL",
+      "rarity": "SR",
+      "characterId": "char_cecile_01",
+      "name": "セシル",
+      "growthPattern": "BALANCED",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_070",
+        "SKILL_012"
+      ],
+      "eligibleSlot": "SR"
+    },
+    {
+      "areaId": "ROPPONGI",
+      "difficulty": "HARD",
+      "rarity": "R",
+      "characterId": "char_kaito_01",
+      "name": "カイト",
+      "growthPattern": "SPEEDSTER",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_033",
+        "SKILL_034"
+      ],
+      "eligibleSlot": "R"
+    },
+    {
+      "areaId": "ROPPONGI",
+      "difficulty": "HARD",
+      "rarity": "R",
+      "characterId": "char_makoto_01",
+      "name": "マコト",
+      "growthPattern": "BALANCED",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_022",
+        "SKILL_026"
+      ],
+      "eligibleSlot": "R"
+    },
+    {
+      "areaId": "ROPPONGI",
+      "difficulty": "HARD",
+      "rarity": "R",
+      "characterId": "char_rin_01",
+      "name": "リン",
+      "growthPattern": "BALANCED",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_022",
+        "SKILL_026"
+      ],
+      "eligibleSlot": "R"
+    },
+    {
+      "areaId": "ROPPONGI",
+      "difficulty": "HARD",
+      "rarity": "R",
+      "characterId": "char_shion_01",
+      "name": "シオン",
+      "growthPattern": "BALANCED",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_022",
+        "SKILL_026"
+      ],
+      "eligibleSlot": "R"
+    },
+    {
+      "areaId": "ROPPONGI",
+      "difficulty": "HARD",
+      "rarity": "R",
+      "characterId": "char_ren_male_01",
+      "name": "カズヤ",
+      "growthPattern": "DEFENDER",
+      "weight": 1,
+      "localAffinity": "CROSS_AREA",
+      "skillLoadout": [
+        "SKILL_024",
+        "SKILL_031"
+      ],
+      "eligibleSlot": "R"
+    },
+    {
+      "areaId": "ROPPONGI",
+      "difficulty": "HARD",
+      "rarity": "SR",
+      "characterId": "char_taiga_01",
+      "name": "タイガ",
+      "growthPattern": "SPEEDSTER",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_033",
+        "SKILL_034"
+      ],
+      "eligibleSlot": "SR"
+    },
+    {
+      "areaId": "ROPPONGI",
+      "difficulty": "HARD",
+      "rarity": "SR",
+      "characterId": "char_maya_01",
+      "name": "マヤ",
+      "growthPattern": "LUCKY_STAR",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_068",
+        "SKILL_032"
+      ],
+      "eligibleSlot": "SR"
+    },
+    {
+      "areaId": "ROPPONGI",
+      "difficulty": "HARD",
+      "rarity": "SR",
+      "characterId": "char_seiya_01",
+      "name": "セイヤ",
+      "growthPattern": "LUCKY_STAR",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_025",
+        "SKILL_032"
+      ],
+      "eligibleSlot": "SR"
+    },
+    {
+      "areaId": "ROPPONGI",
+      "difficulty": "HARD",
+      "rarity": "SR",
+      "characterId": "char_cecile_01",
+      "name": "セシル",
+      "growthPattern": "BALANCED",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_070",
+        "SKILL_026"
+      ],
+      "eligibleSlot": "SR"
+    },
+    {
+      "areaId": "ROPPONGI",
+      "difficulty": "HARD",
+      "rarity": "SR",
+      "characterId": "char_sakura_01",
+      "name": "サクラ",
+      "growthPattern": "BALANCED",
+      "weight": 1,
+      "localAffinity": "CROSS_AREA",
+      "skillLoadout": [
+        "SKILL_069",
+        "SKILL_026"
+      ],
+      "eligibleSlot": "SR"
+    },
+    {
+      "areaId": "AKIHABARA",
+      "difficulty": "EASY",
+      "rarity": "N",
+      "characterId": "char_masato_01",
+      "name": "マサト",
+      "growthPattern": "LUCKY_STAR",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_005"
+      ],
+      "eligibleSlot": "N"
+    },
+    {
+      "areaId": "AKIHABARA",
+      "difficulty": "EASY",
+      "rarity": "N",
+      "characterId": "char_yoshihiko_01",
+      "name": "ヨシヒコ",
+      "growthPattern": "LUCKY_STAR",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_005"
+      ],
+      "eligibleSlot": "N"
+    },
+    {
+      "areaId": "AKIHABARA",
+      "difficulty": "EASY",
+      "rarity": "N",
+      "characterId": "char_souta_01",
+      "name": "ソウタ",
+      "growthPattern": "BALANCED",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_008"
+      ],
+      "eligibleSlot": "N"
+    },
+    {
+      "areaId": "AKIHABARA",
+      "difficulty": "EASY",
+      "rarity": "N",
+      "characterId": "char_naoto_01",
+      "name": "ナオト",
+      "growthPattern": "SPEEDSTER",
+      "weight": 1,
+      "localAffinity": "CROSS_AREA",
+      "skillLoadout": [
+        "SKILL_004"
+      ],
+      "eligibleSlot": "N"
+    },
+    {
+      "areaId": "AKIHABARA",
+      "difficulty": "EASY",
+      "rarity": "R",
+      "characterId": "char_aoi_01",
+      "name": "アオイ",
+      "growthPattern": "LUCKY_STAR",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_005"
+      ],
+      "eligibleSlot": "R"
+    },
+    {
+      "areaId": "AKIHABARA",
+      "difficulty": "EASY",
+      "rarity": "R",
+      "characterId": "char_mei_01",
+      "name": "メイ",
+      "growthPattern": "LUCKY_STAR",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_005"
+      ],
+      "eligibleSlot": "R"
+    },
+    {
+      "areaId": "AKIHABARA",
+      "difficulty": "EASY",
+      "rarity": "R",
+      "characterId": "char_ren_01",
+      "name": "レン",
+      "growthPattern": "LUCKY_STAR",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_005"
+      ],
+      "eligibleSlot": "R"
+    },
+    {
+      "areaId": "AKIHABARA",
+      "difficulty": "EASY",
+      "rarity": "R",
+      "characterId": "char_serika_01",
+      "name": "セリカ",
+      "growthPattern": "LUCKY_STAR",
+      "weight": 1,
+      "localAffinity": "CROSS_AREA",
+      "skillLoadout": [
+        "SKILL_005"
+      ],
+      "eligibleSlot": "R"
+    },
+    {
+      "areaId": "AKIHABARA",
+      "difficulty": "NORMAL",
+      "rarity": "N",
+      "characterId": "char_masato_01",
+      "name": "マサト",
+      "growthPattern": "LUCKY_STAR",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_015"
+      ],
+      "eligibleSlot": "N"
+    },
+    {
+      "areaId": "AKIHABARA",
+      "difficulty": "NORMAL",
+      "rarity": "N",
+      "characterId": "char_yoshihiko_01",
+      "name": "ヨシヒコ",
+      "growthPattern": "LUCKY_STAR",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_015"
+      ],
+      "eligibleSlot": "N"
+    },
+    {
+      "areaId": "AKIHABARA",
+      "difficulty": "NORMAL",
+      "rarity": "N",
+      "characterId": "char_souta_01",
+      "name": "ソウタ",
+      "growthPattern": "BALANCED",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_012"
+      ],
+      "eligibleSlot": "N"
+    },
+    {
+      "areaId": "AKIHABARA",
+      "difficulty": "NORMAL",
+      "rarity": "N",
+      "characterId": "char_naoto_01",
+      "name": "ナオト",
+      "growthPattern": "SPEEDSTER",
+      "weight": 1,
+      "localAffinity": "CROSS_AREA",
+      "skillLoadout": [
+        "SKILL_020"
+      ],
+      "eligibleSlot": "N"
+    },
+    {
+      "areaId": "AKIHABARA",
+      "difficulty": "NORMAL",
+      "rarity": "R",
+      "characterId": "char_aoi_01",
+      "name": "アオイ",
+      "growthPattern": "LUCKY_STAR",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_015"
+      ],
+      "eligibleSlot": "R"
+    },
+    {
+      "areaId": "AKIHABARA",
+      "difficulty": "NORMAL",
+      "rarity": "R",
+      "characterId": "char_mei_01",
+      "name": "メイ",
+      "growthPattern": "LUCKY_STAR",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_015"
+      ],
+      "eligibleSlot": "R"
+    },
+    {
+      "areaId": "AKIHABARA",
+      "difficulty": "NORMAL",
+      "rarity": "R",
+      "characterId": "char_ren_01",
+      "name": "レン",
+      "growthPattern": "LUCKY_STAR",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_015"
+      ],
+      "eligibleSlot": "R"
+    },
+    {
+      "areaId": "AKIHABARA",
+      "difficulty": "NORMAL",
+      "rarity": "R",
+      "characterId": "char_serika_01",
+      "name": "セリカ",
+      "growthPattern": "LUCKY_STAR",
+      "weight": 1,
+      "localAffinity": "CROSS_AREA",
+      "skillLoadout": [
+        "SKILL_015"
+      ],
+      "eligibleSlot": "R"
+    },
+    {
+      "areaId": "AKIHABARA",
+      "difficulty": "NORMAL",
+      "rarity": "SR",
+      "characterId": "char_alice_01",
+      "name": "アリス",
+      "growthPattern": "LUCKY_STAR",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_067",
+        "SKILL_015"
+      ],
+      "eligibleSlot": "SR"
+    },
+    {
+      "areaId": "AKIHABARA",
+      "difficulty": "NORMAL",
+      "rarity": "SR",
+      "characterId": "char_rui_01",
+      "name": "ルイ",
+      "growthPattern": "LUCKY_STAR",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_015"
+      ],
+      "eligibleSlot": "SR"
+    },
+    {
+      "areaId": "AKIHABARA",
+      "difficulty": "NORMAL",
+      "rarity": "SR",
+      "characterId": "char_maya_01",
+      "name": "マヤ",
+      "growthPattern": "LUCKY_STAR",
+      "weight": 1,
+      "localAffinity": "CROSS_AREA",
+      "skillLoadout": [
+        "SKILL_068",
+        "SKILL_015"
+      ],
+      "eligibleSlot": "SR"
+    },
+    {
+      "areaId": "AKIHABARA",
+      "difficulty": "NORMAL",
+      "rarity": "SR",
+      "characterId": "char_martina_01",
+      "name": "マルティナ",
+      "growthPattern": "BALANCED",
+      "weight": 1,
+      "localAffinity": "CROSS_AREA",
+      "skillLoadout": [
+        "SKILL_012"
+      ],
+      "eligibleSlot": "SR"
+    },
+    {
+      "areaId": "AKIHABARA",
+      "difficulty": "HARD",
+      "rarity": "R",
+      "characterId": "char_aoi_01",
+      "name": "アオイ",
+      "growthPattern": "LUCKY_STAR",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_025",
+        "SKILL_032"
+      ],
+      "eligibleSlot": "R"
+    },
+    {
+      "areaId": "AKIHABARA",
+      "difficulty": "HARD",
+      "rarity": "R",
+      "characterId": "char_mei_01",
+      "name": "メイ",
+      "growthPattern": "LUCKY_STAR",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_025",
+        "SKILL_032"
+      ],
+      "eligibleSlot": "R"
+    },
+    {
+      "areaId": "AKIHABARA",
+      "difficulty": "HARD",
+      "rarity": "R",
+      "characterId": "char_ren_01",
+      "name": "レン",
+      "growthPattern": "LUCKY_STAR",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_025",
+        "SKILL_032"
+      ],
+      "eligibleSlot": "R"
+    },
+    {
+      "areaId": "AKIHABARA",
+      "difficulty": "HARD",
+      "rarity": "R",
+      "characterId": "char_serika_01",
+      "name": "セリカ",
+      "growthPattern": "LUCKY_STAR",
+      "weight": 1,
+      "localAffinity": "CROSS_AREA",
+      "skillLoadout": [
+        "SKILL_025",
+        "SKILL_032"
+      ],
+      "eligibleSlot": "R"
+    },
+    {
+      "areaId": "AKIHABARA",
+      "difficulty": "HARD",
+      "rarity": "R",
+      "characterId": "char_kaito_01",
+      "name": "カイト",
+      "growthPattern": "SPEEDSTER",
+      "weight": 1,
+      "localAffinity": "CROSS_AREA",
+      "skillLoadout": [
+        "SKILL_033",
+        "SKILL_034"
+      ],
+      "eligibleSlot": "R"
+    },
+    {
+      "areaId": "AKIHABARA",
+      "difficulty": "HARD",
+      "rarity": "SR",
+      "characterId": "char_alice_01",
+      "name": "アリス",
+      "growthPattern": "LUCKY_STAR",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_067",
+        "SKILL_032"
+      ],
+      "eligibleSlot": "SR"
+    },
+    {
+      "areaId": "AKIHABARA",
+      "difficulty": "HARD",
+      "rarity": "SR",
+      "characterId": "char_rui_01",
+      "name": "ルイ",
+      "growthPattern": "LUCKY_STAR",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_025",
+        "SKILL_032"
+      ],
+      "eligibleSlot": "SR"
+    },
+    {
+      "areaId": "AKIHABARA",
+      "difficulty": "HARD",
+      "rarity": "SR",
+      "characterId": "char_maya_01",
+      "name": "マヤ",
+      "growthPattern": "LUCKY_STAR",
+      "weight": 1,
+      "localAffinity": "CROSS_AREA",
+      "skillLoadout": [
+        "SKILL_068",
+        "SKILL_032"
+      ],
+      "eligibleSlot": "SR"
+    },
+    {
+      "areaId": "AKIHABARA",
+      "difficulty": "HARD",
+      "rarity": "SR",
+      "characterId": "char_seiya_01",
+      "name": "セイヤ",
+      "growthPattern": "LUCKY_STAR",
+      "weight": 1,
+      "localAffinity": "CROSS_AREA",
+      "skillLoadout": [
+        "SKILL_025",
+        "SKILL_032"
+      ],
+      "eligibleSlot": "SR"
+    },
+    {
+      "areaId": "AKIHABARA",
+      "difficulty": "HARD",
+      "rarity": "SR",
+      "characterId": "char_martina_01",
+      "name": "マルティナ",
+      "growthPattern": "BALANCED",
+      "weight": 1,
+      "localAffinity": "CROSS_AREA",
+      "skillLoadout": [
+        "SKILL_022",
+        "SKILL_026"
+      ],
+      "eligibleSlot": "SR"
+    },
+    {
+      "areaId": "KAWASAKI",
+      "difficulty": "EASY",
+      "rarity": "N",
+      "characterId": "char_gou_01",
+      "name": "ダイスケ",
+      "growthPattern": "ATTACKER",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_001"
+      ],
+      "eligibleSlot": "N"
+    },
+    {
+      "areaId": "KAWASAKI",
+      "difficulty": "EASY",
+      "rarity": "N",
+      "characterId": "char_kenji_01",
+      "name": "ケンジ",
+      "growthPattern": "ATTACKER",
+      "weight": 1,
+      "localAffinity": "CROSS_AREA",
+      "skillLoadout": [
+        "SKILL_001"
+      ],
+      "eligibleSlot": "N"
+    },
+    {
+      "areaId": "KAWASAKI",
+      "difficulty": "EASY",
+      "rarity": "N",
+      "characterId": "char_shun_01",
+      "name": "シュン",
+      "growthPattern": "DEFENDER",
+      "weight": 1,
+      "localAffinity": "CROSS_AREA",
+      "skillLoadout": [
+        "SKILL_006"
+      ],
+      "eligibleSlot": "N"
+    },
+    {
+      "areaId": "KAWASAKI",
+      "difficulty": "EASY",
+      "rarity": "N",
+      "characterId": "char_tomoya_01",
+      "name": "トモヤ",
+      "growthPattern": "BALANCED",
+      "weight": 1,
+      "localAffinity": "CROSS_AREA",
+      "skillLoadout": [
+        "SKILL_008"
+      ],
+      "eligibleSlot": "N"
+    },
+    {
+      "areaId": "KAWASAKI",
+      "difficulty": "EASY",
+      "rarity": "R",
+      "characterId": "char_daimon_01",
+      "name": "ダイモン",
+      "growthPattern": "ATTACKER",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_001"
+      ],
+      "eligibleSlot": "R"
+    },
+    {
+      "areaId": "KAWASAKI",
+      "difficulty": "EASY",
+      "rarity": "R",
+      "characterId": "char_mark_01",
+      "name": "マーク",
+      "growthPattern": "ATTACKER",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_001"
+      ],
+      "eligibleSlot": "R"
+    },
+    {
+      "areaId": "KAWASAKI",
+      "difficulty": "EASY",
+      "rarity": "R",
+      "characterId": "char_joe_01",
+      "name": "ジョー",
+      "growthPattern": "DEFENDER",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_006"
+      ],
+      "eligibleSlot": "R"
+    },
+    {
+      "areaId": "KAWASAKI",
+      "difficulty": "EASY",
+      "rarity": "R",
+      "characterId": "char_chang_01",
+      "name": "チャン",
+      "growthPattern": "ATTACKER",
+      "weight": 1,
+      "localAffinity": "CROSS_AREA",
+      "skillLoadout": [
+        "SKILL_001"
+      ],
+      "eligibleSlot": "R"
+    },
+    {
+      "areaId": "KAWASAKI",
+      "difficulty": "NORMAL",
+      "rarity": "N",
+      "characterId": "char_gou_01",
+      "name": "ダイスケ",
+      "growthPattern": "ATTACKER",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_011"
+      ],
+      "eligibleSlot": "N"
+    },
+    {
+      "areaId": "KAWASAKI",
+      "difficulty": "NORMAL",
+      "rarity": "N",
+      "characterId": "char_kenji_01",
+      "name": "ケンジ",
+      "growthPattern": "ATTACKER",
+      "weight": 1,
+      "localAffinity": "CROSS_AREA",
+      "skillLoadout": [
+        "SKILL_011"
+      ],
+      "eligibleSlot": "N"
+    },
+    {
+      "areaId": "KAWASAKI",
+      "difficulty": "NORMAL",
+      "rarity": "N",
+      "characterId": "char_shun_01",
+      "name": "シュン",
+      "growthPattern": "DEFENDER",
+      "weight": 1,
+      "localAffinity": "CROSS_AREA",
+      "skillLoadout": [
+        "SKILL_016"
+      ],
+      "eligibleSlot": "N"
+    },
+    {
+      "areaId": "KAWASAKI",
+      "difficulty": "NORMAL",
+      "rarity": "N",
+      "characterId": "char_tomoya_01",
+      "name": "トモヤ",
+      "growthPattern": "BALANCED",
+      "weight": 1,
+      "localAffinity": "CROSS_AREA",
+      "skillLoadout": [
+        "SKILL_012"
+      ],
+      "eligibleSlot": "N"
+    },
+    {
+      "areaId": "KAWASAKI",
+      "difficulty": "NORMAL",
+      "rarity": "R",
+      "characterId": "char_daimon_01",
+      "name": "ダイモン",
+      "growthPattern": "ATTACKER",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_011"
+      ],
+      "eligibleSlot": "R"
+    },
+    {
+      "areaId": "KAWASAKI",
+      "difficulty": "NORMAL",
+      "rarity": "R",
+      "characterId": "char_mark_01",
+      "name": "マーク",
+      "growthPattern": "ATTACKER",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_011"
+      ],
+      "eligibleSlot": "R"
+    },
+    {
+      "areaId": "KAWASAKI",
+      "difficulty": "NORMAL",
+      "rarity": "R",
+      "characterId": "char_joe_01",
+      "name": "ジョー",
+      "growthPattern": "DEFENDER",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_016"
+      ],
+      "eligibleSlot": "R"
+    },
+    {
+      "areaId": "KAWASAKI",
+      "difficulty": "NORMAL",
+      "rarity": "R",
+      "characterId": "char_chang_01",
+      "name": "チャン",
+      "growthPattern": "ATTACKER",
+      "weight": 1,
+      "localAffinity": "CROSS_AREA",
+      "skillLoadout": [
+        "SKILL_011"
+      ],
+      "eligibleSlot": "R"
+    },
+    {
+      "areaId": "KAWASAKI",
+      "difficulty": "NORMAL",
+      "rarity": "SR",
+      "characterId": "char_tetsu_01",
+      "name": "テツ",
+      "growthPattern": "ATTACKER",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_061",
+        "SKILL_011"
+      ],
+      "eligibleSlot": "SR"
+    },
+    {
+      "areaId": "KAWASAKI",
+      "difficulty": "NORMAL",
+      "rarity": "SR",
+      "characterId": "char_lucas_01",
+      "name": "ルーカス",
+      "growthPattern": "ATTACKER",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_062",
+        "SKILL_011"
+      ],
+      "eligibleSlot": "SR"
+    },
+    {
+      "areaId": "KAWASAKI",
+      "difficulty": "NORMAL",
+      "rarity": "SR",
+      "characterId": "char_riki_01",
+      "name": "リキ",
+      "growthPattern": "DEFENDER",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_016"
+      ],
+      "eligibleSlot": "SR"
+    },
+    {
+      "areaId": "KAWASAKI",
+      "difficulty": "NORMAL",
+      "rarity": "SR",
+      "characterId": "char_takeshi_01",
+      "name": "タケシ",
+      "growthPattern": "DEFENDER",
+      "weight": 1,
+      "localAffinity": "CROSS_AREA",
+      "skillLoadout": [
+        "SKILL_016"
+      ],
+      "eligibleSlot": "SR"
+    },
+    {
+      "areaId": "KAWASAKI",
+      "difficulty": "HARD",
+      "rarity": "R",
+      "characterId": "char_daimon_01",
+      "name": "ダイモン",
+      "growthPattern": "ATTACKER",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_021",
+        "SKILL_027"
+      ],
+      "eligibleSlot": "R"
+    },
+    {
+      "areaId": "KAWASAKI",
+      "difficulty": "HARD",
+      "rarity": "R",
+      "characterId": "char_mark_01",
+      "name": "マーク",
+      "growthPattern": "ATTACKER",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_021",
+        "SKILL_027"
+      ],
+      "eligibleSlot": "R"
+    },
+    {
+      "areaId": "KAWASAKI",
+      "difficulty": "HARD",
+      "rarity": "R",
+      "characterId": "char_joe_01",
+      "name": "ジョー",
+      "growthPattern": "DEFENDER",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_024",
+        "SKILL_031"
+      ],
+      "eligibleSlot": "R"
+    },
+    {
+      "areaId": "KAWASAKI",
+      "difficulty": "HARD",
+      "rarity": "R",
+      "characterId": "char_chang_01",
+      "name": "チャン",
+      "growthPattern": "ATTACKER",
+      "weight": 1,
+      "localAffinity": "CROSS_AREA",
+      "skillLoadout": [
+        "SKILL_021",
+        "SKILL_027"
+      ],
+      "eligibleSlot": "R"
+    },
+    {
+      "areaId": "KAWASAKI",
+      "difficulty": "HARD",
+      "rarity": "R",
+      "characterId": "char_yuji_01",
+      "name": "ユウジ",
+      "growthPattern": "ATTACKER",
+      "weight": 1,
+      "localAffinity": "CROSS_AREA",
+      "skillLoadout": [
+        "SKILL_021",
+        "SKILL_027"
+      ],
+      "eligibleSlot": "R"
+    },
+    {
+      "areaId": "KAWASAKI",
+      "difficulty": "HARD",
+      "rarity": "SR",
+      "characterId": "char_tetsu_01",
+      "name": "テツ",
+      "growthPattern": "ATTACKER",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_061",
+        "SKILL_027"
+      ],
+      "eligibleSlot": "SR"
+    },
+    {
+      "areaId": "KAWASAKI",
+      "difficulty": "HARD",
+      "rarity": "SR",
+      "characterId": "char_lucas_01",
+      "name": "ルーカス",
+      "growthPattern": "ATTACKER",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_062",
+        "SKILL_027"
+      ],
+      "eligibleSlot": "SR"
+    },
+    {
+      "areaId": "KAWASAKI",
+      "difficulty": "HARD",
+      "rarity": "SR",
+      "characterId": "char_riki_01",
+      "name": "リキ",
+      "growthPattern": "DEFENDER",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_024",
+        "SKILL_031"
+      ],
+      "eligibleSlot": "SR"
+    },
+    {
+      "areaId": "KAWASAKI",
+      "difficulty": "HARD",
+      "rarity": "SR",
+      "characterId": "char_takeshi_01",
+      "name": "タケシ",
+      "growthPattern": "DEFENDER",
+      "weight": 1,
+      "localAffinity": "CROSS_AREA",
+      "skillLoadout": [
+        "SKILL_024",
+        "SKILL_031"
+      ],
+      "eligibleSlot": "SR"
+    },
+    {
+      "areaId": "KAWASAKI",
+      "difficulty": "HARD",
+      "rarity": "SR",
+      "characterId": "char_sakura_01",
+      "name": "サクラ",
+      "growthPattern": "BALANCED",
+      "weight": 1,
+      "localAffinity": "CROSS_AREA",
+      "skillLoadout": [
+        "SKILL_069",
+        "SKILL_026"
+      ],
+      "eligibleSlot": "SR"
+    },
+    {
+      "areaId": "YOKOHAMA",
+      "difficulty": "EASY",
+      "rarity": "N",
+      "characterId": "char_sawat_01",
+      "name": "サワット",
+      "growthPattern": "SPEEDSTER",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_004"
+      ],
+      "eligibleSlot": "N"
+    },
+    {
+      "areaId": "YOKOHAMA",
+      "difficulty": "EASY",
+      "rarity": "N",
+      "characterId": "char_tatsuya_01",
+      "name": "タツヤ",
+      "growthPattern": "DEFENDER",
+      "weight": 1,
+      "localAffinity": "CROSS_AREA",
+      "skillLoadout": [
+        "SKILL_006"
+      ],
+      "eligibleSlot": "N"
+    },
+    {
+      "areaId": "YOKOHAMA",
+      "difficulty": "EASY",
+      "rarity": "N",
+      "characterId": "char_tomoya_01",
+      "name": "トモヤ",
+      "growthPattern": "BALANCED",
+      "weight": 1,
+      "localAffinity": "CROSS_AREA",
+      "skillLoadout": [
+        "SKILL_008"
+      ],
+      "eligibleSlot": "N"
+    },
+    {
+      "areaId": "YOKOHAMA",
+      "difficulty": "EASY",
+      "rarity": "N",
+      "characterId": "char_gou_01",
+      "name": "ダイスケ",
+      "growthPattern": "ATTACKER",
+      "weight": 1,
+      "localAffinity": "CROSS_AREA",
+      "skillLoadout": [
+        "SKILL_001"
+      ],
+      "eligibleSlot": "N"
+    },
+    {
+      "areaId": "YOKOHAMA",
+      "difficulty": "EASY",
+      "rarity": "R",
+      "characterId": "char_yuji_01",
+      "name": "ユウジ",
+      "growthPattern": "ATTACKER",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_001"
+      ],
+      "eligibleSlot": "R"
+    },
+    {
+      "areaId": "YOKOHAMA",
+      "difficulty": "EASY",
+      "rarity": "R",
+      "characterId": "char_makoto_01",
+      "name": "マコト",
+      "growthPattern": "BALANCED",
+      "weight": 1,
+      "localAffinity": "CROSS_AREA",
+      "skillLoadout": [
+        "SKILL_008"
+      ],
+      "eligibleSlot": "R"
+    },
+    {
+      "areaId": "YOKOHAMA",
+      "difficulty": "EASY",
+      "rarity": "R",
+      "characterId": "char_rin_01",
+      "name": "リン",
+      "growthPattern": "BALANCED",
+      "weight": 1,
+      "localAffinity": "CROSS_AREA",
+      "skillLoadout": [
+        "SKILL_008"
+      ],
+      "eligibleSlot": "R"
+    },
+    {
+      "areaId": "YOKOHAMA",
+      "difficulty": "EASY",
+      "rarity": "R",
+      "characterId": "char_shion_01",
+      "name": "シオン",
+      "growthPattern": "BALANCED",
+      "weight": 1,
+      "localAffinity": "CROSS_AREA",
+      "skillLoadout": [
+        "SKILL_008"
+      ],
+      "eligibleSlot": "R"
+    },
+    {
+      "areaId": "YOKOHAMA",
+      "difficulty": "NORMAL",
+      "rarity": "N",
+      "characterId": "char_sawat_01",
+      "name": "サワット",
+      "growthPattern": "SPEEDSTER",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_020"
+      ],
+      "eligibleSlot": "N"
+    },
+    {
+      "areaId": "YOKOHAMA",
+      "difficulty": "NORMAL",
+      "rarity": "N",
+      "characterId": "char_tatsuya_01",
+      "name": "タツヤ",
+      "growthPattern": "DEFENDER",
+      "weight": 1,
+      "localAffinity": "CROSS_AREA",
+      "skillLoadout": [
+        "SKILL_016"
+      ],
+      "eligibleSlot": "N"
+    },
+    {
+      "areaId": "YOKOHAMA",
+      "difficulty": "NORMAL",
+      "rarity": "N",
+      "characterId": "char_tomoya_01",
+      "name": "トモヤ",
+      "growthPattern": "BALANCED",
+      "weight": 1,
+      "localAffinity": "CROSS_AREA",
+      "skillLoadout": [
+        "SKILL_012"
+      ],
+      "eligibleSlot": "N"
+    },
+    {
+      "areaId": "YOKOHAMA",
+      "difficulty": "NORMAL",
+      "rarity": "N",
+      "characterId": "char_gou_01",
+      "name": "ダイスケ",
+      "growthPattern": "ATTACKER",
+      "weight": 1,
+      "localAffinity": "CROSS_AREA",
+      "skillLoadout": [
+        "SKILL_011"
+      ],
+      "eligibleSlot": "N"
+    },
+    {
+      "areaId": "YOKOHAMA",
+      "difficulty": "NORMAL",
+      "rarity": "R",
+      "characterId": "char_yuji_01",
+      "name": "ユウジ",
+      "growthPattern": "ATTACKER",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_011"
+      ],
+      "eligibleSlot": "R"
+    },
+    {
+      "areaId": "YOKOHAMA",
+      "difficulty": "NORMAL",
+      "rarity": "R",
+      "characterId": "char_makoto_01",
+      "name": "マコト",
+      "growthPattern": "BALANCED",
+      "weight": 1,
+      "localAffinity": "CROSS_AREA",
+      "skillLoadout": [
+        "SKILL_012"
+      ],
+      "eligibleSlot": "R"
+    },
+    {
+      "areaId": "YOKOHAMA",
+      "difficulty": "NORMAL",
+      "rarity": "R",
+      "characterId": "char_rin_01",
+      "name": "リン",
+      "growthPattern": "BALANCED",
+      "weight": 1,
+      "localAffinity": "CROSS_AREA",
+      "skillLoadout": [
+        "SKILL_012"
+      ],
+      "eligibleSlot": "R"
+    },
+    {
+      "areaId": "YOKOHAMA",
+      "difficulty": "NORMAL",
+      "rarity": "R",
+      "characterId": "char_shion_01",
+      "name": "シオン",
+      "growthPattern": "BALANCED",
+      "weight": 1,
+      "localAffinity": "CROSS_AREA",
+      "skillLoadout": [
+        "SKILL_012"
+      ],
+      "eligibleSlot": "R"
+    },
+    {
+      "areaId": "YOKOHAMA",
+      "difficulty": "NORMAL",
+      "rarity": "SR",
+      "characterId": "char_genji_01",
+      "name": "ゲンジ",
+      "growthPattern": "DEFENDER",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_063",
+        "SKILL_016"
+      ],
+      "eligibleSlot": "SR"
+    },
+    {
+      "areaId": "YOKOHAMA",
+      "difficulty": "NORMAL",
+      "rarity": "SR",
+      "characterId": "char_long_01",
+      "name": "ロン",
+      "growthPattern": "DEFENDER",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_064",
+        "SKILL_016"
+      ],
+      "eligibleSlot": "SR"
+    },
+    {
+      "areaId": "YOKOHAMA",
+      "difficulty": "NORMAL",
+      "rarity": "SR",
+      "characterId": "char_sakura_01",
+      "name": "サクラ",
+      "growthPattern": "BALANCED",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_069",
+        "SKILL_012"
+      ],
+      "eligibleSlot": "SR"
+    },
+    {
+      "areaId": "YOKOHAMA",
+      "difficulty": "NORMAL",
+      "rarity": "SR",
+      "characterId": "char_cecile_01",
+      "name": "セシル",
+      "growthPattern": "BALANCED",
+      "weight": 1,
+      "localAffinity": "CROSS_AREA",
+      "skillLoadout": [
+        "SKILL_070",
+        "SKILL_012"
+      ],
+      "eligibleSlot": "SR"
+    },
+    {
+      "areaId": "YOKOHAMA",
+      "difficulty": "HARD",
+      "rarity": "R",
+      "characterId": "char_yuji_01",
+      "name": "ユウジ",
+      "growthPattern": "ATTACKER",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_021",
+        "SKILL_027"
+      ],
+      "eligibleSlot": "R"
+    },
+    {
+      "areaId": "YOKOHAMA",
+      "difficulty": "HARD",
+      "rarity": "R",
+      "characterId": "char_makoto_01",
+      "name": "マコト",
+      "growthPattern": "BALANCED",
+      "weight": 1,
+      "localAffinity": "CROSS_AREA",
+      "skillLoadout": [
+        "SKILL_022",
+        "SKILL_026"
+      ],
+      "eligibleSlot": "R"
+    },
+    {
+      "areaId": "YOKOHAMA",
+      "difficulty": "HARD",
+      "rarity": "R",
+      "characterId": "char_rin_01",
+      "name": "リン",
+      "growthPattern": "BALANCED",
+      "weight": 1,
+      "localAffinity": "CROSS_AREA",
+      "skillLoadout": [
+        "SKILL_022",
+        "SKILL_026"
+      ],
+      "eligibleSlot": "R"
+    },
+    {
+      "areaId": "YOKOHAMA",
+      "difficulty": "HARD",
+      "rarity": "R",
+      "characterId": "char_shion_01",
+      "name": "シオン",
+      "growthPattern": "BALANCED",
+      "weight": 1,
+      "localAffinity": "CROSS_AREA",
+      "skillLoadout": [
+        "SKILL_022",
+        "SKILL_026"
+      ],
+      "eligibleSlot": "R"
+    },
+    {
+      "areaId": "YOKOHAMA",
+      "difficulty": "HARD",
+      "rarity": "R",
+      "characterId": "char_joe_01",
+      "name": "ジョー",
+      "growthPattern": "DEFENDER",
+      "weight": 1,
+      "localAffinity": "CROSS_AREA",
+      "skillLoadout": [
+        "SKILL_024",
+        "SKILL_031"
+      ],
+      "eligibleSlot": "R"
+    },
+    {
+      "areaId": "YOKOHAMA",
+      "difficulty": "HARD",
+      "rarity": "SR",
+      "characterId": "char_genji_01",
+      "name": "ゲンジ",
+      "growthPattern": "DEFENDER",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_063",
+        "SKILL_031"
+      ],
+      "eligibleSlot": "SR"
+    },
+    {
+      "areaId": "YOKOHAMA",
+      "difficulty": "HARD",
+      "rarity": "SR",
+      "characterId": "char_long_01",
+      "name": "ロン",
+      "growthPattern": "DEFENDER",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_064",
+        "SKILL_031"
+      ],
+      "eligibleSlot": "SR"
+    },
+    {
+      "areaId": "YOKOHAMA",
+      "difficulty": "HARD",
+      "rarity": "SR",
+      "characterId": "char_sakura_01",
+      "name": "サクラ",
+      "growthPattern": "BALANCED",
+      "weight": 2,
+      "localAffinity": "LOCAL",
+      "skillLoadout": [
+        "SKILL_069",
+        "SKILL_026"
+      ],
+      "eligibleSlot": "SR"
+    },
+    {
+      "areaId": "YOKOHAMA",
+      "difficulty": "HARD",
+      "rarity": "SR",
+      "characterId": "char_cecile_01",
+      "name": "セシル",
+      "growthPattern": "BALANCED",
+      "weight": 1,
+      "localAffinity": "CROSS_AREA",
+      "skillLoadout": [
+        "SKILL_070",
+        "SKILL_026"
+      ],
+      "eligibleSlot": "SR"
+    },
+    {
+      "areaId": "YOKOHAMA",
+      "difficulty": "HARD",
+      "rarity": "SR",
+      "characterId": "char_taiga_01",
+      "name": "タイガ",
+      "growthPattern": "SPEEDSTER",
+      "weight": 1,
+      "localAffinity": "CROSS_AREA",
+      "skillLoadout": [
+        "SKILL_033",
+        "SKILL_034"
+      ],
+      "eligibleSlot": "SR"
+    }
+  ]
+}

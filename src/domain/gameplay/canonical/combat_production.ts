@@ -1,16 +1,32 @@
-import pvpSource from "./data/pvp_production_20260822.json" with { type: "json" };
+import pvpSource from "./data/pvp_production_20260830.json" with { type: "json" };
 import matchmakingSource from "./data/pvp_matchmaking_20260822.json" with { type: "json" };
-import pvpRewardsSource from "./data/pvp_ranking_rewards_20260822.json" with { type: "json" };
-import raidSource from "./data/raid_production_20260822.json" with { type: "json" };
-import raidBossSource from "./data/raid_bosses_20260822.json" with { type: "json" };
-import raidRewardsSource from "./data/raid_rewards_20260822.json" with { type: "json" };
+import raidSource from "./data/raid_production_20260830.json" with { type: "json" };
+import raidRewardsSource from "./data/raid_rewards_20260830.json" with { type: "json" };
 import rankingSource from "./data/ranking_competition_20260822.json" with { type: "json" };
+import rankingRewardsSource from "./data/ranking_season_rewards_20260830.json" with { type: "json" };
 
 export const CANONICAL_PVP_PRODUCTION = Object.freeze(pvpSource);
 export const CANONICAL_PVP_MATCHMAKING = Object.freeze(matchmakingSource);
-export const CANONICAL_PVP_RANKING_REWARDS = Object.freeze(pvpRewardsSource);
+export const CANONICAL_PVP_RANKING_REWARDS = Object.freeze(rankingRewardsSource);
 export const CANONICAL_RAID_PRODUCTION = Object.freeze(raidSource);
-export const CANONICAL_RAID_BOSSES = Object.freeze(raidBossSource);
+export const CANONICAL_RAID_BOSSES = Object.freeze({
+  version: raidSource.version,
+  bosses: raidSource.variants.map((variant) => ({
+    bossId: variant.raidVariantId,
+    townId: variant.areaId.toLowerCase(),
+    displayName: variant.raidName,
+    profileType: "PARTY",
+    attribute: "NEUTRAL",
+    referenceLevel: 30,
+    maxHp: variant.maxHp,
+    atk: variant.atk,
+    def: variant.def,
+    spd: variant.spd,
+    luk: 0,
+    skillLoadout: [],
+    memberCharacterIds: variant.memberCharacterIds,
+  })),
+});
 export const CANONICAL_RAID_REWARDS = Object.freeze(raidRewardsSource);
 export const CANONICAL_COMPETITION_RANKING = Object.freeze(rankingSource);
 
@@ -48,7 +64,7 @@ export function canonicalCompetitionRanks(scores: readonly number[]): number[] {
 }
 
 export function canonicalRaidPair(jstDate: string): readonly string[] {
-  const towns = CANONICAL_RAID_PRODUCTION.raidTowns.map((town) => town.townId);
+  const towns = CANONICAL_RAID_PRODUCTION.variants.map((variant) => variant.areaId.toLowerCase());
   const pairs = towns.flatMap((town, index) => towns.slice(index + 1).map((other) => [town, other] as const));
   const day = Math.floor(Date.parse(`${jstDate}T00:00:00+09:00`) / 86_400_000);
   return pairs[((day % pairs.length) + pairs.length) % pairs.length];

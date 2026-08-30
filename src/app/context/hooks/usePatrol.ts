@@ -100,7 +100,7 @@ export function usePatrol(
       return;
     }
     if (!selectedPatrolMember) {
-      setErrorMessage("見回りさせるメンバーを選択してください。");
+      setErrorMessage("派遣するメンバーを選択してください。");
       return;
     }
 
