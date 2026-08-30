@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
+    "test": "pnpm verify:battle-presentation && pnpm verify:battle-full-skill-load",
     "quality:preflight": "npm run lint && npm run typecheck && npm run verify:visual-compliance && npm run verify:mock-asset-gacha && npm run verify:mock-direct-message-read && npm run verify:mock-gvg-cancellation && npm run verify:mock-secure-decks && npm run verify:mock-secure-patrol && npm run build",
     "test:e2e": "node scripts/run_browser_e2e.mjs",
     "verify:asset-gacha": "node scripts/verify_asset_gacha.mjs",

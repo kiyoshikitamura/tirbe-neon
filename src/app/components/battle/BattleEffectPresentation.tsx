@@ -3,6 +3,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import CharacterPresentation from "../character/CharacterPresentation";
 import type { BattleParticipantView } from "./BattleUnitPortrait";
+import type { BattleTargetResolutionGroup } from "@/domain/presentation/battlePresentationUnit";
 import "./BattleEffectPresentation.css";
 import { isInternalBattleLabel, safeBattleCharacterName } from "@/domain/presentation/battleSkillLabels";
 
@@ -33,6 +34,52 @@ const effectAsset: Record<BattleImpactKind, string> = {
 };
 
 const stringValue = (value: unknown) => typeof value === "string" ? value.trim().toUpperCase() : "";
+
+const STATUS_LABELS: Record<string, string> = {
+  ATK_UP: "攻撃UP", ATTACK_UP: "攻撃UP", ATK_DOWN: "攻撃DOWN", ATTACK_DOWN: "攻撃DOWN",
+  DEF_UP: "防御UP", DEFENSE_UP: "防御UP", DEF_DOWN: "防御DOWN", DEFENSE_DOWN: "防御DOWN",
+  SPD_UP: "速度UP", SPEED_UP: "速度UP", SPD_DOWN: "速度DOWN", SPEED_DOWN: "速度DOWN",
+  STUN: "スタン", POISON: "毒", BLEED: "出血", BLIND: "暗闇", SILENCE: "沈黙", TAUNT: "挑発",
+  SHIELD: "シールド", REGEN: "継続回復", BUFF: "強化", DEBUFF: "弱体化",
+};
+
+export function battleStatusLabel(payload: Record<string, unknown>): string {
+  const stat = String(payload.stat ?? "").toUpperCase();
+  const kind = String(payload.kind ?? "").toUpperCase();
+  const statLabel = { ATK: "攻撃", DEF: "防御", SPD: "速度", LUK: "運" }[stat];
+  if (statLabel && (kind === "BUFF" || kind === "DEBUFF")) return `${statLabel}${kind === "BUFF" ? "UP" : "DOWN"}`;
+  const raw = String(payload.label ?? payload.statusName ?? payload.status ?? payload.effectId ?? payload.kind ?? "STATUS");
+  const normalized = raw.trim().toUpperCase().replace(/[\s-]+/g, "_");
+  if (STATUS_LABELS[normalized]) return STATUS_LABELS[normalized];
+  const match = Object.entries(STATUS_LABELS).find(([key]) => normalized.includes(key));
+  return match?.[1] ?? (raw === normalized && /^[A-Z0-9_]+$/.test(raw) ? "状態変化" : raw);
+}
+
+export function BattleTargetReaction({ group, side }: { group: BattleTargetResolutionGroup; side: "player" | "enemy" }) {
+  const damageEvents = group.events.filter((event) => event.type === "DAMAGE");
+  const healEvents = group.events.filter((event) => event.type === "HEAL");
+  const damage = damageEvents.reduce((sum, event) => sum + Math.max(0, Number(event.payload.amount ?? 0)), 0);
+  const heal = healEvents.reduce((sum, event) => sum + Math.max(0, Number(event.payload.effectiveAmount ?? event.payload.amount ?? 0)), 0);
+  const status = group.events.find((event) => event.type === "STATUS" || (event.type === "EFFECT" && event.payload.kind !== "ACTIVE_EFFECT_SYNC"));
+  const defeated = group.events.some((event) => event.type === "DEFEAT");
+  const missed = damageEvents.length > 0 && damageEvents.every((event) => event.payload.hit === false);
+  const statusKey = String(status?.payload.status ?? status?.payload.kind ?? "").toUpperCase();
+  const tone = statusKey.includes("SHIELD") ? "shield"
+    : statusKey.includes("BUFF") || statusKey.includes("UP") || statusKey.includes("REGEN") ? "buff"
+      : status ? "debuff" : "none";
+
+  return <div className={`battle-target-reaction is-${side} is-${tone}`} role="status">
+    {damage > 0 && !missed && <i className="battle-target-impact" aria-hidden="true" />}
+    {heal > 0 && <i className="battle-target-recovery" aria-hidden="true" />}
+    {status && <i className="battle-target-status-wash" aria-hidden="true" />}
+    <span className="battle-target-reaction-copy">
+      {missed ? <strong className="is-miss">MISS</strong> : damage > 0 ? <strong>−{damage.toLocaleString()}</strong> : null}
+      {heal > 0 && <strong className="is-heal">+{heal.toLocaleString()}</strong>}
+      {status && <small>{battleStatusLabel(status.payload)}</small>}
+      {defeated && <b>戦闘不能</b>}
+    </span>
+  </div>;
+}
 
 const isBasicAttackPresentation = (skillId: string, skillName: string) => {
   const normalizedId = stringValue(skillId).replace(/[\s-]+/g, "_");
@@ -115,7 +162,7 @@ export function BattleSkillCutIn({ presentation, participant, imageSrc, speed }:
     if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
   }, []);
 
-  if (!visible?.tier) return null;
+  if (!visible?.tier || visible.tier === "STANDARD") return null;
   const tier = visible.tier.toLowerCase();
   return (
     <div className={`battle-skill-cutin is-${tier} is-speed-${speed > 1 ? "fast" : "normal"}`} aria-label={`${visible.charName} ${visible.skillName}`}>
@@ -131,7 +178,7 @@ export function BattleSkillCutIn({ presentation, participant, imageSrc, speed }:
         <CharacterPresentation src={imageSrc} alt={participant?.name || visible.charName} variant="battle" className="character-presentation-battle-cutin" />
       </div>
       <div className="battle-cutin-copy">
-        <small>{visible.tier === "STANDARD" ? "SKILL" : `${visible.tier} SKILL`}</small>
+        <small>{visible.tier} SKILL</small>
         <strong>{visible.skillName}</strong>
         <span>{visible.charName}</span>
       </div>

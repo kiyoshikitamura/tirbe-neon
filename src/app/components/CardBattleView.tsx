@@ -52,6 +52,7 @@ export default function CardBattleView() {
     battleModeResultDetail,
     battleSkipPending,
     presentationPhase,
+    actionPresentation,
     authoritativeTimeline,
     launchBattlePlaying,
     confirmPreparedPvpBattle,
@@ -474,6 +475,7 @@ export default function CardBattleView() {
         timelineIndex={timelineIndex}
         authoritativeTimeline={authoritativeTimeline}
         presentationPhase={presentationPhase}
+        actionPresentation={actionPresentation}
         round={battleRound}
         skillCutIn={activeSkillCutIn}
         targetLine={targetLine}

@@ -111,10 +111,7 @@ export function createBattleFullSkillLoadFixture() {
       townId: quest.townId,
       difficulty: quest.difficulty,
       expectedBackgroundPath: getCharacterLocationBackground(quest.townId),
-      // Current Quest entry does not forward a backgroundPath into the Battle
-      // presentation override. Keep that observable instead of masking the
-      // known BATTLE_LOCATION_BACKGROUND_RUNTIME_PARITY release gap.
-      runtimeBattleBackgroundPath: undefined as string | undefined,
+      runtimeBattleBackgroundPath: getCharacterLocationBackground(quest.townId),
     },
   };
 }

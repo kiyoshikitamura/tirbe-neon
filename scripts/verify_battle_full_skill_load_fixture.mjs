@@ -9,7 +9,6 @@ import {
   BATTLE_FULL_SKILL_LOAD_PLAYER_NAMES,
   BATTLE_FULL_SKILL_LOAD_SEED,
   actionEvents,
-  createBattleFullSkillLoadFixture,
   isSkillAction,
   resolveBattleFullSkillLoadFixture,
 } from "../src/domain/battle/fullSkillLoadFixture.ts";
@@ -85,13 +84,14 @@ assert.ok(defeatIndexes.some((index) => {
 
 assert.ok(fixture.location.expectedBackgroundPath, "Current Quest/Area has no canonical expected Battle background");
 await access(resolve(root, "public", fixture.location.expectedBackgroundPath.replace(/^\//, "")));
-assert.equal(fixture.location.runtimeBattleBackgroundPath, undefined, "Known location runtime gap was unexpectedly masked by the QA fixture");
+assert.equal(fixture.location.runtimeBattleBackgroundPath, fixture.location.expectedBackgroundPath, "Quest/Area background is not connected to BattlePresentationContext");
 
 const page = await readFile(resolve(root, "src/app/qa/battle-full-skill-load/page.tsx"), "utf8");
 const harness = await readFile(resolve(root, "src/app/qa/battle-full-skill-load/BattleFullSkillLoadHarness.tsx"), "utf8");
 assert.match(page, /isQaHarnessAvailable/, "QA route must fail closed through the existing environment gate");
 assert.match(page, /notFound\(\)/, "Production QA route must return 404");
 assert.match(harness, /<CardBattleView\s*\/>/, "QA must render the Production Battle component");
+assert.match(harness, /buildBattlePresentationUnit\(replay\.events/, "QA must replay the existing canonical fixture through the Production V2 presentation grouping");
 assert.doesNotMatch(harness, /supabase|fetch\(|\.from\(|\.rpc\(/, "QA fixture must not read or mutate Production User Data");
 
 console.log(JSON.stringify({
@@ -103,6 +103,6 @@ console.log(JSON.stringify({
   currentLoadouts: Object.fromEntries([...fixture.player, ...fixture.enemy].map((unit) => [unit.name, unit.skills.map((skill) => `${skill.id} ${skill.name}`)])),
   replay: { winner: replay.winner, rounds: replay.rounds, events: replay.events.length, actions: actions.length, skillActions: skills.length },
   patterns: { A: "PASS", B: "PASS", C: "PASS", D: "PASS", E: "PASS", F: "PASS", G: "PASS", H: "PASS", I: "PASS" },
-  location: { ...fixture.location, parityGate: fixture.location.runtimeBattleBackgroundPath === fixture.location.expectedBackgroundPath ? "PASS" : "HUMAN_FAIL_EXPECTED" },
+  location: { ...fixture.location, parityGate: fixture.location.runtimeBattleBackgroundPath === fixture.location.expectedBackgroundPath ? "PASS" : "FAIL" },
   productionImpact: 0,
 }, null, 2));

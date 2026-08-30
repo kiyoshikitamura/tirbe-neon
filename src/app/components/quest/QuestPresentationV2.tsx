@@ -72,11 +72,13 @@ export default function QuestPresentationV2() {
     setBattleStartingId(patrol.id);
     game.setGlobalInteractionBlocking(true);
     try {
+      const battleCourse = (game.patrolCourses || []).find((course: any) => course.id === patrol.courseId);
+      const battleBackgroundPath = getCharacterLocationBackground(battleCourse?.town_id || game.selectedTown);
       await game.startCardBattle(
         "PATROL", npc.npc_name || "敵NPC", npc.id,
         undefined, undefined, undefined, undefined, undefined, undefined,
         npc, patrol.id,
-        { encounterLabel: patrol.courseName || npc.npc_name || "クエスト", opponentLabel: npc.npc_name || "敵NPC" }
+        { encounterLabel: patrol.courseName || npc.npc_name || "クエスト", opponentLabel: npc.npc_name || "敵NPC", backgroundPath: battleBackgroundPath }
       );
     } finally {
       battleRef.current = false;

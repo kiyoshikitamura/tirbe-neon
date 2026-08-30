@@ -94,3 +94,74 @@
   .battle-cutin-character,
   .battle-asset-impact { animation: none; }
 }
+
+/* V2 local target reaction: impact, value and state change share one beat. */
+.battle-target-reaction {
+  position: absolute;
+  z-index: 11;
+  inset: 2px -2px;
+  display: flex;
+  align-items: center;
+  pointer-events: none;
+  animation: battle-v2-target-shake 250ms ease-out both;
+}
+.battle-target-reaction.is-player { justify-content: flex-start; padding-left: 43px; }
+.battle-target-reaction.is-enemy { justify-content: flex-end; padding-right: 43px; }
+.battle-target-reaction-copy { position: relative; z-index: 3; display: flex; flex-direction: column; align-items: center; }
+.battle-target-reaction-copy strong {
+  color: #fff;
+  font-size: clamp(18px, 5.7vw, 25px);
+  font-weight: 1000;
+  line-height: .92;
+  letter-spacing: -.04em;
+  text-shadow: 0 2px 0 #020307, 0 0 12px rgba(255,43,85,.62);
+  animation: battle-v2-number-pop 420ms cubic-bezier(.1,.8,.2,1) both;
+}
+.battle-target-reaction-copy strong.is-heal { color: #80ffad; text-shadow: 0 2px 0 #020307, 0 0 12px rgba(39,244,121,.58); }
+.battle-target-reaction-copy strong.is-miss { color: #c8d0d7; font-size: 13px; letter-spacing: .08em; }
+.battle-target-reaction-copy small,
+.battle-target-reaction-copy b {
+  margin-top: 4px;
+  padding: 2px 5px;
+  border: 1px solid currentColor;
+  color: #ff9db3;
+  background: rgba(18,5,11,.88);
+  font-size: 8px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+.battle-target-reaction.is-buff .battle-target-reaction-copy small { color: #8cffb0; background: rgba(4,28,14,.9); }
+.battle-target-reaction.is-shield .battle-target-reaction-copy small { color: #94e9ff; background: rgba(4,25,34,.9); }
+.battle-target-reaction-copy b { color: #fff; background: rgba(159,11,47,.94); }
+.battle-target-impact {
+  position: absolute;
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  background: radial-gradient(circle,#fff 0 5%,rgba(255,53,93,.9) 7% 18%,rgba(255,53,93,.25) 22%,transparent 63%);
+  animation: battle-v2-impact 310ms ease-out both;
+}
+.battle-target-reaction.is-player .battle-target-impact { left: 38px; }
+.battle-target-reaction.is-enemy .battle-target-impact { right: 38px; }
+.battle-target-recovery,
+.battle-target-status-wash { position: absolute; inset: 1px 0; animation: battle-v2-wash 430ms ease-out both; }
+.battle-target-recovery { background: linear-gradient(0deg,rgba(49,247,132,.04),rgba(109,255,163,.26)); }
+.battle-target-status-wash { background: rgba(91,96,105,.38); backdrop-filter: grayscale(.9); }
+.battle-target-reaction.is-buff .battle-target-status-wash { background: linear-gradient(0deg,rgba(49,247,132,.05),rgba(109,255,163,.24)); backdrop-filter: none; }
+.battle-target-reaction.is-shield .battle-target-status-wash { inset: 4px; border: 2px solid rgba(110,229,255,.82); border-radius: 28px; background: rgba(44,185,224,.07); box-shadow: inset 0 0 15px rgba(71,214,255,.28),0 0 10px rgba(71,214,255,.28); }
+@keyframes battle-v2-impact { from { opacity:0; transform:scale(.45) rotate(-15deg); } 36% { opacity:1; } to { opacity:0; transform:scale(1.5) rotate(12deg); } }
+@keyframes battle-v2-wash { from { opacity:0; } 22% { opacity:1; } to { opacity:0; } }
+@keyframes battle-v2-target-shake { 0%,100%{transform:translateX(0)}28%{transform:translateX(-2px)}48%{transform:translateX(2px)}68%{transform:translateX(-1px)} }
+@keyframes battle-v2-number-pop { from{opacity:0;transform:scale(.68) translateY(5px)}28%{opacity:1;transform:scale(1.08)}to{opacity:1;transform:none} }
+
+/* SR/SSR cut-ins live in the reserved lower strip and never cover the roster. */
+.battle-cutin-slot .battle-skill-cutin { position: absolute; inset: 0; }
+.battle-cutin-slot .battle-cutin-darken { opacity: .56; }
+.battle-cutin-slot .battle-cutin-character { top: 0; right: 65%; bottom: -28%; left: -2%; }
+.battle-cutin-slot .battle-cutin-copy { right: 4%; width: 70%; }
+.battle-cutin-slot .battle-cutin-copy small { font-size: 8px; }
+.battle-cutin-slot .battle-cutin-copy strong { font-size: clamp(16px, 5vw, 21px); }
+.battle-cutin-slot .battle-cutin-copy span { font-size: 8px; }
+@media (prefers-reduced-motion: reduce) {
+  .battle-target-reaction, .battle-target-reaction * { animation-duration: 1ms !important; }
+}

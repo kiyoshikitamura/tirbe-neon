@@ -20,6 +20,13 @@ import { gvgDefenseSnapshotToParticipants } from "./battle/gvgSnapshotAdapter";
 import { patrolSnapshotToParticipants, serverBattleEvents, type ServerBattleEvent } from "./battle/patrolReplayAdapter";
 import { beginActionPerformance } from "@/utils/actionPerformance";
 import { traceTutorialJourney } from "@/utils/tutorialJourneyTrace";
+import {
+  battlePresentationBudget,
+  battlePresentationImpactAt,
+  battlePresentationTier,
+  buildBattlePresentationUnit,
+  type BattleActionPresentation,
+} from "@/domain/presentation/battlePresentationUnit";
 import { resolveBattleSkillLabel, safeBattleCharacterName } from "@/domain/presentation/battleSkillLabels";
 import { canonicalItemName } from "@/domain/gameplay/canonical/items";
 
@@ -256,6 +263,7 @@ export function useBattle(options: UseBattleOptions) {
   const [activeShakingCharId, setActiveShakingCharId] = useState<string | null>(null);
   const [damagePopup, setDamagePopup] = useState<{ val: number; type: "dmg" | "heal" | "shield"; isCritical?: boolean; x: number; y: number; charId: string } | null>(null);
   const [presentationPhase, setPresentationPhase] = useState<BattlePresentationPhase>("IDLE");
+  const [actionPresentation, setActionPresentation] = useState<BattleActionPresentation | null>(null);
   const [authoritativeTimeline, setAuthoritativeTimeline] = useState<BattlePresentationTimelineNode[]>([]);
   const presentationTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
@@ -1971,32 +1979,26 @@ export function useBattle(options: UseBattleOptions) {
       const previousActionWasSkill = previousAction
         ? String(previousAction.payload?.skillId ?? "BASIC_ATTACK") !== "BASIC_ATTACK"
         : false;
-      const delay = replayEvent.type === "EFFECT" && replayEvent.payload.kind === "ACTIVE_EFFECT_SYNC"
-        ? 40
-        : replayEvent.type === "ACTION"
-        ? (previousAction && previousReplayEvent && previousReplayEvent.type !== "ACTION"
-          ? previousActionWasSkill ? 1050 : 940
-          : 320)
-        : followsSkill
-          ? 2200
-          : followsNormalAttack
-            ? 780
-            : holdsSkillImpact
-              ? 1000
-              : holdsNormalImpact
-                ? 540
-          : followsFinalHit
-            ? 1050
+      const outcomeUnit = previousReplayEvent?.type === "ACTION"
+        ? buildBattlePresentationUnit(authoritativeEvents, authoritativeEventIndex - 1)
+        : null;
+      const participantSnapshot = [...playerPartyStatesRef.current, ...enemyPartyStatesRef.current];
+      const previousActor = previousAction
+        ? participantSnapshot.find((participant) => participant.id === String(previousAction.payload.actorId ?? ""))
+        : undefined;
+      const previousTier = battlePresentationTier(previousActionWasSkill, previousActor?.rarity);
+      const delay = replayEvent.type === "ACTION"
+        ? previousAction
+          ? Math.max(180, battlePresentationBudget(previousTier, battleSpeed) - battlePresentationImpactAt(battleSpeed))
+          : 120
+        : outcomeUnit
+          ? battlePresentationImpactAt(battleSpeed)
+          : replayEvent.type === "EFFECT" && replayEvent.payload.kind === "ACTIVE_EFFECT_SYNC"
+            ? 40
             : replayEvent.type === "RESULT"
-              ? 820
-              : 480;
-      const replayDelay = followsSkill
-        ? Math.max(1300, delay / battleSpeed)
-        : replayEvent.type === "ACTION" && previousActionWasSkill
-        ? Math.max(1050, delay / battleSpeed)
-        : holdsSkillImpact
-          ? Math.max(450, delay / battleSpeed)
-          : delay / battleSpeed;
+              ? followsFinalHit ? 260 : 180
+              : 80;
+      const replayDelay = delay;
       const timer = setTimeout(() => {
         const payload = replayEvent.payload;
         const actorId = String(payload.actorId ?? "");
@@ -2011,17 +2013,14 @@ export function useBattle(options: UseBattleOptions) {
         if (replayEvent.type === "ACTION") {
           const skillId = String(payload.skillId ?? "BASIC_ATTACK");
           const isSkill = skillId !== "BASIC_ATTACK";
+          const unit = buildBattlePresentationUnit(authoritativeEvents, authoritativeEventIndex);
           clearPresentationTimers();
           setActiveSkillCutIn(null);
           setTargetLine(null);
           setActiveShakingCharId(null);
           setDamagePopup(null);
           setPresentationPhase("ACTOR_FOCUS");
-          const actionUnit = authoritativeEvents.slice(authoritativeEventIndex + 1);
-          const nextActionOffset = actionUnit.findIndex((entry) => entry.type === "ACTION");
-          const boundedActionUnit = nextActionOffset < 0 ? actionUnit : actionUnit.slice(0, nextActionOffset);
-          const nextImpact = boundedActionUnit.find((entry) => entry.type === "DAMAGE" || entry.type === "HEAL" || entry.type === "STATUS");
-          const nextTargetId = String(payload.targetId ?? nextImpact?.payload.targetId ?? "");
+          const nextTargetId = String(payload.targetId ?? unit?.targets[0]?.targetId ?? "");
           if (typeof window !== "undefined") {
             const battleWindow = window as typeof window & { __TRIBE_BATTLE_PRESENTATION__?: { current?: any; history: any[] } };
             const metrics = battleWindow.__TRIBE_BATTLE_PRESENTATION__ ||= { history: [] };
@@ -2033,6 +2032,8 @@ export function useBattle(options: UseBattleOptions) {
           }
           const actorName = safeBattleCharacterName(actor?.name);
           const skillName = resolveBattleSkillLabel(skillId, (actor?.skills || []) as Array<Record<string, unknown>>);
+          const tier = battlePresentationTier(isSkill, actor?.rarity);
+          setActionPresentation(unit ? { unit, beat: "ACTOR", tier, skillName } : null);
           const nextActions = authoritativeEvents
             .slice(authoritativeEventIndex)
             .filter((entry) => entry.type === "ACTION")
@@ -2047,17 +2048,83 @@ export function useBattle(options: UseBattleOptions) {
           setActiveSkillCutIn({ charName: actorName, skillName });
           const actorTimelineIndex = timeline.findIndex((entry) => entry.id === actorId);
           if (actorTimelineIndex >= 0) setTimelineIndex(actorTimelineIndex);
-          const targetDelay = isSkill ? Math.max(760, 1120 / battleSpeed) : 260 / battleSpeed;
-          const attackDelay = isSkill ? Math.max(1040, 1480 / battleSpeed) : 480 / battleSpeed;
-          presentationTimersRef.current.push(setTimeout(() => {
-            if (nextTargetId) setTargetLine({ fromId: actorId, toId: nextTargetId });
-            setPresentationPhase("TARGET_FOCUS");
-            recordPresentationStage("targetFocusAt", nextTargetId);
-          }, targetDelay));
-          presentationTimersRef.current.push(setTimeout(() => {
-            setPresentationPhase("ATTACK_MOTION");
-          }, attackDelay));
           setBattleLog((previous) => [...previous, `[ROUND ${replayEvent.round}] ${actorName}：${skillName}`]);
+        } else if (outcomeUnit) {
+          const actionEvent = authoritativeEvents[outcomeUnit.replayStartCursor];
+          const actionActorId = outcomeUnit.actorId;
+          const actionActor = allParticipants.find((participant) => participant.id === actionActorId);
+          const actionSkillId = outcomeUnit.skillId;
+          const actionIsSkill = actionSkillId !== "BASIC_ATTACK";
+          const actionSkillName = resolveBattleSkillLabel(actionSkillId, (actionActor?.skills || []) as Array<Record<string, unknown>>);
+          const actionTier = battlePresentationTier(actionIsSkill, actionActor?.rarity);
+          const groupByTarget = new Map(outcomeUnit.targets.map((group) => [group.targetId, group]));
+          const projectParticipant = (participant: ParticipantState) => {
+            const group = groupByTarget.get(participant.id);
+            if (!group) return participant;
+            let next = participant;
+            for (const event of group.events) {
+              if (event.type === "DAMAGE") {
+                const remainingHp = Math.max(0, Number(event.payload.remainingHp ?? next.hp));
+                next = projectActiveEffects({ ...next, hp: remainingHp, isDead: remainingHp <= 0 }, event.payload);
+              } else if (event.type === "HEAL") {
+                const remainingHp = Math.max(0, Number(event.payload.remainingHp ?? next.hp));
+                next = { ...next, hp: remainingHp, isDead: false };
+              } else if (event.type === "STATUS" || event.type === "EFFECT") {
+                next = projectActiveEffects(next, event.payload);
+              } else if (event.type === "DEFEAT") {
+                next = { ...next, hp: 0, isDead: true };
+              }
+            }
+            return next;
+          };
+          const nextPlayers = currentPlayers.map(projectParticipant);
+          const nextEnemies = currentEnemies.map(projectParticipant);
+          playerPartyStatesRef.current = nextPlayers;
+          enemyPartyStatesRef.current = nextEnemies;
+          setPlayerPartyStates(nextPlayers);
+          setEnemyPartyStates(nextEnemies);
+          setBattleRound(actionEvent.round);
+          setTargetLine(null);
+          const firstDamage = outcomeUnit.targets.flatMap((group) => group.events.map((event) => ({ group, event }))).find(({ event }) => event.type === "DAMAGE");
+          const firstHeal = outcomeUnit.targets.flatMap((group) => group.events.map((event) => ({ group, event }))).find(({ event }) => event.type === "HEAL");
+          const firstShield = outcomeUnit.targets.flatMap((group) => group.events.map((event) => ({ group, event }))).find(({ event }) => event.type === "EFFECT" && event.payload.kind === "SHIELD");
+          const audioOutcome = firstDamage ?? firstHeal ?? firstShield;
+          if (audioOutcome) {
+            const event = audioOutcome.event;
+            const popupType = event.type === "DAMAGE" ? "dmg" : event.type === "HEAL" ? "heal" : "shield";
+            const amount = event.type === "HEAL"
+              ? Number(event.payload.effectiveAmount ?? event.payload.amount ?? 0)
+              : Number(event.payload.amount ?? 0);
+            setDamagePopup({ val: Math.max(0, amount), type: popupType, isCritical: event.payload.critical === true, x: 120, y: 40, charId: audioOutcome.group.targetId });
+          }
+          setActiveShakingCharId(firstDamage?.event.payload.hit === false ? null : firstDamage?.group.targetId ?? null);
+          setPresentationPhase("IMPACT");
+          setActionPresentation({ unit: outcomeUnit, beat: "IMPACT", tier: actionTier, skillName: actionSkillName });
+          recordPresentationStage("impactAt", outcomeUnit.targets[0]?.targetId);
+          recordPresentationStage("damageAt", outcomeUnit.targets[0]?.targetId);
+          recordPresentationStage("hpSettledAt", outcomeUnit.targets[0]?.targetId);
+          if (firstDamage) playCyberSe(firstDamage.event.payload.hit === false ? "click" : "hit");
+          else if (firstHeal || firstShield) playCyberSe("click");
+
+          const remainingBudget = Math.max(180, battlePresentationBudget(actionTier, battleSpeed) - battlePresentationImpactAt(battleSpeed));
+          presentationTimersRef.current.push(setTimeout(() => {
+            setActionPresentation({ unit: outcomeUnit, beat: "RETURN", tier: actionTier, skillName: actionSkillName });
+            setPresentationPhase("HP_TRANSITION");
+          }, Math.round(remainingBudget * .55)));
+          presentationTimersRef.current.push(setTimeout(() => {
+            setPresentationPhase("ACTION_HOLD");
+            recordPresentationStage("actionCompleteAt");
+          }, Math.max(120, remainingBudget - 70)));
+
+          const advanceReplayTo = (next: number) => {
+            if (authoritativeReplayId && typeof window !== "undefined") window.localStorage.setItem(patrolReplayCursorKey(authoritativeReplayId), String(next));
+            if (battleMode === "PATROL") setOfficialPatrolEventIndex(next);
+            else if (battleMode === "PVP") setOfficialPvpEventIndex(next);
+            else if (battleMode === "RAID") setOfficialRaidEventIndex(next);
+            else if (battleMode === "GVG" || battleMode === "PVP_PRACTICE") setCanonicalAuxEventIndex(next);
+          };
+          advanceReplayTo(outcomeUnit.nextReplayCursor);
+          return;
         } else if (replayEvent.type === "DAMAGE") {
           setPresentationPhase("IMPACT");
           recordPresentationStage("impactAt", targetId);
@@ -2207,6 +2274,7 @@ export function useBattle(options: UseBattleOptions) {
           setBattleLog((previous) => [...previous, `${target?.name ?? targetId}は戦闘不能。`]);
         } else if (replayEvent.type === "RESULT") {
           clearPresentationTimers();
+          setActionPresentation(null);
           setActiveSkillCutIn(null);
           setTargetLine(null);
           setActiveShakingCharId(null);
@@ -2691,6 +2759,7 @@ export function useBattle(options: UseBattleOptions) {
     activeShakingCharId,
     damagePopup, setDamagePopup,
     presentationPhase,
+    actionPresentation,
     authoritativeTimeline,
     battleResultReplayEvents,
     battlePresentationContext,

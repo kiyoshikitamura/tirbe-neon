@@ -6,7 +6,6 @@ import BattleUnitPortrait, { BattleDamagePopup, BattleParticipantView } from "./
 import {
   BattleImpactEffect,
   BattleSkillCutIn,
-  BattleSkillResolutionVfx,
   resolveBattleSkillPresentation,
   type BattleImpactKind,
 } from "./BattleEffectPresentation";
@@ -14,6 +13,7 @@ import "./QuestBattleViewer.css";
 import { useAudio } from "@/audio/AudioProvider";
 import type { BattlePresentationPhase } from "@/hooks/useBattle";
 import { isInternalBattleLabel } from "@/domain/presentation/battleSkillLabels";
+import { isActiveEffectSync, type BattleActionPresentation, type BattleTargetResolutionGroup } from "@/domain/presentation/battlePresentationUnit";
 
 type Participant = BattleParticipantView & {
   characterId?: string;
@@ -31,6 +31,7 @@ type Props = {
   timelineIndex: number;
   authoritativeTimeline?: TimelineNode[];
   presentationPhase?: BattlePresentationPhase;
+  actionPresentation?: BattleActionPresentation | null;
   round: number;
   skillCutIn: { charName: string; skillName: string } | null;
   targetLine: { fromId: string; toId: string } | null;
@@ -69,21 +70,14 @@ const tacticLabel: Record<string, string> = {
 export default function QuestBattleViewer(props: Props) {
   const { playSe } = useAudio();
   const allParticipants = [...props.playerParty, ...props.enemyParty];
-  const activeTimelineNode = props.authoritativeTimeline?.[0] || props.timeline[props.timelineIndex] || props.timeline[0];
+  const activeTimelineNode = props.actionPresentation
+    ? { id: props.actionPresentation.unit.actorId, name: "" }
+    : props.authoritativeTimeline?.[0] || props.timeline[props.timelineIndex] || props.timeline[0];
   const explicitActiveParticipant = allParticipants.find((entry) => entry.id === activeTimelineNode?.id);
   const activeParticipant = explicitActiveParticipant
     || (props.presentationPhase === "IDLE" ? props.playerParty[0] || props.enemyParty[0] : undefined);
-  const targetId = props.damagePopup?.charId || props.targetLine?.toId;
+  const targetId = props.actionPresentation?.unit.targets[0]?.targetId || props.damagePopup?.charId || props.targetLine?.toId;
   const targetParticipant = targetId ? allParticipants.find((entry) => entry.id === targetId) : undefined;
-
-  const livingTimeline = props.timeline.filter((node) => !allParticipants.find((entry) => entry.id === node.id)?.isDead);
-  const rawStart = livingTimeline.findIndex((node) => node.id === activeTimelineNode?.id);
-  const start = rawStart < 0 ? 0 : rawStart;
-  const timelinePreview = props.authoritativeTimeline?.length
-    ? props.authoritativeTimeline.slice(0, props.tutorial ? 3 : 4)
-    : livingTimeline.length === 0
-      ? []
-      : Array.from({ length: props.tutorial ? 3 : 4 }, (_, offset) => livingTimeline[(start + offset) % livingTimeline.length]);
 
   const sideOf = (participant?: Participant): "player" | "enemy" => participant?.isEnemy ? "enemy" : "player";
   const visualOf = (participant: Participant | undefined, side: "player" | "enemy") => {
@@ -95,8 +89,8 @@ export default function QuestBattleViewer(props: Props) {
       attribute: participant?.alignment || master?.alignment,
     };
   };
-  const popupFor = (participant: Participant) => props.damagePopup?.charId === participant.id ? props.damagePopup : null;
-  const impactFor = (participant: Participant) => props.damagePopup?.charId === participant.id ? (
+  const popupFor = (participant: Participant) => !props.actionPresentation && props.damagePopup?.charId === participant.id ? props.damagePopup : null;
+  const impactFor = (participant: Participant) => !props.actionPresentation && props.damagePopup?.charId === participant.id ? (
     <div className={`battle-unit-impact-vfx is-${props.damagePopup.type}`} aria-hidden="true">
       {props.damagePopup.type === "dmg" && <BattleImpactEffect kind={(skillPresentation?.impact || "impact") as BattleImpactKind} speed={props.speed} />}
       <div className={`battle-impact-burst is-${props.damagePopup.type}`}><i /><i /><i /></div>
@@ -116,6 +110,17 @@ export default function QuestBattleViewer(props: Props) {
   const isSkillAction = Boolean(props.skillCutIn && !/通常攻撃|ATTACK/i.test(skillName));
   const safeCutIn = props.skillCutIn ? { ...props.skillCutIn, skillName } : null;
   const skillPresentation = resolveBattleSkillPresentation(safeCutIn, activeParticipant ? { ...activeParticipant, rarity: activeVisual.rarity } : undefined);
+  const actorMoving = props.actionPresentation
+    ? props.actionPresentation.beat !== "RETURN"
+    : props.presentationPhase !== "IDLE" && props.presentationPhase !== "ACTION_HOLD";
+  const reactionById = new Map<string, BattleTargetResolutionGroup>(
+    props.actionPresentation?.beat === "IMPACT"
+      ? props.actionPresentation.unit.targets
+        .filter((group) => group.events.some((event) => !isActiveEffectSync(event)))
+        .map((group) => [group.targetId, group])
+      : [],
+  );
+  const standardSkillCue = props.actionPresentation?.tier === "STANDARD" ? props.actionPresentation.skillName : undefined;
   const lastSkillCueRef = useRef<unknown>(null);
   const lastDamageCueRef = useRef<unknown>(null);
   const tutorialPaceRef = useRef({ normalSeen: false, skillSeen: false, advanced: false });
@@ -163,28 +168,14 @@ export default function QuestBattleViewer(props: Props) {
         <i>AUTO</i>
       </header>
 
-      <section className="battle-timeline" aria-label="行動順">
-        {timelinePreview.map((node, index) => (
-          <div key={`${node.id}-${index}`} className={`battle-timeline-slot ${node.isEnemy ? "is-enemy" : "is-player"} ${index === 0 ? "is-current" : ""}`}>
-            <small>{index === 0 ? "CURRENT" : `NEXT ${index}`}</small>
-            <strong>{node.name}</strong>
-          </div>
-        ))}
-      </section>
-
       <main className="battle-roster-stage">
-        <PartyZone side="player" label={`${props.playerParty.length} MEMBERS`} party={props.playerParty} activeId={activeParticipant?.id} targetId={targetParticipant?.id} shakingId={props.shakingId} visualOf={visualOf} popupFor={popupFor} impactFor={impactFor} hasAdvantage={hasAdvantage} tutorial={props.tutorial} />
-        <section className={`battle-action-stage is-${activeSide}-actor is-phase-${actionPhase} ${isSkillAction ? "is-skill-action" : "is-normal-action"} ${isFinalHit ? "is-final-hit" : ""}`} aria-live="polite" aria-label={`${activeParticipant?.name || "ACTION"} ${isSkillAction ? skillName : "通常攻撃"} ${targetParticipant?.name || ""}`}>
-          <div className="battle-action-relation" aria-hidden="true">
-            <span>{activeParticipant?.name || "ACTOR"}</span><i /><b>{isSkillAction ? "SKILL" : "HIT"}</b><i /><span>{targetParticipant?.name || "TARGET"}</span>
-          </div>
-          {props.skillCutIn && isSkillAction && !skillPresentation?.tier && <div className="battle-skill-flash"><small>SKILL</small><strong>{skillName}</strong></div>}
-        </section>
-        <PartyZone side="enemy" label={props.opponentName} party={props.enemyParty} activeId={activeParticipant?.id} targetId={targetParticipant?.id} shakingId={props.shakingId} visualOf={visualOf} popupFor={popupFor} impactFor={impactFor} hasAdvantage={hasAdvantage} tutorial={props.tutorial} />
-        {isSkillAction && (props.presentationPhase === "TARGET_FOCUS" || props.presentationPhase === "ATTACK_MOTION") && <BattleSkillResolutionVfx key={props.presentationPhase} presentation={skillPresentation} phase={props.presentationPhase} actorSide={activeSide} />}
+        <PartyZone side="player" label="YOUR TEAM" party={props.playerParty} activeId={actorMoving ? activeParticipant?.id : undefined} targetId={targetParticipant?.id} shakingId={props.shakingId} visualOf={visualOf} popupFor={popupFor} impactFor={impactFor} hasAdvantage={hasAdvantage} tutorial={props.tutorial} reactions={reactionById} skillCue={standardSkillCue} />
+        <PartyZone side="enemy" label="ENEMY" party={props.enemyParty} activeId={actorMoving ? activeParticipant?.id : undefined} targetId={targetParticipant?.id} shakingId={props.shakingId} visualOf={visualOf} popupFor={popupFor} impactFor={impactFor} hasAdvantage={hasAdvantage} tutorial={props.tutorial} reactions={reactionById} skillCue={standardSkillCue} />
       </main>
 
-      <BattleSkillCutIn presentation={skillPresentation} participant={activeParticipant ? { ...activeParticipant, rarity: activeVisual.rarity } : undefined} imageSrc={activeVisual.src} speed={props.speed} />
+      <section className="battle-cutin-slot" aria-hidden={!skillPresentation || skillPresentation.tier === "STANDARD"}>
+        <BattleSkillCutIn presentation={skillPresentation} participant={activeParticipant ? { ...activeParticipant, rarity: activeVisual.rarity } : undefined} imageSrc={activeVisual.src} speed={props.speed} />
+      </section>
       {isFinalHit && <div className="battle-final-hit-overlay" role="status"><strong>FINAL HIT</strong><i /></div>}
       {showSpeedGuidance && <div className="battle-speed-guidance" role="status">ここからは2倍速で進むよ</div>}
 
@@ -223,9 +214,11 @@ type PartyZoneProps = {
   impactFor: (participant: Participant) => ReactNode;
   hasAdvantage: (participant: Participant) => boolean;
   tutorial: boolean;
+  reactions: Map<string, BattleTargetResolutionGroup>;
+  skillCue?: string;
 };
 
-function PartyZone({ side, label, party, activeId, targetId, visualOf, popupFor, impactFor, hasAdvantage, tutorial }: PartyZoneProps) {
+function PartyZone({ side, label, party, activeId, targetId, visualOf, popupFor, impactFor, hasAdvantage, tutorial, reactions, skillCue }: PartyZoneProps) {
   return (
     <section className={`battle-party-zone is-${side} ${tutorial ? "is-tutorial-party" : ""}`} data-party-size={Math.max(1, Math.min(5, party.length))} aria-label={side === "enemy" ? "敵パーティ" : "味方パーティ"}>
       <div className="battle-party-label"><span>{side === "enemy" ? "ENEMY" : "YOUR TEAM"}</span><strong>{label}</strong></div>
@@ -247,6 +240,8 @@ function PartyZone({ side, label, party, activeId, targetId, visualOf, popupFor,
                 advantage={hasAdvantage(participant)}
                 rarity={visual.rarity}
                 attribute={visual.attribute}
+                reaction={reactions.get(participant.id)}
+                skillCue={activeId === participant.id ? skillCue : undefined}
               />
             </div>
           );

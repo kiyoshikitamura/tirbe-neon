@@ -7,6 +7,13 @@ import type { BattlePresentationPhase } from "@/hooks/useBattle";
 import type { ParticipantState } from "@/hooks/battle/battleTypes";
 import type { BattleUnitInput } from "@/lib/battle/deterministicBattle";
 import { isSkillAction, resolveBattleFullSkillLoadFixture } from "@/domain/battle/fullSkillLoadFixture";
+import {
+  battlePresentationBudget,
+  battlePresentationImpactAt,
+  battlePresentationTier,
+  buildBattlePresentationUnit,
+  type BattleActionPresentation,
+} from "@/domain/presentation/battlePresentationUnit";
 import "./battle-full-skill-load.css";
 
 type BattleScreenState = "PLAYING" | "ENDING" | "OUTCOME" | "RESULT";
@@ -80,6 +87,7 @@ export default function BattleFullSkillLoadHarness() {
   const [speed, setSpeed] = useState(1);
   const [paused, setPaused] = useState(false);
   const [phase, setPhase] = useState<BattlePresentationPhase>("IDLE");
+  const [actionPresentation, setActionPresentation] = useState<BattleActionPresentation | null>(null);
   const [skillCutIn, setSkillCutIn] = useState<{ charName: string; skillName: string } | null>(null);
   const [targetLine, setTargetLine] = useState<{ fromId: string; toId: string } | null>(null);
   const [shakingId, setShakingId] = useState<string | null>(null);
@@ -115,6 +123,7 @@ export default function BattleFullSkillLoadHarness() {
     setShakingId(null);
     setDamagePopup(null);
     setPhase("IDLE");
+    setActionPresentation(null);
     setAuthoritativeTimeline([]);
     setBattleState("ENDING");
     schedule(() => setBattleState("OUTCOME"), 760);
@@ -132,6 +141,7 @@ export default function BattleFullSkillLoadHarness() {
     setSpeed(1);
     setPaused(false);
     setPhase("IDLE");
+    setActionPresentation(null);
     setSkillCutIn(null);
     setTargetLine(null);
     setShakingId(null);
@@ -161,26 +171,69 @@ export default function BattleFullSkillLoadHarness() {
     if (event.type === "ACTION") {
       const skillId = String(payload.skillId ?? "BASIC_ATTACK");
       const skill = isSkillAction(event);
-      const nextActionOffset = replay.events.slice(eventIndex + 1).findIndex((entry) => entry.type === "ACTION");
-      const actionUnit = replay.events.slice(eventIndex + 1, nextActionOffset < 0 ? undefined : eventIndex + 1 + nextActionOffset);
-      const outcomeEvent = actionUnit.find((entry) => ["DAMAGE", "HEAL", "STATUS", "EFFECT"].includes(entry.type));
-      const nextTargetId = String(outcomeEvent?.payload.targetId ?? "");
+      const unit = buildBattlePresentationUnit(replay.events, eventIndex);
+      if (!unit) { advance(40); return; }
+      const skillName = skillNames.get(skillId) ?? (skill ? "スキル発動" : "通常攻撃");
+      const tier = battlePresentationTier(skill, actor?.rarity);
+      const budget = battlePresentationBudget(tier, speed);
+      const impactAt = battlePresentationImpactAt(speed);
       const nextActors = replay.events.slice(eventIndex).filter((entry) => entry.type === "ACTION").slice(0, 4).map((entry) => {
         const id = String(entry.payload.actorId ?? "");
         const participant = participants.find((candidate) => candidate.id === id);
         return { id, name: participant?.name ?? "キャラクター", isEnemy: teamById.get(id) === true };
       });
-      setSkillCutIn({ charName: actor?.name ?? "キャラクター", skillName: skillNames.get(skillId) ?? (skill ? "スキル発動" : "通常攻撃") });
+      setSkillCutIn({ charName: actor?.name ?? "キャラクター", skillName });
       setTargetLine(null);
       setShakingId(null);
       setDamagePopup(null);
       setAuthoritativeTimeline(nextActors);
       setPhase("ACTOR_FOCUS");
-      const targetDelay = skill ? Math.max(760, 1120 / speed) : 260 / speed;
-      const attackDelay = skill ? Math.max(1040, 1480 / speed) : 480 / speed;
-      schedule(() => { if (nextTargetId) setTargetLine({ fromId: actorId, toId: nextTargetId }); setPhase("TARGET_FOCUS"); }, targetDelay);
-      schedule(() => setPhase("ATTACK_MOTION"), attackDelay);
-      advance(skill ? Math.max(1300, 1660 / speed) : 620 / speed);
+      setActionPresentation({ unit, beat: "ACTOR", tier, skillName });
+      schedule(() => {
+        const groups = new Map(unit.targets.map((group) => [group.targetId, group]));
+        const projectParticipant = (participant: ParticipantState) => {
+          const group = groups.get(participant.id);
+          if (!group) return participant;
+          let next = participant;
+          for (const resultEvent of group.events) {
+            if (resultEvent.type === "DAMAGE") {
+              const hp = Math.max(0, Number(resultEvent.payload.remainingHp ?? next.hp));
+              next = projectEffects({ ...next, hp, isDead: hp <= 0 }, resultEvent.payload);
+            } else if (resultEvent.type === "HEAL") {
+              next = { ...next, hp: Math.max(0, Number(resultEvent.payload.remainingHp ?? next.hp)), isDead: false };
+            } else if (resultEvent.type === "STATUS" || resultEvent.type === "EFFECT") {
+              next = projectEffects(next, resultEvent.payload);
+            } else if (resultEvent.type === "DEFEAT") {
+              next = { ...next, hp: 0, isDead: true };
+            }
+          }
+          return next;
+        };
+        const nextPlayers = playerRef.current.map(projectParticipant);
+        const nextEnemies = enemyRef.current.map(projectParticipant);
+        playerRef.current = nextPlayers;
+        enemyRef.current = nextEnemies;
+        setPlayers(nextPlayers);
+        setEnemies(nextEnemies);
+        const flatResults = unit.targets.flatMap((group) => group.events.map((resultEvent) => ({ group, resultEvent })));
+        const firstDamage = flatResults.find(({ resultEvent }) => resultEvent.type === "DAMAGE");
+        const firstHeal = flatResults.find(({ resultEvent }) => resultEvent.type === "HEAL");
+        const firstShield = flatResults.find(({ resultEvent }) => resultEvent.type === "EFFECT" && resultEvent.payload.kind === "SHIELD");
+        const popup = firstDamage ?? firstHeal ?? firstShield;
+        if (popup) {
+          const popupType = popup.resultEvent.type === "DAMAGE" ? "dmg" : popup.resultEvent.type === "HEAL" ? "heal" : "shield";
+          const amount = popup.resultEvent.type === "HEAL"
+            ? Number(popup.resultEvent.payload.effectiveAmount ?? popup.resultEvent.payload.amount ?? 0)
+            : Number(popup.resultEvent.payload.amount ?? 0);
+          setDamagePopup({ val: Math.max(0, amount), type: popupType, isCritical: popup.resultEvent.payload.critical === true, x: 120, y: 40, charId: popup.group.targetId });
+        }
+        setShakingId(firstDamage?.resultEvent.payload.hit === false ? null : firstDamage?.group.targetId ?? null);
+        setActionPresentation({ unit, beat: "IMPACT", tier, skillName });
+        setPhase("IMPACT");
+      }, impactAt);
+      schedule(() => { setActionPresentation({ unit, beat: "RETURN", tier, skillName }); setPhase("HP_TRANSITION"); }, Math.round(budget * .55));
+      schedule(() => setPhase("ACTION_HOLD"), Math.max(impactAt + 120, budget - 70));
+      schedule(() => setEventIndex(unit.nextReplayCursor), budget);
       return;
     }
 
@@ -293,6 +346,7 @@ export default function BattleFullSkillLoadHarness() {
     },
     battleSkipPending: skipPending,
     presentationPhase: phase,
+    actionPresentation,
     authoritativeTimeline,
     launchBattlePlaying: () => undefined,
     confirmPreparedPvpBattle: async () => true,

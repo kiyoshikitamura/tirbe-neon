@@ -3,6 +3,8 @@
 import { useLayoutEffect, type ReactNode } from "react";
 import CharacterPresentation from "../character/CharacterPresentation";
 import { getAttributeBadgeAsset, getAttributeLabel } from "@/utils/attributeAssets";
+import { BattleTargetReaction } from "./BattleEffectPresentation";
+import type { BattleTargetResolutionGroup } from "@/domain/presentation/battlePresentationUnit";
 import "./BattleUnitPortrait.css";
 
 export type BattleParticipantView = {
@@ -19,7 +21,7 @@ export type BattleParticipantView = {
   stunTurns?: number;
   alignment?: string;
   skills?: Array<Record<string, unknown>>;
-  activeEffects?: Array<{ id: string; kind: string; remainingDuration: number | null; stat?: string; amount?: number }>;
+  activeEffects?: Array<{ id: string; kind: string; remainingDuration: number | null; stat?: string; magnitudeBp?: number; amount?: number }>;
 };
 
 export type BattleDamagePopup = {
@@ -42,6 +44,8 @@ type Props = {
   impactOverlay?: ReactNode;
   rarity?: string;
   attribute?: string;
+  reaction?: BattleTargetResolutionGroup;
+  skillCue?: string;
 };
 
 export default function BattleUnitPortrait({
@@ -58,6 +62,8 @@ export default function BattleUnitPortrait({
   impactOverlay,
   rarity,
   attribute,
+  reaction,
+  skillCue,
 }: Props) {
   const maxHp = Math.max(1, Number(participant.maxHp) || 1);
   const hp = Math.max(0, Number(participant.hp) || 0);
@@ -68,11 +74,30 @@ export default function BattleUnitPortrait({
     Number(participant.shield || 0) > 0 ? { id: "SHIELD", kind: "SHIELD", remainingDuration: null } : null,
   ].filter(Boolean) as NonNullable<BattleParticipantView["activeEffects"]>;
   const statuses = participant.activeEffects?.length ? participant.activeEffects : legacyStatuses;
-  const visibleStatuses = statuses.slice(0, 3);
-  const statusShortLabel = (status: { id: string; kind: string }) => ({
-    STUN: "ST", TAUNT: "TA", BLIND: "BL", SILENCE: "SI", POISON: "PS", BLEED: "BD",
-    SHIELD: "SH", REGEN: "RG", COUNTER: "CT", BUFF: "UP", DEBUFF: "DN",
-  }[status.id] || ({ BUFF: "UP", DEBUFF: "DN", DOT: "DT" }[status.kind] ?? status.id.slice(0, 2)));
+  const groupedStatuses = [...statuses.reduce((groups, status) => {
+    const key = `${status.id}-${status.kind}-${status.stat ?? ""}`;
+    const current = groups.get(key);
+    groups.set(key, current ? { status: current.status, count: current.count + 1 } : { status, count: 1 });
+    return groups;
+  }, new Map<string, { status: (typeof statuses)[number]; count: number }>()).values()];
+  const visibleStatuses = groupedStatuses.slice(0, 3);
+  const statusShortLabel = (status: { id: string; kind: string; stat?: string }) => {
+    const id = String(status.id).toUpperCase();
+    const stat = String(status.stat ?? "").toUpperCase();
+    const arrow = status.kind === "BUFF" ? "↑" : status.kind === "DEBUFF" ? "↓" : "";
+    if (id === "STUN") return "スタン";
+    if (id === "TAUNT") return "挑発";
+    if (id === "BLIND") return "暗闇";
+    if (id === "SILENCE") return "沈黙";
+    if (id === "POISON") return "毒";
+    if (id === "BLEED") return "出血";
+    if (id === "SHIELD") return "盾";
+    if (id === "REGEN") return "回復";
+    if (stat === "ATK" || id.includes("ATK")) return `攻${arrow}`;
+    if (stat === "DEF" || id.includes("DEF")) return `防${arrow}`;
+    if (stat === "SPD" || id.includes("SPD")) return `速${arrow}`;
+    return status.kind === "BUFF" ? "強化" : status.kind === "DEBUFF" ? "弱体" : "状態";
+  };
 
   const popupSign = popup?.type === "dmg" ? "−" : "+";
 
@@ -109,19 +134,19 @@ export default function BattleUnitPortrait({
     >
       <div className="battle-unit-art">
         <CharacterPresentation src={imageSrc} alt={participant.name} variant="battle" rarity={rarity || participant.rarity} frameKind="character" metadata={false} className={`character-presentation-battle-${frame}`} />
-        {actor && <span className="battle-unit-role is-actor-label">ACTOR</span>}
-        {target && <span className="battle-unit-role is-target-label">TARGET</span>}
         {participant.isDead && <span className="battle-unit-defeated">戦闘不能</span>}
       </div>
 
-      {popup && (
+      {popup && !reaction && (
         <div className={`battle-unit-popup is-${popup.type} ${popup.isCritical ? "is-critical" : ""}`}>
           {popup.isCritical && <small>CRITICAL</small>}
           {advantage && popup.type === "dmg" && <small>WEAK</small>}
           <strong>{popupSign}{Math.max(0, Number(popup.val) || 0).toLocaleString()}</strong>
         </div>
       )}
-      {impactOverlay}
+      {!reaction && impactOverlay}
+      {reaction && <BattleTargetReaction group={reaction} side={side} />}
+      {skillCue && <div className="battle-unit-skill-cue">{skillCue}</div>}
 
       <div className={`battle-unit-meta ${frame === "action" ? "is-action-identity" : ""}`}>
         <strong>{participant.name}</strong>
@@ -133,8 +158,8 @@ export default function BattleUnitPortrait({
       <div className="battle-unit-hp" aria-hidden="true"><i data-hp-fill style={{ width: `${hpPercent}%` }} /></div>
       <div className="battle-unit-hp-copy"><span>HP</span><b>{Math.round(hpPercent)}%</b></div>
       {statuses.length > 0 && <div className="battle-unit-statuses" aria-label={statuses.map((status) => status.id).join("、")}>
-        {visibleStatuses.map((status) => <span key={`${status.id}-${status.kind}`} title={`${status.id}${status.remainingDuration == null ? "" : ` ${status.remainingDuration}`}`}>{statusShortLabel(status)}</span>)}
-        {statuses.length > visibleStatuses.length && <span title={statuses.slice(visibleStatuses.length).map((status) => status.id).join("、")}>+{statuses.length - visibleStatuses.length}</span>}
+        {visibleStatuses.map(({ status, count }) => <span key={`${status.id}-${status.kind}-${status.stat ?? ""}`} title={`${status.id}${status.remainingDuration == null ? "" : ` ${status.remainingDuration}`}`}>{statusShortLabel(status)}{count > 1 ? count : ""}</span>)}
+        {groupedStatuses.length > visibleStatuses.length && <span title={groupedStatuses.slice(visibleStatuses.length).map(({ status }) => status.id).join("、")}>+{groupedStatuses.length - visibleStatuses.length}</span>}
       </div>}
     </article>
   );

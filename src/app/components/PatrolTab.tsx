@@ -301,7 +301,7 @@ export default function PatrolTab() {
         "PATROL", battleNpc.npc_name || "敵NPC", battleNpc.id,
         undefined, undefined, undefined, undefined, undefined, undefined,
         battleNpc, patrol.id,
-        { encounterLabel: patrol.courseName || battleNpc.npc_name || "クエスト", opponentLabel: battleNpc.npc_name || "敵NPC" }
+        { encounterLabel: patrol.courseName || battleNpc.npc_name || "クエスト", opponentLabel: battleNpc.npc_name || "敵NPC", backgroundPath: getCharacterLocationBackground(selectedTown) }
       );
     } finally {
       battleStartRef.current = false;
