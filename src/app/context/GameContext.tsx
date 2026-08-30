@@ -1035,6 +1035,71 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     const identityAuthorityPromise = refreshIdentityLeaderAuthority(userId);
     const dailyFreeAuthorityPromise = refreshDailyFreeGachaAuthority(userId);
 
+    // Home badges are independent projections. Start their canonical reads at
+    // bootstrap entry so Mission / Present badges do not wait behind the wider
+    // inventory, social and battle bootstrap. The overlays already reserve no
+    // layout space, so an authoritative update cannot shift Home geometry.
+    const homeBadgeProjectionPromise = Promise.all([
+      supabase.from("presents").select("*").eq("user_id", userId).order("sent_at", { ascending: false }),
+      supabase.from("missions").select("*").eq("is_enabled", true),
+      supabase.from("user_missions").select("*").eq("user_id", userId),
+    ]).then(([presentsResult, missionMasterResult, userMissionResult]) => {
+      if (currentAuthUserIdRef.current && currentAuthUserIdRef.current !== userId) return;
+      if (presentsResult.data) {
+        setPresents(presentsResult.data.map((present) => {
+          const diffMs = new Date(present.expire_at).getTime() - Date.now();
+          const diffHrs = Math.ceil(diffMs / (1000 * 60 * 60));
+          let expireText = `期限: あと${diffHrs}時間`;
+          if (diffHrs > 24) expireText = `期限: あと${Math.ceil(diffHrs / 24)}日`;
+          else if (diffHrs <= 0) expireText = "期限切れ";
+          return {
+            id: present.id.toString(),
+            title: present.message ? present.message.split(":")[0] : "配布アイテム",
+            desc: present.message ? present.message.split(":")[1] || present.message : "",
+            reward: `${canonicalItemName(present.item_id)} +${present.quantity}`,
+            itemId: present.item_id,
+            qty: present.quantity,
+            expireText,
+            status: present.status,
+            loading: false,
+          };
+        }));
+      }
+      if (missionMasterResult.data && userMissionResult.data) {
+        const userMissionById = new Map(userMissionResult.data.map((row: any) => [row.mission_id, row]));
+        const claimedMissionIds = new Set(
+          userMissionResult.data.filter((row: any) => row.status === "CLAIMED").map((row: any) => row.mission_id),
+        );
+        setMissions(missionMasterResult.data.map((mission: any) => {
+          const userMission: any = userMissionById.get(mission.id);
+          const prerequisiteClaimed = !mission.prerequisite_mission_id || claimedMissionIds.has(mission.prerequisite_mission_id);
+          return {
+            id: mission.id,
+            title: mission.title || "不明なミッション",
+            description: mission.description || mission.desc_text || "",
+            reward_item: mission.reward_item_id || "CASH",
+            reward_amount: mission.reward_quantity || 0,
+            rewardItemId: mission.reward_item_id || "CASH",
+            rewardQty: mission.reward_quantity || 0,
+            current_progress: userMission?.current_progress || 0,
+            target_value: mission.target_value || 1,
+            display_order: mission.display_order || 0,
+            category: mission.category || "DAILY",
+            conditionParams: mission.condition_params || {},
+            prerequisiteMissionId: mission.prerequisite_mission_id || null,
+            ctaTab: mission.condition_params?.cta_tab || null,
+            ctaAction: mission.condition_params?.cta_action || null,
+            ctaLabel: mission.condition_params?.cta_label || null,
+            isProvisional: Boolean(mission.is_provisional),
+            status: canonicalMissionUiStatus(userMission?.status, prerequisiteClaimed),
+            loading: false,
+          };
+        }).sort((left: any, right: any) => left.display_order - right.display_order));
+      }
+    }).catch((error) => {
+      console.warn("Failed to prime Home badge projections:", error);
+    });
+
     // The Home HUD reads the canonical server projection without waiting for
     // rankings, chat, raids, or the rest of the bootstrap.
     const primeHomePower = async () => {
@@ -1913,70 +1978,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         })));
       }
 
-      const { data: presentsData } = await supabase
-        .from("presents")
-        .select("*")
-        .eq("user_id", userId)
-        .order("sent_at", { ascending: false });
-      
-      if (presentsData) {
-        setPresents(presentsData.map(p => {
-          const diffMs = new Date(p.expire_at).getTime() - Date.now();
-          const diffHrs = Math.ceil(diffMs / (1000 * 60 * 60));
-          let expireText = `期限: あと${diffHrs}時間`;
-          if (diffHrs > 24) expireText = `期限: あと${Math.ceil(diffHrs / 24)}日`;
-          else if (diffHrs <= 0) expireText = "期限切れ";
-
-          return {
-            id: p.id.toString(),
-            title: p.message ? p.message.split(":")[0] : "配布アイテム",
-            desc: p.message ? p.message.split(":")[1] || p.message : "",
-            reward: `${canonicalItemName(p.item_id)} +${p.quantity}`,
-            itemId: p.item_id,
-            qty: p.quantity,
-            expireText,
-            status: p.status,
-            loading: false
-          };
-        }));
-      }
-
-      const [missionMasterResult, userMissionResult] = await Promise.all([
-        supabase.from("missions").select("*").eq("is_enabled", true),
-        supabase.from("user_missions").select("*").eq("user_id", userId),
-      ]);
-
-      if (missionMasterResult.data && userMissionResult.data) {
-        const userMissionById = new Map(userMissionResult.data.map((row: any) => [row.mission_id, row]));
-        const claimedMissionIds = new Set(
-          userMissionResult.data.filter((row: any) => row.status === "CLAIMED").map((row: any) => row.mission_id),
-        );
-        setMissions(missionMasterResult.data.map((m: any) => {
-          const userMission: any = userMissionById.get(m.id);
-          const prerequisiteClaimed = !m.prerequisite_mission_id || claimedMissionIds.has(m.prerequisite_mission_id);
-          return {
-            id: m.id,
-            title: m.title || "不明なミッション",
-            description: m.description || m.desc_text || "",
-            reward_item: m.reward_item_id || "CASH",
-            reward_amount: m.reward_quantity || 0,
-            rewardItemId: m.reward_item_id || "CASH",
-            rewardQty: m.reward_quantity || 0,
-            current_progress: userMission?.current_progress || 0,
-            target_value: m.target_value || 1,
-            display_order: m.display_order || 0,
-            category: m.category || "DAILY",
-            conditionParams: m.condition_params || {},
-            prerequisiteMissionId: m.prerequisite_mission_id || null,
-            ctaTab: m.condition_params?.cta_tab || null,
-            ctaAction: m.condition_params?.cta_action || null,
-            ctaLabel: m.condition_params?.cta_label || null,
-            isProvisional: Boolean(m.is_provisional),
-            status: canonicalMissionUiStatus(userMission?.status, prerequisiteClaimed),
-            loading: false
-          };
-        }).sort((left: any, right: any) => left.display_order - right.display_order));
-      }
+      await homeBadgeProjectionPromise;
 
     } catch (err: any) {
       console.warn("Sync error:", err.message);

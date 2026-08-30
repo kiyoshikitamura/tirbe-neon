@@ -171,10 +171,11 @@ for (const viewport of viewports) {
     expect(await normalizedAssetAlpha('[data-action-slot="war"] img')).toEqual({ alpha: 0, width: 1024, height: 1024 });
     await expect(page.getByRole("button", { name: "ギルドバトルは準備中です" })).toBeDisabled();
     const deckStyle = await page.locator(".mypage-circle-menu-area").evaluate((node) => ({
-      background: getComputedStyle(node).backgroundColor,
-      borderAlpha: getComputedStyle(node).borderColor,
+      backgroundImage: getComputedStyle(node).backgroundImage,
+      borderWidths: [getComputedStyle(node).borderTopWidth, getComputedStyle(node).borderRightWidth, getComputedStyle(node).borderBottomWidth, getComputedStyle(node).borderLeftWidth],
     }));
-    expect(deckStyle.background).toContain("0.72");
+    expect(deckStyle.backgroundImage).toContain("home_main_nav_night_reflection_bg.webp");
+    expect(deckStyle.borderWidths).toEqual(["0px", "0px", "0px", "0px"]);
     const comingSoon = page.locator(".circle-menu-state-overlay");
     await expect(comingSoon).toHaveCSS("border-radius", "2px");
 
@@ -204,9 +205,14 @@ for (const viewport of viewports) {
         mainContentsPrecedesBanner: mainContents.bottom <= banner.top + 1,
         mainContentsHeight: mainContents.height,
         mainActionsWithinContainer: mainActionRects.every((rect) => rect.left >= mainContents.left - 1 && rect.right <= mainContents.right + 1),
+        mainContentBounds: { left: mainContents.left, right: mainContents.right },
+        mainActionBounds: mainActionRects.map((rect) => ({ left: rect.left, right: rect.right })),
+        mainActionWidths: mainActionRects.map((rect) => rect.width),
+        mainActionTransforms: [...document.querySelectorAll<HTMLElement>(".mypage-circle-menu-area > button")].map((node) => getComputedStyle(node).transform),
+        mainActionBackgrounds: [...document.querySelectorAll<HTMLElement>(".mypage-circle-menu-area > button")].map((node) => getComputedStyle(node).backgroundColor),
         mainActionOuterBorders: [...document.querySelectorAll<HTMLElement>(".mypage-circle-menu-area > button")].map((node) => {
           const style = getComputedStyle(node);
-          return [style.borderTopWidth, style.borderBottomWidth, style.borderLeftWidth];
+          return [style.borderTopWidth, style.borderRightWidth, style.borderBottomWidth, style.borderLeftWidth];
         }),
         shortcutWidth,
         shortcutArtworkSizes: [...document.querySelectorAll<HTMLElement>(".sub-png-icon")].map((node) => {
@@ -217,6 +223,7 @@ for (const viewport of viewports) {
         bannerObjectFit: getComputedStyle(document.querySelector(".banner-bg-img")!).objectFit,
         footerLabelSizes: [...document.querySelectorAll<HTMLElement>(".footer-label")].map((node) => parseFloat(getComputedStyle(node).fontSize)),
         locationHeight: box(".mypage-current-location").height,
+        missionBadgePosition: getComputedStyle(document.querySelector(".small-badge-alert")!).position,
         horizontalOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
         ctaDetailDisplay: (() => {
           const detail = document.querySelector(".mypage-primary-cta > span:not(.mypage-primary-cta-eyebrow)");
@@ -244,11 +251,14 @@ for (const viewport of viewports) {
     expect(geometry.bannerStartsAboveFooter).toBe(true);
     expect(geometry.mainContentsPrecedesBanner).toBe(true);
     expect(geometry.mainContentsHeight).toBeLessThanOrEqual(70);
-    expect(geometry.mainActionsWithinContainer).toBe(true);
+    expect(geometry.mainActionsWithinContainer, JSON.stringify({ container: geometry.mainContentBounds, actions: geometry.mainActionBounds })).toBe(true);
+    expect(Math.max(...geometry.mainActionWidths) - Math.min(...geometry.mainActionWidths), JSON.stringify({ widths: geometry.mainActionWidths, transforms: geometry.mainActionTransforms })).toBeLessThanOrEqual(1);
+    expect(geometry.mainActionBackgrounds.every((background) => background === "rgba(0, 0, 0, 0)"), JSON.stringify(geometry.mainActionBackgrounds)).toBe(true);
     expect(geometry.mainActionOuterBorders.every((widths) => widths.every((width) => width === "0px"))).toBe(true);
     expect(new Set(geometry.shortcutArtworkSizes.map((size) => `${size.width}x${size.height}`)).size).toBe(1);
     expect(geometry.shortcutArtworkSizes.every((size) => size.width <= 24 && size.height <= 24)).toBe(true);
     expect(geometry.locationHeight).toBeLessThanOrEqual(28);
+    expect(geometry.missionBadgePosition).toBe("absolute");
     expect(geometry.bannerHeight).toBeLessThanOrEqual(58);
     expect(geometry.bannerObjectFit).toBe("contain");
     expect(geometry.footerLabelSizes.every((size) => size <= 9)).toBe(true);
