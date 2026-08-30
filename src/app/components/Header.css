@@ -12,7 +12,7 @@
 
 .header-mobile-row1 {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) clamp(112px, 30vw, 126px) 44px;
+  grid-template-columns: minmax(0, 1fr) clamp(112px, 30vw, 126px) 58px;
   align-items: center;
   gap: 7px;
 }
@@ -72,24 +72,24 @@
 .header-mobile-menu-button {
   position: relative;
   display: flex;
-  width: 42px;
-  min-width: 42px;
-  height: 34px;
-  min-height: 34px;
+  width: 54px;
+  min-width: 54px;
+  height: 30px;
+  min-height: 30px;
   align-items: center;
   justify-content: center;
   justify-self: end;
-  gap: 2px;
-  margin: 1px 2px 0 0;
-  padding: 3px 4px;
-  border: 1px solid rgba(160,184,204,.42);
-  border-radius: 6px;
-  color: #f4f8fb;
-  background: rgba(4,9,16,.72);
+  gap: 4px;
+  margin: 0 2px 0 0;
+  padding: 3px 6px;
+  border: 1px solid rgba(160,184,204,.26);
+  border-radius: 5px;
+  color: #cbd6df;
+  background: rgba(4,9,16,.46);
 }
 .header-mobile-menu-button span { font-size:8px;font-weight:900;letter-spacing:.02em; }
 .header-mobile-menu-button i { font-size:13px;font-style:normal;line-height:1; }
-.header-mobile-menu-badge { position:absolute;top:2px;right:2px;display:grid;min-width:13px;height:13px;place-items:center;padding:0 2px;border-radius:7px;color:#fff;background:#ff306e;font-size:7px;line-height:1; }
+.header-mobile-menu-badge { position:absolute;top:-1px;right:-1px;display:grid;min-width:13px;height:13px;place-items:center;padding:0 2px;border-radius:7px;color:#fff;background:#ff306e;font-size:7px;line-height:1; }
 
 .header-utility-overlay { position:fixed;inset:0;z-index:1200;display:flex;justify-content:flex-end;align-items:flex-start;padding:calc(env(safe-area-inset-top) + 8px) 10px 10px;background:rgba(0,0,0,.62); }
 .header-utility-menu { width:min(68vw,232px);overflow:hidden;border:1px solid rgba(0,240,255,.24);border-radius:8px;background:#09111d;box-shadow:0 12px 30px rgba(0,0,0,.62); }
@@ -190,12 +190,12 @@
 
 @media (max-width: 390px) {
   .header-mobile { gap:5px;padding:7px 8px; }
-  .header-mobile-row1 { grid-template-columns:minmax(0,1fr) 118px 44px;gap:4px; }
+  .header-mobile-row1 { grid-template-columns:minmax(0,1fr) 118px 56px;gap:4px; }
   .header-mobile-progression { padding-left:5px; }
   .header-mobile-level-badge { font-size:8px; }
   .header-mobile-power small { font-size:7px; }
   .header-mobile-power strong { font-size:11px; }
-  .header-mobile-menu-button { width:42px;min-width:42px;padding-inline:4px; }
+  .header-mobile-menu-button { width:54px;min-width:54px;padding-inline:6px; }
   .header-mobile-menu-button span { font-size:8px; }
   .header-mobile-row2 { padding-inline:8px; }
 }

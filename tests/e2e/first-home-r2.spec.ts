@@ -335,8 +335,9 @@ test("raid discovery stays out of the Home stage while the authoritative raid ba
   await expect(page.getByRole("dialog", { name: "拠点移動" }).getByText("強敵襲来", { exact: true })).toBeVisible();
 });
 
-test("Header MENU owns utilities and Footer uses compact Japanese labels", async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 });
+for (const viewport of viewports) {
+test(`Header MENU owns utilities at ${viewport.width}x${viewport.height}`, async ({ page }) => {
+  await page.setViewportSize(viewport);
   await openHomeScenario(page, "first-home-fresh");
   const headerGeometry = await page.evaluate(async () => {
     const row = document.querySelector<HTMLElement>(".header-mobile-row1")!;
@@ -346,6 +347,7 @@ test("Header MENU owns utilities and Footer uses compact Japanese labels", async
     const power = document.querySelector<HTMLElement>(".header-mobile-power strong")!;
     const menuButton = document.querySelector<HTMLElement>(".header-mobile-menu-button")!;
     const menuBadge = document.querySelector<HTMLElement>(".header-mobile-menu-badge")!;
+    const header = document.querySelector<HTMLElement>(".header-mobile")!;
     const userName = user.querySelector<HTMLElement>("strong")!;
     const initialHeight = row.getBoundingClientRect().height;
     userName.textContent = "とても長いプレイヤー表示名テスト";
@@ -357,6 +359,7 @@ test("Header MENU owns utilities and Footer uses compact Japanese labels", async
     const menuRect = menuButton.getBoundingClientRect();
     const badgeRect = menuBadge.getBoundingClientRect();
     const rowRect = row.getBoundingClientRect();
+    const headerRect = header.getBoundingClientRect();
     return {
       initialHeight,
       finalHeight: row.getBoundingClientRect().height,
@@ -365,10 +368,13 @@ test("Header MENU owns utilities and Footer uses compact Japanese labels", async
       menuWithinViewport: menuRect.right <= document.documentElement.clientWidth,
       menuSafeTop: menuRect.top - rowRect.top,
       menuSafeRight: rowRect.right - menuRect.right,
+      badgeHeaderSafeTop: badgeRect.top - headerRect.top,
+      badgeHeaderSafeRight: headerRect.right - badgeRect.right,
       menuWidth: menuRect.width,
       menuHeight: menuRect.height,
       badgeInsideRow: badgeRect.top >= rowRect.top && badgeRect.right <= rowRect.right,
-      badgeInsideButton: badgeRect.top >= menuRect.top && badgeRect.right <= menuRect.right,
+      badgeWithinHeader: badgeRect.top >= headerRect.top && badgeRect.right <= headerRect.right,
+      badgeOutsideButtonBy: { top: menuRect.top - badgeRect.top, right: badgeRect.right - menuRect.right },
       levelWrap: getComputedStyle(level).whiteSpace,
       powerWrap: getComputedStyle(power.parentElement!).whiteSpace,
       numericVariant: getComputedStyle(level).fontVariantNumeric,
@@ -382,10 +388,14 @@ test("Header MENU owns utilities and Footer uses compact Japanese labels", async
   expect(headerGeometry.menuWithinViewport).toBe(true);
   expect(headerGeometry.menuSafeTop).toBeGreaterThanOrEqual(1);
   expect(headerGeometry.menuSafeRight).toBeGreaterThanOrEqual(2);
-  expect(headerGeometry.menuWidth).toBeLessThanOrEqual(44);
-  expect(headerGeometry.menuHeight).toBeLessThanOrEqual(38);
+  expect(headerGeometry.badgeHeaderSafeTop).toBeGreaterThanOrEqual(8);
+  expect(headerGeometry.badgeHeaderSafeRight).toBeGreaterThanOrEqual(8);
+  expect(headerGeometry.menuWidth).toBeLessThanOrEqual(56);
+  expect(headerGeometry.menuHeight).toBeLessThanOrEqual(32);
   expect(headerGeometry.badgeInsideRow).toBe(true);
-  expect(headerGeometry.badgeInsideButton).toBe(true);
+  expect(headerGeometry.badgeWithinHeader).toBe(true);
+  expect(headerGeometry.badgeOutsideButtonBy.top).toBeLessThanOrEqual(1);
+  expect(headerGeometry.badgeOutsideButtonBy.right).toBeLessThanOrEqual(1);
   expect(headerGeometry.levelWrap).toBe("nowrap");
   expect(headerGeometry.powerWrap).toBe("nowrap");
   expect(headerGeometry.numericVariant).toContain("tabular-nums");
@@ -410,6 +420,7 @@ test("Header MENU owns utilities and Footer uses compact Japanese labels", async
   await expect(page.locator(".footer-mobile .footer-item")).toHaveCount(5);
   await expect(page.locator(".footer-mobile .footer-label")).toHaveText(["マイページ", "コミュニティ", "キャラ", "ガチャ", "ショップ"]);
 });
+}
 
 test("SSR leader effect keeps a static aura when reduced motion is requested", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
