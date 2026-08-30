@@ -320,7 +320,7 @@ export default function AvatarTab() {
                         src={part.image_path} 
                         alt={part.name}
                         className="parts-thumb-img"
-                        onError={(e) => { (e.target as HTMLImageElement).src = "/avatar/body_basic.webp"; }}
+                        onError={(event) => { event.currentTarget.hidden = true; }}
                       />
                     </div>
 

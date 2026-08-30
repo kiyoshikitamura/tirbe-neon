@@ -13,7 +13,7 @@ assert.match(mock, /current_base_id:\s*"shinjuku"/, "Fresh Mock town must be Shi
 assert.match(mock, /user\.favorite_character_id = owned\[0\]\.character_id/, "Mock tutorial leader must persist");
 for (const town of ["shinjuku", "shibuya", "ikebukuro", "roppongi", "akihabara", "kawasaki", "yokohama"]) {
   assert.ok(home.includes(`file: "${town}"`), `Home background is missing ${town}`);
-  assert.ok(fs.existsSync(`public/bg/bg_street_${town}.png`), `Canonical town background is missing ${town}`);
+  assert.ok(fs.existsSync(`public/bg/bg_street_${town}.jpg`), `Canonical town background is missing ${town}`);
 }
 assert.doesNotMatch(home, /bg_base_|ネオンタワー|ディープドック|ジャンクバザール|キタクラゲート/, "Legacy Home town projection remains active");
 assert.match(context, /setSelectedLeader\(String\(tutorialFormation\.leader_character_id\)\)/, "Tutorial leader must update client state immediately");

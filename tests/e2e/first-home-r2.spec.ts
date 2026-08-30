@@ -28,7 +28,7 @@ async function installPrimaryCtaObserver(page: Page) {
 }
 
 const resumeSnapshot = {
-  backgroundUrl: "/bg/bg_street_shibuya.png",
+  backgroundUrl: "/bg/bg_street_shibuya.jpg",
   leaderImageUrl: "/characters/reiji_transparent_asset.png",
   leaderName: "reiji",
 };
@@ -85,7 +85,7 @@ test("Home re-entry never presents a different cached Leader while the canonical
   await page.screenshot({ path: "test-results/first-home-r5-reentry-placeholder-390x844.png", fullPage: false });
 
   await expect(visual).toHaveAttribute("data-visual-readiness", "ready");
-  expect(await visual.evaluate((node) => getComputedStyle(node).backgroundImage)).toContain("bg_street_shinjuku.png");
+  expect(await visual.evaluate((node) => getComputedStyle(node).backgroundImage)).toContain("bg_street_shinjuku.jpg");
   await expect(page.locator(".mypage-leader-layer.is-ssr")).toBeVisible();
 });
 
@@ -111,7 +111,7 @@ test("Home reveals the Town and decoded Leader as one visual on a cold load and 
   await expect(visual).toHaveAttribute("data-visual-readiness", "ready");
   await expect(page.locator(".mypage-visual-loading")).toHaveCount(0);
   await expect(page.locator(".mypage-leader-layer.is-ssr")).toBeVisible();
-  expect(await visual.evaluate((node) => getComputedStyle(node).backgroundImage)).toContain("bg_street_shinjuku.png");
+  expect(await visual.evaluate((node) => getComputedStyle(node).backgroundImage)).toContain("bg_street_shinjuku.jpg");
   expect(delayedLeaderRequests).toBe(1);
   const readinessStages = await page.evaluate(() => window.__TRIBE_HOME_RELOAD_METRICS__?.stages);
   expect(readinessStages?.homeShellReady).toBeLessThanOrEqual(readinessStages?.townImageDecoded || 0);

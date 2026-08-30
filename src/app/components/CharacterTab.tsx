@@ -346,7 +346,7 @@ export default function CharacterTab() {
                 <TutorialNavigator message={<>キャラクターはスキルで戦い方が変わるよ。<br />まずは基本スキルを確認しよう。</>} />
                 <div className="tutorial-formation-skill-confirmation">
                   <span>基本スキル</span>
-                  <img src="/skills/skill_001_street_punch.png" alt="ストリートパンチ" className="tutorial-formation-skill-icon" />
+                  <img src="/skills/skill_001_street_punch.jpg" alt="ストリートパンチ" className="tutorial-formation-skill-icon" />
                   <strong>{tutorialSkillMaster?.name || "ストリートパンチ"}</strong>
                   {tutorialSkillMaster && <dl className="tutorial-formation-skill-details">
                     <div><dt>タイプ</dt><dd>{SKILL_EFFECT_LABELS[tutorialSkillMaster.effect_type] || "ダメージ"}</dd></div>

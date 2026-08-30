@@ -15,7 +15,7 @@ for (const character of characters) {
   const locationKey = resolveCharacterLocationKey(character.hometown);
   assert.ok(locationKey, `Unknown Canonical hometown: ${character.character_id} / ${character.hometown}`);
   const backgroundPath = getCharacterLocationBackground(character.hometown);
-  assert.ok(backgroundPath.includes(`_${locationKey}.png`), `Wrong Town background: ${character.character_id} / ${character.hometown} -> ${backgroundPath}`);
+  assert.ok(backgroundPath.includes(`_${locationKey}.jpg`), `Wrong Town background: ${character.character_id} / ${character.hometown} -> ${backgroundPath}`);
   await access(resolve(root, "public", backgroundPath.replace(/^\//, "")));
   locationKeys.add(locationKey);
   paths.add(backgroundPath);

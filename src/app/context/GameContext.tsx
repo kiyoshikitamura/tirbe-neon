@@ -1221,7 +1221,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
           setSelectedLeader(userProfile.favorite_character_id);
         }
         setBio(normalizeUserBio(userProfile.bio));
-        setAvatarUrl(userProfile.avatar_url || "/reiji_transparent_asset.png");
+        setAvatarUrl(userProfile.avatar_url || "/characters/reiji_transparent_asset.png");
         setDailyCashSkips(userProfile.quest_free_skips_count ?? userProfile.daily_cash_skips_count ?? 0);
         setDailyPaidSkips(userProfile.quest_paid_skips_count ?? 0);
         setDailyCashSkipsResetDate(userProfile.quest_skips_reset_date || userProfile.daily_cash_skips_reset_date || null);

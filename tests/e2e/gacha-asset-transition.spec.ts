@@ -114,7 +114,7 @@ for (const category of ["SKILL", "EQUIPMENT"] as const) {
       motionState: "running",
       motionName: "gacha-city-wake",
     });
-    expect(String(painted.cityBackground)).toContain("bg_street_shibuya.png");
+    expect(String(painted.cityBackground)).toContain("bg_street_shibuya.jpg");
     expect(Number(painted.width)).toBeGreaterThanOrEqual(389);
     expect(Number(painted.height)).toBeGreaterThanOrEqual(843);
     expect(Number(painted.stageWidth)).toBeCloseTo(Number(painted.width), 0);

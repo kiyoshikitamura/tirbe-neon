@@ -32,7 +32,7 @@ const CORE_CHARACTERS_MASTER = [
     "alignment": "ORDER",
     "growthPatternId": "BALANCED",
     "rarity": "SSR",
-    "img": "/reiji_transparent_asset.png",
+    "img": "/characters/reiji_transparent_asset.png",
     "visualPrompt": "japanese male outlaw leader, sleek matte black tactical suit, sharp gaze, neon background"
   },
   {
@@ -44,7 +44,7 @@ const CORE_CHARACTERS_MASTER = [
     "alignment": "CHAOS",
     "growthPatternId": "SPEEDSTER",
     "rarity": "SSR",
-    "img": "/rui_transparent_asset.png",
+    "img": "/characters/rui_transparent_asset.png",
     "visualPrompt": "japanese female hacker leader, stylish streetwear, bob hair, confident smirk"
   },
   {
@@ -56,7 +56,7 @@ const CORE_CHARACTERS_MASTER = [
     "alignment": "EVIL",
     "growthPatternId": "ATTACKER",
     "rarity": "SSR",
-    "img": "/chang_transparent_asset.png",
+    "img": "/characters/chang_transparent_asset.png",
     "visualPrompt": "japanese male outlaw assassin, long coat, cold calculating posture, crimson accents"
   },
   {

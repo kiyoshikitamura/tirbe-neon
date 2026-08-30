@@ -60,7 +60,7 @@ export default function GachaTab() {
       <fieldset className="view-container relative gacha-view-root gacha-action-fieldset tutorial-gacha-page" disabled={pending} aria-busy={pending}>
         <TutorialNavigator message={<>ここでは、ガチャで仲間を増やせるよ。<br />まずは10連、引いてみよ。</>} />
         <section className="tutorial-gacha-hero" aria-labelledby="tutorial-gacha-title">
-          <img className="tutorial-gacha-banner" src="/gacha/bg_gacha_ssr.png" alt="" />
+          <img className="tutorial-gacha-banner" src="/gacha/bg_gacha_ssr.jpg" alt="" />
           <h2 id="tutorial-gacha-title">最初の仲間を迎えよう</h2>
         </section>
         <section className="tutorial-gacha-offer" aria-label="チュートリアル無料10連">

@@ -13,7 +13,7 @@ assert.equal(starter.cooldown, 3);
 assert.equal(starter.available_from_round, 1);
 assert.deepEqual(starter.effects, ["DAMAGE 90% ATK"]);
 assert.equal(starter.exclusive_character_id, null);
-assert.ok(fs.existsSync("public/skills/skill_001_street_punch.png"), "Starter Skill icon is required");
+assert.ok(fs.existsSync("public/skills/skill_001_street_punch.jpg"), "Starter Skill icon is required");
 for (const field of ["タイプ", "対象", "威力", "再使用", "使用可能", "SKILL_TARGET_DISPLAY", "tutorialSkillMaster.power"]) {
   assert.ok(characterUi.includes(field), `Tutorial Skill projection is missing ${field}`);
 }

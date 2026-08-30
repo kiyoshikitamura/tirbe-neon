@@ -63,7 +63,7 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 412, height: 915 }
     await page.locator(".raid-battle-boss-skills .shared-skill-icon").nth(1).click();
     await expect(page.getByRole("dialog", { name: "威圧の詳細" })).toContainText("威圧");
     await page.getByRole("dialog", { name: "威圧の詳細" }).getByRole("button", { name: "閉じる", exact: true }).last().click();
-    expect(await page.locator(".raid-battle-setup").evaluate((node) => getComputedStyle(node).backgroundImage)).toContain("bg_street_roppongi.png");
+    expect(await page.locator(".raid-battle-setup").evaluate((node) => getComputedStyle(node).backgroundImage)).toContain("bg_street_roppongi.jpg");
     await expect(page.locator(".raid-battle-deck .character-presentation")).toHaveCount(5);
     await expect(page.locator(".raid-battle-deck")).toContainText("総合力");
     await expect(page.locator(".raid-battle-resource")).toContainText("3 / 5");

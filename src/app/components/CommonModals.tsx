@@ -13,6 +13,7 @@ import { GACHA_RARITY_ASSETS } from "../lib/screenManifests";
 import { preloadAssetManifest } from "../lib/screenAssets";
 import { getCharacterLocationBackground } from "@/utils/characterVisualAssets";
 import "./CommonModals.css";
+import { resolvePresentableAssetUrl } from "@/utils/assetPresentation";
 import { userFacingErrorMessage } from "../lib/userFacingError";
 import { resolveSsrGachaQuote } from "@/domain/presentation/ssrGachaQuotes";
 import TypewriterText from "./tutorial/TypewriterText";
@@ -464,8 +465,8 @@ export default function CommonModals() {
         >
             <div className="guild-public-detail">
               <div className="guild-public-identity">
-                {activeGuildDetail.emblem_url
-                  ? <img className="guild-emblem-placeholder" src={activeGuildDetail.emblem_url} alt="" />
+                {resolvePresentableAssetUrl(activeGuildDetail.emblem_url)
+                  ? <img className="guild-emblem-placeholder" src={resolvePresentableAssetUrl(activeGuildDetail.emblem_url) || ""} alt="" />
                   : <div className="guild-emblem-placeholder is-placeholder" aria-hidden="true" />}
                 <div><strong>{activeGuildDetail.name}</strong><span>Lv.{activeGuildDetail.level} ・ {activeGuildDetail.member_count}/{activeGuildDetail.member_limit}名</span></div>
               </div>

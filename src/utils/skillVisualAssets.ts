@@ -13,5 +13,5 @@ export function getCanonicalSkillIcon(skillId: unknown): string | undefined {
   if (!match) return undefined;
   const index = Number(match[1]) - 1;
   const slug = SKILL_ICON_SLUGS[index];
-  return slug ? `/skills/skill_${match[1]}_${slug}.png` : undefined;
+  return slug ? `/skills/skill_${match[1]}_${slug}.jpg` : undefined;
 }

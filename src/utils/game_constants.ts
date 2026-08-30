@@ -60,7 +60,7 @@ export const BASE_MAP_MASTER = [
 
 export function getCanonicalBattleBackground(areaId: string | null | undefined): string | undefined {
   const canonicalArea = BASE_MAP_MASTER.find((area) => area.id === areaId);
-  return canonicalArea ? `/bg/bg_street_${canonicalArea.id}.png` : undefined;
+  return canonicalArea ? `/bg/bg_street_${canonicalArea.id}.jpg` : undefined;
 }
 
 export const GEAR_SLOTS_MASTER = [
@@ -81,38 +81,38 @@ export const STORY_EPISODES_MASTER: { [key: string]: {
   stage_tutorial_01: {
     title: "PvP模擬戦: 新宿南部連合との接触",
     intro: [
-      { speaker: "レイジ", img: "/reiji_transparent_asset.png", expression: "通常", text: "キョウジ、PvP模擬戦の準備はいいか？俺たちの連携力を見せてやろう。" },
-      { speaker: "ルイ", img: "/rui_transparent_asset.png", expression: "笑顔", text: "対戦相手のシミュレーションデータをグリッドに同期したよ！勝率は99.8%！" },
-      { speaker: "チャン", img: "/chang_transparent_asset.png", expression: "真剣", text: "ふん、油断するな。敵も新宿南部連合の精鋭だ。牙を剥いてくるぞ。" }
+      { speaker: "レイジ", img: "/characters/reiji_transparent_asset.png", expression: "通常", text: "キョウジ、PvP模擬戦の準備はいいか？俺たちの連携力を見せてやろう。" },
+      { speaker: "ルイ", img: "/characters/rui_transparent_asset.png", expression: "笑顔", text: "対戦相手のシミュレーションデータをグリッドに同期したよ！勝率は99.8%！" },
+      { speaker: "チャン", img: "/characters/chang_transparent_asset.png", expression: "真剣", text: "ふん、油断するな。敵も新宿南部連合の精鋭だ。牙を剥いてくるぞ。" }
     ],
     outro: [
-      { speaker: "レイジ", img: "/reiji_transparent_asset.png", expression: "真剣", text: "フッ、模擬戦とはいえ上々の結果だ。やはりお前の指揮能力は本物だな。" },
-      { speaker: "ルイ", img: "/rui_transparent_asset.png", expression: "通常", text: "うん！キャッシュとダイヤの報酬もしっかりプレゼントボックスに転送しといたよ！" },
-      { speaker: "チャン", img: "/chang_transparent_asset.png", expression: "笑顔", text: "冷酷な毒蛇も, お前の指揮下なら悪くない...さあ、次は本番のシノギだ。" }
+      { speaker: "レイジ", img: "/characters/reiji_transparent_asset.png", expression: "真剣", text: "フッ、模擬戦とはいえ上々の結果だ。やはりお前の指揮能力は本物だな。" },
+      { speaker: "ルイ", img: "/characters/rui_transparent_asset.png", expression: "通常", text: "うん！キャッシュとダイヤの報酬もしっかりプレゼントボックスに転送しといたよ！" },
+      { speaker: "チャン", img: "/characters/chang_transparent_asset.png", expression: "笑顔", text: "冷酷な毒蛇も, お前の指揮下なら悪くない...さあ、次は本番のシノギだ。" }
     ]
   },
   area_shibuya_liberation: {
     title: "渋谷エリアイベント: クラブ街の奪還",
     intro: [
-      { speaker: "ルイ", img: "/rui_transparent_asset.png", expression: "笑顔", text: "やった！渋谷エリアの支配率で自組織が1位に躍り出たよ！渋谷ノイズを完全クリア！" },
-      { speaker: "レイジ", img: "/reiji_transparent_asset.png", expression: "通常", text: "渋谷のクラブ街もこれで俺たちのショバだ。組織の資金源が大きく潤うな。" },
-      { speaker: "チャン", img: "/chang_transparent_asset.png", expression: "真剣", text: "だが、黒曜会が黙っていないはずだ。防衛部隊の再配備を急ぐべきだな。" }
+      { speaker: "ルイ", img: "/characters/rui_transparent_asset.png", expression: "笑顔", text: "やった！渋谷エリアの支配率で自組織が1位に躍り出たよ！渋谷ノイズを完全クリア！" },
+      { speaker: "レイジ", img: "/characters/reiji_transparent_asset.png", expression: "通常", text: "渋谷のクラブ街もこれで俺たちのショバだ。組織の資金源が大きく潤うな。" },
+      { speaker: "チャン", img: "/characters/chang_transparent_asset.png", expression: "真剣", text: "だが、黒曜会が黙っていないはずだ。防衛部隊の再配備を急ぐべきだな。" }
     ],
     outro: []
   }
 };
 
 export const MASTER_AVATARS = [
-  { url: "/reiji_transparent_asset.png", label: "レイジ" },
-  { url: "/rui_transparent_asset.png", label: "ルイ" },
-  { url: "/chang_transparent_asset.png", label: "チャン" }
+  { url: "/characters/reiji_transparent_asset.png", label: "レイジ" },
+  { url: "/characters/rui_transparent_asset.png", label: "ルイ" },
+  { url: "/characters/chang_transparent_asset.png", label: "チャン" }
 ];
 
 export const PROFILE_BACKGROUNDS = [
-  { id: "bg_default", name: "新宿アジト", img: "/shinjuku_neon_icon_1783765789862.png", desc: "初期解放" },
-  { id: "bg_kabukicho", name: "新宿ネオン街", img: "/shinjuku_neon_icon_1783765789862.png", desc: "Lv.5以上で解放" },
-  { id: "bg_wharf", name: "東京ドック埠頭", img: "/tokyo_map.png", desc: "ギルド加入で解放" },
-  { id: "bg_bazar", name: "渋谷スクランブル", img: "/shibuya_scramble.png", desc: "20,000キャッシュ以上で解放" }
+  { id: "bg_default", name: "新宿アジト", img: "/bg/bg_street_shinjuku.jpg", desc: "初期解放" },
+  { id: "bg_kabukicho", name: "新宿ネオン街", img: "/bg/bg_street_shinjuku.jpg", desc: "Lv.5以上で解放" },
+  { id: "bg_wharf", name: "東京ドック埠頭", img: "/bg/bg_street_yokohama.jpg", desc: "ギルド加入で解放" },
+  { id: "bg_bazar", name: "渋谷スクランブル", img: "/bg/bg_street_shibuya.jpg", desc: "20,000キャッシュ以上で解放" }
 ];
 
 export const PROFILE_FRONT_EFFECTS = [
@@ -137,12 +137,7 @@ export const PROFILE_TITLES = [
 ];
 
 export function getCharacterStaticImg(name: string): string {
-  const staticNames = ["reiji", "rui", "chang", "go", "kengo", "mio", "naoto", "rin", "serika", "shin", "tetsu", "yuji"];
-  const cleanName = name.toLowerCase();
-  if (staticNames.includes(cleanName)) {
-    return `/${cleanName}_final_asset.png`;
-  }
-  return `/reiji_final_asset.png`;
+  return getCharacterTransparentImg(name || "reiji");
 }
 
 export function getCharacterTransparentImg(name: string): string {

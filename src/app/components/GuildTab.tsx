@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { useGame } from "../context/GameContext";
 import "./GuildTab.css";
+import { resolvePresentableAssetUrl } from "@/utils/assetPresentation";
 import OutlawCard from "./ui/OutlawCard";
 import OutlawButton from "./ui/OutlawButton";
 import EditableSettingSection, { ChoiceGroup } from "./ui/EditableSettingSection";
@@ -215,14 +216,15 @@ export default function GuildTab() {
       && cash >= GUILD_PRODUCTION.creation.cashCost;
     const renderGuildCard = (g: any) => {
       const guild = { ...g, id: g.id || g.guild_id };
+      const guildMark = resolvePresentableAssetUrl(guild.emblem_url || guild.logo_icon);
       const pendingRequest = pendingGuildJoinRequests.find((request: any) => request.guild_id === guild.id);
       const hasOtherPendingRequest = pendingGuildJoinRequests.length > 0 && !pendingRequest;
       const isFull = Number(guild.member_count || 0) >= Number(guild.member_limit || 10);
       const recruitmentMode = guildRecruitmentMode(guild.recruitment_mode, guild.approval_required);
       return (
         <div key={guild.id} className="guild-lobby-guild-card">
-          {guild.emblem_url || guild.logo_icon
-            ? <img className="guild-lobby-guild-mark" src={guild.emblem_url || guild.logo_icon} alt="" />
+          {guildMark
+            ? <img className="guild-lobby-guild-mark" src={guildMark} alt="" />
             : <div className="guild-lobby-guild-mark is-placeholder" aria-hidden="true" />}
           <button className="guild-lobby-guild-info guild-detail-trigger" onClick={() => void fetchGuildDetail(guild.id)}>
             <strong>{guild.name}</strong>
@@ -326,8 +328,8 @@ export default function GuildTab() {
       {guildSubTab === "home" && <div className="guild-my-page-scroll">
         <section className={`guild-visual-identity ${bannerClass}`} aria-label="ギルド情報">
           <div className="guild-identity-main">
-            {userGuild.logo_icon && userGuild.logo_icon !== "guild_icon_default.png"
-              ? <img className="guild-identity-icon" src={userGuild.logo_icon} alt="" />
+            {resolvePresentableAssetUrl(userGuild.logo_icon)
+              ? <img className="guild-identity-icon" src={resolvePresentableAssetUrl(userGuild.logo_icon) || ""} alt="" />
               : <span className="guild-identity-icon is-default" aria-hidden="true" />}
             <div className="guild-identity-copy">
               <strong>{userGuild.name}</strong>

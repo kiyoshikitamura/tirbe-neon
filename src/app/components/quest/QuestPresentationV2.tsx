@@ -42,7 +42,7 @@ export default function QuestPresentationV2() {
   const selectionVisible = showSelection || activePatrols.length === 0;
   const activeCourse = (game.patrolCourses || []).find((course: any) => course.id === game.selectedCourse);
   const townName = TOWNS.find(([id]) => id === game.selectedTown)?.[1] || "街";
-  const bgImage = `/bg/bg_street_${game.selectedTown}.png`;
+  const bgImage = `/bg/bg_street_${game.selectedTown}.jpg`;
   const selectedCharacter = CHARACTERS_MASTER.find((entry: any) => entry.id === game.selectedPatrolMember);
   const selectedCharacterHasHometownBonus = Boolean(selectedCharacter && resolveCharacterLocationKey(selectedCharacter.homeTown) === game.selectedTown);
 

@@ -23,7 +23,7 @@ export function useUserProfile(
   const [ownedTitles, setOwnedTitles] = useState<Array<{ id: string; name: string }>>([]);
   const [username, setUsername] = useState<string>("");
   const [bio, setBio] = useState<string>("");
-  const [avatarUrl, setAvatarUrl] = useState<string>("/reiji_transparent_asset.png");
+  const [avatarUrl, setAvatarUrl] = useState<string>("/characters/reiji_transparent_asset.png");
   const [currentBaseId, setCurrentBaseId] = useState<string>("shinjuku");
   const [lastGuildLeftAt, setLastGuildLeftAt] = useState<string | null>(null);
   const [profileLoading, setProfileLoading] = useState<boolean>(false);

@@ -6,7 +6,7 @@
   width: 100%;
   height: 100%;
   min-height: 0;
-  background: var(--ui-bg-root) url('/bg/bg_street_shinjuku.png') center/cover no-repeat;
+  background: var(--ui-bg-root) url('/bg/bg_street_shinjuku.jpg') center/cover no-repeat;
   padding: 16px;
 }
 .setup-world-shade{position:absolute;inset:0;background:radial-gradient(circle at 72% 28%,rgba(0,240,255,.12),transparent 34%),linear-gradient(180deg,rgba(1,4,10,.28),rgba(1,4,10,.56) 58%,#01040a);animation:setup-lighting 6s ease-in-out infinite alternate}.setup-container>*:not(.setup-world-shade){position:relative}.setup-container.is-world-entry{padding:calc(env(safe-area-inset-top) + 20px) 18px calc(env(safe-area-inset-bottom) + 20px)}.setup-box{display:grid;gap:14px}.setup-box label{font-weight:800}
@@ -153,7 +153,7 @@
 .setup-world-presentation{isolation:isolate;overflow:hidden;background:#02050b}
 .setup-world-presentation::after{position:absolute;z-index:2;inset:-20%;content:"";pointer-events:none;background:linear-gradient(112deg,transparent 38%,rgba(0,240,255,.12) 49%,rgba(255,0,127,.09) 51%,transparent 62%);transform:translateX(-70%);animation:world-scene-sweep 1.15s cubic-bezier(.2,.72,.2,1) both}
 .setup-world-motion{position:absolute;inset:-8%;z-index:-1;overflow:hidden;pointer-events:none;animation:world-camera-drift 12s ease-in-out both}
-.setup-world-motion::before{position:absolute;inset:-3%;content:"";background:url('/bg/bg_street_shinjuku.png') center/cover no-repeat;filter:saturate(1.02) contrast(1.14);transform:scale(1.1);animation:world-background-push 4.6s cubic-bezier(.18,.72,.2,1) both}
+.setup-world-motion::before{position:absolute;inset:-3%;content:"";background:url('/bg/bg_street_shinjuku.jpg') center/cover no-repeat;filter:saturate(1.02) contrast(1.14);transform:scale(1.1);animation:world-background-push 4.6s cubic-bezier(.18,.72,.2,1) both}
 .setup-world-motion::after{position:absolute;inset:0;content:"";background:linear-gradient(180deg,rgba(2,4,8,.16),rgba(2,4,8,.76)),linear-gradient(90deg,rgba(8,34,41,.2),transparent 52%,rgba(68,24,31,.16))}
 .setup-world-motion i{position:absolute;z-index:1;right:-20%;left:-20%;height:1px;background:linear-gradient(90deg,transparent,rgba(221,224,226,.35),transparent);filter:blur(.4px);animation:world-reflection-pass 3.6s ease-in-out infinite}
 .setup-world-motion i:first-child{top:32%}.setup-world-motion i:last-child{top:68%;animation-delay:1.7s}

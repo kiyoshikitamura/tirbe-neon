@@ -74,7 +74,7 @@
   overflow: hidden;
   border: 1px solid var(--ui-border);
   border-radius: var(--ui-radius-md);
-  background: linear-gradient(105deg, rgba(2, 10, 17, .98), rgba(10, 24, 36, .88)), url('/gacha/bg_gacha_normal.png') center / cover;
+  background: linear-gradient(105deg, rgba(2, 10, 17, .98), rgba(10, 24, 36, .88)), url('/gacha/bg_gacha_normal.jpg') center / cover;
   box-shadow: inset 4px 0 0 var(--ui-accent), 0 10px 28px rgba(0, 0, 0, .34);
 }
 .gacha-v0-eyebrow { color: var(--ui-accent); font-size: var(--ui-font-caption); font-weight: 900; letter-spacing: .18em; }
@@ -256,7 +256,7 @@
   overflow: hidden;
   background:
     linear-gradient(180deg, rgba(4, 10, 18, .72), rgba(4, 10, 18, .94)),
-    url('/gacha/bg_gacha_normal.png') center 58% / cover no-repeat !important;
+    url('/gacha/bg_gacha_normal.jpg') center 58% / cover no-repeat !important;
   border-color: rgba(0, 240, 255, 0.3) !important;
 }
 

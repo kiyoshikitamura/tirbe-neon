@@ -1,11 +1,11 @@
 const CHARACTER_LOCATION_BACKGROUNDS: Record<string, string> = {
-  shinjuku: "/bg/bg_street_shinjuku.png",
-  shibuya: "/bg/bg_street_shibuya.png",
-  ikebukuro: "/bg/bg_street_ikebukuro.png",
-  roppongi: "/bg/bg_street_roppongi.png",
-  akihabara: "/bg/bg_street_akihabara.png",
-  kawasaki: "/bg/bg_street_kawasaki.png",
-  yokohama: "/bg/bg_street_yokohama.png",
+  shinjuku: "/bg/bg_street_shinjuku.jpg",
+  shibuya: "/bg/bg_street_shibuya.jpg",
+  ikebukuro: "/bg/bg_street_ikebukuro.jpg",
+  roppongi: "/bg/bg_street_roppongi.jpg",
+  akihabara: "/bg/bg_street_akihabara.jpg",
+  kawasaki: "/bg/bg_street_kawasaki.jpg",
+  yokohama: "/bg/bg_street_yokohama.jpg",
 };
 
 const CHARACTER_LOCATION_KEYS: Record<string, keyof typeof CHARACTER_LOCATION_BACKGROUNDS> = {

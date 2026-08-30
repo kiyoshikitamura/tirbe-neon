@@ -33,7 +33,7 @@ export default function MoveBaseModal() {
                 }}
               >
                 <span className="move-base-visual">
-                  <img src={`/bg/bg_street_${base.townId}.png`} alt="" aria-hidden="true" />
+                  <img src={`/bg/bg_street_${base.townId}.jpg`} alt="" aria-hidden="true" />
                   {isRaidActive && raidBossBaseId === base.townId && <b className="move-base-raid-badge">強敵襲来</b>}
                 </span>
                 <div className="move-base-btn-content">

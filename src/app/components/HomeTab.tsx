@@ -6,6 +6,7 @@ import { supabase } from "@/utils/supabase";
 import { resolveAvailableMyPageCreatives } from "@/domain/presentation/production_creatives";
 import { HOME_ACTION_PRESENTATION_SLOTS } from "@/domain/presentation/homeActionPresentation";
 import { isDestinationAvailable } from "@/domain/operations/operations";
+import { resolvePresentableAssetUrl } from "@/utils/assetPresentation";
 import CharacterPresentation from "./character/CharacterPresentation";
 import UserIdentityRow from "./profile/UserIdentityRow";
 import CanonicalDialog from "./ui/CanonicalDialog";
@@ -170,7 +171,11 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
     if (PRODUCTION_MY_PAGE_CREATIVES) return;
     void supabase.from("home_banner_master").select("id, title, image_url, destination_value").order("priority", { ascending: false }).then(({ data, error }) => {
       const released = (data || []).filter((item) => isDestinationAvailable(item.destination_value || "home", featureOperatingStates));
-      if (!error && released.length) setBanners(released.map((item) => ({ id: item.id, title: item.title, img: item.image_url, destination: item.destination_value || "home" })));
+      const presentable = released.flatMap((item) => {
+        const imageUrl = resolvePresentableAssetUrl(item.image_url);
+        return imageUrl ? [{ id: item.id, title: item.title, img: imageUrl, destination: item.destination_value || "home" }] : [];
+      });
+      if (!error && presentable.length) setBanners(presentable);
     });
   }, [featureOperatingStates]);
 
@@ -307,7 +312,7 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
   const isSsrLeader = leaderMaster?.rarity === "SSR";
 
   // 選択中背景URL
-  let bgUrl = `/bg/bg_street_${currentBase.file}.png`;
+  let bgUrl = `/bg/bg_street_${currentBase.file}.jpg`;
   if (selectedBgMode && selectedBgMode !== "auto") {
     const foundBg = PROFILE_BACKGROUNDS.find((b) => b.id === selectedBgMode);
     if (foundBg?.img) bgUrl = foundBg.img;

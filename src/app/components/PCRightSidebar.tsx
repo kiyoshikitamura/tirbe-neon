@@ -45,16 +45,7 @@ export default function PCRightSidebar() {
     console.error("Error parsing userCharactersDbList:", err);
   }
 
-  // DB データがない場合のモックフォールバック
-  const MOCK_MEMBERS = [
-    { id: "c_reiji", jpName: "レイジ", level: 45, plusVal: 2, stats: { atk: 1350, def: 990, hp: 1300 }, name: "reiji", img: "/reiji_final_asset.png" },
-    { id: "c_rui", jpName: "ルイ", level: 45, plusVal: 2, stats: { atk: 2200, def: 850, hp: 2200 }, name: "rui", img: "/rui_final_asset.png" },
-    { id: "c_chang", jpName: "チャン", level: 45, plusVal: 2, stats: { atk: 990, def: 970, hp: 1000 }, name: "chang", img: "/chang_final_asset.png" },
-    { id: "c_kengo", jpName: "ケンゴ", level: 45, plusVal: 2, stats: { atk: 1190, def: 435, hp: 1900 }, name: "kengo", img: "/kengo_final_asset.png" },
-    { id: "c_shin", jpName: "シン", level: 45, plusVal: 2, stats: { atk: 800, def: 970, hp: 1000 }, name: "shin", img: "/shin_final_asset.png" }
-  ];
-
-  const displayMembers = unlockedMembers.length > 0 ? unlockedMembers : MOCK_MEMBERS;
+  const displayMembers = unlockedMembers;
 
   const toggleFavorite = (charId: string) => {
     setFavorites(prev => ({ ...prev, [charId]: !prev[charId] }));
@@ -79,7 +70,7 @@ export default function PCRightSidebar() {
                     src={getCharacterStaticImg(member.name || "")}
                     alt={member.jpName}
                     className="pc-char-avatar-img"
-                    onError={(e) => { (e.target as HTMLImageElement).src = "/reiji_final_asset.png"; }}
+                    onError={(e) => { (e.target as HTMLImageElement).src = "/characters/reiji_transparent_asset.png"; }}
                   />
                 </div>
               </div>

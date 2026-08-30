@@ -311,7 +311,7 @@ export default function PatrolTab() {
   };
 
   // 背景画像の取得
-  const bgImage = `/bg/bg_street_${selectedTown}.png`;
+  const bgImage = `/bg/bg_street_${selectedTown}.jpg`;
   const characterImage = (src?: string) => {
     if (!src) return null;
     return src.startsWith("/characters/") ? src : `/characters/${src.replace(/^\//, "")}`;

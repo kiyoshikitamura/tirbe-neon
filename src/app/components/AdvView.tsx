@@ -40,7 +40,7 @@ export default function AdvView() {
               src={currentNode.img} 
               alt={currentNode.speaker}
               className="rounded-md border-subtle adv-speaker-img"
-              onError={(e: any) => { (e.target as HTMLImageElement).src = "/reiji_transparent_asset.png"; }}
+              onError={(e: any) => { (e.target as HTMLImageElement).src = "/characters/reiji_transparent_asset.png"; }}
             />
           )}
           

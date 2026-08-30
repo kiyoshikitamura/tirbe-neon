@@ -26,10 +26,11 @@ export const CHARACTER_LOADOUT_RARITY_ASSETS = [
 ];
 
 const HOME_ASSETS = [
-  "/bg/bg_base_neontower.png", "/bg/bg_base_deepdock.png", "/bg/bg_base_junkbazaar.png", "/bg/bg_base_kitakuragate.png",
+  "/bg/bg_street_shinjuku.jpg", "/bg/bg_street_shibuya.jpg", "/bg/bg_street_ikebukuro.jpg", "/bg/bg_street_roppongi.jpg",
+  "/bg/bg_street_akihabara.jpg", "/bg/bg_street_kawasaki.jpg", "/bg/bg_street_yokohama.jpg",
   "/characters/reiji_transparent_asset.png", "/characters/rui_transparent_asset.png", "/characters/chang_transparent_asset.png",
   "/menu/menu_allies.png", "/menu/menu_fight.png", "/menu/menu_conquest.png", "/menu/menu_war.png",
-  "/gacha/bg_gacha_ssr.png", "/gacha/bg_gacha_sr.png", "/gacha/bg_gacha_normal.png",
+  "/gacha/bg_gacha_ssr.jpg", "/gacha/bg_gacha_sr.jpg", "/gacha/bg_gacha_normal.jpg",
   "/ui/icon_bag.png", "/ui/icon_community.png", "/ui/icon_map.png", "/ui/icon_mission.png",
   "/ui/icon_news.png", "/ui/icon_present.png", "/ui/icon_raid.png", "/ui/icon_ranking.png", "/ui/icon_settings.png",
 ];
@@ -45,7 +46,7 @@ export const SCREEN_ASSET_MANIFESTS = {
   pvp: optionalAssets([...FRAME_ASSETS, ...COMMON_SHELL_ASSETS]),
   gvg: optionalAssets([...FRAME_ASSETS, ...COMMON_SHELL_ASSETS]),
   raid: optionalAssets([...FRAME_ASSETS, ...COMMON_SHELL_ASSETS]),
-  ranking: optionalAssets([...FRAME_ASSETS, ...COMMON_SHELL_ASSETS, "/rank/badge_rank1.png", "/rank/badge_rank2.png", "/rank/badge_rank3.png"]),
+  ranking: optionalAssets([...FRAME_ASSETS, ...COMMON_SHELL_ASSETS]),
 } as const;
 
 export const HOME_BOOT_ASSETS = SCREEN_ASSET_MANIFESTS.home.map((asset) => asset.src);
@@ -62,16 +63,16 @@ export const HOME_BOOT_ASSETS = SCREEN_ASSET_MANIFESTS.home.map((asset) => asset
 export const BOOT_CRITICAL_ASSETS: AssetRequest[] = [
   { src: "/branding/title-key-visual.png", required: true },
   { src: "/branding/tribe-neon-logo.png", required: true },
-  { src: "/bg/bg_street_shinjuku.png", required: true },
+  { src: "/bg/bg_street_shinjuku.jpg", required: true },
   { src: "/characters/ageha_transparent_asset.png", required: true },
 ];
 
 export const TUTORIAL_CRITICAL_ASSETS: AssetRequest[] = optionalAssets([
   ...FRAME_ASSETS,
-  "/gacha/bg_gacha_normal.png",
-  "/gacha/bg_gacha_sr.png",
-  "/gacha/bg_gacha_ssr.png",
-  "/bg/bg_street_shinjuku.png",
+  "/gacha/bg_gacha_normal.jpg",
+  "/gacha/bg_gacha_sr.jpg",
+  "/gacha/bg_gacha_ssr.jpg",
+  "/bg/bg_street_shinjuku.jpg",
   "/characters/ageha_transparent_asset.png",
   "/characters/reiji_transparent_asset.png",
   "/characters/rui_transparent_asset.png",

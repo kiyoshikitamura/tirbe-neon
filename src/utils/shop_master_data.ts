@@ -36,7 +36,7 @@ export const SHOP_PRODUCTS_MASTER: ShopProduct[] = [
     priceJpy: 100,
     purchaseLimit: 1,
     timeLimitHours: 72,
-    bannerUrl: "/banner_beginner_pack.png",
+    bannerUrl: "/banner_beginner_pack.jpg",
     items: [
       { itemId: "CASH", itemName: "キャッシュ", quantity: 10000 },
       { itemId: "DIAMOND", itemName: "ダイヤ", quantity: 300 },

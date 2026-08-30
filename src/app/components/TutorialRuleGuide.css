@@ -9,7 +9,7 @@
   background:
     radial-gradient(circle at 50% 30%, rgba(0, 229, 255, .16), transparent 42%),
     linear-gradient(180deg, rgba(2, 7, 14, .82), #01040a 84%),
-    url('/bg/bg_street_shinjuku.png') center/cover no-repeat;
+    url('/bg/bg_street_shinjuku.jpg') center/cover no-repeat;
 }
 
 .tutorial-completion-scene {

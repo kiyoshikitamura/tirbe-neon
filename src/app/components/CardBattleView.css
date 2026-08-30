@@ -12,7 +12,7 @@
 }
 
 /* Tutorial Quest battle wireframe: B1 briefing and B2 transition. */
-.tutorial-battle-briefing { display:grid; grid-template-rows:auto minmax(0,1fr) auto auto auto; gap:12px; padding:calc(env(safe-area-inset-top) + 14px) 14px calc(env(safe-area-inset-bottom) + 16px); background:linear-gradient(180deg,rgba(2,4,12,.28),rgba(2,2,9,.96)),url('/bg/bg_street_shinjuku.png') center/cover no-repeat; }
+.tutorial-battle-briefing { display:grid; grid-template-rows:auto minmax(0,1fr) auto auto auto; gap:12px; padding:calc(env(safe-area-inset-top) + 14px) 14px calc(env(safe-area-inset-bottom) + 16px); background:linear-gradient(180deg,rgba(2,4,12,.28),rgba(2,2,9,.96)),url('/bg/bg_street_shinjuku.jpg') center/cover no-repeat; }
 .tutorial-battle-location { display:grid; justify-items:center; gap:3px; font-weight:950; }.tutorial-battle-location span{font-size:var(--ui-font-screen-title)}.tutorial-battle-location small{color:#c88fff;letter-spacing:.15em}
 .tutorial-battle-versus { position:relative; display:grid; grid-template-columns:minmax(0,1fr) 48px minmax(0,1fr); align-items:end; min-height:0; }
 .tutorial-battle-leader { position:relative; height:min(52vh,430px); overflow:hidden; border-bottom:2px solid var(--ui-accent); background:linear-gradient(180deg,transparent,rgba(0,0,0,.8)); }
@@ -109,7 +109,7 @@
 
 .setup-scroll-area { display: flex; min-height: 0; flex: 1; flex-direction: column; gap: 11px; margin-bottom: 12px; }
 .tutorial-battle-setup { overflow: hidden; }
-.tutorial-battle-setup { background:linear-gradient(180deg,rgba(4,7,12,.52),rgba(4,7,12,.96)),url('/bg/bg_street_shinjuku.png') center/cover no-repeat; }
+.tutorial-battle-setup { background:linear-gradient(180deg,rgba(4,7,12,.52),rgba(4,7,12,.96)),url('/bg/bg_street_shinjuku.jpg') center/cover no-repeat; }
 .tutorial-battle-setup .setup-scroll-area { overflow-y: auto; }
 .tutorial-battle-setup > .start-battle-btn { flex: 0 0 auto; }
 .tutorial-battle-setup .setup-player-wrapper { order:1; }
