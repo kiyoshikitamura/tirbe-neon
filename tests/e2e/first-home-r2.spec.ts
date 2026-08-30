@@ -154,16 +154,21 @@ for (const viewport of viewports) {
     await expect(page.locator('[data-action-slot="fight"] img')).toHaveAttribute("src", "/menu/home_nav_pvp.png");
     await expect(page.locator('[data-action-slot="conquest"] img')).toHaveAttribute("src", "/menu/home_nav_quest.png");
     await expect(page.locator('[data-action-slot="war"] img')).toHaveAttribute("src", "/menu/home_nav_gvg.png");
-    const raidCanvasAlpha = await page.locator('img[src="/menu/home_nav_raid.png"]').evaluate((node) => {
+    const normalizedAssetAlpha = async (selector: string) => page.locator(selector).evaluate((node) => {
       const image = node as HTMLImageElement;
       const canvas = document.createElement("canvas");
       canvas.width = image.naturalWidth;
       canvas.height = image.naturalHeight;
       const context = canvas.getContext("2d")!;
       context.drawImage(image, 0, 0);
-      return context.getImageData(100, 100, 1, 1).data[3];
+      return {
+        alpha: context.getImageData(100, 100, 1, 1).data[3],
+        width: image.naturalWidth,
+        height: image.naturalHeight,
+      };
     });
-    expect(raidCanvasAlpha).toBe(0);
+    expect(await normalizedAssetAlpha('img[src="/menu/home_nav_raid.png"]')).toEqual({ alpha: 0, width: 1024, height: 1024 });
+    expect(await normalizedAssetAlpha('[data-action-slot="war"] img')).toEqual({ alpha: 0, width: 1024, height: 1024 });
     await expect(page.getByRole("button", { name: "ギルドバトルは準備中です" })).toBeDisabled();
     const deckStyle = await page.locator(".mypage-circle-menu-area").evaluate((node) => ({
       background: getComputedStyle(node).backgroundColor,
@@ -197,7 +202,12 @@ for (const viewport of viewports) {
         ctaHeight: cta.height,
         bannerStartsAboveFooter: banner.top < footer.top,
         mainContentsPrecedesBanner: mainContents.bottom <= banner.top + 1,
+        mainContentsHeight: mainContents.height,
         mainActionsWithinContainer: mainActionRects.every((rect) => rect.left >= mainContents.left - 1 && rect.right <= mainContents.right + 1),
+        mainActionOuterBorders: [...document.querySelectorAll<HTMLElement>(".mypage-circle-menu-area > button")].map((node) => {
+          const style = getComputedStyle(node);
+          return [style.borderTopWidth, style.borderBottomWidth, style.borderLeftWidth];
+        }),
         shortcutWidth,
         shortcutArtworkSizes: [...document.querySelectorAll<HTMLElement>(".sub-png-icon")].map((node) => {
           const rect = node.getBoundingClientRect();
@@ -206,6 +216,7 @@ for (const viewport of viewports) {
         bannerHeight: box(".banner-card").height,
         bannerObjectFit: getComputedStyle(document.querySelector(".banner-bg-img")!).objectFit,
         footerLabelSizes: [...document.querySelectorAll<HTMLElement>(".footer-label")].map((node) => parseFloat(getComputedStyle(node).fontSize)),
+        locationHeight: box(".mypage-current-location").height,
         horizontalOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
         ctaDetailDisplay: (() => {
           const detail = document.querySelector(".mypage-primary-cta > span:not(.mypage-primary-cta-eyebrow)");
@@ -232,9 +243,12 @@ for (const viewport of viewports) {
     expect(geometry.ctaWrap).toBe("nowrap");
     expect(geometry.bannerStartsAboveFooter).toBe(true);
     expect(geometry.mainContentsPrecedesBanner).toBe(true);
+    expect(geometry.mainContentsHeight).toBeLessThanOrEqual(70);
     expect(geometry.mainActionsWithinContainer).toBe(true);
+    expect(geometry.mainActionOuterBorders.every((widths) => widths.every((width) => width === "0px"))).toBe(true);
     expect(new Set(geometry.shortcutArtworkSizes.map((size) => `${size.width}x${size.height}`)).size).toBe(1);
-    expect(geometry.shortcutArtworkSizes.every((size) => size.width <= 34 && size.height <= 34)).toBe(true);
+    expect(geometry.shortcutArtworkSizes.every((size) => size.width <= 24 && size.height <= 24)).toBe(true);
+    expect(geometry.locationHeight).toBeLessThanOrEqual(28);
     expect(geometry.bannerHeight).toBeLessThanOrEqual(58);
     expect(geometry.bannerObjectFit).toBe("contain");
     expect(geometry.footerLabelSizes.every((size) => size <= 9)).toBe(true);
@@ -289,9 +303,60 @@ test("raid discovery stays out of the Home stage while the authoritative raid ba
 test("Header MENU owns utilities and Footer uses compact Japanese labels", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await openHomeScenario(page, "first-home-fresh");
+  const headerGeometry = await page.evaluate(async () => {
+    const row = document.querySelector<HTMLElement>(".header-mobile-row1")!;
+    const user = document.querySelector<HTMLElement>(".header-mobile-user")!;
+    const progression = document.querySelector<HTMLElement>(".header-mobile-progression")!;
+    const level = document.querySelector<HTMLElement>(".header-mobile-level-badge")!;
+    const power = document.querySelector<HTMLElement>(".header-mobile-power strong")!;
+    const menuButton = document.querySelector<HTMLElement>(".header-mobile-menu-button")!;
+    const userName = user.querySelector<HTMLElement>("strong")!;
+    const initialHeight = row.getBoundingClientRect().height;
+    userName.textContent = "とても長いプレイヤー表示名テスト";
+    level.textContent = "Lv.99 · EXP 99,999/999,999";
+    power.textContent = "9,999,999";
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    const userRect = user.getBoundingClientRect();
+    const progressionRect = progression.getBoundingClientRect();
+    const menuRect = menuButton.getBoundingClientRect();
+    return {
+      initialHeight,
+      finalHeight: row.getBoundingClientRect().height,
+      userClearsProgression: userRect.right <= progressionRect.left + 1,
+      progressionClearsMenu: progressionRect.right <= menuRect.left + 1,
+      menuWithinViewport: menuRect.right <= document.documentElement.clientWidth,
+      levelWrap: getComputedStyle(level).whiteSpace,
+      powerWrap: getComputedStyle(power.parentElement!).whiteSpace,
+      numericVariant: getComputedStyle(level).fontVariantNumeric,
+      usernameOverflow: getComputedStyle(userName).textOverflow,
+      horizontalOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    };
+  });
+  expect(headerGeometry.finalHeight).toBe(headerGeometry.initialHeight);
+  expect(headerGeometry.userClearsProgression).toBe(true);
+  expect(headerGeometry.progressionClearsMenu).toBe(true);
+  expect(headerGeometry.menuWithinViewport).toBe(true);
+  expect(headerGeometry.levelWrap).toBe("nowrap");
+  expect(headerGeometry.powerWrap).toBe("nowrap");
+  expect(headerGeometry.numericVariant).toContain("tabular-nums");
+  expect(headerGeometry.usernameOverflow).toBe("ellipsis");
+  expect(headerGeometry.horizontalOverflow).toBeLessThanOrEqual(1);
   await page.getByRole("button", { name: "MENU" }).click();
   const menu = page.getByRole("dialog", { name: "ホームメニュー" });
   for (const label of ["設定", "お知らせ", "プレゼント", "バッグ"]) await expect(menu.getByRole("button", { name: label })).toBeVisible();
+  const menuGeometry = await menu.evaluate((node) => {
+    const rect = node.getBoundingClientRect();
+    const cells = [...node.querySelectorAll<HTMLElement>("nav button")].map((cell) => cell.getBoundingClientRect());
+    const icons = [...node.querySelectorAll<HTMLElement>("nav img")].map((icon) => icon.getBoundingClientRect());
+    return {
+      width: rect.width,
+      cellHeights: cells.map((cell) => cell.height),
+      iconSizes: icons.map((icon) => ({ width: icon.width, height: icon.height })),
+    };
+  });
+  expect(menuGeometry.width).toBeLessThanOrEqual(260);
+  expect(menuGeometry.cellHeights.every((height) => height <= 72)).toBe(true);
+  expect(menuGeometry.iconSizes.every((size) => size.width <= 30 && size.height <= 30)).toBe(true);
   await expect(page.locator(".footer-mobile .footer-item")).toHaveCount(5);
   await expect(page.locator(".footer-mobile .footer-label")).toHaveText(["マイページ", "コミュニティ", "キャラ", "ガチャ", "ショップ"]);
 });
