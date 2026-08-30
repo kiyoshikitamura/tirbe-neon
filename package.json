@@ -33,6 +33,7 @@
     "verify:gacha-phase6b": "node scripts/verify_gacha_phase6b_contract.mjs",
     "verify:battle-mvp-result": "node --experimental-strip-types scripts/verify_battle_mvp_result.mjs",
     "verify:battle-presentation": "node --experimental-strip-types scripts/verify_battle_presentation_contract.mjs",
+    "verify:battle-full-skill-load": "node --experimental-strip-types scripts/verify_battle_full_skill_load_fixture.mjs",
     "verify:visual-compliance": "node --experimental-strip-types scripts/verify_visual_compliance_gate.mjs",
     "verify:login-bonus-production": "node scripts/verify_login_bonus_production.mjs",
     "verify:reward-supply": "node scripts/verify_reward_supply.mjs",
