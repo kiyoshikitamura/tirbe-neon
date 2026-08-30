@@ -229,7 +229,7 @@ test("Lv5 user creates a Guild, becomes master, and persists saved attributes", 
   await page.getByRole("button", { name: "創設する" }).click();
   const confirmation = page.locator(".canonical-dialog");
   await expect(confirmation).toContainText("「FINAL NEON」を設立しますか？");
-  await expect(confirmation).toContainText("5,000キャッシュ");
+  await expect(confirmation).toContainText("500キャッシュ");
   await expect(confirmation.getByRole("button", { name: "キャンセル" })).toBeVisible();
   await expect(confirmation.getByRole("button", { name: "設立する" })).not.toHaveClass(/danger/);
   await page.evaluate(() => localStorage.setItem("mock_guild_mutation_delay_ms", "250"));
@@ -244,7 +244,7 @@ test("Lv5 user creates a Guild, becomes master, and persists saved attributes", 
     const membership = JSON.parse(localStorage.getItem("mock_db_guild_members") || "[]").find((row: any) => row.user_id === user.id && row.guild_id === guilds[0]?.id);
     return { guildCount: guilds.length, cash: user.cash, role: membership?.role };
   });
-  expect(creationState).toEqual({ guildCount: 1, cash: 5000, role: "MASTER" });
+  expect(creationState).toEqual({ guildCount: 1, cash: 9500, role: "MASTER" });
   await expect(confirmation.getByRole("button", { name: "キャンセル" })).toHaveCount(0);
   await confirmation.getByRole("button", { name: "OK" }).click();
   await expect(page.locator(".guild-visual-identity")).toContainText("FINAL NEON");
@@ -283,7 +283,7 @@ test("Guild creation entry is first and Lv4 or insufficient CASH remains gated",
   await enterGuild(page);
   const creation = page.locator(".guild-lobby-create");
   const recommendations = page.locator(".guild-lobby-section").filter({ hasText: "おすすめギルド" }).first();
-  await expect(creation).toContainText("Lv.5 / 5,000キャッシュ");
+  await expect(creation).toContainText("Lv.5 / 500キャッシュ");
   expect(await creation.evaluate((node) => node.nextElementSibling?.textContent?.includes("おすすめギルド"))).toBe(true);
   await creation.locator("summary").click();
   await expect(page.getByPlaceholder("ギルド名を入力 (12文字)")).toBeDisabled();
@@ -293,7 +293,7 @@ test("Guild creation entry is first and Lv4 or insufficient CASH remains gated",
   await page.evaluate(() => {
     const users = JSON.parse(localStorage.getItem("mock_db_users") || "[]");
     users[0].level = 5;
-    users[0].cash = 4999;
+    users[0].cash = 499;
     localStorage.setItem("mock_db_users", JSON.stringify(users));
   });
   await page.reload();

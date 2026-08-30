@@ -79,8 +79,9 @@ assert.match(characterUi, /CANONICAL_SKILL_VIEW/);
 assert.match(characterUi, /CANONICAL_EQUIPMENT_VIEW/);
 assert.match(characterUi, /canonicalSkillSlotCount/);
 assert.ok(!/AP-1|synergy-ap-reduced|SKILL_COOLDOWN_BY_RARITY/.test(characterUi));
-assert.match(source("src/app/components/GachaTab.tsx"), /CANONICAL_SKILL_VIEW/);
-assert.match(source("src/app/components/GachaTab.tsx"), /CANONICAL_EQUIPMENT_VIEW/);
+const gachaUi = source("src/app/components/GachaTab.tsx");
+assert.match(gachaUi, /handleScout\(normalGachaId, count, currency\)/);
+assert.match(gachaUi, /gachaMasters\?\.find/);
 
 const allProductionSources = [
   ...runtimeFiles,

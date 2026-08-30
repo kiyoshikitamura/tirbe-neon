@@ -41,10 +41,14 @@ test.beforeEach(async ({ page }) => {
       { id: "item-equip-s", user_id: userId, item_id: "EQUIP_EXP_S", quantity: 5 },
     ]));
     localStorage.setItem("mock_db_quests", JSON.stringify([
-      { id: "q_shinjuku_1", name: "歌舞伎町 夜間見回り", town_id: "shinjuku", level_type: "EASY", duration_seconds: 900, cost_vitality: 5, cash_reward: 300, exp_reward: 100 },
-      { id: "q_shinjuku_2", name: "繁華街 警戒任務", town_id: "shinjuku", level_type: "NORMAL", duration_seconds: 1200, cost_vitality: 8, cash_reward: 450, exp_reward: 140 },
+      { id: "QUEST_SHINJUKU_EASY", name: "歌舞伎町一番街", town_id: "shinjuku", level_type: "EASY", duration_seconds: 300, cost_vitality: 3, cash_reward: 0, exp_reward: 100 },
+      { id: "QUEST_SHINJUKU_NORMAL", name: "職安通り", town_id: "shinjuku", level_type: "NORMAL", duration_seconds: 3600, cost_vitality: 10, cash_reward: 0, exp_reward: 400 },
     ]));
-    localStorage.setItem("mock_db_user_quest_first_clears", JSON.stringify([{ user_id: userId, quest_id: "q_shinjuku_1", cleared_at: now }]));
+    localStorage.setItem("mock_db_user_quest_first_clears", JSON.stringify([{ user_id: userId, quest_id: "QUEST_SHINJUKU_EASY", cleared_at: now }]));
+    localStorage.setItem("mock_db_patrol_npcs", JSON.stringify([
+      { id: "npc_shinjuku_easy", quest_id: "QUEST_SHINJUKU_EASY", npc_name: "Canonical EASY Party", npc_level: 5, members: [{ characterId: "char_tomoya_01", level: 5 }, { characterId: "char_kenji_01", level: 5 }, { characterId: "char_shin_01", level: 5 }] },
+      { id: "npc_shinjuku_normal", quest_id: "QUEST_SHINJUKU_NORMAL", npc_name: "Canonical NORMAL Party", npc_level: 12, members: [{ characterId: "char_tomoya_01", level: 12 }, { characterId: "char_kenji_01", level: 12 }, { characterId: "char_shin_01", level: 12 }, { characterId: "char_takuro_01", level: 12 }, { characterId: "char_leon_01", level: 12 }] },
+    ]));
   });
 });
 
@@ -169,7 +173,7 @@ test("canonical Leader changes update Home and Header immediately and persist ac
 test("Normal Quest uses the tutorial-passed identity, enemy, reward and progress grammar", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await enterGame(page);
-  await page.locator('.footer-item[aria-label="クエスト"]').click();
+  await page.locator(".circle-menu-btn.conquest").click();
   await expect(page.locator(".quest-v2-shell")).toBeVisible();
   await expect(page.locator(".quest-v2-shell > .ui-page-header")).toHaveCount(0);
   await expect(page.locator(".quest-v2-identity")).toContainText("クエスト選択");
@@ -211,6 +215,7 @@ test("Normal Quest uses the tutorial-passed identity, enemy, reward and progress
   await expect(page.locator('[data-quest-state="PROGRESS"]')).toHaveCount(0);
   await expect(battleReady.locator(".quest-v2-battle-ready-identity h2")).toHaveText("バトル発生");
   await expect(battleReady.locator(".quest-v2-battle-enemies article").first()).toContainText(/Lv \d+/);
+  await expect(battleReady.getByRole("button", { name: "バトルへ", exact: true })).toBeVisible();
   const battleGeometry390 = await page.evaluate(() => {
     const state = document.querySelector<HTMLElement>('[data-quest-state="BATTLE_READY"]')!;
     const title = state.querySelector<HTMLElement>("h2")!;

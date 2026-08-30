@@ -30,12 +30,12 @@ test("normal Quest becomes claimable without reload after natural expiry", async
     }]));
     localStorage.setItem("mock_db_quests", JSON.stringify([{
       id: "q_shinjuku_1",
-      name: "歌舞伎町 夜間見回り",
+      name: "歌舞伎町一番街",
       town_id: "shinjuku",
       level_type: "EASY",
-      duration_seconds: 15,
-      cost_vitality: 5,
-      cash_reward: 300,
+      duration_seconds: 300,
+      cost_vitality: 3,
+      cash_reward: 0,
       exp_reward: 100,
     }]));
     localStorage.setItem("mock_db_user_patrols", JSON.stringify([{
@@ -43,12 +43,36 @@ test("normal Quest becomes claimable without reload after natural expiry", async
       user_id: userId,
       course_id: "q_shinjuku_1",
       character_id: "char_reiji_01",
-      started_at: new Date(now).toISOString(),
+      started_at: new Date(now - 285_000).toISOString(),
       expires_at: new Date(now + 15_000).toISOString(),
       status: "ONGOING",
       has_battle_event: true,
       battle_resolved: false,
       battle_result: null,
+      encounter_snapshot: {
+        encounterId: "encounter_q_shinjuku_1_natural_expiry",
+        questId: "q_shinjuku_1",
+        townId: "shinjuku",
+        difficulty: "EASY",
+        enemyTactic: "BALANCED",
+        partySignature: "char_kenji_01|char_shin_01|char_tomoya_01",
+        members: [
+          { slot: 1, characterId: "char_tomoya_01", rarity: "N", level: 5, awakening: 0, growthPattern: "BALANCED", stats: { hp: 14000, atk: 1600, def: 1200, spd: 90, luk: 0 }, skillLoadout: ["SKILL_008"], equipmentLoadout: [] },
+          { slot: 2, characterId: "char_kenji_01", rarity: "N", level: 5, awakening: 0, growthPattern: "ATTACKER", stats: { hp: 14000, atk: 1600, def: 1200, spd: 95, luk: 0 }, skillLoadout: ["SKILL_001"], equipmentLoadout: [] },
+          { slot: 3, characterId: "char_shin_01", rarity: "R", level: 5, awakening: 0, growthPattern: "DEFENDER", stats: { hp: 14000, atk: 1600, def: 1200, spd: 85, luk: 0 }, skillLoadout: ["SKILL_006"], equipmentLoadout: [] },
+        ],
+      },
+    }]));
+    localStorage.setItem("mock_db_patrol_npcs", JSON.stringify([{
+      id: "encounter_q_shinjuku_1_natural_expiry",
+      quest_id: "q_shinjuku_1",
+      npc_name: "Canonical NPC Party",
+      npc_level: 5,
+      members: [
+        { characterId: "char_tomoya_01", level: 5 },
+        { characterId: "char_kenji_01", level: 5 },
+        { characterId: "char_shin_01", level: 5 },
+      ],
     }]));
   });
 

@@ -20,7 +20,7 @@ test.beforeEach(async ({ page }) => {
     localStorage.setItem("mock_db_user_main_formations", JSON.stringify(owned.map((entry: any, index: number) => ({ user_id: me, slot: index + 1, user_character_id: entry.id }))));
     localStorage.setItem("mock_db_user_power_rankings", JSON.stringify([{ user_id: me, total_power: 61096, rank_position: 4, updated_at: now }]));
     localStorage.setItem("mock_db_user_items", JSON.stringify([{ id: "raid-ticket", user_id: me, item_id: "RAID_POINT_TICKET", quantity: 2 }]));
-    localStorage.setItem("mock_db_raid_bosses", JSON.stringify([{ id: raidId, boss_master_id: "RAID_BOSS_004", boss_name: "六本木・幻惑頭領", level: 30, current_hp: 16650000, max_hp: 22200000, base_id: "roppongi", profile_type: "DEBUFF", status: "ACTIVE", expires_at: new Date(Date.now() + 20 * 3600_000).toISOString() }]));
+    localStorage.setItem("mock_db_raid_bosses", JSON.stringify([{ id: raidId, boss_master_id: "RAID_BOSS_004", boss_name: "六本木・幻惑頭領", level: 30, current_hp: 16650000, max_hp: 22200000, base_id: "roppongi", profile_type: "DEBUFF", status: "ACTIVE", expires_at: new Date(Date.now() + 20 * 3600_000).toISOString(), skill_loadout: [{ id: "BASIC_ATTACK", name: "通常攻撃", target: "ENEMY_SINGLE", cooldown: 0, availableFromRound: 1, effects: ["DAMAGE 80% ATK"] }, { id: "RAID_SKILL_DEBUFF", name: "威圧", activationType: "ACTIVE", target: "ENEMY_ALL", cooldown: 4, availableFromRound: 2, effects: ["DAMAGE 110% ATK", "ATK -20% / 2T"] }] }]));
     localStorage.setItem("mock_db_raid_boss_master", JSON.stringify([{ id: "RAID_BOSS_004", boss_name: "六本木・幻惑頭領", level: 30, max_hp: 22200000, atk: 6455, def: 5740, spd: 358, luk: 28, skills: [{ id: "BASIC_ATTACK", name: "通常攻撃", target: "ENEMY_SINGLE", cooldown: 0, effects: ["DAMAGE 80% ATK"] }, { id: "RAID_SKILL_DEBUFF", name: "威圧", target: "ENEMY_ALL", cooldown: 4, effects: ["DAMAGE 110% ATK", "ATK -20% / 2T"] }] }]));
     localStorage.setItem("mock_db_raid_damage_logs", JSON.stringify([
       { user_id: me, raid_boss_instance_id: raidId, raw_damage: 123456, created_at: now },
@@ -35,7 +35,7 @@ async function openRaid(page: Page, path = "/") {
   await page.goto(path);
   await page.getByRole("button", { name: "続きから" }).click();
   await expect(page.locator(".header-mobile")).toBeVisible();
-  await page.getByRole("button", { name: "⚠ レイド開催中" }).click();
+  await page.locator(".mypage-sub-icons-left .sub-icon-unit").filter({ hasText: "レイド" }).click();
   await expect(page.locator(".raid-view")).toBeVisible();
 }
 
