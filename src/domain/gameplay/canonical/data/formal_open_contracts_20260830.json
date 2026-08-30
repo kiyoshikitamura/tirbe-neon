@@ -1,0 +1,9 @@
+{
+  "version": "2026-08-30",
+  "preopen": { "shopSalesEnabled": false, "specialGachaEnabled": false, "gvgEnabled": false },
+  "energyDrink": { "itemId": "ENERGY_DRINK", "cashCost": 100, "restore": 50, "normalMax": 100, "recoverySeconds": 300, "usableBelow": 100, "overhealMax": 150, "purchaseCap": null },
+  "pvpPointTicket": { "itemId": "PVP_POINT_TICKET", "cashCost": 30, "restore": 1, "max": 5, "usableWhenFull": false },
+  "raidPointTicket": { "itemId": "RAID_POINT_TICKET", "cashCost": 30, "restore": 1, "max": 5, "usableWhenFull": false },
+  "gvg": { "windowsJst": ["12:00", "20:00", "23:00"], "durationMinutes": 30, "energyCarryOver": true, "energyPerAction": 10, "guildEconomy": "SEPARATE_HOLD" },
+  "guildEconomy": "HOLD"
+}

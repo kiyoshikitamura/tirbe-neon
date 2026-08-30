@@ -1,0 +1,20 @@
+{
+  "version": "2026-08-30", "cycleDays": 30, "timezone": "Asia/Tokyo", "status": "FROZEN", "cashTotal": 0,
+  "rewards": [
+    { "day": 1, "rewardItemId": "CHAR_EXP_M", "rewardQty": 2 }, { "day": 2, "rewardItemId": "EQUIP_EXP_M", "rewardQty": 2 },
+    { "day": 3, "rewardItemId": "NORMAL_GACHA_TICKET_CHARACTER", "rewardQty": 1 }, { "day": 4, "rewardItemId": "SKILL_MANUAL", "rewardQty": 1 },
+    { "day": 5, "rewardItemId": "CHAR_EXP_L", "rewardQty": 1 }, { "day": 6, "rewardItemId": "NORMAL_GACHA_TICKET_SKILL", "rewardQty": 1 },
+    { "day": 7, "rewardItemId": "EQUIP_LB_PART", "rewardQty": 2 }, { "day": 8, "rewardItemId": "EQUIP_EXP_L", "rewardQty": 1 },
+    { "day": 9, "rewardItemId": "SKILL_MANUAL", "rewardQty": 1 }, { "day": 10, "rewardItemId": "NORMAL_GACHA_TICKET_EQUIPMENT", "rewardQty": 1 },
+    { "day": 11, "rewardItemId": "CHAR_EXP_M", "rewardQty": 2 }, { "day": 12, "rewardItemId": "EQUIP_EXP_M", "rewardQty": 2 },
+    { "day": 13, "rewardItemId": "SKILL_MANUAL", "rewardQty": 1 }, { "day": 14, "rewardItemId": "SPECIAL_TICKET_SKILL", "rewardQty": 1 },
+    { "day": 15, "rewardItemId": "CHAR_EXP_L", "rewardQty": 1 }, { "day": 16, "rewardItemId": "NORMAL_GACHA_TICKET_CHARACTER", "rewardQty": 1 },
+    { "day": 17, "rewardItemId": "EQUIP_LB_PART", "rewardQty": 2 }, { "day": 18, "rewardItemId": "SKILL_MANUAL", "rewardQty": 1 },
+    { "day": 19, "rewardItemId": "EQUIP_EXP_L", "rewardQty": 1 }, { "day": 20, "rewardItemId": "NORMAL_GACHA_TICKET_SKILL", "rewardQty": 1 },
+    { "day": 21, "rewardItemId": "AWAKENING_BOOK", "rewardQty": 1 }, { "day": 22, "rewardItemId": "CHAR_EXP_L", "rewardQty": 1 },
+    { "day": 23, "rewardItemId": "SKILL_MANUAL", "rewardQty": 1 }, { "day": 24, "rewardItemId": "EQUIP_EXP_L", "rewardQty": 1 },
+    { "day": 25, "rewardItemId": "NORMAL_GACHA_TICKET_EQUIPMENT", "rewardQty": 1 }, { "day": 26, "rewardItemId": "EQUIP_LB_PART", "rewardQty": 2 },
+    { "day": 27, "rewardItemId": "SKILL_MANUAL", "rewardQty": 1 }, { "day": 28, "rewardItemId": "CHAR_EXP_L", "rewardQty": 1 },
+    { "day": 29, "rewardItemId": "EQUIP_EXP_L", "rewardQty": 1 }, { "day": 30, "rewardItemId": "SPECIAL_TICKET_CHARACTER", "rewardQty": 1 }
+  ]
+}

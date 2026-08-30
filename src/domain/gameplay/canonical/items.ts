@@ -5,11 +5,16 @@ export type CanonicalItem = (typeof itemSource.items)[number];
 export const CANONICAL_ITEM_VERSION = itemSource.version;
 export const CANONICAL_ITEMS: readonly CanonicalItem[] = Object.freeze(itemSource.items);
 export const CANONICAL_ITEM_BY_ID = new Map(CANONICAL_ITEMS.map((item) => [item.id, item]));
+const CANONICAL_REWARD_ALIAS_NAMES: Record<string, string> = {
+  NORMAL_GACHA_TICKET_RANDOM: "ランダムNormalガチャチケット",
+  SPECIAL_TICKET_RANDOM: "ランダムSPガチャチケット",
+  SPECIAL_TICKET_SKILL_OR_EQUIPMENT: "SPスキル・装備チケット",
+};
 
 export function canonicalItemName(itemId: string): string {
   if (itemId === "CASH") return "CASH";
   if (itemId === "DIAMOND") return "ダイヤ";
-  return CANONICAL_ITEM_BY_ID.get(itemId)?.name ?? itemId;
+  return CANONICAL_ITEM_BY_ID.get(itemId)?.name ?? CANONICAL_REWARD_ALIAS_NAMES[itemId] ?? itemId;
 }
 
 export function canonicalItemEffectValue(itemId: string): number | null {

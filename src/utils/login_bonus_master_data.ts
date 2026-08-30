@@ -1,4 +1,4 @@
-import loginBonusSource from "@/domain/gameplay/canonical/data/login_bonus_20260822.json";
+import loginBonusSource from "@/domain/gameplay/canonical/data/login_bonus_20260830.json";
 import { canonicalItemName } from "@/domain/gameplay/canonical/items";
 
 export interface LoginBonusMaster {
@@ -34,12 +34,12 @@ export interface LoginBonusClaimResult {
   reward?: LoginBonusReward;
 }
 
-const FEATURED_DAYS = new Set([5, 12, 15, 20, 26, 29, 30]);
+const FEATURED_DAYS = new Set([7, 14, 21, 30]);
 
 export const DEFAULT_LOGIN_BONUS_MASTERS: LoginBonusMaster[] = loginBonusSource.rewards.map((reward) => ({
   day_number: reward.day,
   item_id: reward.rewardItemId,
-  quantity: reward.rewardQty,
+  quantity: Number(reward.rewardQty),
   is_featured: FEATURED_DAYS.has(reward.day),
-  item_name: `${canonicalItemName(reward.rewardItemId)} ${reward.rewardQty.toLocaleString("ja-JP")}`,
+  item_name: `${canonicalItemName(reward.rewardItemId)} ${Number(reward.rewardQty).toLocaleString("ja-JP")}`,
 }));

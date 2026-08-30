@@ -244,7 +244,7 @@ export default function CardBattleView() {
         <div className="raid-battle-setup scroll-container" style={battleBackgroundStyle}>
           <header className="raid-battle-setup__header">
             <small>RAID BRIEFING</small>
-            <strong>制圧準備</strong>
+            <strong>BATTLE READY</strong>
           </header>
           <main className="raid-battle-setup__body">
             <section className="raid-battle-target" aria-label="レイド対象">
@@ -395,7 +395,7 @@ export default function CardBattleView() {
               disabled={setupLaunching}
               aria-busy={setupLaunching}
             >
-              {setupLaunching ? "BATTLE START" : battleMode === "PVP_PRACTICE" ? "模擬戦開始" : isTutorialBattle ? "BATTLE START" : battleMode === "PVP" ? "対戦開始" : battleMode === "GVG" ? "抗争開始" : battleMode === "RAID" ? "討伐開始" : "出撃開始"}
+              {setupLaunching ? "BATTLE START" : battleMode === "PVP_PRACTICE" ? "模擬戦開始" : isTutorialBattle ? "BATTLE START" : battleMode === "PVP" ? "対戦開始" : battleMode === "GVG" ? "GvG開始" : battleMode === "RAID" ? "討伐開始" : "出撃開始"}
             </button>
           </div>}
         </div>

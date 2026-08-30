@@ -1,0 +1,143 @@
+{
+  "version": "2026-08-30",
+  "status": "PRODUCTION_FROZEN",
+  "activeSlots": 2,
+  "respawnSeconds": 300,
+  "raidDayTimezone": "Asia/Tokyo",
+  "sameDayVariantFixed": true,
+  "multiVariantReady": true,
+  "partySize": 5,
+  "clearRewardUniqueBoundary": [
+    "raidDayKey",
+    "userId",
+    "CLEAR_REWARD"
+  ],
+  "variants": [
+    {
+      "raidVariantId": "RAID_SHINJUKU_V1",
+      "areaId": "SHINJUKU",
+      "raidName": "キングス・クラウン",
+      "maxHp": 32000000,
+      "atk": 9500,
+      "def": 6200,
+      "spd": 390,
+      "memberCharacterIds": [
+        "char_reiji_01",
+        "char_mio_01",
+        "char_takuro_01",
+        "char_leon_01",
+        "char_kageyama_01"
+      ],
+      "skillRequired": true,
+      "enabled": true
+    },
+    {
+      "raidVariantId": "RAID_SHIBUYA_V1",
+      "areaId": "SHIBUYA",
+      "raidName": "ハイスピード・スターズ",
+      "maxHp": 28000000,
+      "atk": 8800,
+      "def": 5500,
+      "spd": 470,
+      "memberCharacterIds": [
+        "char_ageha_01",
+        "char_leo_01",
+        "char_sora_01",
+        "char_reina_01",
+        "char_noa_01"
+      ],
+      "skillRequired": true,
+      "enabled": true
+    },
+    {
+      "raidVariantId": "RAID_IKEBUKURO_V1",
+      "areaId": "IKEBUKURO",
+      "raidName": "アイアンウォール",
+      "maxHp": 36000000,
+      "atk": 8200,
+      "def": 8200,
+      "spd": 340,
+      "memberCharacterIds": [
+        "char_koharu_01",
+        "char_takeshi_01",
+        "char_momoko_01",
+        "char_riki_01",
+        "char_sakura_01"
+      ],
+      "skillRequired": true,
+      "enabled": true
+    },
+    {
+      "raidVariantId": "RAID_ROPPONGI_V1",
+      "areaId": "ROPPONGI",
+      "raidName": "ロイヤル・フラッシュ",
+      "maxHp": 34000000,
+      "atk": 8700,
+      "def": 7700,
+      "spd": 390,
+      "memberCharacterIds": [
+        "char_kaede_01",
+        "char_taiga_01",
+        "char_maya_01",
+        "char_seiya_01",
+        "char_cecile_01"
+      ],
+      "skillRequired": true,
+      "enabled": true
+    },
+    {
+      "raidVariantId": "RAID_AKIHABARA_V1",
+      "areaId": "AKIHABARA",
+      "raidName": "グリッチ・コード",
+      "maxHp": 30000000,
+      "atk": 8400,
+      "def": 6500,
+      "spd": 430,
+      "memberCharacterIds": [
+        "char_karen_01",
+        "char_miyabi_01",
+        "char_alice_01",
+        "char_rui_01",
+        "char_maya_01"
+      ],
+      "skillRequired": true,
+      "enabled": true
+    },
+    {
+      "raidVariantId": "RAID_KAWASAKI_V1",
+      "areaId": "KAWASAKI",
+      "raidName": "ブレイクダウン",
+      "maxHp": 38000000,
+      "atk": 10500,
+      "def": 6000,
+      "spd": 350,
+      "memberCharacterIds": [
+        "char_go_01",
+        "char_kengo_01",
+        "char_tetsu_01",
+        "char_lucas_01",
+        "char_riki_01"
+      ],
+      "skillRequired": true,
+      "enabled": true
+    },
+    {
+      "raidVariantId": "RAID_YOKOHAMA_V1",
+      "areaId": "YOKOHAMA",
+      "raidName": "ブルー・レクイエム",
+      "maxHp": 35000000,
+      "atk": 8900,
+      "def": 7200,
+      "spd": 390,
+      "memberCharacterIds": [
+        "char_genji_01",
+        "char_long_01",
+        "char_sakura_01",
+        "char_cecile_01",
+        "char_taiga_01"
+      ],
+      "skillRequired": true,
+      "enabled": true
+    }
+  ]
+}

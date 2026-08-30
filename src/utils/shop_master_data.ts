@@ -144,7 +144,7 @@ export const SHOP_PRODUCTS_MASTER: ShopProduct[] = [
     shopType: "NORMAL",
     category: "NORMAL_ITEM",
     title: "エナジードリンク x10",
-    description: "スタミナ回復アイテム。路地裏抗争に備える極限カフェイン炭酸10本セット。",
+    description: "スタミナ回復アイテム。連続バトルに備える極限カフェイン炭酸10本セット。",
     priceCash: 500,
     priceDiamond: 50,
     items: [
@@ -170,7 +170,7 @@ export const SHOP_PRODUCTS_MASTER: ShopProduct[] = [
     shopType: "NORMAL",
     category: "NORMAL_ITEM",
     title: "エナジードリンク x100",
-    description: "スタミナ回復アイテム。抗争を有利に勝ち抜くお得な100本ケース詰め。",
+    description: "スタミナ回復アイテム。連続バトルに備えるお得な100本ケース詰め。",
     priceCash: 3500,
     priceDiamond: 350,
     items: [

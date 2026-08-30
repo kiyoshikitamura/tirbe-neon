@@ -92,9 +92,9 @@ export const STORY_EPISODES_MASTER: { [key: string]: {
     ]
   },
   area_shibuya_liberation: {
-    title: "渋谷制圧イベント: クラブ街の奪還",
+    title: "渋谷エリアイベント: クラブ街の奪還",
     intro: [
-      { speaker: "ルイ", img: "/rui_transparent_asset.png", expression: "笑顔", text: "やった！渋谷エリアの支配率で自組織が1位に躍り出たよ！渋谷ノイズを完全に制圧！" },
+      { speaker: "ルイ", img: "/rui_transparent_asset.png", expression: "笑顔", text: "やった！渋谷エリアの支配率で自組織が1位に躍り出たよ！渋谷ノイズを完全クリア！" },
       { speaker: "レイジ", img: "/reiji_transparent_asset.png", expression: "通常", text: "渋谷のクラブ街もこれで俺たちのショバだ。組織の資金源が大きく潤うな。" },
       { speaker: "チャン", img: "/chang_transparent_asset.png", expression: "真剣", text: "だが、黒曜会が黙っていないはずだ。防衛部隊の再配備を急ぐべきだな。" }
     ],
@@ -133,7 +133,7 @@ export const PROFILE_TITLES = [
   { id: "title_none", name: "称号なし", desc: "初期解放" },
   { id: "title_kabukicho_emperor", name: "歌舞伎町の覇王", desc: "Lv.15以上で解放" },
   { id: "title_neon_overlord", name: "ネオンの支配者", desc: "300ダイヤ以上所持で解放" },
-  { id: "title_gvg_champion", name: "制圧戦覇者", desc: "ギルド加入で解放" }
+  { id: "title_gvg_champion", name: "GvG覇者", desc: "ギルド加入で解放" }
 ];
 
 export function getCharacterStaticImg(name: string): string {

@@ -35,7 +35,9 @@ export default function MissionPanel() {
     setShowMissionPanel(false);
   };
 
-  const currentMissions = (missions || []).filter((m: any) => m.category === missionTab);
+  const statusOrder: Record<string, number> = { CLEAR: 0, IN_PROGRESS: 1, LOCKED: 2, CLAIMED: 3 };
+  const currentMissions = (missions || []).filter((m: any) => m.category === missionTab)
+    .sort((left: any, right: any) => (statusOrder[left.status] ?? 9) - (statusOrder[right.status] ?? 9) || Number(left.display_order || 0) - Number(right.display_order || 0));
   const clearMissionsCount = currentMissions.filter((m: any) => m.status === "CLEAR").length;
   const clearCounts = {
     DAILY: (missions || []).filter((m: any) => m.category === "DAILY" && m.status === "CLEAR").length,
@@ -62,7 +64,7 @@ export default function MissionPanel() {
         <SubTabNav
           tabs={[
             { id: "DAILY", label: "デイリー", badge: clearCounts.DAILY },
-            { id: "NORMAL", label: "シーズン", badge: clearCounts.NORMAL }
+            { id: "NORMAL", label: "ノーマル", badge: clearCounts.NORMAL }
           ]}
           activeTabId={missionTab}
           onSelect={(id) => setMissionTab(id as any)}
@@ -86,7 +88,13 @@ export default function MissionPanel() {
           {currentMissions.length === 0 ? (
             <div className="mission-empty">ミッションはありません</div>
           ) : (
-            currentMissions.map((m: any) => {
+            (missionTab === "NORMAL"
+              ? [
+                  ...currentMissions.filter((m: any) => m.status === "CLEAR"),
+                  ...currentMissions.filter((m: any) => m.status === "IN_PROGRESS" && m.displayGroup === "PROGRESS").slice(0, 5),
+                ]
+              : currentMissions.filter((m: any) => m.status !== "CLAIMED")
+            ).map((m: any) => {
               const targetValue = m.target_value || 1;
               const currentProgress = m.current_progress || 0;
               const progressPercent = Math.min(100, Math.floor((currentProgress / targetValue) * 100));
@@ -102,6 +110,7 @@ export default function MissionPanel() {
                     <div className="mission-desc">{m.description}</div>
                     <div className="mission-reward">
                       <span>REWARD</span><CanonicalItemIcon itemId={m.reward_item} alt="" className="mission-reward-art" /><strong>{canonicalMissionRewardName(String(m.reward_item || ""))} × {Number(m.reward_amount || 0).toLocaleString()}</strong>
+                      {Number(m.cashReward || 0) > 0 && <><CanonicalItemIcon itemId="CASH" alt="" className="mission-reward-art" /><strong>キャッシュ × {Number(m.cashReward).toLocaleString()}</strong></>}
                     </div>
                     
                     <div className="mission-progress-bar-container">
@@ -137,6 +146,15 @@ export default function MissionPanel() {
             })
           )}
         </div>
+        {missionTab === "NORMAL" && (["GROWTH", "BATTLE", "GUILD"] as const).map((group) => {
+          const labels = { GROWTH: "育成", BATTLE: "バトル", GUILD: "ギルド" };
+          const groupMissions = currentMissions.filter((mission: any) => mission.displayGroup === group && mission.status === "IN_PROGRESS").slice(0, 1);
+          if (!groupMissions.length) return null;
+          return <details key={group} className="mission-group">
+            <summary>{labels[group]}</summary>
+            {groupMissions.map((mission: any) => <div key={mission.id} className="mission-group-current"><strong>{mission.title}</strong><span>{mission.current_progress || 0} / {mission.target_value || 1}</span></div>)}
+          </details>;
+        })}
       </fieldset>
     </FullScreenPanel>
   );

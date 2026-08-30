@@ -1,0 +1,87 @@
+{
+  "version": "2026-08-30",
+  "preopenSpecialEnabled": false,
+  "gachas": [
+    {
+      "id": "CHAR_NORMAL",
+      "domain": "CHARACTER",
+      "kind": "NORMAL",
+      "rates": {
+        "N": 60,
+        "R": 30,
+        "SR": 9,
+        "SSR": 1
+      },
+      "cashPerPull": 100,
+      "pity": null
+    },
+    {
+      "id": "CHAR_SPECIAL",
+      "domain": "CHARACTER",
+      "kind": "SPECIAL",
+      "rates": {
+        "N": 0,
+        "R": 70,
+        "SR": 27,
+        "SSR": 3
+      },
+      "cashPerPull": 300,
+      "pity": {
+        "pulls": 200,
+        "resetOnIntermediateSsr": false
+      }
+    },
+    {
+      "id": "SKILL_NORMAL",
+      "domain": "SKILL",
+      "kind": "NORMAL",
+      "rates": {
+        "N": 50,
+        "R": 30,
+        "SR": 17,
+        "SSR": 3
+      },
+      "cashPerPull": 100,
+      "pity": null
+    },
+    {
+      "id": "SKILL_SPECIAL",
+      "domain": "SKILL",
+      "kind": "SPECIAL",
+      "rates": {
+        "N": 0,
+        "R": 60,
+        "SR": 35,
+        "SSR": 5
+      },
+      "cashPerPull": 200,
+      "pity": null
+    },
+    {
+      "id": "EQUIP_NORMAL",
+      "domain": "EQUIPMENT",
+      "kind": "NORMAL",
+      "rates": {
+        "N": 45,
+        "R": 30,
+        "SR": 20,
+        "SSR": 5
+      },
+      "cashPerPull": 100,
+      "pity": null
+    },
+    {
+      "id": "EQUIP_SPECIAL",
+      "domain": "EQUIPMENT",
+      "kind": "SPECIAL",
+      "rates": {
+        "N": 0,
+        "R": 55,
+        "SR": 38,
+        "SSR": 7
+      },
+      "cashPerPull": 200,
+      "pity": null
+    }
+  ]
+}

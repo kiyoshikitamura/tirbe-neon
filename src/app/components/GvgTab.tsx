@@ -204,7 +204,7 @@ export default function GvgTab() {
     <HubPage
       className="gvg-view"
       eyebrow="GUILD VS GUILD"
-      title="抗争（GvG）"
+      title="ギルドバトル（GvG）"
       description="連合の仲間と役割を分担し、決められた時間に敵対連合と競います。"
       status={readiness.status}
       onRetry={readiness.retry}
@@ -224,7 +224,7 @@ export default function GvgTab() {
             <Badge tone={isOfficialActive ? "danger" : "magenta"}>
               {isOfficialActive ? "BATTLE LIVE" : isGvgOpen ? "PREPARATION" : "COMING SOON"}
             </Badge>
-            <span>{isOfficialActive ? "公式マッチ終了まで" : "次の抗争開始まで"}</span>
+            <span>{isOfficialActive ? "公式マッチ終了まで" : "次のギルドバトル開始まで"}</span>
           </div>
           <strong>{isOfficialActive
             ? formatTimeLeft(new Date(officialMatch.scheduled_end_at))
@@ -232,7 +232,7 @@ export default function GvgTab() {
               ? formatTimeLeft(currentSession.nextStartsAt)
               : "--:--:--"}</strong>
         </div>
-        <p>{userGuild ? `${userGuild.name}の抗争状況` : "抗争への参加には連合への所属が必要です。"}</p>
+        <p>{userGuild ? `${userGuild.name}のギルドバトル状況` : "ギルドバトルへの参加にはギルド所属が必要です。"}</p>
       </HeroPanel>
 
       <PeriodStatus
@@ -342,7 +342,7 @@ export default function GvgTab() {
             <div className="hud-panel p-3 flex-col-gap-2" hidden>
               <div className="flex-row-space-between align-center">
                 <span className="font-size-9 font-weight-bold text-white">
-                  {isFinalDay ? "【頂上決戦】決戦日・水曜日" : `抗争 シーズン経過: ${gvgSeasonDay}日目`}
+                  {isFinalDay ? "【頂上決戦】決戦日・水曜日" : `GvG シーズン経過: ${gvgSeasonDay}日目`}
                 </span>
                 <span className="font-size-8 text-secondary">
                   ラウンド状態: <span className={gvgActiveRound > 0 ? "text-color-cyan font-weight-bold" : "text-secondary"}>
@@ -378,7 +378,7 @@ export default function GvgTab() {
                 </div>
               ) : (
                 <div className="bg-black-40 border-subtle rounded p-2 text-center font-size-8 text-secondary">
-                  現在、抗争ラウンドの開催時間外です。メンバーは「守備登録」を行い、次戦に備えてください。
+                  現在、ギルドバトルの開催時間外です。メンバーは「守備登録」を行い、次戦に備えてください。
                 </div>
               )}
             </div>
@@ -489,7 +489,7 @@ export default function GvgTab() {
           </div>
         ) : (
           <div className="battle-card border-danger text-color-danger font-size-10 text-center p-4">
-            ギルド未所属のため、抗争に参加できません。
+            ギルド未所属のため、ギルドバトルに参加できません。
           </div>
         )}
       </div>

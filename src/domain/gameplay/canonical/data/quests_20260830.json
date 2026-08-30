@@ -1,0 +1,571 @@
+{
+  "version": "2026-08-30",
+  "authority": "M6_Quest_Canonical",
+  "towns": [
+    {
+      "townId": "shinjuku",
+      "name": "新宿",
+      "displayOrder": 1
+    },
+    {
+      "townId": "shibuya",
+      "name": "渋谷",
+      "displayOrder": 2
+    },
+    {
+      "townId": "ikebukuro",
+      "name": "池袋",
+      "displayOrder": 3
+    },
+    {
+      "townId": "roppongi",
+      "name": "六本木",
+      "displayOrder": 4
+    },
+    {
+      "townId": "akihabara",
+      "name": "秋葉原",
+      "displayOrder": 5
+    },
+    {
+      "townId": "kawasaki",
+      "name": "川崎",
+      "displayOrder": 6
+    },
+    {
+      "townId": "yokohama",
+      "name": "横浜",
+      "displayOrder": 7
+    }
+  ],
+  "difficultyContracts": {
+    "EASY": {
+      "durationSec": 300,
+      "vitalityCost": 3,
+      "userExp": 100,
+      "cashReward": 0,
+      "dailyFirstClearCash": 0,
+      "rewardPoolId": "QUEST_EASY_20260830"
+    },
+    "NORMAL": {
+      "durationSec": 3600,
+      "vitalityCost": 10,
+      "userExp": 400,
+      "cashReward": 0,
+      "dailyFirstClearCash": 0,
+      "rewardPoolId": "QUEST_NORMAL_20260830"
+    },
+    "HARD": {
+      "durationSec": 10800,
+      "vitalityCost": 20,
+      "userExp": 1000,
+      "cashReward": 0,
+      "dailyFirstClearCash": 20,
+      "rewardPoolId": "QUEST_HARD_20260830"
+    }
+  },
+  "rewardPools": [
+    {
+      "rewardPoolId": "QUEST_EASY_20260830",
+      "items": [
+        {
+          "itemId": "CHAR_EXP_S",
+          "quantity": 1,
+          "probabilityBp": 10000
+        },
+        {
+          "itemId": "EQUIP_EXP_S",
+          "quantity": 1,
+          "probabilityBp": 2000
+        }
+      ]
+    },
+    {
+      "rewardPoolId": "QUEST_NORMAL_20260830",
+      "items": [
+        {
+          "itemId": "CHAR_EXP_M",
+          "quantity": 1,
+          "probabilityBp": 10000
+        },
+        {
+          "itemId": "EQUIP_EXP_M",
+          "quantity": 1,
+          "probabilityBp": 10000
+        },
+        {
+          "itemId": "SKILL_MANUAL",
+          "quantity": 1,
+          "probabilityBp": 500
+        }
+      ]
+    },
+    {
+      "rewardPoolId": "QUEST_HARD_20260830",
+      "items": [
+        {
+          "itemId": "CHAR_EXP_L",
+          "quantity": 1,
+          "probabilityBp": 10000
+        },
+        {
+          "itemId": "EQUIP_EXP_L",
+          "quantity": 1,
+          "probabilityBp": 10000
+        },
+        {
+          "itemId": "SKILL_MANUAL",
+          "quantity": 1,
+          "probabilityBp": 1200
+        },
+        {
+          "itemId": "EQUIP_LB_PART",
+          "quantity": 1,
+          "probabilityBp": 1200
+        },
+        {
+          "itemId": "NORMAL_GACHA_TICKET_RANDOM",
+          "quantity": 1,
+          "probabilityBp": 300
+        }
+      ]
+    }
+  ],
+  "quests": [
+    {
+      "questId": "QUEST_SHINJUKU_EASY",
+      "townId": "shinjuku",
+      "difficulty": "EASY",
+      "name": "歌舞伎町一番街",
+      "description": "ネオンと人波が途切れない、歌舞伎町の中心へ。",
+      "displayOrder": 1,
+      "durationSec": 300,
+      "vitalityCost": 3,
+      "userExp": 100,
+      "cashReward": 0,
+      "dailyFirstClearCash": 0,
+      "rewardPoolId": "QUEST_EASY_20260830",
+      "firstClearUserExp": 0,
+      "enemyPoolKey": "SHINJUKU_EASY",
+      "unlockCondition": {
+        "type": "OPEN"
+      },
+      "isProductionEnabled": true
+    },
+    {
+      "questId": "QUEST_SHINJUKU_NORMAL",
+      "townId": "shinjuku",
+      "difficulty": "NORMAL",
+      "name": "職安通り",
+      "description": "新宿と大久保をつなぐ、夜も流れの止まらない通り。",
+      "displayOrder": 2,
+      "durationSec": 3600,
+      "vitalityCost": 10,
+      "userExp": 400,
+      "cashReward": 0,
+      "dailyFirstClearCash": 0,
+      "rewardPoolId": "QUEST_NORMAL_20260830",
+      "firstClearUserExp": 0,
+      "enemyPoolKey": "SHINJUKU_NORMAL",
+      "unlockCondition": {
+        "type": "FIRST_CLEAR",
+        "questId": "QUEST_SHINJUKU_EASY"
+      },
+      "isProductionEnabled": true
+    },
+    {
+      "questId": "QUEST_SHINJUKU_HARD",
+      "townId": "shinjuku",
+      "difficulty": "HARD",
+      "name": "トー横前",
+      "description": "歌舞伎町の夜、人が集まり続ける一角。",
+      "displayOrder": 3,
+      "durationSec": 10800,
+      "vitalityCost": 20,
+      "userExp": 1000,
+      "cashReward": 0,
+      "dailyFirstClearCash": 20,
+      "rewardPoolId": "QUEST_HARD_20260830",
+      "firstClearUserExp": 0,
+      "enemyPoolKey": "SHINJUKU_HARD",
+      "unlockCondition": {
+        "type": "FIRST_CLEAR",
+        "questId": "QUEST_SHINJUKU_NORMAL"
+      },
+      "isProductionEnabled": true
+    },
+    {
+      "questId": "QUEST_SHIBUYA_EASY",
+      "townId": "shibuya",
+      "difficulty": "EASY",
+      "name": "センター街",
+      "description": "人と音が絶えず交差する、渋谷のストリート。",
+      "displayOrder": 4,
+      "durationSec": 300,
+      "vitalityCost": 3,
+      "userExp": 100,
+      "cashReward": 0,
+      "dailyFirstClearCash": 0,
+      "rewardPoolId": "QUEST_EASY_20260830",
+      "firstClearUserExp": 0,
+      "enemyPoolKey": "SHIBUYA_EASY",
+      "unlockCondition": {
+        "type": "OPEN"
+      },
+      "isProductionEnabled": true
+    },
+    {
+      "questId": "QUEST_SHIBUYA_NORMAL",
+      "townId": "shibuya",
+      "difficulty": "NORMAL",
+      "name": "道玄坂",
+      "description": "店の灯りと夜の人波が坂を埋める。",
+      "displayOrder": 5,
+      "durationSec": 3600,
+      "vitalityCost": 10,
+      "userExp": 400,
+      "cashReward": 0,
+      "dailyFirstClearCash": 0,
+      "rewardPoolId": "QUEST_NORMAL_20260830",
+      "firstClearUserExp": 0,
+      "enemyPoolKey": "SHIBUYA_NORMAL",
+      "unlockCondition": {
+        "type": "FIRST_CLEAR",
+        "questId": "QUEST_SHIBUYA_EASY"
+      },
+      "isProductionEnabled": true
+    },
+    {
+      "questId": "QUEST_SHIBUYA_HARD",
+      "townId": "shibuya",
+      "difficulty": "HARD",
+      "name": "宇田川町",
+      "description": "音楽とファッションが混ざり合う渋谷の一角。",
+      "displayOrder": 6,
+      "durationSec": 10800,
+      "vitalityCost": 20,
+      "userExp": 1000,
+      "cashReward": 0,
+      "dailyFirstClearCash": 20,
+      "rewardPoolId": "QUEST_HARD_20260830",
+      "firstClearUserExp": 0,
+      "enemyPoolKey": "SHIBUYA_HARD",
+      "unlockCondition": {
+        "type": "FIRST_CLEAR",
+        "questId": "QUEST_SHIBUYA_NORMAL"
+      },
+      "isProductionEnabled": true
+    },
+    {
+      "questId": "QUEST_IKEBUKURO_EASY",
+      "townId": "ikebukuro",
+      "difficulty": "EASY",
+      "name": "サンシャイン通り",
+      "description": "昼夜を問わず人が行き交う池袋のメインストリート。",
+      "displayOrder": 7,
+      "durationSec": 300,
+      "vitalityCost": 3,
+      "userExp": 100,
+      "cashReward": 0,
+      "dailyFirstClearCash": 0,
+      "rewardPoolId": "QUEST_EASY_20260830",
+      "firstClearUserExp": 0,
+      "enemyPoolKey": "IKEBUKURO_EASY",
+      "unlockCondition": {
+        "type": "OPEN"
+      },
+      "isProductionEnabled": true
+    },
+    {
+      "questId": "QUEST_IKEBUKURO_NORMAL",
+      "townId": "ikebukuro",
+      "difficulty": "NORMAL",
+      "name": "池袋西口公園",
+      "description": "駅前の喧騒から少し離れ、人が集まる広場。",
+      "displayOrder": 8,
+      "durationSec": 3600,
+      "vitalityCost": 10,
+      "userExp": 400,
+      "cashReward": 0,
+      "dailyFirstClearCash": 0,
+      "rewardPoolId": "QUEST_NORMAL_20260830",
+      "firstClearUserExp": 0,
+      "enemyPoolKey": "IKEBUKURO_NORMAL",
+      "unlockCondition": {
+        "type": "FIRST_CLEAR",
+        "questId": "QUEST_IKEBUKURO_EASY"
+      },
+      "isProductionEnabled": true
+    },
+    {
+      "questId": "QUEST_IKEBUKURO_HARD",
+      "townId": "ikebukuro",
+      "difficulty": "HARD",
+      "name": "池袋北口周辺",
+      "description": "飲食店と夜の街が広がる池袋北側のエリア。",
+      "displayOrder": 9,
+      "durationSec": 10800,
+      "vitalityCost": 20,
+      "userExp": 1000,
+      "cashReward": 0,
+      "dailyFirstClearCash": 20,
+      "rewardPoolId": "QUEST_HARD_20260830",
+      "firstClearUserExp": 0,
+      "enemyPoolKey": "IKEBUKURO_HARD",
+      "unlockCondition": {
+        "type": "FIRST_CLEAR",
+        "questId": "QUEST_IKEBUKURO_NORMAL"
+      },
+      "isProductionEnabled": true
+    },
+    {
+      "questId": "QUEST_ROPPONGI_EASY",
+      "townId": "roppongi",
+      "difficulty": "EASY",
+      "name": "六本木交差点",
+      "description": "夜が深まるほど人と車が行き交う街の中心。",
+      "displayOrder": 10,
+      "durationSec": 300,
+      "vitalityCost": 3,
+      "userExp": 100,
+      "cashReward": 0,
+      "dailyFirstClearCash": 0,
+      "rewardPoolId": "QUEST_EASY_20260830",
+      "firstClearUserExp": 0,
+      "enemyPoolKey": "ROPPONGI_EASY",
+      "unlockCondition": {
+        "type": "OPEN"
+      },
+      "isProductionEnabled": true
+    },
+    {
+      "questId": "QUEST_ROPPONGI_NORMAL",
+      "townId": "roppongi",
+      "difficulty": "NORMAL",
+      "name": "芋洗坂",
+      "description": "六本木の夜をつなぐ、店と人の流れが続く坂道。",
+      "displayOrder": 11,
+      "durationSec": 3600,
+      "vitalityCost": 10,
+      "userExp": 400,
+      "cashReward": 0,
+      "dailyFirstClearCash": 0,
+      "rewardPoolId": "QUEST_NORMAL_20260830",
+      "firstClearUserExp": 0,
+      "enemyPoolKey": "ROPPONGI_NORMAL",
+      "unlockCondition": {
+        "type": "FIRST_CLEAR",
+        "questId": "QUEST_ROPPONGI_EASY"
+      },
+      "isProductionEnabled": true
+    },
+    {
+      "questId": "QUEST_ROPPONGI_HARD",
+      "townId": "roppongi",
+      "difficulty": "HARD",
+      "name": "外苑東通り周辺",
+      "description": "夜の六本木を縦に貫く、光と車列の通り。",
+      "displayOrder": 12,
+      "durationSec": 10800,
+      "vitalityCost": 20,
+      "userExp": 1000,
+      "cashReward": 0,
+      "dailyFirstClearCash": 20,
+      "rewardPoolId": "QUEST_HARD_20260830",
+      "firstClearUserExp": 0,
+      "enemyPoolKey": "ROPPONGI_HARD",
+      "unlockCondition": {
+        "type": "FIRST_CLEAR",
+        "questId": "QUEST_ROPPONGI_NORMAL"
+      },
+      "isProductionEnabled": true
+    },
+    {
+      "questId": "QUEST_AKIHABARA_EASY",
+      "townId": "akihabara",
+      "difficulty": "EASY",
+      "name": "中央通り",
+      "description": "電飾とショップが並ぶ秋葉原のメインストリート。",
+      "displayOrder": 13,
+      "durationSec": 300,
+      "vitalityCost": 3,
+      "userExp": 100,
+      "cashReward": 0,
+      "dailyFirstClearCash": 0,
+      "rewardPoolId": "QUEST_EASY_20260830",
+      "firstClearUserExp": 0,
+      "enemyPoolKey": "AKIHABARA_EASY",
+      "unlockCondition": {
+        "type": "OPEN"
+      },
+      "isProductionEnabled": true
+    },
+    {
+      "questId": "QUEST_AKIHABARA_NORMAL",
+      "townId": "akihabara",
+      "difficulty": "NORMAL",
+      "name": "電気街口周辺",
+      "description": "駅を出た瞬間から、街の熱量が広がるエリア。",
+      "displayOrder": 14,
+      "durationSec": 3600,
+      "vitalityCost": 10,
+      "userExp": 400,
+      "cashReward": 0,
+      "dailyFirstClearCash": 0,
+      "rewardPoolId": "QUEST_NORMAL_20260830",
+      "firstClearUserExp": 0,
+      "enemyPoolKey": "AKIHABARA_NORMAL",
+      "unlockCondition": {
+        "type": "FIRST_CLEAR",
+        "questId": "QUEST_AKIHABARA_EASY"
+      },
+      "isProductionEnabled": true
+    },
+    {
+      "questId": "QUEST_AKIHABARA_HARD",
+      "townId": "akihabara",
+      "difficulty": "HARD",
+      "name": "ジャンク通り",
+      "description": "小さな店と独自のカルチャーが密集する裏通り。",
+      "displayOrder": 15,
+      "durationSec": 10800,
+      "vitalityCost": 20,
+      "userExp": 1000,
+      "cashReward": 0,
+      "dailyFirstClearCash": 20,
+      "rewardPoolId": "QUEST_HARD_20260830",
+      "firstClearUserExp": 0,
+      "enemyPoolKey": "AKIHABARA_HARD",
+      "unlockCondition": {
+        "type": "FIRST_CLEAR",
+        "questId": "QUEST_AKIHABARA_NORMAL"
+      },
+      "isProductionEnabled": true
+    },
+    {
+      "questId": "QUEST_KAWASAKI_EASY",
+      "townId": "kawasaki",
+      "difficulty": "EASY",
+      "name": "銀柳街",
+      "description": "駅前から続く、人通りの絶えないアーケード。",
+      "displayOrder": 16,
+      "durationSec": 300,
+      "vitalityCost": 3,
+      "userExp": 100,
+      "cashReward": 0,
+      "dailyFirstClearCash": 0,
+      "rewardPoolId": "QUEST_EASY_20260830",
+      "firstClearUserExp": 0,
+      "enemyPoolKey": "KAWASAKI_EASY",
+      "unlockCondition": {
+        "type": "OPEN"
+      },
+      "isProductionEnabled": true
+    },
+    {
+      "questId": "QUEST_KAWASAKI_NORMAL",
+      "townId": "kawasaki",
+      "difficulty": "NORMAL",
+      "name": "仲見世通り",
+      "description": "飲食店と夜の街の空気が混ざる川崎の一角。",
+      "displayOrder": 17,
+      "durationSec": 3600,
+      "vitalityCost": 10,
+      "userExp": 400,
+      "cashReward": 0,
+      "dailyFirstClearCash": 0,
+      "rewardPoolId": "QUEST_NORMAL_20260830",
+      "firstClearUserExp": 0,
+      "enemyPoolKey": "KAWASAKI_NORMAL",
+      "unlockCondition": {
+        "type": "FIRST_CLEAR",
+        "questId": "QUEST_KAWASAKI_EASY"
+      },
+      "isProductionEnabled": true
+    },
+    {
+      "questId": "QUEST_KAWASAKI_HARD",
+      "townId": "kawasaki",
+      "difficulty": "HARD",
+      "name": "川崎駅東口周辺",
+      "description": "駅前の光と人の流れが夜まで続くエリア。",
+      "displayOrder": 18,
+      "durationSec": 10800,
+      "vitalityCost": 20,
+      "userExp": 1000,
+      "cashReward": 0,
+      "dailyFirstClearCash": 20,
+      "rewardPoolId": "QUEST_HARD_20260830",
+      "firstClearUserExp": 0,
+      "enemyPoolKey": "KAWASAKI_HARD",
+      "unlockCondition": {
+        "type": "FIRST_CLEAR",
+        "questId": "QUEST_KAWASAKI_NORMAL"
+      },
+      "isProductionEnabled": true
+    },
+    {
+      "questId": "QUEST_YOKOHAMA_EASY",
+      "townId": "yokohama",
+      "difficulty": "EASY",
+      "name": "伊勢佐木モール",
+      "description": "店と人が連なる、横浜の長いストリート。",
+      "displayOrder": 19,
+      "durationSec": 300,
+      "vitalityCost": 3,
+      "userExp": 100,
+      "cashReward": 0,
+      "dailyFirstClearCash": 0,
+      "rewardPoolId": "QUEST_EASY_20260830",
+      "firstClearUserExp": 0,
+      "enemyPoolKey": "YOKOHAMA_EASY",
+      "unlockCondition": {
+        "type": "OPEN"
+      },
+      "isProductionEnabled": true
+    },
+    {
+      "questId": "QUEST_YOKOHAMA_NORMAL",
+      "townId": "yokohama",
+      "difficulty": "NORMAL",
+      "name": "山下公園・赤レンガ倉庫",
+      "description": "港の灯りと夜景が広がる横浜らしいウォーターフロント。",
+      "displayOrder": 20,
+      "durationSec": 3600,
+      "vitalityCost": 10,
+      "userExp": 400,
+      "cashReward": 0,
+      "dailyFirstClearCash": 0,
+      "rewardPoolId": "QUEST_NORMAL_20260830",
+      "firstClearUserExp": 0,
+      "enemyPoolKey": "YOKOHAMA_NORMAL",
+      "unlockCondition": {
+        "type": "FIRST_CLEAR",
+        "questId": "QUEST_YOKOHAMA_EASY"
+      },
+      "isProductionEnabled": true
+    },
+    {
+      "questId": "QUEST_YOKOHAMA_HARD",
+      "townId": "yokohama",
+      "difficulty": "HARD",
+      "name": "元町・中華街",
+      "description": "歴史ある街並みと夜の賑わいが重なるエリア。",
+      "displayOrder": 21,
+      "durationSec": 10800,
+      "vitalityCost": 20,
+      "userExp": 1000,
+      "cashReward": 0,
+      "dailyFirstClearCash": 20,
+      "rewardPoolId": "QUEST_HARD_20260830",
+      "firstClearUserExp": 0,
+      "enemyPoolKey": "YOKOHAMA_HARD",
+      "unlockCondition": {
+        "type": "FIRST_CLEAR",
+        "questId": "QUEST_YOKOHAMA_NORMAL"
+      },
+      "isProductionEnabled": true
+    }
+  ],
+  "unresolvedContracts": []
+}
