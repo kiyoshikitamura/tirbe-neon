@@ -1,10 +1,11 @@
 /* 全端末共通フッター (下部セーフエリア全自動フィッティング) */
 .footer-mobile {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   align-items: center;
   justify-content: space-around;
-  min-height: 56px;
-  padding: 6px 4px;
+  min-height: 54px;
+  padding: 5px max(4px, env(safe-area-inset-right)) max(5px, env(safe-area-inset-bottom)) max(4px, env(safe-area-inset-left));
   background: rgba(11, 15, 25, 0.98);
   border-top: 1px solid rgba(0, 240, 255, 0.2);
   z-index: 100;
@@ -15,14 +16,14 @@
 .footer-item {
   position: relative;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
   justify-content: center;
-  gap: 2px;
-  flex: 1;
+  gap: 0;
   min-width: 0;
+  min-height: 44px;
   padding: 4px 0;
-  opacity: 0.6;
+  opacity: 0.42;
   transition: opacity 0.2s ease, transform 0.1s ease;
 }
 
@@ -31,13 +32,13 @@
   top: 0;
   left: calc(50% + 7px);
   z-index: 2;
-  min-width: 25px;
+  min-width: 30px;
   padding: 1px 4px;
   border: 1px solid rgba(255,255,255,.5);
-  border-radius: 999px;
+  border-radius: 3px;
   color: #fff;
-  background: #e83261;
-  box-shadow: 0 0 8px rgba(232,50,97,.55);
+  background: #00aeca;
+  box-shadow: 0 0 8px rgba(0,240,255,.38);
   font-size: 8px;
   font-weight: 900;
   line-height: 1.2;
@@ -48,25 +49,13 @@
   opacity: 1;
 }
 .footer-item.upcoming { opacity: .42; cursor: default; }
-.footer-item.upcoming .footer-label { color: #b5bac4; font-size: 8px; line-height: 1.05; }
-.footer-item.upcoming .footer-label span { display: block; }
-
 .footer-icon {
-  width: 22px;
-  height: 22px;
-  min-width: 22px;
-  min-height: 22px;
+  width: 27px;
+  height: 27px;
+  min-width: 27px;
+  min-height: 27px;
   object-fit: contain;
   flex-shrink: 0;
+  filter: grayscale(.7) brightness(.78);
 }
-
-.footer-label {
-  font-size: 10px;
-  font-weight: 700;
-  color: var(--text-secondary);
-  white-space: nowrap;
-}
-
-.footer-item.active .footer-label {
-  color: var(--neon-cyan);
-}
+.footer-item.active .footer-icon { filter:drop-shadow(0 0 7px rgba(0,240,255,.72)); }

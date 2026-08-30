@@ -124,7 +124,7 @@ test("Home reveals the Town and decoded Leader as one visual on a cold load and 
 });
 
 for (const viewport of viewports) {
-  test(`production First Home preserves the compact R3 hierarchy at ${viewport.width}x${viewport.height}`, async ({ page }) => {
+  test(`production First Home follows the character-first FA hierarchy at ${viewport.width}x${viewport.height}`, async ({ page }) => {
     await page.setViewportSize(viewport);
     await openHomeScenario(page, "first-home-fresh");
 
@@ -137,23 +137,28 @@ for (const viewport of viewports) {
     await expect(page.locator(".mypage-visual-area")).not.toHaveClass(/mypage-event-raid/);
     await expect(page.locator(".header-mobile")).not.toContainText("自然回復停止");
     await expect(page.locator(".header-mobile")).toContainText("⚡");
+    await expect(page.locator(".header-mobile-power")).toContainText("総合力");
+    await expect(page.locator(".mypage-current-location")).toContainText("新宿");
+    await expect(page.locator(".mypage-sub-icons-left .sub-icon-unit")).toHaveCount(3);
+    await expect(page.locator(".mypage-sub-icons-right")).toHaveCount(0);
+    await expect(page.locator(".footer-mobile .footer-item")).toHaveCount(5);
+    await expect(page.locator(".footer-mobile .footer-label")).toHaveCount(0);
 
     const actionOrder = await page.locator(".mypage-circle-menu-area > button").evaluateAll((buttons) =>
       buttons.map((button) => button.getAttribute("aria-label") || button.querySelector("img")?.getAttribute("alt")),
     );
     expect(actionOrder).toEqual(["ギルド / GUILD", "バトル / PvP", "クエスト / QUEST", "ギルドバトル / GvGは準備中です"]);
     await expect(page.locator(".mypage-circle-menu-area")).toHaveAttribute("data-home-action-assets", "production-delivered");
-    await expect(page.locator('[data-action-slot="guild"] img')).toHaveAttribute("src", "/menu/home_main_guild.png");
-    await expect(page.locator('[data-action-slot="fight"] img')).toHaveAttribute("src", "/menu/home_main_battle_pvp.png");
-    await expect(page.locator('[data-action-slot="conquest"] img')).toHaveAttribute("src", "/menu/home_main_quest.png");
-    await expect(page.locator('[data-action-slot="war"] img')).toHaveAttribute("src", "/menu/home_main_guild_battle_gvg.png");
+    await expect(page.locator('[data-action-slot="guild"] img')).toHaveAttribute("src", "/menu/home_nav_guild.png");
+    await expect(page.locator('[data-action-slot="fight"] img')).toHaveAttribute("src", "/menu/home_nav_pvp.png");
+    await expect(page.locator('[data-action-slot="conquest"] img')).toHaveAttribute("src", "/menu/home_nav_quest.png");
+    await expect(page.locator('[data-action-slot="war"] img')).toHaveAttribute("src", "/menu/home_nav_gvg.png");
     await expect(page.getByRole("button", { name: "ギルドバトル / GvGは準備中です" })).toBeDisabled();
     const deckStyle = await page.locator(".mypage-circle-menu-area").evaluate((node) => ({
-      background: getComputedStyle(node).backgroundImage,
+      background: getComputedStyle(node).backgroundColor,
       borderAlpha: getComputedStyle(node).borderColor,
     }));
-    expect(deckStyle.background).toContain("0.27");
-    expect(Number(deckStyle.borderAlpha.match(/[\d.]+(?=\))/)?.[0] || 1)).toBeLessThanOrEqual(.08);
+    expect(deckStyle.background).toContain("0.72");
     const comingSoon = page.locator(".circle-menu-state-overlay");
     await expect(comingSoon).toHaveCSS("border-radius", "2px");
 
@@ -165,6 +170,8 @@ for (const viewport of viewports) {
       const view = document.querySelector<HTMLElement>(".mypage-view")!;
       const cta = box(".mypage-primary-cta");
       const banner = box(".mypage-event-banner-area");
+      const mainContents = box(".mypage-circle-menu-area");
+      const mainActionRects = [...document.querySelectorAll<HTMLElement>(".mypage-circle-menu-area > button")].map((node) => node.getBoundingClientRect());
       const footer = box(".footer-mobile");
       const shortcutWidth = Math.max(...[...document.querySelectorAll<HTMLElement>(".sub-icon-unit")].map((node) => node.getBoundingClientRect().width));
       const leaderNode = document.querySelector<HTMLElement>(".mypage-leader-layer.is-ssr")!;
@@ -178,6 +185,8 @@ for (const viewport of viewports) {
         viewJustify: getComputedStyle(view).justifyContent,
         ctaHeight: cta.height,
         bannerStartsAboveFooter: banner.top < footer.top,
+        bannerPrecedesMainContents: banner.bottom <= mainContents.top + 1,
+        mainActionsWithinContainer: mainActionRects.every((rect) => rect.left >= mainContents.left - 1 && rect.right <= mainContents.right + 1),
         shortcutWidth,
         horizontalOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
         ctaDetailDisplay: (() => {
@@ -198,14 +207,17 @@ for (const viewport of viewports) {
     expect(geometry.activityToVisualGap).toBeGreaterThanOrEqual(0);
     expect(geometry.viewPaddingTop).toBe(0);
     expect(geometry.viewJustify).toBe("flex-start");
-    expect(geometry.shortcutWidth).toBeLessThanOrEqual(39);
+    expect(geometry.shortcutWidth).toBeGreaterThanOrEqual(44);
+    expect(geometry.shortcutWidth).toBeLessThanOrEqual(64);
     expect(geometry.ctaHeight).toBeLessThanOrEqual(54);
     expect(geometry.ctaDetailDisplay).toBe("none");
     expect(geometry.ctaWrap).toBe("nowrap");
     expect(geometry.bannerStartsAboveFooter).toBe(true);
+    expect(geometry.bannerPrecedesMainContents).toBe(true);
+    expect(geometry.mainActionsWithinContainer).toBe(true);
     expect(geometry.horizontalOverflow).toBeLessThanOrEqual(1);
     expect(geometry.bannerFilter).toContain("brightness(1.24)");
-    expect(geometry.townBackgroundPosition).toContain("56%");
+    expect(geometry.townBackgroundPosition).toContain("52%");
     expect(geometry.ssrAuraAnimation).toContain("mypage-ssr-leader-glow");
     expect(geometry.ssrSweepAnimation).toContain("mypage-ssr-leader-sweep");
     expect(geometry.leaderAnimation).toBe("none");
@@ -235,23 +247,30 @@ test("SSR aura and sweep visibly change over a short loop without moving the Lea
   expect(second.leaderTransform).toBe(first.leaderTransform);
 });
 
-test("raid messaging only appears in the authoritative active-raid Home scenario", async ({ page }) => {
+test("raid discovery stays out of the Home stage while the authoritative raid banner remains available", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await openHomeScenario(page, "first-home-fresh");
   await expect(page.locator(".mypage-event-chip.raid")).toHaveCount(0);
   await expect(page.locator(".banner-dots .dot")).toHaveCount(2);
 
   await openHomeScenario(page, "first-home-raid");
-  await expect(page.locator(".mypage-event-chip.raid")).toBeVisible();
+  await expect(page.locator(".mypage-event-chip.raid")).toHaveCount(0);
   await expect(page.locator(".banner-dots .dot")).toHaveCount(3);
   await expect(page.locator(".mypage-live-ticker--visual")).toContainText("KAI");
   await expect(page.locator(".mypage-live-ticker--visual")).toContainText("SSRを獲得");
-  const hudDoesNotOverlap = await page.evaluate(() => {
-    const raid = document.querySelector<HTMLElement>(".mypage-event-chip.raid")!.getBoundingClientRect();
-    const power = document.querySelector<HTMLElement>(".mypage-power-panel")!.getBoundingClientRect();
-    return raid.right <= power.left;
-  });
-  expect(hudDoesNotOverlap).toBe(true);
+  await expect(page.locator(".mypage-power-panel")).toHaveCount(0);
+  await page.locator(".mypage-current-location").click();
+  await expect(page.getByRole("dialog", { name: "拠点移動" }).getByText("強敵襲来", { exact: true })).toBeVisible();
+});
+
+test("Header MENU owns utilities and Footer stays icon-only", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await openHomeScenario(page, "first-home-fresh");
+  await page.getByRole("button", { name: "MENU" }).click();
+  const menu = page.getByRole("dialog", { name: "ホームメニュー" });
+  for (const label of ["設定", "お知らせ", "プレゼント", "バッグ"]) await expect(menu.getByRole("button", { name: label })).toBeVisible();
+  await expect(page.locator(".footer-mobile .footer-item")).toHaveCount(5);
+  await expect(page.locator(".footer-mobile .footer-label")).toHaveCount(0);
 });
 
 test("SSR leader effect keeps a static aura when reduced motion is requested", async ({ page }) => {

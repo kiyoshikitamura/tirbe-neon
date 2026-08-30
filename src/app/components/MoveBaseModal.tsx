@@ -5,7 +5,7 @@ import CanonicalDialog from "./ui/CanonicalDialog";
 import "./MoveBaseModal.css";
 
 export default function MoveBaseModal() {
-  const { showMoveBaseModal, setShowMoveBaseModal, currentBaseId, handleMoveBase, movingAreaLoading, playCyberSe } = useGame();
+  const { showMoveBaseModal, setShowMoveBaseModal, currentBaseId, handleMoveBase, movingAreaLoading, playCyberSe, isRaidActive, raidBossBaseId } = useGame();
 
   if (!showMoveBaseModal) return null;
 
@@ -32,6 +32,10 @@ export default function MoveBaseModal() {
                   if (moved) setShowMoveBaseModal(false);
                 }}
               >
+                <span className="move-base-visual">
+                  <img src={`/bg/bg_street_${base.townId}.png`} alt="" aria-hidden="true" />
+                  {isRaidActive && raidBossBaseId === base.townId && <b className="move-base-raid-badge">強敵襲来</b>}
+                </span>
                 <div className="move-base-btn-content">
                   <span className="move-base-name">{base.name}</span>
                   <span className="move-base-sub">{movingAreaLoading ? "移動中…" : "この拠点へ移動"}</span>

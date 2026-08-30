@@ -7,6 +7,7 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 412, height: 915 }
     const fixture = page.locator("[data-gacha-production-fixture]");
     await expect(fixture).toBeVisible();
     await expect(page.getByLabel("無料ガチャあり")).toBeVisible();
+    await expect(page.getByLabel("無料ガチャあり")).toHaveText("FREE");
     await expect(page.locator(".gacha-product-banner img")).toHaveAttribute("src", /gacha_normal_character/);
     await expect(page.getByRole("button", { name: "本日10連無料" })).toBeVisible();
     await expect(page.locator(".gacha-category-tabs .free-badge-dot")).toHaveCount(3);

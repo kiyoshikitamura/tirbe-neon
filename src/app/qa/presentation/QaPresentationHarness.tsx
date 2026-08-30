@@ -10,6 +10,7 @@ import GachaTab from "@/app/components/GachaTab";
 import CommonModals from "@/app/components/CommonModals";
 import Header from "@/app/components/Header";
 import HomeTab from "@/app/components/HomeTab";
+import MoveBaseModal from "@/app/components/MoveBaseModal";
 import CharacterPresentation from "@/app/components/character/CharacterPresentation";
 import PageShell from "@/app/components/ui/PageShell";
 import TypewriterText from "@/app/components/tutorial/TypewriterText";
@@ -365,6 +366,7 @@ type HomeScenario = "first-home-fresh" | "first-home-identity-loading" | "first-
 
 function ProductionHomeFixture({ scenario }: { scenario: HomeScenario }) {
   const [openedProfileId, setOpenedProfileId] = useState<string | null>(null);
+  const [showMoveBaseModal, setShowMoveBaseModal] = useState(false);
   const identityStartsPending = scenario === "first-home-identity-loading";
   const [identityAuthorityReady, setIdentityAuthorityReady] = useState(!identityStartsPending);
   const authorityStartsPending = scenario === "first-home-guild-in" || scenario === "first-home-guild-out" || scenario === "first-home-guild-pending";
@@ -417,6 +419,7 @@ function ProductionHomeFixture({ scenario }: { scenario: HomeScenario }) {
     totalPowerLoading: false,
     monthlyPassActive: false,
     isRaidActive: raidActive,
+    raidBossBaseId: raidActive ? "shinjuku" : null,
     session: null,
     activePatrols: [],
     onboardingState: { tutorial_step: "AUTHENTICATION" },
@@ -436,7 +439,10 @@ function ProductionHomeFixture({ scenario }: { scenario: HomeScenario }) {
     setShowInboxPanel: noop,
     setInboxPanelTab: noop,
     setShowSettingsPanel: noop,
-    setShowMoveBaseModal: noop,
+    showMoveBaseModal,
+    setShowMoveBaseModal,
+    movingAreaLoading: false,
+    handleMoveBase: async () => true,
     setShowTribeChatPanel: noop,
     navigateTab: noop,
     playCyberSe: noop,
@@ -456,6 +462,7 @@ function ProductionHomeFixture({ scenario }: { scenario: HomeScenario }) {
     <div className="qa-production-home" data-home-scenario={scenario} data-raid-active={String(raidActive)} data-guild-joined={String(guildJoined)} data-cta-authority-ready={String(ctaAuthorityReady)} data-identity-authority-ready={String(identityAuthorityReady)}>
       <PageShell header={<Header />} footer={<Footer />}>
         <HomeTab qaState={{ socialActivities: activities, funnelMilestones: milestones, ctaAuthorityReady }} />
+        <MoveBaseModal />
         {openedProfileId && <output data-opened-profile-id={openedProfileId} />}
       </PageShell>
     </div>

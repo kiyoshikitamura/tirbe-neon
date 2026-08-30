@@ -10,10 +10,9 @@ export default function Footer() {
 
   const navItems = [
     { id: "home", label: "マイページ", icon: "/ui/icon_footer_mypage.png" },
-    { id: "guild", label: "ギルド", icon: "/ui/icon_footer_guild.png" },
+    { id: "bbs", label: "コミュニティ", icon: "/ui/icon_community.png" },
     { id: "character", label: "キャラ", icon: "/ui/icon_footer_character.png" },
     { id: "gacha", label: "ガチャ", icon: "/ui/icon_footer_gacha.png" },
-    { id: "patrol", label: "クエスト", icon: "/ui/icon_map.png" },
     { id: "shop-upcoming", label: "ショップ\n準備中", icon: "/ui/icon_footer_shop.png", upcoming: true },
   ];
 
@@ -34,8 +33,7 @@ export default function Footer() {
             }}
           >
             <img src={item.icon} alt={item.label} className="footer-icon" />
-            {item.id === "gacha" && hasFreeGacha && <span className="footer-notification-badge" aria-label="無料ガチャあり">無料</span>}
-            <span className="footer-label">{item.label.split("\n").map((line) => <React.Fragment key={line}><span>{line}</span></React.Fragment>)}</span>
+            {item.id === "gacha" && hasFreeGacha && <span className="footer-notification-badge" aria-label="無料ガチャあり">FREE</span>}
           </button>
         );
       })}

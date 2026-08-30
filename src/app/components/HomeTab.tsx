@@ -100,15 +100,9 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
     identityLeaderAuthorityReady,
     refreshIdentityLeaderAuthority,
     unreadMissionsCount,
-    unclaimedPresentsCount,
     guildChats,
     chatUnreadCounts,
-    bbsUnreadTotal,
-    dmUnreadTotal,
     setShowMissionPanel,
-    setShowInboxPanel,
-    setInboxPanelTab,
-    setShowSettingsPanel,
     setShowMoveBaseModal,
     setShowTribeChatPanel,
     navigateTab,
@@ -118,9 +112,6 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
     ownedTitles,
     interiorItem,
     equippedFrontEffect,
-    totalPower,
-    totalPowerLoading,
-    monthlyPassActive,
     isRaidActive,
     session,
     activePatrols,
@@ -377,70 +368,28 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
   // チャットプレビュー最新1行
   const latestMessage = (guildChats || []).length > 0 ? guildChats[guildChats.length - 1] : null;
   const unreadChatCount = Number(chatUnreadCounts?.GLOBAL || 0) + Number(chatUnreadCounts?.GUILD || 0);
-  const unreadCommunityCount = unreadChatCount + Number(bbsUnreadTotal || 0) + Number(dmUnreadTotal || 0);
 
-  // 🚀 動的拡張性: 左右小アイコン定義配列 (将来の新機能追加も配列追加で即座に対応)
-  const leftSubIcons = [
+  const miniNavigationItems = [
     {
       id: "mission",
       label: "ミッション",
-      icon: "/ui/icon_mission.png",
+      icon: "/menu/home_nav_mission.png",
       badge: unreadMissionsCount,
       onClick: () => setShowMissionPanel(true)
     },
     {
-      id: "community",
-      label: "コミュニティ",
-      icon: "/ui/icon_community.png",
-      badge: unreadCommunityCount,
-      onClick: () => navigateTab("bbs")
-    },
-    {
       id: "ranking",
       label: "ランキング",
-      icon: "/ui/icon_ranking.png",
+      icon: "/menu/home_nav_ranking.png",
       onClick: () => navigateTab("ranking")
-    }
-  ];
-
-  const rightSubIcons = [
-    {
-      id: "bag",
-      label: "マイバッグ",
-      icon: "/ui/icon_bag.png",
-      onClick: () => navigateTab("bag")
-    },
-    {
-      id: "news",
-      label: "お知らせ",
-      icon: "/ui/icon_news.png",
-      onClick: () => { setShowInboxPanel(true); setInboxPanelTab("news"); }
-    },
-    {
-      id: "present",
-      label: "プレゼント",
-      icon: "/ui/icon_present.png",
-      badge: unclaimedPresentsCount,
-      onClick: () => { setShowInboxPanel(true); setInboxPanelTab("presents"); }
-    },
-    {
-      id: "settings",
-      label: "設定",
-      icon: "/ui/icon_settings.png",
-      onClick: () => setShowSettingsPanel(true)
     },
     {
       id: "raid",
       label: "レイド",
-      icon: "/ui/icon_raid.png",
+      icon: "/menu/home_nav_raid.png",
       onClick: () => navigateTab("raid")
     }
   ];
-
-  // Ranking remains available below Community as a direct daily route. The
-  // power panel is an additional contextual route, not its replacement.
-  const visibleLeftSubIcons = leftSubIcons;
-  const visibleRightSubIcons = rightSubIcons.filter((item) => item.id !== "raid");
 
   const latestActivity = socialActivities[0];
   const activityText = latestActivity ? activityDescription(latestActivity) : null;
@@ -523,72 +472,17 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
         {/* 背景グラデーションオーバーレイ */}
         <div className="mypage-visual-overlay" />
 
-        {/* 最上段HUD (拠点情報オーバーレイ) */}
-        <div className="mypage-base-overlay">
-          <div className="mypage-base-overlay-info">
-            <span className="mypage-base-overlay-label">拠点</span>
-            <span className="mypage-base-overlay-name">{baseName}</span>
-          </div>
-          <button
-            className="mypage-base-overlay-move active-scale-effect"
-            onClick={() => { setShowMoveBaseModal(true); playCyberSe("click"); }}
-          >
-            <img src="/ui/icon_map.png" alt="拠点" className="overlay-map-icon" />
-            拠点移動
-          </button>
-        </div>
-        <div className="mypage-secondary-hud">
-          {homeEventState !== "calm" && (
-            <button
-              className={`mypage-event-chip ${homeEventState} active-scale-effect`}
-              onClick={() => { navigateTab("raid"); playCyberSe("click"); }}
-            >
-              ⚠ レイド開催中
-            </button>
-          )}
+        <button
+          type="button"
+          className="mypage-current-location active-scale-effect"
+          onClick={() => { setShowMoveBaseModal(true); playCyberSe("click"); }}
+          aria-label={`${baseName}から拠点移動を開く`}
+        >
+          <span>{baseName}</span><small>{currentBase.file.toUpperCase()}</small><b aria-hidden="true">›</b>
+        </button>
 
-          {/* 総合力 表示パネル (HUD 2段目右) */}
-          <div
-            className="mypage-power-panel active-scale-effect"
-            role="button"
-            tabIndex={0}
-            aria-label="総合力ランキングを開く"
-            onClick={() => { navigateTab("ranking"); playCyberSe("click"); }}
-            onKeyDown={(event) => {
-              if (event.key === "Enter" || event.key === " ") {
-                navigateTab("ranking");
-                playCyberSe("click");
-              }
-            }}
-          >
-            <span className="mypage-power-label">総合力</span>
-            <span className={`mypage-power-val${totalPowerLoading ? " is-loading" : ""}`}>
-              {totalPowerLoading ? "—" : totalPower.toLocaleString()}
-            </span>
-            <span className="mypage-power-rank-link">順位</span>
-          </div>
-        </div>
-
-        {/* 左側小アイコン群 (動的配列レンダリング) */}
         <div className="mypage-sub-icons-left">
-          {visibleLeftSubIcons.map((item) => (
-            <button
-              key={item.id}
-              className="sub-icon-unit active-scale-effect"
-              onClick={() => { item.onClick(); playCyberSe("click"); }}
-            >
-              <img src={item.icon} alt={item.label} className="sub-png-icon" />
-              <span className="sub-icon-label">{item.label}</span>
-              {item.badge && item.badge > 0 ? (
-                <span className="small-badge-alert">{item.badge}</span>
-              ) : null}
-            </button>
-          ))}
-        </div>
-
-        {/* 右側小アイコン群 (動的配列レンダリング) */}
-        <div className="mypage-sub-icons-right">
-          {visibleRightSubIcons.map((item) => (
+          {miniNavigationItems.map((item) => (
             <button
               key={item.id}
               className="sub-icon-unit active-scale-effect"
@@ -634,35 +528,7 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
         )}
       </div>
 
-      {/* Characterを主役に保つHome FA Glass Deck */}
-      <nav className="mypage-circle-menu-area" data-home-action-assets="production-delivered" aria-label="メインナビゲーション">
-        {HOME_ACTION_PRESENTATION_SLOTS.map((action) => {
-          const upcoming = action.exposure === "UPCOMING";
-          return (
-            <button
-              key={action.id}
-              className={`circle-menu-btn ${action.id} ${upcoming ? "upcoming" : "active-scale-effect"}`}
-              disabled={upcoming}
-              aria-label={upcoming ? `${action.label}は準備中です` : action.label}
-              data-action-slot={action.id}
-              data-asset-delivery={action.deliveryStatus.toLowerCase()}
-              onClick={upcoming ? undefined : () => { if (action.destination) navigateTab(action.destination); playCyberSe("click"); }}
-            >
-              <img src={action.assetPath} alt="" className="circle-menu-img" aria-hidden="true" />
-              {action.id === "conquest" && completedPatrolsCount > 0 && <span className="circle-menu-alert-badge">{completedPatrolsCount}</span>}
-              {upcoming && <span className="circle-menu-state-overlay">準備中</span>}
-            </button>
-          );
-        })}
-      </nav>
-
       <div className="mypage-lower-content">
-        {primaryCta && <button className="mypage-primary-cta semantic-cta semantic-cta--primary active-scale-effect" onClick={() => void openPrimaryCta()} disabled={activationHandoffPending} aria-busy={activationHandoffPending}>
-          <strong>{activationHandoffPending ? "確認中…" : primaryCta.title}</strong>
-          <b aria-hidden="true">›</b>
-        </button>}
-        {/* 月額VIPパスバナー */}
-        {/* 3. イベントバナーエリア (大ボタン直下) */}
         {visibleBanners.length > 0 && <div className="mypage-event-banner-area">
           <div className="banner-slide-wrapper">
             <button
@@ -694,6 +560,34 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
             ))}
           </div>
         </div>}
+
+        <nav className="mypage-circle-menu-area" data-home-action-assets="production-delivered" aria-label="メインコンテンツ">
+          {HOME_ACTION_PRESENTATION_SLOTS.map((action) => {
+            const upcoming = action.exposure === "UPCOMING";
+            const [jaLabel, enLabel] = action.label.split(" / ");
+            return (
+              <button
+                key={action.id}
+                className={`circle-menu-btn ${action.id} ${upcoming ? "upcoming" : "active-scale-effect"}`}
+                disabled={upcoming}
+                aria-label={upcoming ? `${action.label}は準備中です` : action.label}
+                data-action-slot={action.id}
+                data-asset-delivery={action.deliveryStatus.toLowerCase()}
+                onClick={upcoming ? undefined : () => { if (action.destination) navigateTab(action.destination); playCyberSe("click"); }}
+              >
+                <img src={action.assetPath} alt="" className="circle-menu-img" aria-hidden="true" />
+                <span className="circle-menu-label"><strong>{jaLabel}</strong><small>{enLabel}</small></span>
+                {action.id === "conquest" && completedPatrolsCount > 0 && <span className="circle-menu-alert-badge">{completedPatrolsCount}</span>}
+                {upcoming && <span className="circle-menu-state-overlay">準備中</span>}
+              </button>
+            );
+          })}
+        </nav>
+
+        {primaryCta && <button className="mypage-primary-cta semantic-cta semantic-cta--primary active-scale-effect" onClick={() => void openPrimaryCta()} disabled={activationHandoffPending} aria-busy={activationHandoffPending}>
+          <strong>{activationHandoffPending ? "確認中…" : primaryCta.title}</strong>
+          <b aria-hidden="true">›</b>
+        </button>}
 
         {/* 4. 1行チャットプレビュー ＆ 暗号メッセージアプリ『トライブ』起動 */}
         <div className="mypage-chat-preview-area">
