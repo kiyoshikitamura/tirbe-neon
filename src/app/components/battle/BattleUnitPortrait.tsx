@@ -134,6 +134,7 @@ export default function BattleUnitPortrait({
     >
       <div className="battle-unit-art">
         <CharacterPresentation src={imageSrc} alt={participant.name} variant="battle" rarity={rarity || participant.rarity} frameKind="character" metadata={false} className={`character-presentation-battle-${frame}`} />
+        {reaction && <BattleTargetReaction group={reaction} side={side} />}
         {participant.isDead && <span className="battle-unit-defeated">戦闘不能</span>}
       </div>
 
@@ -145,7 +146,6 @@ export default function BattleUnitPortrait({
         </div>
       )}
       {!reaction && impactOverlay}
-      {reaction && <BattleTargetReaction group={reaction} side={side} />}
       {skillCue && <div className="battle-unit-skill-cue">{skillCue}</div>}
 
       <div className={`battle-unit-meta ${frame === "action" ? "is-action-identity" : ""}`}>

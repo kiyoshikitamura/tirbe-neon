@@ -25,6 +25,8 @@ import {
   battlePresentationImpactAt,
   battlePresentationTier,
   buildBattlePresentationUnit,
+  reconcileBattleHpFromReplay,
+  waitForRenderedBattleHpParity,
   type BattleActionPresentation,
 } from "@/domain/presentation/battlePresentationUnit";
 import { resolveBattleSkillLabel, safeBattleCharacterName } from "@/domain/presentation/battleSkillLabels";
@@ -1999,7 +2001,7 @@ export function useBattle(options: UseBattleOptions) {
               ? followsFinalHit ? 260 : 180
               : 80;
       const replayDelay = delay;
-      const timer = setTimeout(() => {
+      const timer = setTimeout(async () => {
         const payload = replayEvent.payload;
         const actorId = String(payload.actorId ?? "");
         const targetId = String(payload.targetId ?? "");
@@ -2273,6 +2275,25 @@ export function useBattle(options: UseBattleOptions) {
           setEnemyPartyStates(nextEnemies);
           setBattleLog((previous) => [...previous, `${target?.name ?? targetId}は戦闘不能。`]);
         } else if (replayEvent.type === "RESULT") {
+          // RESULT may follow the final grouped impact before React's HP width
+          // transition has visually settled. Re-project canonical replay HP,
+          // then keep the field mounted until DOM value + rendered bar agree.
+          const canonicalPlayers = reconcileBattleHpFromReplay(
+            playerPartyStatesRef.current,
+            authoritativeEvents,
+            authoritativeEventIndex,
+          );
+          const canonicalEnemies = reconcileBattleHpFromReplay(
+            enemyPartyStatesRef.current,
+            authoritativeEvents,
+            authoritativeEventIndex,
+          );
+          playerPartyStatesRef.current = canonicalPlayers;
+          enemyPartyStatesRef.current = canonicalEnemies;
+          setPlayerPartyStates(canonicalPlayers);
+          setEnemyPartyStates(canonicalEnemies);
+          const hpParity = await waitForRenderedBattleHpParity([...canonicalPlayers, ...canonicalEnemies]);
+          if (hpParity && !hpParity.parity) return;
           clearPresentationTimers();
           setActionPresentation(null);
           setActiveSkillCutIn(null);

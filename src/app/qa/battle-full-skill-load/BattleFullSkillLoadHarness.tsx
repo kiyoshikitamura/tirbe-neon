@@ -12,6 +12,8 @@ import {
   battlePresentationImpactAt,
   battlePresentationTier,
   buildBattlePresentationUnit,
+  reconcileBattleHpFromReplay,
+  waitForRenderedBattleHpParity,
   type BattleActionPresentation,
 } from "@/domain/presentation/battlePresentationUnit";
 import "./battle-full-skill-load.css";
@@ -115,8 +117,16 @@ export default function BattleFullSkillLoadHarness() {
     setEnemies(nextEnemies);
   }, []);
 
-  const enterResult = useCallback((winner: "PLAYER" | "ENEMY") => {
+  const enterResult = useCallback(async (winner: "PLAYER" | "ENEMY") => {
     clearTimers();
+    const canonicalPlayers = reconcileBattleHpFromReplay(playerRef.current, replay.events);
+    const canonicalEnemies = reconcileBattleHpFromReplay(enemyRef.current, replay.events);
+    playerRef.current = canonicalPlayers;
+    enemyRef.current = canonicalEnemies;
+    setPlayers(canonicalPlayers);
+    setEnemies(canonicalEnemies);
+    const hpParity = await waitForRenderedBattleHpParity([...canonicalPlayers, ...canonicalEnemies]);
+    if (hpParity && !hpParity.parity) return;
     setOutcome(winner === "PLAYER" ? "VICTORY" : "DEFEAT");
     setSkillCutIn(null);
     setTargetLine(null);
@@ -128,7 +138,7 @@ export default function BattleFullSkillLoadHarness() {
     setBattleState("ENDING");
     schedule(() => setBattleState("OUTCOME"), 760);
     schedule(() => setBattleState("RESULT"), 1740);
-  }, [clearTimers, schedule]);
+  }, [clearTimers, replay.events, schedule]);
 
   const reset = useCallback(() => {
     clearTimers();
@@ -287,7 +297,7 @@ export default function BattleFullSkillLoadHarness() {
     }
 
     if (event.type === "RESULT") {
-      enterResult(payload.winner === "PLAYER" ? "PLAYER" : "ENEMY");
+      void enterResult(payload.winner === "PLAYER" ? "PLAYER" : "ENEMY");
       return;
     }
 
@@ -301,7 +311,7 @@ export default function BattleFullSkillLoadHarness() {
   };
   const skip = () => {
     setSkipPending(true);
-    schedule(() => { setSkipPending(false); enterResult(replay.winner); }, 240);
+    schedule(() => { setSkipPending(false); void enterResult(replay.winner); }, 240);
   };
   const context = {
     battleMode: "PVP_PRACTICE",
