@@ -526,6 +526,7 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
             <div className={`front-effect-particle ${equippedFrontEffect}`} />
           </div>
         )}
+        <div className="mypage-stage-transition" aria-hidden="true" />
       </div>
 
       <div className="mypage-lower-content">

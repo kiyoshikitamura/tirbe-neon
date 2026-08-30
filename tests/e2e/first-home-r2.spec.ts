@@ -188,6 +188,8 @@ for (const viewport of viewports) {
       const cta = box(".mypage-primary-cta");
       const banner = box(".mypage-event-banner-area");
       const mainContents = box(".mypage-circle-menu-area");
+      const stageTransition = box(".mypage-stage-transition");
+      const lowerContent = document.querySelector<HTMLElement>(".mypage-lower-content")!;
       const mainActionRects = [...document.querySelectorAll<HTMLElement>(".mypage-circle-menu-area > button")].map((node) => node.getBoundingClientRect());
       const footer = box(".footer-mobile");
       const shortcutWidth = Math.max(...[...document.querySelectorAll<HTMLElement>(".sub-icon-unit")].map((node) => node.getBoundingClientRect().width));
@@ -204,6 +206,17 @@ for (const viewport of viewports) {
         bannerStartsAboveFooter: banner.top < footer.top,
         mainContentsPrecedesBanner: mainContents.bottom <= banner.top + 1,
         mainContentsHeight: mainContents.height,
+        stageToMainGap: mainContents.top - visual.bottom,
+        visualBottom: visual.bottom,
+        lowerContentTop: lowerContent.getBoundingClientRect().top,
+        lowerPaddingTop: getComputedStyle(lowerContent).paddingTop,
+        lowerMarginTop: getComputedStyle(lowerContent).marginTop,
+        mainMarginTop: getComputedStyle(document.querySelector<HTMLElement>(".mypage-circle-menu-area")!).marginTop,
+        stageTransitionHeight: stageTransition.height,
+        stageTransitionBottom: visual.bottom - stageTransition.bottom,
+        stageTransitionBackground: getComputedStyle(document.querySelector<HTMLElement>(".mypage-stage-transition")!).backgroundImage,
+        stageTransitionPointerEvents: getComputedStyle(document.querySelector<HTMLElement>(".mypage-stage-transition")!).pointerEvents,
+        leaderMask: getComputedStyle(leaderNode).maskImage || getComputedStyle(leaderNode).webkitMaskImage,
         mainActionsWithinContainer: mainActionRects.every((rect) => rect.left >= mainContents.left - 1 && rect.right <= mainContents.right + 1),
         mainContentBounds: { left: mainContents.left, right: mainContents.right },
         mainActionBounds: mainActionRects.map((rect) => ({ left: rect.left, right: rect.right })),
@@ -251,6 +264,18 @@ for (const viewport of viewports) {
     expect(geometry.bannerStartsAboveFooter).toBe(true);
     expect(geometry.mainContentsPrecedesBanner).toBe(true);
     expect(geometry.mainContentsHeight).toBeLessThanOrEqual(70);
+    expect(geometry.stageToMainGap).toBeGreaterThanOrEqual(0);
+    expect(geometry.stageToMainGap, JSON.stringify(geometry)).toBeLessThanOrEqual(1);
+    expect(geometry.lowerContentTop).toBe(geometry.visualBottom);
+    expect(geometry.lowerPaddingTop).toBe("0px");
+    expect(geometry.lowerMarginTop).toBe("0px");
+    expect(geometry.mainMarginTop).toBe("0px");
+    expect(geometry.stageTransitionHeight).toBeGreaterThanOrEqual(40);
+    expect(geometry.stageTransitionHeight).toBeLessThanOrEqual(60);
+    expect(Math.abs(geometry.stageTransitionBottom)).toBeLessThanOrEqual(1);
+    expect(geometry.stageTransitionBackground).toContain("linear-gradient");
+    expect(geometry.stageTransitionPointerEvents).toBe("none");
+    expect(geometry.leaderMask).toContain("linear-gradient");
     expect(geometry.mainActionsWithinContainer, JSON.stringify({ container: geometry.mainContentBounds, actions: geometry.mainActionBounds })).toBe(true);
     expect(Math.max(...geometry.mainActionWidths) - Math.min(...geometry.mainActionWidths), JSON.stringify({ widths: geometry.mainActionWidths, transforms: geometry.mainActionTransforms })).toBeLessThanOrEqual(1);
     expect(geometry.mainActionBackgrounds.every((background) => background === "rgba(0, 0, 0, 0)"), JSON.stringify(geometry.mainActionBackgrounds)).toBe(true);
@@ -320,6 +345,7 @@ test("Header MENU owns utilities and Footer uses compact Japanese labels", async
     const level = document.querySelector<HTMLElement>(".header-mobile-level-badge")!;
     const power = document.querySelector<HTMLElement>(".header-mobile-power strong")!;
     const menuButton = document.querySelector<HTMLElement>(".header-mobile-menu-button")!;
+    const menuBadge = document.querySelector<HTMLElement>(".header-mobile-menu-badge")!;
     const userName = user.querySelector<HTMLElement>("strong")!;
     const initialHeight = row.getBoundingClientRect().height;
     userName.textContent = "とても長いプレイヤー表示名テスト";
@@ -329,12 +355,20 @@ test("Header MENU owns utilities and Footer uses compact Japanese labels", async
     const userRect = user.getBoundingClientRect();
     const progressionRect = progression.getBoundingClientRect();
     const menuRect = menuButton.getBoundingClientRect();
+    const badgeRect = menuBadge.getBoundingClientRect();
+    const rowRect = row.getBoundingClientRect();
     return {
       initialHeight,
       finalHeight: row.getBoundingClientRect().height,
       userClearsProgression: userRect.right <= progressionRect.left + 1,
       progressionClearsMenu: progressionRect.right <= menuRect.left + 1,
       menuWithinViewport: menuRect.right <= document.documentElement.clientWidth,
+      menuSafeTop: menuRect.top - rowRect.top,
+      menuSafeRight: rowRect.right - menuRect.right,
+      menuWidth: menuRect.width,
+      menuHeight: menuRect.height,
+      badgeInsideRow: badgeRect.top >= rowRect.top && badgeRect.right <= rowRect.right,
+      badgeInsideButton: badgeRect.top >= menuRect.top && badgeRect.right <= menuRect.right,
       levelWrap: getComputedStyle(level).whiteSpace,
       powerWrap: getComputedStyle(power.parentElement!).whiteSpace,
       numericVariant: getComputedStyle(level).fontVariantNumeric,
@@ -346,6 +380,12 @@ test("Header MENU owns utilities and Footer uses compact Japanese labels", async
   expect(headerGeometry.userClearsProgression).toBe(true);
   expect(headerGeometry.progressionClearsMenu).toBe(true);
   expect(headerGeometry.menuWithinViewport).toBe(true);
+  expect(headerGeometry.menuSafeTop).toBeGreaterThanOrEqual(1);
+  expect(headerGeometry.menuSafeRight).toBeGreaterThanOrEqual(2);
+  expect(headerGeometry.menuWidth).toBeLessThanOrEqual(44);
+  expect(headerGeometry.menuHeight).toBeLessThanOrEqual(38);
+  expect(headerGeometry.badgeInsideRow).toBe(true);
+  expect(headerGeometry.badgeInsideButton).toBe(true);
   expect(headerGeometry.levelWrap).toBe("nowrap");
   expect(headerGeometry.powerWrap).toBe("nowrap");
   expect(headerGeometry.numericVariant).toContain("tabular-nums");
@@ -364,9 +404,9 @@ test("Header MENU owns utilities and Footer uses compact Japanese labels", async
       iconSizes: icons.map((icon) => ({ width: icon.width, height: icon.height })),
     };
   });
-  expect(menuGeometry.width).toBeLessThanOrEqual(260);
-  expect(menuGeometry.cellHeights.every((height) => height <= 72)).toBe(true);
-  expect(menuGeometry.iconSizes.every((size) => size.width <= 30 && size.height <= 30)).toBe(true);
+  expect(menuGeometry.width).toBeLessThanOrEqual(232);
+  expect(menuGeometry.cellHeights.every((height) => height <= 60)).toBe(true);
+  expect(menuGeometry.iconSizes.every((size) => size.width <= 22 && size.height <= 22)).toBe(true);
   await expect(page.locator(".footer-mobile .footer-item")).toHaveCount(5);
   await expect(page.locator(".footer-mobile .footer-label")).toHaveText(["マイページ", "コミュニティ", "キャラ", "ガチャ", "ショップ"]);
 });
