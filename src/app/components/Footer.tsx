@@ -13,7 +13,7 @@ export default function Footer() {
     { id: "bbs", label: "コミュニティ", icon: "/ui/icon_community.png" },
     { id: "character", label: "キャラ", icon: "/ui/icon_footer_character.png" },
     { id: "gacha", label: "ガチャ", icon: "/ui/icon_footer_gacha.png" },
-    { id: "shop-upcoming", label: "ショップ\n準備中", icon: "/ui/icon_footer_shop.png", upcoming: true },
+    { id: "shop-upcoming", label: "ショップ", icon: "/ui/icon_footer_shop.png", upcoming: true },
   ];
 
   return (
@@ -33,6 +33,7 @@ export default function Footer() {
             }}
           >
             <img src={item.icon} alt={item.label} className="footer-icon" />
+            <span className="footer-label">{item.label}</span>
             {item.id === "gacha" && hasFreeGacha && <span className="footer-notification-badge" aria-label="無料ガチャあり">FREE</span>}
           </button>
         );

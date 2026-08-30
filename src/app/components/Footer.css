@@ -4,8 +4,8 @@
   grid-template-columns: repeat(5, minmax(0, 1fr));
   align-items: center;
   justify-content: space-around;
-  min-height: 54px;
-  padding: 5px max(4px, env(safe-area-inset-right)) max(5px, env(safe-area-inset-bottom)) max(4px, env(safe-area-inset-left));
+  min-height: 58px;
+  padding: 4px max(4px, env(safe-area-inset-right)) max(4px, env(safe-area-inset-bottom)) max(4px, env(safe-area-inset-left));
   background: rgba(11, 15, 25, 0.98);
   border-top: 1px solid rgba(0, 240, 255, 0.2);
   z-index: 100;
@@ -16,21 +16,21 @@
 .footer-item {
   position: relative;
   display: flex;
-  flex-direction: row;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0;
+  gap: 2px;
   min-width: 0;
   min-height: 44px;
-  padding: 4px 0;
+  padding: 3px 0 2px;
   opacity: 0.42;
   transition: opacity 0.2s ease, transform 0.1s ease;
 }
 
 .footer-notification-badge {
   position: absolute;
-  top: 0;
-  left: calc(50% + 7px);
+  top: 1px;
+  left: calc(50% + 5px);
   z-index: 2;
   min-width: 30px;
   padding: 1px 4px;
@@ -50,12 +50,23 @@
 }
 .footer-item.upcoming { opacity: .42; cursor: default; }
 .footer-icon {
-  width: 27px;
-  height: 27px;
-  min-width: 27px;
-  min-height: 27px;
+  width: 23px;
+  height: 23px;
+  min-width: 23px;
+  min-height: 23px;
   object-fit: contain;
   flex-shrink: 0;
   filter: grayscale(.7) brightness(.78);
 }
-.footer-item.active .footer-icon { filter:drop-shadow(0 0 7px rgba(0,240,255,.72)); }
+.footer-label {
+  max-width: 100%;
+  overflow: hidden;
+  color: #87919e;
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.footer-item.active .footer-icon { filter:drop-shadow(0 0 6px rgba(0,240,255,.62)); }
+.footer-item.active .footer-label { color: var(--neon-cyan, #00f0ff); }

@@ -953,15 +953,15 @@
 
 .mypage-current-location {
   position:absolute;
-  top:10px;
+  top:5px;
   left:10px;
   z-index:8;
   display:flex;
-  min-height:44px;
+  min-height:36px;
   align-items:baseline;
   gap:5px;
   max-width:55%;
-  padding:6px 8px;
+  padding:3px 8px;
   border:0;
   border-left:2px solid rgba(0,240,255,.8);
   border-radius:2px;
@@ -999,18 +999,19 @@
   -webkit-backdrop-filter:blur(4px);
   backdrop-filter:blur(4px);
 }
-.mypage-sub-icons-left .sub-png-icon { width:43px;height:43px;object-fit:contain;filter:drop-shadow(0 0 5px rgba(0,240,255,.28)); }
+.mypage-sub-icons-left .sub-png-icon { width:34px;height:34px;object-fit:contain;filter:drop-shadow(0 0 4px rgba(0,240,255,.22)); }
 .mypage-sub-icons-left .sub-icon-label { max-width:100%;overflow:hidden;font-size:8px;font-weight:800;line-height:1.1;text-overflow:ellipsis;white-space:nowrap; }
 .mypage-sub-icons-left .small-badge-alert { top:2px;right:2px; }
 
 .mypage-leader-layer { width:min(88vw,374px); }
 .mypage-leader-line { bottom:12px; }
 
-.mypage-lower-content { padding:0 8px 12px; }
-.mypage-event-banner-area { padding:7px 0 5px; }
+.mypage-lower-content { padding:4px 8px 10px; }
+.mypage-event-banner-area { padding:0 0 5px; }
 .banner-slide-wrapper { gap:5px; }
-.banner-arrow { width:27px;height:72px; }
-.banner-card { height:72px;border-radius:6px; }
+.banner-arrow { width:27px;height:58px; }
+.banner-card { height:58px;border-radius:6px;background:#03070e; }
+.banner-bg-img { width:100%;height:100%;object-fit:contain;object-position:center; }
 
 .mypage-circle-menu-area {
   position:relative;
@@ -1020,7 +1021,7 @@
   gap:0;
   width:100%;
   min-height:88px;
-  margin:0 0 7px;
+  margin:0 0 6px;
   padding:4px 0;
   overflow:hidden;
   border:1px solid rgba(101,131,158,.28);
@@ -1045,13 +1046,8 @@
 }
 .circle-menu-btn:last-child { border-right:0; }
 .circle-menu-img { width:50px;height:50px;aspect-ratio:1;filter:drop-shadow(0 0 7px rgba(0,240,255,.2)); }
-.circle-menu-label { display:grid;gap:0;min-width:0;text-align:center;line-height:1.05; }
-.circle-menu-label strong { overflow:hidden;color:#eef8ff;font-size:9px;font-weight:900;text-overflow:ellipsis;white-space:nowrap; }
-.circle-menu-label small { color:#7fa8c8;font-size:7px;font-weight:800;letter-spacing:.05em; }
-.circle-menu-btn.guild .circle-menu-label small { color:#1fe8f2; }
-.circle-menu-btn.fight .circle-menu-label small { color:#ff5e9b; }
-.circle-menu-btn.conquest .circle-menu-label small { color:#8faaff; }
-.circle-menu-btn.war .circle-menu-label small { color:#e8bd4f; }
+.circle-menu-label { display:grid;min-width:0;text-align:center;line-height:1.05; }
+.circle-menu-label strong { overflow:hidden;color:#eef8ff;font-size:10px;font-weight:900;text-overflow:ellipsis;white-space:nowrap; }
 .circle-menu-btn.upcoming::after { inset:0;border-radius:0;background:rgba(2,4,8,.5); }
 .circle-menu-state-overlay { top:3px;right:3px;bottom:auto;padding:2px 4px;border-left:2px solid #f2c95f;border-radius:2px;font-size:7px; }
 .circle-menu-alert-badge { top:3px;right:5px; }
@@ -1061,9 +1057,9 @@
   .mypage-visual-area { height:clamp(345px,48dvh,405px);min-height:345px; }
   .mypage-sub-icons-left { left:8px;bottom:9px;gap:4px; }
   .mypage-sub-icons-left .sub-icon-unit { width:58px;min-height:58px; }
-  .mypage-sub-icons-left .sub-png-icon { width:40px;height:40px; }
+  .mypage-sub-icons-left .sub-png-icon { width:32px;height:32px; }
   .mypage-circle-menu-area { width:100%;padding-inline:0; }
   .circle-menu-btn { min-height:78px; }
   .circle-menu-img { width:47px;height:47px; }
-  .circle-menu-label strong { font-size:8px; }
+  .circle-menu-label strong { font-size:9px; }
 }

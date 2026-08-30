@@ -529,6 +529,28 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
       </div>
 
       <div className="mypage-lower-content">
+        <nav className="mypage-circle-menu-area" data-home-action-assets="production-delivered" aria-label="メインコンテンツ">
+          {HOME_ACTION_PRESENTATION_SLOTS.map((action) => {
+            const upcoming = action.exposure === "UPCOMING";
+            return (
+              <button
+                key={action.id}
+                className={`circle-menu-btn ${action.id} ${upcoming ? "upcoming" : "active-scale-effect"}`}
+                disabled={upcoming}
+                aria-label={upcoming ? `${action.label}は準備中です` : action.label}
+                data-action-slot={action.id}
+                data-asset-delivery={action.deliveryStatus.toLowerCase()}
+                onClick={upcoming ? undefined : () => { if (action.destination) navigateTab(action.destination); playCyberSe("click"); }}
+              >
+                <img src={action.assetPath} alt="" className="circle-menu-img" aria-hidden="true" />
+                <span className="circle-menu-label"><strong>{action.label}</strong></span>
+                {action.id === "conquest" && completedPatrolsCount > 0 && <span className="circle-menu-alert-badge">{completedPatrolsCount}</span>}
+                {upcoming && <span className="circle-menu-state-overlay">準備中</span>}
+              </button>
+            );
+          })}
+        </nav>
+
         {visibleBanners.length > 0 && <div className="mypage-event-banner-area">
           <div className="banner-slide-wrapper">
             <button
@@ -560,29 +582,6 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
             ))}
           </div>
         </div>}
-
-        <nav className="mypage-circle-menu-area" data-home-action-assets="production-delivered" aria-label="メインコンテンツ">
-          {HOME_ACTION_PRESENTATION_SLOTS.map((action) => {
-            const upcoming = action.exposure === "UPCOMING";
-            const [jaLabel, enLabel] = action.label.split(" / ");
-            return (
-              <button
-                key={action.id}
-                className={`circle-menu-btn ${action.id} ${upcoming ? "upcoming" : "active-scale-effect"}`}
-                disabled={upcoming}
-                aria-label={upcoming ? `${action.label}は準備中です` : action.label}
-                data-action-slot={action.id}
-                data-asset-delivery={action.deliveryStatus.toLowerCase()}
-                onClick={upcoming ? undefined : () => { if (action.destination) navigateTab(action.destination); playCyberSe("click"); }}
-              >
-                <img src={action.assetPath} alt="" className="circle-menu-img" aria-hidden="true" />
-                <span className="circle-menu-label"><strong>{jaLabel}</strong><small>{enLabel}</small></span>
-                {action.id === "conquest" && completedPatrolsCount > 0 && <span className="circle-menu-alert-badge">{completedPatrolsCount}</span>}
-                {upcoming && <span className="circle-menu-state-overlay">準備中</span>}
-              </button>
-            );
-          })}
-        </nav>
 
         {primaryCta && <button className="mypage-primary-cta semantic-cta semantic-cta--primary active-scale-effect" onClick={() => void openPrimaryCta()} disabled={activationHandoffPending} aria-busy={activationHandoffPending}>
           <strong>{activationHandoffPending ? "確認中…" : primaryCta.title}</strong>

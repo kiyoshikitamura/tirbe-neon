@@ -142,18 +142,29 @@ for (const viewport of viewports) {
     await expect(page.locator(".mypage-sub-icons-left .sub-icon-unit")).toHaveCount(3);
     await expect(page.locator(".mypage-sub-icons-right")).toHaveCount(0);
     await expect(page.locator(".footer-mobile .footer-item")).toHaveCount(5);
-    await expect(page.locator(".footer-mobile .footer-label")).toHaveCount(0);
+    await expect(page.locator(".footer-mobile .footer-label")).toHaveText(["マイページ", "コミュニティ", "キャラ", "ガチャ", "ショップ"]);
 
     const actionOrder = await page.locator(".mypage-circle-menu-area > button").evaluateAll((buttons) =>
       buttons.map((button) => button.getAttribute("aria-label") || button.querySelector("img")?.getAttribute("alt")),
     );
-    expect(actionOrder).toEqual(["ギルド / GUILD", "バトル / PvP", "クエスト / QUEST", "ギルドバトル / GvGは準備中です"]);
+    expect(actionOrder).toEqual(["ギルド", "バトル", "クエスト", "ギルドバトルは準備中です"]);
+    await expect(page.locator(".circle-menu-label small")).toHaveCount(0);
     await expect(page.locator(".mypage-circle-menu-area")).toHaveAttribute("data-home-action-assets", "production-delivered");
     await expect(page.locator('[data-action-slot="guild"] img')).toHaveAttribute("src", "/menu/home_nav_guild.png");
     await expect(page.locator('[data-action-slot="fight"] img')).toHaveAttribute("src", "/menu/home_nav_pvp.png");
     await expect(page.locator('[data-action-slot="conquest"] img')).toHaveAttribute("src", "/menu/home_nav_quest.png");
     await expect(page.locator('[data-action-slot="war"] img')).toHaveAttribute("src", "/menu/home_nav_gvg.png");
-    await expect(page.getByRole("button", { name: "ギルドバトル / GvGは準備中です" })).toBeDisabled();
+    const raidCanvasAlpha = await page.locator('img[src="/menu/home_nav_raid.png"]').evaluate((node) => {
+      const image = node as HTMLImageElement;
+      const canvas = document.createElement("canvas");
+      canvas.width = image.naturalWidth;
+      canvas.height = image.naturalHeight;
+      const context = canvas.getContext("2d")!;
+      context.drawImage(image, 0, 0);
+      return context.getImageData(100, 100, 1, 1).data[3];
+    });
+    expect(raidCanvasAlpha).toBe(0);
+    await expect(page.getByRole("button", { name: "ギルドバトルは準備中です" })).toBeDisabled();
     const deckStyle = await page.locator(".mypage-circle-menu-area").evaluate((node) => ({
       background: getComputedStyle(node).backgroundColor,
       borderAlpha: getComputedStyle(node).borderColor,
@@ -185,9 +196,16 @@ for (const viewport of viewports) {
         viewJustify: getComputedStyle(view).justifyContent,
         ctaHeight: cta.height,
         bannerStartsAboveFooter: banner.top < footer.top,
-        bannerPrecedesMainContents: banner.bottom <= mainContents.top + 1,
+        mainContentsPrecedesBanner: mainContents.bottom <= banner.top + 1,
         mainActionsWithinContainer: mainActionRects.every((rect) => rect.left >= mainContents.left - 1 && rect.right <= mainContents.right + 1),
         shortcutWidth,
+        shortcutArtworkSizes: [...document.querySelectorAll<HTMLElement>(".sub-png-icon")].map((node) => {
+          const rect = node.getBoundingClientRect();
+          return { width: rect.width, height: rect.height };
+        }),
+        bannerHeight: box(".banner-card").height,
+        bannerObjectFit: getComputedStyle(document.querySelector(".banner-bg-img")!).objectFit,
+        footerLabelSizes: [...document.querySelectorAll<HTMLElement>(".footer-label")].map((node) => parseFloat(getComputedStyle(node).fontSize)),
         horizontalOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
         ctaDetailDisplay: (() => {
           const detail = document.querySelector(".mypage-primary-cta > span:not(.mypage-primary-cta-eyebrow)");
@@ -213,8 +231,13 @@ for (const viewport of viewports) {
     expect(geometry.ctaDetailDisplay).toBe("none");
     expect(geometry.ctaWrap).toBe("nowrap");
     expect(geometry.bannerStartsAboveFooter).toBe(true);
-    expect(geometry.bannerPrecedesMainContents).toBe(true);
+    expect(geometry.mainContentsPrecedesBanner).toBe(true);
     expect(geometry.mainActionsWithinContainer).toBe(true);
+    expect(new Set(geometry.shortcutArtworkSizes.map((size) => `${size.width}x${size.height}`)).size).toBe(1);
+    expect(geometry.shortcutArtworkSizes.every((size) => size.width <= 34 && size.height <= 34)).toBe(true);
+    expect(geometry.bannerHeight).toBeLessThanOrEqual(58);
+    expect(geometry.bannerObjectFit).toBe("contain");
+    expect(geometry.footerLabelSizes.every((size) => size <= 9)).toBe(true);
     expect(geometry.horizontalOverflow).toBeLessThanOrEqual(1);
     expect(geometry.bannerFilter).toContain("brightness(1.24)");
     expect(geometry.townBackgroundPosition).toContain("52%");
@@ -263,14 +286,14 @@ test("raid discovery stays out of the Home stage while the authoritative raid ba
   await expect(page.getByRole("dialog", { name: "拠点移動" }).getByText("強敵襲来", { exact: true })).toBeVisible();
 });
 
-test("Header MENU owns utilities and Footer stays icon-only", async ({ page }) => {
+test("Header MENU owns utilities and Footer uses compact Japanese labels", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await openHomeScenario(page, "first-home-fresh");
   await page.getByRole("button", { name: "MENU" }).click();
   const menu = page.getByRole("dialog", { name: "ホームメニュー" });
   for (const label of ["設定", "お知らせ", "プレゼント", "バッグ"]) await expect(menu.getByRole("button", { name: label })).toBeVisible();
   await expect(page.locator(".footer-mobile .footer-item")).toHaveCount(5);
-  await expect(page.locator(".footer-mobile .footer-label")).toHaveCount(0);
+  await expect(page.locator(".footer-mobile .footer-label")).toHaveText(["マイページ", "コミュニティ", "キャラ", "ガチャ", "ショップ"]);
 });
 
 test("SSR leader effect keeps a static aura when reduced motion is requested", async ({ page }) => {
