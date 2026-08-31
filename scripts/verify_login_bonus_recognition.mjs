@@ -9,7 +9,7 @@ const component = read("src/app/components/LoginBonusModal.tsx");
 const componentCss = read("src/app/components/LoginBonusModal.css");
 const page = read("src/app/page.tsx");
 const home = read("src/app/components/HomeTab.tsx");
-const menu = read("src/app/components/MenuTab.tsx");
+const header = read("src/app/components/Header.tsx");
 const setup = read("src/app/components/SetupView.tsx");
 const context = read("src/app/context/GameContext.tsx");
 const authority = read("supabase/migrations/20260812000132_secure_login_bonus_cycle.sql");
@@ -37,7 +37,8 @@ assert.match(page, /<LoginBonusModal/);
 assert.match(context, /rpc\("process_login_bonus"\)/);
 assert.match(context, /if \(claimRes\.claimed\)[\s\S]*setShowLoginBonusModal\(true\)/);
 assert.match(home, /id: "login-bonus"[\s\S]*setShowLoginBonusModal\(true\)/);
-assert.match(menu, /label: "ログインボーナス"/);
+assert.match(header, /setShowLoginBonusModal/);
+assert.match(header, /aria-label="ホームメニュー"[\s\S]*ログインボーナス/);
 
 assert.match(authority, /pg_advisory_xact_lock/);
 assert.match(authority, /FOR UPDATE/);

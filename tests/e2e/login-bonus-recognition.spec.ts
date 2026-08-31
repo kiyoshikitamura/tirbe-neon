@@ -81,6 +81,23 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 412, height: 915 }
     await resume.click();
     await expect(page.locator(".mypage-view")).toBeVisible({ timeout: 20_000 });
     await expect(page.getByRole("dialog", { name: "ログインボーナス" })).toHaveCount(0);
+
+    await page.getByRole("button", { name: /MENU/ }).click();
+    const utilityMenu = page.getByRole("dialog", {
+      name: "ホームメニュー",
+    });
+    await expect(utilityMenu).toBeVisible();
+    await utilityMenu
+      .getByRole("button", { name: "ログインボーナス" })
+      .click();
+    const reopenedDialog = page.getByRole("dialog", {
+      name: "ログインボーナス",
+    });
+    await expect(reopenedDialog.locator(".state-today")).toHaveCount(1);
+    await reopenedDialog
+      .getByRole("button", { name: "閉じる" })
+      .click();
+
     await page.getByRole("button", { name: "ボーナス" }).click();
     await expect(page.getByRole("dialog", { name: "ログインボーナス" }).locator(".state-today")).toHaveCount(1);
     const afterReload = await page.evaluate(() => ({
@@ -88,5 +105,20 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 412, height: 915 }
       logins: JSON.parse(localStorage.getItem("mock_db_user_login_bonuses") || "[]")[0]?.total_logins,
     }));
     expect(afterReload).toEqual(beforeReload);
+
+    await page.getByRole("dialog", { name: "ログインボーナス" })
+      .getByRole("button", { name: "閉じる" })
+      .click();
+    await expect(page.getByRole("button", { name: /招待/ })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: /招待/ })).toHaveCount(0);
+    await expect(page.getByText(/招待コード|招待URL/)).toHaveCount(0);
+    await expect(page.locator('a[href*="invite="]')).toHaveCount(0);
+
+    await page.getByRole("button", { name: "ミッション" }).click();
+    const missionDialog = page.getByRole("dialog", { name: "ミッション" });
+    await expect(missionDialog).toBeVisible();
+    await missionDialog.getByRole("button", { name: /ノーマル/ }).click();
+    await expect(missionDialog.getByText(/盟友の招聘/)).toHaveCount(0);
+    await missionDialog.getByRole("button", { name: "閉じる" }).click();
   });
 }
