@@ -1,8 +1,8 @@
 # GAME03 / TRIBE NEON — Audio Lifecycle Release-Gate Preparation
 
-Date: 2026-08-30  
-Scope: read-only implementation audit + QA-only harness + human acceptance procedure  
-Baseline: `origin/main` / `0d76e114793e9f65a4012186adacbb76b1853910`  
+Date: 2026-08-30
+Scope: read-only implementation audit + QA-only harness + human acceptance procedure
+Baseline: `origin/main` / `0d76e114793e9f65a4012186adacbb76b1853910`
 Production Audio implementation change: **none**
 
 ## A. Current Audio Architecture

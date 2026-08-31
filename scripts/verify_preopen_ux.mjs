@@ -33,7 +33,8 @@ requireText("src/app/components/PatrolTab.tsx", "canonicalItemName", "Quest rewa
 requireText("src/app/components/MoveBaseModal.tsx", "CANONICAL_QUEST_TOWNS", "base movement uses canonical areas");
 forbidText("src/app/components/MoveBaseModal.tsx", "junk_bazaar", "legacy base removed");
 forbidText("src/app/components/MoveBaseModal.tsx", "ジャンクバザール", "legacy base copy removed");
-requireText("src/app/components/HomeTab.tsx", "const visibleLeftSubIcons = leftSubIcons;", "Ranking remains a direct community action");
+requireText("src/app/components/HomeTab.tsx", "const miniNavigationItems = [", "Home mini navigation remains directly available");
+requireText("src/app/components/HomeTab.tsx", "onClick: () => navigateTab(\"ranking\")", "Ranking remains a direct community action");
 requireText("src/app/components/BbsTab.tsx", "get_public_profiles", "BBS identity batch projection");
 requireText("src/app/components/BbsTab.tsx", "<UserIdentityRow", "BBS shared identity");
 forbidText("src/app/components/BbsTab.tsx", "reiji_transparent_asset", "BBS fake leader fallback removed");

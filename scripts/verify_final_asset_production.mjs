@@ -129,10 +129,20 @@ assert.deepEqual(new Set(Object.values(rarityFrameDimensions)), new Set(["192x19
 const globalCss = fs.readFileSync(path.join(SOURCE_ROOT, "app/globals.css"), "utf8");
 assert.match(globalCss, /equipment-frame-n\.png[\s\S]*scale\(1\.319\)/, "Equipment N-frame geometry correction is missing");
 
-const assetRequired = [
-  "RAID_BOSS_001", "RAID_BOSS_002", "RAID_BOSS_003", "RAID_BOSS_004", "RAID_BOSS_005",
-  "AVATAR_LAYER_SET",
-];
+const raidMaster = JSON.parse(fs.readFileSync(
+  path.join(SOURCE_ROOT, "domain/gameplay/canonical/data/raid_production_20260830.json"),
+  "utf8",
+));
+assert.equal(raidMaster.variants.length, 7, "Canonical Raid must expose seven area variants");
+assert.equal(new Set(raidMaster.variants.map((variant) => variant.areaId)).size, 7, "Canonical Raid area variants must be unique");
+for (const variant of raidMaster.variants) {
+  assert.equal(variant.memberCharacterIds.length, 5, `${variant.raidVariantId} must use the canonical five-character party`);
+}
+const raidPartyContract = {
+  areaCount: raidMaster.variants.length,
+  partySize: raidMaster.partySize,
+  dedicatedLegacyBossAssetRequired: false,
+};
 
 console.log(JSON.stringify({
   status: "PASS",
@@ -144,5 +154,5 @@ console.log(JSON.stringify({
   casingErrors: casingErrors.length,
   missingStaticReferences: missingStaticReferences.length,
   rarityFrameDimensions,
-  assetRequired,
+  raidPartyContract,
 }, null, 2));

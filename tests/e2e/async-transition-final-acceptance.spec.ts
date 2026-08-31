@@ -12,9 +12,10 @@ test.beforeEach(async ({ page }) => {
     const now = new Date().toISOString();
     const cycleDate = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Tokyo" });
     const mission = {
-      id: "ob_daily_patrol_01", title: "非同期受取確認", description: "最終受入確認", category: "DAILY",
-      trigger_type: "PATROL_CLEAR", target_value: 1, reward_item_id: "CHAR_EXP_M", reward_quantity: 2,
-      display_order: 1, is_enabled: true,
+      id: "MIS_D_002", title: "派遣に出よう", description: "派遣に出よう", category: "DAILY",
+      display_group: "PROGRESS", trigger_type: "QUEST_COMPLETE_COUNT", target_value: 1,
+      reward_item_id: "CHAR_EXP_S", reward_quantity: 1, cash_reward: 0,
+      display_order: 20, is_enabled: true, preopen: true,
     };
     localStorage.setItem("tribe_demo_uuid", userId);
     localStorage.setItem("mock_auth_mode", "EMAIL");

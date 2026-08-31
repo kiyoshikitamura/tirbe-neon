@@ -6,14 +6,14 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 412, height: 915 }
     await page.goto("/qa/battle-full-skill-load");
     const harness = page.locator('[data-qa-harness="battle-full-skill-load"]');
     await expect(harness).toHaveAttribute("data-battle-state", "READY");
-    await expect(page.getByText("76 Skill actions / 8 rounds", { exact: false })).toBeVisible();
-    await expect(page.getByText("UNCONNECTED — Human AcceptanceでFAIL判定", { exact: true })).toBeVisible();
+    await expect(page.getByText("35 Skill actions / 13 rounds / 283 events", { exact: true })).toBeVisible();
+    await expect(page.getByText("/bg/bg_street_shinjuku.jpg", { exact: true })).toHaveCount(2);
     expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(0);
     await page.getByRole("button", { name: "Stress Battleを開始" }).click();
     await expect(page.locator(".quest-battle-viewer")).toBeVisible();
     await expect(page.locator('.battle-party-zone.is-player [id^="player-"]')).toHaveCount(5);
     await expect(page.locator('.battle-party-zone.is-enemy [id^="enemy-"]')).toHaveCount(5);
-    await expect(page.locator(".battle-stress-audit")).toHaveAttribute("data-location-parity", "fail");
+    await expect(page.locator(".battle-stress-audit")).toHaveAttribute("data-location-parity", "pass");
     expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(0);
     const controls = page.locator(".battle-viewer-controls");
     const box = await controls.boundingBox();
