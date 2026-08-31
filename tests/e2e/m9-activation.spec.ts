@@ -56,10 +56,11 @@ test("First PvP milestone resumes through Ranking, Raid and public Guild discove
   await page.getByRole("button", { name: "次はレイドへ挑戦" }).click();
   await expect(page.locator(".raid-view")).toBeVisible();
 
-  await page.getByRole("button", { name: /ギルド/ }).click();
+  await page.getByRole("button", { name: "マイページ", exact: true }).click();
+  await page.getByRole("button", { name: "ギルド", exact: true }).click();
   await expect(page.locator(".guild-lobby-view")).toBeVisible();
   await page.locator(".guild-detail-trigger").first().click();
-  await expect(page.locator(".guild-public-status-grid")).toContainText("7日間活動");
+  await expect(page.locator(".guild-public-status-grid")).toContainText("直近7日アクティブ");
   await expect(page.locator(".guild-public-status-grid")).toContainText("総合力");
   const detailKeys = await page.evaluate(() => {
     const events = JSON.parse(localStorage.getItem("mock_db_client_funnel_events") || "[]");
@@ -83,7 +84,7 @@ test("Guild recommendations are visible before Lv3 while server join remains loc
     localStorage.setItem("mock_db_users", JSON.stringify(users));
   });
   await enterGame(page);
-  await page.getByRole("button", { name: /ギルド/ }).click();
+  await page.getByRole("button", { name: "ギルド", exact: true }).click();
   await expect(page.locator(".guild-detail-trigger").first()).toBeVisible();
   await page.locator(".guild-detail-trigger").first().click();
   await expect(page.getByRole("button", { name: "このギルドに加入する", exact: true })).toBeVisible();
@@ -106,7 +107,7 @@ test("Guild Home omits closed GvG combat projection on mobile", async ({ page })
     localStorage.setItem("mock_db_user_funnel_milestones", JSON.stringify(milestones));
   });
   await enterGame(page);
-  await page.getByRole("button", { name: /ギルド/ }).click();
+  await page.getByRole("button", { name: "ギルド", exact: true }).click();
   await expect(page.locator(".guild-gvg-coming-soon")).toHaveCount(0);
   await expect(page.getByText(/HP \+20%|ATK \+20%|GvGの攻撃力/)).toHaveCount(0);
   for (const width of [375, 390, 430]) {
@@ -127,12 +128,14 @@ test("Pre-open operations hides closed surfaces and rejects closed deep links", 
   await expect(header).toBeVisible();
   await expect(page.getByText(/フレンド一覧|フレンドを探/)).toHaveCount(0);
   await expect(page.getByRole("button", { name: "ショップは準備中です" })).toBeDisabled();
-  await expect(page.getByRole("button", { name: "抗争は準備中です" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "ギルドバトルは準備中です" })).toBeDisabled();
   await expect(page.getByRole("button", { name: /フレンド/ })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: /ギルド/ })).toBeVisible();
-  await expect(page.getByRole("button", { name: /制圧|パトロール/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: "ギルド", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "クエスト", exact: true })).toBeVisible();
 
   await page.goto("/?tab=shop");
+  const resume = page.getByRole("button", { name: "続きから" });
+  if (await resume.isVisible()) await resume.click();
   await expect(page.locator(".header-mobile")).toBeVisible();
   await expect(page.getByText(/通常ショップ|月額パス/)).toHaveCount(0);
   await expect.poll(()=>page.evaluate(()=>new URL(location.href).searchParams.get("tab"))).toBe("home");

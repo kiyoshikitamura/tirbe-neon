@@ -142,7 +142,7 @@
 .quest-battle-viewer.is-tutorial .battle-party-zone.is-player .battle-unit-party .battle-unit-art { height:clamp(52px,7dvh,62px); }
 .quest-battle-viewer.is-tutorial .battle-party-zone.is-player .battle-unit-meta,
 .quest-battle-viewer.is-tutorial .battle-party-zone.is-player .battle-unit-hp-copy { display:none; }
-.quest-battle-viewer.is-tutorial .battle-party-zone.is-player .battle-unit-hp { width:auto;max-width:none;height:5px;margin:0 3px 2px;box-sizing:border-box; }
+.quest-battle-viewer.is-tutorial .battle-party-zone.is-player .battle-unit-hp { width:auto;max-width:none;height:5px;margin:0 3px 2px;box-sizing:border-box;justify-self:stretch; }
 .quest-battle-viewer.is-tutorial .battle-party-zone.is-player .battle-unit.is-actor .battle-unit-meta { position:absolute;right:0;bottom:11px;left:0;display:block;padding:2px 3px;background:rgba(2,7,13,.86); }
 .quest-battle-viewer.is-tutorial .battle-party-zone.is-player .battle-unit.is-actor .battle-unit-meta strong { display:block;overflow:hidden;font-size:9px;text-align:center;text-overflow:ellipsis;white-space:nowrap; }
 .quest-battle-viewer.is-tutorial .battle-tactic-label { visibility:hidden; }

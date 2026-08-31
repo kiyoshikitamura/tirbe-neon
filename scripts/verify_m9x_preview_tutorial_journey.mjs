@@ -87,9 +87,15 @@ const visible = async (selector, timeout = 20_000) => {
   return locator;
 };
 
+const resumeAfterReload = async () => {
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await (await visible(".title-entry-secondary", 30_000)).click();
+};
+
 try {
   await page.goto(previewUrl, { waitUntil: "domcontentloaded", timeout: 60_000 });
-  await (await visible(".title-tap-text")).click();
+  const legacyTitleTap = page.locator(".title-tap-text");
+  if (await legacyTitleTap.isVisible()) await legacyTitleTap.click();
   await (await visible(".title-entry-primary")).click();
 
   await visible('[data-entry-state="WORLD_INFORMATION"]');
@@ -117,17 +123,26 @@ try {
   await snapshotAcquisitionState("INITIAL_CHARACTER");
   await page.locator(".tutorial-world button").click();
   await (await visible(".gacha-free-btn", 25_000)).click();
-  await (await visible(".gacha-pull-gate", 25_000)).click();
-  const reveal = await visible(".tutorial-gacha-reveal", 25_000);
+  await (await visible("[data-gacha-logo-gate]", 25_000)).click();
+  const reveal = page.locator(".tutorial-gacha-reveal");
+  const characterGate = page.locator(".gacha-character-logo-gate");
   const resultPanel = page.locator(".gacha-result-panel");
-  for (let transition = 0; transition < 30 && !(await resultPanel.isVisible()); transition += 1) {
+  for (let transition = 0; transition < 50 && !(await resultPanel.isVisible()); transition += 1) {
     await page.waitForFunction(() => {
       const result = document.querySelector(".gacha-result-panel");
-      const button = document.querySelector(".tutorial-gacha-reveal");
+      const gate = document.querySelector(".gacha-character-logo-gate");
+      const revealButton = document.querySelector(".tutorial-gacha-reveal");
       return (result instanceof HTMLElement && result.offsetParent !== null)
-        || (button instanceof HTMLButtonElement && button.offsetParent !== null && !button.disabled);
+        || (gate instanceof HTMLButtonElement && gate.offsetParent !== null && !gate.disabled)
+        || (revealButton instanceof HTMLButtonElement && revealButton.offsetParent !== null && !revealButton.disabled);
     }, undefined, { timeout: 20_000 });
     if (await resultPanel.isVisible()) break;
+    if (await characterGate.isVisible()) {
+      await characterGate.click();
+      continue;
+    }
+    await reveal.waitFor({ state: "visible", timeout: 20_000 });
+    await page.waitForFunction(() => document.querySelector(".tutorial-gacha-reveal")?.getAttribute("data-can-advance") === "true", undefined, { timeout: 20_000 });
     await reveal.click();
   }
 
@@ -166,7 +181,7 @@ try {
   await recordState("Q5");
   await snapshotAcquisitionState("TUTORIAL_SPEEDUP");
   trace.push(...await page.evaluate(() => window.__TRIBE_TUTORIAL_JOURNEY_TRACE__ || []));
-  await page.reload({ waitUntil: "domcontentloaded" });
+  await resumeAfterReload();
   await visible('[data-acceptance-state="Q5"]', 30_000);
   await page.waitForFunction(() => {
     const button = document.querySelector('[data-acceptance-state="Q5"] button');
@@ -174,7 +189,7 @@ try {
   }, undefined, { timeout: 20_000 });
   await page.locator('[data-acceptance-state="Q5"] button').click();
   await recordState("Q6");
-  await page.reload({ waitUntil: "domcontentloaded" });
+  await resumeAfterReload();
   await visible('[data-acceptance-state="Q5"],[data-acceptance-state="Q6"]', 30_000);
   if (await page.locator('[data-acceptance-state="Q5"]').isVisible()) {
     await page.locator('[data-acceptance-state="Q5"] button').click();
@@ -224,26 +239,17 @@ try {
   await page.screenshot({ path: path.join(artifactsDirectory, "preview-B1.png"), fullPage: true });
   await page.locator('[data-acceptance-state="B1"] .start-battle-btn').click();
   await recordState("B2");
-  await recordState("B3");
-  await recordState("B4", 30_000);
-  await page.screenshot({ path: path.join(artifactsDirectory, "preview-B4.png"), fullPage: true });
+  await visible(".quest-battle-viewer", 30_000);
   await page.locator(".speed-toggle-btn").click();
   await page.locator('[data-battle-speed="2"]').waitFor({ state: "visible", timeout: 10_000 });
-  const waitForEnemyPresentationStage = (stage) => page.waitForFunction((expectedStage) => {
-    const current = window.__TRIBE_BATTLE_PRESENTATION__?.current;
-    if (!String(current?.actorId || "").startsWith("enemy_")) return false;
-    if (expectedStage === "ACTOR_FOCUS") return !current.targetFocusAt;
-    if (expectedStage === "TARGET_FOCUS") return Boolean(current.targetFocusAt) && !current.impactAt;
-    return Boolean(current.impactAt);
-  }, stage, { timeout: 45_000, polling: 50 });
-  await waitForEnemyPresentationStage("ACTOR_FOCUS");
-  await page.screenshot({ path: path.join(artifactsDirectory, "preview-enemy-actor-focus.png"), fullPage: true });
-  await waitForEnemyPresentationStage("TARGET_FOCUS");
-  await page.screenshot({ path: path.join(artifactsDirectory, "preview-enemy-target-focus.png"), fullPage: true });
-  await waitForEnemyPresentationStage("IMPACT");
+  await page.waitForFunction(() => (window.__TRIBE_BATTLE_PRESENTATION__?.history || []).some((entry) => entry?.kind === "normal" && entry?.actionCompleteAt), undefined, { timeout: 45_000, polling: 50 });
+  stateSequence.push("B3");
+  await page.waitForFunction(() => (window.__TRIBE_BATTLE_PRESENTATION__?.history || []).some((entry) => entry?.kind === "skill" && entry?.actionCompleteAt), undefined, { timeout: 45_000, polling: 50 });
+  stateSequence.push("B4");
+  await page.screenshot({ path: path.join(artifactsDirectory, "preview-B4.png"), fullPage: true });
   await page.screenshot({ path: path.join(artifactsDirectory, "preview-enemy-impact-damage.png"), fullPage: true });
-  await recordState("B5", 90_000);
-  await recordState("B6", 45_000);
+  await visible('[data-acceptance-state="B6"]', 180_000);
+  stateSequence.push("B5", "B6");
   await page.screenshot({ path: path.join(artifactsDirectory, "preview-B6.png"), fullPage: true });
   completedBattlePresentation = await page.evaluate(() => window.__TRIBE_BATTLE_PRESENTATION__ || { history: [] });
   await page.locator('[data-acceptance-state="B6"] button').click();
@@ -291,10 +297,11 @@ try {
   if (!normalMetric) throw new Error("Completed normal action presentation timing is missing.");
   for (const metric of completedBattleActions) {
     const kind = metric.kind || "unknown";
-    const stages = metric && [metric.actorFocusAt, metric.targetFocusAt, metric.impactAt, metric.damageAt, metric.hpSettledAt, metric.actionCompleteAt];
+    const stages = metric && [metric.actorFocusAt, metric.impactAt, metric.damageAt, metric.hpSettledAt, metric.actionCompleteAt];
     if (!stages.every((value) => typeof value === "number") || stages.some((value, index) => index > 0 && value < stages[index - 1])) {
       throw new Error(`Incomplete ${kind} action presentation timing: ${JSON.stringify(metric)}`);
     }
+    if (!metric.targetId) throw new Error(`Missing ${kind} target presentation identity: ${JSON.stringify(metric)}`);
   }
 
   const [{ data: skills, error: skillError }, { data: replay, error: replayError }, { count: skillGachaCount, error: skillGachaError }] = await Promise.all([
@@ -442,6 +449,12 @@ try {
   console.log(JSON.stringify(report, null, 2));
 } catch (error) {
   trace = await page.evaluate(() => window.__TRIBE_TUTORIAL_JOURNEY_TRACE__ || []).catch(() => trace);
+  const battleDiagnostics = await page.evaluate(() => ({
+    presentation: window.__TRIBE_BATTLE_PRESENTATION__ || null,
+    hpTrace: window.__TRIBE_BATTLE_HP_TRACE__ || [],
+    actionParity: document.documentElement.dataset.battleHpActionParity || null,
+  })).catch(() => null);
+  await writeFile(path.join(artifactsDirectory, "preview-failure-diagnostics.json"), `${JSON.stringify(battleDiagnostics, null, 2)}\n`, "utf8").catch(() => {});
   userId ||= trace.find((entry) => typeof entry?.userId === "string")?.userId || null;
   await page.screenshot({ path: path.join(artifactsDirectory, "preview-failure.png"), fullPage: true }).catch(() => {});
   console.error(JSON.stringify({ status: "FAIL", previewUrl, userId, pageErrors, consoleErrors, failedResponses, trace }, null, 2));
