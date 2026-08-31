@@ -2458,18 +2458,33 @@ export function useBattle(options: UseBattleOptions) {
             authoritativeEvents,
             authoritativeEventIndex,
           );
-          const hpParity = await waitForRenderedBattleHpParity([...canonicalPlayers, ...canonicalEnemies]);
-          if (hpParity && !hpParity.parity) return;
-          clearPresentationTimers();
-          setActionPresentation(null);
-          setActiveSkillCutIn(null);
-          setTargetLine(null);
-          setActiveShakingCharId(null);
-          setDamagePopup(null);
-          setPresentationPhase("IDLE");
-          setAuthoritativeTimeline([]);
-          const winner = payload.winner === "PLAYER" ? "VICTORY" : "DEFEAT";
-          void endBattleSession(winner);
+          // RESULT owns the canonical terminal projection. Commit it before
+          // waiting for CSS HP transitions, then keep polling this same RESULT
+          // event until the already-resolved replay is visibly settled. The
+          // former one-shot `return` had no state/index change to retrigger this
+          // effect, leaving Journey battles mounted forever after the last KO.
+          playerPartyStatesRef.current = canonicalPlayers;
+          enemyPartyStatesRef.current = canonicalEnemies;
+          setPlayerPartyStates(canonicalPlayers);
+          setEnemyPartyStates(canonicalEnemies);
+          const finishCanonicalResult = async () => {
+            const hpParity = await waitForRenderedBattleHpParity([...canonicalPlayers, ...canonicalEnemies]);
+            if (hpParity && !hpParity.parity) {
+              presentationTimersRef.current.push(setTimeout(() => void finishCanonicalResult(), 120));
+              return;
+            }
+            clearPresentationTimers();
+            setActionPresentation(null);
+            setActiveSkillCutIn(null);
+            setTargetLine(null);
+            setActiveShakingCharId(null);
+            setDamagePopup(null);
+            setPresentationPhase("IDLE");
+            setAuthoritativeTimeline([]);
+            const winner = payload.winner === "PLAYER" ? "VICTORY" : "DEFEAT";
+            void endBattleSession(winner);
+          };
+          void finishCanonicalResult();
           return;
         }
 

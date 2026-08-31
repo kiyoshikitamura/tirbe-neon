@@ -87,6 +87,7 @@ const portrait = read("src/app/components/battle/BattleUnitPortrait.tsx");
 const effects = read("src/app/components/battle/BattleEffectPresentation.tsx");
 const portraitCss = read("src/app/components/battle/BattleUnitPortrait.css");
 const effectsCss = read("src/app/components/battle/BattleEffectPresentation.css");
+const viewerCss = read("src/app/components/battle/QuestBattleViewer.css");
 const result = read("src/app/components/battle/BattleResultSummary.tsx");
 const audioProvider = read("src/audio/AudioProvider.tsx");
 const audioContract = read("src/audio/audioContract.ts");
@@ -102,6 +103,8 @@ assert.doesNotMatch(viewer, />CURRENT<|`NEXT \$\{index\}`/, "Battle V2 must not 
 assert.doesNotMatch(viewer, /className="battle-action-stage/, "Battle V2 must not render a central action stage");
 assert.match(runtime, /buildBattlePresentationUnit\(authoritativeEvents/, "Production replay must use the presentation-only ACTION builder");
 assert.match(runtime, /waitForRenderedBattleHpParity/, "RESULT must wait for rendered HP parity before leaving the field");
+assert.match(runtime, /setTimeout\(\(\) => void finishCanonicalResult\(\), 120\)/, "RESULT parity must retry the same canonical terminal event instead of stalling Journey playback");
+assert.match(runtime, /playerPartyStatesRef\.current = canonicalPlayers;[\s\S]*enemyPartyStatesRef\.current = canonicalEnemies;/, "RESULT must commit the canonical terminal HP projection before its visual gate");
 assert.match(runtime, /waitForRenderedBattleActionHpParity/, "Every HP-changing ACTION must wait for DOM and fill parity before advancing");
 assert.match(runtime, /recordBattleHpProjection/, "Every ACTION HP projection must be traced before RESULT");
 assert.match(viewer, /battle-cutin-slot/, "SR/SSR cut-in must use the reserved lower strip");
@@ -169,6 +172,8 @@ assert.match(portraitCss, /--character-battle-icon-scale/, "Battle icons must us
 assert.match(effectsCss, /--character-cutin-scale/, "Premium cut-ins must use normalized presentation-only crop metadata");
 assert.match(effectsCss, /\.battle-cutin-slot \.battle-skill-cutin \.battle-cutin-character/, "SR and SSR cut-ins must share one crop template with equal specificity");
 assert.doesNotMatch(viewer, /battle-enemy-compact/, "Variable enemy rosters must not use a fixed tutorial-only slot");
+assert.doesNotMatch(portraitCss, /data-party-size=/, "Unit icon geometry must not scale with roster length");
+assert.doesNotMatch(viewerCss, /data-party-size=/, "Battle row geometry must not scale with roster length");
 assert.match(viewer, /battle-skip-btn/, "Repeat battles must expose presentation skip");
 assert.match(result, /battle-result-opponent/, "Result must present the opponent before the outcome");
 assert.match(result, /battle-result-mvp-hero/, "Result must preserve the MVP hero hierarchy");

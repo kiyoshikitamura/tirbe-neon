@@ -121,6 +121,7 @@ test("production battle viewer renders actual 5v3 roster without empty slots", a
     expect(Math.max(...geometry.gaps)).toBeLessThanOrEqual(8);
     expect(geometry.hpOverflow).toBe(false);
   }
+  await page.screenshot({ path: test.info().outputPath("quest-battle-5v3-390.png"), fullPage: true });
 });
 
 test("tutorial presentation advances from learned 1x actions to 2x and remains user-toggleable", async ({ page }) => {

@@ -420,7 +420,10 @@ test("free gacha presents one CTA, feedback, result assets, and formation connec
   await enterNameRegistration(page);
   await page.getByPlaceholder("プレイヤー名を入力").fill("ガチャ確認");
   await page.getByRole("button", { name: "この名前で始める" }).click();
-  await page.getByRole("button", { name: "次へ" }).click();
+  const enabledDialogueNext = page.getByRole("button", { name: "次へ" });
+  await expect(enabledDialogueNext).toBeEnabled();
+  await expect(enabledDialogueNext).toHaveClass(/semantic-cta--primary/);
+  await enabledDialogueNext.click();
 
   await expect(page.getByRole("heading", { name: "最初の仲間を迎えよう" })).toBeVisible();
   const tutorialBanner = page.locator(".tutorial-gacha-banner");
@@ -488,6 +491,16 @@ test("free gacha presents one CTA, feedback, result assets, and formation connec
         cardCount: cards.length,
         columnCount: new Set(cards.map((card) => Math.round(card.getBoundingClientRect().left))).size,
         rowCount: new Set(cards.map((card) => Math.round(card.getBoundingClientRect().top))).size,
+        cardWidths: cards.map((card) => Math.round(card.getBoundingClientRect().width)),
+        cardHeights: cards.map((card) => Math.round(card.getBoundingClientRect().height)),
+        frameRects: cards.map((card) => {
+          const cardRect = card.getBoundingClientRect();
+          const frameRect = card.querySelector(".character-presentation-frame")?.getBoundingClientRect();
+          return frameRect ? {
+            widthDelta: Math.abs(frameRect.width - cardRect.width),
+            heightDelta: Math.abs(frameRect.height - cardRect.height),
+          } : null;
+        }),
       };
     });
     expect(metrics.left).toBeGreaterThanOrEqual(0);
@@ -497,6 +510,9 @@ test("free gacha presents one CTA, feedback, result assets, and formation connec
     expect(metrics.cardCount).toBe(10);
     expect(metrics.columnCount).toBe(2);
     expect(metrics.rowCount).toBe(5);
+    expect(new Set(metrics.cardWidths).size).toBe(1);
+    expect(new Set(metrics.cardHeights).size).toBe(1);
+    expect(metrics.frameRects.every((frame) => frame && frame.widthDelta <= 1 && frame.heightDelta <= 1)).toBe(true);
     await page.screenshot({ path: test.info().outputPath(`m9-1-gacha-result-${width}.png`), fullPage: true });
   }
   await expect(page.locator(".gacha-result-card .character-presentation-gacha-result-compact")).toHaveCount(10);
@@ -599,6 +615,11 @@ test("three random tutorial SSRs remain the same owned character through result 
     { id: "char_ageha_01", name: "アゲハ" },
     { id: "char_karen_01", name: "カレン" },
   ].filter((entry) => !process.env.M9X_SSR_CASE || entry.name === process.env.M9X_SSR_CASE);
+  const continueFromTitleIfNeeded = async () => {
+    const resume = page.getByRole("button", { name: "続きから" });
+    await expect(resume).toBeVisible();
+    await resume.click();
+  };
 
   for (const [caseIndex, tutorialSsr] of cases.entries()) {
     await page.goto("/");
@@ -609,7 +630,8 @@ test("three random tutorial SSRs remain the same owned character through result 
     }, tutorialSsr);
     await page.reload();
 
-    await page.getByText("TAP TO START").click();
+    const tapToStart = page.getByText("TAP TO START");
+    if (await tapToStart.isVisible()) await tapToStart.click();
     await page.getByRole("button", { name: "はじめから" }).click();
     await enterNameRegistration(page);
     await page.getByPlaceholder("プレイヤー名を入力").fill(`連続性${caseIndex + 1}`);
@@ -633,6 +655,7 @@ test("three random tutorial SSRs remain the same owned character through result 
     await expect(guaranteedCandidate).toHaveClass(/is-selected/);
     await page.reload();
     if (await page.getByText("TAP TO START").isVisible()) await page.getByText("TAP TO START").click();
+    await continueFromTitleIfNeeded();
     await expect(page.getByRole("button", { name: "おすすめ編成にする" })).toBeVisible();
     await completeTutorialAutoFormation(page);
     await expect(page.locator(`.tutorial-wire-member[data-user-character-id="${ownedId}"]`)).toHaveAttribute("data-character-id", tutorialSsr.id);
@@ -647,14 +670,17 @@ test("three random tutorial SSRs remain the same owned character through result 
     expect(formationContract).toEqual({ main: ownedId, defense: ownedId });
 
     await page.reload();
+    await continueFromTitleIfNeeded();
     await expect(page.locator(`.tutorial-wire-member[data-user-character-id="${ownedId}"]`)).toBeVisible();
     await page.getByRole("button", { name: "新宿へ派遣する" }).click();
     await expect(page.locator('[data-acceptance-state="Q3"]')).toBeVisible();
     await page.reload();
+    await continueFromTitleIfNeeded();
     await expect(page.locator(`.tutorial-wire-progress-character[data-user-character-id="${ownedId}"]`)).toBeVisible();
     await page.getByRole("button", { name: /すぐに時短する/ }).click();
     await expect(page.locator('[data-acceptance-state="Q5"]')).toBeVisible();
     await page.reload();
+    await continueFromTitleIfNeeded();
     await expect(page.locator(`.tutorial-wire-return-character[data-user-character-id="${ownedId}"]`)).toBeVisible();
     await page.getByRole("button", { name: "次へ" }).click();
     await page.getByRole("button", { name: "バトルへ" }).click();
@@ -671,6 +697,7 @@ test("three random tutorial SSRs remain the same owned character through result 
     await expect(page.locator(".battle-result-score-grid > div")).toHaveCount(5);
     await expect(page.locator(".battle-result-comparison > div")).toHaveCount(3);
     await page.reload();
+    await continueFromTitleIfNeeded();
     await expect.poll(async () => (
       await page.locator('[data-acceptance-state="B6"]').isVisible()
       || await page.locator(".tutorial-rule-screen").isVisible()
@@ -708,6 +735,8 @@ test("first quest connects dispatch, official battle, and one reward to the comp
   }, { userId });
 
   await page.goto("/");
+  const continueFromTitle = page.getByRole("button", { name: "続きから" });
+  if (await continueFromTitle.isVisible()) await continueFromTitle.click();
   await expect(page.locator('[data-acceptance-state="Q1"]')).toBeVisible();
   await expect(page.locator(".footer-mobile")).toHaveCount(0);
   await expect(page.locator(".tutorial-wire-member .character-presentation")).toBeVisible();

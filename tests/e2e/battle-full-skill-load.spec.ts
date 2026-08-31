@@ -21,6 +21,7 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 412, height: 915 }
     expect(box!.x).toBeGreaterThanOrEqual(0);
     expect(box!.x + box!.width).toBeLessThanOrEqual(viewport.width + 1);
     expect(box!.y + box!.height).toBeLessThanOrEqual(viewport.height + 1);
+    await page.screenshot({ path: test.info().outputPath(`quest-battle-5v5-${viewport.width}.png`), fullPage: true });
     await page.getByRole("button", { name: "スキップ" }).click();
     await expect(page.locator(".battle-result-summary")).toBeVisible({ timeout: 4_000 });
     await expect(page.getByRole("button", { name: "もう一度確認" })).toBeEnabled();

@@ -53,7 +53,7 @@ export default function AdvView() {
         <button 
           onClick={handleStoryNext}
           disabled={storySending}
-          className="claim-reward-btn mt-4 font-weight-bold py-2 width-100 active-scale-effect flex-row-center-spinner justify-center"
+          className="semantic-cta semantic-cta--primary mt-4 width-100 active-scale-effect flex-row-center-spinner justify-center"
         >
           {storySending ? <div className="spinner" /> : "次へ"}
         </button>

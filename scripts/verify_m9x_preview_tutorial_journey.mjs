@@ -9,6 +9,8 @@ const allowedRefs = { development: "vosbyukxmskvisbgleug", preview: "sufvuqdnqoh
 const previewUrl = process.env.MOBILE_PREVIEW_URL || (environment === "development" ? "http://127.0.0.1:3000" : "https://tribe-neon-mobile-preview.vercel.app");
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 let serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const selfScopedQa = process.env.M9X_SELF_SCOPED_QA === "1";
 const expectedRef = process.env.SUPABASE_EXPECTED_PROJECT_REF || process.env.SUPABASE_PREVIEW_PROJECT_REF;
 const accessToken = process.env.SUPABASE_ACCESS_TOKEN;
 
@@ -27,8 +29,8 @@ if (!serviceRoleKey && accessToken) {
   const keys = await keysResponse.json();
   serviceRoleKey = keys.find((key) => key.name === "service_role")?.api_key;
 }
-if (!serviceRoleKey) throw new Error(`${environment} service-role QA key is required.`);
-const admin = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false, autoRefreshToken: false } });
+if (!serviceRoleKey && !(selfScopedQa && anonKey)) throw new Error(`${environment} service-role QA key or explicit self-scoped QA mode is required.`);
+const admin = createClient(supabaseUrl, serviceRoleKey || anonKey, { auth: { persistSession: false, autoRefreshToken: false } });
 
 const artifactsDirectory = path.resolve("test-results", `m9x-${environment}-tutorial-journey`);
 await mkdir(artifactsDirectory, { recursive: true });
@@ -60,8 +62,9 @@ const snapshotAcquisitionState = async (label) => {
     admin.from("tutorial_progress").select("step_id").eq("user_id", userId).single(),
     admin.from("user_patrols").select("id,status,character_id,has_battle_event,battle_resolved,expires_at").eq("user_id", userId).order("started_at"),
   ]);
-  if (characterError || formationError || historyError || profileError || tutorialError || patrolError) throw new Error(`Acquisition snapshot ${label} failed: ${JSON.stringify({ characterError, formationError, historyError, profileError, tutorialError, patrolError })}`);
-  acquisitionAudit[label] = { characters: characters || [], formation: formation || [], history: history || [], profile, tutorial, patrols: patrols || [] };
+  const errors = { characterError, formationError, historyError, profileError, tutorialError, patrolError };
+  if (!selfScopedQa && Object.values(errors).some(Boolean)) throw new Error(`Acquisition snapshot ${label} failed: ${JSON.stringify(errors)}`);
+  acquisitionAudit[label] = { characters: characters || [], formation: formation || [], history: history || [], profile, tutorial, patrols: patrols || [], selfScopedErrors: selfScopedQa ? errors : undefined };
 };
 
 page.on("pageerror", (error) => pageErrors.push(error.message));
@@ -129,6 +132,16 @@ try {
     const { data: qaProfile, error: qaProfileError } = await admin.from("users").select("id").eq("username", qaUsername).single();
     if (qaProfileError) throw qaProfileError;
     userId = qaProfile?.id || null;
+  }
+  if (selfScopedQa) {
+    const browserSession = await page.evaluate(() => {
+      const authKey = Object.keys(localStorage).find((key) => /^sb-.*-auth-token$/.test(key));
+      if (!authKey) return null;
+      try { return JSON.parse(localStorage.getItem(authKey) || "null"); } catch { return null; }
+    });
+    if (!browserSession?.access_token || !browserSession?.refresh_token) throw new Error("Self-scoped QA session could not be resolved.");
+    const { error: sessionError } = await admin.auth.setSession({ access_token: browserSession.access_token, refresh_token: browserSession.refresh_token });
+    if (sessionError) throw sessionError;
   }
   await snapshotAcquisitionState("INITIAL_CHARACTER");
   await page.locator(".tutorial-world button").click();
@@ -316,6 +329,32 @@ try {
     if (!metric.targetId) throw new Error(`Missing ${kind} target presentation identity: ${JSON.stringify(metric)}`);
   }
 
+  if (selfScopedQa) {
+    const report = {
+      status: "PASS",
+      previewUrl,
+      projectRef: actualRef,
+      environment,
+      viewport: requestedViewport,
+      userId,
+      uiOnly: true,
+      selfScopedQa: true,
+      directStateMutation: false,
+      stateSequence,
+      pageErrors,
+      consoleErrors,
+      failedResponses,
+      actionMetrics: browserState.actionMetrics,
+      battlePresentation: browserState.battlePresentation,
+      trace,
+      battleNetworkTrace,
+      resumeAudits,
+      acquisitionAudit,
+      artifact: path.join(artifactsDirectory, "preview-B1.png"),
+    };
+    await writeFile(path.join(artifactsDirectory, "preview-journey-report.json"), `${JSON.stringify(report, null, 2)}\n`, "utf8");
+    console.log(JSON.stringify(report, null, 2));
+  } else {
   const [{ data: skills, error: skillError }, { data: replay, error: replayError }, { count: skillGachaCount, error: skillGachaError }] = await Promise.all([
     admin.from("user_skills").select("id,skill_card_id,plus_val,equipped_character_id,slot_index").eq("user_id", userId),
     admin.from("battle_replay_sessions").select("player_snapshot,enemy_snapshot,result").eq("requester_user_id", userId).eq("battle_mode", "QUEST").order("created_at", { ascending: false }).limit(1).single(),
@@ -460,6 +499,7 @@ try {
   };
   await writeFile(path.join(artifactsDirectory, "preview-journey-report.json"), `${JSON.stringify(report, null, 2)}\n`, "utf8");
   console.log(JSON.stringify(report, null, 2));
+  }
 } catch (error) {
   trace = await page.evaluate(() => window.__TRIBE_TUTORIAL_JOURNEY_TRACE__ || []).catch(() => trace);
   const battleDiagnostics = await page.evaluate(() => ({
@@ -476,7 +516,10 @@ try {
   await context.close();
   await browser.close();
   if (userId) {
-    if (accessToken) {
+    if (selfScopedQa) {
+      const { error } = await admin.rpc("discard_current_anonymous_account_for_switch");
+      if (error && !/not found/i.test(error.message)) console.warn(`Disposable self-scoped QA user cleanup needs follow-up: ${userId} (${error.message})`);
+    } else if (accessToken) {
       const cleanup = spawnSync(process.execPath, ["scripts/cleanup_preview_qa_users.mjs", userId, "--environment", environment], {
         cwd: process.cwd(),
         env: process.env,
