@@ -295,9 +295,85 @@ export function useBattle(options: UseBattleOptions) {
 
 
   // 進行中のバトルセッションを復元 (Resume) する関数
-  const resumeActiveBattleSession = async () => {
+  const resumeActiveBattleSession = async (patrolIdOverride?: string | null) => {
     if (!session?.user?.id) return false;
     try {
+      const canonicalPatrolId = patrolIdOverride || patrol?.id || null;
+      if (canonicalPatrolId) {
+        const { data: replayRows, error: replayError } = await supabase
+          .from("battle_replay_sessions")
+          .select("*")
+          .eq("requester_user_id", session.user.id)
+          .eq("battle_mode", "QUEST")
+          .eq("source_reference_id", canonicalPatrolId)
+          .order("created_at", { ascending: false })
+          .limit(1);
+        if (replayError) throw replayError;
+        const canonicalReplay = replayRows?.[0];
+        if (canonicalReplay) {
+          let resolvedResult = canonicalReplay.result;
+          if (canonicalReplay.status !== "RESOLVED" || !resolvedResult) {
+            const resolved = await supabase.functions.invoke("resolve-battle", {
+              body: { replaySessionId: canonicalReplay.id },
+            });
+            if (resolved.error) throw resolved.error;
+            resolvedResult = resolved.data;
+          }
+          const canonicalPlayers = patrolSnapshotToParticipants(canonicalReplay.player_snapshot, false);
+          const canonicalEnemies = patrolSnapshotToParticipants(canonicalReplay.enemy_snapshot, true);
+          const { data: replayEventRows, error: eventError } = await supabase
+            .from("battle_replay_events")
+            .select("event_index,round_number,event_type,payload")
+            .eq("battle_replay_session_id", canonicalReplay.id)
+            .order("event_index", { ascending: true });
+          if (eventError) throw eventError;
+          const canonicalEvents = Array.isArray(resolvedResult?.events) && resolvedResult.events.length > 0
+            ? serverBattleEvents(resolvedResult.events)
+            : serverBattleEvents((replayEventRows || []).map((event: any) => ({
+                index: event.event_index,
+                round: event.round_number,
+                type: event.event_type,
+                payload: event.payload,
+              })));
+          const winner = resolvedResult?.winner;
+          if (canonicalPlayers.length > 0 && canonicalEnemies.length > 0 && canonicalEvents.length > 0
+            && (winner === "PLAYER" || winner === "ENEMY")) {
+            activePatrolEncounterIdRef.current = canonicalPatrolId;
+            setTutorialBattleActive(tutorialStep === "TUTORIAL_BATTLE");
+            setBattleMode("PATROL");
+            setBattleOpponentName("クエストバトル");
+            setPlayerPartyStates(canonicalPlayers);
+            setEnemyPartyStates(canonicalEnemies);
+            playerPartyStatesRef.current = canonicalPlayers;
+            enemyPartyStatesRef.current = canonicalEnemies;
+            setTimeline([
+              ...canonicalPlayers.map((participant) => ({ id: participant.id, name: participant.name, isEnemy: false, spd: participant.stats.spd })),
+              ...canonicalEnemies.map((participant) => ({ id: participant.id, name: participant.name, isEnemy: true, spd: participant.stats.spd })),
+            ].sort((left, right) => right.spd - left.spd));
+            setTimelineIndex(0);
+            setBattleRound(1);
+            setOfficialPatrolReplayId(canonicalReplay.id);
+            setOfficialPatrolWinner(winner);
+            officialPatrolReplayIdRef.current = canonicalReplay.id;
+            officialPatrolWinnerRef.current = winner;
+            setOfficialPatrolEvents(canonicalEvents);
+            // A closed browser may leave a cursor at the final event without
+            // allowing the result paint. Replay from the canonical beginning;
+            // never strand Continue on an exhausted local cursor.
+            setOfficialPatrolEventIndex(0);
+            if (typeof window !== "undefined") window.localStorage.removeItem(patrolReplayCursorKey(canonicalReplay.id));
+            setBattlePresentationContext({
+              mode: "PATROL",
+              opponentLabel: "クエストバトル",
+              opponentLeaderCharacterId: canonicalEnemies[0]?.characterId,
+              opponentLeaderName: canonicalEnemies[0]?.name,
+            });
+            setBattleState("PLAYING");
+            return true;
+          }
+        }
+      }
+
       const { data: activeSessions, error } = await supabase
         .from("battle_sessions")
         .select("*")

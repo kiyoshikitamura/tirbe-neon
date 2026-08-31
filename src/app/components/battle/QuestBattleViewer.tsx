@@ -4,10 +4,8 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { CHARACTERS_MASTER, getCharacterTransparentImg } from "@/utils/game_constants";
 import BattleUnitPortrait, { BattleDamagePopup, BattleParticipantView } from "./BattleUnitPortrait";
 import {
-  BattleImpactEffect,
   BattleSkillCutIn,
   resolveBattleSkillPresentation,
-  type BattleImpactKind,
 } from "./BattleEffectPresentation";
 import "./QuestBattleViewer.css";
 import { useAudio } from "@/audio/AudioProvider";
@@ -91,12 +89,10 @@ export default function QuestBattleViewer(props: Props) {
     };
   };
   const popupFor = (participant: Participant) => !props.actionPresentation && props.damagePopup?.charId === participant.id ? props.damagePopup : null;
-  const impactFor = (participant: Participant) => !props.actionPresentation && props.damagePopup?.charId === participant.id ? (
-    <div className={`battle-unit-impact-vfx is-${props.damagePopup.type}`} aria-hidden="true">
-      {props.damagePopup.type === "dmg" && <BattleImpactEffect kind={(skillPresentation?.impact || "impact") as BattleImpactKind} speed={props.speed} />}
-      <div className={`battle-impact-burst is-${props.damagePopup.type}`}><i /><i /><i /></div>
-    </div>
-  ) : null;
+  // Battle V2's grouped action presentation owns impact visuals. The legacy
+  // popup path was reachable only in Journey battles and duplicated the
+  // approved target-local reaction used by the QA fixture.
+  const impactFor = () => null;
   const hasAdvantage = (target?: Participant) => Boolean(
     activeParticipant?.alignment
       && target?.alignment

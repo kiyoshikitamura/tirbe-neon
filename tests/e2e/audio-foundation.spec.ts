@@ -103,11 +103,13 @@ test("BGM and SE preferences persist locally across reload", async ({ page }) =>
     localStorage.setItem("mock_auth_mode", "EMAIL");
     localStorage.setItem("mock_db_users", JSON.stringify([{ id: userId, username: "音響確認", current_base_id: "shinjuku", favorite_character_id: "char_reiji_01" }]));
     localStorage.setItem("mock_db_user_characters", JSON.stringify([{ id: "audio-char-1", user_id: userId, character_id: "char_reiji_01", level: 1, awakening_level: 0 }]));
+    localStorage.setItem("mock_db_tutorial_progress", JSON.stringify([{ user_id: userId, step_id: "AUTHENTICATION" }]));
     if (!localStorage.getItem("tribe_neon_audio_settings_v1")) {
       localStorage.setItem("tribe_neon_audio_settings_v1", JSON.stringify({ bgmEnabled: false, seEnabled: true, bgmVolume: 0.25, seVolume: 0.6 }));
     }
   });
   const openSettings = async () => {
+    await page.getByRole("button", { name: "MENU" }).click();
     await page.getByRole("button", { name: "設定" }).click();
     await expect(page.getByRole("heading", { name: "サウンド設定" })).toBeVisible();
   };

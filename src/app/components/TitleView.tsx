@@ -5,7 +5,7 @@ import "./TitleView.css";
 import { markTitleAssetReady } from "../lib/screenAssets";
 
 export default function TitleView() {
-  const { showTitleView, setShowTitleView, authLoading, setupLoading, session, errorMessage, playCyberSe, handleFirstUserInteraction, handleStartNewGame } = useGame();
+  const { showTitleView, setShowTitleView, authLoading, setupLoading, resumeLoading, resumeCurrentSession, session, errorMessage, playCyberSe, handleFirstUserInteraction, handleStartNewGame } = useGame();
   const [isGameStartTransition, setIsGameStartTransition] = useState(false);
   const gameStartRef = useRef(false);
   const entryReady = !authLoading;
@@ -20,11 +20,13 @@ export default function TitleView() {
 
   if (!showTitleView) return null;
 
-  const openContinue = (event: React.MouseEvent) => {
+  const openContinue = async (event: React.MouseEvent) => {
     event?.stopPropagation();
+    if (resumeLoading) return;
     handleFirstUserInteraction();
     playCyberSe("click");
-    setShowTitleView(false);
+    if (session) await resumeCurrentSession();
+    else setShowTitleView(false);
   };
 
   const beginNewGame = async (event: React.MouseEvent) => {
@@ -50,17 +52,17 @@ export default function TitleView() {
       <div className="title-view-container">
         {/* 背景画像 (CSSで指定) */}
         
-        {isGameStartTransition ? (
+        {isGameStartTransition || resumeLoading ? (
           <div className="game-start-transition" role="status" aria-live="polite" aria-label="ゲーム開始中">
             <img src="/branding/tribe-neon-logo.png" alt="TRIBE NEON" />
             <div className="game-start-signal" aria-hidden="true"><i /><i /><i /></div>
-            <strong>起動中</strong>
+            <strong>{resumeLoading ? "再開中" : "起動中"}</strong>
           </div>
         ) : <div className="title-view-content">
           <div className="title-tap-area">
             <div className="title-entry-actions">
               {canStartNewGame && <button className="semantic-cta semantic-cta--primary title-entry-primary" onClick={(event) => void beginNewGame(event)} disabled={setupLoading} aria-busy={setupLoading}>はじめから</button>}
-              {entryReady && <button className="semantic-cta semantic-cta--secondary title-entry-secondary" onClick={openContinue}>続きから</button>}
+              {entryReady && <button className="semantic-cta semantic-cta--secondary title-entry-secondary" onClick={(event) => void openContinue(event)} disabled={resumeLoading}>続きから</button>}
               {!entryReady && <small className="title-entry-status" role="status">セッション確認中</small>}
               {errorMessage && <div className="title-entry-error" role="alert">{errorMessage}</div>}
             </div>

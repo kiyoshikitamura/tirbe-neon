@@ -56,11 +56,21 @@ export default function GachaTab() {
   }, [dailyFreeGachaReady, refreshDailyFreeGachaAuthority]);
 
   if (isTutorialScout) {
+    const tutorialCreative = resolveAvailableGachaCreative("CHAR_NORMAL");
     return (
       <fieldset className="view-container relative gacha-view-root gacha-action-fieldset tutorial-gacha-page" disabled={pending} aria-busy={pending}>
         <TutorialNavigator message={<>ここでは、ガチャで仲間を増やせるよ。<br />まずは10連、引いてみよ。</>} />
         <section className="tutorial-gacha-hero" aria-labelledby="tutorial-gacha-title">
-          <img className="tutorial-gacha-banner" src="/gacha/bg_gacha_ssr.jpg" alt="" />
+          {tutorialCreative && <Image
+            className="tutorial-gacha-banner"
+            src={tutorialCreative.assetPath}
+            alt=""
+            width={tutorialCreative.width}
+            height={tutorialCreative.height}
+            unoptimized
+            priority
+            sizes="(max-width: 430px) 100vw, 430px"
+          />}
           <h2 id="tutorial-gacha-title">最初の仲間を迎えよう</h2>
         </section>
         <section className="tutorial-gacha-offer" aria-label="チュートリアル無料10連">

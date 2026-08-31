@@ -80,7 +80,7 @@
 .tutorial-wire-encounter .tutorial-wire-glitch{position:relative;z-index:1;color:#ff3f78;font-size:clamp(58px,19vw,82px);line-height:1;text-shadow:0 0 10px rgba(255,35,105,.95),0 0 36px rgba(255,35,105,.58);animation:encounter-icon-impact .42s .14s cubic-bezier(.18,.88,.22,1.25) both}
 .tutorial-wire-encounter h2{position:relative;z-index:1;opacity:0;text-shadow:0 0 20px rgba(255,48,112,.58);animation:encounter-title-in .3s .34s ease-out forwards}
 .tutorial-wire-encounter small{position:relative;z-index:1;opacity:0;animation:encounter-subtitle-in .28s .5s ease-out forwards}
-.tutorial-wire-encounter .semantic-cta{position:relative;z-index:1;opacity:.48;transition:opacity .2s ease,filter .2s ease}
+.tutorial-wire-encounter .semantic-cta{position:relative;z-index:1;transition:opacity .2s ease,filter .2s ease}
 .tutorial-wire-encounter.is-ready .semantic-cta{opacity:1;filter:drop-shadow(0 0 12px rgba(255,38,106,.3))}
 .tutorial-wire-glitch { display: grid; width: 132px; height: 118px; place-items: center; border: 3px solid #ff2780; color: #ff4d99; font-size: 58px; clip-path: polygon(50% 0,100% 100%,0 100%); filter: drop-shadow(0 0 18px rgba(255,32,128,.7)); }
 .tutorial-wire-encounter .semantic-cta { align-self: end; width: 100%; margin-top: min(18vh,130px); }

@@ -50,7 +50,7 @@
   background: #02050a;
   box-shadow: inset 0 0 38px rgba(242, 201, 95, .08), 0 12px 28px rgba(0, 0, 0, .34);
 }
-.tutorial-gacha-banner{display:block;width:100%;height:226px;object-fit:cover;object-position:center}.tutorial-gacha-hero h2{position:absolute;right:14px;bottom:12px;left:14px;margin:0;padding:9px 12px;color:#fff;background:linear-gradient(90deg,rgba(0,0,0,.9),rgba(0,0,0,.28));font-size:clamp(22px,7vw,30px);line-height:1.15;text-shadow:0 2px 12px #000}
+.tutorial-gacha-banner{display:block;width:100%;height:auto;aspect-ratio:2/1;object-fit:contain}.tutorial-gacha-hero h2{position:absolute;right:14px;bottom:12px;left:14px;margin:0;padding:9px 12px;color:#fff;background:linear-gradient(90deg,rgba(0,0,0,.9),rgba(0,0,0,.28));font-size:clamp(22px,7vw,30px);line-height:1.15;text-shadow:0 2px 12px #000}
 
 .tutorial-gacha-offer {
   flex: 0 0 auto;

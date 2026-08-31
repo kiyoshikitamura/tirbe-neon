@@ -48,6 +48,7 @@ const acquisitionAudit = {};
 const battleNetworkTrace = [];
 let completedBattlePresentation = { history: [] };
 const qaUsername = `QA${Date.now().toString(36).slice(-6)}`;
+const resumeAudits = [];
 
 const snapshotAcquisitionState = async (label) => {
   if (!userId) throw new Error(`Cannot snapshot ${label} without the Preview QA user id.`);
@@ -87,9 +88,18 @@ const visible = async (selector, timeout = 20_000) => {
   return locator;
 };
 
-const resumeAfterReload = async () => {
+const resumeAfterReload = async (label) => {
+  trace.push(...await page.evaluate(() => window.__TRIBE_TUTORIAL_JOURNEY_TRACE__ || []).catch(() => []));
   await page.reload({ waitUntil: "domcontentloaded" });
   await (await visible(".title-entry-secondary", 30_000)).click();
+  const loading = await visible(".game-start-transition", 10_000);
+  const loadingCopy = (await loading.textContent())?.trim() || "";
+  const exposedSurface = await page.locator(".char-tab-container,.mypage-container,.patrol-container,.quest-battle-viewer").evaluateAll((nodes) => nodes.some((node) => {
+    const element = node;
+    return element.offsetParent !== null && getComputedStyle(element).visibility !== "hidden";
+  }));
+  if (exposedSurface) throw new Error(`Resume exposed an intermediate game surface: ${label}`);
+  resumeAudits.push({ label, firstPaint: loadingCopy, exposedSurface });
 };
 
 try {
@@ -181,7 +191,7 @@ try {
   await recordState("Q5");
   await snapshotAcquisitionState("TUTORIAL_SPEEDUP");
   trace.push(...await page.evaluate(() => window.__TRIBE_TUTORIAL_JOURNEY_TRACE__ || []));
-  await resumeAfterReload();
+  await resumeAfterReload("QUEST_SPEEDUP_COMPLETE");
   await visible('[data-acceptance-state="Q5"]', 30_000);
   await page.waitForFunction(() => {
     const button = document.querySelector('[data-acceptance-state="Q5"] button');
@@ -189,7 +199,7 @@ try {
   }, undefined, { timeout: 20_000 });
   await page.locator('[data-acceptance-state="Q5"] button').click();
   await recordState("Q6");
-  await resumeAfterReload();
+  await resumeAfterReload("BATTLE_READY");
   await visible('[data-acceptance-state="Q5"],[data-acceptance-state="Q6"]', 30_000);
   if (await page.locator('[data-acceptance-state="Q5"]').isVisible()) {
     await page.locator('[data-acceptance-state="Q5"] button').click();
@@ -244,6 +254,8 @@ try {
   await page.locator('[data-battle-speed="2"]').waitFor({ state: "visible", timeout: 10_000 });
   await page.waitForFunction(() => (window.__TRIBE_BATTLE_PRESENTATION__?.history || []).some((entry) => entry?.kind === "normal" && entry?.actionCompleteAt), undefined, { timeout: 45_000, polling: 50 });
   stateSequence.push("B3");
+  await resumeAfterReload("BATTLE_IN_PROGRESS");
+  await visible(".quest-battle-viewer", 30_000);
   await page.waitForFunction(() => (window.__TRIBE_BATTLE_PRESENTATION__?.history || []).some((entry) => entry?.kind === "skill" && entry?.actionCompleteAt), undefined, { timeout: 45_000, polling: 50 });
   stateSequence.push("B4");
   await page.screenshot({ path: path.join(artifactsDirectory, "preview-B4.png"), fullPage: true });
@@ -437,6 +449,7 @@ try {
     battlePresentation: browserState.battlePresentation,
     trace,
     battleNetworkTrace,
+    resumeAudits,
     starterSkill: { skillId: starterSkills[0].skill_card_id, plusValue: starterSkills[0].plus_val, slotIndex: starterSkills[0].slot_index },
     replayContract: { basicActionIndex, skillActionIndex, skillImpactIndex, winner: replay.result.winner },
     battleResolveContract: { patrol: finalPatrol, replay: canonicalReplay, dispatchResponseCount: dispatchResponses.length, createResponseCount: createResponses.length, resolveResponseCount: resolveResponses.length },

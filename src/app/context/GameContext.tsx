@@ -572,6 +572,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const [guildAuthorityOwnerUserId, setGuildAuthorityOwnerUserId] = useState<string>("");
   const [authenticatedProjectionOwnerUserId, setAuthenticatedProjectionOwnerUserId] = useState<string>("");
   const [authenticatedProjectionError, setAuthenticatedProjectionError] = useState<string | null>(null);
+  const [resumeLoading, setResumeLoading] = useState(false);
   const [activePlayerDetail, setActivePlayerDetail] = useState<any | null>(null);
   const [activeGuildDetail, setActiveGuildDetail] = useState<any | null>(null);
 
@@ -1949,11 +1950,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         .eq("status", "ACTIVE")
         .order("created_at", { ascending: false })
         .limit(1)
-        .single();
-      
-      if (activeBattleSession) {
-        battle.resumeBattleSession(activeBattleSession, localCharIds);
-      }
+        .maybeSingle();
+      if (activeBattleSession) battle.resumeBattleSession(activeBattleSession, localCharIds);
 
       const { data: newsData } = await supabase
         .from("news")
@@ -1980,6 +1978,43 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setTotalPowerLoading(false);
       releaseBootstrap();
+    }
+  };
+
+  const resumeCurrentSession = async () => {
+    const userId = session?.user?.id;
+    if (!userId || resumeLoading) return false;
+    setResumeLoading(true);
+    setAuthenticatedProjectionError(null);
+    try {
+      await syncBootstrapData(userId);
+      const { data: state, error } = await supabase.rpc("get_current_onboarding_state");
+      if (error || state?.user_id !== userId) throw error || new Error("Resume authority mismatch");
+      setOnboardingState(state);
+      if (state.tutorial_step === "TUTORIAL_BATTLE") {
+        const { data: resumablePatrol } = await supabase
+          .from("user_patrols")
+          .select("id")
+          .eq("user_id", userId)
+          .neq("status", "COMPLETED")
+          .eq("has_battle_event", true)
+          .order("started_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (resumablePatrol?.id) await battle.resumeActiveBattleSession(resumablePatrol.id);
+      }
+      if (state.tutorial_step === "FREE_GACHA") setActiveTab("gacha");
+      else if (state.tutorial_step === "AUTO_FORMATION") setActiveTab("character");
+      else if (["DISPATCH", "FREE_INSTANT", "TUTORIAL_BATTLE"].includes(state.tutorial_step || "")) setActiveTab("patrol");
+      else if (!battle.battleState) setActiveTab("home");
+      setShowTitleView(false);
+      return true;
+    } catch (error) {
+      console.warn("Resume authority resolution failed:", error);
+      setAuthenticatedProjectionError("再開先を確認できませんでした。再度お試しください。");
+      return false;
+    } finally {
+      setResumeLoading(false);
     }
   };
 
@@ -3979,6 +4014,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       && authenticatedProjectionOwnerUserId === session.user.id,
     authenticatedProjectionError,
     retryAuthenticatedProjection,
+    resumeLoading,
+    resumeCurrentSession,
     guildJoinRequests, setGuildJoinRequests,
     selectedLeader, setSelectedLeader,
     identityLeaderCharacterId: identityLeaderOwnerUserId === session?.user?.id ? identityLeaderCharacterId : "",

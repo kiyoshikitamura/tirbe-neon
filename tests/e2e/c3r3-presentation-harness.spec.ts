@@ -102,6 +102,10 @@ test("production battle viewer renders actual 5v3 roster without empty slots", a
   await expect(page.locator('.battle-party-zone.is-enemy [id^="enemy-"]')).toHaveCount(3);
   await expect(page.locator('.battle-party-zone.is-enemy')).toHaveAttribute("data-party-size", "3");
   await expect(page.locator(".battle-unit")).toHaveCount(8);
+  const fixedFieldHeights = await page.locator(".battle-party-zone").evaluateAll((zones) => zones.map((zone) =>
+    [...zone.querySelectorAll<HTMLElement>(".battle-unit")].map((card) => Math.round(card.getBoundingClientRect().height))
+  ));
+  expect(new Set(fixedFieldHeights.flat()).size).toBe(1);
   for (const zone of ["is-player", "is-enemy"]) {
     const geometry = await page.locator(`.battle-party-zone.${zone}`).evaluate((element) => {
       const zoneBox = element.getBoundingClientRect();

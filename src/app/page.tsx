@@ -86,6 +86,8 @@ function AppContent() {
   React.useEffect(() => {
     if (showTitleView) playBgm("TITLE");
     else if (battleState) playBgm("BATTLE");
+    else if (activeTab === "patrol" || activeTab === "quest") playBgm("QUEST");
+    else if (activeTab === "raid") playBgm("RAID");
     else if (activeTab === "pvp") playBgm("PVP");
     else if (activeTab === "guild") playBgm("GUILD");
     else playBgm("HOME");

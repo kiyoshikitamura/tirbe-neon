@@ -113,7 +113,6 @@ test("an authenticated Google user without game data cannot enter anonymous name
 
 test("name-only initialization is idempotent and resumes the tutorial after reload", async ({ page }) => {
   await page.goto("/");
-  await page.getByText("TAP TO START").click();
   await page.getByRole("button", { name: "はじめから" }).click();
   await enterNameRegistration(page);
   await page.getByPlaceholder("プレイヤー名を入力").fill("新宿太郎");
@@ -134,14 +133,14 @@ test("name-only initialization is idempotent and resumes the tutorial after relo
   expect(storedCounts).toEqual({ users: 1, characters: 0, progress: 1 });
 
   await page.reload();
-  await page.getByText("TAP TO START").waitFor({ state: "visible", timeout: 2_000 }).catch(() => undefined);
-  if (await page.getByText("TAP TO START").isVisible()) await page.getByText("TAP TO START").click();
+  await page.getByRole("button", { name: "続きから" }).click();
   await expect(page.getByRole("dialog", { name: "アゲハからの案内" })).toBeVisible();
   const resumedNext = page.getByRole("button", { name: "次へ" });
   await expect(resumedNext).toBeEnabled();
   await resumedNext.click();
   await expect(page.getByRole("button", { name: "無料10連を引く" })).toBeVisible();
   await page.reload();
+  await page.getByRole("button", { name: "続きから" }).click();
   await expect(page.getByRole("button", { name: "無料10連を引く" })).toBeVisible();
   const reloadedCounts = await page.evaluate(() => ({
     users: JSON.parse(localStorage.getItem("mock_db_users") || "[]").length,
@@ -156,7 +155,6 @@ test("name-only initialization rejects a normalized duplicate username", async (
     localStorage.setItem("mock_db_users", JSON.stringify([{ id: "other-user", username: "NEON" }]));
   });
   await page.goto("/");
-  await page.getByText("TAP TO START").click();
   await page.getByRole("button", { name: "はじめから" }).click();
   await enterNameRegistration(page);
   await page.getByPlaceholder("プレイヤー名を入力").fill(" neon ");
