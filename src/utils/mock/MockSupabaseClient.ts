@@ -3,6 +3,7 @@
 import { executeMockRpc } from "./mockRpc.ts";
 import { resolveBattle, type Tactic } from "../../../supabase/functions/resolve-battle/engine.ts";
 import { CANONICAL_MISSIONS } from "../../domain/gameplay/canonical/masters.ts";
+import { DEFAULT_LOGIN_BONUS_MASTERS } from "../login_bonus_master_data.ts";
 
 const isTactic = (value: unknown): value is Tactic => value === "ATTACK_PRIORITY" || value === "HEAL_PRIORITY" || value === "SKILL_PRIORITY" || value === "BALANCED" || value === "WEAKNESS_FOCUS";
 
@@ -29,6 +30,7 @@ export class MockSupabaseClient {
         is_provisional: mission.isProvisional,
       }));
     }
+    if (key === "login_bonus_master") return DEFAULT_LOGIN_BONUS_MASTERS.map((master) => ({ ...master }));
     return defaultVal;
   }
 

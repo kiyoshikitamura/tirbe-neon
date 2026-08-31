@@ -6,6 +6,7 @@ import CharacterPresentation from "./character/CharacterPresentation";
 import TypewriterText from "./tutorial/TypewriterText";
 import { userFacingErrorMessage } from "../lib/userFacingError";
 import "./SetupView.css";
+import { featureUiExposure } from "@/domain/operations/operations";
 
 type EntryPresentationState = "WORLD_INFORMATION" | "WORLD_TO_AGEHA" | "AGEHA_INTRO" | "NAME_INPUT";
 
@@ -34,6 +35,7 @@ export default function SetupView() {
   }, [session?.user?.id]);
 
   useEffect(() => {
+    if (featureUiExposure("INVITE") !== "ACTIVE") return;
     const invitationCode = new URLSearchParams(window.location.search).get("invite");
     if (invitationCode) setSetupGiftCode(invitationCode.toUpperCase().slice(0,8));
   }, [setSetupGiftCode]);

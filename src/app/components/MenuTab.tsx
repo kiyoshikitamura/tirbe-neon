@@ -10,6 +10,7 @@ export default function MenuTab() {
     setShowInboxPanel,
     setInboxPanelTab,
     setShowSettingsPanel,
+    setShowLoginBonusModal,
     playCyberSe
   } = useGame();
 
@@ -22,6 +23,7 @@ export default function MenuTab() {
     { label: "所持品", action: () => navigateTab("bag"), color: "silver" },
     { label: "ミッション", action: () => setShowMissionPanel(true), color: "cyan" },
     { label: "プレゼント", action: () => { setShowInboxPanel(true); setInboxPanelTab("presents"); }, color: "magenta" },
+    { label: "ログインボーナス", action: () => setShowLoginBonusModal(true), color: "gold" },
     { label: "設定", action: () => setShowSettingsPanel(true), color: "white" },
   ];
 

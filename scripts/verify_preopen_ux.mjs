@@ -34,6 +34,7 @@ requireText("src/app/components/MoveBaseModal.tsx", "CANONICAL_QUEST_TOWNS", "ba
 forbidText("src/app/components/MoveBaseModal.tsx", "junk_bazaar", "legacy base removed");
 forbidText("src/app/components/MoveBaseModal.tsx", "ジャンクバザール", "legacy base copy removed");
 requireText("src/app/components/HomeTab.tsx", "const miniNavigationItems = [", "Home mini navigation remains directly available");
+requireText("src/app/context/GameContext.tsx", "mission.trigger_type !== \"USER_INVITE\" || featureUiExposure(\"INVITE\") === \"ACTIVE\"", "invitation missions follow pre-open exposure");
 requireText("src/app/components/HomeTab.tsx", "onClick: () => navigateTab(\"ranking\")", "Ranking remains a direct community action");
 requireText("src/app/components/BbsTab.tsx", "get_public_profiles", "BBS identity batch projection");
 requireText("src/app/components/BbsTab.tsx", "<UserIdentityRow", "BBS shared identity");

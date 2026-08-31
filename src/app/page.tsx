@@ -42,6 +42,7 @@ import TutorialAuthentication from "./components/TutorialAuthentication";
 import BrandedLoading from "./components/ui/BrandedLoading";
 import CanonicalDialog from "./components/ui/CanonicalDialog";
 import HomeResumeShell from "./components/HomeResumeShell";
+import { LoginBonusModal } from "./components/LoginBonusModal";
 import { markHomeReloadStage, readHomeResumeSnapshot } from "./lib/homeResumePresentation";
 
 function AppContent() {
@@ -49,7 +50,14 @@ function AppContent() {
     handleLogout,
     confirmDialogConfig,
     globalInteractionBlocking,
-    maintenanceEnabled
+    maintenanceEnabled,
+    loginBonusMasters,
+    userLoginBonus,
+    showLoginBonusModal,
+    setShowLoginBonusModal,
+    loginBonusClaimResult,
+    setShowInboxPanel,
+    setInboxPanelTab,
   } = useGame();
   const [homeResumeSnapshot, setHomeResumeSnapshot] = React.useState<ReturnType<typeof readHomeResumeSnapshot>>(null);
   React.useLayoutEffect(() => {
@@ -216,6 +224,13 @@ function AppContent() {
             {/* Layer 3: コンパクトモーダル */}
             <CommonModals />
             <MoveBaseModal />
+            {showLoginBonusModal && <LoginBonusModal
+              masters={loginBonusMasters}
+              currentStep={userLoginBonus?.current_step || loginBonusClaimResult?.current_step || 1}
+              claimResult={loginBonusClaimResult}
+              onClose={() => setShowLoginBonusModal(false)}
+              onOpenPresents={() => { setShowInboxPanel(true); setInboxPanelTab("presents"); }}
+            />}
 
             {/* Layer 4: フルスクリーンパネル */}
             <TribeChatModal />

@@ -43,6 +43,7 @@ import { normalizeUserBio } from "@/domain/presentation/userBio";
 import { waitForBrowserPaint } from "@/domain/presentation/browserPaint";
 import { CANONICAL_QUEST_REWARD_POOLS, CANONICAL_QUESTS } from "@/domain/gameplay/canonical/quests";
 import {
+  featureUiExposure,
   isFeatureOpen,
   isMaintenanceEnabled,
   mergeServerOperationsState,
@@ -1067,7 +1068,9 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         const claimedMissionIds = new Set(
           userMissionResult.data.filter((row: any) => row.status === "CLAIMED").map((row: any) => row.mission_id),
         );
-        setMissions(missionMasterResult.data.map((mission: any) => {
+        setMissions(missionMasterResult.data
+          .filter((mission: any) => mission.trigger_type !== "USER_INVITE" || featureUiExposure("INVITE") === "ACTIVE")
+          .map((mission: any) => {
           const userMission: any = userMissionById.get(mission.id);
           const prerequisiteClaimed = !mission.prerequisite_mission_id || claimedMissionIds.has(mission.prerequisite_mission_id);
           return {
@@ -1093,7 +1096,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
             status: canonicalMissionUiStatus(userMission?.status, prerequisiteClaimed),
             loading: false,
           };
-        }).sort((left: any, right: any) => left.display_order - right.display_order));
+          }).sort((left: any, right: any) => left.display_order - right.display_order));
       }
     }).catch((error) => {
       console.warn("Failed to prime Home badge projections:", error);

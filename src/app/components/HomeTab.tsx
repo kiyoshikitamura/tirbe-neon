@@ -104,6 +104,7 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
     guildChats,
     chatUnreadCounts,
     setShowMissionPanel,
+    setShowLoginBonusModal,
     setShowMoveBaseModal,
     setShowTribeChatPanel,
     navigateTab,
@@ -375,6 +376,12 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
   const unreadChatCount = Number(chatUnreadCounts?.GLOBAL || 0) + Number(chatUnreadCounts?.GUILD || 0);
 
   const miniNavigationItems = [
+    {
+      id: "login-bonus",
+      label: "ボーナス",
+      icon: "/ui/icon_present.png",
+      onClick: () => setShowLoginBonusModal(true)
+    },
     {
       id: "mission",
       label: "ミッション",

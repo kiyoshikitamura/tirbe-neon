@@ -27,8 +27,10 @@ export interface LoginBonusReward {
 
 export interface LoginBonusClaimResult {
   claimed: boolean;
+  already_claimed?: boolean;
   reason?: string;
   current_step: number;
+  day_number?: number;
   total_logins?: number;
   last_claimed_date?: string;
   reward?: LoginBonusReward;
@@ -41,5 +43,5 @@ export const DEFAULT_LOGIN_BONUS_MASTERS: LoginBonusMaster[] = loginBonusSource.
   item_id: reward.rewardItemId,
   quantity: Number(reward.rewardQty),
   is_featured: FEATURED_DAYS.has(reward.day),
-  item_name: `${canonicalItemName(reward.rewardItemId)} ${Number(reward.rewardQty).toLocaleString("ja-JP")}`,
+  item_name: canonicalItemName(reward.rewardItemId),
 }));
