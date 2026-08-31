@@ -494,13 +494,22 @@ test("free gacha presents one CTA, feedback, result assets, and formation connec
         cardWidths: cards.map((card) => Math.round(card.getBoundingClientRect().width)),
         cardHeights: cards.map((card) => Math.round(card.getBoundingClientRect().height)),
         frameRects: cards.map((card) => {
-          const cardRect = card.getBoundingClientRect();
+          const presentationRect = card.querySelector(".character-presentation")?.getBoundingClientRect();
           const frameRect = card.querySelector(".character-presentation-frame")?.getBoundingClientRect();
-          return frameRect ? {
-            widthDelta: Math.abs(frameRect.width - cardRect.width),
-            heightDelta: Math.abs(frameRect.height - cardRect.height),
+          return frameRect && presentationRect ? {
+            widthDelta: Math.abs(frameRect.width - presentationRect.width),
+            heightDelta: Math.abs(frameRect.height - presentationRect.height),
           } : null;
         }),
+        rowBounds: Array.from(new Set(cards.map((card) => Math.round(card.getBoundingClientRect().top))))
+          .sort((a, b) => a - b)
+          .map((top) => {
+            const rowCards = cards.filter((card) => Math.round(card.getBoundingClientRect().top) === top);
+            return {
+              top: Math.min(...rowCards.map((card) => card.getBoundingClientRect().top)),
+              bottom: Math.max(...rowCards.map((card) => card.getBoundingClientRect().bottom)),
+            };
+          }),
       };
     });
     expect(metrics.left).toBeGreaterThanOrEqual(0);
@@ -513,6 +522,7 @@ test("free gacha presents one CTA, feedback, result assets, and formation connec
     expect(new Set(metrics.cardWidths).size).toBe(1);
     expect(new Set(metrics.cardHeights).size).toBe(1);
     expect(metrics.frameRects.every((frame) => frame && frame.widthDelta <= 1 && frame.heightDelta <= 1)).toBe(true);
+    expect(metrics.rowBounds.every((row, index, rows) => index === rows.length - 1 || row.bottom <= rows[index + 1].top)).toBe(true);
     await page.screenshot({ path: test.info().outputPath(`m9-1-gacha-result-${width}.png`), fullPage: true });
   }
   await expect(page.locator(".gacha-result-card .character-presentation-gacha-result-compact")).toHaveCount(10);
@@ -1202,7 +1212,8 @@ test("new mobile player completes the guided first session without footer naviga
 
   await page.goto("/");
   await assertCenteredGameCanvas(page, ".title-view-overlay");
-  await page.getByText("TAP TO START").click();
+  const tapToStart = page.getByText("TAP TO START");
+  if (await tapToStart.isVisible()) await tapToStart.click();
   await page.getByRole("button", { name: "はじめから" }).click();
 
   await enterNameRegistration(page, true);

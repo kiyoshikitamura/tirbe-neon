@@ -234,7 +234,7 @@ export default function CardBattleView() {
           <div className="tutorial-battle-vs">VS</div>
           <article className="tutorial-battle-leader is-enemy"><CharacterPresentation src={getBattleCharacterImage(enemyLeader?.characterId)} alt={enemyLeader?.name || battleOpponentName} variant="battle-leader" /><div><small>ENEMY</small><b>{enemyLeader?.name || battleOpponentName}</b><strong>{enemyPower.toLocaleString()}</strong></div></article>
         </div>
-        <div className="tutorial-battle-party-icons" aria-label="出撃パーティ">{playerPartyStates.map((member: any) => <CharacterPresentation key={member.id} src={getBattleCharacterImage(member.characterId)} alt={member.name} variant="thumbnail" className="character-presentation-battle-party" metadata={false} />)}</div>
+        <div className="tutorial-battle-party-icons" aria-label="出撃パーティ">{playerPartyStates.map((member: any) => <CharacterPresentation key={member.id} src={getBattleCharacterImage(member.characterId)} alt={member.name} variant="icon" className="character-presentation-battle-party" metadata={false} />)}</div>
         <div className="tutorial-battle-strategy"><small>STRATEGY</small><b>{tactic === "ATTACK_PRIORITY" ? "攻撃優先" : tactic === "HEAL_PRIORITY" ? "回復優先" : tactic === "SKILL_PRIORITY" ? "スキル優先" : tactic === "WEAKNESS_FOCUS" ? "弱点集中" : "バランス"}</b></div>
         <button className="start-battle-btn semantic-cta semantic-cta--primary active-scale-effect tutorial-primary-target" onClick={launchBattleOnce}>バトルスタート</button>
       </div>;
