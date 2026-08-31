@@ -26,7 +26,8 @@ const enterGame = async (page: import("@playwright/test").Page) => {
 const openSettings = async (page: import("@playwright/test").Page) => {
   await page.goto("/");
   await enterGame(page);
-  await page.getByRole("button", { name: "設定 設定", exact: true }).click();
+  await page.getByRole("button", { name: /MENU/ }).click();
+  await page.getByRole("dialog", { name: "ホームメニュー" }).getByRole("button", { name: "設定", exact: true }).click();
   await expect(page.locator(".editable-setting-section").first()).toBeVisible();
 };
 
@@ -88,6 +89,7 @@ test("Settings profile cancel and save keep the existing persistence authority",
   await saved.getByRole("button", { name: "OK" }).click();
   await page.reload();
   await enterGame(page);
-  await page.getByRole("button", { name: "設定 設定", exact: true }).click();
+  await page.getByRole("button", { name: /MENU/ }).click();
+  await page.getByRole("dialog", { name: "ホームメニュー" }).getByRole("button", { name: "設定", exact: true }).click();
   await expect(page.locator(".editable-setting-section").first()).toContainText("保存確認");
 });

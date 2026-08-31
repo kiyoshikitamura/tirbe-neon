@@ -95,7 +95,7 @@ test("NPC mock battle reuses the viewer without PvP economy or record mutations"
 test("PvP defense save locks its form snapshot until authoritative projection paint", async ({ page }) => {
   await seedAuthenticatedPlayer(page);
   await enterHome(page);
-  await page.getByRole("button", { name: "バトル / PvP", exact: true }).click();
+  await page.getByRole("button", { name: "バトル", exact: true }).click();
   await page.getByRole("button", { name: "防衛・履歴" }).click();
   await page.locator(".pvp-defense-member").first().click();
   await page.locator("select").selectOption("HEAL_PRIORITY");

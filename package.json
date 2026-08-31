@@ -28,6 +28,7 @@
     "verify:canonical-items": "node scripts/verify_canonical_items.mjs",
     "verify:production-item-equipment-assets": "node scripts/verify_production_item_equipment_assets.mjs",
     "verify:fa-async-asset-remediation": "node --experimental-strip-types scripts/verify_fa_async_asset_remediation.mjs && node scripts/verify_production_item_equipment_assets.mjs",
+    "verify:async-transition-acceptance": "node scripts/verify_async_transition_acceptance_matrix.mjs",
     "verify:character-ssr-candidates": "node scripts/verify_character_ssr_candidate_contract.mjs",
     "verify:character-ssr-candidate-db-migration": "node scripts/verify_character_ssr_candidate_db_migration.mjs",
     "verify:ssr-gacha-quotes": "node scripts/verify_ssr_gacha_quotes.mjs",

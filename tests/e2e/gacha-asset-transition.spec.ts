@@ -133,7 +133,7 @@ for (const category of ["SKILL", "EQUIPMENT"] as const) {
       const draw = page.getByRole("button", { name: "1回 1,000キャッシュ" });
       await draw.click();
       await expect(page.locator('[data-gacha-transition-state="processing"]')).toBeVisible();
-      await expect(page.locator("[data-gacha-short-effect]")).toContainText("抽選結果を同期中");
+      await expect(page.locator("[data-gacha-short-effect]")).toHaveAttribute("aria-label", "ガチャ抽選結果を同期中");
       if (delay >= 500) {
         await page.waitForTimeout(Math.min(Math.max(100, delay - 300), 900));
         await expect(page.locator('[data-gacha-transition-state="processing"]')).toBeVisible();
