@@ -13,6 +13,7 @@
     "test:e2e": "node scripts/run_browser_e2e.mjs",
     "verify:asset-gacha": "node scripts/verify_asset_gacha.mjs",
     "verify:sound-assets": "node scripts/verify_sound_assets.mjs",
+    "prepare:audio-lifecycle-release-gate": "node scripts/verify_audio_release_gate.mjs",
     "verify:mock-asset-gacha": "node --experimental-strip-types scripts/verify_mock_asset_gacha.mjs",
     "verify:production-creatives": "node --experimental-strip-types scripts/verify_production_creative_integration.mjs",
     "verify:final-asset-production": "node scripts/verify_final_asset_production.mjs",

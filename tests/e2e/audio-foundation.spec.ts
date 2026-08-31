@@ -53,19 +53,19 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-test("TAP TO START unlocks audio once and starts the title scene lazily", async ({ page }) => {
+test("Title continue unlocks audio once and starts the title scene lazily", async ({ page }) => {
   await page.goto("/");
   expect(await page.evaluate(() => window.__audioQa?.requests.length)).toBe(0);
-  await page.getByRole("button", { name: "TAP TO START" }).click();
+  await page.getByRole("button", { name: "続きから" }).click();
   await expect.poll(() => page.evaluate(() => window.__audioQa?.resumes)).toBe(1);
   await expect.poll(() => page.evaluate(() => window.__audioQa?.requests.some((url) => url.endsWith("/sounds/bgm/bgm_title.mp3")))).toBe(true);
-  await page.getByRole("button", { name: "既存アカウントでログイン" }).click();
+  await page.getByPlaceholder("メールアドレス").click();
   expect(await page.evaluate(() => window.__audioQa?.resumes)).toBe(1);
 });
 
 test("background visibility suspends and resumes an unlocked audio context", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "TAP TO START" }).click();
+  await page.getByRole("button", { name: "続きから" }).click();
   await expect.poll(() => page.evaluate(() => window.__audioQa?.resumes)).toBe(1);
   await page.evaluate(() => {
     window.__audioQa!.hidden = true;
@@ -91,8 +91,8 @@ test("missing audio assets stay silent without blocking title interaction", asyn
       return currentFetch(input, init);
     };
   });
-  await page.getByRole("button", { name: "TAP TO START" }).click();
-  await expect(page.getByRole("button", { name: "はじめから" })).toBeVisible();
+  await page.getByRole("button", { name: "続きから" }).click();
+  await expect(page.getByRole("button", { name: "Googleでログイン" })).toBeVisible();
   expect(pageErrors).toEqual([]);
 });
 
@@ -112,14 +112,14 @@ test("BGM and SE preferences persist locally across reload", async ({ page }) =>
     await expect(page.getByRole("heading", { name: "サウンド設定" })).toBeVisible();
   };
   await page.goto("/");
-  await page.getByRole("button", { name: "TAP TO START" }).click();
+  await page.getByRole("button", { name: "続きから" }).click();
   await openSettings();
   await expect(page.locator("#bgm-volume")).toHaveValue("0.25");
   await expect(page.locator("#se-volume")).toHaveValue("0.6");
   await page.getByText("BGM").locator("..").locator("..").getByRole("button", { name: "ON" }).click();
   await page.locator("#bgm-volume").fill("0.55");
   await page.reload();
-  await page.getByRole("button", { name: "TAP TO START" }).click();
+  await page.getByRole("button", { name: "続きから" }).click();
   await openSettings();
   await expect(page.locator("#bgm-volume")).toHaveValue("0.55");
   await expect(page.getByText("BGM").locator("..").locator("..").getByRole("button", { name: "ON" })).toHaveClass(/active/);
