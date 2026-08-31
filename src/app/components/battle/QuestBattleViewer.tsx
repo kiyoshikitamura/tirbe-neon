@@ -33,6 +33,7 @@ type Props = {
   presentationPhase?: BattlePresentationPhase;
   actionPresentation?: BattleActionPresentation | null;
   round: number;
+  roundLimit?: number;
   skillCutIn: { charName: string; skillName: string } | null;
   targetLine: { fromId: string; toId: string } | null;
   shakingId: string | null;
@@ -114,15 +115,17 @@ export default function QuestBattleViewer(props: Props) {
     ? props.actionPresentation.beat !== "RETURN"
     : props.presentationPhase !== "IDLE" && props.presentationPhase !== "ACTION_HOLD";
   const reactionById = new Map<string, BattleTargetResolutionGroup>(
-    props.actionPresentation?.beat === "IMPACT"
+    props.actionPresentation && (props.actionPresentation.beat === "IMPACT" || props.actionPresentation.beat === "RETURN")
       ? props.actionPresentation.unit.targets
         .filter((group) => group.events.some((event) => !isActiveEffectSync(event)))
         .map((group) => [group.targetId, group])
       : [],
   );
   const standardSkillCue = props.actionPresentation?.tier === "STANDARD" ? props.actionPresentation.skillName : undefined;
-  const lastSkillCueRef = useRef<unknown>(null);
-  const lastDamageCueRef = useRef<unknown>(null);
+  const lastActionAudioKeyRef = useRef<string>("");
+  const lastResolutionAudioKeyRef = useRef<string>("");
+  const lastLegacySkillCueRef = useRef<unknown>(null);
+  const lastLegacyDamageCueRef = useRef<unknown>(null);
   const tutorialPaceRef = useRef({ normalSeen: false, skillSeen: false, advanced: false });
   const [showSpeedGuidance, setShowSpeedGuidance] = useState(false);
   useEffect(() => {
@@ -139,32 +142,62 @@ export default function QuestBattleViewer(props: Props) {
     }
   }, [isSkillAction, props.onSpeedChange, props.presentationPhase, props.tutorial]);
   useEffect(() => {
-    if (!props.skillCutIn || lastSkillCueRef.current === props.skillCutIn) return;
-    lastSkillCueRef.current = props.skillCutIn;
+    const action = props.actionPresentation;
+    if (!action || action.beat !== "ACTOR") return;
+    const key = `${action.unit.replayStartCursor}:${action.unit.actorId}`;
+    if (lastActionAudioKeyRef.current === key) return;
+    lastActionAudioKeyRef.current = key;
+    if (action.tier !== "NORMAL") playSe("BATTLE_SKILL");
+    else if (skillPresentation?.impact === "slash") playSe("BATTLE_SLASH");
+    else if (skillPresentation?.impact === "muzzle") playSe("BATTLE_GUN");
+    else playSe("BATTLE_ATTACK");
+  }, [playSe, props.actionPresentation, skillPresentation?.impact]);
+  useEffect(() => {
+    const action = props.actionPresentation;
+    if (!action || action.beat !== "IMPACT") return;
+    const key = `${action.unit.replayStartCursor}:impact`;
+    if (lastResolutionAudioKeyRef.current === key) return;
+    lastResolutionAudioKeyRef.current = key;
+    const events = action.unit.targets.flatMap((group) => group.events.map((event) => ({ group, event })));
+    const damageEvents = events.filter(({ event }) => event.type === "DAMAGE" && event.payload.hit !== false);
+    if (damageEvents.some(({ event }) => event.payload.critical === true)) playSe("BATTLE_CRITICAL");
+    else if (damageEvents.length) {
+      const advantageous = damageEvents.some(({ group }) => hasAdvantage(allParticipants.find((entry) => entry.id === group.targetId)));
+      playSe(advantageous ? "BATTLE_WEAK" : "BATTLE_DAMAGE");
+    } else {
+      const effectKeys = events.map(({ event }) => String(event.payload.status ?? event.payload.kind ?? "").toUpperCase());
+      if (effectKeys.some((keyValue) => keyValue === "DEBUFF" || ["BLIND", "SILENCE", "STUN", "POISON", "BLEED"].includes(keyValue))) playSe("BATTLE_DEBUFF");
+      else if (effectKeys.some((keyValue) => keyValue === "BUFF" || keyValue === "REGEN" || keyValue === "COUNTER" || keyValue === "REMOVE_STATUS")) playSe("BATTLE_BUFF");
+    }
+  }, [allParticipants, hasAdvantage, playSe, props.actionPresentation]);
+  useEffect(() => {
+    if (props.actionPresentation || !props.skillCutIn || lastLegacySkillCueRef.current === props.skillCutIn) return;
+    lastLegacySkillCueRef.current = props.skillCutIn;
     if (isSkillAction) playSe("BATTLE_SKILL");
     else if (skillPresentation?.impact === "slash") playSe("BATTLE_SLASH");
     else if (skillPresentation?.impact === "muzzle") playSe("BATTLE_GUN");
     else playSe("BATTLE_ATTACK");
-  }, [isSkillAction, playSe, props.skillCutIn, skillPresentation?.impact]);
+  }, [isSkillAction, playSe, props.actionPresentation, props.skillCutIn, skillPresentation?.impact]);
   useEffect(() => {
-    if (!props.damagePopup || lastDamageCueRef.current === props.damagePopup) return;
-    lastDamageCueRef.current = props.damagePopup;
+    if (props.actionPresentation || !props.damagePopup || lastLegacyDamageCueRef.current === props.damagePopup) return;
+    lastLegacyDamageCueRef.current = props.damagePopup;
     if (props.damagePopup.isCritical) playSe("BATTLE_CRITICAL");
     else if (targetHasAdvantage) playSe("BATTLE_WEAK");
     else if (props.damagePopup.type === "dmg") playSe("BATTLE_DAMAGE");
-  }, [playSe, props.damagePopup, targetHasAdvantage]);
+  }, [playSe, props.actionPresentation, props.damagePopup, targetHasAdvantage]);
   const actionPhase = (props.presentationPhase || "IDLE").toLowerCase().replaceAll("_", "-");
   const acceptanceState = props.damagePopup
     ? (props.enemyParty.every((entry) => entry.isDead || entry.hp <= 0) ? "B5" : isSkillAction ? "B4" : "B3")
     : isSkillAction ? "B4" : "B3";
   const isFinalHit = acceptanceState === "B5";
-  const roundLimit = props.battleMode === "RAID" ? 30 : props.battleMode === "PVP" || props.battleMode === "GVG" ? 20 : 15;
+  const roundLimit = props.roundLimit
+    ?? (props.battleMode === "RAID" ? 30 : props.battleMode === "PVP" || props.battleMode === "PVP_PRACTICE" || props.battleMode === "GVG" ? 20 : 15);
 
   return (
     <div className={`playing-container quest-battle-viewer ${props.tutorial ? "is-tutorial" : ""}`} style={props.backgroundPath ? { "--battle-background-image": `url(${props.backgroundPath})` } as React.CSSProperties : undefined} data-battle-speed={props.speed} data-acceptance-state={props.tutorial ? acceptanceState : undefined} data-action-phase={actionPhase} data-action-kind={isSkillAction ? "skill" : "normal"} data-action-actor-id={activeParticipant?.id || ""} data-action-target-id={targetParticipant?.id || ""}>
       <header className="battle-viewer-header">
         <span>{props.battleMode === "PATROL" ? "QUEST BATTLE" : props.battleMode}</span>
-        <strong>ROUND {props.round}<small> / {roundLimit}</small></strong>
+        <strong data-displayed-round={props.round} data-configured-round-limit={roundLimit}>ROUND {props.round}<small> / {roundLimit}</small></strong>
         <i>AUTO</i>
       </header>
 

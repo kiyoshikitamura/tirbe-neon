@@ -25,7 +25,9 @@ import {
   battlePresentationImpactAt,
   battlePresentationTier,
   buildBattlePresentationUnit,
+  recordBattleHpProjection,
   reconcileBattleHpFromReplay,
+  waitForRenderedBattleActionHpParity,
   waitForRenderedBattleHpParity,
   type BattleActionPresentation,
 } from "@/domain/presentation/battlePresentationUnit";
@@ -81,6 +83,8 @@ export type BattlePresentationPhase = "IDLE" | "ACTOR_FOCUS" | "TARGET_FOCUS" | 
 export type BattlePresentationTimelineNode = { id: string; name: string; isEnemy?: boolean };
 export type BattlePresentationContext = {
   mode: BattleMode;
+  /** Presentation copy of the canonical battle configuration. Never used to resolve battle authority. */
+  roundLimit?: number;
   opponentLabel: string;
   encounterLabel?: string;
   opponentLeaderCharacterId?: string;
@@ -1410,6 +1414,7 @@ export function useBattle(options: UseBattleOptions) {
     const opponentLeader = initialEnemyParty[0];
     const presentationContextForBattle: BattlePresentationContext = {
       mode,
+      roundLimit: mode === "RAID" ? 30 : mode === "PVP" || mode === "PVP_PRACTICE" || mode === "GVG" ? 20 : 15,
       opponentLabel: presentationOverride?.opponentLabel || targetName,
       encounterLabel: presentationOverride?.encounterLabel,
       opponentLeaderCharacterId: presentationOverride?.opponentLeaderCharacterId || opponentLeader?.characterId,
@@ -1606,7 +1611,26 @@ export function useBattle(options: UseBattleOptions) {
     setIsAutoPaused(true);
     clearPresentationTimers();
     setBattleResultReplayEvents(events);
-    void endBattleSession(resultEvent.payload.winner === "PLAYER" ? "VICTORY" : "DEFEAT");
+    setBattleRound(Math.max(1, Number(resultEvent.payload.rounds ?? resultEvent.round ?? 1)));
+    // Skip intentionally projects the already-resolved replay endpoint. This
+    // is distinct from natural playback: no intermediate parity defect is
+    // hidden, because the human explicitly requested that presentation be skipped.
+    const canonicalPlayers = reconcileBattleHpFromReplay(playerPartyStatesRef.current, events);
+    const canonicalEnemies = reconcileBattleHpFromReplay(enemyPartyStatesRef.current, events);
+    playerPartyStatesRef.current = canonicalPlayers;
+    enemyPartyStatesRef.current = canonicalEnemies;
+    setPlayerPartyStates(canonicalPlayers);
+    setEnemyPartyStates(canonicalEnemies);
+    if (typeof document !== "undefined") document.documentElement.dataset.battleHpSkipProjection = "true";
+    const finishSkip = async () => {
+      const parity = await waitForRenderedBattleHpParity([...canonicalPlayers, ...canonicalEnemies]);
+      if (parity && !parity.parity) {
+        presentationTimersRef.current.push(setTimeout(() => void finishSkip(), 120));
+        return;
+      }
+      void endBattleSession(resultEvent.payload.winner === "PLAYER" ? "VICTORY" : "DEFEAT");
+    };
+    presentationTimersRef.current.push(setTimeout(() => void finishSkip(), 0));
   };
 
   const handleEndTurn = (overrideIndex?: number) => {
@@ -2066,10 +2090,10 @@ export function useBattle(options: UseBattleOptions) {
             let next = participant;
             for (const event of group.events) {
               if (event.type === "DAMAGE") {
-                const remainingHp = Math.max(0, Number(event.payload.remainingHp ?? next.hp));
+                const remainingHp = Math.max(0, Number(event.payload.remainingHp ?? event.payload.hpAfter ?? next.hp));
                 next = projectActiveEffects({ ...next, hp: remainingHp, isDead: remainingHp <= 0 }, event.payload);
               } else if (event.type === "HEAL") {
-                const remainingHp = Math.max(0, Number(event.payload.remainingHp ?? next.hp));
+                const remainingHp = Math.max(0, Number(event.payload.remainingHp ?? event.payload.hpAfter ?? next.hp));
                 next = { ...next, hp: remainingHp, isDead: false };
               } else if (event.type === "STATUS" || event.type === "EFFECT") {
                 next = projectActiveEffects(next, event.payload);
@@ -2081,6 +2105,32 @@ export function useBattle(options: UseBattleOptions) {
           };
           const nextPlayers = currentPlayers.map(projectParticipant);
           const nextEnemies = currentEnemies.map(projectParticipant);
+          for (const group of outcomeUnit.targets) {
+            const hpEvent = [...group.events].reverse().find((event) => event.type === "DAMAGE" || event.type === "HEAL" || event.type === "DEFEAT");
+            if (!hpEvent || (hpEvent.type !== "DAMAGE" && hpEvent.type !== "HEAL" && hpEvent.type !== "DEFEAT")) continue;
+            const before = [...currentPlayers, ...currentEnemies].find((participant) => participant.id === group.targetId);
+            const after = [...nextPlayers, ...nextEnemies].find((participant) => participant.id === group.targetId);
+            if (!after) continue;
+            const replayRemainingHp = hpEvent.type === "DEFEAT"
+              ? 0
+              : Math.max(0, Number(hpEvent.payload.remainingHp ?? hpEvent.payload.hpAfter ?? after.hp));
+            recordBattleHpProjection({
+              actorId: actionActorId,
+              targetId: group.targetId,
+              side: currentPlayers.some((participant) => participant.id === group.targetId) ? "player" : "enemy",
+              eventType: hpEvent.type,
+              eventIndex: hpEvent.index,
+              round: hpEvent.round,
+              source: typeof hpEvent.payload.source === "string" ? hpEvent.payload.source : null,
+              canonicalHpBefore: before?.hp ?? null,
+              canonicalDamage: hpEvent.type === "DAMAGE" ? Math.max(0, Number(hpEvent.payload.hpDamage ?? hpEvent.payload.amount ?? 0)) : 0,
+              canonicalHeal: hpEvent.type === "HEAL" ? Math.max(0, Number(hpEvent.payload.effectiveAmount ?? hpEvent.payload.amount ?? 0)) : 0,
+              replayRemainingHp,
+              presentationProjectedHp: Math.max(0, Number(after.hp) || 0),
+              stateBefore: before?.hp ?? null,
+              isDead: after.isDead === true,
+            });
+          }
           playerPartyStatesRef.current = nextPlayers;
           enemyPartyStatesRef.current = nextEnemies;
           setPlayerPartyStates(nextPlayers);
@@ -2125,13 +2175,29 @@ export function useBattle(options: UseBattleOptions) {
             else if (battleMode === "RAID") setOfficialRaidEventIndex(next);
             else if (battleMode === "GVG" || battleMode === "PVP_PRACTICE") setCanonicalAuxEventIndex(next);
           };
-          advanceReplayTo(outcomeUnit.nextReplayCursor);
+          const hpTargetIds = new Set(outcomeUnit.targets
+            .filter((group) => group.events.some((event) => event.type === "DAMAGE" || event.type === "HEAL" || event.type === "DEFEAT"))
+            .map((group) => group.targetId));
+          const hpTargets = [...nextPlayers, ...nextEnemies].filter((participant) => hpTargetIds.has(participant.id));
+          const finishAction = async () => {
+            const gate = await waitForRenderedBattleActionHpParity(hpTargets, {
+              round: actionEvent.round,
+              actorId: actionActorId,
+              replayStartCursor: outcomeUnit.replayStartCursor,
+            });
+            if (gate && !gate.parity) {
+              presentationTimersRef.current.push(setTimeout(() => void finishAction(), 120));
+              return;
+            }
+            advanceReplayTo(outcomeUnit.nextReplayCursor);
+          };
+          presentationTimersRef.current.push(setTimeout(() => void finishAction(), remainingBudget));
           return;
         } else if (replayEvent.type === "DAMAGE") {
           setPresentationPhase("IMPACT");
           recordPresentationStage("impactAt", targetId);
           const amount = Math.max(0, Number(payload.amount ?? 0));
-          const remainingHp = Math.max(0, Number(payload.remainingHp ?? target?.hp ?? 0));
+          const remainingHp = Math.max(0, Number(payload.remainingHp ?? payload.hpAfter ?? target?.hp ?? 0));
           const critical = payload.critical === true;
           const missed = payload.hit === false;
           const updateTarget = (participant: ParticipantState) => participant.id === targetId
@@ -2149,16 +2215,21 @@ export function useBattle(options: UseBattleOptions) {
             setPlayerPartyStates(nextPlayers);
             setEnemyPartyStates(nextEnemies);
             if (typeof window !== "undefined") {
-              const battleWindow = window as typeof window & { __TRIBE_BATTLE_HP_TRACE__?: any[] };
-              (battleWindow.__TRIBE_BATTLE_HP_TRACE__ ||= []).push({
-                eventIndex: authoritativeEventIndex,
+              recordBattleHpProjection({
+                actorId,
                 targetId,
                 side: beforePlayers.some((participant) => participant.id === targetId) ? "player" : "enemy",
-                amount,
-                remainingHp,
+                eventType: "DAMAGE",
+                eventIndex: authoritativeEventIndex,
+                round: replayEvent.round,
+                source: typeof payload.source === "string" ? payload.source : null,
+                canonicalHpBefore: beforeTarget?.hp ?? null,
+                canonicalDamage: Math.max(0, Number(payload.hpDamage ?? payload.amount ?? 0)),
+                canonicalHeal: 0,
+                replayRemainingHp: remainingHp,
+                presentationProjectedHp: afterTarget?.hp ?? remainingHp,
                 stateBefore: beforeTarget?.hp ?? null,
-                stateAfter: afterTarget?.hp ?? null,
-                projectedAt: performance.now(),
+                isDead: afterTarget?.isDead === true,
               });
             }
           };
@@ -2189,15 +2260,39 @@ export function useBattle(options: UseBattleOptions) {
           setPresentationPhase("IMPACT");
           recordPresentationStage("impactAt", targetId);
           const amount = Math.max(0, Number(payload.effectiveAmount ?? payload.amount ?? 0));
-          const remainingHp = Math.max(0, Number(payload.remainingHp ?? target?.hp ?? 0));
+          const remainingHp = Math.max(0, Number(payload.remainingHp ?? payload.hpAfter ?? target?.hp ?? 0));
           const updateTarget = (participant: ParticipantState) => participant.id === targetId
             ? { ...participant, hp: remainingHp, isDead: false }
             : participant;
           const projectHpTransition = () => {
-            setPlayerPartyStates((previous) => { const next = previous.map(updateTarget); playerPartyStatesRef.current = next; return next; });
-            setEnemyPartyStates((previous) => { const next = previous.map(updateTarget); enemyPartyStatesRef.current = next; return next; });
+            const beforePlayers = playerPartyStatesRef.current;
+            const beforeEnemies = enemyPartyStatesRef.current;
+            const nextPlayers = beforePlayers.map(updateTarget);
+            const nextEnemies = beforeEnemies.map(updateTarget);
+            const beforeTarget = [...beforePlayers, ...beforeEnemies].find((participant) => participant.id === targetId);
+            const afterTarget = [...nextPlayers, ...nextEnemies].find((participant) => participant.id === targetId);
+            playerPartyStatesRef.current = nextPlayers;
+            enemyPartyStatesRef.current = nextEnemies;
+            setPlayerPartyStates(nextPlayers);
+            setEnemyPartyStates(nextEnemies);
+            recordBattleHpProjection({
+              actorId,
+              targetId,
+              side: beforePlayers.some((participant) => participant.id === targetId) ? "player" : "enemy",
+              eventType: "HEAL",
+              eventIndex: authoritativeEventIndex,
+              round: replayEvent.round,
+              source: typeof payload.source === "string" ? payload.source : null,
+              canonicalHpBefore: beforeTarget?.hp ?? null,
+              canonicalDamage: 0,
+              canonicalHeal: amount,
+              replayRemainingHp: remainingHp,
+              presentationProjectedHp: afterTarget?.hp ?? remainingHp,
+              stateBefore: beforeTarget?.hp ?? null,
+              isDead: afterTarget?.isDead === true,
+            });
           };
-          if (!followsSkill) projectHpTransition();
+          projectHpTransition();
           setTargetLine(actorId && targetId ? { fromId: actorId, toId: targetId } : null);
           setDamagePopup({ val: amount, type: "heal", x: 120, y: 40, charId: targetId });
           presentationTimersRef.current.push(setTimeout(() => {
@@ -2205,7 +2300,6 @@ export function useBattle(options: UseBattleOptions) {
             recordPresentationStage("damageAt", targetId);
           }, followsSkill ? 180 : 100 / battleSpeed));
           presentationTimersRef.current.push(setTimeout(() => {
-            if (followsSkill) projectHpTransition();
             setPresentationPhase("HP_TRANSITION");
             recordPresentationStage("hpSettledAt", targetId);
           }, followsSkill ? 480 : 450 / battleSpeed));
@@ -2276,8 +2370,8 @@ export function useBattle(options: UseBattleOptions) {
           setBattleLog((previous) => [...previous, `${target?.name ?? targetId}は戦闘不能。`]);
         } else if (replayEvent.type === "RESULT") {
           // RESULT may follow the final grouped impact before React's HP width
-          // transition has visually settled. Re-project canonical replay HP,
-          // then keep the field mounted until DOM value + rendered bar agree.
+          // transition has visually settled. Read canonical replay HP, then
+          // keep the field mounted until existing state, DOM and bar agree.
           const canonicalPlayers = reconcileBattleHpFromReplay(
             playerPartyStatesRef.current,
             authoritativeEvents,
@@ -2288,10 +2382,6 @@ export function useBattle(options: UseBattleOptions) {
             authoritativeEvents,
             authoritativeEventIndex,
           );
-          playerPartyStatesRef.current = canonicalPlayers;
-          enemyPartyStatesRef.current = canonicalEnemies;
-          setPlayerPartyStates(canonicalPlayers);
-          setEnemyPartyStates(canonicalEnemies);
           const hpParity = await waitForRenderedBattleHpParity([...canonicalPlayers, ...canonicalEnemies]);
           if (hpParity && !hpParity.parity) return;
           clearPresentationTimers();

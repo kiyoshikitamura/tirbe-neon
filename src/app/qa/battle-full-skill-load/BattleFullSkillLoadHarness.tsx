@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import CardBattleView from "@/app/components/CardBattleView";
+import { useAudio } from "@/audio/AudioProvider";
 import { GameContext } from "@/app/context/GameContext";
 import type { BattlePresentationPhase } from "@/hooks/useBattle";
 import type { ParticipantState } from "@/hooks/battle/battleTypes";
@@ -12,7 +13,9 @@ import {
   battlePresentationImpactAt,
   battlePresentationTier,
   buildBattlePresentationUnit,
+  recordBattleHpProjection,
   reconcileBattleHpFromReplay,
+  waitForRenderedBattleActionHpParity,
   waitForRenderedBattleHpParity,
   type BattleActionPresentation,
 } from "@/domain/presentation/battlePresentationUnit";
@@ -68,6 +71,7 @@ const projectEffects = (participant: ParticipantState, payload: Record<string, u
 };
 
 export default function BattleFullSkillLoadHarness() {
+  const audio = useAudio();
   const resolved = useMemo(() => resolveBattleFullSkillLoadFixture(), []);
   const { fixture, replay } = resolved;
   const initialPlayers = useMemo(() => fixture.player.map(toParticipant), [fixture.player]);
@@ -98,6 +102,14 @@ export default function BattleFullSkillLoadHarness() {
   const [skipPending, setSkipPending] = useState(false);
   const [outcome, setOutcome] = useState<"VICTORY" | "DEFEAT">(replay.winner === "PLAYER" ? "VICTORY" : "DEFEAT");
 
+  useEffect(() => {
+    audio.preloadAudio({
+      scene: "BATTLE",
+      events: ["BATTLE_START", "BATTLE_ATTACK", "BATTLE_SLASH", "BATTLE_GUN", "BATTLE_SKILL", "BATTLE_DAMAGE", "BATTLE_CRITICAL", "BATTLE_WEAK", "BATTLE_BUFF", "BATTLE_DEBUFF", "VICTORY", "DEFEAT"],
+    });
+    return () => audio.stopBgm();
+  }, [audio.preloadAudio, audio.stopBgm]);
+
   const clearTimers = useCallback(() => {
     timersRef.current.forEach((timer) => window.clearTimeout(timer));
     timersRef.current = [];
@@ -121,12 +133,10 @@ export default function BattleFullSkillLoadHarness() {
     clearTimers();
     const canonicalPlayers = reconcileBattleHpFromReplay(playerRef.current, replay.events);
     const canonicalEnemies = reconcileBattleHpFromReplay(enemyRef.current, replay.events);
-    playerRef.current = canonicalPlayers;
-    enemyRef.current = canonicalEnemies;
-    setPlayers(canonicalPlayers);
-    setEnemies(canonicalEnemies);
     const hpParity = await waitForRenderedBattleHpParity([...canonicalPlayers, ...canonicalEnemies]);
     if (hpParity && !hpParity.parity) return;
+    audio.stopBgm();
+    setRound(Math.max(1, replay.rounds));
     setOutcome(winner === "PLAYER" ? "VICTORY" : "DEFEAT");
     setSkillCutIn(null);
     setTargetLine(null);
@@ -138,10 +148,11 @@ export default function BattleFullSkillLoadHarness() {
     setBattleState("ENDING");
     schedule(() => setBattleState("OUTCOME"), 760);
     schedule(() => setBattleState("RESULT"), 1740);
-  }, [clearTimers, replay.events, schedule]);
+  }, [audio.stopBgm, clearTimers, replay.events, schedule]);
 
   const reset = useCallback(() => {
     clearTimers();
+    audio.stopBgm();
     playerRef.current = initialPlayers;
     enemyRef.current = initialEnemies;
     setPlayers(initialPlayers);
@@ -160,7 +171,7 @@ export default function BattleFullSkillLoadHarness() {
     setSkipPending(false);
     setBattleState("PLAYING");
     setStarted(false);
-  }, [clearTimers, initialEnemies, initialPlayers]);
+  }, [audio.stopBgm, clearTimers, initialEnemies, initialPlayers]);
 
   useEffect(() => () => clearTimers(), [clearTimers]);
 
@@ -207,10 +218,10 @@ export default function BattleFullSkillLoadHarness() {
           let next = participant;
           for (const resultEvent of group.events) {
             if (resultEvent.type === "DAMAGE") {
-              const hp = Math.max(0, Number(resultEvent.payload.remainingHp ?? next.hp));
+              const hp = Math.max(0, Number(resultEvent.payload.remainingHp ?? resultEvent.payload.hpAfter ?? next.hp));
               next = projectEffects({ ...next, hp, isDead: hp <= 0 }, resultEvent.payload);
             } else if (resultEvent.type === "HEAL") {
-              next = { ...next, hp: Math.max(0, Number(resultEvent.payload.remainingHp ?? next.hp)), isDead: false };
+              next = { ...next, hp: Math.max(0, Number(resultEvent.payload.remainingHp ?? resultEvent.payload.hpAfter ?? next.hp)), isDead: false };
             } else if (resultEvent.type === "STATUS" || resultEvent.type === "EFFECT") {
               next = projectEffects(next, resultEvent.payload);
             } else if (resultEvent.type === "DEFEAT") {
@@ -221,6 +232,32 @@ export default function BattleFullSkillLoadHarness() {
         };
         const nextPlayers = playerRef.current.map(projectParticipant);
         const nextEnemies = enemyRef.current.map(projectParticipant);
+        for (const group of unit.targets) {
+          const hpEvent = [...group.events].reverse().find((resultEvent) => resultEvent.type === "DAMAGE" || resultEvent.type === "HEAL" || resultEvent.type === "DEFEAT");
+          if (!hpEvent || (hpEvent.type !== "DAMAGE" && hpEvent.type !== "HEAL" && hpEvent.type !== "DEFEAT")) continue;
+          const before = [...playerRef.current, ...enemyRef.current].find((entry) => entry.id === group.targetId);
+          const after = [...nextPlayers, ...nextEnemies].find((entry) => entry.id === group.targetId);
+          if (!after) continue;
+          const replayRemainingHp = hpEvent.type === "DEFEAT"
+            ? 0
+            : Math.max(0, Number(hpEvent.payload.remainingHp ?? hpEvent.payload.hpAfter ?? after.hp));
+          recordBattleHpProjection({
+            actorId,
+            targetId: group.targetId,
+            side: teamById.get(group.targetId) === true ? "enemy" : "player",
+            eventType: hpEvent.type,
+            eventIndex: hpEvent.index,
+            round: hpEvent.round,
+            source: typeof hpEvent.payload.source === "string" ? hpEvent.payload.source : null,
+            canonicalHpBefore: before?.hp ?? null,
+            canonicalDamage: hpEvent.type === "DAMAGE" ? Math.max(0, Number(hpEvent.payload.hpDamage ?? hpEvent.payload.amount ?? 0)) : 0,
+            canonicalHeal: hpEvent.type === "HEAL" ? Math.max(0, Number(hpEvent.payload.effectiveAmount ?? hpEvent.payload.amount ?? 0)) : 0,
+            replayRemainingHp,
+            presentationProjectedHp: Math.max(0, Number(after.hp) || 0),
+            stateBefore: before?.hp ?? null,
+            isDead: after.isDead === true,
+          });
+        }
         playerRef.current = nextPlayers;
         enemyRef.current = nextEnemies;
         setPlayers(nextPlayers);
@@ -243,13 +280,31 @@ export default function BattleFullSkillLoadHarness() {
       }, impactAt);
       schedule(() => { setActionPresentation({ unit, beat: "RETURN", tier, skillName }); setPhase("HP_TRANSITION"); }, Math.round(budget * .55));
       schedule(() => setPhase("ACTION_HOLD"), Math.max(impactAt + 120, budget - 70));
-      schedule(() => setEventIndex(unit.nextReplayCursor), budget);
+      schedule(() => {
+        const hpTargetIds = new Set(unit.targets
+          .filter((group) => group.events.some((resultEvent) => resultEvent.type === "DAMAGE" || resultEvent.type === "HEAL" || resultEvent.type === "DEFEAT"))
+          .map((group) => group.targetId));
+        const finishAction = async () => {
+          const hpTargets = [...playerRef.current, ...enemyRef.current].filter((participant) => hpTargetIds.has(participant.id));
+          const gate = await waitForRenderedBattleActionHpParity(hpTargets, {
+            round: event.round,
+            actorId,
+            replayStartCursor: eventIndex,
+          });
+          if (gate && !gate.parity) {
+            schedule(() => void finishAction(), 120);
+            return;
+          }
+          setEventIndex(unit.nextReplayCursor);
+        };
+        void finishAction();
+      }, budget);
       return;
     }
 
     if (event.type === "DAMAGE") {
       const amount = Math.max(0, Number(payload.amount ?? 0));
-      const remainingHp = Math.max(0, Number(payload.remainingHp ?? 0));
+      const remainingHp = Math.max(0, Number(payload.remainingHp ?? payload.hpAfter ?? 0));
       replaceParticipant(targetId, (entry) => projectEffects({ ...entry, hp: remainingHp, isDead: remainingHp <= 0 }, payload));
       setTargetLine(actorId && targetId ? { fromId: actorId, toId: targetId } : null);
       setShakingId(payload.hit === false ? null : targetId);
@@ -264,7 +319,7 @@ export default function BattleFullSkillLoadHarness() {
 
     if (event.type === "HEAL") {
       const amount = Math.max(0, Number(payload.effectiveAmount ?? payload.amount ?? 0));
-      const remainingHp = Math.max(0, Number(payload.remainingHp ?? 0));
+      const remainingHp = Math.max(0, Number(payload.remainingHp ?? payload.hpAfter ?? 0));
       replaceParticipant(targetId, (entry) => ({ ...entry, hp: remainingHp, isDead: false }));
       setTargetLine(actorId && targetId ? { fromId: actorId, toId: targetId } : null);
       setDamagePopup({ val: amount, type: "heal", x: 120, y: 40, charId: targetId });
@@ -304,14 +359,35 @@ export default function BattleFullSkillLoadHarness() {
     advance(40);
   }, [battleState, clearTimers, enterResult, eventIndex, paused, replay.events, replaceParticipant, schedule, skillNames, speed, started, teamById]);
 
-  const start = () => {
+  const start = async () => {
+    await audio.unlockAudio();
+    audio.playBgm("BATTLE");
+    audio.playSe("BATTLE_START");
     setStarted(true);
     setBattleState("PLAYING");
     setEventIndex(0);
   };
   const skip = () => {
     setSkipPending(true);
-    schedule(() => { setSkipPending(false); void enterResult(replay.winner); }, 240);
+    clearTimers();
+    const canonicalPlayers = reconcileBattleHpFromReplay(playerRef.current, replay.events);
+    const canonicalEnemies = reconcileBattleHpFromReplay(enemyRef.current, replay.events);
+    playerRef.current = canonicalPlayers;
+    enemyRef.current = canonicalEnemies;
+    setPlayers(canonicalPlayers);
+    setEnemies(canonicalEnemies);
+    setRound(Math.max(1, replay.rounds));
+    document.documentElement.dataset.battleHpSkipProjection = "true";
+    const finishSkip = async () => {
+      const parity = await waitForRenderedBattleHpParity([...canonicalPlayers, ...canonicalEnemies]);
+      if (parity && !parity.parity) {
+        schedule(() => void finishSkip(), 120);
+        return;
+      }
+      setSkipPending(false);
+      void enterResult(replay.winner);
+    };
+    schedule(() => void finishSkip(), 0);
   };
   const context = {
     battleMode: "PVP_PRACTICE",
@@ -319,7 +395,7 @@ export default function BattleFullSkillLoadHarness() {
     battleState,
     battleOutcome: outcome,
     tutorialBattleActive: false,
-    tactic: "SKILL_PRIORITY",
+    tactic: fixture.tactic,
     setTactic: () => undefined,
     battleSpeed: speed,
     setBattleSpeed: setSpeed,
@@ -341,6 +417,7 @@ export default function BattleFullSkillLoadHarness() {
     battleResultReplayEvents: replay.events,
     battlePresentationContext: {
       mode: "PVP_PRACTICE",
+      roundLimit: fixture.maxRounds,
       opponentLabel: fixture.location.questName,
       encounterLabel: `${fixture.location.questName} / stress fixture`,
       opponentLeaderCharacterId: enemies[0]?.characterId,
@@ -371,14 +448,16 @@ export default function BattleFullSkillLoadHarness() {
     completeTutorialBattleResult: reset,
     lastPatrolRewards: null,
     playCyberSe: () => undefined,
-    handleFirstUserInteraction: () => undefined,
-    playSe: () => undefined,
-    preloadAudio: () => undefined,
+    handleFirstUserInteraction: () => { void audio.unlockAudio(); },
+    playBgm: audio.playBgm,
+    stopBgm: audio.stopBgm,
+    playSe: audio.playSe,
+    preloadAudio: audio.preloadAudio,
   };
   const skills = [...new Map([...fixture.player, ...fixture.enemy].flatMap((unit) => unit.skills.map((skill) => [skill.id, skill]))).values()];
   const replaySkillCount = replay.events.filter((event) => event.type === "ACTION" && isSkillAction(event)).length;
 
-  return <main className="battle-full-skill-load" data-qa-harness="battle-full-skill-load" data-replay-index={eventIndex} data-battle-state={started ? battleState : "READY"}>
+  return <main className="battle-full-skill-load" data-qa-harness="battle-full-skill-load" data-replay-index={eventIndex} data-battle-state={started ? battleState : "READY"} data-audio-unlocked={audio.unlocked ? "true" : "false"} data-audio-scene={audio.currentScene ?? "none"} data-fixture-player-tactic={fixture.tactic} data-fixture-enemy-tactic={fixture.enemyTactic} data-fixture-max-rounds={fixture.maxRounds}>
     {!started ? <section className="battle-stress-launch">
       <small>PREVIEW / DEVELOPMENT ONLY</small>
       <h1>BATTLE FULL SKILL LOAD</h1>

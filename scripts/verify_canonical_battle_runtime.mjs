@@ -59,6 +59,23 @@ assert.equal(finalStatusChanceBp({ status: "TAUNT", baseChanceBp: 10000, skillPl
 let result = battle([unit("p", "PLAYER", "ORDER", [skill("SKILL_001", { availableFromRound: 3, cooldown: 3 })])], [unit("e", "ENEMY", "ORDER", [], { hp: 999999 })], { maxRounds: 8 });
 assert.deepEqual(actions(result, "p").filter((event) => event.payload.skillId === "SKILL_001").map((event) => event.round), [3,6]);
 
+// ATTACK_PRIORITY keeps available damage first, accepts genuinely useful
+// support, and falls back to the canonical normal attack instead of recasting
+// low-utility support.
+result = battle([
+  unit("p", "PLAYER", "ORDER", [
+    skill("SKILL_002", { cooldown: 0, availableFromRound: 1 }),
+    skill("SKILL_001", { cooldown: 9, availableFromRound: 1 }),
+  ]),
+], [unit("e", "ENEMY", "ORDER", [], { hp: 999999 })], { tactic: "ATTACK_PRIORITY", maxRounds: 3 });
+assert.equal(actions(result, "p")[0].payload.skillId, "SKILL_001", "available damage must remain ATTACK_PRIORITY first choice");
+
+result = battle([unit("p", "PLAYER", "ORDER", [skill("SKILL_002", { cooldown: 0, availableFromRound: 1, effects: ["SHIELD 10% MaxHP / 4T"] })])], [unit("e", "ENEMY", "ORDER", [], { hp: 999999, atk: 100 })], { tactic: "ATTACK_PRIORITY", maxRounds: 3 });
+assert.deepEqual(actions(result, "p").map((event) => event.payload.skillId), ["SKILL_002", "BASIC_ATTACK", "BASIC_ATTACK"], "active Shield must not block the normal-attack fallback");
+
+result = battle([unit("p", "PLAYER", "ORDER", [skill("SKILL_060", { cooldown: 0, availableFromRound: 1 })])], [unit("e", "ENEMY", "ORDER", [], { hp: 999999 })], { tactic: "ATTACK_PRIORITY", maxRounds: 1 });
+assert.equal(actions(result, "p")[0].payload.skillId, "BASIC_ATTACK", "full-HP healing must stay below the ATTACK_PRIORITY normal attack");
+
 // Battle start once, buff application and strongest-only stat evaluation.
 result = battle([unit("p", "PLAYER", "ORDER", [skill("SKILL_055", { exclusiveCharacterId: null }), skill("SKILL_001")])], [unit("e", "ENEMY", "ORDER", [], { hp: 999999 })], { maxRounds: 2 });
 assert.equal(actions(result, "p").filter((event) => event.payload.action === "BATTLE_START").length, 1);
@@ -84,11 +101,12 @@ assert.equal(STATUS_RUNTIME_RULES.POISON.dotCoefficientBp, 1500); assert.equal(S
 result = battle([unit("p", "PLAYER", "ORDER", [skill("SKILL_069", { exclusiveCharacterId: null, availableFromRound: 1, effects: ["DAMAGE 205% ATK", "BLEED 100% / 3T"] })], { atk: 10000 })], [unit("e", "ENEMY", "ORDER", [], { hp: 100000, def: 0 })], { maxRounds: 4 });
 assert.deepEqual(damages(result, "BLEED").map((event) => event.payload.amount), [2000,2000,2000]);
 
-// Regen ticks after own action, and does not revive after DoT death.
-result = battle([unit("p", "PLAYER", "ORDER", [skill("SKILL_060", { exclusiveCharacterId: null, availableFromRound: 1 })])], [unit("e", "ENEMY", "ORDER", [], { hp: 999999 })], { maxRounds: 4 });
+// Heal utility suppresses full-HP casts, then Regen ticks after a useful cast.
+result = battle([unit("p", "PLAYER", "ORDER", [skill("SKILL_060", { exclusiveCharacterId: null, availableFromRound: 1 })], { hp: 100000, spd: 100 })], [unit("e", "ENEMY", "ORDER", [], { hp: 999999, atk: 50000, spd: 300 })], { maxRounds: 4 });
 const regenHeals = result.events.filter((event) => event.type === "HEAL" && event.payload.source === "REGEN");
-assert.equal(regenHeals.length, 3);
+assert.equal(regenHeals.length, 2);
 assert.ok(regenHeals.every((event) => event.payload.actorId === "p" && event.payload.effectiveAmount === event.payload.amount));
+assert.ok(!result.events.some((event) => event.type === "HEAL" && Number(event.payload.effectiveAmount) === 0), "SKILL_PRIORITY must suppress zero-utility full-HP healing");
 
 // Counter is max once per round and never chains into another counter.
 result = battle([unit("p", "PLAYER", "ORDER", [skill("SKILL_054", { exclusiveCharacterId: null })], { hp: 999999 })], [unit("e", "ENEMY", "ORDER", [skill("SKILL_012", { availableFromRound: 1 })], { hp: 999999, spd: 300 })], { maxRounds: 2 });
@@ -117,13 +135,13 @@ for (let seed = 1; seed <= 100 && !sawBlindMiss; seed += 1) {
 }
 assert.ok(sawBlindMiss, "BLIND 20% miss must execute in runtime");
 
-// Different-source DoT is capped at two and deterministic replacement keeps the two newest equal-duration applications.
+// Different-source DoT is capped at two; AI suppresses a useless third active application.
 result = battle([
   unit("p1", "PLAYER", "ORDER", [{ id: "poison-1", name: "poison", activationType: "ACTIVE", cooldown: 9, availableFromRound: 1, target: "ENEMY_SINGLE", effects: ["POISON 100% / 3T"] }], { spd: 400 }),
   unit("p2", "PLAYER", "ORDER", [{ id: "poison-2", name: "poison", activationType: "ACTIVE", cooldown: 9, availableFromRound: 1, target: "ENEMY_SINGLE", effects: ["POISON 100% / 3T"] }], { spd: 350 }),
   unit("p3", "PLAYER", "ORDER", [{ id: "poison-3", name: "poison", activationType: "ACTIVE", cooldown: 9, availableFromRound: 1, target: "ENEMY_SINGLE", effects: ["POISON 100% / 3T"] }], { spd: 300 }),
 ], [unit("e", "ENEMY", "ORDER", [], { hp: 999999, spd: 100 })], { maxRounds: 1 });
-assert.deepEqual(result.enemy[0].dots.map((dot) => dot.sourceCharacterId).sort(), ["p2", "p3"]);
+assert.deepEqual(result.enemy[0].dots.map((dot) => dot.sourceCharacterId).sort(), ["p1", "p2"]);
 
 // DoT death prevents a later Regen tick from reviving the unit.
 result = battle([unit("p", "PLAYER", "JUSTICE", [{ id: "poison-only", name: "poison", activationType: "ACTIVE", cooldown: 9, availableFromRound: 1, target: "ENEMY_SINGLE", effects: ["POISON 100% / 3T"] }], { atk: 10000, spd: 300 })], [unit("e", "ENEMY", "EVIL", [{ id: "regen-start", name: "regen", activationType: "BATTLE_START", cooldown: null, target: "SELF", effects: ["REGEN 7% MaxHP/Turn / 3T"] }], { hp: 1000, spd: 100 })], { maxRounds: 1 });

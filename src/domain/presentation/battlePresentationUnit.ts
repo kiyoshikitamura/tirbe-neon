@@ -103,6 +103,10 @@ export type BattleHpParityUnit = {
   renderedHp: number | null;
   canonicalPercent: number;
   renderedPercent: number | null;
+  renderedTrackPx: number | null;
+  renderedFillPx: number | null;
+  canonicalDead: boolean;
+  renderedDead: boolean | null;
   stateParity: boolean;
   visualParity: boolean;
 };
@@ -116,10 +120,59 @@ export type BattleHpParityTrace = {
   units: BattleHpParityUnit[];
 };
 
-/**
- * Re-project only HP values explicitly recorded by canonical replay events.
- * This is a result-boundary safety projection, never an HP calculation.
- */
+export type BattleHpProjectionTrace = {
+  kind: "ACTION_HP_PROJECTION";
+  actorId: string;
+  targetId: string;
+  side: "player" | "enemy";
+  eventType: "DAMAGE" | "HEAL" | "DEFEAT";
+  eventIndex: number;
+  round: number;
+  source: string | null;
+  canonicalHpBefore: number | null;
+  canonicalDamage: number;
+  canonicalHeal: number;
+  replayRemainingHp: number;
+  presentationProjectedHp: number;
+  stateBefore: number | null;
+  isDead: boolean;
+  projectedAt: number;
+  renderedHp?: number;
+  renderedPercent?: number;
+  renderedTrackPx?: number | null;
+  renderedFillPx?: number | null;
+  renderedIsDead?: boolean;
+  renderedAt?: number;
+  settledFillPx?: number | null;
+  settledFillPercent?: number | null;
+  settledAt?: number;
+  parity?: boolean;
+  actionEndAt?: number;
+  actionEndParity?: boolean;
+};
+
+export type BattleActionHpParityTrace = {
+  kind: "ACTION_HP_PARITY";
+  round: number;
+  actorId: string;
+  replayStartCursor: number;
+  parity: boolean;
+  sampledAt: number;
+  units: BattleHpParityUnit[];
+};
+
+/** Records replay-derived HP projection only; it never derives battle results. */
+export function recordBattleHpProjection(trace: Omit<BattleHpProjectionTrace, "kind" | "projectedAt">): void {
+  if (typeof window === "undefined") return;
+  const battleWindow = window as typeof window & { __TRIBE_BATTLE_HP_TRACE__?: unknown[] };
+  (battleWindow.__TRIBE_BATTLE_HP_TRACE__ ||= []).push({
+    kind: "ACTION_HP_PROJECTION",
+    projectedAt: performance.now(),
+    ...trace,
+  } satisfies BattleHpProjectionTrace);
+}
+
+/** Reads final HP values explicitly recorded by canonical replay events. */
 export function reconcileBattleHpFromReplay<T extends BattleHpParityParticipant>(
   participants: readonly T[],
   replay: readonly BattlePresentationReplayEvent[],
@@ -131,8 +184,8 @@ export function reconcileBattleHpFromReplay<T extends BattleHpParityParticipant>
     const targetId = String(event.payload.targetId ?? "");
     if (!targetId) continue;
     if (event.type === "DEFEAT") canonicalHp.set(targetId, 0);
-    else if ((event.type === "DAMAGE" || event.type === "HEAL") && Number.isFinite(Number(event.payload.remainingHp))) {
-      canonicalHp.set(targetId, Math.max(0, Number(event.payload.remainingHp)));
+    else if ((event.type === "DAMAGE" || event.type === "HEAL") && Number.isFinite(Number(event.payload.remainingHp ?? event.payload.hpAfter))) {
+      canonicalHp.set(targetId, Math.max(0, Number(event.payload.remainingHp ?? event.payload.hpAfter)));
     }
   }
   return participants.map((participant) => {
@@ -160,18 +213,20 @@ function captureRenderedBattleHp(participants: readonly BattleHpParityParticipan
       renderedHp: Number.isFinite(renderedHp) ? renderedHp : null,
       canonicalPercent: Number(canonicalPercent.toFixed(2)),
       renderedPercent: renderedPercent == null ? null : Number(renderedPercent.toFixed(2)),
-      stateParity: renderedHp === canonicalHp,
+      renderedTrackPx: trackWidth > 0 ? Number(trackWidth.toFixed(2)) : null,
+      renderedFillPx: fill ? Number(fillWidth.toFixed(2)) : null,
+      canonicalDead: participant.isDead === true || canonicalHp <= 0,
+      renderedDead: unit ? unit.dataset.isDead === "true" : null,
+      stateParity: renderedHp === canonicalHp && (unit?.dataset.isDead === "true") === (participant.isDead === true || canonicalHp <= 0),
       visualParity: renderedPercent != null && Math.abs(renderedPercent - canonicalPercent) <= 1,
     };
   });
 }
 
-/** Waits only for React/CSS to visually settle to canonical replay HP. */
-export async function waitForRenderedBattleHpParity(
+async function waitForStableRenderedBattleHp(
   participants: readonly BattleHpParityParticipant[],
-  timeoutMs = 620,
-): Promise<BattleHpParityTrace | null> {
-  if (typeof window === "undefined" || typeof document === "undefined") return null;
+  timeoutMs: number,
+): Promise<BattleHpParityUnit[]> {
   const startedAt = performance.now();
   let units = captureRenderedBattleHp(participants);
   let stableFrames = 0;
@@ -182,31 +237,52 @@ export async function waitForRenderedBattleHpParity(
     await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
     units = captureRenderedBattleHp(participants);
   }
-  let parity = units.every((unit) => unit.stateParity && unit.visualParity);
-  let forcedSettle = false;
-  if (!parity) {
-    // A throttled/background browser can delay CSS transitions beyond the
-    // normal budget. Settle only the rendered bar to its canonical replay HP;
-    // never leave the battle field while a stale width is still visible.
-    forcedSettle = true;
-    for (const participant of participants) {
-      const unit = document.getElementById(participant.id);
-      const fill = unit?.querySelector<HTMLElement>("[data-hp-fill]");
-      if (!fill) continue;
-      const percent = Math.min(100, (Math.max(0, Number(participant.hp) || 0) / Math.max(1, Number(participant.maxHp) || 1)) * 100);
-      fill.style.transition = "none";
-      fill.style.width = `${percent}%`;
-    }
-    await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
-    await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
-    units = captureRenderedBattleHp(participants);
-    parity = units.every((unit) => unit.stateParity && unit.visualParity);
+  return units;
+}
+
+/**
+ * Action boundary gate. It only waits for replay-projected state and CSS width
+ * to agree; it never mutates HP or forces a visual settle.
+ */
+export async function waitForRenderedBattleActionHpParity(
+  participants: readonly BattleHpParityParticipant[],
+  action: { round: number; actorId: string; replayStartCursor: number },
+  timeoutMs = 900,
+): Promise<BattleActionHpParityTrace | null> {
+  if (typeof window === "undefined" || typeof document === "undefined" || participants.length === 0) return null;
+  const units = await waitForStableRenderedBattleHp(participants, timeoutMs);
+  const parity = units.every((unit) => unit.stateParity && unit.visualParity);
+  const sampledAt = performance.now();
+  const trace: BattleActionHpParityTrace = { kind: "ACTION_HP_PARITY", ...action, parity, sampledAt, units };
+  const battleWindow = window as typeof window & { __TRIBE_BATTLE_HP_TRACE__?: unknown[] };
+  const traces = battleWindow.__TRIBE_BATTLE_HP_TRACE__ ||= [];
+  traces.push(trace);
+  for (const entry of traces) {
+    const projection = entry as Partial<BattleHpProjectionTrace>;
+    if (projection.kind !== "ACTION_HP_PROJECTION" || projection.actionEndAt != null) continue;
+    if (!units.some((unit) => unit.targetId === projection.targetId)) continue;
+    projection.actionEndAt = sampledAt;
+    projection.actionEndParity = parity;
   }
+  document.documentElement.dataset.battleHpActionParity = parity ? "pass" : "fail";
+  document.documentElement.dataset.battleHpActionRound = String(action.round);
+  document.documentElement.dataset.battleHpActionCursor = String(action.replayStartCursor);
+  return trace;
+}
+
+/** Waits only for React/CSS to visually settle to canonical replay HP. */
+export async function waitForRenderedBattleHpParity(
+  participants: readonly BattleHpParityParticipant[],
+  timeoutMs = 620,
+): Promise<BattleHpParityTrace | null> {
+  if (typeof window === "undefined" || typeof document === "undefined") return null;
+  const units = await waitForStableRenderedBattleHp(participants, timeoutMs);
+  const parity = units.every((unit) => unit.stateParity && unit.visualParity);
   const trace: BattleHpParityTrace = {
     kind: "RESULT_HP_PARITY",
     parity,
     timedOut: !parity,
-    forcedSettle,
+    forcedSettle: false,
     sampledAt: performance.now(),
     units,
   };

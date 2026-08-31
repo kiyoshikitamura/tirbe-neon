@@ -196,7 +196,85 @@ function selectEnemy(actor: BattleUnit, enemies: BattleUnit[], tactic: BattleTac
 
 const selectAlly = (allies: BattleUnit[]) => alive(allies).slice().sort((a, b) => hpBp(a) - hpBp(b) || a.id.localeCompare(b.id))[0];
 
-function chooseSkill(actor: BattleUnit, allies: BattleUnit[], tactic: BattleTactic, round: number): ReturnType<typeof normalizeSkill> | undefined {
+type SkillUtility = { useful: number; redundant: number; total: number; missingHpBp: number };
+
+function supportSkillUtility(actor: BattleUnit, allies: BattleUnit[], foes: BattleUnit[], tactic: BattleTactic, skill: NormalizedSkill): SkillUtility {
+  const actionTargetSet = actionTargets(actor, skill, allies, foes, tactic);
+  const utility: SkillUtility = { useful: 0, redundant: 0, total: 0, missingHpBp: 0 };
+  const mark = (useful: boolean) => { utility.total += 1; if (useful) utility.useful += 1; else utility.redundant += 1; };
+  for (const effect of skill.effects) {
+    if (["DAMAGE", "IGNORE_DEF", "LIFESTEAL", "TRIGGER", "TRIGGER_LIMIT"].includes(effect.type)) continue;
+    const targets = effect.self ? [actor] : actionTargetSet;
+    for (const target of targets) {
+      if (effect.type === "HEAL") {
+        const missing = 10000 - hpBp(target); utility.missingHpBp = Math.max(utility.missingHpBp, missing); mark(missing >= 1500);
+      } else if (effect.type === "SHIELD") {
+        const grant = bpProduct(maxHp(target), Number(effect.maxHpBp), skillEffectMultiplierBp("SUPPORT", skill.skillPlusVal));
+        const strongest = target.shields.slice().sort((a, b) => b.amount - a.amount || b.remainingDuration - a.remainingDuration)[0];
+        mark(!strongest || strongest.remainingDuration <= 1 || strongest.amount < Math.floor(grant * .35));
+      } else if (effect.type === "REGEN") {
+        const grant = bpProduct(maxHp(target), Number(effect.maxHpBp), skillEffectMultiplierBp("SUPPORT", skill.skillPlusVal));
+        const strongest = target.regens.slice().sort((a, b) => b.tickAmount - a.tickAmount || b.remainingDuration - a.remainingDuration)[0];
+        mark(!strongest || strongest.remainingDuration <= 1 || grant > strongest.tickAmount);
+      } else if (effect.type === "BUFF" || effect.type === "DEBUFF") {
+        const magnitudeBp = Math.floor(Number(effect.magnitudeBp) * skillEffectMultiplierBp("SUPPORT", skill.skillPlusVal) / 10000);
+        const existing = target.modifiers.filter((entry) => entry.type === effect.type && entry.stat === effect.stat)
+          .sort((a, b) => b.magnitudeBp - a.magnitudeBp || b.remainingDuration - a.remainingDuration)[0];
+        mark(!existing || existing.remainingDuration <= 1 || magnitudeBp > existing.magnitudeBp);
+      } else if (STATUS_TYPES.has(effect.type)) {
+        const status = effect.type as CanonicalStatus;
+        const chance = finalStatusChanceBp({ status, baseChanceBp: Number(effect.baseChanceBp), skillPlusVal: skill.skillPlusVal, attacker: actor.statusModifiers, target: target.statusModifiers });
+        if (chance <= 0) { mark(false); continue; }
+        if (status === "POISON" || status === "BLEED") {
+          const sameSource = target.dots.find((entry) => entry.type === status && entry.sourceCharacterId === actor.id);
+          const sameType = target.dots.filter((entry) => entry.type === status);
+          mark(!sameSource && sameType.length < 2 || Boolean(sameSource && sameSource.remainingDuration <= 1));
+        } else {
+          const existing = target.statuses.find((entry) => entry.type === status);
+          mark(!existing || existing.remainingDuration <= 1);
+        }
+      } else if (effect.type === "REMOVE_STATUS") {
+        mark(target.statuses.length + target.dots.length + target.modifiers.filter((entry) => entry.type === "DEBUFF").length > 0);
+      }
+    }
+  }
+  return utility;
+}
+
+function skillPriorityScore(actor: BattleUnit, allies: BattleUnit[], foes: BattleUnit[], tactic: BattleTactic, skill: NormalizedSkill, round: number): number {
+  const damageEffects = skill.effects.filter((effect) => effect.type === "DAMAGE");
+  const damagePowerBp = Math.max(0, ...damageEffects.map((effect) => Number(missingHpScalingRate(effect, hpBp(actor)) ?? effect.powerBp ?? 0)));
+  const utility = supportSkillUtility(actor, allies, foes, tactic, skill);
+  if (damageEffects.length > 0) {
+    const gradualOffense = Math.min(8, Math.max(0, round - 1)) * 800;
+    return 24000 + Math.floor(damagePowerBp / 10) + gradualOffense + utility.useful * 120;
+  }
+  if (utility.total === 0 || utility.useful === 0) return 4000;
+  // AoE support that repeats an already-sufficient effect on even one target
+  // stays below the basic offensive fallback. Stronger modifiers were marked
+  // useful above, and depleted shields remain eligible, so valid overwrite /
+  // recovery cases are not treated as redundant recasts.
+  if (utility.redundant > 0) return 6000 + utility.useful * 100;
+  const usefulRatio = utility.useful / utility.total;
+  const redundantRatio = utility.redundant / utility.total;
+  // From round 4 onward, gradually shift SKILL_PRIORITY toward resolution.
+  // This is an AI-only utility weight; it never changes damage or effects.
+  const lateRoundPenalty = Math.min(5, Math.max(0, round - 3)) * 5000;
+  return 26000 + Math.round(usefulRatio * 5000) - Math.round(redundantRatio * 7000) + Math.min(2500, utility.missingHpBp) - lateRoundPenalty;
+}
+
+function attackPrioritySupportScore(actor: BattleUnit, allies: BattleUnit[], foes: BattleUnit[], skill: NormalizedSkill, round: number): number {
+  const utility = supportSkillUtility(actor, allies, foes, "ATTACK_PRIORITY", skill);
+  if (utility.total === 0 || utility.useful === 0 || utility.redundant > 0) return 0;
+  const usefulRatio = utility.useful / utility.total;
+  const score = Math.round(usefulRatio * 10000) + Math.min(2500, utility.missingHpBp);
+  // ATTACK_PRIORITY accepts only fully useful support early, then raises the
+  // bar gradually. Missing-HP utility can still justify an urgent heal.
+  const basicAttackThreshold = 9500 + Math.min(8, Math.max(0, round - 1)) * 400;
+  return score > basicAttackThreshold ? score : 0;
+}
+
+function chooseSkill(actor: BattleUnit, allies: BattleUnit[], foes: BattleUnit[], tactic: BattleTactic, round: number): ReturnType<typeof normalizeSkill> | undefined {
   if (hasStatus(actor, "SILENCE")) return undefined;
   const active = (actor.skills as ReturnType<typeof normalizeSkill>[]).filter((skill) => skill.activationType === "ACTIVE" && round >= skill.availableFromRound && round >= (actor.nextAvailableRound[skill.id] ?? skill.availableFromRound));
   const damage = active.filter((skill) => skill.effects.some((effect) => effect.type === "DAMAGE"));
@@ -204,8 +282,21 @@ function chooseSkill(actor: BattleUnit, allies: BattleUnit[], tactic: BattleTact
   const strongest = (skills: typeof active) => skills.slice().sort((a, b) => Math.max(0, ...b.effects.map((effect) => Number(effect.powerBp ?? 0))) - Math.max(0, ...a.effects.map((effect) => Number(effect.powerBp ?? 0))) || a.id.localeCompare(b.id))[0];
   const needsHeal = hpBp(selectAlly(allies)) < 7000;
   if (tactic === "HEAL_PRIORITY" && needsHeal && heal.length) return strongest(heal);
-  if (tactic === "SKILL_PRIORITY") return strongest(active);
-  if ((tactic === "ATTACK_PRIORITY" || tactic === "WEAKNESS_FOCUS") && damage.length) return strongest(damage);
+  if (tactic === "SKILL_PRIORITY") {
+    const basicAttackUtility = 19000 + Math.min(8, Math.max(0, round - 1)) * 500;
+    const ranked = active.map((skill) => ({ skill, score: skillPriorityScore(actor, allies, foes, tactic, skill, round) }))
+      .sort((a, b) => b.score - a.score || Math.max(0, ...b.skill.effects.map((effect) => Number(effect.powerBp ?? 0))) - Math.max(0, ...a.skill.effects.map((effect) => Number(effect.powerBp ?? 0))) || a.skill.id.localeCompare(b.skill.id));
+    return ranked[0] && ranked[0].score > basicAttackUtility ? ranked[0].skill : undefined;
+  }
+  if (tactic === "ATTACK_PRIORITY") {
+    if (damage.length) return strongest(damage);
+    const rankedSupport = active
+      .map((skill) => ({ skill, score: attackPrioritySupportScore(actor, allies, foes, skill, round) }))
+      .filter((entry) => entry.score > 0)
+      .sort((a, b) => b.score - a.score || Math.max(0, ...b.skill.effects.map((effect) => Number(effect.powerBp ?? 0))) - Math.max(0, ...a.skill.effects.map((effect) => Number(effect.powerBp ?? 0))) || a.skill.id.localeCompare(b.skill.id));
+    return rankedSupport[0]?.skill;
+  }
+  if (tactic === "WEAKNESS_FOCUS" && damage.length) return strongest(damage);
   if (tactic === "BALANCED" && needsHeal && heal.length) return strongest(heal);
   return strongest(damage) ?? strongest(active);
 }
@@ -411,7 +502,7 @@ export function resolveCanonicalBattle(input: DeterministicBattleInput): Determi
       else {
         const allies = actor.team === "PLAYER" ? players : enemies; const foes = actor.team === "PLAYER" ? enemies : players;
         const activeTactic = actor.team === "ENEMY" ? (input.enemyTactic ?? input.tactic) : input.tactic;
-        const skill = chooseSkill(actor, allies, activeTactic, round);
+        const skill = chooseSkill(actor, allies, foes, activeTactic, round);
         const chosen = skill ?? normalizeSkill({ id: "BASIC_ATTACK", name: "通常攻撃", activationType: "ACTIVE", target: "ENEMY_SINGLE", cooldown: 0, availableFromRound: 1, effects: [`DAMAGE ${DAMAGE_CONTRACT.NORMAL_ATTACK_POWER_BP / 100}% ATK`] });
         const targets = actionTargets(actor, chosen, allies, foes, activeTactic);
         emit(events, round, "ACTION", { actorId: actor.id, skillId: chosen.id, target: chosen.target }); executeEffects(actor, targets, chosen, context);

@@ -7,6 +7,8 @@ export const MVP_SCORE_MAX = Object.freeze({
 });
 
 export type BattleResultReplayEvent = Readonly<{
+  index?: number;
+  round?: number;
   type: string;
   payload: Readonly<Record<string, unknown>>;
 }>;

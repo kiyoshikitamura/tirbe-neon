@@ -20,6 +20,7 @@ type Props = {
   enemyParticipants?: readonly any[];
   presentationContext?: BattlePresentationContext | null;
   modeResult?: BattleModeResultDetail | null;
+  displayedRound?: number;
   onContinue: () => void | Promise<void>;
   continueControl?: ReactNode;
 };
@@ -31,7 +32,7 @@ const toParticipant = (entry: any, isEnemy: boolean): BattleResultParticipant =>
   isEnemy,
 });
 
-export default function BattleResultSummary({ victory, tutorial = false, rewards, replayEvents = [], playerParticipants = [], enemyParticipants = [], presentationContext, modeResult, onContinue, continueControl }: Props) {
+export default function BattleResultSummary({ victory, tutorial = false, rewards, replayEvents = [], playerParticipants = [], enemyParticipants = [], presentationContext, modeResult, displayedRound, onContinue, continueControl }: Props) {
   const { playSe } = useAudio();
   const announcedRef = useRef(false);
   const analysis = useMemo(() => analyzeBattleResult(
@@ -50,6 +51,18 @@ export default function BattleResultSummary({ victory, tutorial = false, rewards
     ? (victory ? "クエストクリア" : "クエスト失敗")
     : modeResult?.resultLabel;
   const isRaidResult = presentationContext?.mode === "RAID";
+  const resultEvent = [...replayEvents].reverse().find((event) => event.type === "RESULT");
+  const resultReasonKey = String(resultEvent?.payload.reason ?? resultEvent?.payload.resultReason ?? resultEvent?.payload.endReason ?? "").toUpperCase();
+  const eventRound = (event: BattleResultReplayEvent | undefined) => Math.max(0, Number((event as { round?: number } | undefined)?.round ?? 0));
+  const eventIndex = (event: BattleResultReplayEvent | undefined, fallback: number) => Math.max(0, Number((event as { index?: number } | undefined)?.index ?? fallback));
+  const resultEventArrayIndex = resultEvent ? replayEvents.lastIndexOf(resultEvent) : -1;
+  const canonicalFinalRound = Math.max(0, Number(resultEvent?.payload.rounds ?? 0), ...replayEvents.map(eventRound));
+  const configuredRoundLimit = Math.max(1, Number(presentationContext?.roundLimit ?? (presentationContext?.mode === "RAID" ? 30 : presentationContext?.mode === "PVP" || presentationContext?.mode === "PVP_PRACTICE" || presentationContext?.mode === "GVG" ? 20 : 15)));
+  const explicitRoundLimit = /ROUND|TIME|LIMIT/.test(resultReasonKey);
+  const roundLimitResult = !victory
+    && canonicalFinalRound >= configuredRoundLimit
+    && (explicitRoundLimit || resultReasonKey.length === 0);
+  const finalRoundFor = (types: readonly string[]) => Math.max(0, ...replayEvents.filter((event) => types.includes(event.type)).map(eventRound));
   useEffect(() => {
     if (announcedRef.current) return;
     announcedRef.current = true;
@@ -93,7 +106,19 @@ export default function BattleResultSummary({ victory, tutorial = false, rewards
     return () => window.cancelAnimationFrame(frame);
   }, [mvp?.participant.id, mvp?.score.damage, mvp?.score.heal, mvp?.score.kills, mvp?.score.shield, mvp?.score.survival]);
   return (
-    <section className={`battle-result-summary ${victory ? "is-victory" : "is-defeat"}`} aria-label={victory ? "バトル勝利" : "バトル敗北"}>
+    <section
+      className={`battle-result-summary ${victory ? "is-victory" : "is-defeat"}`}
+      aria-label={victory ? "バトル勝利" : "バトル敗北"}
+      data-result-event-index={resultEvent ? eventIndex(resultEvent, resultEventArrayIndex) : undefined}
+      data-result-event-round={resultEvent ? eventRound(resultEvent) : undefined}
+      data-displayed-round={displayedRound}
+      data-configured-round-limit={configuredRoundLimit}
+      data-canonical-final-round={canonicalFinalRound}
+      data-result-reason-authority={resultReasonKey || "UNSPECIFIED"}
+      data-result-winner={String(resultEvent?.payload.winner ?? "")}
+      data-final-action-round={finalRoundFor(["ACTION"])}
+      data-final-damage-status-defeat-round={finalRoundFor(["DAMAGE", "STATUS", "DEFEAT"])}
+    >
       <header className="battle-result-opponent">
         <small>{tutorial ? "VS" : "VS 対戦相手"}</small>
         <strong>{opponentLabel}</strong>
@@ -101,6 +126,11 @@ export default function BattleResultSummary({ victory, tutorial = false, rewards
         {presentationContext?.opponentTotalPower ? <b>POWER {presentationContext.opponentTotalPower.toLocaleString()}</b> : presentationContext?.opponentProfile ? <b>{presentationContext.opponentProfile}</b> : null}
       </header>
       {!tutorial && <div className="battle-result-outcome-label">{victory ? "WIN" : "LOSE"}</div>}
+      {roundLimitResult && <div className="battle-result-reason" data-result-reason="ROUND_LIMIT" role="status">
+        <small>ROUND LIMIT</small>
+        <strong>制限ラウンド終了</strong>
+        <span>全滅ではなく、制限ラウンド到達による判定結果です</span>
+      </div>}
       {localizedResultLabel && <strong className="battle-result-mode-label">{localizedResultLabel}</strong>}
       {isRaidResult && modeResult?.stats?.length ? <section className="battle-result-mode-stats is-raid" aria-label="レイド戦績">
         {modeResult.stats.map((stat) => <div key={stat.label}><small>{stat.label}</small><strong>{stat.value}</strong></div>)}

@@ -85,7 +85,7 @@ export default function CardBattleView() {
     preloadBattleEffects();
     preloadAudio({
       scene: "BATTLE",
-      events: ["BATTLE_START", "BATTLE_ATTACK", "BATTLE_SLASH", "BATTLE_GUN", "BATTLE_SKILL", "BATTLE_DAMAGE", "BATTLE_CRITICAL", "BATTLE_WEAK", "VICTORY", "DEFEAT"],
+      events: ["BATTLE_START", "BATTLE_ATTACK", "BATTLE_SLASH", "BATTLE_GUN", "BATTLE_SKILL", "BATTLE_DAMAGE", "BATTLE_CRITICAL", "BATTLE_WEAK", "BATTLE_BUFF", "BATTLE_DEBUFF", "VICTORY", "DEFEAT"],
     });
   }, [preloadAudio]);
 
@@ -175,6 +175,7 @@ export default function CardBattleView() {
             enemyParticipants={enemyPartyStates}
             presentationContext={battlePresentationContext}
             modeResult={battleModeResultDetail}
+            displayedRound={battleRound}
             onContinue={isTutorialBattle ? completeTutorialBattleResult : completeBattleResult}
           />
         )}
@@ -477,6 +478,7 @@ export default function CardBattleView() {
         presentationPhase={presentationPhase}
         actionPresentation={actionPresentation}
         round={battleRound}
+        roundLimit={battlePresentationContext?.roundLimit}
         skillCutIn={activeSkillCutIn}
         targetLine={targetLine}
         shakingId={activeShakingCharId}

@@ -40,6 +40,9 @@ assert.deepEqual(fixture.player.map((unit) => unit.name), [...BATTLE_FULL_SKILL_
 assert.deepEqual(fixture.enemy.map((unit) => unit.name), [...BATTLE_FULL_SKILL_LOAD_ENEMY_NAMES]);
 assert.equal(fixture.player.length, 5);
 assert.equal(fixture.enemy.length, 5);
+assert.equal(fixture.tactic, "ATTACK_PRIORITY", "Final Human Acceptance player tactic must be ATTACK_PRIORITY");
+assert.equal(fixture.enemyTactic, "ATTACK_PRIORITY", "Final Human Acceptance enemy tactic must be ATTACK_PRIORITY");
+assert.equal(fixture.maxRounds, 15, "Final Human Acceptance round limit must be 15");
 
 const currentCharacterIds = new Set(CANONICAL_CHARACTERS.map((entry) => entry.character_id));
 const currentSkills = new Map(CANONICAL_SKILLS.map((entry) => [entry.skill_id, entry]));
@@ -61,8 +64,11 @@ for (const unit of [...fixture.player, ...fixture.enemy]) {
 assert.deepEqual(replay, replayAgain, "deterministic replay drifted for the fixed seed");
 assert.ok(replay.events.at(-1)?.type === "RESULT", "5v5 replay must complete with RESULT");
 assert.ok(replay.rounds <= fixture.maxRounds, "5v5 replay exceeded max rounds");
-assert.equal(replay.rounds, 8, "Current Master no longer reproduces the accepted 8-round stress duration");
-assert.equal(skills.length, 76, "Current Master no longer reproduces 76 Skill actions");
+assert.equal(replay.rounds, 13, "Remediated ATTACK_PRIORITY fixture round outcome drifted");
+assert.equal(actions.length, 100, "Remediated ATTACK_PRIORITY fixture action count drifted");
+assert.equal(skills.length, 35, "Remediated ATTACK_PRIORITY fixture Skill action count drifted");
+assert.equal(replay.winner, "PLAYER", "Remediated ATTACK_PRIORITY winner drifted");
+assert.ok(replay.rounds < fixture.maxRounds, "Remediated ATTACK_PRIORITY must resolve naturally before Round Limit");
 assert.equal(replay.events.at(-1)?.payload.winner, replay.winner, "Replay RESULT winner drifted");
 assert.deepEqual(replay.events.map((event) => event.index), replay.events.map((_, index) => index), "Current Replay event index contract drifted");
 assert.ok(actions.every((event) => teamByActor.has(String(event.payload.actorId))), "Current Replay ACTION actor is outside the fixture authority");
@@ -92,6 +98,8 @@ assert.match(page, /isQaHarnessAvailable/, "QA route must fail closed through th
 assert.match(page, /notFound\(\)/, "Production QA route must return 404");
 assert.match(harness, /<CardBattleView\s*\/>/, "QA must render the Production Battle component");
 assert.match(harness, /buildBattlePresentationUnit\(replay\.events/, "QA must replay the existing canonical fixture through the Production V2 presentation grouping");
+assert.match(harness, /await audio\.unlockAudio\(\)/, "QA start gesture must unlock the Production AudioProvider before playback");
+assert.match(harness, /audio\.playBgm\("BATTLE"\)/, "QA must use the Production Battle BGM path");
 assert.doesNotMatch(harness, /supabase|fetch\(|\.from\(|\.rpc\(/, "QA fixture must not read or mutate Production User Data");
 
 console.log(JSON.stringify({

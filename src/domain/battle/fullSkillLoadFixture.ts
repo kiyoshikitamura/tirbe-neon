@@ -83,7 +83,13 @@ const unit = (name: string, team: "PLAYER" | "ENEMY", index: number): BattleUnit
   };
 };
 
-export function createBattleFullSkillLoadFixture() {
+type BattleFullSkillLoadFixtureOptions = {
+  maxRounds?: number;
+  tactic?: "ATTACK_PRIORITY" | "SKILL_PRIORITY";
+  enemyTactic?: "ATTACK_PRIORITY" | "SKILL_PRIORITY";
+};
+
+export function createBattleFullSkillLoadFixture(options: BattleFullSkillLoadFixtureOptions = {}) {
   const player = BATTLE_FULL_SKILL_LOAD_PLAYER_NAMES.map((name, index) => unit(name, "PLAYER", index));
   const enemy = BATTLE_FULL_SKILL_LOAD_ENEMY_NAMES.map((name, index) => unit(name, "ENEMY", index));
   const quest = canonicalQuestById(BATTLE_FULL_SKILL_LOAD_QUEST_ID);
@@ -99,9 +105,9 @@ export function createBattleFullSkillLoadFixture() {
   }));
   return {
     seed: BATTLE_FULL_SKILL_LOAD_SEED,
-    maxRounds: 8,
-    tactic: "SKILL_PRIORITY" as const,
-    enemyTactic: "SKILL_PRIORITY" as const,
+    maxRounds: options.maxRounds ?? 15,
+    tactic: options.tactic ?? "ATTACK_PRIORITY",
+    enemyTactic: options.enemyTactic ?? "ATTACK_PRIORITY",
     player,
     enemy,
     encounterSnapshot,
@@ -116,8 +122,8 @@ export function createBattleFullSkillLoadFixture() {
   };
 }
 
-export function resolveBattleFullSkillLoadFixture() {
-  const fixture = createBattleFullSkillLoadFixture();
+export function resolveBattleFullSkillLoadFixture(options: BattleFullSkillLoadFixtureOptions = {}) {
+  const fixture = createBattleFullSkillLoadFixture(options);
   return { fixture, replay: resolveDeterministicBattle(fixture) };
 }
 

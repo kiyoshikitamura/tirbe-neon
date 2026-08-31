@@ -22,6 +22,8 @@ export type SeEvent =
   | "BATTLE_DAMAGE"
   | "BATTLE_CRITICAL"
   | "BATTLE_WEAK"
+  | "BATTLE_BUFF"
+  | "BATTLE_DEBUFF"
   | "VICTORY"
   | "DEFEAT"
   | "REWARD"
@@ -71,6 +73,8 @@ export const SE_ASSETS: Record<SeEvent, string> = {
   BATTLE_DAMAGE: "/sounds/se/se_battle_impact.mp3",
   BATTLE_CRITICAL: "/sounds/se/se_battle_heavy_hit.mp3",
   BATTLE_WEAK: "/sounds/se/se_battle_skill_impact.mp3",
+  BATTLE_BUFF: "/sounds/se/se_battle_buff.mp3",
+  BATTLE_DEBUFF: "/sounds/se/se_battle_debuff.mp3",
   VICTORY: "/sounds/se/se_battle_victory.mp3",
   DEFEAT: "/sounds/se/se_battle_lose.mp3",
   REWARD: "/sounds/se/se_reward_get.mp3",
@@ -95,6 +99,8 @@ export const SE_PRIORITY: Record<SeEvent, number> = {
   GACHA_SR: 3,
   BATTLE_CRITICAL: 3,
   BATTLE_WEAK: 3,
+  BATTLE_BUFF: 2,
+  BATTLE_DEBUFF: 2,
   LEVEL_UP: 3,
   REWARD: 3,
   MISSION_COMPLETE: 3,
@@ -123,4 +129,6 @@ export const SE_COOLDOWN_MS: Partial<Record<SeEvent, number>> = {
   BATTLE_DAMAGE: 110,
   BATTLE_CRITICAL: 160,
   BATTLE_WEAK: 160,
+  BATTLE_BUFF: 160,
+  BATTLE_DEBUFF: 160,
 };

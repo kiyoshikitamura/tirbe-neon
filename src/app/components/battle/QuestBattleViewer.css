@@ -261,16 +261,16 @@
 .quest-battle-viewer.is-tutorial .battle-party-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: repeat(5, minmax(0, 1fr));
-  align-content: stretch;
-  gap: 2px;
+  grid-template-rows: repeat(5, clamp(58px, 8dvh, 68px));
+  align-content: center;
+  gap: 3px;
   min-height: 0;
 }
 .battle-party-zone[data-party-size="1"] .battle-party-grid { grid-template-rows: minmax(0, 1fr); }
 .battle-party-zone[data-party-size="2"] .battle-party-grid { grid-template-rows: repeat(2, minmax(0, 1fr)); }
 .battle-party-zone[data-party-size="3"] .battle-party-grid { grid-template-rows: repeat(3, minmax(0, 1fr)); }
 .battle-party-zone[data-party-size="4"] .battle-party-grid { grid-template-rows: repeat(4, minmax(0, 1fr)); }
-.battle-party-zone[data-party-size="5"] .battle-party-grid { grid-template-rows: repeat(5, minmax(0, 1fr)); }
+.battle-party-zone[data-party-size="5"] .battle-party-grid { grid-template-rows: repeat(5, clamp(58px, 8dvh, 68px)); }
 .battle-party-grid > div,
 .battle-party-grid > div:only-child { grid-column: auto; min-height: 0; }
 .battle-cutin-slot { position: relative; min-height: 0; margin: 0 2px; overflow: hidden; border-block: 1px solid rgba(86, 42, 121, .2); }
@@ -284,6 +284,11 @@
 }
 .battle-viewer-controls button { min-width: 0; min-height: 46px; padding: 3px 5px; font-size: 9px; }
 .battle-tactic-label { font-size: 8px; }
+.battle-viewer-header span,
+.battle-viewer-header strong,
+.battle-viewer-header i,
+.battle-party-label,
+.battle-viewer-controls button { font-family:var(--font-display),var(--font-ui),sans-serif; }
 .quest-battle-viewer.is-tutorial .battle-tactic-label { visibility: visible; }
 .quest-battle-viewer.is-tutorial .battle-viewer-controls { grid-template-columns: minmax(56px, 1fr) 52px 64px; }
 @media (min-height: 880px) {
@@ -293,4 +298,5 @@
   .quest-battle-viewer, .quest-battle-viewer.is-tutorial { grid-template-rows: 48px minmax(0, 1fr) 82px calc(54px + env(safe-area-inset-bottom)); }
   .battle-roster-stage { gap: 8px; }
   .battle-viewer-controls button { min-height: 42px; font-size: 8px; }
+  .battle-party-zone[data-party-size="5"] .battle-party-grid { grid-template-rows:repeat(5,54px);gap:2px; }
 }

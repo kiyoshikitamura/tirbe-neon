@@ -37,6 +37,25 @@ type AudioContextValue = AudioSettings & {
 
 const AudioContextState = createContext<AudioContextValue | null>(null);
 const FADE_SECONDS = 0.3;
+const BATTLE_ACTION_SE = new Set<SeEvent>(["BATTLE_ATTACK", "BATTLE_SLASH", "BATTLE_GUN", "BATTLE_SKILL"]);
+const BATTLE_RESOLUTION_SE = new Set<SeEvent>(["BATTLE_DAMAGE", "BATTLE_CRITICAL", "BATTLE_WEAK", "BATTLE_BUFF", "BATTLE_DEBUFF"]);
+
+const recordAudioTrace = (entry: Record<string, unknown>) => {
+  if (typeof window === "undefined") return;
+  const battleWindow = window as typeof window & { __TRIBE_AUDIO_TRACE__?: Array<Record<string, unknown>> };
+  const trace = battleWindow.__TRIBE_AUDIO_TRACE__ ||= [];
+  trace.push({ at: performance.now(), ...entry });
+  if (trace.length > 300) trace.splice(0, trace.length - 300);
+  const root = document.documentElement;
+  if (entry.type === "BGM_STARTED") root.dataset.audioBgmStarts = String(Number(root.dataset.audioBgmStarts ?? 0) + 1);
+  if (entry.type === "BGM_STOPPED") root.dataset.audioBgmStops = String(Number(root.dataset.audioBgmStops ?? 0) + 1);
+  if (entry.type === "SE_STARTED" && typeof entry.event === "string") {
+    const counts = JSON.parse(root.dataset.audioSeCounts || "{}") as Record<string, number>;
+    counts[entry.event] = (counts[entry.event] ?? 0) + 1;
+    root.dataset.audioSeCounts = JSON.stringify(counts);
+    root.dataset.audioLastSe = entry.event;
+  }
+};
 
 const clampVolume = (value: number) => Math.min(1, Math.max(0, Number.isFinite(value) ? value : 0));
 
@@ -53,7 +72,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   const bufferCacheRef = useRef(new Map<string, AudioBuffer | null>());
   const pendingBufferRef = useRef(new Map<string, Promise<AudioBuffer | null>>());
   const lastSeAtRef = useRef(new Map<SeEvent, number>());
-  const recentPriorityRef = useRef({ priority: -1, at: 0 });
+  const recentPriorityRef = useRef<{ priority: number; at: number; event: SeEvent | null }>({ priority: -1, at: 0, event: null });
   const transitionRef = useRef(0);
 
   useEffect(() => { settingsRef.current = settings; }, [settings]);
@@ -162,6 +181,9 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     bgmSourceRef.current = source;
     bgmGainRef.current = gain;
     bgmPathRef.current = path;
+    document.documentElement.dataset.audioBgm = scene;
+    document.documentElement.dataset.audioBgmPath = path;
+    recordAudioTrace({ type: "BGM_STARTED", scene, path, contextState: context.state });
   }, [getContext, loadBuffer, stopActiveBgm]);
 
   const unlockAudio = useCallback(async () => {
@@ -171,6 +193,9 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       if (context.state !== "running") await context.resume();
       if (context.state === "running") {
         setUnlocked(true);
+        document.documentElement.dataset.audioUnlocked = "true";
+        document.documentElement.dataset.audioContextState = context.state;
+        recordAudioTrace({ type: "AUDIO_UNLOCKED", contextState: context.state });
         void startDesiredBgm();
       }
     } catch {
@@ -187,10 +212,14 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   }, [startDesiredBgm]);
 
   const stopBgm = useCallback(() => {
+    const hadBgm = desiredSceneRef.current !== null || bgmSourceRef.current !== null;
     desiredSceneRef.current = null;
     setCurrentScene(null);
     transitionRef.current += 1;
     stopActiveBgm(true);
+    delete document.documentElement.dataset.audioBgm;
+    delete document.documentElement.dataset.audioBgmPath;
+    if (hadBgm) recordAudioTrace({ type: "BGM_STOPPED" });
   }, [stopActiveBgm]);
 
   const playSe = useCallback((event: SeEvent) => {
@@ -202,9 +231,11 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     if (nowMs - (lastSeAtRef.current.get(event) ?? -Infinity) < cooldown) return;
     const priority = SE_PRIORITY[event];
     const recent = recentPriorityRef.current;
-    if (nowMs - recent.at < 180 && priority < recent.priority) return;
+    const isActionResolutionBeat = Boolean(recent.event && BATTLE_ACTION_SE.has(recent.event) && BATTLE_RESOLUTION_SE.has(event));
+    if (nowMs - recent.at < 180 && priority < recent.priority && !isActionResolutionBeat) return;
     lastSeAtRef.current.set(event, nowMs);
-    if (priority >= recent.priority || nowMs - recent.at >= 180) recentPriorityRef.current = { priority, at: nowMs };
+    if (isActionResolutionBeat || priority >= recent.priority || nowMs - recent.at >= 180) recentPriorityRef.current = { priority, at: nowMs, event };
+    recordAudioTrace({ type: "SE_REQUESTED", event, contextState: context.state });
     void loadBuffer(SE_ASSETS[event]).then((buffer) => {
       if (!buffer || !settingsRef.current.seEnabled || document.hidden || context.state !== "running") return;
       try {
@@ -215,6 +246,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         source.connect(gain);
         gain.connect(context.destination);
         source.start();
+        recordAudioTrace({ type: "SE_STARTED", event, path: SE_ASSETS[event], contextState: context.state });
       } catch { /* a single unavailable sound never blocks the UI */ }
     });
   }, [loadBuffer]);

@@ -33,7 +33,13 @@
 .battle-cutin-character .character-presentation { width: 100%; height: 100%; border: 0; background: transparent; box-shadow: none; }
 .battle-cutin-character .character-presentation-art::before,
 .battle-cutin-character .character-presentation-light { display: none; }
-.battle-cutin-character .character-presentation img { object-fit: cover; object-position: 50% 0; transform: scale(1.03); filter: drop-shadow(10px 0 12px rgba(0, 0, 0, .88)); }
+.battle-cutin-character .character-presentation img {
+  object-fit: cover;
+  object-position: var(--character-cutin-x) var(--character-cutin-y);
+  transform: scale(var(--character-cutin-scale));
+  transform-origin: var(--character-cutin-x) 10%;
+  filter: drop-shadow(10px 0 12px rgba(0, 0, 0, .88));
+}
 
 .battle-cutin-copy {
   position: absolute;
@@ -106,7 +112,20 @@
   border-radius: 50%;
   pointer-events: none;
   isolation: isolate;
-  animation: battle-v2-icon-hit-shake 260ms ease-out both;
+  animation: none;
+}
+.battle-target-reaction.has-damage { animation: battle-v2-icon-hit-shake 260ms ease-out both; }
+.battle-target-impact-asset {
+  position: absolute;
+  z-index: 4;
+  inset: -18px;
+  width: calc(100% + 36px);
+  height: calc(100% + 36px);
+  object-fit: contain;
+  opacity: .94;
+  mix-blend-mode: screen;
+  filter: saturate(1.15) contrast(1.08) drop-shadow(0 0 8px rgba(255,52,88,.7));
+  animation: battle-v2-impact-asset 360ms cubic-bezier(.12,.75,.2,1) both;
 }
 .battle-target-effect { position: absolute; z-index: 1; inset: 5px; border-radius: 50%; pointer-events: none; }
 .battle-target-effect.is-damage {
@@ -149,28 +168,73 @@
   background: radial-gradient(circle,transparent 45%,rgba(255,153,51,.22));
   animation: battle-v2-icon-status 520ms ease-out both;
 }
+.battle-target-effect.is-poison {
+  inset: 2px;
+  border: 2px solid rgba(159,255,66,.82);
+  background:
+    radial-gradient(circle at 28% 68%,rgba(210,255,92,.92) 0 5%,transparent 7%),
+    radial-gradient(circle at 68% 38%,rgba(141,242,57,.88) 0 7%,transparent 9%),
+    radial-gradient(circle,rgba(69,112,24,.58),rgba(18,36,9,.18) 62%,transparent 68%);
+  box-shadow: inset 0 0 13px rgba(119,205,38,.55),0 0 12px rgba(118,230,42,.48);
+  animation: battle-v2-icon-poison 520ms ease-out both;
+}
+.battle-target-effect.is-bleed {
+  inset: -2px;
+  background: linear-gradient(112deg,transparent 26%,rgba(255,235,235,.95) 29% 32%,rgba(208,16,44,.96) 35% 40%,transparent 44%),linear-gradient(74deg,transparent 48%,rgba(151,4,27,.9) 51% 56%,transparent 60%);
+  filter: drop-shadow(0 3px 5px rgba(214,12,45,.72));
+  animation: battle-v2-icon-bleed 440ms ease-out both;
+}
+.battle-target-effect.is-stun {
+  inset: -4px;
+  border: 3px dotted rgba(255,222,71,.94);
+  background: radial-gradient(circle,rgba(255,238,105,.28),transparent 58%);
+  box-shadow: 0 0 15px rgba(255,205,49,.62);
+  animation: battle-v2-icon-stun 560ms ease-out both;
+}
 .battle-target-reaction-copy {
   position: absolute;
-  z-index: 4;
+  z-index: 30;
   top: 50%;
   display: flex;
   flex-direction: column;
   align-items: center;
   min-width: 54px;
+  overflow: visible;
+  opacity: 1;
+  visibility: visible;
   transform: translateY(-50%);
 }
 .battle-target-reaction.is-player .battle-target-reaction-copy { left: calc(100% - 7px); }
 .battle-target-reaction.is-enemy .battle-target-reaction-copy { right: calc(100% - 7px); }
 .battle-target-reaction-copy strong {
+  position: relative;
+  z-index: 20;
+  display: block;
+  opacity: 1;
+  visibility: visible;
   color: #fff;
-  font-size: clamp(18px, 5.7vw, 25px);
+  font-family: var(--font-display), var(--font-ui), sans-serif;
+  font-size: clamp(19px, 6vw, 26px);
   font-weight: 1000;
+  font-variant-numeric: tabular-nums;
   line-height: .92;
   letter-spacing: -.04em;
-  text-shadow: 0 2px 0 #020307, 0 0 12px rgba(255,43,85,.62);
-  animation: battle-v2-number-pop 420ms cubic-bezier(.1,.8,.2,1) both;
+  -webkit-text-stroke: 1px rgba(43,0,10,.92);
+  paint-order: stroke fill;
+  text-shadow: 0 3px 0 #020307, 0 0 4px #fff, 0 0 14px rgba(255,43,85,.72);
 }
-.battle-target-reaction-copy strong.is-heal { color: #80ffad; text-shadow: 0 2px 0 #020307, 0 0 12px rgba(39,244,121,.58); }
+.battle-target-reaction-copy em {
+  position: relative;
+  z-index: 20;
+  margin-bottom: 2px;
+  color: #ffd36b;
+  font-size: 8px;
+  font-style: normal;
+  font-weight: 1000;
+  letter-spacing: .08em;
+  text-shadow: 0 1px 0 #020307, 0 0 8px rgba(255,190,52,.72);
+}
+.battle-target-reaction-copy strong.is-heal { color: #80ffad; -webkit-text-stroke-color: rgba(0,48,19,.96); text-shadow: 0 3px 0 #020307, 0 0 4px #eafff0, 0 0 14px rgba(39,244,121,.68); }
 .battle-target-reaction-copy strong.is-miss { color: #c8d0d7; font-size: 13px; letter-spacing: .08em; }
 .battle-target-reaction-copy small,
 .battle-target-reaction-copy b {
@@ -187,6 +251,9 @@
 .battle-target-reaction-copy small.is-debuff { color: #d6a0ed; background: rgba(23,9,29,.92); }
 .battle-target-reaction-copy small.is-shield { color: #94e9ff; background: rgba(4,25,34,.92); }
 .battle-target-reaction-copy small.is-status { color: #ffd079; background: rgba(35,20,4,.92); }
+.battle-target-reaction-copy small.is-poison { color: #bfff72; background: rgba(15,35,5,.94); }
+.battle-target-reaction-copy small.is-bleed { color: #ff8ca2; background: rgba(45,4,12,.94); }
+.battle-target-reaction-copy small.is-stun { color: #ffe96e; background: rgba(44,35,3,.94); }
 .battle-target-reaction-copy b { color: #fff; background: rgba(159,11,47,.94); }
 @keyframes battle-v2-icon-damage { from { opacity:0; transform:scale(.42) rotate(-18deg); } 34% { opacity:1; } to { opacity:0; transform:scale(1.55) rotate(12deg); } }
 @keyframes battle-v2-icon-heal { from { opacity:0; transform:scale(.7); } 34% { opacity:1; transform:scale(1.08); } to { opacity:0; transform:scale(1.28) translateY(-4px); } }
@@ -194,13 +261,17 @@
 @keyframes battle-v2-icon-debuff { from { opacity:0; transform:scale(1.12); } 28%,70% { opacity:1; transform:none; } to { opacity:0; } }
 @keyframes battle-v2-icon-shield { from { opacity:0; transform:scale(.65); } 30%,72% { opacity:1; transform:scale(1.04); } to { opacity:0; transform:scale(1.2); } }
 @keyframes battle-v2-icon-status { from { opacity:0; transform:rotate(-20deg) scale(.75); } 32% { opacity:1; } to { opacity:0; transform:rotate(18deg) scale(1.12); } }
+@keyframes battle-v2-icon-poison { from { opacity:0; transform:translateY(8px) scale(.82); } 32%,68% { opacity:1; } to { opacity:0; transform:translateY(-7px) scale(1.12); } }
+@keyframes battle-v2-icon-bleed { from { opacity:0; transform:translate(-5px,-4px) scale(.8); } 28%,62% { opacity:1; } to { opacity:0; transform:translate(5px,7px) scale(1.08); } }
+@keyframes battle-v2-icon-stun { from { opacity:0; transform:rotate(-24deg) scale(.72); } 30%,70% { opacity:1; } to { opacity:0; transform:rotate(38deg) scale(1.14); } }
 @keyframes battle-v2-icon-hit-shake { 0%,100%{transform:translateX(0)}28%{transform:translateX(-2px)}48%{transform:translateX(2px)}68%{transform:translateX(-1px)} }
+@keyframes battle-v2-impact-asset { 0%{opacity:0;transform:scale(.34) rotate(-16deg)}22%{opacity:1;transform:scale(1.02) rotate(2deg)}100%{opacity:0;transform:scale(1.42) rotate(9deg)} }
 @keyframes battle-v2-number-pop { from{opacity:0;transform:scale(.68) translateY(5px)}28%{opacity:1;transform:scale(1.08)}to{opacity:1;transform:none} }
 
 /* SR/SSR cut-ins live in the reserved lower strip and never cover the roster. */
 .battle-cutin-slot .battle-skill-cutin { position: absolute; inset: 0; }
 .battle-cutin-slot .battle-cutin-darken { opacity: .56; }
-.battle-cutin-slot .battle-cutin-character { top: 0; right: 65%; bottom: -28%; left: -2%; }
+.battle-cutin-slot .battle-skill-cutin .battle-cutin-character { top: 0; right: 65%; bottom: -28%; left: -2%; }
 .battle-cutin-slot .battle-cutin-copy { right: 4%; width: 70%; }
 .battle-cutin-slot .battle-cutin-copy small { font-size: 8px; }
 .battle-cutin-slot .battle-cutin-copy strong { font-size: clamp(16px, 5vw, 21px); }

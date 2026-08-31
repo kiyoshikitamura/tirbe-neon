@@ -6,6 +6,11 @@ import type { BattleParticipantView } from "./BattleUnitPortrait";
 import type { BattleTargetResolutionGroup } from "@/domain/presentation/battlePresentationUnit";
 import "./BattleEffectPresentation.css";
 import { isInternalBattleLabel, safeBattleCharacterName } from "@/domain/presentation/battleSkillLabels";
+import {
+  battleStatusApplyLabel,
+  battleStatusPresentationTone,
+  type BattleStatusPresentationTone,
+} from "@/domain/presentation/battleStatusPresentation";
 
 export const BATTLE_EFFECT_ASSETS = {
   heavyImpact: "/effects/fx_heavy_impact.png",
@@ -35,66 +40,71 @@ const effectAsset: Record<BattleImpactKind, string> = {
 
 const stringValue = (value: unknown) => typeof value === "string" ? value.trim().toUpperCase() : "";
 
-const STATUS_LABELS: Record<string, string> = {
-  ATK_UP: "攻撃UP", ATTACK_UP: "攻撃UP", ATK_DOWN: "攻撃DOWN", ATTACK_DOWN: "攻撃DOWN",
-  DEF_UP: "防御UP", DEFENSE_UP: "防御UP", DEF_DOWN: "防御DOWN", DEFENSE_DOWN: "防御DOWN",
-  SPD_UP: "速度UP", SPEED_UP: "速度UP", SPD_DOWN: "速度DOWN", SPEED_DOWN: "速度DOWN",
-  STUN: "スタン", POISON: "毒", BLEED: "出血", BLIND: "暗闇", SILENCE: "沈黙", TAUNT: "挑発",
-  SHIELD: "シールド", REGEN: "継続回復", BUFF: "強化", DEBUFF: "弱体化",
-};
+export const battleStatusLabel = battleStatusApplyLabel;
+export const battleReactionTone = battleStatusPresentationTone;
+export type BattleReactionTone = BattleStatusPresentationTone;
 
-export function battleStatusLabel(payload: Record<string, unknown>): string {
-  const stat = String(payload.stat ?? "").toUpperCase();
-  const kind = String(payload.kind ?? "").toUpperCase();
-  const statLabel = { ATK: "攻撃", DEF: "防御", SPD: "速度", LUK: "運" }[stat];
-  if (statLabel && (kind === "BUFF" || kind === "DEBUFF")) return `${statLabel}${kind === "BUFF" ? "UP" : "DOWN"}`;
-  const raw = String(payload.label ?? payload.statusName ?? payload.status ?? payload.effectId ?? payload.kind ?? "STATUS");
-  const normalized = raw.trim().toUpperCase().replace(/[\s-]+/g, "_");
-  if (STATUS_LABELS[normalized]) return STATUS_LABELS[normalized];
-  const match = Object.entries(STATUS_LABELS).find(([key]) => normalized.includes(key));
-  return match?.[1] ?? (raw === normalized && /^[A-Z0-9_]+$/.test(raw) ? "状態変化" : raw);
+const targetStateCues = (group: BattleTargetResolutionGroup) => group.events
+  .filter((event) => event.type === "STATUS" || (event.type === "EFFECT" && event.payload.kind !== "ACTIVE_EFFECT_SYNC"))
+  .map((event) => ({ event, tone: battleReactionTone(event.payload) }));
+
+export function BattleUnitApplyOverlay({ group, side }: { group: BattleTargetResolutionGroup; side: "player" | "enemy" }) {
+  const cues = targetStateCues(group);
+  const blind = cues.filter(({ tone }) => tone === "blind");
+  const taunt = cues.filter(({ tone }) => tone === "taunt");
+  const negative = cues.filter(({ tone }) => tone === "debuff" || tone === "poison" || tone === "bleed" || tone === "stun");
+  const defensive = cues.filter(({ tone }) => tone === "shield");
+  const positive = cues.filter(({ tone }) => tone === "buff");
+  const visible = blind.length ? blind : taunt.length ? taunt : negative.length ? negative : defensive.length ? defensive : positive;
+  if (!visible.length) return null;
+  const tone = blind.length ? "blind" : taunt.length ? "taunt" : negative.length ? "debuff" : defensive.length ? "shield" : "buff";
+  return <div className={`battle-unit-apply-overlay is-${tone} is-${side}`} data-unit-effect-scope="row" role="status">
+    <i aria-hidden="true" />
+    <span>{visible.slice(0, 2).map(({ event }) => battleStatusLabel(event.payload)).join(" / ")}</span>
+  </div>;
 }
 
 export function BattleTargetReaction({ group, side }: { group: BattleTargetResolutionGroup; side: "player" | "enemy" }) {
   const damageEvents = group.events.filter((event) => event.type === "DAMAGE");
   const healEvents = group.events.filter((event) => event.type === "HEAL");
-  const damage = damageEvents.reduce((sum, event) => sum + Math.max(0, Number(event.payload.amount ?? 0)), 0);
+  const hasDamage = damageEvents.length > 0;
+  const hasHeal = healEvents.length > 0;
+  const damage = damageEvents.reduce((sum, event) => sum + Math.max(0, Number(event.payload.hpDamage ?? event.payload.amount ?? 0)), 0);
   const heal = healEvents.reduce((sum, event) => sum + Math.max(0, Number(event.payload.effectiveAmount ?? event.payload.amount ?? 0)), 0);
-  const stateEvents = group.events.filter((event) => event.type === "STATUS" || (event.type === "EFFECT" && event.payload.kind !== "ACTIVE_EFFECT_SYNC"));
   const defeated = group.events.some((event) => event.type === "DEFEAT");
   const missed = damageEvents.length > 0 && damageEvents.every((event) => event.payload.hit === false);
-  const stateTone = (payload: Record<string, unknown>) => {
-    const key = String(payload.status ?? payload.effectId ?? payload.kind ?? "").toUpperCase();
-    if (key.includes("SHIELD")) return "shield";
-    if (key.includes("DEBUFF") || key.includes("_DOWN")) return "debuff";
-    if (key.includes("BUFF") || key.includes("_UP") || key.includes("REGEN")) return "buff";
-    return "status";
-  };
-  const stateCues = stateEvents.map((event) => ({ event, tone: stateTone(event.payload) }));
-  const tones = new Set(stateCues.map((cue) => cue.tone));
+  const critical = damageEvents.some((event) => event.payload.critical === true);
+  const stateCues = targetStateCues(group);
+  // Buff, debuff and shield Apply Presentation belongs exclusively to the
+  // unit-wide translucent overlay. Keeping the same cue here produced the
+  // second large rectangular label reported by Human Acceptance.
+  const iconStateCues = stateCues.filter(({ tone }) => tone === "status");
+  const tones = new Set(iconStateCues.map((cue) => cue.tone));
   const classes = [
     "battle-target-reaction",
     `is-${side}`,
-    damageEvents.length ? "has-damage" : "",
-    healEvents.length ? "has-heal" : "",
+    hasDamage ? "has-damage" : "",
+    hasHeal ? "has-heal" : "",
     tones.has("buff") ? "has-buff" : "",
     tones.has("debuff") ? "has-debuff" : "",
     tones.has("shield") ? "has-shield" : "",
+    tones.has("poison") ? "has-poison" : "",
+    tones.has("bleed") ? "has-bleed" : "",
+    tones.has("stun") ? "has-stun" : "",
     tones.has("status") ? "has-status" : "",
     defeated ? "has-defeat" : "",
   ].filter(Boolean).join(" ");
 
-  return <div className={classes} role="status" data-target-effect-scope="icon">
-    {damage > 0 && !missed && <i className="battle-target-effect is-damage" aria-hidden="true" />}
-    {heal > 0 && <i className="battle-target-effect is-heal" aria-hidden="true" />}
-    {tones.has("buff") && <i className="battle-target-effect is-buff" aria-hidden="true" />}
-    {tones.has("debuff") && <i className="battle-target-effect is-debuff" aria-hidden="true" />}
-    {tones.has("shield") && <i className="battle-target-effect is-shield" aria-hidden="true" />}
+  return <div className={classes} role="status" data-target-effect-scope="icon" data-number-visible={(hasDamage || hasHeal) ? "true" : "false"}>
+    {hasDamage && !missed && <img className="battle-target-impact-asset" src={BATTLE_EFFECT_ASSETS.heavyImpact} alt="" aria-hidden="true" />}
+    {hasDamage && !missed && <i className="battle-target-effect is-damage" aria-hidden="true" />}
+    {hasHeal && <i className="battle-target-effect is-heal" aria-hidden="true" />}
     {tones.has("status") && <i className="battle-target-effect is-status" aria-hidden="true" />}
     <span className="battle-target-reaction-copy">
-      {missed ? <strong className="is-miss">MISS</strong> : damage > 0 ? <strong>−{damage.toLocaleString()}</strong> : null}
-      {heal > 0 && <strong className="is-heal">+{heal.toLocaleString()}</strong>}
-      {stateCues.slice(0, 2).map(({ event, tone }, index) => <small key={`${event.index}-${index}`} className={`is-${tone}`}>{battleStatusLabel(event.payload)}</small>)}
+      {critical && !missed && <em>CRITICAL</em>}
+      {missed ? <strong className="battle-target-number is-miss">MISS</strong> : hasDamage ? <strong className="battle-target-number is-damage" data-battle-number="damage">−{damage.toLocaleString()}</strong> : null}
+      {hasHeal && <strong className="battle-target-number is-heal" data-battle-number="heal">+{heal.toLocaleString()}</strong>}
+      {iconStateCues.slice(0, 2).map(({ event, tone }, index) => <small key={`${event.index}-${index}`} className={`is-${tone}`}>{battleStatusLabel(event.payload)}</small>)}
       {defeated && <b>戦闘不能</b>}
     </span>
   </div>;

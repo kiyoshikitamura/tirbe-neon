@@ -18,6 +18,12 @@ export type CharacterPresentationMetadata = {
   battleScale: number;
   battleX: number;
   battleY: number;
+  battleIconScale: number;
+  battleIconX: number;
+  battleIconY: number;
+  cutInScale: number;
+  cutInX: number;
+  cutInY: number;
   homeScale: number;
   homeX: number;
   homeY: number;
@@ -43,6 +49,12 @@ const DEFAULT_METADATA: CharacterPresentationMetadata = {
   battleScale: 1.08,
   battleX: 50,
   battleY: 0,
+  battleIconScale: 2.9,
+  battleIconX: 50,
+  battleIconY: 7,
+  cutInScale: 1.7,
+  cutInX: 50,
+  cutInY: 6,
   homeScale: 1.34,
   homeX: 50,
   homeY: 12,
@@ -50,22 +62,25 @@ const DEFAULT_METADATA: CharacterPresentationMetadata = {
 
 // Visual framing only. Gameplay and character master data remain server-side.
 const CHARACTER_PRESENTATION_METADATA: Record<string, Partial<CharacterPresentationMetadata>> = {
-  reiji: { focalX: 52 },
+  reiji: { focalX: 52, battleIconScale: 2.9, battleIconX: 52, battleIconY: 5, cutInScale: 1.7, cutInX: 52, cutInY: 5 },
   rui: { focalX: 50 },
   chang: { focalX: 51 },
-  ageha: { focalX: 48, portraitFocalY: 4, thumbnailScale: 2, thumbnailY: 4, cardScale: .94, cardY: 4, compactScale: 1.48, compactY: 4, revealScale: .92, battleScale: 1.04, battleY: 0 },
+  ageha: { focalX: 48, portraitFocalY: 4, thumbnailScale: 2, thumbnailY: 4, cardScale: .94, cardY: 4, compactScale: 1.48, compactY: 4, revealScale: .92, battleScale: 1.04, battleY: 0, battleIconScale: 2.82, battleIconX: 49, battleIconY: 8, cutInScale: 1.7, cutInX: 49, cutInY: 7 },
   alice: { focalX: 47 },
   kaito: { focalX: 51 },
-  go: { focalX: 50, thumbnailScale: 2.05, compactScale: 1.5 },
-  gou: { focalX: 50, thumbnailScale: 2.05, compactScale: 1.5 },
+  go: { focalX: 50, thumbnailScale: 2.05, compactScale: 1.5, battleIconScale: 2.72, battleIconY: 3, cutInScale: 1.7, cutInY: 3 },
+  gou: { focalX: 50, thumbnailScale: 2.05, compactScale: 1.5, battleIconScale: 2.72, battleIconY: 3, cutInScale: 1.7, cutInY: 3 },
   kaede: { focalX: 49, thumbnailScale: 2.05 },
   karen: { focalX: 50, thumbnailScale: 2.05 },
-  kengo: { focalX: 51, thumbnailScale: 2.05 },
-  koharu: { focalX: 49, thumbnailScale: 2.05 },
-  leo: { focalX: 54, thumbnailScale: 2.05 },
+  kengo: { focalX: 51, thumbnailScale: 2.05, battleIconScale: 2.72, battleIconX: 51, battleIconY: 3, cutInScale: 1.7, cutInX: 51, cutInY: 3 },
+  koharu: { focalX: 49, thumbnailScale: 2.05, battleIconScale: 2.86, battleIconX: 49, battleIconY: 7, cutInScale: 1.7, cutInX: 49, cutInY: 6 },
+  leo: { focalX: 54, thumbnailScale: 2.05, battleIconScale: 2.98, battleIconX: 53, battleIconY: 7, cutInScale: 1.7, cutInX: 53, cutInY: 6 },
   leon: { focalX: 54, thumbnailScale: 2.05 },
   mio: { focalX: 50, thumbnailScale: 2.05 },
-  miyabi: { focalX: 50, thumbnailScale: 2.05 },
+  miyabi: { focalX: 50, thumbnailScale: 2.05, battleIconScale: 2.98, battleIconY: 7, cutInScale: 1.7, cutInY: 6 },
+  sora: { battleIconScale: 2.92, battleIconY: 6, cutInScale: 1.7, cutInY: 5 },
+  taiga: { battleIconScale: 3.08, battleIconY: 5, cutInScale: 1.7, cutInY: 4 },
+  noa: { battleIconScale: 2.86, battleIconY: 6, cutInScale: 1.7, cutInY: 5 },
   sakura: { focalX: 52 },
   yuki: { focalX: 49 },
 };
