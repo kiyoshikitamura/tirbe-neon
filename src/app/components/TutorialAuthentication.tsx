@@ -82,6 +82,14 @@ function getOAuthReturnError(): string | null {
   return description || "Google連携を完了できませんでした。もう一度お試しください。";
 }
 
+function hasExistingAccountOAuthCollision(): boolean {
+  if (typeof window === "undefined") return false;
+  const query = new URLSearchParams(window.location.search);
+  const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+  const code = query.get("error_code") || query.get("error") || hash.get("error_code") || hash.get("error");
+  return code === "identity_already_exists" || code === "user_already_exists";
+}
+
 function getGoogleLinkError(code?: string, fallback?: string) {
   if (code === "identity_already_exists" || code === "user_already_exists") {
     return "このGoogleアカウントは既存アカウントで使用されています。既存アカウントへログインするか、別のGoogleアカウントを使用してください。";
@@ -98,10 +106,10 @@ export default function TutorialAuthentication() {
   const [email, setEmail] = useState(() => readEmailIntent()?.email || "");
   const [googleExternalBrowserUrl, setGoogleExternalBrowserUrl] = useState<string | null>(null);
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(() => getOAuthReturnError());
+  const [error, setError] = useState<string | null>(() => hasExistingAccountOAuthCollision() ? null : getOAuthReturnError());
   const [notice, setNotice] = useState<string | null>(null);
   const [working, setWorking] = useState(false);
-  const [accountConflict, setAccountConflict] = useState<AccountConflict | null>(null);
+  const [accountConflict, setAccountConflict] = useState<AccountConflict | null>(() => hasExistingAccountOAuthCollision() ? { method: "GOOGLE" } : null);
   const workingRef = useRef(false);
 
   const beginWorking = () => {
@@ -202,7 +210,7 @@ export default function TutorialAuthentication() {
       window.localStorage.setItem(EXISTING_GOOGLE_LOGIN_INTENT_KEY, JSON.stringify({ startedAt: Date.now() }));
       const { error: loginError } = await supabase.auth.signInWithOAuth({
         provider: "google",
-        options: { redirectTo: getOAuthCallbackUrl() },
+        options: { redirectTo: getOAuthCallbackUrl(), queryParams: { prompt: "select_account" } },
       });
       if (loginError) {
         window.localStorage.removeItem(EXISTING_GOOGLE_LOGIN_INTENT_KEY);
@@ -319,7 +327,7 @@ export default function TutorialAuthentication() {
     window.localStorage.setItem(AUTH_INTENT_KEY, JSON.stringify(intent));
     const { data: linkData, error: linkError } = await supabase.auth.linkIdentity({
       provider: "google",
-      options: { redirectTo: getOAuthCallbackUrl() }
+      options: { redirectTo: getOAuthCallbackUrl(), queryParams: { prompt: "select_account" } }
     });
     if (linkError) {
       window.localStorage.removeItem(AUTH_INTENT_KEY);
@@ -375,7 +383,7 @@ export default function TutorialAuthentication() {
           {working ? "切り替え中..." : "既存データで続ける"}
         </button>
         <button className="semantic-cta semantic-cta--secondary mt-2 width-100" onClick={cancelAccountSwitch} disabled={working}>
-          キャンセル
+          {accountConflict.method === "GOOGLE" ? "別のGoogleアカウントを使用" : "別のメールアドレスを使用"}
         </button>
       </div>
     </div>

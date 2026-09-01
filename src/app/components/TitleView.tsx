@@ -3,9 +3,10 @@ import Link from "next/link";
 import { useGame } from "../context/GameContext";
 import "./TitleView.css";
 import { markTitleAssetReady } from "../lib/screenAssets";
+import ConfirmDialog from "./ui/ConfirmDialog";
 
 export default function TitleView() {
-  const { showTitleView, setShowTitleView, authLoading, setupLoading, resumeLoading, resumeCurrentSession, session, errorMessage, playBgm, playCyberSe, handleFirstUserInteraction, handleStartNewGame } = useGame();
+  const { showTitleView, setShowTitleView, authLoading, setupLoading, resumeLoading, resumeCurrentSession, session, onboardingState, errorMessage, playBgm, playCyberSe, handleFirstUserInteraction, handleStartNewGame, handleLogout, confirmDialogConfig } = useGame();
   const [entryActivated, setEntryActivated] = useState(false);
   const [isGameStartTransition, setIsGameStartTransition] = useState(false);
   const gameStartRef = useRef(false);
@@ -14,6 +15,12 @@ export default function TitleView() {
   // anonymous player who has not entered a name yet; it must resume instead of
   // creating a second anonymous lifecycle.
   const canStartNewGame = entryReady && !session;
+  const isAnonymousSession = Boolean(session?.user?.is_anonymous);
+  const continueLabel = session
+    ? isAnonymousSession && onboardingState?.tutorial_step !== "AUTHENTICATION"
+      ? "チュートリアルを続ける"
+      : "続きから"
+    : "データをお持ちの方";
 
   useEffect(() => {
     if (showTitleView) markTitleAssetReady();
@@ -73,7 +80,8 @@ export default function TitleView() {
               <button type="button" className="title-tap-text blink-animation" onClick={activateEntry}>TAP TO START</button>
             ) : <div className="title-entry-actions">
               {canStartNewGame && <button className="semantic-cta semantic-cta--primary title-entry-primary" onClick={(event) => void beginNewGame(event)} disabled={setupLoading} aria-busy={setupLoading}>はじめから</button>}
-              {entryReady && <button className="semantic-cta semantic-cta--secondary title-entry-secondary" onClick={(event) => void openContinue(event)} disabled={resumeLoading}>続きから</button>}
+              {entryReady && <button className={`semantic-cta ${session ? "semantic-cta--primary title-entry-primary" : "semantic-cta--secondary title-entry-secondary"}`} onClick={(event) => void openContinue(event)} disabled={resumeLoading}>{continueLabel}</button>}
+              {entryReady && session && !isAnonymousSession && <button className="semantic-cta semantic-cta--secondary title-entry-secondary" onClick={(event) => { event.stopPropagation(); void handleLogout(); }}>ログアウト／別アカウント</button>}
               {!entryReady && <small className="title-entry-status" role="status">セッション確認中</small>}
               {errorMessage && <div className="title-entry-error" role="alert">{errorMessage}</div>}
             </div>}
@@ -91,6 +99,7 @@ export default function TitleView() {
             <span>© 2026 TRIBE NEON</span>
           </div>
         </div>
+        <ConfirmDialog {...confirmDialogConfig} />
       </div>
     </div>
   );

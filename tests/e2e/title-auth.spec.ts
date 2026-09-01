@@ -46,7 +46,7 @@ test("title screen opens the authentication menu", async ({ page }) => {
 
   await page.getByText("TAP TO START").click();
 
-  await page.getByRole("button", { name: "既存アカウントでログイン" }).click();
+  await page.getByRole("button", { name: "データをお持ちの方" }).click();
 
   await expect(page.getByText("TRIBE NEON")).toBeVisible();
   await expect(page.getByRole("button", { name: "Googleでログイン" })).toBeVisible();
@@ -59,7 +59,7 @@ test("authentication menu opens the email login form", async ({ page }) => {
   await expect(tapToStart).toBeVisible();
   await tapToStart.click();
 
-  await page.getByRole("button", { name: "既存アカウントでログイン" }).click();
+  await page.getByRole("button", { name: "データをお持ちの方" }).click();
 
   await expect(page.locator('input[type="email"]')).toBeVisible();
   await expect(page.locator('input[type="password"]')).toBeVisible();
@@ -294,7 +294,7 @@ test("email identity collision can be cancelled without changing anonymous tutor
   await page.getByRole("button", { name: "メールアカウントを連携" }).click();
 
   await expect(page.getByRole("dialog", { name: "既存のゲームデータが見つかりました" })).toBeVisible();
-  await page.getByRole("button", { name: "キャンセル" }).click();
+  await page.getByRole("button", { name: "別のメールアドレスを使用" }).click();
   await expect(page.getByText("ゲームデータを保存")).toBeVisible();
   const progress = await page.evaluate(() => JSON.parse(localStorage.getItem("mock_db_tutorial_progress") || "[]"));
   expect(progress[0].step_id).toBe("COMPLETE");
@@ -477,7 +477,7 @@ test("Google identity collision can be cancelled without changing anonymous tuto
   await page.getByRole("button", { name: "Googleアカウントを連携" }).click();
 
   await expect(page.getByRole("dialog", { name: "既存のゲームデータが見つかりました" })).toBeVisible();
-  await page.getByRole("button", { name: "キャンセル" }).click();
+  await page.getByRole("button", { name: "別のGoogleアカウントを使用" }).click();
   await expect(page.getByText("ゲームデータを保存")).toBeVisible();
   const state = await page.evaluate(() => ({
     mode: localStorage.getItem("mock_auth_mode"),
@@ -495,7 +495,7 @@ test("Google OAuth callback converts an existing-identity error into the collisi
   await expect(page).toHaveURL(/account_switch=google/);
   await page.getByText("TAP TO START").click();
   await expect(page.getByRole("dialog", { name: "既存のゲームデータが見つかりました" })).toBeVisible();
-  await page.getByRole("button", { name: "キャンセル" }).click();
+  await page.getByRole("button", { name: "別のGoogleアカウントを使用" }).click();
   await expect(page).not.toHaveURL(/account_switch=/);
 });
 
