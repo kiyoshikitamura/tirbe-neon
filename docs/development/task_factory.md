@@ -40,14 +40,20 @@ likely_files: []
 environment:
   code: "DEDICATED"
   database: "NONE | ISOLATED | READ_ONLY_SHARED"
+  database_id: ""
+  seed_identity: ""
+  local_port: ""
   preview: "REQUIRED | NOT_REQUIRED"
 acceptance:
   machine: []
   visual: []
   human_required: true
 outputs:
+  candidate_sha: ""
   pull_request: ""
+  preview_deployment_id: ""
   preview_url: ""
+  preview_sha: ""
   before_evidence: []
   after_evidence: []
 ```
@@ -84,8 +90,8 @@ Payments, destructive migrations, Production configuration, Battle/Replay/Result
 
 - Code: every task uses a dedicated Codex cloud container or Git worktree based on an immutable `base_sha`.
 - Port: allocate a task-specific port when a local preview is used; never terminate an unknown process to claim a port.
-- Database: DB-writing tasks require a disposable isolated Supabase branch/stack. If unavailable, stop before mutation. Shared Preview may be used only for explicitly read-only verification or a single serialized acceptance task.
-- Preview: bind the Preview deployment to the task branch and its intended data environment. Record deployment ID, commit SHA, and URL together.
+- Database: DB-writing tasks require a disposable isolated Supabase branch/stack. Record its concrete branch, project, or local-stack identifier in `database_id`; the value `ISOLATED` alone is insufficient. If no concrete isolated identity can be allocated, stop before mutation. Shared Preview may be used only for explicitly read-only verification or a single serialized acceptance task.
+- Preview: bind the Preview deployment to the task branch and its intended data environment. Record deployment ID, candidate commit SHA, Preview commit SHA, and URL together; acceptance evidence is invalid when these do not identify the same candidate.
 - Seed users: use task-specific test identities or namespaces. Do not reuse paid, production, or another task's acceptance user.
 - Cleanup: cleanup must be explicit and target only resources recorded in the task manifest. Never infer targets from broad globs or environment variables.
 
@@ -109,7 +115,7 @@ After-only evidence is insufficient when a visual or interaction change is claim
 
 ## Integration command
 
-Treat phrases such as `OK、反映して` or `mergeして` as integration authorization only for the clearly identified accepted task(s). Before merging, verify:
+Require an explicit merge instruction such as `Task Aをdevelopへmergeして` or `PR #123をmergeして`. A generic approval such as `OK` or `反映して` is Human Acceptance, not merge authorization. Before merging, verify:
 
 - exact PR and accepted commit SHA;
 - current Human Acceptance record;
@@ -125,4 +131,3 @@ If the accepted task cannot be identified unambiguously, ask which task to integ
 ## Consolidated handoff
 
 Return one compact board containing task ID, status, risk lane, branch/PR, validation, Preview, Human Acceptance need, blocker, and merge recommendation. The Product Owner should be able to judge specification intent, Before/After evidence, and real-device behavior without reading code.
-
