@@ -34,6 +34,7 @@ Resolve every relative path from the repository root. If a path is unavailable, 
 - For UI/Presentation, require matched Before/After captures and a commit-bound Preview.
 - Consolidate results for Product Owner judgment. Never equate implementation or machine validation with Human PASS.
 - Bind Human PASS to the exact candidate/Preview SHA and invalidate it whenever either SHA changes.
+- On terminal completion, verify cleanup and atomically archive/remove the shared reservation before marking the task closed; temporary blockers retain reservations.
 
 ## Authorization and stopping
 
