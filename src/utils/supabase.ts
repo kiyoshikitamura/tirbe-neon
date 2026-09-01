@@ -31,6 +31,33 @@ export const supabase = (forceMock
   ? (new MockSupabaseClient() as any)
   : createClient(supabaseUrl, supabaseAnonKey)) as SupabaseClient<any, "public", any>;
 
+export async function discardAnonymousAccountForSwitch(anonymousSession: { access_token: string; refresh_token: string; user: { id: string } }) {
+  if (forceMock) {
+    const currentUserId = window.localStorage.getItem("tribe_demo_uuid");
+    const currentAuthMode = window.localStorage.getItem("mock_auth_mode");
+    try {
+      window.localStorage.setItem("tribe_demo_uuid", anonymousSession.user.id);
+      window.localStorage.setItem("mock_auth_mode", "ANONYMOUS");
+      return await supabase.rpc("discard_current_anonymous_account_for_switch");
+    } finally {
+      if (currentUserId) window.localStorage.setItem("tribe_demo_uuid", currentUserId);
+      else window.localStorage.removeItem("tribe_demo_uuid");
+      if (currentAuthMode) window.localStorage.setItem("mock_auth_mode", currentAuthMode);
+      else window.localStorage.removeItem("mock_auth_mode");
+    }
+  }
+
+  const isolated = createClient(supabaseUrl, supabaseAnonKey, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+  });
+  const { error: sessionError } = await isolated.auth.setSession({
+    access_token: anonymousSession.access_token,
+    refresh_token: anonymousSession.refresh_token,
+  });
+  if (sessionError) return { data: null, error: sessionError };
+  return isolated.rpc("discard_current_anonymous_account_for_switch");
+}
+
 export async function authenticateExistingEmailAccount(email: string, password: string) {
   if (forceMock) {
     const identities = JSON.parse(window.localStorage.getItem("mock_db_auth_identities") || "[]");

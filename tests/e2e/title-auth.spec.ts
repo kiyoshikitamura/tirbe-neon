@@ -553,6 +553,35 @@ test("Google identity collision discards only anonymous data and resumes the exi
   expect(state.progress.some((row: any) => row.user_id === state.discarded)).toBe(false);
 });
 
+test("Google account switch keeps tutorial data when the authenticated identity has no game profile", async ({ page }) => {
+  await seedCompletedAnonymous(page);
+  await page.addInitScript(() => {
+    const existingId = "00000000-0000-4000-8000-000000000204";
+    localStorage.setItem("mock_google_identity_collision", "true");
+    localStorage.setItem("mock_existing_google_user_id", existingId);
+    localStorage.setItem("mock_db_auth_identities", JSON.stringify([{ user_id: existingId, provider: "google" }]));
+  });
+  await page.goto("/");
+  await page.getByText("TAP TO START").click();
+  await page.getByRole("button", { name: "チュートリアルを続ける" }).click();
+  await page.getByRole("button", { name: "Googleアカウントを連携" }).click();
+  await page.getByRole("button", { name: "既存データへ切り替える" }).click();
+
+  await expect(page.getByText("このGoogleアカウントにはゲームデータがありません。現在のチュートリアルデータは保持されています。別のGoogleアカウントを選んでください。")).toBeVisible();
+  const state = await page.evaluate(() => ({
+    userId: localStorage.getItem("tribe_demo_uuid"),
+    mode: localStorage.getItem("mock_auth_mode"),
+    discarded: localStorage.getItem("mock_discarded_anonymous_user_id"),
+    users: JSON.parse(localStorage.getItem("mock_db_users") || "[]"),
+    progress: JSON.parse(localStorage.getItem("mock_db_tutorial_progress") || "[]"),
+  }));
+  expect(state.userId).toBe("00000000-0000-4000-8000-000000000099");
+  expect(state.mode).toBe("ANONYMOUS");
+  expect(state.discarded).toBeNull();
+  expect(state.users.some((row: any) => row.id === state.userId)).toBe(true);
+  expect(state.progress.some((row: any) => row.user_id === state.userId && row.step_id === "COMPLETE")).toBe(true);
+});
+
 test("email identity collision verifies credentials before discard and resumes the existing save", async ({ page }) => {
   await seedCompletedAnonymous(page);
   await page.addInitScript(() => {

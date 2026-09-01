@@ -74,6 +74,9 @@ function getOAuthReturnError(): string | null {
   if (typeof window === "undefined") return null;
   const query = new URLSearchParams(window.location.search);
   const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+  const accountSwitchError = query.get("account_switch_error");
+  if (accountSwitchError === "NO_EXISTING_GAME_DATA") return "このGoogleアカウントにはゲームデータがありません。現在のチュートリアルデータは保持されています。別のGoogleアカウントを選んでください。";
+  if (accountSwitchError === "ANONYMOUS_DISCARD_FAILED") return "現在のチュートリアルデータを安全に切り替えられませんでした。データは保持されています。もう一度お試しください。";
   const code = query.get("error_code") || query.get("error") || hash.get("error_code") || hash.get("error");
   if (!code) return null;
   if (code === "access_denied") return "Google連携はキャンセルされました。もう一度お試しください。";
@@ -169,7 +172,7 @@ export default function TutorialAuthentication() {
       setError(null);
     }
     const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
-    if (!query.has("error") && !query.has("error_code") && !hash.has("error") && !hash.has("error_code")) return;
+    if (!query.has("error") && !query.has("error_code") && !query.has("account_switch_error") && !hash.has("error") && !hash.has("error_code")) return;
     window.localStorage.removeItem(AUTH_INTENT_KEY);
     window.history.replaceState({}, document.title, `${window.location.pathname}${window.location.hash.startsWith("#/") ? window.location.hash : ""}`);
   }, []);
@@ -211,6 +214,31 @@ export default function TutorialAuthentication() {
     }
 
     const anonymousUserId = session.user.id;
+    if (accountConflict.method === "GOOGLE") {
+      // Keep the tutorial player until Google proves that the destination
+      // identity owns a gameplay profile. The callback performs the verified
+      // discard through an isolated anonymous session.
+      window.localStorage.removeItem(AUTH_INTENT_KEY);
+      window.localStorage.removeItem(EMAIL_INTENT_KEY);
+      window.localStorage.setItem(EXISTING_GOOGLE_LOGIN_INTENT_KEY, JSON.stringify({
+        startedAt: Date.now(),
+        method: "GOOGLE_SWITCH",
+        sourceUserId: anonymousUserId,
+      }));
+      const { error: loginError } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: { redirectTo: getOAuthCallbackUrl(), queryParams: { prompt: "select_account" } },
+      });
+      if (loginError) {
+        window.localStorage.removeItem(EXISTING_GOOGLE_LOGIN_INTENT_KEY);
+        setError(loginError.message);
+        endWorking();
+      } else if (usingMockSupabase) {
+        window.location.assign(`${getOAuthCallbackUrl()}?code=mock-google-switch`);
+      }
+      return;
+    }
+
     const { data: discardResult, error: discardError } = await supabase.rpc("discard_current_anonymous_account_for_switch");
     if (discardError || discardResult?.discardedUserId !== anonymousUserId || discardResult?.gameplayMerged !== false) {
       setError(discardError?.message || "未登録データを安全に破棄できませんでした。");
@@ -221,21 +249,6 @@ export default function TutorialAuthentication() {
     window.localStorage.removeItem(AUTH_INTENT_KEY);
     window.localStorage.removeItem(EMAIL_INTENT_KEY);
     clearAccountSwitchQuery();
-    if (accountConflict.method === "GOOGLE") {
-      window.localStorage.setItem(EXISTING_GOOGLE_LOGIN_INTENT_KEY, JSON.stringify({ startedAt: Date.now() }));
-      const { error: loginError } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: { redirectTo: getOAuthCallbackUrl(), queryParams: { prompt: "select_account" } },
-      });
-      if (loginError) {
-        window.localStorage.removeItem(EXISTING_GOOGLE_LOGIN_INTENT_KEY);
-        setError(loginError.message);
-        endWorking();
-      } else if (usingMockSupabase) {
-        window.location.reload();
-      }
-      return;
-    }
 
     window.localStorage.setItem(EXISTING_GOOGLE_LOGIN_INTENT_KEY, JSON.stringify({ startedAt: Date.now(), method: "EMAIL" }));
     const { error: sessionError } = await supabase.auth.setSession({
