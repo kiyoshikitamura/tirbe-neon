@@ -26,11 +26,12 @@ WAIT FOR MAIN AGENT MERGE GATE
 
 具体的には、開始前に必ず次を読む。
 
-1. `.agents/AGENTS.md`
+1. Repository root `AGENTS.md`
 2. `docs/development/release_board.md`
-3. 自分に割り当てられた `docs/development/agent_tasks/<TASK>.md`
+3. 自分に割り当てられた `docs/development/agent_tasks/<TASK-ID>.md`
+4. 対応する `docs/development/agent_tasks/<TASK-ID>.task.yaml`
 
-続いて、Task Contractの`DEPENDENCIES`、Active Workstreamsとのfile overlap、High Risk Shared Areaへの影響を確認する。同一ファイルを別Workerも変更する可能性がある場合は、実装前にMain AI Agentへ報告する。
+続いて、Task ContractとManifestの対応、`DEPENDENCIES`、Shared Dispatch Registryのreservation、Active Workstreamsとのfile overlap、High Risk Shared Areaへの影響を確認する。同一ファイルを別Workerも変更する可能性がある場合は、実装前にMain AI Agentへ報告する。
 
 ## Worker rules
 

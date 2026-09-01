@@ -1,0 +1,6 @@
+interface:
+  display_name: "TRIBE NEON Task Factory"
+  short_description: "Isolated implementation, review, and acceptance orchestration"
+  default_prompt: "Use $tribe-neon-task-factory to decompose and carry these TRIBE NEON changes through isolated Draft PRs and Human Acceptance."
+policy:
+  allow_implicit_invocation: true

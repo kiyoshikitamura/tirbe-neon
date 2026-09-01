@@ -4,7 +4,7 @@
 
 このProtocolは、TRIBE NEON RepositoryでMain AI AgentがRelease Manager / Integration Ownerとして複数Codex Workerを安全に並走管理するための開発管理ルールを定義する。
 
-既存仕様、Repository、および `.agents/AGENTS.md` をCanonicalとする。本Protocolは開発管理基盤のみを扱い、Gameplay / Economy / Master / Battle Authorityを含む既存仕様を変更しない。
+Repository root `AGENTS.md`をAgent運用のCanonical entry pointとする。本Protocolは同ファイルから参照される現行仕様、Task Contract、およびRepository evidenceに従い、Gameplay / Economy / Master / Battle Authorityを含む既存仕様を変更しない。`.agents/AGENTS.md`はhistorical guidanceであり、単独のCanonicalとして扱わない。
 
 ## Canonical precedence
 
@@ -49,11 +49,12 @@ Codex Workerの「実装完了」を自動的にPASSとして扱わない。`IMP
 
 開始前に、必ず次の順で読むこと。
 
-1. `.agents/AGENTS.md`
+1. Repository root `AGENTS.md`
 2. `docs/development/release_board.md`
-3. 自分に割り当てられた `docs/development/agent_tasks/<TASK>.md`
+3. 自分に割り当てられた `docs/development/agent_tasks/<TASK-ID>.md`
+4. 対応する `docs/development/agent_tasks/<TASK-ID>.task.yaml`
 
-いずれかが存在しない、読めない、または内容が矛盾する場合は実装を開始せず、Main AI Agentへ報告する。
+いずれかが存在しない、読めない、対応するTask IDが一致しない、または内容が矛盾する場合は実装を開始せず、Main AI Agentへ報告する。Task Factory経由では、Main AI AgentがShared Dispatch Registryのlockとreservationを確定する前にWorkerを開始してはならない。
 
 ## Priority
 

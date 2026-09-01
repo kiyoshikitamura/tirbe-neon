@@ -1,0 +1,9 @@
+schema_version: 1
+generation: 0
+dispatcher_lock:
+  active: false
+  dispatcher_id: null
+  acquired_at: null
+  lease_until: null
+active_tasks: []
+history: []
