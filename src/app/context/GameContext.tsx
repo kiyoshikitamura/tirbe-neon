@@ -82,7 +82,8 @@ function isMatchingGoogleOnboardingReturn(userId: string): boolean {
 
 function hasPendingGoogleAccountSwitch(): boolean {
   if (typeof window === "undefined") return false;
-  return new URLSearchParams(window.location.search).get("account_switch") === "google";
+  const query = new URLSearchParams(window.location.search);
+  return query.get("account_switch") === "google" || query.has("account_switch_error");
 }
 import { usePvp } from "./hooks/usePvp";
 import { useGvg } from "./hooks/useGvg";

@@ -540,6 +540,7 @@ test("Google identity collision discards only anonymous data and resumes the exi
   await page.getByRole("button", { name: "Googleアカウントを連携" }).click();
   await page.getByRole("button", { name: "既存データへ切り替える" }).click();
 
+  await expect(page).toHaveURL(/\/$/);
   await expect.poll(async () => page.evaluate(() => localStorage.getItem("tribe_demo_uuid"))).toBe("00000000-0000-4000-8000-000000000200");
   await expect(page.locator(".header-mobile")).toBeVisible();
   const state = await page.evaluate(() => ({
