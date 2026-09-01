@@ -388,12 +388,17 @@ export default function CharacterTab() {
                     setTutorialGrowthPending(true);
                     try {
                       let resultDialog: any = null;
-                      const completed = await handleCharacterLevelUp(
-                        "CHAR_EXP_S",
-                        Number(tutorialGrowth?.required_quantity || 0),
-                        (config: any) => { resultDialog = config; }
-                      );
-                      if (!completed) return;
+                      const requiredLevel = Number(tutorialGrowth?.required_level || 7);
+                      const growthAlreadyComplete = tutorialGrowth?.status === "growth_complete"
+                        || Number(activeCharRecord.level || 1) >= requiredLevel;
+                      if (!growthAlreadyComplete) {
+                        const completed = await handleCharacterLevelUp(
+                          "CHAR_EXP_S",
+                          Number(tutorialGrowth?.required_quantity || 0),
+                          (config: any) => { resultDialog = config; }
+                        );
+                        if (!completed) return;
+                      }
                       const { data, error } = await supabase.rpc("advance_current_tutorial_after_growth");
                       if (error || data?.status !== "ready_for_formation") {
                         console.warn("Tutorial Growth did not unlock formation:", error || data);
@@ -412,7 +417,11 @@ export default function CharacterTab() {
                             setTutorialLearningPhase("FORMATION");
                             setFormationEditMode(true);
                           },
-                          onCancel: () => setConfirmDialogConfig(null),
+                          onCancel: () => {
+                            setConfirmDialogConfig(null);
+                            setTutorialLearningPhase("FORMATION");
+                            setFormationEditMode(true);
+                          },
                         });
                       } else {
                         setTutorialLearningPhase("FORMATION");
