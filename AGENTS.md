@@ -32,5 +32,4 @@ Select the narrowest relevant checks from `package.json`, then run the required 
 
 ## Task Factory
 
-For multi-item implementation, autonomous execution, parallel work, or an instruction to carry work through review and Human Acceptance, use `.codex/skills/tribe-neon-task-factory/SKILL.md` and `docs/development/task_factory.md`.
-
+For multi-item implementation, autonomous execution, parallel work, or an instruction to carry work through review and Human Acceptance, use `.agents/skills/tribe-neon-task-factory/SKILL.md` and `docs/development/task_factory.md`.
