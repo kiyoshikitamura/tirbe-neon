@@ -487,6 +487,29 @@ test("Google identity collision can be cancelled without changing anonymous tuto
   expect(state.progress[0].step_id).toBe("COMPLETE");
 });
 
+test("authentication and account warning screens can return to title without discarding tutorial data", async ({ page }) => {
+  await seedCompletedAnonymous(page);
+  await page.goto("/");
+  await page.getByText("TAP TO START").click();
+  await page.getByRole("button", { name: "チュートリアルを続ける" }).click();
+  await expect(page.getByText("ゲームデータを保存")).toBeVisible();
+  await page.getByRole("button", { name: "タイトルに戻る" }).click();
+  await expect(page.getByText("TAP TO START")).toBeVisible();
+  await expect(page.getByText("ゲームデータを保存")).toBeHidden();
+
+  await page.goto("/?account_switch=google");
+  await expect(page.getByRole("dialog", { name: "既存のゲームデータが見つかりました" })).toBeVisible();
+  await page.getByRole("button", { name: "タイトルに戻る" }).click();
+  await expect(page.getByText("TAP TO START")).toBeVisible();
+  await expect(page).not.toHaveURL(/account_switch=/);
+  const state = await page.evaluate(() => ({
+    mode: localStorage.getItem("mock_auth_mode"),
+    progress: JSON.parse(localStorage.getItem("mock_db_tutorial_progress") || "[]"),
+  }));
+  expect(state.mode).toBe("ANONYMOUS");
+  expect(state.progress[0].step_id).toBe("COMPLETE");
+});
+
 test("Google OAuth callback converts an existing-identity error into the collision dialog", async ({ page }) => {
   await seedCompletedAnonymous(page);
   await page.goto("/auth/callback?error=identity_already_exists&error_code=identity_already_exists&error_description=Identity%20is%20already%20linked%20to%20another%20user");

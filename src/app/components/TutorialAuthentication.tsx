@@ -101,7 +101,7 @@ function getGoogleLinkError(code?: string, fallback?: string) {
 }
 
 export default function TutorialAuthentication() {
-  const { session, onboardingState, setOnboardingState, playCyberSe, navigateTab } = useGame();
+  const { session, onboardingState, setOnboardingState, playCyberSe, navigateTab, showTitleView, setShowTitleView } = useGame();
   const step = onboardingState?.tutorial_step ?? null;
   const [email, setEmail] = useState(() => readEmailIntent()?.email || "");
   const [googleExternalBrowserUrl, setGoogleExternalBrowserUrl] = useState<string | null>(null);
@@ -110,6 +110,7 @@ export default function TutorialAuthentication() {
   const [notice, setNotice] = useState<string | null>(null);
   const [working, setWorking] = useState(false);
   const [accountConflict, setAccountConflict] = useState<AccountConflict | null>(() => hasExistingAccountOAuthCollision() ? { method: "GOOGLE" } : null);
+  const [hiddenForTitle, setHiddenForTitle] = useState(false);
   const workingRef = useRef(false);
 
   const beginWorking = () => {
@@ -180,6 +181,20 @@ export default function TutorialAuthentication() {
     setAccountConflict(null);
     setError(null);
   };
+
+  const returnToTitle = () => {
+    window.localStorage.removeItem(EXISTING_GOOGLE_LOGIN_INTENT_KEY);
+    clearAccountSwitchQuery();
+    setAccountConflict(null);
+    setError(null);
+    setNotice(null);
+    setHiddenForTitle(true);
+    setShowTitleView(true);
+  };
+
+  useEffect(() => {
+    if (!showTitleView && hiddenForTitle) setHiddenForTitle(false);
+  }, [hiddenForTitle, showTitleView]);
 
   const continueAccountSwitch = async () => {
     if (!accountConflict || !session?.user?.id || !session.user.is_anonymous || !beginWorking()) return;
@@ -253,7 +268,7 @@ export default function TutorialAuthentication() {
   const providers = new Set((session?.user?.identities || []).map((identity: { provider?: string }) => identity.provider));
   const hasOnlyEmailIdentity = !session?.user?.is_anonymous && providers.has("email") && !providers.has("google");
 
-  if (step !== "COMPLETE" && !googleIdentityMismatch) return null;
+  if ((step !== "COMPLETE" && !googleIdentityMismatch) || (showTitleView && hiddenForTitle)) return null;
 
   const connectEmail = async () => {
     if ((!hasOnlyEmailIdentity && !email.trim()) || password.length < 6) {
@@ -385,6 +400,9 @@ export default function TutorialAuthentication() {
         <button className="semantic-cta semantic-cta--secondary mt-2 width-100" onClick={cancelAccountSwitch} disabled={working}>
           {accountConflict.method === "GOOGLE" ? "別のGoogleアカウントを選ぶ" : "別のメールアドレスを選ぶ"}
         </button>
+        <button className="semantic-cta semantic-cta--secondary mt-2 width-100" onClick={returnToTitle} disabled={working}>
+          タイトルに戻る
+        </button>
       </div>
     </div>
     ) : (
@@ -402,6 +420,9 @@ export default function TutorialAuthentication() {
         <input className="auth-input" type="password" placeholder="パスワード（6文字以上）" value={password} onChange={(event) => setPassword(event.target.value)} />
         <button className="semantic-cta semantic-cta--secondary mt-3 width-100" onClick={() => void connectEmail()} disabled={working || googleIdentityMismatch} aria-busy={working}>
           {working ? "連携中..." : hasOnlyEmailIdentity ? "パスワードを設定して完了" : "メールアカウントを連携"}
+        </button>
+        <button className="semantic-cta semantic-cta--secondary mt-2 width-100" onClick={returnToTitle} disabled={working}>
+          タイトルに戻る
         </button>
         {displayedNotice && <div className="text-color-cyan font-size-7 mt-2" role="status">{displayedNotice}</div>}
         {(error || identityConflict || googleIdentityMismatch) && <div className="text-color-red font-size-7 mt-2">
