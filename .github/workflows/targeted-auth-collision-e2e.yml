@@ -1,0 +1,24 @@
+name: Targeted Auth Collision E2E
+
+on:
+  pull_request:
+
+jobs:
+  auth-collision-e2e:
+    runs-on: ubuntu-latest
+    env:
+      NEXT_PUBLIC_APP_ENV: test
+      NEXT_PUBLIC_USE_MOCK_DB: "true"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run build
+      - name: Run existing-account collision scenarios
+        run: >-
+          npm run test:e2e -- tests/e2e/title-auth.spec.ts
+          --grep "Google identity collision can be cancelled|Google OAuth callback converts|Google identity collision discards"
