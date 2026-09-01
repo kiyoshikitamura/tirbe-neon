@@ -472,10 +472,7 @@ test("OAuth callback ignores the restored old session and bootstraps the exchang
 
 test("Google identity collision can be cancelled without changing anonymous tutorial data", async ({ page }) => {
   await seedCompletedAnonymous(page);
-  await page.addInitScript(() => localStorage.setItem("mock_google_identity_collision", "true"));
-  await page.goto("/");
-  await page.getByText("TAP TO START").click();
-  await page.getByRole("button", { name: "Googleアカウントを連携" }).click();
+  await page.goto("/?account_switch=google");
 
   await expect(page.getByRole("dialog", { name: "既存のゲームデータが見つかりました" })).toBeVisible();
   await page.getByRole("button", { name: "別のGoogleアカウントを選ぶ" }).click();
