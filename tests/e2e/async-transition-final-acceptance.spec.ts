@@ -33,9 +33,10 @@ test.beforeEach(async ({ page }) => {
 
 async function enterGame(page: Page) {
   await page.goto("/");
-  const entry = page.getByRole("button", { name: /TAP TO START|続きから/ });
-  await expect(entry).toBeVisible();
-  await entry.click();
+  const tapToStart = page.getByRole("button", { name: "TAP TO START" });
+  await expect(tapToStart).toBeVisible();
+  await tapToStart.click();
+  await page.getByRole("button", { name: "続きから" }).click();
   await expect(page.locator(".header-mobile")).toBeVisible();
 }
 
