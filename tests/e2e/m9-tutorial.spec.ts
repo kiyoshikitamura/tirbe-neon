@@ -161,6 +161,7 @@ async function revealTutorialTenPull(page: import("@playwright/test").Page, capt
   let finalCharacterId: string | null = null;
   let ssrQuoteCount = 0;
   for (let index = 0; index < 10; index += 1) {
+    await expect(page.locator('[data-acceptance-state="TUTORIAL_SKILL_STEP"]')).toHaveCount(0);
     await expect(reveal.locator(".tutorial-gacha-count")).toHaveText(`${index + 1} / 10`);
     const state = await reveal.getAttribute("data-presentation-state");
     if (state === "SSR_QUOTE") {
