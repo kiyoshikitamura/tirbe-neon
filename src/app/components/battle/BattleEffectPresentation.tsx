@@ -64,7 +64,7 @@ export function BattleUnitApplyOverlay({ group, side }: { group: BattleTargetRes
   </div>;
 }
 
-export function BattleTargetReaction({ group, side }: { group: BattleTargetResolutionGroup; side: "player" | "enemy" }) {
+export function BattleTargetReaction({ group, side, advantage = false }: { group: BattleTargetResolutionGroup; side: "player" | "enemy"; advantage?: boolean }) {
   const damageEvents = group.events.filter((event) => event.type === "DAMAGE");
   const healEvents = group.events.filter((event) => event.type === "HEAL");
   const hasDamage = damageEvents.length > 0;
@@ -101,7 +101,8 @@ export function BattleTargetReaction({ group, side }: { group: BattleTargetResol
     {hasHeal && <i className="battle-target-effect is-heal" aria-hidden="true" />}
     {tones.has("status") && <i className="battle-target-effect is-status" aria-hidden="true" />}
     <span className="battle-target-reaction-copy">
-      {critical && !missed && <em>CRITICAL</em>}
+      {critical && !missed && <em className="is-critical">CRITICAL</em>}
+      {advantage && hasDamage && !missed && <em className="is-weak">WEAK</em>}
       {missed ? <strong className="battle-target-number is-miss">MISS</strong> : hasDamage ? <strong className="battle-target-number is-damage" data-battle-number="damage">−{damage.toLocaleString()}</strong> : null}
       {hasHeal && <strong className="battle-target-number is-heal" data-battle-number="heal">+{heal.toLocaleString()}</strong>}
       {iconStateCues.slice(0, 2).map(({ event, tone }, index) => <small key={`${event.index}-${index}`} className={`is-${tone}`}>{battleStatusLabel(event.payload)}</small>)}
@@ -165,9 +166,10 @@ type CutInProps = {
   participant?: BattleParticipantView;
   imageSrc?: string;
   speed: number;
+  actionKey?: string | number;
 };
 
-export function BattleSkillCutIn({ presentation, participant, imageSrc, speed }: CutInProps) {
+export function BattleSkillCutIn({ presentation, participant, imageSrc, speed, actionKey }: CutInProps) {
   const [visible, setVisible] = useState<BattleSkillPresentation | null>(null);
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastPresentationKeyRef = useRef("");
@@ -178,14 +180,14 @@ export function BattleSkillCutIn({ presentation, participant, imageSrc, speed }:
       setVisible(null);
       return;
     }
-    const presentationKey = `${presentation.charName}:${presentation.skillName}:${presentation.tier}`;
+    const presentationKey = `${actionKey ?? "legacy"}:${presentation.charName}:${presentation.skillName}:${presentation.tier}`;
     if (lastPresentationKeyRef.current === presentationKey) return;
     lastPresentationKeyRef.current = presentationKey;
     if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
     setVisible(presentation);
     const minimumDuration = speed > 1 ? 720 : presentation.tier === "SSR" ? 1100 : 960;
     hideTimerRef.current = setTimeout(() => setVisible(null), minimumDuration);
-  }, [presentation, speed]);
+  }, [actionKey, presentation, speed]);
 
   useEffect(() => () => {
     if (hideTimerRef.current) clearTimeout(hideTimerRef.current);

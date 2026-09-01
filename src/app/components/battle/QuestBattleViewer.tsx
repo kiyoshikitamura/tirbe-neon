@@ -6,6 +6,7 @@ import BattleUnitPortrait, { BattleDamagePopup, BattleParticipantView } from "./
 import {
   BattleImpactEffect,
   BattleSkillCutIn,
+  BattleSkillResolutionVfx,
   resolveBattleSkillPresentation,
   type BattleImpactKind,
 } from "./BattleEffectPresentation";
@@ -204,10 +205,11 @@ export default function QuestBattleViewer(props: Props) {
       <main className="battle-roster-stage">
         <PartyZone side="player" label="YOUR TEAM" party={props.playerParty} activeId={actorMoving ? activeParticipant?.id : undefined} targetId={targetParticipant?.id} shakingId={props.shakingId} visualOf={visualOf} popupFor={popupFor} impactFor={impactFor} hasAdvantage={hasAdvantage} tutorial={props.tutorial} reactions={reactionById} skillCue={standardSkillCue} />
         <PartyZone side="enemy" label="ENEMY" party={props.enemyParty} activeId={actorMoving ? activeParticipant?.id : undefined} targetId={targetParticipant?.id} shakingId={props.shakingId} visualOf={visualOf} popupFor={popupFor} impactFor={impactFor} hasAdvantage={hasAdvantage} tutorial={props.tutorial} reactions={reactionById} skillCue={standardSkillCue} />
+        {isSkillAction && props.actionPresentation && (props.actionPresentation.beat === "ACTOR" || props.actionPresentation.beat === "IMPACT") && <BattleSkillResolutionVfx key={`${props.actionPresentation.unit.replayStartCursor}:${props.actionPresentation.beat}`} presentation={skillPresentation} phase={props.actionPresentation.beat === "ACTOR" ? "TARGET_FOCUS" : "ATTACK_MOTION"} actorSide={activeSide} />}
       </main>
 
       <section className="battle-cutin-slot" aria-hidden={!skillPresentation?.tier}>
-        <BattleSkillCutIn presentation={skillPresentation} participant={activeParticipant ? { ...activeParticipant, rarity: activeVisual.rarity } : undefined} imageSrc={activeVisual.src} speed={props.speed} />
+        <BattleSkillCutIn actionKey={props.actionPresentation?.unit.replayStartCursor} presentation={skillPresentation} participant={activeParticipant ? { ...activeParticipant, rarity: activeVisual.rarity } : undefined} imageSrc={activeVisual.src} speed={props.speed} />
       </section>
       {isFinalHit && <div className="battle-final-hit-overlay" role="status"><strong>FINAL HIT</strong><i /></div>}
       {showSpeedGuidance && <div className="battle-speed-guidance" role="status">ここからは2倍速で進むよ</div>}
