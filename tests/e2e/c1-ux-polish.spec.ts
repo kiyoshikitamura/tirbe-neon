@@ -31,7 +31,12 @@ test.beforeEach(async ({ page }) => {
 async function enterGame(page: Page) {
   await page.goto("/");
   await page.getByRole("button", { name: "TAP TO START" }).click();
+  await page.getByRole("button", { name: "続きから" }).click();
   await expect(page.locator(".header-mobile")).toBeVisible();
+  const loginBonus = page.getByRole("dialog", { name: "ログインボーナス" });
+  if (await loginBonus.isVisible()) {
+    await loginBonus.getByRole("button", { name: "閉じる", exact: true }).click();
+  }
 }
 
 async function expectNoHorizontalOverflow(page: Page, selector: string) {
