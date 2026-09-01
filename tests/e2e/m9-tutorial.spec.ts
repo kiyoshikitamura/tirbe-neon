@@ -1269,6 +1269,7 @@ test("new mobile player completes the guided first session without footer naviga
   await page.waitForTimeout(350);
   await page.screenshot({ path: test.info().outputPath("B2-battle-start.png"), fullPage: true });
   await expect(page.locator(".quest-battle-viewer")).toBeVisible();
+  await expect(page.locator(".quest-battle-viewer")).toHaveAttribute("data-battle-speed", "2");
   await assertCenteredGameCanvas(page, ".battle-screen");
   await expect(page.locator('[data-acceptance-state="B3"]')).toBeVisible();
   await expect(page.locator('.battle-party-zone.is-player')).toHaveAttribute("data-party-size", "5");
