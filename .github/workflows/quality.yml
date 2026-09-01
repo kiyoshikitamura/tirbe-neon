@@ -5,6 +5,12 @@ on:
     branches: [main, develop]
   pull_request:
 
+# 同一ブランチ／PRの新しいcommitは、古いQuality runを失効させる。
+# この制御がないと、ドキュメントだけのcommitでも全E2Eが重複起動する。
+concurrency:
+  group: quality-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   typecheck-and-build:
     runs-on: ubuntu-latest
@@ -73,6 +79,7 @@ jobs:
 
   browser-e2e:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     env:
       NEXT_PUBLIC_APP_ENV: test
       NEXT_PUBLIC_USE_MOCK_DB: "true"
@@ -92,7 +99,9 @@ jobs:
         with:
           name: playwright-diagnostics
           path: |
-            test-results
-            playwright-report
+            test-results/**/test-failed-*.png
+            test-results/**/trace.zip
+            test-results/**/error-context.md
+            playwright-report/index.html
           if-no-files-found: ignore
           retention-days: 7
