@@ -11,13 +11,13 @@ Turn the Product Owner's requested outcomes into safe, reviewable workstreams. T
 
 Read in order:
 
-1. `/AGENTS.md`
+1. Repository-root `AGENTS.md`
 2. `docs/development/release_board.md`
 3. `docs/development/codex_parallel_protocol.md`
 4. `docs/development/task_factory.md`
 5. Each assigned task contract and its named current specification/acceptance handoff
 
-If a path is unavailable, a specification conflicts, or the current `develop` SHA cannot be established, stop the affected task rather than guessing.
+Resolve every relative path from the repository root. If a path is unavailable, a specification conflicts, or the current `develop` SHA cannot be established, stop the affected task rather than guessing.
 
 ## Orchestration
 
@@ -50,4 +50,3 @@ Return a consolidated board with:
 - Before/After evidence;
 - Human Acceptance request;
 - blockers and exact next action.
-
