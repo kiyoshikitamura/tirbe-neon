@@ -105,10 +105,14 @@ Before creating or starting any task, the parent dispatcher must:
 2. Acquire `dispatcher_lock` with a concrete dispatcher ID and bounded lease by compare-and-swap updating that same blob.
 3. Re-read active reservations and check task IDs, scope, likely files, protected authority, ports, database IDs, seed identities, and Preview resources.
 4. Add all new reservations and increment `generation` in one compare-and-swap update.
-5. Confirm the registry commit is visible before spawning workers.
-6. Release the lock after the reservation commit, or after recording a blocked dispatch.
+5. While still holding the lock, create and confirm every paired Task Contract and Manifest using their recorded paths and blob SHAs.
+6. Re-read the registry plus every new artifact and confirm task ID, worker ID, scope, resources, and generation match.
+7. Release the lock in a final compare-and-swap registry update.
+8. Spawn workers only after the lock-release commit is visible.
 
-Only the lock holder may write task manifests or dispatch workers. A missing registry branch, active unexpired lock, stale blob SHA, or conflicting reservation blocks dispatch. Expired locks may be replaced only after recording the prior dispatcher and expiry in the registry history.
+Only the lock holder may create or update Task Contracts and Manifests. Workers may be dispatched only after the lock holder has confirmed the artifacts and safely released the lock. If artifact creation or confirmation fails, the lock holder must record the affected reservation as `BLOCKED` with the partial artifact identities, then release the lock; it must not spawn the worker or delete an unverified resource.
+
+A missing registry branch, active unexpired lock, stale blob SHA, or conflicting reservation blocks dispatch. Expired locks may be replaced only after recording the prior dispatcher and expiry in the registry history. The registry is bootstrapped once from `docs/development/task_registry.yaml`; recreating or resetting it requires explicit infrastructure-maintenance authorization.
 
 ## Parallel-safety rules
 
