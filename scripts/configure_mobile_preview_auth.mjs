@@ -3,7 +3,13 @@ const MOBILE_PREVIEW_URL = "https://tribe-neon-mobile-preview.vercel.app";
 const VERCEL_BRANCH_PREVIEW_PATTERN = "https://tribe-neon-*-kiyoshi-kitamura.vercel.app/**";
 const PRODUCTION_URL = "https://tirbe-neon.vercel.app";
 
-if (typeof process.loadEnvFile === "function") process.loadEnvFile(".env.preview.local");
+if (typeof process.loadEnvFile === "function") {
+  try {
+    process.loadEnvFile(".env.preview.local");
+  } catch (error) {
+    if (error?.code !== "ENOENT") throw error;
+  }
+}
 
 const token = process.env.SUPABASE_ACCESS_TOKEN?.trim();
 const expectedRef = process.env.SUPABASE_EXPECTED_PROJECT_REF?.trim();

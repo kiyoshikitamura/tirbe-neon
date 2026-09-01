@@ -6,20 +6,6 @@ on:
   pull_request:
 
 jobs:
-  configure-preview-oauth:
-    if: github.head_ref == 'codex/human-ng-remediation-20260901'
-    runs-on: ubuntu-latest
-    env:
-      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-      SUPABASE_EXPECTED_PROJECT_REF: sufvuqdnqohpfzkwxohq
-      SUPABASE_PREVIEW_PROJECT_REF: sufvuqdnqohpfzkwxohq
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - run: node scripts/configure_mobile_preview_auth.mjs
-
   typecheck-and-build:
     runs-on: ubuntu-latest
     env:
