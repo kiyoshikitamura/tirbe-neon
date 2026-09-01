@@ -263,7 +263,9 @@ try {
   await page.locator('[data-acceptance-state="B1"] .start-battle-btn').click();
   await recordState("B2");
   await visible(".quest-battle-viewer", 30_000);
-  await page.locator(".speed-toggle-btn").click();
+  if ((await page.locator(".speed-toggle-btn").textContent())?.trim() === "1x") {
+    await page.locator(".speed-toggle-btn").click();
+  }
   await page.locator('[data-battle-speed="2"]').waitFor({ state: "visible", timeout: 10_000 });
   await page.waitForFunction(() => (window.__TRIBE_BATTLE_PRESENTATION__?.history || []).some((entry) => entry?.kind === "normal" && entry?.actionCompleteAt), undefined, { timeout: 45_000, polling: 50 });
   stateSequence.push("B3");

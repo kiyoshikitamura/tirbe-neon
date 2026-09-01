@@ -6,12 +6,16 @@ import { getOAuthCallbackUrl, getOAuthReturnUrl } from "../src/utils/browserDete
 const previewOrigin = "https://tribe-neon-mobile-preview.vercel.app";
 const productionOrigin = "https://tirbe-neon.vercel.app";
 const productionSupabaseRef = "ktpolnkyyfkowxdmijww";
+const branchPreviewOrigin = "https://tribe-neon-git-codex-human-ng-remediati-49702c-kiyoshi-kitamura.vercel.app";
 
-for (const origin of [previewOrigin, productionOrigin, "http://localhost:3000"]) {
+for (const origin of [previewOrigin, branchPreviewOrigin, productionOrigin, "http://localhost:3000"]) {
   const callback = getOAuthCallbackUrl(`${origin}/?invite=ORIGIN-GATE`);
   assert.equal(callback, `${origin}/auth/callback?invite=ORIGIN-GATE`);
   assert.equal(getOAuthReturnUrl(`${callback}&code=redacted`), `${origin}/?invite=ORIGIN-GATE`);
 }
+
+const previewConfigSource = await readFile("scripts/configure_mobile_preview_auth.mjs", "utf8");
+assert.match(previewConfigSource, /https:\/\/tribe-neon-\*-kiyoshi-kitamura\.vercel\.app\/\*\*/);
 
 const sourceFiles = [
   "src/app/context/hooks/useAuth.ts",

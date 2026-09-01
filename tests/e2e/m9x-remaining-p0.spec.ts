@@ -29,8 +29,8 @@ async function seedAuthenticatedPlayer(page: Page, asMaster = false) {
     localStorage.setItem("tribe_demo_uuid", me);
     localStorage.setItem("mock_auth_mode", "EMAIL");
     localStorage.setItem("mock_db_users", JSON.stringify([
-      { id: me, username: asMaster ? "Welcome Master" : "Journey Player", level: 8, cash: 10000, pvp_points: 5, rank_points: 1200, current_base_id: "shinjuku", last_active_at: now, guild_id: asMaster ? guildId : null },
-      { id: master, username: "Human Master", level: 20, cash: 10000, current_base_id: "shinjuku", last_active_at: now, guild_id: guildId },
+      { id: me, username: asMaster ? "Welcome Master" : "Journey Player", level: 8, cash: 10000, pvp_points: 5, rank_points: 1200, total_power: 20000, current_base_id: "shinjuku", last_active_at: now, guild_id: asMaster ? guildId : null },
+      { id: master, username: "Human Master", level: 20, cash: 10000, total_power: 10000, current_base_id: "shinjuku", last_active_at: now, guild_id: guildId },
     ]));
     localStorage.setItem("mock_db_tutorial_progress", JSON.stringify([{ user_id: me, step_id: "AUTHENTICATION" }]));
     localStorage.setItem("mock_db_user_account_auth_methods", JSON.stringify([{ user_id: me, auth_method: "EMAIL" }]));
@@ -48,6 +48,10 @@ async function seedAuthenticatedPlayer(page: Page, asMaster = false) {
     if (asMaster) sessionStorage.setItem(`tribe-neon:guild-welcome-shown:${me}:${guildId}`, "1");
     localStorage.setItem("mock_db_board_posts", "[]");
     localStorage.setItem("mock_db_pvp_defense_logs", "[]");
+    localStorage.setItem("mock_db_pvp_match_rewards_master", JSON.stringify([
+      { result: "VICTORY", cash_reward: 0, diamond_reward: 0, exp_reward: 0 },
+      { result: "DEFEAT", cash_reward: 0, diamond_reward: 0, exp_reward: 0 },
+    ]));
     localStorage.setItem("mock_db_presents", "[]");
   }, { me, master, guildId, asMaster });
 }
@@ -63,57 +67,17 @@ async function enterHome(page: Page) {
   await expect(header).toBeVisible();
 }
 
-test("NPC mock battle reuses the viewer without PvP economy or record mutations", async ({ page }) => {
+test("PvP uses the main formation, offers a weaker first opponent, and has no defense-deck UI", async ({ page }) => {
   await seedAuthenticatedPlayer(page);
   await enterHome(page);
-  const before = await page.evaluate(() => ({
-    points: JSON.parse(localStorage.getItem("mock_db_users") || "[]")[0]?.pvp_points,
-    logs: JSON.parse(localStorage.getItem("mock_db_pvp_defense_logs") || "[]").length,
-    presents: JSON.parse(localStorage.getItem("mock_db_presents") || "[]").length,
-  }));
   await page.getByRole("button", { name: "喧嘩" }).click();
-  await page.getByRole("button", { name: "防衛・履歴" }).click();
-  await page.getByRole("button", { name: "NPC模擬戦" }).click();
-  await expect(page.getByText("バトル準備")).toBeVisible();
-  await expect(page.getByText("模擬戦", { exact: true })).toBeVisible();
-  await assertMobileWave(page, ".setup-container", "npc-practice-setup");
-  await page.getByRole("button", { name: "模擬戦開始" }).click();
-  await expect(page.locator(".quest-battle-viewer")).toBeVisible();
-  await assertMobileWave(page, ".quest-battle-viewer", "npc-practice-viewer");
-  await page.getByRole("button", { name: "撤退" }).click();
-  await page.getByRole("button", { name: "OK" }).click();
-  await expect(page.getByText("NPC模擬戦結果")).toBeVisible();
-  await expect(page.getByText("報酬なし")).toBeVisible();
-  const after = await page.evaluate(() => ({
-    points: JSON.parse(localStorage.getItem("mock_db_users") || "[]")[0]?.pvp_points,
-    logs: JSON.parse(localStorage.getItem("mock_db_pvp_defense_logs") || "[]").length,
-    presents: JSON.parse(localStorage.getItem("mock_db_presents") || "[]").length,
-  }));
-  expect(after).toEqual(before);
-});
-
-test("PvP defense save locks its form snapshot until authoritative projection paint", async ({ page }) => {
-  await seedAuthenticatedPlayer(page);
-  await enterHome(page);
-  await page.getByRole("button", { name: "バトル", exact: true }).click();
-  await page.getByRole("button", { name: "防衛・履歴" }).click();
-  await page.locator(".pvp-defense-member").first().click();
-  await page.locator("select").selectOption("HEAL_PRIORITY");
-  await page.evaluate(() => localStorage.setItem("mock_rpc_delay_ms:save_pvp_defense_deck", "500"));
-  await page.getByRole("button", { name: "防衛設定を保存" }).click();
-  await expect(page.locator(".pvp-defense-save-surface")).toHaveAttribute("disabled", "");
-  await expect(page.locator(".pvp-defense-save-surface")).toHaveAttribute("aria-busy", "true");
-  await expect(page.getByRole("button", { name: "対戦" })).toBeDisabled();
-  await expect(page.getByText("防衛デッキおよび作戦を保存しました。", { exact: true })).toBeVisible();
-  await expect(page.locator(".pvp-defense-save-surface")).not.toHaveAttribute("disabled", "");
-  const saved = await page.evaluate(({ me }) => JSON.parse(localStorage.getItem("mock_db_pvp_defense_decks") || "[]").find((row: any) => row.user_id === me), { me });
-  expect(saved?.tactic).toBe("HEAL_PRIORITY");
-  for (const viewport of [{ width: 390, height: 844 }, { width: 412, height: 915 }]) {
-    await page.setViewportSize(viewport);
-    const metrics = await page.locator(".pvp-defense-save-surface").evaluate((node) => ({ scrollWidth: node.scrollWidth, clientWidth: node.clientWidth, right: node.getBoundingClientRect().right, viewport: innerWidth }));
-    expect(metrics.scrollWidth).toBeLessThanOrEqual(metrics.clientWidth + 1);
-    expect(metrics.right).toBeLessThanOrEqual(metrics.viewport + 1);
-  }
+  await expect(page.getByRole("button", { name: "防衛・履歴" })).toHaveCount(0);
+  await expect(page.getByText(/防衛デッキ|防衛設定/)).toHaveCount(0);
+  await expect(page.locator('.pvp-opponent-card')).toHaveCount(1);
+  await expect(page.locator('.pvp-opponent-card')).toContainText("格下");
+  await page.getByText("公式戦・模擬戦のルール").click();
+  await expect(page.getByText("勝敗報酬なし", { exact: true })).toHaveCount(2);
+  await assertMobileWave(page, ".pvp-view", "pvp-no-defense-first-match");
 });
 
 test("Guild master edits the welcome message through the existing secure contract", async ({ page }) => {

@@ -6,6 +6,7 @@ import CharacterPresentation from "./character/CharacterPresentation";
 import TypewriterText from "./tutorial/TypewriterText";
 import { userFacingErrorMessage } from "../lib/userFacingError";
 import "./SetupView.css";
+import { featureUiExposure } from "@/domain/operations/operations";
 
 type EntryPresentationState = "WORLD_INFORMATION" | "WORLD_TO_AGEHA" | "AGEHA_INTRO" | "NAME_INPUT";
 
@@ -34,6 +35,7 @@ export default function SetupView() {
   }, [session?.user?.id]);
 
   useEffect(() => {
+    if (featureUiExposure("INVITE") !== "ACTIVE") return;
     const invitationCode = new URLSearchParams(window.location.search).get("invite");
     if (invitationCode) setSetupGiftCode(invitationCode.toUpperCase().slice(0,8));
   }, [setSetupGiftCode]);
@@ -46,6 +48,10 @@ export default function SetupView() {
     }, 800);
     return () => window.clearTimeout(timer);
   }, [presentationState, session?.user?.id]);
+
+  useEffect(() => {
+    if (presentationState === "NAME_INPUT") setSetupUsername("");
+  }, [presentationState, setSetupUsername]);
 
   useEffect(() => {
     if (presentationState !== "WORLD_INFORMATION" || !worldStageComplete || worldStage >= WORLD_STAGES.length - 1) return;
@@ -105,14 +111,14 @@ export default function SetupView() {
             <div className="setup-ageha-name">アゲハ</div>
             <TypewriterText text={AGEHA_INTRO_COPY} speedMs={38} />
           </div>
-          <button className="semantic-cta semantic-cta--primary setup-primary-action" onClick={() => advancePresentation("NAME_INPUT")}>次へ</button>
+          <button type="button" className="semantic-cta semantic-cta--primary setup-primary-action is-actionable" onClick={() => advancePresentation("NAME_INPUT")}>次へ</button>
         </section>
       ) : (
         <div className="setup-box setup-name-dialog auth-box" role="dialog" aria-modal="true" aria-labelledby="setup-name-title">
           <div className="setup-name-guidance"><strong>アゲハ</strong><span>その前に、名前聞いていい？<br />ここでなんて呼べばいい？</span></div>
           <h2 id="setup-name-title" className="setup-title ui-type-screen-title">プレイヤー名</h2>
           <label htmlFor="setup-player-name">プレイヤー名（8文字まで）</label>
-          <input id="setup-player-name" type="text" autoComplete="nickname" placeholder="プレイヤー名を入力" value={setupUsername} onChange={event=>setSetupUsername(event.target.value)} maxLength={8} className="setup-name-input width-100" />
+          <input id="setup-player-name" name="tribe-neon-new-player-name" type="text" autoComplete="off" autoCorrect="off" spellCheck={false} placeholder="プレイヤー名を入力" value={setupUsername} onChange={event=>setSetupUsername(event.target.value)} maxLength={8} className="setup-name-input width-100" />
           <button onClick={()=>void submitName()} aria-busy={setupLoading} disabled={setupLoading||!setupUsername.trim()} className="semantic-cta semantic-cta--primary setup-primary-action">{setupLoading ? "登録中..." : "この名前で始める"}</button>
         </div>
       )}

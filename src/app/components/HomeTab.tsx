@@ -104,6 +104,7 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
     guildChats,
     chatUnreadCounts,
     setShowMissionPanel,
+    setShowLoginBonusModal,
     setShowMoveBaseModal,
     setShowTribeChatPanel,
     navigateTab,
@@ -376,6 +377,12 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
 
   const miniNavigationItems = [
     {
+      id: "login-bonus",
+      label: "ボーナス",
+      icon: "/ui/icon_present.png",
+      onClick: () => setShowLoginBonusModal(true)
+    },
+    {
       id: "mission",
       label: "ミッション",
       icon: "/menu/home_nav_mission.png",
@@ -557,6 +564,11 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
           })}
         </nav>
 
+        {primaryCta && <button className="mypage-primary-cta semantic-cta semantic-cta--primary active-scale-effect" onClick={() => void openPrimaryCta()} disabled={activationHandoffPending} aria-busy={activationHandoffPending}>
+          <strong>{activationHandoffPending ? "確認中…" : primaryCta.title}</strong>
+          <b aria-hidden="true">›</b>
+        </button>}
+
         {visibleBanners.length > 0 && <div className="mypage-event-banner-area">
           <div className="banner-slide-wrapper">
             <button
@@ -588,11 +600,6 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
             ))}
           </div>
         </div>}
-
-        {primaryCta && <button className="mypage-primary-cta semantic-cta semantic-cta--primary active-scale-effect" onClick={() => void openPrimaryCta()} disabled={activationHandoffPending} aria-busy={activationHandoffPending}>
-          <strong>{activationHandoffPending ? "確認中…" : primaryCta.title}</strong>
-          <b aria-hidden="true">›</b>
-        </button>}
 
         {/* 4. 1行チャットプレビュー ＆ 暗号メッセージアプリ『トライブ』起動 */}
         <div className="mypage-chat-preview-area">

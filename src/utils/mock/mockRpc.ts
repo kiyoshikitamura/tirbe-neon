@@ -2335,8 +2335,19 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     const { p_user_id, p_my_points } = params;
     const users = client.getStorage("users") || [];
     const ranks = client.getStorage("pvp_ranks") || [];
+    const milestones = client.getStorage("user_funnel_milestones") || [];
+    const firstPvpPending = !milestones.some((entry: any) => entry.user_id === p_user_id && entry.milestone === "first_pvp");
+    const myPower = Number(users.find((entry: any) => entry.id === p_user_id)?.total_power || 0);
     const candidates = users
       .filter((u: any) => u.id !== p_user_id)
+      .sort((left: any, right: any) => {
+        if (!firstPvpPending || myPower <= 0) return 0;
+        const leftPower = Number(left.total_power || 0);
+        const rightPower = Number(right.total_power || 0);
+        const leftTier = leftPower < myPower ? 0 : 1;
+        const rightTier = rightPower < myPower ? 0 : 1;
+        return leftTier - rightTier || Math.abs(myPower - leftPower) - Math.abs(myPower - rightPower);
+      })
       .slice(Number(params?.p_offset || 0), Number(params?.p_offset || 0) + 5)
       .map((u: any, idx: number) => {
         const defenseIds = ["char_reiji_01", "char_rui_01", "char_chang_01"];
@@ -2346,6 +2357,7 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
         opponent_guild_name: "No Guild",
         opponent_points: ranks.find((rank: any) => rank.user_id === u.id)?.rank_points ?? 1000,
         opponent_power: Number(u.total_power || 15000 + idx * 2500),
+        opponent_class: Number(u.total_power || 15000 + idx * 2500) < myPower ? "WEAKER" : Number(u.total_power || 15000 + idx * 2500) > myPower ? "STRONGER" : "EQUAL",
         opponent_rank: idx + 1,
         opponent_guild_id: null,
         tactic: "BALANCED",

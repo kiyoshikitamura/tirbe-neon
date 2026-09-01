@@ -43,6 +43,7 @@ import { normalizeUserBio } from "@/domain/presentation/userBio";
 import { waitForBrowserPaint } from "@/domain/presentation/browserPaint";
 import { CANONICAL_QUEST_REWARD_POOLS, CANONICAL_QUESTS } from "@/domain/gameplay/canonical/quests";
 import {
+  featureUiExposure,
   isFeatureOpen,
   isMaintenanceEnabled,
   mergeServerOperationsState,
@@ -77,6 +78,11 @@ function isMatchingGoogleOnboardingReturn(userId: string): boolean {
   } catch {
     return false;
   }
+}
+
+function hasPendingGoogleAccountSwitch(): boolean {
+  if (typeof window === "undefined") return false;
+  return new URLSearchParams(window.location.search).get("account_switch") === "google";
 }
 import { usePvp } from "./hooks/usePvp";
 import { useGvg } from "./hooks/useGvg";
@@ -584,6 +590,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const [userLoginBonus, setUserLoginBonus] = useState<UserLoginBonus | null>(null);
   const [showLoginBonusModal, setShowLoginBonusModal] = useState<boolean>(false);
   const [loginBonusClaimResult, setLoginBonusClaimResult] = useState<LoginBonusClaimResult | null>(null);
+  const loginBonusRequestUserRef = useRef<string | null>(null);
 
   const [newsList, setNewsList] = useState<any[]>([]);
   const [selectedNews, setSelectedNews] = useState<any | null>(null);
@@ -697,6 +704,10 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     setDailyFreeGachaFlags({ CHARACTER: false, SKILL: false, EQUIPMENT: false });
     setTotalPower(0);
     setTotalPowerLoading(Boolean(nextUserId));
+    loginBonusRequestUserRef.current = null;
+    setLoginBonusClaimResult(null);
+    setUserLoginBonus(null);
+    setShowLoginBonusModal(false);
   };
 
   useEffect(() => {
@@ -707,7 +718,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         resetAuthenticatedProjection(session.user.id);
         setSession(session);
         lastValidatedAuthUserIdRef.current = session.user.id;
-        if (isMatchingGoogleOnboardingReturn(session.user.id)) setShowTitleView(false);
+        if (isMatchingGoogleOnboardingReturn(session.user.id) || hasPendingGoogleAccountSwitch()) setShowTitleView(false);
         await checkIfSetupRequired(session.user.id);
         return;
       }
@@ -742,7 +753,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         : session);
       if (!shouldRevalidateAuthSession(event, lastValidatedAuthUserIdRef.current, session.user.id)) return;
       lastValidatedAuthUserIdRef.current = session.user.id;
-      if (isMatchingGoogleOnboardingReturn(session.user.id)) setShowTitleView(false);
+      if (isMatchingGoogleOnboardingReturn(session.user.id) || hasPendingGoogleAccountSwitch()) setShowTitleView(false);
       void checkIfSetupRequired(session.user.id);
     });
 
@@ -1000,7 +1011,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
           last_claimed_date: claimRes.last_claimed_date || null
         });
 
-        if (claimRes.claimed) {
+        if (claimRes.claimed && onboardingState?.tutorial_step === "AUTHENTICATION" && activeTab === "home") {
           setShowLoginBonusModal(true);
           setPresentsPrefetched(false);
         }
@@ -1009,6 +1020,21 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       console.warn("checkAndClaimLoginBonus error:", err);
     }
   };
+
+  // Generic bootstrap runs during the tutorial, so it must not process the
+  // login reward. Claim only on the first authenticated Home entry.
+  useEffect(() => {
+    const userId = session?.user?.id;
+    if (!userId || showTitleView || onboardingState?.tutorial_step !== "AUTHENTICATION" || activeTab !== "home") return;
+    if (loginBonusClaimResult?.claimed) {
+      setShowLoginBonusModal(true);
+      setPresentsPrefetched(false);
+      return;
+    }
+    if (loginBonusRequestUserRef.current === userId) return;
+    loginBonusRequestUserRef.current = userId;
+    void checkAndClaimLoginBonus(userId);
+  }, [activeTab, loginBonusClaimResult?.claimed, onboardingState?.tutorial_step, session?.user?.id, showTitleView]);
 
   // ==========================================
   // 4. Supabase DB実データ同期ロード
@@ -1067,7 +1093,9 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         const claimedMissionIds = new Set(
           userMissionResult.data.filter((row: any) => row.status === "CLAIMED").map((row: any) => row.mission_id),
         );
-        setMissions(missionMasterResult.data.map((mission: any) => {
+        setMissions(missionMasterResult.data
+          .filter((mission: any) => mission.trigger_type !== "USER_INVITE" || featureUiExposure("INVITE") === "ACTIVE")
+          .map((mission: any) => {
           const userMission: any = userMissionById.get(mission.id);
           const prerequisiteClaimed = !mission.prerequisite_mission_id || claimedMissionIds.has(mission.prerequisite_mission_id);
           return {
@@ -1093,7 +1121,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
             status: canonicalMissionUiStatus(userMission?.status, prerequisiteClaimed),
             loading: false,
           };
-        }).sort((left: any, right: any) => left.display_order - right.display_order));
+          }).sort((left: any, right: any) => left.display_order - right.display_order));
       }
     }).catch((error) => {
       console.warn("Failed to prime Home badge projections:", error);
@@ -1157,7 +1185,6 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         console.warn("Failed to sync current missions:", err);
       }
 
-      await checkAndClaimLoginBonus(userId);
       const { data: recovered } = await supabase.rpc("sync_and_recover_vitality_and_pvp_points", {
         p_user_id: userId
       });
@@ -1987,9 +2014,47 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     setResumeLoading(true);
     setAuthenticatedProjectionError(null);
     try {
-      await syncBootstrapData(userId);
-      const { data: state, error } = await supabase.rpc("get_current_onboarding_state");
+      // Continue waits only for the Home authority projection. Guild, ranking,
+      // inventory and other secondary bootstrap work stays in the background.
+      const [{ data: state, error }, { data: profile, error: profileError }, { data: recovered }, { data: power }] = await Promise.all([
+        supabase.rpc("get_current_onboarding_state"),
+        supabase.from("users")
+          .select("id,username,favorite_character_id,bio,avatar_url,current_base_id,level,xp")
+          .eq("id", userId)
+          .single(),
+        supabase.rpc("sync_and_recover_vitality_and_pvp_points", { p_user_id: userId }),
+        supabase.rpc("get_my_power_snapshot"),
+      ]);
       if (error || state?.user_id !== userId) throw error || new Error("Resume authority mismatch");
+      if (profileError || profile?.id !== userId) throw profileError || new Error("Resume profile mismatch");
+      const recovery = Array.isArray(recovered) ? recovered[0] : recovered;
+      if (recovery) {
+        setVitality(recovery.out_vitality);
+        setVitalityNextRecoveryAt(recovery.vitality_next_recovery_at ?? null);
+        setPvpPoints(recovery.out_pvp_points);
+        setPvpNextRecoveryAt(recovery.pvp_next_recovery_at ?? null);
+        setRaidPoints(Number(recovery.out_raid_points ?? 0));
+        setRaidFirstEntryFree(Boolean(recovery.raid_first_entry_free));
+        setCash(Number(recovery.out_cash));
+        setDiamonds(Number(recovery.out_diamonds));
+      }
+      setUsername(profile.username || "");
+      setBio(normalizeUserBio(profile.bio));
+      setAvatarUrl(profile.avatar_url || "/characters/reiji_transparent_asset.png");
+      setCurrentBaseId(profile.current_base_id || "shinjuku");
+      setUserLevel(profile.level || 1);
+      setUserXp(profile.xp || 0);
+      const favoriteCharacterId = profile.favorite_character_id
+        && CHARACTERS_MASTER.some((character) => character.id === profile.favorite_character_id)
+          ? profile.favorite_character_id
+          : "";
+      setIdentityLeaderOwnerUserId(userId);
+      setIdentityLeaderCharacterId(favoriteCharacterId);
+      setIdentityLeaderAuthorityReady(true);
+      setSelectedLeader(favoriteCharacterId);
+      setTotalPower(Number(power?.total_power || 0));
+      setTotalPowerLoading(false);
+      setAuthenticatedProjectionOwnerUserId(userId);
       setOnboardingState(state);
       if (state.tutorial_step === "TUTORIAL_BATTLE") {
         const { data: resumablePatrol } = await supabase
@@ -2008,6 +2073,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       else if (["DISPATCH", "FREE_INSTANT", "TUTORIAL_BATTLE"].includes(state.tutorial_step || "")) setActiveTab("patrol");
       else if (!battle.battleState) setActiveTab("home");
       setShowTitleView(false);
+      void syncBootstrapData(userId).catch((bootstrapError) => console.warn("Background resume bootstrap failed:", bootstrapError));
       return true;
     } catch (error) {
       console.warn("Resume authority resolution failed:", error);
@@ -3855,7 +3921,14 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
           supabase.rpc("get_current_onboarding_state"),
         ]).then(([, refreshedOnboarding]) => {
           if (!refreshedOnboarding.error && refreshedOnboarding.data) {
-            setOnboardingState(refreshedOnboarding.data as import("./hooks/useAuth").OnboardingState);
+            setOnboardingState(current => {
+              // This refresh starts while formation still owns DISPATCH. A
+              // fast quest start can commit FREE_INSTANT before the wider
+              // bootstrap finishes, so never let its older snapshot rewind
+              // the already-rendered tutorial step.
+              if (current?.tutorial_step !== nextStep) return current;
+              return refreshedOnboarding.data as import("./hooks/useAuth").OnboardingState;
+            });
           }
         }).catch((bootstrapError) => console.warn("Tutorial formation bootstrap refresh failed:", bootstrapError));
       } else {

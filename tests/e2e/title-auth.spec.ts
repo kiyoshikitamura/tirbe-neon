@@ -46,7 +46,7 @@ test("title screen opens the authentication menu", async ({ page }) => {
 
   await page.getByText("TAP TO START").click();
 
-  await page.getByRole("button", { name: "既存アカウントでログイン" }).click();
+  await page.getByRole("button", { name: "データをお持ちの方" }).click();
 
   await expect(page.getByText("TRIBE NEON")).toBeVisible();
   await expect(page.getByRole("button", { name: "Googleでログイン" })).toBeVisible();
@@ -59,7 +59,7 @@ test("authentication menu opens the email login form", async ({ page }) => {
   await expect(tapToStart).toBeVisible();
   await tapToStart.click();
 
-  await page.getByRole("button", { name: "既存アカウントでログイン" }).click();
+  await page.getByRole("button", { name: "データをお持ちの方" }).click();
 
   await expect(page.locator('input[type="email"]')).toBeVisible();
   await expect(page.locator('input[type="password"]')).toBeVisible();
@@ -294,7 +294,7 @@ test("email identity collision can be cancelled without changing anonymous tutor
   await page.getByRole("button", { name: "メールアカウントを連携" }).click();
 
   await expect(page.getByRole("dialog", { name: "既存のゲームデータが見つかりました" })).toBeVisible();
-  await page.getByRole("button", { name: "キャンセル" }).click();
+  await page.getByRole("button", { name: "別のメールアドレスを選ぶ" }).click();
   await expect(page.getByText("ゲームデータを保存")).toBeVisible();
   const progress = await page.evaluate(() => JSON.parse(localStorage.getItem("mock_db_tutorial_progress") || "[]"));
   expect(progress[0].step_id).toBe("COMPLETE");
@@ -304,6 +304,7 @@ test("Google linking keeps the anonymous user id and completes onboarding once",
   await seedCompletedAnonymous(page);
   await page.goto("/");
   await page.getByText("TAP TO START").click();
+  await page.getByRole("button", { name: "チュートリアルを続ける" }).click();
   await page.getByRole("button", { name: "Googleアカウントを連携" }).click();
 
   await expect(page.getByText("ゲームデータを保存")).toBeHidden();
@@ -471,13 +472,10 @@ test("OAuth callback ignores the restored old session and bootstraps the exchang
 
 test("Google identity collision can be cancelled without changing anonymous tutorial data", async ({ page }) => {
   await seedCompletedAnonymous(page);
-  await page.addInitScript(() => localStorage.setItem("mock_google_identity_collision", "true"));
-  await page.goto("/");
-  await page.getByText("TAP TO START").click();
-  await page.getByRole("button", { name: "Googleアカウントを連携" }).click();
+  await page.goto("/?account_switch=google");
 
   await expect(page.getByRole("dialog", { name: "既存のゲームデータが見つかりました" })).toBeVisible();
-  await page.getByRole("button", { name: "キャンセル" }).click();
+  await page.getByRole("button", { name: "別のGoogleアカウントを選ぶ" }).click();
   await expect(page.getByText("ゲームデータを保存")).toBeVisible();
   const state = await page.evaluate(() => ({
     mode: localStorage.getItem("mock_auth_mode"),
@@ -489,13 +487,35 @@ test("Google identity collision can be cancelled without changing anonymous tuto
   expect(state.progress[0].step_id).toBe("COMPLETE");
 });
 
+test("authentication and account warning screens can return to title without discarding tutorial data", async ({ page }) => {
+  await seedCompletedAnonymous(page);
+  await page.goto("/");
+  await page.getByText("TAP TO START").click();
+  await page.getByRole("button", { name: "チュートリアルを続ける" }).click();
+  await expect(page.getByText("ゲームデータを保存")).toBeVisible();
+  await page.getByRole("button", { name: "タイトルに戻る" }).click();
+  await expect(page.getByText("TAP TO START")).toBeVisible();
+  await expect(page.getByText("ゲームデータを保存")).toBeHidden();
+
+  await page.goto("/?account_switch=google");
+  await expect(page.getByRole("dialog", { name: "既存のゲームデータが見つかりました" })).toBeVisible();
+  await page.getByRole("button", { name: "タイトルに戻る" }).click();
+  await expect(page.getByText("TAP TO START")).toBeVisible();
+  await expect(page).not.toHaveURL(/account_switch=/);
+  const state = await page.evaluate(() => ({
+    mode: localStorage.getItem("mock_auth_mode"),
+    progress: JSON.parse(localStorage.getItem("mock_db_tutorial_progress") || "[]"),
+  }));
+  expect(state.mode).toBe("ANONYMOUS");
+  expect(state.progress[0].step_id).toBe("COMPLETE");
+});
+
 test("Google OAuth callback converts an existing-identity error into the collision dialog", async ({ page }) => {
   await seedCompletedAnonymous(page);
   await page.goto("/auth/callback?error=identity_already_exists&error_code=identity_already_exists&error_description=Identity%20is%20already%20linked%20to%20another%20user");
   await expect(page).toHaveURL(/account_switch=google/);
-  await page.getByText("TAP TO START").click();
   await expect(page.getByRole("dialog", { name: "既存のゲームデータが見つかりました" })).toBeVisible();
-  await page.getByRole("button", { name: "キャンセル" }).click();
+  await page.getByRole("button", { name: "別のGoogleアカウントを選ぶ" }).click();
   await expect(page).not.toHaveURL(/account_switch=/);
 });
 
@@ -516,8 +536,9 @@ test("Google identity collision discards only anonymous data and resumes the exi
   });
   await page.goto("/");
   await page.getByText("TAP TO START").click();
+  await page.getByRole("button", { name: "チュートリアルを続ける" }).click();
   await page.getByRole("button", { name: "Googleアカウントを連携" }).click();
-  await page.getByRole("button", { name: "既存データで続ける" }).click();
+  await page.getByRole("button", { name: "既存データへ切り替える" }).click();
 
   await expect.poll(async () => page.evaluate(() => localStorage.getItem("tribe_demo_uuid"))).toBe("00000000-0000-4000-8000-000000000200");
   await expect(page.locator(".header-mobile")).toBeVisible();
@@ -552,7 +573,7 @@ test("email identity collision verifies credentials before discard and resumes t
   await page.getByPlaceholder("パスワード（6文字以上）").fill("existing-pass");
   await page.getByRole("button", { name: "メールアカウントを連携" }).click();
   await expect(page.getByRole("dialog", { name: "既存のゲームデータが見つかりました" })).toBeVisible();
-  await page.getByRole("button", { name: "既存データで続ける" }).click();
+  await page.getByRole("button", { name: "既存データへ切り替える" }).click();
 
   await expect.poll(async () => page.evaluate(() => localStorage.getItem("tribe_demo_uuid"))).toBe("00000000-0000-4000-8000-000000000201");
   await expect(page.locator(".header-mobile")).toBeVisible();

@@ -161,6 +161,7 @@ async function revealTutorialTenPull(page: import("@playwright/test").Page, capt
   let finalCharacterId: string | null = null;
   let ssrQuoteCount = 0;
   for (let index = 0; index < 10; index += 1) {
+    await expect(page.locator('[data-acceptance-state="TUTORIAL_SKILL_STEP"]')).toHaveCount(0);
     await expect(reveal.locator(".tutorial-gacha-count")).toHaveText(`${index + 1} / 10`);
     const state = await reveal.getAttribute("data-presentation-state");
     if (state === "SSR_QUOTE") {
@@ -674,6 +675,8 @@ test("three random tutorial SSRs remain the same owned character through result 
     await expect(page.locator(`.tutorial-wire-member[data-user-character-id="${ownedId}"]`)).toBeVisible();
     await page.getByRole("button", { name: "新宿へ派遣する" }).click();
     await expect(page.locator('[data-acceptance-state="Q3"]')).toBeVisible();
+    await page.waitForTimeout(2_000);
+    await expect(page.locator('[data-acceptance-state="Q3"]')).toBeVisible();
     await page.reload();
     await continueFromTitleIfNeeded();
     await expect(page.locator(`.tutorial-wire-progress-character[data-user-character-id="${ownedId}"]`)).toBeVisible();
@@ -979,7 +982,12 @@ test("first quest connects dispatch, official battle, and one reward to the comp
   }
   await expect(page.locator('[data-acceptance-state="B6"]')).toBeVisible({ timeout: 35_000 });
   const rewardStartedAt = Date.now();
-  await expect(page.locator(".battle-result-rewards")).toBeVisible();
+  await expect(page.locator(".battle-result-canonical-rewards")).toBeVisible();
+  await expect(page.locator(".battle-result-canonical-rewards")).not.toContainText("CHAR_EXP_S");
+  await expect(page.locator(".battle-result-canonical-rewards")).not.toContainText("CASH");
+  await expect(page.locator(".battle-result-canonical-rewards")).toContainText("PLAYER XP");
+  await expect(page.locator(".battle-result-canonical-rewards")).toContainText("強化ドリンク・小");
+  await expect(page.locator('.battle-result-canonical-rewards img[alt="強化ドリンク・小"]')).toBeVisible();
   await expect(page.locator(".battle-result-summary")).toContainText("クエストクリア");
   await expect(page.locator(".battle-result-mvp")).toContainText("MVP");
   await expect(page.locator(".battle-result-opponent")).toContainText("VS");
@@ -1266,6 +1274,7 @@ test("new mobile player completes the guided first session without footer naviga
   await page.waitForTimeout(350);
   await page.screenshot({ path: test.info().outputPath("B2-battle-start.png"), fullPage: true });
   await expect(page.locator(".quest-battle-viewer")).toBeVisible();
+  await expect(page.locator(".quest-battle-viewer")).toHaveAttribute("data-battle-speed", "2");
   await assertCenteredGameCanvas(page, ".battle-screen");
   await expect(page.locator('[data-acceptance-state="B3"]')).toBeVisible();
   await expect(page.locator('.battle-party-zone.is-player')).toHaveAttribute("data-party-size", "5");
@@ -1286,7 +1295,7 @@ test("new mobile player completes the guided first session without footer naviga
   await page.screenshot({ path: test.info().outputPath("B5-final-hit.png"), fullPage: true });
   await expect(page.locator('[data-acceptance-state="B6"]')).toBeVisible({ timeout: 35_000 });
   await assertCenteredGameCanvas(page, ".battle-ending-screen");
-  await expect(page.locator(".battle-result-rewards")).toBeVisible();
+  await expect(page.locator(".battle-result-canonical-rewards")).toBeVisible();
   await page.screenshot({ path: test.info().outputPath("B6-result.png"), fullPage: true });
   await expect(page.getByRole("button", { name: "勝利報酬を獲得" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "次へ" })).toHaveClass(/variant-primary/);

@@ -40,11 +40,11 @@ assert.match(guild, /guildPrivilegedOperation/);
 assert.match(guild, /key: "promote" \| "demote" \| "transfer" \| "kick"/);
 assert.match(guild, /await syncBootstrapData\(session\.user\.id\);[\s\S]*endPrivilegedOperation/);
 
-const pvp = await read("src/app/context/hooks/usePvp.ts");
-assert.match(pvp, /const memberSnapshot = \[\.\.\.members\]/);
-assert.match(pvp, /await syncBootstrapData\(session\.user\.id\)/);
 const pvpUi = await read("src/app/components/PvpTab.tsx");
-assert.match(pvpUi, /pvp-defense-save-surface" disabled=\{pvpDefenseSaveLoading\}/);
-assert.match(pvpUi, /label: "対戦", disabled: pvpDefenseSaveLoading/);
+assert.doesNotMatch(pvpUi, /pvp-defense-save-surface|防衛設定を保存|防衛・履歴/);
+assert.match(pvpUi, /pvp_match_rewards_master/);
+const pvpMainFormation = await read("supabase/migrations/20260901000216_pvp_main_formation_matchmaking.sql");
+assert.match(pvpMainFormation, /join public\.user_main_formations/);
+assert.match(pvpMainFormation, /milestone='first_pvp'/);
 
 console.log(JSON.stringify({ status: "PASS", fa001: true, fa002: true, fa003: true, fa004: true, fa005: true }, null, 2));

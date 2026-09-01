@@ -86,6 +86,7 @@ export default function CharacterTab() {
     playCyberSe,
     session,
     onboardingState,
+    scoutAnimationState,
     syncBootstrapData,
     setConfirmDialogConfig
   } = useGame();
@@ -140,6 +141,11 @@ export default function CharacterTab() {
       setTutorialLearningPhase(null);
       return;
     }
+    // The server advances to AUTO_FORMATION as soon as the tutorial draw is
+    // committed, while the ten character reveals and compact summary still
+    // own the foreground. Defer Growth preparation until that accepted gacha
+    // presentation has been dismissed so it cannot interrupt the reveal flow.
+    if (scoutAnimationState !== null) return;
     if (!session?.user?.id || tutorialGrowthPreparedRef.current) return;
     tutorialGrowthPreparedRef.current = true;
     void supabase.rpc("prepare_current_tutorial_growth").then(async ({ data, error }) => {
@@ -165,7 +171,7 @@ export default function CharacterTab() {
         setTutorialLearningPhase("SKILL");
       }
     });
-  }, [onboardingState?.tutorial_step, session?.user?.id, setUpgradeSelectedCharId, syncBootstrapData]);
+  }, [onboardingState?.tutorial_step, scoutAnimationState, session?.user?.id, setUpgradeSelectedCharId, syncBootstrapData]);
 
   // 選択中キャラクター情報の取得
   const ownedCharIds = useMemo(() => {
@@ -338,6 +344,11 @@ export default function CharacterTab() {
 
   return (
     <div className="char-tab-container">
+      {isTutorialStep && tutorialLearningPhase === null && scoutAnimationState === null && (
+        <div className="tutorial-character-page-continue">
+          <button className="semantic-cta semantic-cta--primary tutorial-primary-target" onClick={() => setTutorialLearningPhase("SKILL")}>次へ</button>
+        </div>
+      )}
       {isTutorialStep && tutorialLearningPhase !== null && tutorialLearningPhase !== "FORMATION" && (
         <div className="char-party-modal-backdrop">
           <section className="char-party-modal tutorial-character-step tutorial-learning-step" aria-label="チュートリアル育成">
@@ -377,12 +388,17 @@ export default function CharacterTab() {
                     setTutorialGrowthPending(true);
                     try {
                       let resultDialog: any = null;
-                      const completed = await handleCharacterLevelUp(
-                        "CHAR_EXP_S",
-                        Number(tutorialGrowth?.required_quantity || 0),
-                        (config: any) => { resultDialog = config; }
-                      );
-                      if (!completed) return;
+                      const requiredLevel = Number(tutorialGrowth?.required_level || 7);
+                      const growthAlreadyComplete = tutorialGrowth?.status === "growth_complete"
+                        || Number(activeCharRecord.level || 1) >= requiredLevel;
+                      if (!growthAlreadyComplete) {
+                        const completed = await handleCharacterLevelUp(
+                          "CHAR_EXP_S",
+                          Number(tutorialGrowth?.required_quantity || 0),
+                          (config: any) => { resultDialog = config; }
+                        );
+                        if (!completed) return;
+                      }
                       const { data, error } = await supabase.rpc("advance_current_tutorial_after_growth");
                       if (error || data?.status !== "ready_for_formation") {
                         console.warn("Tutorial Growth did not unlock formation:", error || data);
@@ -401,7 +417,11 @@ export default function CharacterTab() {
                             setTutorialLearningPhase("FORMATION");
                             setFormationEditMode(true);
                           },
-                          onCancel: () => setConfirmDialogConfig(null),
+                          onCancel: () => {
+                            setConfirmDialogConfig(null);
+                            setTutorialLearningPhase("FORMATION");
+                            setFormationEditMode(true);
+                          },
                         });
                       } else {
                         setTutorialLearningPhase("FORMATION");

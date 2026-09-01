@@ -4,8 +4,11 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { CHARACTERS_MASTER, getCharacterTransparentImg } from "@/utils/game_constants";
 import BattleUnitPortrait, { BattleDamagePopup, BattleParticipantView } from "./BattleUnitPortrait";
 import {
+  BattleImpactEffect,
   BattleSkillCutIn,
+  BattleSkillResolutionVfx,
   resolveBattleSkillPresentation,
+  type BattleImpactKind,
 } from "./BattleEffectPresentation";
 import "./QuestBattleViewer.css";
 import { useAudio } from "@/audio/AudioProvider";
@@ -89,10 +92,6 @@ export default function QuestBattleViewer(props: Props) {
     };
   };
   const popupFor = (participant: Participant) => !props.actionPresentation && props.damagePopup?.charId === participant.id ? props.damagePopup : null;
-  // Battle V2's grouped action presentation owns impact visuals. The legacy
-  // popup path was reachable only in Journey battles and duplicated the
-  // approved target-local reaction used by the QA fixture.
-  const impactFor = () => null;
   const hasAdvantage = (target?: Participant) => Boolean(
     activeParticipant?.alignment
       && target?.alignment
@@ -107,6 +106,12 @@ export default function QuestBattleViewer(props: Props) {
   const isSkillAction = Boolean(props.skillCutIn && !/通常攻撃|ATTACK/i.test(skillName));
   const safeCutIn = props.skillCutIn ? { ...props.skillCutIn, skillName } : null;
   const skillPresentation = resolveBattleSkillPresentation(safeCutIn, activeParticipant ? { ...activeParticipant, rarity: activeVisual.rarity } : undefined);
+  const impactFor = (participant: Participant) => !props.actionPresentation && props.damagePopup?.charId === participant.id ? (
+    <div className={`battle-unit-impact-vfx is-${props.damagePopup.type}`} aria-hidden="true">
+      {props.damagePopup.type === "dmg" && <BattleImpactEffect kind={(skillPresentation?.impact || "impact") as BattleImpactKind} speed={props.speed} />}
+      <div className={`battle-impact-burst is-${props.damagePopup.type}`}><i /><i /><i /></div>
+    </div>
+  ) : null;
   const actorMoving = props.actionPresentation
     ? props.actionPresentation.beat !== "RETURN"
     : props.presentationPhase !== "IDLE" && props.presentationPhase !== "ACTION_HOLD";
@@ -190,7 +195,7 @@ export default function QuestBattleViewer(props: Props) {
     ?? (props.battleMode === "RAID" ? 30 : props.battleMode === "PVP" || props.battleMode === "PVP_PRACTICE" || props.battleMode === "GVG" ? 20 : 15);
 
   return (
-    <div className={`playing-container quest-battle-viewer ${props.tutorial ? "is-tutorial" : ""}`} style={props.backgroundPath ? { "--battle-background-image": `url(${props.backgroundPath})` } as React.CSSProperties : undefined} data-battle-speed={props.speed} data-acceptance-state={props.tutorial ? acceptanceState : undefined} data-action-phase={actionPhase} data-action-kind={isSkillAction ? "skill" : "normal"} data-action-actor-id={activeParticipant?.id || ""} data-action-target-id={targetParticipant?.id || ""}>
+    <div className={`playing-container quest-battle-viewer ${props.tutorial ? "is-tutorial is-stress-parity" : ""}`} style={props.backgroundPath ? { "--battle-background-image": `url(${props.backgroundPath})` } as React.CSSProperties : undefined} data-battle-speed={props.speed} data-acceptance-state={props.tutorial ? acceptanceState : undefined} data-action-phase={actionPhase} data-action-kind={isSkillAction ? "skill" : "normal"} data-action-actor-id={activeParticipant?.id || ""} data-action-target-id={targetParticipant?.id || ""}>
       <header className="battle-viewer-header">
         <span>{props.battleMode === "PATROL" ? "QUEST BATTLE" : props.battleMode}</span>
         <strong data-displayed-round={props.round} data-configured-round-limit={roundLimit}>ROUND {props.round}<small> / {roundLimit}</small></strong>
@@ -200,14 +205,14 @@ export default function QuestBattleViewer(props: Props) {
       <main className="battle-roster-stage">
         <PartyZone side="player" label="YOUR TEAM" party={props.playerParty} activeId={actorMoving ? activeParticipant?.id : undefined} targetId={targetParticipant?.id} shakingId={props.shakingId} visualOf={visualOf} popupFor={popupFor} impactFor={impactFor} hasAdvantage={hasAdvantage} tutorial={props.tutorial} reactions={reactionById} skillCue={standardSkillCue} />
         <PartyZone side="enemy" label="ENEMY" party={props.enemyParty} activeId={actorMoving ? activeParticipant?.id : undefined} targetId={targetParticipant?.id} shakingId={props.shakingId} visualOf={visualOf} popupFor={popupFor} impactFor={impactFor} hasAdvantage={hasAdvantage} tutorial={props.tutorial} reactions={reactionById} skillCue={standardSkillCue} />
+        {isSkillAction && props.actionPresentation && (props.actionPresentation.beat === "ACTOR" || props.actionPresentation.beat === "IMPACT") && <BattleSkillResolutionVfx key={`${props.actionPresentation.unit.replayStartCursor}:${props.actionPresentation.beat}`} presentation={skillPresentation} phase={props.actionPresentation.beat === "ACTOR" ? "TARGET_FOCUS" : "ATTACK_MOTION"} actorSide={activeSide} />}
       </main>
 
-      <section className="battle-cutin-slot" aria-hidden={!skillPresentation || skillPresentation.tier === "STANDARD"}>
-        <BattleSkillCutIn presentation={skillPresentation} participant={activeParticipant ? { ...activeParticipant, rarity: activeVisual.rarity } : undefined} imageSrc={activeVisual.src} speed={props.speed} />
+      <section className="battle-cutin-slot" aria-hidden={!skillPresentation?.tier}>
+        <BattleSkillCutIn actionKey={props.actionPresentation?.unit.replayStartCursor} presentation={skillPresentation} participant={activeParticipant ? { ...activeParticipant, rarity: activeVisual.rarity } : undefined} imageSrc={activeVisual.src} speed={props.speed} />
       </section>
       {isFinalHit && <div className="battle-final-hit-overlay" role="status"><strong>FINAL HIT</strong><i /></div>}
       {showSpeedGuidance && <div className="battle-speed-guidance" role="status">ここからは2倍速で進むよ</div>}
-
       <footer className="battle-viewer-controls">
         <span className="battle-tactic-label">{tacticLabel[props.tactic] || tacticLabel.BALANCED}</span>
         <button

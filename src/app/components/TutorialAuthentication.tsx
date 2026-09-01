@@ -82,6 +82,14 @@ function getOAuthReturnError(): string | null {
   return description || "Google連携を完了できませんでした。もう一度お試しください。";
 }
 
+function hasExistingAccountOAuthCollision(): boolean {
+  if (typeof window === "undefined") return false;
+  const query = new URLSearchParams(window.location.search);
+  const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+  const code = query.get("error_code") || query.get("error") || hash.get("error_code") || hash.get("error");
+  return code === "identity_already_exists" || code === "user_already_exists";
+}
+
 function getGoogleLinkError(code?: string, fallback?: string) {
   if (code === "identity_already_exists" || code === "user_already_exists") {
     return "このGoogleアカウントは既存アカウントで使用されています。既存アカウントへログインするか、別のGoogleアカウントを使用してください。";
@@ -93,15 +101,16 @@ function getGoogleLinkError(code?: string, fallback?: string) {
 }
 
 export default function TutorialAuthentication() {
-  const { session, onboardingState, setOnboardingState, playCyberSe, navigateTab } = useGame();
+  const { session, onboardingState, setOnboardingState, playCyberSe, navigateTab, showTitleView, setShowTitleView } = useGame();
   const step = onboardingState?.tutorial_step ?? null;
   const [email, setEmail] = useState(() => readEmailIntent()?.email || "");
   const [googleExternalBrowserUrl, setGoogleExternalBrowserUrl] = useState<string | null>(null);
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(() => getOAuthReturnError());
+  const [error, setError] = useState<string | null>(() => hasExistingAccountOAuthCollision() ? null : getOAuthReturnError());
   const [notice, setNotice] = useState<string | null>(null);
   const [working, setWorking] = useState(false);
-  const [accountConflict, setAccountConflict] = useState<AccountConflict | null>(null);
+  const [accountConflict, setAccountConflict] = useState<AccountConflict | null>(() => hasExistingAccountOAuthCollision() ? { method: "GOOGLE" } : null);
+  const [hiddenForTitle, setHiddenForTitle] = useState(false);
   const workingRef = useRef(false);
 
   const beginWorking = () => {
@@ -173,6 +182,20 @@ export default function TutorialAuthentication() {
     setError(null);
   };
 
+  const returnToTitle = () => {
+    window.localStorage.removeItem(EXISTING_GOOGLE_LOGIN_INTENT_KEY);
+    clearAccountSwitchQuery();
+    setAccountConflict(null);
+    setError(null);
+    setNotice(null);
+    setHiddenForTitle(true);
+    setShowTitleView(true);
+  };
+
+  useEffect(() => {
+    if (!showTitleView && hiddenForTitle) setHiddenForTitle(false);
+  }, [hiddenForTitle, showTitleView]);
+
   const continueAccountSwitch = async () => {
     if (!accountConflict || !session?.user?.id || !session.user.is_anonymous || !beginWorking()) return;
     setError(null);
@@ -202,7 +225,7 @@ export default function TutorialAuthentication() {
       window.localStorage.setItem(EXISTING_GOOGLE_LOGIN_INTENT_KEY, JSON.stringify({ startedAt: Date.now() }));
       const { error: loginError } = await supabase.auth.signInWithOAuth({
         provider: "google",
-        options: { redirectTo: getOAuthCallbackUrl() },
+        options: { redirectTo: getOAuthCallbackUrl(), queryParams: { prompt: "select_account" } },
       });
       if (loginError) {
         window.localStorage.removeItem(EXISTING_GOOGLE_LOGIN_INTENT_KEY);
@@ -245,7 +268,7 @@ export default function TutorialAuthentication() {
   const providers = new Set((session?.user?.identities || []).map((identity: { provider?: string }) => identity.provider));
   const hasOnlyEmailIdentity = !session?.user?.is_anonymous && providers.has("email") && !providers.has("google");
 
-  if (step !== "COMPLETE" && !googleIdentityMismatch) return null;
+  if ((step !== "COMPLETE" && !googleIdentityMismatch) || (showTitleView && hiddenForTitle)) return null;
 
   const connectEmail = async () => {
     if ((!hasOnlyEmailIdentity && !email.trim()) || password.length < 6) {
@@ -319,7 +342,7 @@ export default function TutorialAuthentication() {
     window.localStorage.setItem(AUTH_INTENT_KEY, JSON.stringify(intent));
     const { data: linkData, error: linkError } = await supabase.auth.linkIdentity({
       provider: "google",
-      options: { redirectTo: getOAuthCallbackUrl() }
+      options: { redirectTo: getOAuthCallbackUrl(), queryParams: { prompt: "select_account" } }
     });
     if (linkError) {
       window.localStorage.removeItem(AUTH_INTENT_KEY);
@@ -366,16 +389,19 @@ export default function TutorialAuthentication() {
       <div className="modal-card" style={{ maxWidth: 420 }} role="dialog" aria-modal="true" aria-labelledby="account-switch-title">
         <div id="account-switch-title" className="modal-title text-left">既存のゲームデータが見つかりました</div>
         <div className="modal-desc text-left mb-3">
-          この{accountConflict.method === "GOOGLE" ? "Googleアカウント" : "メールアドレス"}には、すでにTRIBE NEONのゲームデータがあります。
+          <strong>注意：この{accountConflict.method === "GOOGLE" ? "Googleアカウント" : "メールアドレス"}には、すでにTRIBE NEONのゲームデータがあります。</strong>
           <br /><br />
-          既存のゲームデータで続ける場合、現在この端末でプレイ中の未登録データは破棄されます。ゲームデータは統合されません。
+          現在のチュートリアルデータと既存データは統合できません。既存データへ切り替えると、現在の未登録データは削除され、元に戻せません。
         </div>
         {error && <div className="text-color-red font-size-7 mb-2" role="alert">{error}</div>}
         <button className="semantic-cta semantic-cta--danger width-100" onClick={() => void continueAccountSwitch()} disabled={working} aria-busy={working}>
-          {working ? "切り替え中..." : "既存データで続ける"}
+          {working ? "切り替え中..." : "既存データへ切り替える"}
         </button>
         <button className="semantic-cta semantic-cta--secondary mt-2 width-100" onClick={cancelAccountSwitch} disabled={working}>
-          キャンセル
+          {accountConflict.method === "GOOGLE" ? "別のGoogleアカウントを選ぶ" : "別のメールアドレスを選ぶ"}
+        </button>
+        <button className="semantic-cta semantic-cta--secondary mt-2 width-100" onClick={returnToTitle} disabled={working}>
+          タイトルに戻る
         </button>
       </div>
     </div>
@@ -394,6 +420,9 @@ export default function TutorialAuthentication() {
         <input className="auth-input" type="password" placeholder="パスワード（6文字以上）" value={password} onChange={(event) => setPassword(event.target.value)} />
         <button className="semantic-cta semantic-cta--secondary mt-3 width-100" onClick={() => void connectEmail()} disabled={working || googleIdentityMismatch} aria-busy={working}>
           {working ? "連携中..." : hasOnlyEmailIdentity ? "パスワードを設定して完了" : "メールアカウントを連携"}
+        </button>
+        <button className="semantic-cta semantic-cta--secondary mt-2 width-100" onClick={returnToTitle} disabled={working}>
+          タイトルに戻る
         </button>
         {displayedNotice && <div className="text-color-cyan font-size-7 mt-2" role="status">{displayedNotice}</div>}
         {(error || identityConflict || googleIdentityMismatch) && <div className="text-color-red font-size-7 mt-2">

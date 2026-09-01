@@ -41,6 +41,7 @@
     "verify:battle-ai-audit": "node --experimental-strip-types scripts/audit_battle_ai_full_skill_load.mjs",
     "verify:visual-compliance": "node --experimental-strip-types scripts/verify_visual_compliance_gate.mjs",
     "verify:login-bonus-production": "node scripts/verify_login_bonus_production.mjs",
+    "verify:login-bonus-recognition": "node --experimental-strip-types scripts/verify_login_bonus_recognition.mjs",
     "verify:reward-supply": "node scripts/verify_reward_supply.mjs",
     "generate:economy-foundation-db-migration": "node scripts/generate_economy_foundation_db_migration.mjs",
     "generate:character-awakening-copy-equivalent-migration": "node scripts/generate_character_awakening_copy_equivalent_migration.mjs",

@@ -42,24 +42,17 @@ export default function PvpTab() {
     pvpSubView,
     setPvpSubView,
     battleLoading,
-    pvpDefenseSaveLoading,
     pvpOpponents,
     opponentsLoading,
     fetchPvpOpponents,
-    myPvpDefenseDeck,
-    savePvpDefenseDeck,
     userCharactersDbList,
     userSkillsList,
     startCardBattle,
     pvpRankings,
     setPvpRankings,
-    triggerNpcDefenseSimulation,
-    simulatingDefense,
-    pvpDefenseLogs,
     playCyberSe,
     setActiveTab,
     setRankingActiveTab,
-    setConfirmDialogConfig,
     pvpPoints,
     pvpNextRecoveryAt,
     totalPower,
@@ -71,11 +64,11 @@ export default function PvpTab() {
     fetchPlayerDetail,
   } = useGame();
 
-  const [selectedDefense, setSelectedDefense] = React.useState<string[]>([]);
-  const [selectedTactic, setSelectedTactic] = React.useState<string>("ATTACK_PRIORITY");
   const [clock, setClock] = React.useState(() => Date.now());
   const [selectedSkill, setSelectedSkill] = React.useState<SkillCardMaster | null>(null);
   const [bpDialog, setBpDialog] = React.useState<"shortage" | "recovery" | null>(null);
+  const [matchRewards, setMatchRewards] = React.useState<Record<"VICTORY" | "DEFEAT", { cash: number; diamonds: number; xp: number }> | null>(null);
+  const [firstPvpPending, setFirstPvpPending] = React.useState<boolean | null>(null);
   const initialOpponentFetchRef = React.useRef<string | null>(null);
   const rankingAuthorityKey = `${session?.user?.id || "signed-out"}:${pvpRate}`;
   const [rankingAuthority, setRankingAuthority] = React.useState<{ key: string; standing: { rankPosition: number; rankPoints: number } | null } | null>(null);
@@ -87,18 +80,27 @@ export default function PvpTab() {
   });
 
   React.useEffect(() => {
-    if (myPvpDefenseDeck) {
-      const members = [
-        myPvpDefenseDeck.character_1_id,
-        myPvpDefenseDeck.character_2_id,
-        myPvpDefenseDeck.character_3_id,
-        myPvpDefenseDeck.character_4_id,
-        myPvpDefenseDeck.character_5_id
-      ].filter(Boolean);
-      setSelectedDefense(members);
-      setSelectedTactic(myPvpDefenseDeck.tactic || "ATTACK_PRIORITY");
-    }
-  }, [myPvpDefenseDeck]);
+    let cancelled = false;
+    void supabase.from("pvp_match_rewards_master").select("result,cash_reward,diamond_reward,exp_reward").in("result", ["VICTORY", "DEFEAT"]).then(({ data, error }) => {
+      if (cancelled || error || !Array.isArray(data)) return;
+      const rewardFor = (result: "VICTORY" | "DEFEAT") => {
+        const row = data.find((entry: any) => entry.result === result);
+        return { cash: Number(row?.cash_reward || 0), diamonds: Number(row?.diamond_reward || 0), xp: Number(row?.exp_reward || 0) };
+      };
+      setMatchRewards({ VICTORY: rewardFor("VICTORY"), DEFEAT: rewardFor("DEFEAT") });
+    });
+    return () => { cancelled = true; };
+  }, []);
+
+  React.useEffect(() => {
+    const userId = session?.user?.id;
+    if (!userId) return;
+    let cancelled = false;
+    void supabase.from("user_funnel_milestones").select("milestone").eq("user_id", userId).eq("milestone", "first_pvp").maybeSingle().then(({ data, error }) => {
+      if (!cancelled) setFirstPvpPending(error ? null : !data);
+    });
+    return () => { cancelled = true; };
+  }, [session?.user?.id]);
 
   React.useEffect(() => {
     if (pvpPoints >= 5 || !pvpNextRecoveryAt) return;
@@ -140,6 +142,17 @@ export default function PvpTab() {
   }, [fetchPvpOpponents, opponentsLoading, ownPvpStanding?.rankPoints, pvpOpponents.length, pvpRate, pvpSubView, session?.user?.id]);
 
   const displayedPvpRate = ownPvpStanding?.rankPoints ?? pvpRate;
+  const displayedOpponents = React.useMemo(() => {
+    if (!firstPvpPending) return pvpOpponents;
+    const weaker = pvpOpponents.filter((opponent: any) => opponent.opponent_class === "WEAKER");
+    return weaker.length > 0 ? weaker : pvpOpponents.filter((opponent: any) => Number(opponent.opponent_power || 0) < Number(totalPower || 0));
+  }, [firstPvpPending, pvpOpponents, totalPower]);
+  const rewardLabel = (result: "VICTORY" | "DEFEAT") => {
+    const reward = matchRewards?.[result];
+    if (!reward) return "報酬マスタを同期中";
+    const entries = [reward.cash > 0 ? `CASH ${reward.cash.toLocaleString()}` : null, reward.diamonds > 0 ? `ダイヤ ${reward.diamonds.toLocaleString()}` : null, reward.xp > 0 ? `EXP ${reward.xp.toLocaleString()}` : null].filter(Boolean);
+    return entries.length > 0 ? entries.join("・") : "勝敗報酬なし";
+  };
 
   const recoveryCountdown = React.useMemo(() => {
     if (pvpPoints >= 5 || !pvpNextRecoveryAt) return null;
@@ -148,7 +161,7 @@ export default function PvpTab() {
     return `${String(Math.floor(seconds / 3600)).padStart(2, "0")}:${String(Math.floor((seconds % 3600) / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
   }, [clock, pvpNextRecoveryAt, pvpPoints]);
 
-  const defenseCharactersFor = (opponent: any) => [...(opponent.defense_characters || [])]
+  const opponentCharactersFor = (opponent: any) => [...(opponent.defense_characters || [])]
     .sort((left: any, right: any) => Number(left.slot || 0) - Number(right.slot || 0));
   const myDeckCharacters = React.useMemo(() => {
     const ids = (selectedMembers || []).slice(0, 5);
@@ -160,41 +173,8 @@ export default function PvpTab() {
   }, [selectedMembers, userCharactersDbList]);
   const playerLeaderMaster = CHARACTERS_MASTER.find((character: any) => character.id === selectedLeader);
   const heroOpponent = pvpOpponents[0];
-  const heroOpponentLeader = heroOpponent ? defenseCharactersFor(heroOpponent)[0] : null;
+  const heroOpponentLeader = heroOpponent ? opponentCharactersFor(heroOpponent)[0] : null;
   const pvpBackgroundPath = resolveCharacterLocationKey(currentBaseId) ? getCharacterLocationBackground(currentBaseId) : undefined;
-
-  const handleToggleDefenseMember = (charId: string) => {
-    setSelectedDefense(prev => {
-      if (prev.includes(charId)) {
-        return prev.filter(id => id !== charId);
-      }
-      if (prev.length >= 5) {
-        setConfirmDialogConfig({
-          isOpen: true,
-          title: "エラー",
-          message: "防衛デッキは最大5名まで選択できます。",
-          confirmText: "OK",
-          onConfirm: () => setConfirmDialogConfig({ isOpen: false })
-        });
-        return prev;
-      }
-      return [...prev, charId];
-    });
-  };
-
-  const handleSaveDeck = async () => {
-    if (selectedDefense.length === 0) {
-      setConfirmDialogConfig({
-        isOpen: true,
-        title: "エラー",
-        message: "防衛メンバーを1名以上選択してください。",
-        confirmText: "OK",
-        onConfirm: () => setConfirmDialogConfig({ isOpen: false })
-      });
-      return;
-    }
-    await savePvpDefenseDeck(selectedDefense, selectedTactic);
-  };
 
   const handleRefreshOpponents = async () => {
     playCyberSe("click");
@@ -252,8 +232,7 @@ export default function PvpTab() {
 
         <SubTabNav
           tabs={[
-            { id: "opponents", label: "対戦", disabled: pvpDefenseSaveLoading },
-            { id: "defense", label: "防衛・履歴", disabled: pvpDefenseSaveLoading },
+            { id: "opponents", label: "対戦" },
           ]}
           activeTabId={pvpSubView}
           onSelect={setPvpSubView}
@@ -274,7 +253,9 @@ export default function PvpTab() {
 
                 <details className="pvp-rules-help">
                   <summary>公式戦・模擬戦のルール</summary>
-                  <p><b>公式戦</b> PvP Point 1消費・勝利 CASH 500・敗北 CASH 250・Rating変動あり</p>
+                  <p><b>公式戦</b> PvP Point 1消費・Rating変動あり</p>
+                  <p><b>勝利</b> {rewardLabel("VICTORY")}</p>
+                  <p><b>敗北</b> {rewardLabel("DEFEAT")}</p>
                   <p><b>模擬戦</b> 消費・報酬・Rating・Mission進捗なし</p>
                 </details>
 
@@ -282,14 +263,14 @@ export default function PvpTab() {
                   <ScreenState kind="loading" compact />
                 ) : (
                   <div className="list-container">
-                    {pvpOpponents.length === 0 && (
-                      <ScreenState kind="empty" compact title="対戦相手が見つかりません" message="時間を置いて更新してください。" />
+                    {displayedOpponents.length === 0 && (
+                      <ScreenState kind="empty" compact title={firstPvpPending ? "勝てる相手を探しています" : "対戦相手が見つかりません"} message={firstPvpPending ? "更新して格下の相手を再検索してください。" : "時間を置いて更新してください。"} />
                     )}
-                    {pvpOpponents.map((op: any) => (
+                    {displayedOpponents.map((op: any) => (
                       <OutlawCard key={op.opponent_user_id} className="pvp-opponent-card" data-opponent-user-id={op.opponent_user_id}>
                         <div className="pvp-opponent-copy">
-                          <div className="pvp-opponent-heading"><UserIdentityRow userName={op.opponent_username} guildName={op.opponent_guild_name} leaderCharacterId={defenseCharactersFor(op)[0]?.character_master_id} leaderImageSrc={defenseCharactersFor(op)[0]?.asset_identifier} onOpen={() => fetchPlayerDetail(op.opponent_user_id)} /><strong><RankPresentation label="順位" rank={op.opponent_rank} /></strong></div>
-                          <PvpDeckPresentation className="pvp-opponent-deck" ariaLabel={`${op.opponent_username}の防衛メンバー`} onMemberSelect={() => fetchPlayerDetail(op.opponent_user_id)} members={defenseCharactersFor(op).map((character: any) => ({ key: `${op.opponent_user_id}-${character.slot}`, characterId: character.character_master_id, name: character.display_name, level: Number(character.level || 1), imageSrc: character.asset_identifier || undefined }))} />
+                          <div className="pvp-opponent-heading"><UserIdentityRow userName={op.opponent_username} guildName={op.opponent_guild_name} leaderCharacterId={opponentCharactersFor(op)[0]?.character_master_id} leaderImageSrc={opponentCharactersFor(op)[0]?.asset_identifier} onOpen={() => fetchPlayerDetail(op.opponent_user_id)} /><strong><RankPresentation label="順位" rank={op.opponent_rank} /></strong></div>
+                          <PvpDeckPresentation className="pvp-opponent-deck" ariaLabel={`${op.opponent_username}の出撃メンバー`} onMemberSelect={() => fetchPlayerDetail(op.opponent_user_id)} members={opponentCharactersFor(op).map((character: any) => ({ key: `${op.opponent_user_id}-${character.slot}`, characterId: character.character_master_id, name: character.display_name, level: Number(character.level || 1), imageSrc: character.asset_identifier || undefined }))} />
                           <div className="pvp-opponent-meta">
                             <Badge tone="cyan">RATE {op.opponent_points}</Badge>
                             <span className="pvp-opponent-power">総合力 {Number(op.opponent_power || 0).toLocaleString()}</span>
@@ -356,100 +337,6 @@ export default function PvpTab() {
               </div>
             )}
 
-            {pvpSubView === "defense" && (
-              <div className="flex flex-col gap-4">
-                {/* 防衛デッキ・作戦設定パネル */}
-                <fieldset className="pvp-defense-save-surface" disabled={pvpDefenseSaveLoading} aria-busy={pvpDefenseSaveLoading}>
-                <OutlawCard glowLine="left">
-                  <h3 className="font-bold text-white mb-3 flex items-center gap-2">
-                    防衛デッキ・作戦設定
-                  </h3>
-                  
-                  <div className="mb-4">
-                    <label className="text-xs text-gray-400 block mb-1">防衛時の作戦AI:</label>
-                    <select 
-                      value={selectedTactic} 
-                      onChange={(e) => setSelectedTactic(e.target.value)}
-                      className="w-full bg-gray-900 border border-gray-700 rounded p-2 text-white text-sm focus:border-neon-cyan outline-none"
-                    >
-                      <option value="ATTACK_PRIORITY">攻撃優先 (攻撃スキルを優先使用)</option>
-                      <option value="HEAL_PRIORITY">回復優先 (HPの低下した仲間を優先回復)</option>
-                      <option value="SKILL_PRIORITY">スキル優先 (使用可能なスキルを優先)</option>
-                      <option value="BALANCED">バランス (回復と攻撃を状況に応じて選択)</option>
-                      <option value="WEAKNESS_FOCUS">弱点集中 (有利属性の敵を優先)</option>
-                    </select>
-                  </div>
-
-                  <div className="mb-4">
-                    <label className="text-xs text-gray-400 block mb-1">防衛メンバー選択　{selectedDefense.length}/5名</label>
-                    <div className="pvp-defense-grid">
-                      {userCharactersDbList.map((char: any) => {
-                        const isSelected = selectedDefense.includes(char.id);
-                        const master: any = CHARACTERS_MASTER.find((entry: any) => entry.id === char.character_id) || CHARACTERS_MASTER[0];
-                        return (
-                          <button
-                            type="button"
-                            key={char.id} 
-                            onClick={() => handleToggleDefenseMember(char.id)}
-                            className={`pvp-defense-member ${isSelected ? "selected" : ""}`}
-                            aria-pressed={isSelected}
-                          >
-                            <span className="pvp-defense-check">{isSelected ? "✓" : "+"}</span>
-                            <CharacterPresentation src={getCharacterTransparentImg(master.name)} alt={master.jpName} variant="thumbnail" rarity={master.rarity || "N"} frameKind="character" metadata={false} />
-                            <span className="pvp-defense-name">{master.jpName || "キャラクター"}</span>
-                            <span className="pvp-defense-level">Lv.{char.level}</span>
-                          </button>
-                        );
-                      })}
-                      {userCharactersDbList.length === 0 && (
-                        <div className="pvp-defense-empty">防衛に登録できるキャラクターがいません。</div>
-                      )}
-                    </div>
-                  </div>
-
-                  <OutlawButton 
-                    variant="primary" 
-                    fullWidth 
-                    onClick={handleSaveDeck} 
-                    disabled={pvpDefenseSaveLoading}
-                    isLoading={pvpDefenseSaveLoading}
-                    loadingLabel="保存中…"
-                  >
-                    防衛設定を保存
-                  </OutlawButton>
-                </OutlawCard>
-                </fieldset>
-
-                {/* 防衛履歴リスト */}
-                <div className="flex flex-col gap-2">
-                  <div className="flex justify-between items-center mb-2">
-                    <h3 className="font-bold text-white m-0">防衛戦闘ログ</h3>
-                    <OutlawButton variant="secondary" onClick={triggerNpcDefenseSimulation} disabled={simulatingDefense} className="text-xs px-2 py-1">
-                      {simulatingDefense ? "模擬戦準備中…" : "NPC模擬戦"}
-                    </OutlawButton>
-                  </div>
-                  
-                  <div className="list-container">
-                    {pvpDefenseLogs.length === 0 && (
-                      <div className="empty-message py-4 text-center text-color-gray font-size-9">
-                        防衛履歴はありません。
-                      </div>
-                    )}
-                    {pvpDefenseLogs.map((log: any) => (
-                      <OutlawCard key={log.id} className="flex justify-between items-center py-2 px-3 mb-2">
-                        <div>
-                          <div className="font-bold text-sm">{log.attacker_name} ({log.result === "VICTORY" ? "防衛失敗" : "防衛成功"})</div>
-                          <div className="text-[10px] text-gray-400">{new Date(log.created_at).toLocaleString()}</div>
-                        </div>
-                        <span className={`font-bold ${log.points_change >= 0 ? "text-neon-cyan" : "text-neon-magenta"}`}>
-                          {log.points_change >= 0 ? "+" : ""}{log.points_change} pt
-                        </span>
-                      </OutlawCard>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
         )}
     </HubPage>
