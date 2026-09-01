@@ -117,8 +117,8 @@
 .gacha-result-heading h3 { margin: 3px 0 1px; color: var(--ui-text-primary); font-size: var(--ui-font-title); }
 .gacha-result-heading p { margin: 0 0 12px; color: var(--ui-text-secondary); font-size: var(--ui-font-caption); }
 .gacha-result-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; min-height: 0; margin-bottom: 14px; overflow-y: auto; }
-.gacha-result-grid.is-asset-results.is-ten-pull { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 5px; overflow-y: auto; }
-.gacha-result-grid.is-character-results { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.gacha-result-grid.is-ten-pull { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 5px; overflow-y: auto; }
+.gacha-result-grid.is-character-results:not(.is-ten-pull) { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .gacha-result-card { position: relative; min-width: 0; }
 .gacha-result-grid.is-character-results .gacha-result-card { width:100%; aspect-ratio:4 / 5; }
 .gacha-result-grid.is-character-results .gacha-result-card > .character-presentation-gacha-result-compact { position:absolute; inset:0; width:100%; height:100%; aspect-ratio:auto; }

@@ -50,6 +50,10 @@ export default function SetupView() {
   }, [presentationState, session?.user?.id]);
 
   useEffect(() => {
+    if (presentationState === "NAME_INPUT") setSetupUsername("");
+  }, [presentationState, setSetupUsername]);
+
+  useEffect(() => {
     if (presentationState !== "WORLD_INFORMATION" || !worldStageComplete || worldStage >= WORLD_STAGES.length - 1) return;
     const timer = window.setTimeout(() => {
       setWorldStageComplete(false);
@@ -114,7 +118,7 @@ export default function SetupView() {
           <div className="setup-name-guidance"><strong>アゲハ</strong><span>その前に、名前聞いていい？<br />ここでなんて呼べばいい？</span></div>
           <h2 id="setup-name-title" className="setup-title ui-type-screen-title">プレイヤー名</h2>
           <label htmlFor="setup-player-name">プレイヤー名（8文字まで）</label>
-          <input id="setup-player-name" type="text" autoComplete="nickname" placeholder="プレイヤー名を入力" value={setupUsername} onChange={event=>setSetupUsername(event.target.value)} maxLength={8} className="setup-name-input width-100" />
+          <input id="setup-player-name" name="tribe-neon-new-player-name" type="text" autoComplete="off" autoCorrect="off" spellCheck={false} placeholder="プレイヤー名を入力" value={setupUsername} onChange={event=>setSetupUsername(event.target.value)} maxLength={8} className="setup-name-input width-100" />
           <button onClick={()=>void submitName()} aria-busy={setupLoading} disabled={setupLoading||!setupUsername.trim()} className="semantic-cta semantic-cta--primary setup-primary-action">{setupLoading ? "登録中..." : "この名前で始める"}</button>
         </div>
       )}

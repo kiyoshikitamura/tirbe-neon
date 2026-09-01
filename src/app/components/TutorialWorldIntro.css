@@ -15,4 +15,5 @@
 .tutorial-world{position:fixed;background:#000;background-image:none;animation:none}
 .tutorial-world-content{overflow:hidden;background:#02050b url('/bg/bg_street_shinjuku.jpg') center/cover no-repeat;animation:tutorial-world-camera 9s ease-out both}
 .tutorial-world-content>.tutorial-world-shade{inset:0}
+.tutorial-world .semantic-cta.is-actionable:not(:disabled):not([aria-busy="true"]){opacity:1;color:#031014!important;border-color:color-mix(in srgb,var(--ui-accent) 82%,#fff)!important;background:linear-gradient(135deg,var(--ui-accent),color-mix(in srgb,var(--ui-value) 72%,var(--ui-accent)))!important;box-shadow:0 0 18px color-mix(in srgb,var(--ui-accent) 38%,transparent)!important;filter:none}
 @media(prefers-reduced-motion:reduce){.tutorial-world-content{animation:none}}

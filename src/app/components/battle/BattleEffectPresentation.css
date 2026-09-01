@@ -234,8 +234,6 @@
   letter-spacing: .08em;
   text-shadow: 0 1px 0 #020307, 0 0 8px rgba(255,190,52,.72);
 }
-.battle-target-reaction-copy em.is-critical,.battle-target-reaction-copy em.is-weak{margin:0;padding:0;border:0;background:transparent;font-family:var(--font-display),var(--font-ui),sans-serif;font-style:italic;line-height:1;text-shadow:0 1px 0 #020307,0 0 9px currentColor}
-.battle-target-reaction-copy em.is-weak{color:#73eaff;font-size:7px;letter-spacing:.12em}
 .battle-target-reaction-copy strong.is-heal { color: #80ffad; -webkit-text-stroke-color: rgba(0,48,19,.96); text-shadow: 0 3px 0 #020307, 0 0 4px #eafff0, 0 0 14px rgba(39,244,121,.68); }
 .battle-target-reaction-copy strong.is-miss { color: #c8d0d7; font-size: 13px; letter-spacing: .08em; }
 .battle-target-reaction-copy small,

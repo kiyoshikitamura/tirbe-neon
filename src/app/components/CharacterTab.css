@@ -1874,3 +1874,18 @@
 .tutorial-growth-contract strong { font-size: 1.2rem; }
 .tutorial-growth-contract p { margin: 0; font-size: 1.35rem; font-weight: 800; }
 .tutorial-growth-contract small { overflow-wrap: anywhere; }
+.tutorial-character-page-continue {
+  position: fixed;
+  z-index: 120;
+  right: 16px;
+  bottom: calc(18px + env(safe-area-inset-bottom));
+  left: 16px;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+.tutorial-character-page-continue button {
+  width: min(100%, 410px);
+  min-height: 52px;
+  pointer-events: auto;
+}

@@ -344,6 +344,11 @@ export default function CharacterTab() {
 
   return (
     <div className="char-tab-container">
+      {isTutorialStep && tutorialLearningPhase === null && scoutAnimationState === null && (
+        <div className="tutorial-character-page-continue">
+          <button className="semantic-cta semantic-cta--primary tutorial-primary-target" onClick={() => setTutorialLearningPhase("SKILL")}>次へ</button>
+        </div>
+      )}
       {isTutorialStep && tutorialLearningPhase !== null && tutorialLearningPhase !== "FORMATION" && (
         <div className="char-party-modal-backdrop">
           <section className="char-party-modal tutorial-character-step tutorial-learning-step" aria-label="チュートリアル育成">
