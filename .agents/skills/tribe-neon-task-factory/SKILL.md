@@ -24,11 +24,13 @@ Resolve every relative path from the repository root. If a path is unavailable, 
 - Resolve current branch/PR/workstream state before dispatch.
 - Decompose by independently testable outcome, not by technical layer.
 - Record a manifest using `docs/development/task_factory.md`.
-- Persist it at `docs/development/agent_tasks/<TASK-ID>.task.yaml`, assign a concrete worker ID, and let only the parent dispatcher update it with compare-and-swap semantics.
+- Acquire the shared dispatcher lock and reserve all scopes/resources through `docs/development/task_registry.yaml` on `agent/task-registry` before spawning workers.
+- Persist both `docs/development/agent_tasks/<TASK-ID>.md` and `<TASK-ID>.task.yaml`, assign a concrete worker ID, and let only the parent dispatcher update the manifest with compare-and-swap semantics.
 - Classify dependency, overlap, risk lane, environment need, and Human Acceptance.
 - Dispatch only `PARALLEL` tasks concurrently. Keep shared-authority and overlapping work sequential.
 - Require a dedicated code environment for every task and isolated mutable data for DB-writing tasks.
 - Require implementer validation, a separate review context, and P0/P1 resolution.
+- Bind independent review to the exact candidate SHA and invalidate it whenever the candidate changes.
 - For UI/Presentation, require matched Before/After captures and a commit-bound Preview.
 - Consolidate results for Product Owner judgment. Never equate implementation or machine validation with Human PASS.
 - Bind Human PASS to the exact candidate/Preview SHA and invalidate it whenever either SHA changes.
