@@ -200,6 +200,7 @@
 .quest-battle-viewer.is-stress-parity .battle-party-zone .battle-party-grid{grid-template-rows:repeat(5,clamp(58px,8dvh,68px));align-content:start}
 .quest-battle-viewer.is-stress-parity .battle-party-zone .battle-unit-party .battle-unit-art{width:45px;height:45px}
 .quest-battle-viewer.is-tutorial.is-stress-parity .battle-party-zone.is-player .battle-unit-party .battle-unit-art{width:45px;height:45px}
+.quest-battle-viewer.is-tutorial.is-stress-parity .battle-party-zone.is-player .battle-unit-party .battle-unit-hp{width:75%;height:7px;margin:0 0 0 6px;justify-self:start}
 .quest-battle-viewer.is-stress-parity .battle-party-zone .battle-unit-party .battle-unit-hp-copy{display:flex}
 .battle-action-stage{position:relative;grid-column:2;display:grid;place-items:center;min-width:0;min-height:0;overflow:visible;border:0;background:linear-gradient(180deg,transparent,rgba(255,255,255,.035),transparent);box-shadow:none}
 .battle-action-relation{display:grid;grid-template-rows:auto 24px auto 24px auto;justify-items:center;align-items:center;width:100%;color:#aab1b8;font-family:var(--font-display);font-size:7px;text-align:center;writing-mode:horizontal-tb}

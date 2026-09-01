@@ -185,7 +185,7 @@ export function BattleSkillCutIn({ presentation, participant, imageSrc, speed, a
     lastPresentationKeyRef.current = presentationKey;
     if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
     setVisible(presentation);
-    const minimumDuration = speed > 1 ? 720 : presentation.tier === "SSR" ? 1100 : 960;
+    const minimumDuration = speed > 1 ? 780 : presentation.tier === "SSR" ? 1300 : 1100;
     hideTimerRef.current = setTimeout(() => setVisible(null), minimumDuration);
   }, [actionKey, presentation, speed]);
 

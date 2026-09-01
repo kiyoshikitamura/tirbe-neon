@@ -82,8 +82,12 @@ export function battlePresentationBudget(tier: BattlePresentationTier, speed: nu
   return tier === "NORMAL" ? 1440 : tier === "STANDARD" ? 1900 : 2400;
 }
 
-export function battlePresentationImpactAt(speed: number): number {
-  return speed > 1 ? 82 : 120;
+export function battlePresentationImpactAt(speed: number, tier: BattlePresentationTier = "NORMAL"): number {
+  // Preserve a readable Actor/Cut-in beat before Impact. The former shared
+  // 120ms boundary made skills resolve almost immediately, leaving only a
+  // long post-impact hold and breaking the accepted battle rhythm.
+  if (speed > 1) return tier === "NORMAL" ? 260 : tier === "STANDARD" ? 400 : 520;
+  return tier === "NORMAL" ? 520 : tier === "STANDARD" ? 820 : tier === "SR" ? 1040 : 1160;
 }
 
 export function isActiveEffectSync(event: BattlePresentationReplayEvent): boolean {

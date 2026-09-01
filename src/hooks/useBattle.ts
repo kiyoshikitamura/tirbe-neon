@@ -2091,10 +2091,13 @@ export function useBattle(options: UseBattleOptions) {
       const previousTier = battlePresentationTier(previousActionWasSkill, previousActor?.rarity);
       const delay = replayEvent.type === "ACTION"
         ? previousAction
-          ? Math.max(180, battlePresentationBudget(previousTier, battleSpeed) - battlePresentationImpactAt(battleSpeed))
-          : 120
+          // The previous Presentation Unit already consumed its complete
+          // budget before advancing to this ACTION cursor. Do not apply the
+          // post-impact remainder a second time between actions.
+          ? 80
+          : 500
         : outcomeUnit
-          ? battlePresentationImpactAt(battleSpeed)
+          ? battlePresentationImpactAt(battleSpeed, previousTier)
           : replayEvent.type === "EFFECT" && replayEvent.payload.kind === "ACTIVE_EFFECT_SYNC"
             ? 40
             : replayEvent.type === "RESULT"
@@ -2234,7 +2237,7 @@ export function useBattle(options: UseBattleOptions) {
           if (firstDamage) playCyberSe(firstDamage.event.payload.hit === false ? "click" : "hit");
           else if (firstHeal || firstShield) playCyberSe("click");
 
-          const remainingBudget = Math.max(180, battlePresentationBudget(actionTier, battleSpeed) - battlePresentationImpactAt(battleSpeed));
+          const remainingBudget = Math.max(180, battlePresentationBudget(actionTier, battleSpeed) - battlePresentationImpactAt(battleSpeed, actionTier));
           presentationTimersRef.current.push(setTimeout(() => {
             setActionPresentation({ unit: outcomeUnit, beat: "RETURN", tier: actionTier, skillName: actionSkillName });
             setPresentationPhase("HP_TRANSITION");

@@ -5,11 +5,11 @@
   overflow: hidden;
   pointer-events: none;
   isolation: isolate;
-  animation: battle-cutin-life 960ms ease-out both;
+  animation: battle-cutin-life 1100ms ease-out both;
 }
 
-.battle-skill-cutin.is-ssr { animation-duration: 1100ms; }
-.battle-skill-cutin.is-speed-fast { animation-duration: 720ms; }
+.battle-skill-cutin.is-ssr { animation-duration: 1300ms; }
+.battle-skill-cutin.is-speed-fast { animation-duration: 780ms; }
 .battle-skill-cutin.is-standard .battle-cutin-frame{opacity:.78;filter:hue-rotate(-22deg) saturate(.85)}
 .battle-cutin-darken,
 .battle-cutin-frame,

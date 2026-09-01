@@ -197,7 +197,7 @@ export default function BattleFullSkillLoadHarness() {
       const skillName = skillNames.get(skillId) ?? (skill ? "スキル発動" : "通常攻撃");
       const tier = battlePresentationTier(skill, actor?.rarity);
       const budget = battlePresentationBudget(tier, speed);
-      const impactAt = battlePresentationImpactAt(speed);
+      const impactAt = battlePresentationImpactAt(speed, tier);
       const nextActors = replay.events.slice(eventIndex).filter((entry) => entry.type === "ACTION").slice(0, 4).map((entry) => {
         const id = String(entry.payload.actorId ?? "");
         const participant = participants.find((candidate) => candidate.id === id);
