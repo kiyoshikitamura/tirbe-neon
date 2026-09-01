@@ -70,6 +70,8 @@ export class MockSupabaseClient {
         return {
           data: {
             session: {
+              access_token: `mock:${demoId}:${authMode}`,
+              refresh_token: `mock:${demoId}:${authMode}`,
               user: {
                 id: demoId,
                 email: `demo-${demoId.substring(0, 8)}@example.com`,
@@ -133,17 +135,24 @@ export class MockSupabaseClient {
       if (typeof window !== "undefined") {
         localStorage.setItem("mock_last_oauth_redirect_to", String(options?.redirectTo || ""));
         const existingId = localStorage.getItem("mock_existing_google_user_id");
-        if (existingId) localStorage.setItem("tribe_demo_uuid", existingId);
-        localStorage.setItem("mock_auth_mode", "GOOGLE");
+        const switchIntent = JSON.parse(localStorage.getItem("tribe_existing_google_login_intent") || "null");
+        if (existingId && switchIntent?.method === "GOOGLE_SWITCH") {
+          localStorage.setItem("mock_oauth_callback_user_id", existingId);
+        } else {
+          if (existingId) localStorage.setItem("tribe_demo_uuid", existingId);
+          localStorage.setItem("mock_auth_mode", "GOOGLE");
+        }
       }
       return { data: { provider: "google" }, error: null };
     },
     setSession: async ({ access_token }: any) => {
       if (typeof window === "undefined") return { data: { session: null }, error: { message: "Browser storage is unavailable" } };
-      const userId = String(access_token || "").replace(/^mock:/, "");
+      const tokenParts = String(access_token || "").replace(/^mock:/, "").split(":");
+      const userId = tokenParts[0];
+      const authMode = tokenParts[1] || "EMAIL";
       if (!userId) return { data: { session: null }, error: { message: "Invalid session" } };
       localStorage.setItem("tribe_demo_uuid", userId);
-      localStorage.setItem("mock_auth_mode", "EMAIL");
+      localStorage.setItem("mock_auth_mode", authMode);
       const { data } = await this.auth.getSession();
       return { data, error: null };
     },

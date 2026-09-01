@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { supabase } from "@/utils/supabase";
+import { discardAnonymousAccountForSwitch, supabase } from "@/utils/supabase";
 import { getOAuthReturnUrl } from "@/utils/browserDetection";
 
 export default function AuthCallbackPage() {
@@ -12,11 +12,12 @@ export default function AuthCallbackPage() {
     let redirected = false;
     let callbackExchangeStarted = false;
 
-    const returnToApp = (accountSwitch?: "google") => {
+    const returnToApp = (accountSwitch?: "google", accountSwitchError?: string) => {
       if (!active || redirected) return;
       redirected = true;
       const destination = new URL(getOAuthReturnUrl());
       if (accountSwitch) destination.searchParams.set("account_switch", accountSwitch);
+      if (accountSwitchError) destination.searchParams.set("account_switch_error", accountSwitchError);
       window.location.replace(destination.toString());
     };
 
@@ -46,10 +47,14 @@ export default function AuthCallbackPage() {
         // this collision can be presented as an explicit choice instead of
         // silently replacing the player at the title screen.
         const { data: beforeExchange } = await supabase.auth.getSession();
-        const switchingToExistingData = Boolean(window.localStorage.getItem("tribe_existing_google_login_intent"));
-        const tutorialSession = beforeExchange.session?.user?.is_anonymous && !switchingToExistingData
-          ? beforeExchange.session
-          : null;
+        let loginIntent: { method?: string; sourceUserId?: string } | null = null;
+        try {
+          loginIntent = JSON.parse(window.localStorage.getItem("tribe_existing_google_login_intent") || "null");
+        } catch {
+          loginIntent = null;
+        }
+        const switchingToExistingData = loginIntent?.method === "GOOGLE_SWITCH";
+        const tutorialSession = beforeExchange.session?.user?.is_anonymous ? beforeExchange.session : null;
         const { data: exchangeData, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
         if (exchangeError) {
           setError(exchangeError.message);
@@ -57,6 +62,35 @@ export default function AuthCallbackPage() {
         }
         if (!exchangeData.session) {
           setError("Googleログイン後のセッションを確認できませんでした。");
+          return;
+        }
+        if (switchingToExistingData) {
+          if (!tutorialSession || tutorialSession.user.id !== loginIntent?.sourceUserId) {
+            window.localStorage.removeItem("tribe_existing_google_login_intent");
+            setError("切り替え元のチュートリアルデータを確認できませんでした。データ保護のため処理を中止しました。");
+            return;
+          }
+          const { data: existingState, error: existingStateError } = await supabase.rpc("get_current_onboarding_state");
+          if (existingStateError || !existingState?.has_profile) {
+            await supabase.auth.setSession({
+              access_token: tutorialSession.access_token,
+              refresh_token: tutorialSession.refresh_token,
+            });
+            window.localStorage.removeItem("tribe_existing_google_login_intent");
+            returnToApp(undefined, "NO_EXISTING_GAME_DATA");
+            return;
+          }
+          const { data: discarded, error: discardError } = await discardAnonymousAccountForSwitch(tutorialSession);
+          if (discardError || discarded?.discardedUserId !== tutorialSession.user.id || discarded?.gameplayMerged !== false) {
+            await supabase.auth.setSession({
+              access_token: tutorialSession.access_token,
+              refresh_token: tutorialSession.refresh_token,
+            });
+            window.localStorage.removeItem("tribe_existing_google_login_intent");
+            returnToApp(undefined, "ANONYMOUS_DISCARD_FAILED");
+            return;
+          }
+          returnToApp();
           return;
         }
         if (tutorialSession && exchangeData.session.user.id !== tutorialSession.user.id) {
