@@ -13,6 +13,7 @@ export type OnboardingState = {
   is_anonymous: boolean;
   has_profile: boolean;
   tutorial_step: string | null;
+  authentication_pending: boolean;
   auth_method: "EMAIL" | "GOOGLE" | null;
   is_legacy_authenticated: boolean;
   identity_integrity_valid: boolean;
@@ -252,6 +253,7 @@ export function useAuth(
         is_anonymous: true,
         has_profile: true,
         tutorial_step: tutorialStep,
+        authentication_pending: false,
         auth_method: null,
         is_legacy_authenticated: false,
         identity_integrity_valid: true,

@@ -1175,9 +1175,9 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     const supportedProviders = new Set((overriddenProviders || (isAnonymous ? [] : [authMode.toLowerCase()]))
       .filter((provider) => provider === "email" || provider === "google"));
     const identityProvider = supportedProviders.size === 1 ? [...supportedProviders][0] : null;
-    const identityIntegrityValid = !isAnonymous
-      && supportedProviders.size === 1
-      && (!method || method.auth_method.toLowerCase() === identityProvider);
+    const identityIntegrityValid = (isAnonymous && supportedProviders.size === 0 && !method)
+      || (!isAnonymous && supportedProviders.size === 1
+        && (!method || method.auth_method.toLowerCase() === identityProvider));
     const hasProfile = users.some((user: any) => user.id === userId);
     const isLegacyAuthenticated = identityIntegrityValid && hasProfile && !method && (!progress?.step_id || progress.step_id === "AUTHENTICATION");
     return {
@@ -1186,10 +1186,15 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
         is_anonymous: isAnonymous,
         has_profile: hasProfile,
         tutorial_step: progress?.step_id || null,
+        authentication_pending: Boolean(progress?.authentication_pending),
         auth_method: method?.auth_method || (identityProvider ? identityProvider.toUpperCase() : null),
         is_legacy_authenticated: isLegacyAuthenticated,
         identity_integrity_valid: identityIntegrityValid,
-        gameplay_authorized: hasProfile && identityIntegrityValid && ((method && progress?.step_id === "AUTHENTICATION") || isLegacyAuthenticated),
+        gameplay_authorized: hasProfile && identityIntegrityValid && (
+          (isAnonymous && progress?.step_id === "COMPLETE" && progress?.authentication_pending === true)
+          || (!isAnonymous && method && progress?.step_id === "AUTHENTICATION")
+          || isLegacyAuthenticated
+        ),
       },
       error: null,
     };
@@ -1235,6 +1240,7 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     const entry = progress.find((value: any) => value.user_id === userId);
     if (!entry || entry.step_id !== params.p_expected_step) return { data: null, error: { message: "Unexpected tutorial step" } };
     entry.step_id = params.p_next_step;
+    if (params.p_next_step === "COMPLETE") entry.authentication_pending = false;
     client.setStorage("tutorial_progress", progress);
     return { data: entry.step_id, error: null };
   }
@@ -1441,9 +1447,29 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     if (existingMethod && existingMethod.auth_method !== requestedMethod) return { data: null, error: { message: "A different authentication method is already linked" } };
     if (!existingMethod) methods.push({ user_id: userId, auth_method: requestedMethod });
     entry.step_id = "AUTHENTICATION";
+    entry.authentication_pending = false;
     client.setStorage("tutorial_progress", progress);
     client.setStorage("user_account_auth_methods", methods);
     return { data: "AUTHENTICATION", error: null };
+  }
+
+  if (funcName === "defer_tutorial_authentication") {
+    const userId = typeof window === "undefined" ? null : localStorage.getItem("tribe_demo_uuid");
+    const authMode = typeof window === "undefined" ? null : localStorage.getItem("mock_auth_mode");
+    const progress = client.getStorage("tutorial_progress") || [];
+    const entry = progress.find((value: any) => value.user_id === userId);
+    const methods = client.getStorage("user_account_auth_methods") || [];
+    const identities = client.getStorage("auth_identities") || [];
+    if (!userId || authMode !== "ANONYMOUS") return { data: null, error: { message: "Only the current anonymous account can defer authentication" } };
+    if (!entry || entry.step_id !== "COMPLETE") return { data: null, error: { message: "Tutorial completion is required" } };
+    if (methods.some((value: any) => value.user_id === userId)
+      || identities.some((value: any) => value.user_id === userId && value.provider !== "anonymous")) {
+      return { data: null, error: { message: "A connected identity cannot defer authentication" } };
+    }
+    entry.authentication_pending = true;
+    entry.completed_at ||= new Date().toISOString();
+    client.setStorage("tutorial_progress", progress);
+    return { data: "COMPLETE", error: null };
   }
 
   if (funcName === "discard_current_anonymous_account_for_switch") {

@@ -103,9 +103,21 @@ function getGoogleLinkError(code?: string, fallback?: string) {
   return fallback || "Google連携を完了できませんでした。もう一度お試しください。";
 }
 
-export default function TutorialAuthentication() {
-  const { session, onboardingState, setOnboardingState, playCyberSe, navigateTab, showTitleView, setShowTitleView } = useGame();
+export default function AccountAuthenticationModal() {
+  const {
+    session,
+    onboardingState,
+    setOnboardingState,
+    playCyberSe,
+    navigateTab,
+    showTitleView,
+    setShowTitleView,
+    showAccountAuthenticationModal,
+    setShowAccountAuthenticationModal,
+    setShowAuthenticationReminder,
+  } = useGame();
   const step = onboardingState?.tutorial_step ?? null;
+  const isTutorialCompletion = step === "COMPLETE" && !onboardingState?.authentication_pending;
   const [email, setEmail] = useState(() => readEmailIntent()?.email || "");
   const [googleExternalBrowserUrl, setGoogleExternalBrowserUrl] = useState<string | null>(null);
   const [password, setPassword] = useState("");
@@ -150,13 +162,18 @@ export default function TutorialAuthentication() {
     setOnboardingState((current: any) => current ? {
       ...current,
       tutorial_step: "AUTHENTICATION",
+      authentication_pending: false,
       auth_method: method,
+      is_anonymous: false,
       supported_identity_count: 1,
       identity_integrity_valid: true,
+      gameplay_authorized: true,
     } : current);
+    setShowAccountAuthenticationModal(false);
+    setShowAuthenticationReminder(false);
     navigateTab("home");
     return true;
-  }, [navigateTab, session?.user?.id, setOnboardingState]);
+  }, [navigateTab, session?.user?.id, setOnboardingState, setShowAccountAuthenticationModal, setShowAuthenticationReminder]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -281,7 +298,40 @@ export default function TutorialAuthentication() {
   const providers = new Set((session?.user?.identities || []).map((identity: { provider?: string }) => identity.provider));
   const hasOnlyEmailIdentity = !session?.user?.is_anonymous && providers.has("email") && !providers.has("google");
 
-  if ((step !== "COMPLETE" && !googleIdentityMismatch) || (showTitleView && hiddenForTitle)) return null;
+  if ((!isTutorialCompletion && !showAccountAuthenticationModal && !googleIdentityMismatch) || (showTitleView && hiddenForTitle)) return null;
+
+  const continueWithoutAuthentication = async () => {
+    if (!session?.user?.id || !session.user.is_anonymous || !isTutorialCompletion || !beginWorking()) return;
+    setError(null);
+    setNotice(null);
+    playCyberSe("click");
+    try {
+      const { data, error: deferError } = await supabase.rpc("defer_tutorial_authentication");
+      if (deferError || data !== "COMPLETE") throw deferError || new Error("認証保留状態を保存できませんでした。");
+      setOnboardingState((current: any) => current ? {
+        ...current,
+        tutorial_step: "COMPLETE",
+        authentication_pending: true,
+        is_anonymous: true,
+        auth_method: null,
+        identity_integrity_valid: true,
+        gameplay_authorized: true,
+      } : current);
+      setShowAccountAuthenticationModal(false);
+      setShowAuthenticationReminder(false);
+      navigateTab("home");
+    } catch (deferFailure: any) {
+      setError(deferFailure?.message || "認証保留状態を保存できませんでした。");
+    } finally {
+      endWorking();
+    }
+  };
+
+  const closeFromMyPage = () => {
+    setError(null);
+    setNotice(null);
+    setShowAccountAuthenticationModal(false);
+  };
 
   const connectEmail = async () => {
     if ((!hasOnlyEmailIdentity && !email.trim()) || password.length < 6) {
@@ -421,17 +471,19 @@ export default function TutorialAuthentication() {
         <button className="semantic-cta semantic-cta--secondary mt-2 width-100" onClick={cancelAccountSwitch} disabled={working}>
           {accountConflict.method === "GOOGLE" ? "別のGoogleアカウントを選ぶ" : "別のメールアドレスを選ぶ"}
         </button>
-        <button className="semantic-cta semantic-cta--secondary mt-2 width-100" onClick={returnToTitle} disabled={working}>
+        {showAccountAuthenticationModal ? <button className="semantic-cta semantic-cta--secondary mt-2 width-100" onClick={closeFromMyPage} disabled={working}>
+          閉じる
+        </button> : <button className="semantic-cta semantic-cta--secondary mt-2 width-100" onClick={returnToTitle} disabled={working}>
           タイトルに戻る
-        </button>
+        </button>}
       </div>
     </div>
     ) : (
     <div className="modal-overlay background-black-95" style={{ zIndex: 20000 }}>
-      <div className="modal-card" style={{ maxWidth: 420 }}>
-        <div className="modal-title text-left">ゲームデータを保存</div>
+      <div className="modal-card" style={{ maxWidth: 420 }} role="dialog" aria-modal="true" aria-labelledby="account-authentication-title">
+        <div id="account-authentication-title" className="modal-title text-left">ゲームデータを保存</div>
         <div className="modal-desc text-left mb-3">
-          データを引き継げるよう、Googleまたはメールのどちらか1つを連携してください。同じアカウントで両方を使用することはできません。
+          データを保護・引き継げるよう、Googleまたはメールのどちらか1つを連携してください。同じアカウントで両方を使用することはできません。
         </div>
         <button className="semantic-cta semantic-cta--primary width-100" onClick={() => void connectGoogle()} disabled={working || googleIdentityMismatch || hasOnlyEmailIdentity} aria-busy={working}>
           {working ? "連携中..." : "Googleアカウントを連携"}
@@ -442,9 +494,14 @@ export default function TutorialAuthentication() {
         <button className="semantic-cta semantic-cta--secondary mt-3 width-100" onClick={() => void connectEmail()} disabled={working || googleIdentityMismatch} aria-busy={working}>
           {working ? "連携中..." : hasOnlyEmailIdentity ? "パスワードを設定して完了" : "メールアカウントを連携"}
         </button>
-        <button className="semantic-cta semantic-cta--secondary mt-2 width-100" onClick={returnToTitle} disabled={working}>
+        {isTutorialCompletion && <button className="semantic-cta semantic-cta--secondary mt-2 width-100" onClick={() => void continueWithoutAuthentication()} disabled={working}>
+          そのまま続ける
+        </button>}
+        {showAccountAuthenticationModal ? <button className="semantic-cta semantic-cta--secondary mt-2 width-100" onClick={closeFromMyPage} disabled={working}>
+          閉じる
+        </button> : <button className="semantic-cta semantic-cta--secondary mt-2 width-100" onClick={returnToTitle} disabled={working}>
           タイトルに戻る
-        </button>
+        </button>}
         {displayedNotice && <div className="text-color-cyan font-size-7 mt-2" role="status">{displayedNotice}</div>}
         {(error || identityConflict || googleIdentityMismatch) && <div className="text-color-red font-size-7 mt-2">
           {error || identityConflict || "Google連携の開始時と異なるユーザーが検出されました。データ保護のため連携を中止しました。"}

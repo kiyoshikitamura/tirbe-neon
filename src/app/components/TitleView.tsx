@@ -17,7 +17,7 @@ export default function TitleView() {
   const canStartNewGame = entryReady && !session;
   const isAnonymousSession = Boolean(session?.user?.is_anonymous);
   const continueLabel = session
-    ? isAnonymousSession && onboardingState?.tutorial_step !== "AUTHENTICATION"
+    ? isAnonymousSession && !onboardingState?.gameplay_authorized
       ? "チュートリアルを続ける"
       : "続きから"
     : "データをお持ちの方";
