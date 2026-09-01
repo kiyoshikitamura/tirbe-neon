@@ -20,6 +20,15 @@ import { SCREEN_ASSET_MANIFESTS } from "../lib/screenManifests";
 import "./PatrolTab.css";
 import { traceTutorialJourney } from "@/utils/tutorialJourneyTrace";
 import QuestPresentationV2 from "./quest/QuestPresentationV2";
+import CanonicalItemIcon from "./ui/CanonicalItemIcon";
+
+function QuestRewardIcon({ itemId, quantity }: { itemId: string; quantity: number }) {
+  return <span className="tutorial-wire-reward-item">
+    {itemId === "PLAYER_XP" ? <b className="tutorial-wire-reward-xp">XP</b> : <CanonicalItemIcon itemId={itemId} alt="" className="tutorial-wire-reward-icon" />}
+    <small>{itemId === "PLAYER_XP" ? "PLAYER XP" : canonicalItemName(itemId)}</small>
+    <strong>× {Number(quantity).toLocaleString()}</strong>
+  </span>;
+}
 
 export default function PatrolTab() {
   const {
@@ -204,6 +213,7 @@ export default function PatrolTab() {
   }, [activePatrols, patrolNpcs, tutorialStep, userCharactersDbList]);
 
   const activeCourse = patrolCourses.find((c: any) => c.id === selectedCourse);
+  const guaranteedRewardItems = (items: any[] = []) => items.filter((item) => Number(item.probability_bp ?? 10000) >= 10000);
   const formatRewardItems = (items: any[] = []) => items
     .map((item) => `${canonicalItemName(String(item.item_id || ""))} ×${item.quantity}${Number(item.probability_bp) < 10000 ? ` (${Number(item.probability_bp) / 100}%)` : ""}`)
     .join(" / ");
@@ -408,7 +418,10 @@ export default function PatrolTab() {
         <section className={`tutorial-quest-wire state-${acceptanceState.toLowerCase()}`} data-acceptance-state={acceptanceState} style={{ backgroundImage: `linear-gradient(180deg,rgba(2,3,12,.16),rgba(2,2,10,.92)),url(${bgImage})` }}>
           {acceptanceState === "Q1" && <>
             <header className="tutorial-wire-heading"><span>新宿</span><strong>初級</strong><small>所要時間 {formatClock(tutorialCourse?.duration_seconds)}</small></header>
-            <div className="tutorial-wire-rewards" aria-label="獲得可能報酬"><span>PLAYER XP<br />+{Number(tutorialCourse?.reward_xp || 0).toLocaleString()}</span><span>キャラEXP<br />+{Number(tutorialCourse?.reward_xp || 0).toLocaleString()}</span><span>CASH<br />+{Number(tutorialCourse?.reward_cash || 0).toLocaleString()}</span><span>アイテム<br />抽選</span></div>
+            <div className="tutorial-wire-rewards" aria-label="確定報酬">
+              {Number(tutorialCourse?.reward_xp || 0) > 0 && <QuestRewardIcon itemId="PLAYER_XP" quantity={Number(tutorialCourse.reward_xp)} />}
+              {guaranteedRewardItems(tutorialCourse?.reward_items).map((item: any) => <QuestRewardIcon key={item.item_id} itemId={String(item.item_id)} quantity={Number(item.quantity || 0)} />)}
+            </div>
             <div className="tutorial-wire-member" data-character-id={tutorialCharacter?.id} data-user-character-id={tutorialOwnedCharacter?.id}>
               <CharacterPresentation src={characterImage(tutorialCharacter?.img) || undefined} alt={tutorialCharacter?.jpName || "派遣メンバー"} variant="quest" rarity={tutorialCharacter?.rarity} attribute={tutorialCharacter?.alignment} backgroundSrc={getCharacterLocationBackground(tutorialCharacter?.homeTown)} frameKind="character" rarityBadge attributeBadge />
               <div><small>派遣メンバー</small><b>{tutorialCharacter?.jpName || "メンバー"}</b><span>{tutorialCharacter?.rarity || "SSR"}</span></div>
@@ -431,7 +444,10 @@ export default function PatrolTab() {
             <header className="tutorial-wire-complete"><h2>クエスト完了</h2><small>QUEST COMPLETE</small></header>
             <div className="tutorial-wire-return-character" data-character-id={tutorialCharacter?.id} data-user-character-id={tutorialOwnedCharacter?.id}><CharacterPresentation src={characterImage(tutorialCharacter?.img) || undefined} alt={tutorialCharacter?.jpName || "帰還メンバー"} variant="quest" rarity={tutorialCharacter?.rarity} attribute={tutorialCharacter?.alignment} backgroundSrc={getCharacterLocationBackground(tutorialCharacter?.homeTown)} frameKind="character" rarityBadge attributeBadge /></div>
             <strong className="tutorial-wire-course">新宿・初級</strong>
-            <div className="tutorial-wire-rewards is-return" aria-label="獲得報酬"><span>PLAYER XP<br />+{Number(tutorialCourse?.reward_xp || 0).toLocaleString()}</span><span>キャラEXP<br />+{Number(tutorialCourse?.reward_xp || 0).toLocaleString()}</span><span>CASH<br />+{Number(tutorialCourse?.reward_cash || 0).toLocaleString()}</span><span>アイテム<br />抽選</span></div>
+            <div className="tutorial-wire-rewards is-return" aria-label="確定報酬">
+              {Number(tutorialCourse?.reward_xp || 0) > 0 && <QuestRewardIcon itemId="PLAYER_XP" quantity={Number(tutorialCourse.reward_xp)} />}
+              {guaranteedRewardItems(tutorialCourse?.reward_items).map((item: any) => <QuestRewardIcon key={item.item_id} itemId={String(item.item_id)} quantity={Number(item.quantity || 0)} />)}
+            </div>
             <OutlawButton onClick={() => {
               if (!tutorialEncounterProjectionReady) return;
               traceTutorialJourney("quest_return_confirmed", {
@@ -741,41 +757,26 @@ export default function PatrolTab() {
             </header>
 
             <div className="reward-section patrol-result-rewards flex-col-gap-2">
-              <div className="patrol-result-primary-reward">
-                <span>獲得報酬</span>
-                <strong>+{lastPatrolRewards.totalCash.toLocaleString()} CASH</strong>
-                <small>プレゼントBOXへ送付</small>
-              </div>
-              <div className="flex-between patrol-result-row">
-                <span>基本報酬</span>
-                <strong>+{lastPatrolRewards.baseCash.toLocaleString()} CASH</strong>
-              </div>
+              <div className="patrol-result-primary-reward"><span>獲得報酬</span></div>
               
-              {lastPatrolRewards.matchBonusApplied && (
+              {lastPatrolRewards.matchBonusApplied && Number(lastPatrolRewards.matchBonusCash || 0) > 0 && (
                 <div className="flex-between font-size-7 pl-2">
                   <span className="text-color-yellow">└ 地元一致ボーナス:</span>
                   <span className="text-color-yellow">+{lastPatrolRewards.matchBonusCash} CASH</span>
                 </div>
               )}
 
-              {lastPatrolRewards.levelBonusPercent > 0 && (
+              {lastPatrolRewards.levelBonusPercent > 0 && Number(lastPatrolRewards.levelBonusCash || 0) > 0 && (
                 <div className="flex-between font-size-7 pl-2">
                   <span className="text-color-cyan">└ Lvボーナス ({lastPatrolRewards.levelBonusPercent}%):</span>
                   <span className="text-color-cyan">+{lastPatrolRewards.levelBonusCash} CASH</span>
                 </div>
               )}
 
-              <div className="flex-between border-top pt-2 mt-1 patrol-result-row">
-                <span>獲得経験値</span>
-                <strong className="text-color-cyan">+{lastPatrolRewards.totalXp.toLocaleString()} XP</strong>
+              <div className="tutorial-wire-rewards patrol-result-item-rewards" aria-label="獲得アイテム">
+                {Number(lastPatrolRewards.totalXp || 0) > 0 && <QuestRewardIcon itemId="PLAYER_XP" quantity={Number(lastPatrolRewards.totalXp)} />}
+                {lastPatrolRewards.dropItemName && Number(lastPatrolRewards.dropItemQty || 0) > 0 && <QuestRewardIcon itemId={String(lastPatrolRewards.dropItemName)} quantity={Number(lastPatrolRewards.dropItemQty)} />}
               </div>
-
-              {lastPatrolRewards.dropItemName && (
-                <div className="flex-between">
-                  <span className="text-color-gray">獲得ドロップ品:</span>
-                  <span className="text-color-yellow font-bold">{lastPatrolRewards.dropItemName} x{lastPatrolRewards.dropItemQty}</span>
-                </div>
-              )}
 
               {lastPatrolRewards.gearDropped && (
                 <div className="flex-between mt-1 p-2" style={{ background: 'rgba(255, 0, 255, 0.1)', border: '1px solid rgba(255, 0, 255, 0.3)' }}>
@@ -789,15 +790,16 @@ export default function PatrolTab() {
                   <div className={`font-size-8 font-bold mb-1 ${lastPatrolRewards.battleVictory ? 'text-color-green' : 'text-color-red'}`}>
                     NPC遭遇バトル: {lastPatrolRewards.battleVictory ? '勝利' : '敗北'}
                   </div>
-                  {lastPatrolRewards.battleVictory ? (
+                  {lastPatrolRewards.battleVictory && (Number(lastPatrolRewards.battleCashBonus || 0) > 0 || Number(lastPatrolRewards.battleXpBonus || 0) > 0 || Boolean(lastPatrolRewards.battleRewardItemName)) && (
                     <div className="pl-2 flex-col-gap-1 font-size-7 text-color-green">
-                      <div className="flex-between"><span>追加キャッシュ:</span><span>+{lastPatrolRewards.battleCashBonus} CASH</span></div>
-                      <div className="flex-between"><span>追加経験値:</span><span>+{lastPatrolRewards.battleXpBonus} XP</span></div>
+                      {Number(lastPatrolRewards.battleCashBonus || 0) > 0 && <div className="flex-between"><span>追加キャッシュ:</span><span>+{lastPatrolRewards.battleCashBonus} CASH</span></div>}
+                      {Number(lastPatrolRewards.battleXpBonus || 0) > 0 && <div className="flex-between"><span>追加経験値:</span><span>+{lastPatrolRewards.battleXpBonus} XP</span></div>}
                       {lastPatrolRewards.battleRewardItemName && (
                         <div className="flex-between"><span>追加アイテム:</span><span>{lastPatrolRewards.battleRewardItemName} x{lastPatrolRewards.battleRewardItemQty}</span></div>
                       )}
                     </div>
-                  ) : (
+                  )}
+                  {!lastPatrolRewards.battleVictory && (
                     <div className="font-size-7 text-color-gray pl-2 mt-1">
                       <div>敗北したため、追加報酬はありません。</div>
                       {activeCourse?.level_type === "HARD" && <div className="flex-row-gap-2 mt-2 quest-hard-recovery-actions">

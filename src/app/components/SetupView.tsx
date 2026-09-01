@@ -107,7 +107,7 @@ export default function SetupView() {
             <div className="setup-ageha-name">アゲハ</div>
             <TypewriterText text={AGEHA_INTRO_COPY} speedMs={38} />
           </div>
-          <button className="semantic-cta semantic-cta--primary setup-primary-action" onClick={() => advancePresentation("NAME_INPUT")}>次へ</button>
+          <button type="button" className="semantic-cta semantic-cta--primary setup-primary-action is-actionable" onClick={() => advancePresentation("NAME_INPUT")}>次へ</button>
         </section>
       ) : (
         <div className="setup-box setup-name-dialog auth-box" role="dialog" aria-modal="true" aria-labelledby="setup-name-title">

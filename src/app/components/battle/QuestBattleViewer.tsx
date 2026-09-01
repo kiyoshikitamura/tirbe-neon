@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { CHARACTERS_MASTER, getCharacterTransparentImg } from "@/utils/game_constants";
 import BattleUnitPortrait, { BattleDamagePopup, BattleParticipantView } from "./BattleUnitPortrait";
 import {
@@ -122,21 +122,6 @@ export default function QuestBattleViewer(props: Props) {
   const lastResolutionAudioKeyRef = useRef<string>("");
   const lastLegacySkillCueRef = useRef<unknown>(null);
   const lastLegacyDamageCueRef = useRef<unknown>(null);
-  const tutorialPaceRef = useRef({ normalSeen: false, skillSeen: false, advanced: false });
-  const [showSpeedGuidance, setShowSpeedGuidance] = useState(false);
-  useEffect(() => {
-    if (!props.tutorial || props.presentationPhase !== "ACTION_HOLD") return;
-    if (isSkillAction) tutorialPaceRef.current.skillSeen = true;
-    else tutorialPaceRef.current.normalSeen = true;
-    const pace = tutorialPaceRef.current;
-    if (!pace.advanced && pace.normalSeen && pace.skillSeen) {
-      pace.advanced = true;
-      props.onSpeedChange(2);
-      setShowSpeedGuidance(true);
-      const timer = window.setTimeout(() => setShowSpeedGuidance(false), 1800);
-      return () => window.clearTimeout(timer);
-    }
-  }, [isSkillAction, props.onSpeedChange, props.presentationPhase, props.tutorial]);
   useEffect(() => {
     const action = props.actionPresentation;
     if (!action || action.beat !== "ACTOR") return;
@@ -190,7 +175,7 @@ export default function QuestBattleViewer(props: Props) {
     ?? (props.battleMode === "RAID" ? 30 : props.battleMode === "PVP" || props.battleMode === "PVP_PRACTICE" || props.battleMode === "GVG" ? 20 : 15);
 
   return (
-    <div className={`playing-container quest-battle-viewer ${props.tutorial ? "is-tutorial" : ""}`} style={props.backgroundPath ? { "--battle-background-image": `url(${props.backgroundPath})` } as React.CSSProperties : undefined} data-battle-speed={props.speed} data-acceptance-state={props.tutorial ? acceptanceState : undefined} data-action-phase={actionPhase} data-action-kind={isSkillAction ? "skill" : "normal"} data-action-actor-id={activeParticipant?.id || ""} data-action-target-id={targetParticipant?.id || ""}>
+    <div className="playing-container quest-battle-viewer" style={props.backgroundPath ? { "--battle-background-image": `url(${props.backgroundPath})` } as React.CSSProperties : undefined} data-battle-speed={props.speed} data-acceptance-state={props.tutorial ? acceptanceState : undefined} data-action-phase={actionPhase} data-action-kind={isSkillAction ? "skill" : "normal"} data-action-actor-id={activeParticipant?.id || ""} data-action-target-id={targetParticipant?.id || ""}>
       <header className="battle-viewer-header">
         <span>{props.battleMode === "PATROL" ? "QUEST BATTLE" : props.battleMode}</span>
         <strong data-displayed-round={props.round} data-configured-round-limit={roundLimit}>ROUND {props.round}<small> / {roundLimit}</small></strong>
@@ -198,16 +183,14 @@ export default function QuestBattleViewer(props: Props) {
       </header>
 
       <main className="battle-roster-stage">
-        <PartyZone side="player" label="YOUR TEAM" party={props.playerParty} activeId={actorMoving ? activeParticipant?.id : undefined} targetId={targetParticipant?.id} shakingId={props.shakingId} visualOf={visualOf} popupFor={popupFor} impactFor={impactFor} hasAdvantage={hasAdvantage} tutorial={props.tutorial} reactions={reactionById} skillCue={standardSkillCue} />
-        <PartyZone side="enemy" label="ENEMY" party={props.enemyParty} activeId={actorMoving ? activeParticipant?.id : undefined} targetId={targetParticipant?.id} shakingId={props.shakingId} visualOf={visualOf} popupFor={popupFor} impactFor={impactFor} hasAdvantage={hasAdvantage} tutorial={props.tutorial} reactions={reactionById} skillCue={standardSkillCue} />
+        <PartyZone side="player" label="YOUR TEAM" party={props.playerParty} activeId={actorMoving ? activeParticipant?.id : undefined} targetId={targetParticipant?.id} shakingId={props.shakingId} visualOf={visualOf} popupFor={popupFor} impactFor={impactFor} hasAdvantage={hasAdvantage} reactions={reactionById} skillCue={standardSkillCue} />
+        <PartyZone side="enemy" label="ENEMY" party={props.enemyParty} activeId={actorMoving ? activeParticipant?.id : undefined} targetId={targetParticipant?.id} shakingId={props.shakingId} visualOf={visualOf} popupFor={popupFor} impactFor={impactFor} hasAdvantage={hasAdvantage} reactions={reactionById} skillCue={standardSkillCue} />
       </main>
 
-      <section className="battle-cutin-slot" aria-hidden={!skillPresentation || skillPresentation.tier === "STANDARD"}>
+      <section className="battle-cutin-slot" aria-hidden={!skillPresentation?.tier}>
         <BattleSkillCutIn presentation={skillPresentation} participant={activeParticipant ? { ...activeParticipant, rarity: activeVisual.rarity } : undefined} imageSrc={activeVisual.src} speed={props.speed} />
       </section>
       {isFinalHit && <div className="battle-final-hit-overlay" role="status"><strong>FINAL HIT</strong><i /></div>}
-      {showSpeedGuidance && <div className="battle-speed-guidance" role="status">ここからは2倍速で進むよ</div>}
-
       <footer className="battle-viewer-controls">
         <span className="battle-tactic-label">{tacticLabel[props.tactic] || tacticLabel.BALANCED}</span>
         <button
@@ -242,14 +225,13 @@ type PartyZoneProps = {
   popupFor: (participant: Participant) => (BattleDamagePopup & { charId: string }) | null;
   impactFor: (participant: Participant) => ReactNode;
   hasAdvantage: (participant: Participant) => boolean;
-  tutorial: boolean;
   reactions: Map<string, BattleTargetResolutionGroup>;
   skillCue?: string;
 };
 
-function PartyZone({ side, label, party, activeId, targetId, visualOf, popupFor, impactFor, hasAdvantage, tutorial, reactions, skillCue }: PartyZoneProps) {
+function PartyZone({ side, label, party, activeId, targetId, visualOf, popupFor, impactFor, hasAdvantage, reactions, skillCue }: PartyZoneProps) {
   return (
-    <section className={`battle-party-zone is-${side} ${tutorial ? "is-tutorial-party" : ""}`} data-party-size={Math.max(1, Math.min(5, party.length))} aria-label={side === "enemy" ? "敵パーティ" : "味方パーティ"}>
+    <section className={`battle-party-zone is-${side}`} data-party-size={Math.max(1, Math.min(5, party.length))} aria-label={side === "enemy" ? "敵パーティ" : "味方パーティ"}>
       <div className="battle-party-label"><span>{side === "enemy" ? "ENEMY" : "YOUR TEAM"}</span><strong>{label}</strong></div>
       <div className="battle-party-grid">
         {party.map((participant) => {

@@ -1001,7 +1001,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
           last_claimed_date: claimRes.last_claimed_date || null
         });
 
-        if (claimRes.claimed) {
+        if (claimRes.claimed && onboardingState?.tutorial_step === "AUTHENTICATION" && activeTab === "home") {
           setShowLoginBonusModal(true);
           setPresentsPrefetched(false);
         }
@@ -1010,6 +1010,14 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       console.warn("checkAndClaimLoginBonus error:", err);
     }
   };
+
+  // A fresh player's reward may be processed during bootstrap, but recognition
+  // belongs to the first Home paint after the tutorial and account link finish.
+  useEffect(() => {
+    if (onboardingState?.tutorial_step !== "AUTHENTICATION" || activeTab !== "home" || !loginBonusClaimResult?.claimed) return;
+    setShowLoginBonusModal(true);
+    setPresentsPrefetched(false);
+  }, [activeTab, loginBonusClaimResult?.claimed, onboardingState?.tutorial_step]);
 
   // ==========================================
   // 4. Supabase DB実データ同期ロード
