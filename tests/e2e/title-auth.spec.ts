@@ -304,6 +304,7 @@ test("Google linking keeps the anonymous user id and completes onboarding once",
   await seedCompletedAnonymous(page);
   await page.goto("/");
   await page.getByText("TAP TO START").click();
+  await page.getByRole("button", { name: "チュートリアルを続ける" }).click();
   await page.getByRole("button", { name: "Googleアカウントを連携" }).click();
 
   await expect(page.getByText("ゲームデータを保存")).toBeHidden();
@@ -493,7 +494,6 @@ test("Google OAuth callback converts an existing-identity error into the collisi
   await seedCompletedAnonymous(page);
   await page.goto("/auth/callback?error=identity_already_exists&error_code=identity_already_exists&error_description=Identity%20is%20already%20linked%20to%20another%20user");
   await expect(page).toHaveURL(/account_switch=google/);
-  await page.getByText("TAP TO START").click();
   await expect(page.getByRole("dialog", { name: "既存のゲームデータが見つかりました" })).toBeVisible();
   await page.getByRole("button", { name: "別のGoogleアカウントを選ぶ" }).click();
   await expect(page).not.toHaveURL(/account_switch=/);
@@ -516,6 +516,7 @@ test("Google identity collision discards only anonymous data and resumes the exi
   });
   await page.goto("/");
   await page.getByText("TAP TO START").click();
+  await page.getByRole("button", { name: "チュートリアルを続ける" }).click();
   await page.getByRole("button", { name: "Googleアカウントを連携" }).click();
   await page.getByRole("button", { name: "既存データへ切り替える" }).click();
 
