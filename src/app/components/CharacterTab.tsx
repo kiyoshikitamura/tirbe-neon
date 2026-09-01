@@ -86,6 +86,7 @@ export default function CharacterTab() {
     playCyberSe,
     session,
     onboardingState,
+    scoutAnimationState,
     syncBootstrapData,
     setConfirmDialogConfig
   } = useGame();
@@ -140,6 +141,11 @@ export default function CharacterTab() {
       setTutorialLearningPhase(null);
       return;
     }
+    // The server advances to AUTO_FORMATION as soon as the tutorial draw is
+    // committed, while the ten character reveals and compact summary still
+    // own the foreground. Defer Growth preparation until that accepted gacha
+    // presentation has been dismissed so it cannot interrupt the reveal flow.
+    if (scoutAnimationState !== null) return;
     if (!session?.user?.id || tutorialGrowthPreparedRef.current) return;
     tutorialGrowthPreparedRef.current = true;
     void supabase.rpc("prepare_current_tutorial_growth").then(async ({ data, error }) => {
@@ -165,7 +171,7 @@ export default function CharacterTab() {
         setTutorialLearningPhase("SKILL");
       }
     });
-  }, [onboardingState?.tutorial_step, session?.user?.id, setUpgradeSelectedCharId, syncBootstrapData]);
+  }, [onboardingState?.tutorial_step, scoutAnimationState, session?.user?.id, setUpgradeSelectedCharId, syncBootstrapData]);
 
   // 選択中キャラクター情報の取得
   const ownedCharIds = useMemo(() => {
