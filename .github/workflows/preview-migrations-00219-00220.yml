@@ -1,0 +1,99 @@
+name: Preview migrations 00219-00220 (one-time)
+
+on:
+  push:
+    branches:
+      - develop
+    paths:
+      - .github/workflows/preview-migrations-00219-00220.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: preview-migrations-00219-00220
+  cancel-in-progress: false
+
+jobs:
+  apply-preview-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      SUPABASE_EXPECTED_PROJECT_REF: sufvuqdnqohpfzkwxohq
+      SUPABASE_PREVIEW_PROJECT_REF: sufvuqdnqohpfzkwxohq
+      PREVIEW_REF: sufvuqdnqohpfzkwxohq
+      PRODUCTION_REF: ktpolnkyyfkowxdmijww
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Guard secrets and target
+        shell: bash
+        run: |
+          set -euo pipefail
+          : "${SUPABASE_ACCESS_TOKEN:?SUPABASE_ACCESS_TOKEN is missing}"
+          : "${SUPABASE_DB_PASSWORD:?SUPABASE_DB_PASSWORD is missing}"
+          test "${PREVIEW_REF}" = "sufvuqdnqohpfzkwxohq"
+          test "${SUPABASE_EXPECTED_PROJECT_REF}" = "${PREVIEW_REF}"
+          test "${SUPABASE_PREVIEW_PROJECT_REF}" = "${PREVIEW_REF}"
+          test "${PREVIEW_REF}" != "${PRODUCTION_REF}"
+
+      - name: Link guarded Preview project
+        shell: bash
+        run: |
+          set -euo pipefail
+          supabase link --project-ref "${PREVIEW_REF}" --password "${SUPABASE_DB_PASSWORD}"
+          node scripts/supabase_target_guard.mjs --environment preview --mutation
+
+      - name: Assert exactly two pending migrations
+        shell: bash
+        run: |
+          set -euo pipefail
+          dry_run="$(supabase db push --linked --password "${SUPABASE_DB_PASSWORD}" --dry-run 2>&1)"
+          printf '%s\n' "${dry_run}"
+          pending="$(printf '%s\n' "${dry_run}" | grep -oE '202[0-9]{11}_[A-Za-z0-9_.-]+\.sql' | sort -u || true)"
+          expected="$(printf '%s\n'             '20260901000219_optional_account_authentication.sql'             '20260901000220_post_tutorial_loadout_guide.sql')"
+          if [ "${pending}" != "${expected}" ]; then
+            echo "Refusing migration push: pending set is not exactly 00219 and 00220."
+            exit 1
+          fi
+
+      - name: Apply migrations to Preview
+        shell: bash
+        run: |
+          set -euo pipefail
+          supabase db push --linked --password "${SUPABASE_DB_PASSWORD}"
+
+      - name: Read-only postflight
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p supabase/postflight
+          cat > supabase/postflight/verify_00219_00220.sql <<'SQL'
+          select (
+            (select count(*) from supabase_migrations.schema_migrations
+              where version in ('20260901000219','20260901000220')) = 2
+            and exists (
+              select 1 from information_schema.columns
+              where table_schema = 'public'
+                and table_name = 'tutorial_progress'
+                and column_name = 'authentication_pending'
+            )
+            and to_regprocedure('public.defer_tutorial_authentication()') is not null
+            and to_regprocedure('public.save_recommended_main_formation()') is not null
+            and to_regprocedure('public.apply_recommended_main_loadout()') is not null
+          ) as all_ok
+          \gset
+          \if :all_ok
+            \echo 'Preview migrations 00219 and 00220 verified.'
+          \else
+            \echo 'Preview migration postflight failed.'
+            \quit 1
+          \endif
+          SQL
+          node scripts/run_guarded_postflight.mjs             --environment preview             --file supabase/postflight/verify_00219_00220.sql
