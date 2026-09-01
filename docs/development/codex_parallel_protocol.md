@@ -51,9 +51,9 @@ Codex Workerの「実装完了」を自動的にPASSとして扱わない。`IMP
 
 1. Repository root `AGENTS.md`
 2. `docs/development/release_board.md`
-3. 自分に割り当てられた `docs/development/agent_tasks/<TASK>.md`
+3. 自分に割り当てられた `docs/development/agent_tasks/<TASK-ID>.md`\n4. 対応する `docs/development/agent_tasks/<TASK-ID>.task.yaml`
 
-いずれかが存在しない、読めない、または内容が矛盾する場合は実装を開始せず、Main AI Agentへ報告する。
+いずれかが存在しない、読めない、対応するTask IDが一致しない、または内容が矛盾する場合は実装を開始せず、Main AI Agentへ報告する。Task Factory経由では、Main AI AgentがShared Dispatch Registryのlockとreservationを確定する前にWorkerを開始してはならない。
 
 ## Priority
 
