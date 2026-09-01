@@ -236,6 +236,12 @@ export function useBattle(options: UseBattleOptions) {
   const officialPatrolWinnerRef = useRef<"PLAYER" | "ENEMY" | null>(null);
   const [officialPatrolEvents, setOfficialPatrolEvents] = useState<ServerBattleEvent[]>([]);
   const [officialPatrolEventIndex, setOfficialPatrolEventIndex] = useState(0);
+
+  // The accepted tutorial battle presentation is the 2x stress-test fixture.
+  // Enter it at that learned pace while keeping the speed control user-toggleable.
+  useEffect(() => {
+    if (tutorialBattleActive && battleState === "PLAYING") setBattleSpeed(2);
+  }, [battleState, tutorialBattleActive]);
   const [officialPvpReplayId, setOfficialPvpReplayId] = useState<string | null>(null);
   const [officialPvpWinner, setOfficialPvpWinner] = useState<"PLAYER" | "ENEMY" | null>(null);
   const [officialPvpEvents, setOfficialPvpEvents] = useState<ServerBattleEvent[]>([]);
