@@ -20,15 +20,19 @@ An instruction to implement or proceed authorizes scoped branches, commits, vali
 
 ## Task manifest
 
+Every dispatched task must persist its machine-readable manifest at `docs/development/agent_tasks/<TASK-ID>.task.yaml`. The parent dispatcher is the sole writer and must update it with the current Git blob SHA as a compare-and-swap precondition. A stale write or missing manifest blocks dispatch.
+
 Every dispatched task must record:
 
 ```yaml
 task_id: ""
+manifest_path: "docs/development/agent_tasks/<TASK-ID>.task.yaml"
 title: ""
 priority: "P0 | P1 | P2"
 status: "READY"
 base_sha: ""
 branch: ""
+worker_id: ""
 owner_role: "IMPLEMENTER"
 risk_lane: "GREEN | YELLOW | RED"
 execution: "PARALLEL | SEQUENTIAL | BLOCKED"
@@ -48,6 +52,10 @@ acceptance:
   machine: []
   visual: []
   human_required: true
+  human_status: "NOT_REQUIRED | PENDING | PASS | FAIL"
+  accepted_sha: ""
+  accepted_by: ""
+  accepted_at: ""
 outputs:
   candidate_sha: ""
   pull_request: ""
@@ -59,6 +67,10 @@ outputs:
 ```
 
 Do not fabricate unknown fields. Mark the task `BLOCKED` when an unknown changes the implementation or authority boundary.
+
+The dispatcher must assign a concrete `worker_id` and atomically claim the manifest before starting a worker. Workers may report results but do not mutate the canonical manifest directly. Before dispatching another task, the parent reads every active manifest from its recorded branch/path and checks worker identity, scope, likely files, authority, and external-state overlap.
+
+Human PASS is valid only when `accepted_sha == candidate_sha == preview_sha` for Preview-backed acceptance. Any change to `candidate_sha` or `preview_sha` automatically resets `human_status` to `PENDING` and clears `accepted_sha`, `accepted_by`, and `accepted_at`. A generic approval must never be carried across commits.
 
 ## Parallel-safety rules
 
@@ -118,7 +130,7 @@ After-only evidence is insufficient when a visual or interaction change is claim
 Require an explicit merge instruction such as `Task Aをdevelopへmergeして` or `PR #123をmergeして`. A generic approval such as `OK` or `反映して` is Human Acceptance, not merge authorization. Before merging, verify:
 
 - exact PR and accepted commit SHA;
-- current Human Acceptance record;
+- current Human Acceptance record, including `human_status: PASS`, `accepted_sha`, approver, and timestamp;
 - no unresolved P0/P1 review finding;
 - CI and required targeted checks pass;
 - latest `develop` is integrated and checks rerun;
