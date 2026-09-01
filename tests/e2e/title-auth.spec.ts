@@ -246,7 +246,7 @@ test("email linking keeps the anonymous user id and completes onboarding once", 
     methods: JSON.parse(localStorage.getItem("mock_db_user_account_auth_methods") || "[]"),
   }));
   expect(state.userId).toBe("00000000-0000-4000-8000-000000000099");
-  expect(state.progress).toEqual([{ user_id: state.userId, step_id: "AUTHENTICATION" }]);
+  expect(state.progress).toEqual([{ user_id: state.userId, step_id: "AUTHENTICATION", authentication_pending: false }]);
   expect(state.methods).toEqual([{ user_id: state.userId, auth_method: "EMAIL" }]);
 });
 
@@ -316,7 +316,7 @@ test("Google linking keeps the anonymous user id and completes onboarding once",
   }));
   expect(state.userId).toBe("00000000-0000-4000-8000-000000000099");
   expect(state.intent).toBeNull();
-  expect(state.progress).toEqual([{ user_id: state.userId, step_id: "AUTHENTICATION" }]);
+  expect(state.progress).toEqual([{ user_id: state.userId, step_id: "AUTHENTICATION", authentication_pending: false }]);
   expect(state.methods).toEqual([{ user_id: state.userId, auth_method: "GOOGLE" }]);
 });
 

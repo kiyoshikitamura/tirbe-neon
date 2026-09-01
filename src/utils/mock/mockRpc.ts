@@ -100,6 +100,30 @@ const recordMockFunnelMilestone = (client: any, userId: string, milestone: strin
   if (trigger) evaluateMockMissionProgress(client, userId, trigger, 1);
 };
 
+const recordMockLifetimeMilestone = (client: any, userId: string, milestone: string, metadata: Record<string, unknown> = {}) => {
+  const exists = (client.getStorage("user_funnel_milestones") || [])
+    .some((entry: any) => entry.user_id === userId && entry.milestone === milestone);
+  if (!exists) recordMockFunnelMilestone(client, userId, milestone, metadata);
+};
+
+const rarityScore = (rarity?: string) => ({ SSR: 4, SR: 3, R: 2, N: 1 }[rarity || "N"] || 0);
+
+const mockCharacterPower = (character: any, equipments: any[]) => {
+  const master = CANONICAL_CHARACTERS.find((entry) => entry.character_id === character.character_id);
+  if (!master) return 0;
+  const stats = canonicalCharacterStats(master.lv1, master.lv100, Number(character.level || 1), Number(character.awakening_level || 0));
+  const equipmentPower = equipments
+    .filter((entry: any) => entry.equipped_character_id === character.id)
+    .reduce((total: number, owned: any) => {
+      const equipment = CANONICAL_EQUIPMENTS.find((entry) => entry.equipment_id === (owned.equipment_id || owned.equipment_master_id));
+      if (!equipment || (equipment.exclusive_character_id && equipment.exclusive_character_id !== character.character_id)) return total;
+      return total + (["hp", "atk", "def"] as const).reduce((sum, key) => (
+        sum + canonicalEquipmentFlatStat(equipment.base_stats[key], Number(owned.level || 1), Number(owned.plus_val || 0))
+      ), 0);
+    }, 0);
+  return stats.hp + stats.atk + stats.def + equipmentPower;
+};
+
 const applyMockCharacterAwakeningEquivalent = (character: any) => {
   const result = applyCharacterAwakeningCopyEquivalent(
     Number(character.awakening_level || 0),
@@ -550,6 +574,106 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     client.setStorage("user_main_formations", formations);
     const power = (client.getStorage("user_power_rankings") || []).find((entry: any) => entry.user_id === userId)?.total_power || 0;
     return { data: { total_power: Number(power), slots: ids.length, character_ids: requested }, error: null };
+  }
+
+  if (funcName === "save_recommended_main_formation") {
+    const userId = typeof window === "undefined" ? null : localStorage.getItem("tribe_demo_uuid");
+    if (!userId) return { data: null, error: { message: "authentication required", code: "42501" } };
+    const characters = (client.getStorage("user_characters") || []).filter((entry: any) => entry.user_id === userId);
+    const equipments = client.getStorage("user_equipments") || [];
+    const selected = characters.slice().sort((left: any, right: any) => (
+      mockCharacterPower(right, equipments) - mockCharacterPower(left, equipments)
+      || String(left.character_id).localeCompare(String(right.character_id))
+      || String(left.id).localeCompare(String(right.id))
+    )).slice(0, 5);
+    if (selected.length === 0) return { data: null, error: { message: "owned character required", code: "P0002" } };
+    const formations = (client.getStorage("user_main_formations") || []).filter((row: any) => row.user_id !== userId);
+    selected.forEach((character: any, index: number) => formations.push({ user_id: userId, slot: index + 1, user_character_id: character.id, updated_at: new Date().toISOString() }));
+    client.setStorage("user_main_formations", formations);
+    const totalPower = selected.reduce((sum: number, character: any) => sum + mockCharacterPower(character, equipments), 0);
+    const powers = client.getStorage("user_power_rankings") || [];
+    const power = powers.find((entry: any) => entry.user_id === userId);
+    if (power) power.total_power = totalPower;
+    else powers.push({ user_id: userId, total_power: totalPower, updated_at: new Date().toISOString() });
+    client.setStorage("user_power_rankings", powers);
+    return { data: { status: "success", character_ids: selected.map((entry: any) => entry.character_id), total_power: totalPower }, error: null };
+  }
+
+  if (funcName === "apply_recommended_main_loadout") {
+    const userId = typeof window === "undefined" ? null : localStorage.getItem("tribe_demo_uuid");
+    if (!userId) return { data: null, error: { message: "authentication required", code: "42501" } };
+    const allCharacters = client.getStorage("user_characters") || [];
+    const formation = (client.getStorage("user_main_formations") || []).filter((row: any) => row.user_id === userId).sort((a: any, b: any) => a.slot - b.slot);
+    const party = formation.map((row: any) => allCharacters.find((entry: any) => entry.user_id === userId && entry.id === row.user_character_id)).filter(Boolean);
+    if (party.length !== 5) return { data: null, error: { message: "Main Formation must contain five Characters", code: "23514" } };
+    const partyIds = new Set(party.map((entry: any) => entry.id));
+    const skills = client.getStorage("user_skills") || [];
+    const equipments = client.getStorage("user_equipments") || [];
+    skills.filter((entry: any) => entry.user_id === userId && partyIds.has(entry.equipped_character_id)).forEach((entry: any) => { entry.equipped_character_id = null; entry.slot_index = null; });
+    equipments.filter((entry: any) => entry.user_id === userId && partyIds.has(entry.equipped_character_id)).forEach((entry: any) => { entry.equipped_character_id = null; entry.slot_index = null; });
+
+    let skillCount = 0;
+    for (let slot = 0; slot < 6; slot += 1) {
+      for (const character of party) {
+        if (slot >= canonicalSkillSlotCount(Number(character.awakening_level || 0))) continue;
+        const alreadyHasExclusive = skills.some((entry: any) => entry.user_id === userId && entry.equipped_character_id === character.id
+          && CANONICAL_SKILLS.find((master) => master.skill_id === entry.skill_card_id)?.exclusive_character_id);
+        const candidates = skills.filter((entry: any) => {
+          if (entry.user_id !== userId || entry.equipped_character_id) return false;
+          const master = CANONICAL_SKILLS.find((item) => item.skill_id === entry.skill_card_id);
+          return master && (!master.exclusive_character_id || (master.exclusive_character_id === character.character_id && !alreadyHasExclusive));
+        }).sort((left: any, right: any) => {
+          const leftMaster = CANONICAL_SKILLS.find((entry) => entry.skill_id === left.skill_card_id)!;
+          const rightMaster = CANONICAL_SKILLS.find((entry) => entry.skill_id === right.skill_card_id)!;
+          return Number(rightMaster.exclusive_character_id === character.character_id) - Number(leftMaster.exclusive_character_id === character.character_id)
+            || Number(right.plus_val || 0) - Number(left.plus_val || 0)
+            || rarityScore(rightMaster.rarity) - rarityScore(leftMaster.rarity)
+            || leftMaster.skill_id.localeCompare(rightMaster.skill_id)
+            || String(left.id).localeCompare(String(right.id));
+        });
+        if (candidates[0]) { candidates[0].equipped_character_id = character.id; candidates[0].slot_index = slot; skillCount += 1; }
+      }
+    }
+
+    const slotCategories = ["WEAPON", "WEAPON", "HEAD", "BODY", "LEGS", "ACCESSORY", "ACCESSORY"];
+    let equipmentCount = 0;
+    for (let slot = 0; slot < slotCategories.length; slot += 1) {
+      const members = slot % 2 === 0 ? party : party.slice().reverse();
+      for (const character of members) {
+        const candidates = equipments.filter((entry: any) => {
+          if (entry.user_id !== userId || entry.equipped_character_id) return false;
+          const master = CANONICAL_EQUIPMENTS.find((item) => item.equipment_id === (entry.equipment_id || entry.equipment_master_id));
+          return master?.category === slotCategories[slot] && (!master.exclusive_character_id || master.exclusive_character_id === character.character_id);
+        }).sort((left: any, right: any) => {
+          const leftMaster = CANONICAL_EQUIPMENTS.find((entry) => entry.equipment_id === (left.equipment_id || left.equipment_master_id))!;
+          const rightMaster = CANONICAL_EQUIPMENTS.find((entry) => entry.equipment_id === (right.equipment_id || right.equipment_master_id))!;
+          const contribution = (owned: any, master: any) => (["hp", "atk", "def"] as const).reduce((sum, key) => sum + canonicalEquipmentFlatStat(master.base_stats[key], Number(owned.level || 1), Number(owned.plus_val || 0)), 0);
+          return Number(rightMaster.exclusive_character_id === character.character_id) - Number(leftMaster.exclusive_character_id === character.character_id)
+            || contribution(right, rightMaster) - contribution(left, leftMaster)
+            || Number(right.level || 1) - Number(left.level || 1)
+            || Number(right.plus_val || 0) - Number(left.plus_val || 0)
+            || rarityScore(rightMaster.rarity) - rarityScore(leftMaster.rarity)
+            || leftMaster.equipment_id.localeCompare(rightMaster.equipment_id)
+            || String(left.id).localeCompare(String(right.id));
+        });
+        if (candidates[0]) { candidates[0].equipped_character_id = character.id; candidates[0].slot_index = slot; equipmentCount += 1; }
+      }
+    }
+    if (skillCount === 0 || equipmentCount === 0) return { data: null, error: { message: "Main Formation requires at least one Skill and one Equipment", code: "23514" } };
+    client.setStorage("user_skills", skills);
+    client.setStorage("user_equipments", equipments);
+    recordMockLifetimeMilestone(client, userId, "first_main_loadout", { skillCount, equipmentCount });
+    const totalPower = party.reduce((sum: number, character: any) => sum + mockCharacterPower(character, equipments), 0);
+    const powers = client.getStorage("user_power_rankings") || [];
+    const power = powers.find((entry: any) => entry.user_id === userId);
+    if (power) power.total_power = totalPower;
+    else powers.push({ user_id: userId, total_power: totalPower, updated_at: new Date().toISOString() });
+    client.setStorage("user_power_rankings", powers);
+    return { data: { status: "success", skillCount, equipmentCount, totalPower, characters: party.map((character: any) => ({
+      characterId: character.character_id, userCharacterId: character.id,
+      skillCount: skills.filter((entry: any) => entry.equipped_character_id === character.id).length,
+      equipmentCount: equipments.filter((entry: any) => entry.equipped_character_id === character.id).length,
+    })) }, error: null };
   }
 
   if (funcName === "get_current_main_formation") {
@@ -1175,9 +1299,9 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     const supportedProviders = new Set((overriddenProviders || (isAnonymous ? [] : [authMode.toLowerCase()]))
       .filter((provider) => provider === "email" || provider === "google"));
     const identityProvider = supportedProviders.size === 1 ? [...supportedProviders][0] : null;
-    const identityIntegrityValid = !isAnonymous
-      && supportedProviders.size === 1
-      && (!method || method.auth_method.toLowerCase() === identityProvider);
+    const identityIntegrityValid = (isAnonymous && supportedProviders.size === 0 && !method)
+      || (!isAnonymous && supportedProviders.size === 1
+        && (!method || method.auth_method.toLowerCase() === identityProvider));
     const hasProfile = users.some((user: any) => user.id === userId);
     const isLegacyAuthenticated = identityIntegrityValid && hasProfile && !method && (!progress?.step_id || progress.step_id === "AUTHENTICATION");
     return {
@@ -1186,10 +1310,15 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
         is_anonymous: isAnonymous,
         has_profile: hasProfile,
         tutorial_step: progress?.step_id || null,
+        authentication_pending: Boolean(progress?.authentication_pending),
         auth_method: method?.auth_method || (identityProvider ? identityProvider.toUpperCase() : null),
         is_legacy_authenticated: isLegacyAuthenticated,
         identity_integrity_valid: identityIntegrityValid,
-        gameplay_authorized: hasProfile && identityIntegrityValid && ((method && progress?.step_id === "AUTHENTICATION") || isLegacyAuthenticated),
+        gameplay_authorized: hasProfile && identityIntegrityValid && (
+          (isAnonymous && progress?.step_id === "COMPLETE" && progress?.authentication_pending === true)
+          || (!isAnonymous && method && progress?.step_id === "AUTHENTICATION")
+          || isLegacyAuthenticated
+        ),
       },
       error: null,
     };
@@ -1235,6 +1364,7 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     const entry = progress.find((value: any) => value.user_id === userId);
     if (!entry || entry.step_id !== params.p_expected_step) return { data: null, error: { message: "Unexpected tutorial step" } };
     entry.step_id = params.p_next_step;
+    if (params.p_next_step === "COMPLETE") entry.authentication_pending = false;
     client.setStorage("tutorial_progress", progress);
     return { data: entry.step_id, error: null };
   }
@@ -1441,9 +1571,29 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     if (existingMethod && existingMethod.auth_method !== requestedMethod) return { data: null, error: { message: "A different authentication method is already linked" } };
     if (!existingMethod) methods.push({ user_id: userId, auth_method: requestedMethod });
     entry.step_id = "AUTHENTICATION";
+    entry.authentication_pending = false;
     client.setStorage("tutorial_progress", progress);
     client.setStorage("user_account_auth_methods", methods);
     return { data: "AUTHENTICATION", error: null };
+  }
+
+  if (funcName === "defer_tutorial_authentication") {
+    const userId = typeof window === "undefined" ? null : localStorage.getItem("tribe_demo_uuid");
+    const authMode = typeof window === "undefined" ? null : localStorage.getItem("mock_auth_mode");
+    const progress = client.getStorage("tutorial_progress") || [];
+    const entry = progress.find((value: any) => value.user_id === userId);
+    const methods = client.getStorage("user_account_auth_methods") || [];
+    const identities = client.getStorage("auth_identities") || [];
+    if (!userId || authMode !== "ANONYMOUS") return { data: null, error: { message: "Only the current anonymous account can defer authentication" } };
+    if (!entry || entry.step_id !== "COMPLETE") return { data: null, error: { message: "Tutorial completion is required" } };
+    if (methods.some((value: any) => value.user_id === userId)
+      || identities.some((value: any) => value.user_id === userId && value.provider !== "anonymous")) {
+      return { data: null, error: { message: "A connected identity cannot defer authentication" } };
+    }
+    entry.authentication_pending = true;
+    entry.completed_at ||= new Date().toISOString();
+    client.setStorage("tutorial_progress", progress);
+    return { data: "COMPLETE", error: null };
   }
 
   if (funcName === "discard_current_anonymous_account_for_switch") {
@@ -3217,6 +3367,18 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     client.setStorage("user_skills", skills);
     client.setStorage("user_equipments", equipments);
     recordMockFunnelMilestone(client, p_user_id, "first_gacha", { source: gacha.gacha_type === "SKILL" ? "skill_gacha" : "equipment_gacha" });
+    const tutorialComplete = (client.getStorage("tutorial_progress") || [])
+      .some((entry: any) => entry.user_id === p_user_id && (
+        entry.step_id === "AUTHENTICATION"
+        || (entry.step_id === "COMPLETE" && entry.authentication_pending === true)
+      ));
+    if (tutorialComplete && p_currency_type === "free" && p_pull_count === 10) {
+      if (p_gacha_id === "SKILL_NORMAL") {
+        recordMockLifetimeMilestone(client, p_user_id, "first_free_skill_ten_pull", { gachaId: p_gacha_id, requestId: p_request_id, pullCount: 10 });
+      } else if (p_gacha_id === "EQUIP_NORMAL") {
+        recordMockLifetimeMilestone(client, p_user_id, "first_free_equipment_ten_pull", { gachaId: p_gacha_id, requestId: p_request_id, pullCount: 10 });
+      }
+    }
     if (p_currency_type !== "free" && (p_gacha_id === "SKILL_SPECIAL" || p_gacha_id === "EQUIP_SPECIAL")) {
       const pityPoints = client.getStorage("user_gacha_pity_points") || [];
       const pity = pityPoints.find((entry: any) => entry.user_id === p_user_id && entry.pity_master_id === "pity_special_common");

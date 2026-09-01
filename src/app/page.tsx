@@ -38,7 +38,8 @@ import TitleView from "./components/TitleView";
 import MoveBaseModal from "./components/MoveBaseModal";
 import TutorialWorldIntro from "./components/TutorialWorldIntro";
 import TutorialRuleGuide from "./components/TutorialRuleGuide";
-import TutorialAuthentication from "./components/TutorialAuthentication";
+import AccountAuthenticationModal from "./components/TutorialAuthentication";
+import AuthenticationReminderModal from "./components/AuthenticationReminderModal";
 import BrandedLoading from "./components/ui/BrandedLoading";
 import CanonicalDialog from "./components/ui/CanonicalDialog";
 import HomeResumeShell from "./components/HomeResumeShell";
@@ -67,7 +68,7 @@ function AppContent() {
   }, []);
   const { playBgm } = useAudio();
   const tutorialStep = onboardingState?.tutorial_step;
-  const isMandatoryTutorial = Boolean(tutorialStep && tutorialStep !== "AUTHENTICATION");
+  const isMandatoryTutorial = Boolean(tutorialStep && !onboardingState?.gameplay_authorized);
 
   React.useLayoutEffect(() => {
     const resetCanvasOrigin = () => {
@@ -94,7 +95,7 @@ function AppContent() {
   useAssetTierPreloader(
     DEFERRED_ASSETS,
     "DEFERRED",
-    bootAssets.ready && !showTitleView && tutorialStep === "AUTHENTICATION",
+    bootAssets.ready && !showTitleView && Boolean(onboardingState?.gameplay_authorized),
   );
 
   React.useEffect(() => {
@@ -263,7 +264,8 @@ function AppContent() {
             <CardBattleView />
             <TutorialWorldIntro />
             <TutorialRuleGuide />
-            <TutorialAuthentication />
+            <AuthenticationReminderModal />
+            <AccountAuthenticationModal />
 
             {/* Layer 6: 最上位の共通ダイアログとブロッカー */}
             <ConfirmDialog {...confirmDialogConfig} />

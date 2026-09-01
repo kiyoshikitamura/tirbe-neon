@@ -22,7 +22,9 @@ test.beforeEach(async ({ page }) => {
       { id: "30000000-0000-4000-8000-000000000203", name: "CYAN EDGE", level: 2, member_count: 5, member_limit: 12, recruitment_mode: "OPEN_JOIN", approval_required: false, description: "初心者歓迎", active_members_7d: 4, raid_participants_7d: 1 },
     ]));
     localStorage.setItem("mock_db_guild_members", "[]");
-    localStorage.setItem("mock_db_user_funnel_milestones", "[]");
+    localStorage.setItem("mock_db_user_funnel_milestones", JSON.stringify([
+      "first_free_skill_ten_pull", "first_free_equipment_ten_pull", "first_main_loadout",
+    ].map((milestone) => ({ user_id: userId, milestone, occurrence_count: 1 }))));
   });
 });
 

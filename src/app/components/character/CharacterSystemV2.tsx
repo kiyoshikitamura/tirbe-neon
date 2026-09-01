@@ -125,7 +125,10 @@ export default function CharacterSystemV2() {
     if (partyPending || game.upgradeLoading) return;
     setPartyPending(true);
     try {
-      await game.handleAutoEquipComposite(party.filter((member: any) => member.record && member.master).map((member: any) => ({ characterDbId: member.record.id, masterCharId: member.master.id })));
+      await game.handleAutoEquipComposite(
+        party.filter((member: any) => member.record && member.master).map((member: any) => ({ characterDbId: member.record.id, masterCharId: member.master.id })),
+        { mainFormation: true },
+      );
     } finally {
       setPartyPending(false);
     }

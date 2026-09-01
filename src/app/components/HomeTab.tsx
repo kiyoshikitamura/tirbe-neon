@@ -105,6 +105,7 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
     chatUnreadCounts,
     setShowMissionPanel,
     setShowLoginBonusModal,
+    setShowAccountAuthenticationModal,
     setShowMoveBaseModal,
     setShowTribeChatPanel,
     navigateTab,
@@ -123,7 +124,8 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
     guildMembershipAuthorityReady,
     featureOperatingStates,
     fetchPlayerDetail,
-    setErrorMessage
+    setErrorMessage,
+    setGuideGachaCategory
   } = useGame();
 
   const equippedTitleName = ownedTitles.find((title: { id: string }) => title.id === titleEquipped)?.name || titleEquipped;
@@ -239,9 +241,11 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
         && guildMembershipAuthorityReady);
     if (!ctaAuthorityReady) return null;
     const tutorialStep = onboardingState?.tutorial_step;
-    if (tutorialStep && tutorialStep !== "AUTHENTICATION") return { key: "tutorial", title: "チュートリアルを続ける", tab: tutorialStep === "FREE_GACHA" ? "gacha" : tutorialStep === "AUTO_FORMATION" ? "character" : "patrol" };
+    if (tutorialStep && !onboardingState?.gameplay_authorized) return { key: "tutorial", title: "チュートリアルを続ける", tab: tutorialStep === "FREE_GACHA" ? "gacha" : tutorialStep === "AUTO_FORMATION" ? "character" : "patrol" };
+    if (!funnelMilestones.has("first_free_skill_ten_pull")) return { key: "first_free_asset_gacha", title: "無料スキル／装備ガチャを引こう", tab: "gacha" };
+    if (!funnelMilestones.has("first_free_equipment_ten_pull")) return { key: "first_free_asset_gacha", title: "無料スキル／装備ガチャを引こう", tab: "gacha" };
+    if (!funnelMilestones.has("first_main_loadout")) return { key: "first_main_loadout", title: "装備を整えよう", tab: "character" };
     if (!funnelMilestones.has("first_pvp")) return { key: "first_pvp", title: "最初のPvPへ挑戦", tab: "pvp" };
-    if (!funnelMilestones.has("ranking_viewed")) return { key: "ranking_viewed", title: "ランキングを確認", tab: "ranking" };
     if (!funnelMilestones.has("first_raid") && isRaidActive) return { key: "first_raid", title: "開催中レイドへ", tab: "raid" };
     if (!userGuildMember) {
       if (pendingGuildJoinRequests.length > 0) return { key: "guild_pending", title: "ギルド申請を確認", tab: "guild" };
@@ -287,7 +291,12 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
       setActivationHandoffPending(false);
       setShowMissionPanel(true);
     } else if (primaryCta.action === "guild_chat") setShowTribeChatPanel(true);
-    else if (primaryCta.tab) navigateTab(primaryCta.tab);
+    else if (primaryCta.tab) {
+      if (primaryCta.key === "first_free_asset_gacha") {
+        setGuideGachaCategory(funnelMilestones.has("first_free_skill_ten_pull") ? "EQUIPMENT" : "SKILL");
+      }
+      navigateTab(primaryCta.tab);
+    }
     playCyberSe("click");
   };
 
@@ -492,6 +501,16 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
         >
           <span>{baseName}</span><small>{currentBase.file.toUpperCase()}</small><b aria-hidden="true">›</b>
         </button>
+
+        {onboardingState?.is_anonymous && onboardingState?.authentication_pending && <button
+          type="button"
+          className="mypage-authentication-status active-scale-effect"
+          onClick={() => { setShowAccountAuthenticationModal(true); playCyberSe("click"); }}
+          aria-label="未認証：アカウント認証を開く"
+        >
+          <span className="mypage-authentication-lock" aria-hidden="true"><i /><b /></span>
+          <small>未認証</small>
+        </button>}
 
         <div className="mypage-sub-icons-left">
           {miniNavigationItems.map((item) => (

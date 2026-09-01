@@ -48,7 +48,8 @@ function seedActivationState(options: { member: boolean; completed?: boolean; pe
   localStorage.setItem("mock_db_tutorial_progress", JSON.stringify([{ user_id: userId, step_id: "AUTHENTICATION" }]));
   localStorage.setItem("mock_db_user_account_auth_methods", JSON.stringify([{ user_id: userId, auth_method: "EMAIL" }]));
   localStorage.setItem("mock_db_user_funnel_milestones", JSON.stringify([
-    "tutorial_complete", "first_pvp", "ranking_viewed", "first_raid", "guild_joined", "guild_activation",
+    "tutorial_complete", "first_free_skill_ten_pull", "first_free_equipment_ten_pull", "first_main_loadout",
+    "first_pvp", "ranking_viewed", "first_raid", "guild_joined", "guild_activation",
     ...(options.completed ? ["activation_mission_handoff"] : []),
   ].map((milestone) => ({ user_id: userId, milestone, occurrence_count: 1 }))));
   localStorage.setItem("mock_db_guilds", JSON.stringify([{
