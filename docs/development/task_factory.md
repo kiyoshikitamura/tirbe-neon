@@ -149,7 +149,7 @@ Use sequential execution when tasks share a component, migration chain, canonica
 
 ### GREEN
 
-Presentation, copy, isolated UI, fixtures, and non-authoritative QA changes. Human PASS plus machine gates can authorize integration when the user explicitly says to reflect or merge the accepted task.
+Presentation, copy, isolated UI, fixtures, and non-authoritative QA changes. Human PASS plus machine gates can authorize integration only when the user explicitly names the accepted task or PR and instructs the agent to merge it.
 
 ### YELLOW
 
