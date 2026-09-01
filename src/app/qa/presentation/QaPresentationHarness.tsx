@@ -448,9 +448,10 @@ function ProductionHomeFixture({ scenario }: { scenario: HomeScenario }) {
     playCyberSe: noop,
     fetchPlayerDetail: (userId: string) => setOpenedProfileId(userId),
   };
+  const guideMilestones = ["first_free_skill_ten_pull", "first_free_equipment_ten_pull", "first_main_loadout"];
   const milestones = activationComplete
-    ? ["first_pvp", "ranking_viewed", "first_raid", "guild_activation", "activation_mission_handoff"]
-    : raidActive ? ["first_pvp", "ranking_viewed"] : [];
+    ? [...guideMilestones, "first_pvp", "ranking_viewed", "first_raid", "guild_activation", "activation_mission_handoff"]
+    : raidActive ? [...guideMilestones, "first_pvp", "ranking_viewed"] : guideMilestones;
   const activityIsSelf = scenario === "first-home-activity-self";
   const activities = [
     { id: "qa-activity-1", activity_type: "SSR_CHARACTER", actor_user_id: activityIsSelf ? "qa-self" : "other-user", actor_display_name: activityIsSelf ? "NEON-R" : "KAI", actor_favorite_character_id: activityIsSelf ? homeLeader.id : "char_reiji_01", actor_guild_name: "NIGHT CREW", created_at: "2026-08-28T10:15:00+09:00" },

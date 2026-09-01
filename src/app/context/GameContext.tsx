@@ -437,6 +437,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     gachaRarityRates, setGachaRarityRates,
     dailyFreeGachaFlags, setDailyFreeGachaFlags,
     dailyFreeGachaReady, setDailyFreeGachaReady,
+    guideGachaCategory, setGuideGachaCategory,
     specialPityPoints, setSpecialPityPoints,
     scoutAnimationState, setScoutAnimationState,
     scoutFlashingColor, setScoutFlashingColor,
@@ -703,6 +704,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     setUserXp(0);
     setDailyFreeGachaReady(false);
     setDailyFreeGachaFlags({ CHARACTER: false, SKILL: false, EQUIPMENT: false });
+    setGuideGachaCategory(null);
     setTotalPower(0);
     setTotalPowerLoading(Boolean(nextUserId));
     loginBonusRequestUserRef.current = null;
@@ -3335,6 +3337,11 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       if (typeof drawResult.data?.cash === "number") setCash(drawResult.data.cash);
       if (typeof drawResult.data?.diamonds === "number") setDiamonds(drawResult.data.diamonds);
       if (useCurrency === "FREE") setDailyFreeGachaFlags(prev => ({ ...prev, [category]: false }));
+      if (useCurrency === "FREE" && scoutCount === 10 && scoutType === "SKILL_NORMAL") {
+        setGuideGachaCategory("EQUIPMENT");
+      } else if (useCurrency === "FREE" && scoutCount === 10 && scoutType === "EQUIP_NORMAL") {
+        setGuideGachaCategory(null);
+      }
       reportScoutTiming("result_confirmed", { resultCount: assetResults.length });
       const bootstrapPromise = syncBootstrapData(session.user.id)
         .then(() => reportScoutTiming("bootstrap_complete"))
@@ -3873,7 +3880,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         const rightStats = getCharacterTotalStats(right, userEquipmentsList);
         const leftPower = leftStats.hp + leftStats.atk + leftStats.def;
         const rightPower = rightStats.hp + rightStats.atk + rightStats.def;
-        return rightPower - leftPower;
+        return rightPower - leftPower || String(left.character_id).localeCompare(String(right.character_id)) || String(left.id).localeCompare(String(right.id));
       })
       .slice(0, 5)
       .map((character: any) => character.character_id);
@@ -3933,12 +3940,16 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
           }
         }).catch((bootstrapError) => console.warn("Tutorial formation bootstrap refresh failed:", bootstrapError));
       } else {
-        const saveError = await persistPartyFormation(committedParty);
-        if (saveError) {
-          console.warn("Failed to save auto formation:", saveError);
-          setErrorMessage(`編成の保存に失敗しました。（${saveError.code || "unknown"}）`);
+        const { data: recommendedFormation, error: recommendedFormationError } = await supabase.rpc("save_recommended_main_formation");
+        if (recommendedFormationError) {
+          console.warn("Failed to save auto formation:", recommendedFormationError);
+          setErrorMessage(`編成の保存に失敗しました。（${recommendedFormationError.code || "unknown"}）`);
           return false;
         }
+        if (Array.isArray(recommendedFormation?.character_ids) && recommendedFormation.character_ids.length > 0) {
+          committedParty = recommendedFormation.character_ids.map(String);
+        }
+        setTotalPower(Number(recommendedFormation?.total_power || 0));
       }
       actionPerformance.mark("response");
     }
@@ -4354,6 +4365,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     featureOperatingStates,
     dailyFreeGachaFlags,
     dailyFreeGachaReady,
+    guideGachaCategory,
+    setGuideGachaCategory,
     refreshDailyFreeGachaAuthority,
     refreshIdentityLeaderAuthority,
     specialPityPoints,

@@ -19,7 +19,7 @@ const CATEGORY_META: Readonly<Record<GachaCategory, { label: string; prefix: "CH
 };
 
 export default function GachaTab() {
-  const { handleScout, gachaMasters, gachaRarityRates, dailyFreeGachaFlags, dailyFreeGachaReady, refreshDailyFreeGachaAuthority, userItems, cash, upgradeLoading, onboardingState, playSe } = useGame();
+  const { handleScout, gachaMasters, gachaRarityRates, dailyFreeGachaFlags, dailyFreeGachaReady, refreshDailyFreeGachaAuthority, userItems, cash, upgradeLoading, onboardingState, playSe, guideGachaCategory } = useGame();
   const isTutorialScout = onboardingState?.tutorial_step === "FREE_GACHA";
   const [activeCategory, setActiveCategory] = useState<GachaCategory>("CHARACTER");
   const [activeSurface, setActiveSurface] = useState<GachaSurface>("NORMAL");
@@ -55,6 +55,12 @@ export default function GachaTab() {
     if (!dailyFreeGachaReady) void refreshDailyFreeGachaAuthority?.();
   }, [dailyFreeGachaReady, refreshDailyFreeGachaAuthority]);
 
+  useEffect(() => {
+    if (!guideGachaCategory) return;
+    setActiveCategory(guideGachaCategory);
+    setActiveSurface("NORMAL");
+  }, [guideGachaCategory]);
+
   if (isTutorialScout) {
     const tutorialCreative = resolveAvailableGachaCreative("CHAR_NORMAL");
     return (
@@ -86,6 +92,9 @@ export default function GachaTab() {
   return (
     <fieldset className="view-container relative gacha-view-root gacha-action-fieldset" disabled={pending} aria-busy={pending}>
       <div className="gacha-scroll-shell">
+        {guideGachaCategory && <p className="gacha-guide-target" role="status">
+          初心者ガイド：{guideGachaCategory === "SKILL" ? "スキル" : "装備"}の無料10連を引こう
+        </p>}
         <section className="gacha-product-banner" aria-label={`${meta.label}${activeSurface === "NORMAL" ? "ノーマル" : "スペシャル"}ガチャ`}>
           {creative ? <Image src={creative.assetPath} alt="" width={creative.width} height={creative.height} unoptimized priority sizes="(max-width: 430px) 100vw, 430px" /> : <div className="gacha-banner-fallback">{meta.label}ガチャ</div>}
         </section>

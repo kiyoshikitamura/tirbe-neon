@@ -15,6 +15,7 @@ export function useGacha() {
   });
   const [dailyFreeGachaReady, setDailyFreeGachaReady] = useState(false);
   const [specialPityPoints, setSpecialPityPoints] = useState<number>(0);
+  const [guideGachaCategory, setGuideGachaCategory] = useState<"SKILL" | "EQUIPMENT" | null>(null);
 
   const [scoutAnimationState, setScoutAnimationState] = useState<null | "PROCESSING" | "FLASHING" | "READY" | "SHOW_RESULTS">(null);
   const [scoutFlashingColor, setScoutFlashingColor] = useState<"BLUE" | "PURPLE" | "GOLD">("BLUE");
@@ -27,6 +28,7 @@ export function useGacha() {
     gachaRarityRates, setGachaRarityRates,
     dailyFreeGachaFlags, setDailyFreeGachaFlags,
     dailyFreeGachaReady, setDailyFreeGachaReady,
+    guideGachaCategory, setGuideGachaCategory,
     specialPityPoints, setSpecialPityPoints,
     scoutAnimationState, setScoutAnimationState,
     scoutFlashingColor, setScoutFlashingColor,

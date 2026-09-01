@@ -19,6 +19,7 @@ const sumPower = (stats: { hp: number; atk: number; def: number; spd: number; lu
 type GrowthRequest = { itemId: string; count: number };
 type AutoEquipTarget = { characterDbId: string; masterCharId: string };
 type OwnedUpgradeOptions = { lockOwned?: boolean; refresh?: boolean };
+type AutoEquipOptions = { mainFormation?: boolean };
 
 export function useCharacterProgression(
   session: any,
@@ -442,12 +443,20 @@ export function useCharacterProgression(
         }).sort((a: any, b: any) => {
           const mA = CANONICAL_EQUIPMENT_VIEW.find((m: any) => m.id === a.equipment_id);
           const mB = CANONICAL_EQUIPMENT_VIEW.find((m: any) => m.id === b.equipment_id);
+          const exclusiveA = mA?.exclusive_character_id === masterCharId ? 1 : 0;
+          const exclusiveB = mB?.exclusive_character_id === masterCharId ? 1 : 0;
+          if (exclusiveB !== exclusiveA) return exclusiveB - exclusiveA;
+          const statA = ["hp", "atk", "def"].reduce((sum, key) => sum + canonicalEquipmentFlatStat(Number((mA as any)?.[key] || 0), Number(a.level || 1), Number(a.plus_val || 0)), 0);
+          const statB = ["hp", "atk", "def"].reduce((sum, key) => sum + canonicalEquipmentFlatStat(Number((mB as any)?.[key] || 0), Number(b.level || 1), Number(b.plus_val || 0)), 0);
+          if (statB !== statA) return statB - statA;
+          const levelDiff = Number(b.level || 1) - Number(a.level || 1);
+          if (levelDiff !== 0) return levelDiff;
+          const lbDiff = Number(b.plus_val || 0) - Number(a.plus_val || 0);
+          if (lbDiff !== 0) return lbDiff;
           const rarityScore: any = { SSR: 4, SR: 3, R: 2, N: 1 };
           const rDiff = (rarityScore[mB?.rarity || "N"] || 0) - (rarityScore[mA?.rarity || "N"] || 0);
           if (rDiff !== 0) return rDiff;
-          const statA = (mA?.atk || 0) + (mA?.def || 0) + (mA?.hp || 0) + (a.plus_val || 0) * 10;
-          const statB = (mB?.atk || 0) + (mB?.def || 0) + (mB?.hp || 0) + (b.plus_val || 0) * 10;
-          return statB - statA;
+          return String(mA?.id || "").localeCompare(String(mB?.id || "")) || String(a.id).localeCompare(String(b.id));
         });
 
         for (let i = 0; i < slots.length; i++) {
@@ -470,8 +479,10 @@ export function useCharacterProgression(
           return false;
         }
         if (options.refresh !== false) await syncBootstrapData(session.user.id);
+        return true;
       }
-      return true;
+      setErrorMessage("装備できる所持装備がありません。");
+      return false;
     } catch (err) {
       console.warn("Failed equip_gear_bulk:", err);
       setErrorMessage("おすすめ装備の適用に失敗しました。");
@@ -532,7 +543,9 @@ export function useCharacterProgression(
         const lbDiff = (b.plus_val || 0) - (a.plus_val || 0);
         if (lbDiff !== 0) return lbDiff;
         const rarityScore: any = { SSR: 4, SR: 3, R: 2, N: 1 };
-        return (rarityScore[mB?.rarity || "N"] || 0) - (rarityScore[mA?.rarity || "N"] || 0);
+        const rarityDiff = (rarityScore[mB?.rarity || "N"] || 0) - (rarityScore[mA?.rarity || "N"] || 0);
+        if (rarityDiff !== 0) return rarityDiff;
+        return String(mA?.id || "").localeCompare(String(mB?.id || "")) || String(a.id).localeCompare(String(b.id));
       });
 
       const selectedSkillUuids: string[] = [];
@@ -569,11 +582,30 @@ export function useCharacterProgression(
     }
   };
 
-  const handleAutoEquipComposite = async (targets: AutoEquipTarget[]) => {
+  const handleAutoEquipComposite = async (targets: AutoEquipTarget[], options: AutoEquipOptions = {}) => {
     if (!session || targets.length === 0 || !beginUpgradeAction()) return { complete: false, completedTargetIds: [] as string[] };
     const completedTargetIds: string[] = [];
     playCyberSe("click");
     try {
+      if (options.mainFormation) {
+        const { data, error } = await supabase.rpc("apply_recommended_main_loadout");
+        if (error || data?.status !== "success") {
+          setErrorMessage(error?.message || "メイン編成のおまかせ装備を完了できませんでした。");
+          return { complete: false, completedTargetIds };
+        }
+        await syncBootstrapData(session.user.id);
+        const characters = Array.isArray(data.characters) ? data.characters : [];
+        completedTargetIds.push(...characters.map((entry: any) => String(entry.userCharacterId)).filter(Boolean));
+        const resultLines = characters.map((entry: any) => `${entry.skillCount}スキル／${entry.equipmentCount}装備`);
+        setConfirmDialogConfig({
+          isOpen: true,
+          title: "おまかせ装備",
+          message: `メイン編成5人へスキル${Number(data.skillCount || 0)}件・装備${Number(data.equipmentCount || 0)}件を配分しました。${resultLines.length ? `\n各メンバー: ${resultLines.join("、")}` : ""}`,
+          confirmText: "OK", cancelText: "", presentation: "canonical",
+          onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null),
+        });
+        return { complete: true, completedTargetIds };
+      }
       const operation = await runCompositeOperation(targets, async (target) => {
         const skillsApplied = await handleEquipSkillBulkRecommended(target.characterDbId, target.masterCharId, { lockOwned: true, refresh: false });
         if (!skillsApplied) return false;

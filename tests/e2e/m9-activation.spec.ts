@@ -16,8 +16,13 @@ test.beforeEach(async ({ page }, testInfo) => {
     ]));
     localStorage.setItem("mock_db_tutorial_progress", JSON.stringify([{ user_id: me, step_id: "AUTHENTICATION" }]));
     localStorage.setItem("mock_db_user_account_auth_methods", JSON.stringify([{ user_id: me, auth_method: "EMAIL" }]));
+    const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+    localStorage.setItem("mock_db_user_login_bonuses", JSON.stringify([{ user_id: me, current_day: 1, total_logins: 1, last_claimed_date: today }]));
     localStorage.setItem("mock_db_user_funnel_milestones", JSON.stringify([
       { user_id: me, milestone: "tutorial_complete", occurrence_count: 1 },
+      { user_id: me, milestone: "first_free_skill_ten_pull", occurrence_count: 1 },
+      { user_id: me, milestone: "first_free_equipment_ten_pull", occurrence_count: 1 },
+      { user_id: me, milestone: "first_main_loadout", occurrence_count: 1 },
       { user_id: me, milestone: "first_pvp", occurrence_count: 1 },
     ]));
     localStorage.setItem("mock_db_guilds", JSON.stringify([
@@ -43,17 +48,14 @@ async function enterGame(page: import("@playwright/test").Page) {
   if (await tapToStart.isVisible()) await tapToStart.click();
   if (await continueAction.isVisible()) await continueAction.click();
   await expect(page.locator(".header-mobile")).toBeVisible();
+  const loginBonusClose = page.locator(".login-bonus-modal-overlay").getByRole("button", { name: "閉じる" });
+  if (await loginBonusClose.isVisible()) await loginBonusClose.click();
 }
 
-test("First PvP milestone resumes through Ranking, Raid and public Guild discovery", async ({ page }) => {
+test("First PvP milestone resumes through Raid and public Guild discovery without requiring Ranking", async ({ page }) => {
   await enterGame(page);
-  await expect(page.locator(".mypage-primary-cta")).toContainText("ランキングを確認");
+  await expect(page.locator(".mypage-primary-cta")).toContainText("開催中レイドへ");
   await page.locator(".mypage-primary-cta").click();
-  await expect(page.locator(".ranking-tab-view")).toBeVisible();
-  await expect(page.getByRole("button", { name: "次はレイドへ挑戦" })).toBeVisible();
-  const milestones = await page.evaluate(() => JSON.parse(localStorage.getItem("mock_db_user_funnel_milestones") || "[]"));
-  expect(milestones.some((entry: any) => entry.milestone === "ranking_viewed")).toBeTruthy();
-  await page.getByRole("button", { name: "次はレイドへ挑戦" }).click();
   await expect(page.locator(".raid-view")).toBeVisible();
 
   await page.getByRole("button", { name: "マイページ", exact: true }).click();
@@ -71,7 +73,7 @@ test("First PvP milestone resumes through Ranking, Raid and public Guild discove
 
 test("Ranking never advertises an inactive Raid and continues to a valid social action", async ({ page }) => {
   await enterGame(page);
-  await page.locator(".mypage-primary-cta").click();
+  await page.locator(".sub-icon-unit").filter({ hasText: "ランキング" }).click();
   await expect(page.locator(".ranking-tab-view")).toBeVisible();
   await expect(page.getByRole("button", { name: "次はレイドへ挑戦" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "おすすめTRIBEを見る" })).toBeVisible();
