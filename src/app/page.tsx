@@ -3,7 +3,7 @@
 import React from "react";
 import dynamic from "next/dynamic";
 import { useAssetTierPreloader } from "./hooks/useImagePreloader";
-import { BOOT_CRITICAL_ASSETS, DEFERRED_ASSETS, TUTORIAL_CRITICAL_ASSETS } from "./lib/screenManifests";
+import { BOOT_CRITICAL_ASSETS, DEFERRED_ASSETS, TUTORIAL_CRITICAL_ASSETS, TUTORIAL_STEP_ASSET_MANIFESTS } from "./lib/screenManifests";
 import { GameProvider, useGame } from "./context/GameContext";
 import { AudioProvider, useAudio } from "@/audio/AudioProvider";
 import AuthView from "./components/AuthView";
@@ -85,6 +85,12 @@ function AppContent() {
     ? homeResumeSnapshot
     : null;
   useAssetTierPreloader(TUTORIAL_CRITICAL_ASSETS, "TUTORIAL_CRITICAL", bootAssets.ready);
+  const currentTutorialAssets = TUTORIAL_STEP_ASSET_MANIFESTS[tutorialStep || ""] || [];
+  const tutorialScreenAssets = useAssetTierPreloader(
+    currentTutorialAssets,
+    "TUTORIAL_CRITICAL",
+    bootAssets.ready && isMandatoryTutorial && currentTutorialAssets.length > 0,
+  );
   useAssetTierPreloader(
     DEFERRED_ASSETS,
     "DEFERRED",
@@ -125,6 +131,19 @@ function AppContent() {
 
   if (authLoading && ownedHomeResumeSnapshot) {
     return <HomeResumeShell snapshot={ownedHomeResumeSnapshot} />;
+  }
+
+  if (isMandatoryTutorial && currentTutorialAssets.length > 0 && !tutorialScreenAssets.ready) {
+    return (
+      <div className="app-container">
+        <div className="app-loading-screen app-loading-screen--boot" role="status" aria-live="polite">
+          {tutorialScreenAssets.settled && tutorialScreenAssets.requiredFailed ? <>
+            <strong>画面に必要な画像を読み込めませんでした</strong>
+            <button className="semantic-cta semantic-cta--primary" onClick={() => window.location.reload()}>再読み込み</button>
+          </> : <BrandedLoading label="画面を準備中" />}
+        </div>
+      </div>
+    );
   }
 
   // 1. タイトル画面 (一番最初に表示)
