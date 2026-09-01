@@ -400,11 +400,19 @@ export default function TutorialAuthentication() {
     ) : accountConflict ? (
     <div className="modal-overlay background-black-95" style={{ zIndex: 20001 }}>
       <div className="modal-card" style={{ maxWidth: 420 }} role="dialog" aria-modal="true" aria-labelledby="account-switch-title">
-        <div id="account-switch-title" className="modal-title text-left">既存のゲームデータが見つかりました</div>
+        <div id="account-switch-title" className="modal-title text-left">
+          {accountConflict.method === "GOOGLE" ? "登録済みのGoogleアカウントが見つかりました" : "既存のゲームデータが見つかりました"}
+        </div>
         <div className="modal-desc text-left mb-3">
-          <strong>注意：この{accountConflict.method === "GOOGLE" ? "Googleアカウント" : "メールアドレス"}には、すでにTRIBE NEONのゲームデータがあります。</strong>
+          <strong>
+            {accountConflict.method === "GOOGLE"
+              ? "注意：Google認証後に、TRIBE NEONのゲームデータがあるか確認します。"
+              : "注意：このメールアドレスには、すでにTRIBE NEONのゲームデータがあります。"}
+          </strong>
           <br /><br />
-          現在のチュートリアルデータと既存データは統合できません。既存データへ切り替えると、現在の未登録データは削除され、元に戻せません。
+          {accountConflict.method === "GOOGLE"
+            ? "ゲームデータを確認できた場合のみ、現在の未登録データを削除して既存データへ切り替えます。データを確認できない場合、現在のチュートリアルデータは保持されます。"
+            : "現在のチュートリアルデータと既存データは統合できません。既存データへ切り替えると、現在の未登録データは削除され、元に戻せません。"}
         </div>
         {error && <div className="text-color-red font-size-7 mb-2" role="alert">{error}</div>}
         <button className="semantic-cta semantic-cta--danger width-100" onClick={() => void continueAccountSwitch()} disabled={working} aria-busy={working}>

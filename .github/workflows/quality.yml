@@ -96,3 +96,21 @@ jobs:
             playwright-report
           if-no-files-found: ignore
           retention-days: 7
+
+  auth-switch-e2e:
+    if: github.event_name == 'pull_request' && github.head_ref == 'codex/fix-google-account-switch-20260901'
+    runs-on: ubuntu-latest
+    env:
+      NEXT_PUBLIC_APP_ENV: test
+      NEXT_PUBLIC_USE_MOCK_DB: "true"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run build
+      - name: Run Google account-switch E2E only
+        run: npm run test:e2e -- tests/e2e/title-auth.spec.ts -g "Google identity collision discards|Google account switch keeps"

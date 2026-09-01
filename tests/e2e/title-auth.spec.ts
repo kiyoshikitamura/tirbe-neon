@@ -474,7 +474,7 @@ test("Google identity collision can be cancelled without changing anonymous tuto
   await seedCompletedAnonymous(page);
   await page.goto("/?account_switch=google");
 
-  await expect(page.getByRole("dialog", { name: "既存のゲームデータが見つかりました" })).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "登録済みのGoogleアカウントが見つかりました" })).toBeVisible();
   await page.getByRole("button", { name: "別のGoogleアカウントを選ぶ" }).click();
   await expect(page.getByText("ゲームデータを保存")).toBeVisible();
   const state = await page.evaluate(() => ({
@@ -498,7 +498,7 @@ test("authentication and account warning screens can return to title without dis
   await expect(page.getByText("ゲームデータを保存")).toBeHidden();
 
   await page.goto("/?account_switch=google");
-  await expect(page.getByRole("dialog", { name: "既存のゲームデータが見つかりました" })).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "登録済みのGoogleアカウントが見つかりました" })).toBeVisible();
   await page.getByRole("button", { name: "タイトルに戻る" }).click();
   await expect(page.getByText("TAP TO START")).toBeVisible();
   await expect(page).not.toHaveURL(/account_switch=/);
@@ -514,7 +514,7 @@ test("Google OAuth callback converts an existing-identity error into the collisi
   await seedCompletedAnonymous(page);
   await page.goto("/auth/callback?error=identity_already_exists&error_code=identity_already_exists&error_description=Identity%20is%20already%20linked%20to%20another%20user");
   await expect(page).toHaveURL(/account_switch=google/);
-  await expect(page.getByRole("dialog", { name: "既存のゲームデータが見つかりました" })).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "登録済みのGoogleアカウントが見つかりました" })).toBeVisible();
   await page.getByRole("button", { name: "別のGoogleアカウントを選ぶ" }).click();
   await expect(page).not.toHaveURL(/account_switch=/);
 });
