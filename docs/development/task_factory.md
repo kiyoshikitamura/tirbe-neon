@@ -42,6 +42,8 @@ worker_id: ""
 owner_role: "IMPLEMENTER"
 risk_lane: "GREEN | YELLOW | RED"
 execution: "PARALLEL | SEQUENTIAL | BLOCKED"
+registry_generation: 0
+reservation_state: "ACTIVE | BLOCKED_HELD | RELEASING | ARCHIVED"
 scope: []
 do_not_touch: []
 canonical_sources: []
@@ -69,6 +71,10 @@ review:
   reviewed_sha: ""
   p0_findings: []
   p1_findings: []
+  completed_at: ""
+cleanup:
+  status: "NOT_REQUIRED | PENDING | PASS | FAIL"
+  evidence: []
   completed_at: ""
 outputs:
   candidate_sha: ""
@@ -113,6 +119,19 @@ Before creating or starting any task, the parent dispatcher must:
 Only the lock holder may create or update Task Contracts and Manifests. Workers may be dispatched only after the lock holder has confirmed the artifacts and safely released the lock. If artifact creation or confirmation fails, the lock holder must record the affected reservation as `BLOCKED` with the partial artifact identities, then release the lock; it must not spawn the worker or delete an unverified resource.
 
 A missing registry branch, active unexpired lock, stale blob SHA, or conflicting reservation blocks dispatch. Expired locks may be replaced only after recording the prior dispatcher and expiry in the registry history. The registry is bootstrapped once from `docs/development/task_registry.yaml`; recreating or resetting it requires explicit infrastructure-maintenance authorization.
+
+### Reservation completion
+
+Reservations are not removed merely because implementation or review finished. For a terminal task state, the parent dispatcher must:
+
+1. Acquire the shared registry lock by compare-and-swap.
+2. Verify the active reservation's task ID, worker ID, branch, and `registry_generation`.
+3. Verify required environment cleanup from the manifest, or `cleanup.status: NOT_REQUIRED`.
+4. Set the reservation to `RELEASING`.
+5. In one compare-and-swap update, append a history entry with final task status, final/candidate commit, cleanup evidence, worker, dispatcher, and completion time; remove the exact reservation from `active_tasks`; and increment `generation`.
+6. Confirm the archive/removal commit, set the manifest reservation state to `ARCHIVED`, and release the registry lock.
+
+`MERGED`, `CLOSED`, and `OMITTED` are terminal for reservation purposes only after cleanup verification. A temporary `BLOCKED` task uses `BLOCKED_HELD` and retains its reservations. A permanently abandoned `BLOCKED` task may be archived only after the Product Owner or authorized dispatcher records the abandonment decision and cleanup evidence. Failed cleanup keeps the reservation active and blocks overlapping dispatch.
 
 ## Parallel-safety rules
 
