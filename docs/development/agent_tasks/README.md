@@ -26,7 +26,7 @@ WAIT FOR MAIN AGENT MERGE GATE
 
 具体的には、開始前に必ず次を読む。
 
-1. `.agents/AGENTS.md`
+1. Repository root `AGENTS.md`
 2. `docs/development/release_board.md`
 3. 自分に割り当てられた `docs/development/agent_tasks/<TASK>.md`
 
