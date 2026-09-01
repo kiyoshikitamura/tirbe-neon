@@ -564,6 +564,11 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
           })}
         </nav>
 
+        {primaryCta && <button className="mypage-primary-cta semantic-cta semantic-cta--primary active-scale-effect" onClick={() => void openPrimaryCta()} disabled={activationHandoffPending} aria-busy={activationHandoffPending}>
+          <strong>{activationHandoffPending ? "確認中…" : primaryCta.title}</strong>
+          <b aria-hidden="true">›</b>
+        </button>}
+
         {visibleBanners.length > 0 && <div className="mypage-event-banner-area">
           <div className="banner-slide-wrapper">
             <button
@@ -595,11 +600,6 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
             ))}
           </div>
         </div>}
-
-        {primaryCta && <button className="mypage-primary-cta semantic-cta semantic-cta--primary active-scale-effect" onClick={() => void openPrimaryCta()} disabled={activationHandoffPending} aria-busy={activationHandoffPending}>
-          <strong>{activationHandoffPending ? "確認中…" : primaryCta.title}</strong>
-          <b aria-hidden="true">›</b>
-        </button>}
 
         {/* 4. 1行チャットプレビュー ＆ 暗号メッセージアプリ『トライブ』起動 */}
         <div className="mypage-chat-preview-area">
