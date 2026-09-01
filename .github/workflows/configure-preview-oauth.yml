@@ -1,8 +1,8 @@
 name: Configure Preview OAuth
 
 on:
-  push:
-    branches: [codex/human-ng-remediation-20260901]
+  pull_request:
+    branches: [develop]
 
 jobs:
   configure-preview-oauth:
