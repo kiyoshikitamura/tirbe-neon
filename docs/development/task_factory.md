@@ -20,13 +20,19 @@ An instruction to implement or proceed authorizes scoped branches, commits, vali
 
 ## Task manifest
 
-Every dispatched task must persist its machine-readable manifest at `docs/development/agent_tasks/<TASK-ID>.task.yaml`. The parent dispatcher is the sole writer and must update it with the current Git blob SHA as a compare-and-swap precondition. A stale write or missing manifest blocks dispatch.
+Every dispatched task requires both:
+
+- Human-readable contract: `docs/development/agent_tasks/<TASK-ID>.md`
+- Machine-readable manifest: `docs/development/agent_tasks/<TASK-ID>.task.yaml`
+
+The manifest references the contract. The parent dispatcher is the sole manifest writer and must update it with the current Git blob SHA as a compare-and-swap precondition. A stale write or either missing artifact blocks dispatch.
 
 Every dispatched task must record:
 
 ```yaml
 task_id: ""
 manifest_path: "docs/development/agent_tasks/<TASK-ID>.task.yaml"
+contract_path: "docs/development/agent_tasks/<TASK-ID>.md"
 title: ""
 priority: "P0 | P1 | P2"
 status: "READY"
@@ -56,6 +62,14 @@ acceptance:
   accepted_sha: ""
   accepted_by: ""
   accepted_at: ""
+review:
+  required: true
+  status: "PENDING | PASS | FAIL"
+  reviewer_id: ""
+  reviewed_sha: ""
+  p0_findings: []
+  p1_findings: []
+  completed_at: ""
 outputs:
   candidate_sha: ""
   pull_request: ""
@@ -70,7 +84,31 @@ Do not fabricate unknown fields. Mark the task `BLOCKED` when an unknown changes
 
 The dispatcher must assign a concrete `worker_id` and atomically claim the manifest before starting a worker. Workers may report results but do not mutate the canonical manifest directly. Before dispatching another task, the parent reads every active manifest from its recorded branch/path and checks worker identity, scope, likely files, authority, and external-state overlap.
 
-Human PASS is valid only when `accepted_sha == candidate_sha == preview_sha` for Preview-backed acceptance. Any change to `candidate_sha` or `preview_sha` automatically resets `human_status` to `PENDING` and clears `accepted_sha`, `accepted_by`, and `accepted_at`. A generic approval must never be carried across commits.
+Human PASS is valid only when `accepted_sha == candidate_sha == preview_sha` for Preview-backed acceptance. Independent review is valid only when `review.status == PASS`, `review.reviewed_sha == candidate_sha`, and P0/P1 findings are empty.
+
+Any change to `candidate_sha` or `preview_sha` automatically:
+
+- resets `human_status` and `review.status` to `PENDING`;
+- clears acceptance identity and timestamp;
+- clears reviewer identity, reviewed SHA, findings, and completion time;
+- requires new Preview evidence, independent review, and Human Acceptance.
+
+A generic approval or prior review must never be carried across commits.
+
+## Shared dispatch registry
+
+All dispatchers coordinate through one registry at `docs/development/task_registry.yaml` on the persistent `agent/task-registry` branch. This branch is a control plane and is not merged into application branches.
+
+Before creating or starting any task, the parent dispatcher must:
+
+1. Read the registry and its current blob SHA.
+2. Acquire `dispatcher_lock` with a concrete dispatcher ID and bounded lease by compare-and-swap updating that same blob.
+3. Re-read active reservations and check task IDs, scope, likely files, protected authority, ports, database IDs, seed identities, and Preview resources.
+4. Add all new reservations and increment `generation` in one compare-and-swap update.
+5. Confirm the registry commit is visible before spawning workers.
+6. Release the lock after the reservation commit, or after recording a blocked dispatch.
+
+Only the lock holder may write task manifests or dispatch workers. A missing registry branch, active unexpired lock, stale blob SHA, or conflicting reservation blocks dispatch. Expired locks may be replaced only after recording the prior dispatcher and expiry in the registry history.
 
 ## Parallel-safety rules
 
@@ -113,6 +151,8 @@ The implementer repeats edit and validation until the assigned checks pass or a 
 
 Automatic GitHub review can supplement this loop but does not replace task-specific runtime, migration, or Human Acceptance evidence.
 
+Record the reviewer, findings, completion time, and exact reviewed candidate SHA in the canonical manifest. A review of any earlier SHA is stale.
+
 ## Evidence contract
 
 UI and Presentation tasks must provide:
@@ -131,7 +171,7 @@ Require an explicit merge instruction such as `Task Aをdevelopへmergeして` o
 
 - exact PR and accepted commit SHA;
 - current Human Acceptance record, including `human_status: PASS`, `accepted_sha`, approver, and timestamp;
-- no unresolved P0/P1 review finding;
+- current independent review record with `review.status: PASS`, `reviewed_sha == candidate_sha`, and no unresolved P0/P1 finding;
 - CI and required targeted checks pass;
 - latest `develop` is integrated and checks rerun;
 - the final Preview corresponds to the post-integration candidate SHA;
