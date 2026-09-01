@@ -675,6 +675,8 @@ test("three random tutorial SSRs remain the same owned character through result 
     await expect(page.locator(`.tutorial-wire-member[data-user-character-id="${ownedId}"]`)).toBeVisible();
     await page.getByRole("button", { name: "新宿へ派遣する" }).click();
     await expect(page.locator('[data-acceptance-state="Q3"]')).toBeVisible();
+    await page.waitForTimeout(2_000);
+    await expect(page.locator('[data-acceptance-state="Q3"]')).toBeVisible();
     await page.reload();
     await continueFromTitleIfNeeded();
     await expect(page.locator(`.tutorial-wire-progress-character[data-user-character-id="${ownedId}"]`)).toBeVisible();
