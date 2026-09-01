@@ -23,7 +23,12 @@ export default function TitleView() {
     : "データをお持ちの方";
 
   useEffect(() => {
-    if (showTitleView) markTitleAssetReady();
+    if (showTitleView) {
+      markTitleAssetReady();
+      setEntryActivated(false);
+      setIsGameStartTransition(false);
+      gameStartRef.current = false;
+    }
   }, [showTitleView]);
 
   if (!showTitleView) return null;
