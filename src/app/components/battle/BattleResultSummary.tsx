@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useAudio } from "@/audio/AudioProvider";
 import { analyzeBattleResult, type BattleResultParticipant, type BattleResultReplayEvent } from "@/domain/presentation/battleResultScoring";
+import { canonicalItemName } from "@/domain/gameplay/canonical/items";
 import { CHARACTERS_MASTER, getCharacterTransparentImg } from "@/utils/game_constants";
 import type { BattleModeResultDetail, BattlePresentationContext } from "@/hooks/useBattle";
 
@@ -163,10 +164,22 @@ export default function BattleResultSummary({ victory, tutorial = false, rewards
       )}
       {victory && (tutorial || presentationContext?.mode === "PATROL") ? (
         rewards ? (
-          <div className="battle-result-rewards" aria-label="獲得報酬">
-            <span><small>CASH</small><b>+{Number(rewards.totalCash || 0).toLocaleString()}</b></span>
-            <span><small>XP</small><b>+{Number(rewards.totalXp || 0).toLocaleString()}</b></span>
-            {rewards.dropItemName && <span><small>ITEM</small><b>{rewards.dropItemName} ×{Number(rewards.dropItemQty || 0)}</b></span>}
+          <div className="battle-result-canonical-rewards" aria-label="獲得報酬">
+            {Number(rewards.totalCash || 0) > 0 && <span>
+              <img src="/ui/icon_cash.png" alt="" />
+              <b>CASH</b>
+              <em>×{Number(rewards.totalCash).toLocaleString()}</em>
+            </span>}
+            {Number(rewards.totalXp || 0) > 0 && <span>
+              <span aria-hidden="true">XP</span>
+              <b>PLAYER XP</b>
+              <em>×{Number(rewards.totalXp).toLocaleString()}</em>
+            </span>}
+            {rewards.dropItemName && Number(rewards.dropItemQty || 0) > 0 && <span>
+              <CanonicalItemIcon itemId={String(rewards.dropItemName)} alt={canonicalItemName(String(rewards.dropItemName))} />
+              <b>{canonicalItemName(String(rewards.dropItemName))}</b>
+              <em>×{Number(rewards.dropItemQty).toLocaleString()}</em>
+            </span>}
           </div>
         ) : <div className="battle-result-settling" role="status"><span>報酬データを準備中</span><i aria-hidden="true" /></div>
       ) : (
