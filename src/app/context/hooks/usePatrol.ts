@@ -245,16 +245,18 @@ export function usePatrol(
         if (nextTutorialStep !== "TUTORIAL_BATTLE") {
           throw new Error(`Unexpected tutorial quest completion state: ${String(nextTutorialStep)}`);
         }
-        // The speed-up operation owns the surface until the authoritative
-        // patrol projection is ready. Releasing here used to expose the stale
-        // dispatch surface for one interaction window on mobile Safari.
+        // The instant-completion RPC has already committed both the patrol and
+        // tutorial step. Project that authoritative result immediately; a
+        // broad bootstrap refresh must not keep the speed-up CTA locked.
         invalidatePatrolBootstrap();
-        await syncBootstrapData(session.user.id);
         setActivePatrols((current) => current.map((entry) => entry.id === patrolId
           ? { ...entry, status: "CLAIMABLE", secondsLeft: 0, expires_at: new Date().toISOString() }
           : entry));
         setTutorialStep("TUTORIAL_BATTLE");
         owner.status = "SUCCESS";
+        void syncBootstrapData(session.user.id).catch((bootstrapError) => {
+          console.warn("Tutorial quest completion refresh failed:", bootstrapError);
+        });
         return true;
       } catch (error: any) {
         owner.status = "FAILED";
