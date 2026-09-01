@@ -3866,7 +3866,14 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
           supabase.rpc("get_current_onboarding_state"),
         ]).then(([, refreshedOnboarding]) => {
           if (!refreshedOnboarding.error && refreshedOnboarding.data) {
-            setOnboardingState(refreshedOnboarding.data as import("./hooks/useAuth").OnboardingState);
+            setOnboardingState(current => {
+              // This refresh starts while formation still owns DISPATCH. A
+              // fast quest start can commit FREE_INSTANT before the wider
+              // bootstrap finishes, so never let its older snapshot rewind
+              // the already-rendered tutorial step.
+              if (current?.tutorial_step !== nextStep) return current;
+              return refreshedOnboarding.data as import("./hooks/useAuth").OnboardingState;
+            });
           }
         }).catch((bootstrapError) => console.warn("Tutorial formation bootstrap refresh failed:", bootstrapError));
       } else {
