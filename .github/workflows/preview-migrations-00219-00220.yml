@@ -54,8 +54,15 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          set +e
           dry_run="$(supabase db push --linked --password "${SUPABASE_DB_PASSWORD}" --dry-run 2>&1)"
+          dry_status=$?
+          set -e
           printf '%s\n' "${dry_run}"
+          if [ "${dry_status}" -ne 0 ]; then
+            echo "Supabase dry-run failed before any DB mutation."
+            exit "${dry_status}"
+          fi
           pending="$(printf '%s\n' "${dry_run}" | grep -oE '202[0-9]{11}_[A-Za-z0-9_.-]+\.sql' | sort -u || true)"
           expected="$(printf '%s\n'             '20260901000219_optional_account_authentication.sql'             '20260901000220_post_tutorial_loadout_guide.sql')"
           if [ "${pending}" != "${expected}" ]; then
