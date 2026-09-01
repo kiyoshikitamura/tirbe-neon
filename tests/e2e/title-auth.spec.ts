@@ -294,7 +294,7 @@ test("email identity collision can be cancelled without changing anonymous tutor
   await page.getByRole("button", { name: "メールアカウントを連携" }).click();
 
   await expect(page.getByRole("dialog", { name: "既存のゲームデータが見つかりました" })).toBeVisible();
-  await page.getByRole("button", { name: "別のメールアドレスを使用" }).click();
+  await page.getByRole("button", { name: "別のメールアドレスを選ぶ" }).click();
   await expect(page.getByText("ゲームデータを保存")).toBeVisible();
   const progress = await page.evaluate(() => JSON.parse(localStorage.getItem("mock_db_tutorial_progress") || "[]"));
   expect(progress[0].step_id).toBe("COMPLETE");
@@ -477,7 +477,7 @@ test("Google identity collision can be cancelled without changing anonymous tuto
   await page.getByRole("button", { name: "Googleアカウントを連携" }).click();
 
   await expect(page.getByRole("dialog", { name: "既存のゲームデータが見つかりました" })).toBeVisible();
-  await page.getByRole("button", { name: "別のGoogleアカウントを使用" }).click();
+  await page.getByRole("button", { name: "別のGoogleアカウントを選ぶ" }).click();
   await expect(page.getByText("ゲームデータを保存")).toBeVisible();
   const state = await page.evaluate(() => ({
     mode: localStorage.getItem("mock_auth_mode"),
@@ -495,7 +495,7 @@ test("Google OAuth callback converts an existing-identity error into the collisi
   await expect(page).toHaveURL(/account_switch=google/);
   await page.getByText("TAP TO START").click();
   await expect(page.getByRole("dialog", { name: "既存のゲームデータが見つかりました" })).toBeVisible();
-  await page.getByRole("button", { name: "別のGoogleアカウントを使用" }).click();
+  await page.getByRole("button", { name: "別のGoogleアカウントを選ぶ" }).click();
   await expect(page).not.toHaveURL(/account_switch=/);
 });
 
@@ -517,7 +517,7 @@ test("Google identity collision discards only anonymous data and resumes the exi
   await page.goto("/");
   await page.getByText("TAP TO START").click();
   await page.getByRole("button", { name: "Googleアカウントを連携" }).click();
-  await page.getByRole("button", { name: "既存データで続ける" }).click();
+  await page.getByRole("button", { name: "既存データへ切り替える" }).click();
 
   await expect.poll(async () => page.evaluate(() => localStorage.getItem("tribe_demo_uuid"))).toBe("00000000-0000-4000-8000-000000000200");
   await expect(page.locator(".header-mobile")).toBeVisible();
@@ -552,7 +552,7 @@ test("email identity collision verifies credentials before discard and resumes t
   await page.getByPlaceholder("パスワード（6文字以上）").fill("existing-pass");
   await page.getByRole("button", { name: "メールアカウントを連携" }).click();
   await expect(page.getByRole("dialog", { name: "既存のゲームデータが見つかりました" })).toBeVisible();
-  await page.getByRole("button", { name: "既存データで続ける" }).click();
+  await page.getByRole("button", { name: "既存データへ切り替える" }).click();
 
   await expect.poll(async () => page.evaluate(() => localStorage.getItem("tribe_demo_uuid"))).toBe("00000000-0000-4000-8000-000000000201");
   await expect(page.locator(".header-mobile")).toBeVisible();

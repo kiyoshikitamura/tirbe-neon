@@ -79,6 +79,11 @@ function isMatchingGoogleOnboardingReturn(userId: string): boolean {
     return false;
   }
 }
+
+function hasPendingGoogleAccountSwitch(): boolean {
+  if (typeof window === "undefined") return false;
+  return new URLSearchParams(window.location.search).get("account_switch") === "google";
+}
 import { usePvp } from "./hooks/usePvp";
 import { useGvg } from "./hooks/useGvg";
 import { useRaid } from "./hooks/useRaid";
@@ -713,7 +718,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         resetAuthenticatedProjection(session.user.id);
         setSession(session);
         lastValidatedAuthUserIdRef.current = session.user.id;
-        if (isMatchingGoogleOnboardingReturn(session.user.id)) setShowTitleView(false);
+        if (isMatchingGoogleOnboardingReturn(session.user.id) || hasPendingGoogleAccountSwitch()) setShowTitleView(false);
         await checkIfSetupRequired(session.user.id);
         return;
       }
@@ -748,7 +753,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         : session);
       if (!shouldRevalidateAuthSession(event, lastValidatedAuthUserIdRef.current, session.user.id)) return;
       lastValidatedAuthUserIdRef.current = session.user.id;
-      if (isMatchingGoogleOnboardingReturn(session.user.id)) setShowTitleView(false);
+      if (isMatchingGoogleOnboardingReturn(session.user.id) || hasPendingGoogleAccountSwitch()) setShowTitleView(false);
       void checkIfSetupRequired(session.user.id);
     });
 

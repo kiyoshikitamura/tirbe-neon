@@ -41,6 +41,15 @@ export default function AuthCallbackPage() {
       const code = callbackUrl.searchParams.get("code");
       if (code) {
         callbackExchangeStarted = true;
+        // linkIdentity can return a session for an already-linked Google
+        // account. Preserve the anonymous tutorial session in memory so that
+        // this collision can be presented as an explicit choice instead of
+        // silently replacing the player at the title screen.
+        const { data: beforeExchange } = await supabase.auth.getSession();
+        const switchingToExistingData = Boolean(window.localStorage.getItem("tribe_existing_google_login_intent"));
+        const tutorialSession = beforeExchange.session?.user?.is_anonymous && !switchingToExistingData
+          ? beforeExchange.session
+          : null;
         const { data: exchangeData, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
         if (exchangeError) {
           setError(exchangeError.message);
@@ -48,6 +57,18 @@ export default function AuthCallbackPage() {
         }
         if (!exchangeData.session) {
           setError("Googleログイン後のセッションを確認できませんでした。");
+          return;
+        }
+        if (tutorialSession && exchangeData.session.user.id !== tutorialSession.user.id) {
+          const { error: restoreError } = await supabase.auth.setSession({
+            access_token: tutorialSession.access_token,
+            refresh_token: tutorialSession.refresh_token,
+          });
+          if (restoreError) {
+            setError("チュートリアルデータを保護できませんでした。画面を閉じてサポートへお問い合わせください。");
+            return;
+          }
+          returnToApp("google");
           return;
         }
         returnToApp();

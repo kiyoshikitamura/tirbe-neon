@@ -374,16 +374,16 @@ export default function TutorialAuthentication() {
       <div className="modal-card" style={{ maxWidth: 420 }} role="dialog" aria-modal="true" aria-labelledby="account-switch-title">
         <div id="account-switch-title" className="modal-title text-left">既存のゲームデータが見つかりました</div>
         <div className="modal-desc text-left mb-3">
-          この{accountConflict.method === "GOOGLE" ? "Googleアカウント" : "メールアドレス"}には、すでにTRIBE NEONのゲームデータがあります。
+          <strong>注意：この{accountConflict.method === "GOOGLE" ? "Googleアカウント" : "メールアドレス"}には、すでにTRIBE NEONのゲームデータがあります。</strong>
           <br /><br />
-          既存のゲームデータで続ける場合、現在この端末でプレイ中の未登録データは破棄されます。ゲームデータは統合されません。
+          現在のチュートリアルデータと既存データは統合できません。既存データへ切り替えると、現在の未登録データは削除され、元に戻せません。
         </div>
         {error && <div className="text-color-red font-size-7 mb-2" role="alert">{error}</div>}
         <button className="semantic-cta semantic-cta--danger width-100" onClick={() => void continueAccountSwitch()} disabled={working} aria-busy={working}>
-          {working ? "切り替え中..." : "既存データで続ける"}
+          {working ? "切り替え中..." : "既存データへ切り替える"}
         </button>
         <button className="semantic-cta semantic-cta--secondary mt-2 width-100" onClick={cancelAccountSwitch} disabled={working}>
-          {accountConflict.method === "GOOGLE" ? "別のGoogleアカウントを使用" : "別のメールアドレスを使用"}
+          {accountConflict.method === "GOOGLE" ? "別のGoogleアカウントを選ぶ" : "別のメールアドレスを選ぶ"}
         </button>
       </div>
     </div>
