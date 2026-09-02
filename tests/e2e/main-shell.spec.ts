@@ -19,7 +19,8 @@ test.beforeEach(async ({ page }) => {
 async function enterGame(page: import("@playwright/test").Page) {
   await page.goto("/");
   await page.locator("html").evaluate((root) => root.style.setProperty("--app-safe-top", "47px"));
-  await page.getByText("TAP TO START").click();
+  await page.getByRole("button", { name: "TAP TO START" }).click();
+  await page.getByRole("button", { name: "続きから" }).click();
   await expect(page.locator(".header-mobile")).toBeVisible();
   const welcomeAction = page.getByRole("button", { name: "抗争に参入する" });
   await welcomeAction.waitFor({ state: "visible", timeout: 3_000 }).catch(() => undefined);
@@ -79,9 +80,12 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 412, height: 915 }
     await expect(page.locator(".header-mobile .user-identity-row.is-compact")).toBeVisible();
 
     await page.reload();
-    const titleStart = page.getByText("TAP TO START");
-    await titleStart.waitFor({ state: "visible", timeout: 5_000 }).catch(() => undefined);
+    const titleStart = page.getByRole("button", { name: "TAP TO START" });
+    const continueAction = page.getByRole("button", { name: "続きから" });
+    const headerAfterReload = page.locator(".header-mobile");
+    await expect(titleStart.or(continueAction).or(headerAfterReload)).toBeVisible();
     if (await titleStart.isVisible()) await titleStart.click();
+    if (await continueAction.isVisible()) await continueAction.click();
     const reloadedIdentity = page.locator(".header-mobile .user-identity-row.is-compact");
     await expect(reloadedIdentity).toBeVisible();
     await expect(reloadedIdentity.locator(".character-presentation-character")).toHaveAttribute("src", /reiji_transparent_asset/);

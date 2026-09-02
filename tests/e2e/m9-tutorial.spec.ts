@@ -112,7 +112,7 @@ async function beginNewTutorial(page: import("@playwright/test").Page) {
 
 async function resumeRuleGuide(page: import("@playwright/test").Page) {
   const titleAction = page.getByRole("button", { name: "TAP TO START" });
-  const continueAction = page.getByRole("button", { name: "続きから" });
+  const continueAction = page.getByRole("button", { name: /続きから|チュートリアルを続ける/ });
   await expect(titleAction.or(continueAction)).toBeVisible();
   if (await titleAction.isVisible()) await titleAction.click();
   await expect(continueAction).toBeVisible();
@@ -521,8 +521,8 @@ test("free gacha presents one CTA, feedback, result assets, and formation connec
     expect(metrics.top).toBeGreaterThanOrEqual(0);
     expect(metrics.bottom).toBeLessThanOrEqual(metrics.viewportHeight);
     expect(metrics.cardCount).toBe(10);
-    expect(metrics.columnCount).toBe(2);
-    expect(metrics.rowCount).toBe(5);
+    expect(metrics.columnCount).toBe(5);
+    expect(metrics.rowCount).toBe(2);
     expect(new Set(metrics.cardWidths).size).toBe(1);
     expect(new Set(metrics.cardHeights).size).toBe(1);
     expect(metrics.frameRects.every((frame) => frame && frame.widthDelta <= 1 && frame.heightDelta <= 1)).toBe(true);
@@ -643,8 +643,9 @@ test("three random tutorial SSRs remain the same owned character through result 
     }, tutorialSsr);
     await page.reload();
 
-    const tapToStart = page.getByText("TAP TO START");
-    if (await tapToStart.isVisible()) await tapToStart.click();
+    const tapToStart = page.getByRole("button", { name: "TAP TO START" });
+    await expect(tapToStart).toBeVisible();
+    await tapToStart.click();
     await page.getByRole("button", { name: "はじめから" }).click();
     await enterNameRegistration(page);
     await page.getByPlaceholder("プレイヤー名を入力").fill(`連続性${caseIndex + 1}`);
@@ -667,7 +668,10 @@ test("three random tutorial SSRs remain the same owned character through result 
     await expect(guaranteedCandidate).toHaveAttribute("data-character-id", tutorialSsr.id);
     await expect(guaranteedCandidate).toHaveClass(/is-selected/);
     await page.reload();
-    if (await page.getByText("TAP TO START").isVisible()) await page.getByText("TAP TO START").click();
+    const titleAction = page.getByRole("button", { name: "TAP TO START" });
+    const continueAction = page.getByRole("button", { name: "続きから" });
+    await expect(titleAction.or(continueAction)).toBeVisible();
+    if (await titleAction.isVisible()) await titleAction.click();
     await continueFromTitleIfNeeded();
     await expect(page.getByRole("button", { name: "おすすめ編成にする" })).toBeVisible();
     await completeTutorialAutoFormation(page);
@@ -750,8 +754,12 @@ test("first quest connects dispatch, official battle, and one reward to the comp
   }, { userId });
 
   await page.goto("/");
+  const titleAction = page.getByRole("button", { name: "TAP TO START" });
   const continueFromTitle = page.getByRole("button", { name: "続きから" });
-  if (await continueFromTitle.isVisible()) await continueFromTitle.click();
+  await expect(titleAction.or(continueFromTitle)).toBeVisible();
+  if (await titleAction.isVisible()) await titleAction.click();
+  await expect(continueFromTitle).toBeVisible();
+  await continueFromTitle.click();
   await expect(page.locator('[data-acceptance-state="Q1"]')).toBeVisible();
   await expect(page.locator(".footer-mobile")).toHaveCount(0);
   await expect(page.locator(".tutorial-wire-member .character-presentation")).toBeVisible();

@@ -13,9 +13,11 @@ async function enterGame(page: Page) {
 }
 
 async function resumeAfterReload(page: Page) {
+  const tapToStart = page.getByRole("button", { name: "TAP TO START" });
   const continueButton = page.getByRole("button", { name: "続きから" });
   const header = page.locator(".header-mobile");
-  await expect(continueButton.or(header)).toBeVisible();
+  await expect(tapToStart.or(continueButton).or(header)).toBeVisible();
+  if (await tapToStart.isVisible()) await tapToStart.click();
   if (await continueButton.isVisible()) await continueButton.click();
   await expect(header).toBeVisible();
 }

@@ -42,11 +42,11 @@ test("tutorial ten-pull guarantees slot 10 SSR and visible Growth precedes forma
   if (await newGameCta.isVisible()) await newGameCta.click();
   await expect(freeCta).toBeEnabled();
   await freeCta.click();
-  const pullGate = page.getByRole("button", { name: /10 PLAYERS.*TAP TO START/ });
+  const pullGate = page.locator("[data-gacha-logo-gate]");
   await expect(pullGate).toBeVisible({ timeout:15_000 });
   await page.screenshot({ path: test.info().outputPath("gacha-start.png") });
   await pullGate.click();
-  await expect(page.getByRole("status", { name: "ガチャ演出中" })).toBeVisible();
+  await expect(page.getByRole("status", { name: "ガチャ結果を表示中" })).toBeVisible();
   const reveal = page.locator(".tutorial-gacha-reveal");
   await expect(reveal).toBeVisible({ timeout:15_000 });
   const capturedRarities = new Set<string>();
@@ -177,15 +177,18 @@ test("world information precedes Ageha and entry sub-state survives reload", asy
   }
   await page.reload();
   const titleCta = page.getByRole("button", { name: "TAP TO START" });
-  await expect(page.locator('[data-entry-state="AGEHA_INTRO"]').or(titleCta)).toBeVisible();
+  const tutorialContinue = page.getByRole("button", { name: "チュートリアルを続ける" });
+  await expect(page.locator('[data-entry-state="AGEHA_INTRO"]').or(titleCta).or(tutorialContinue)).toBeVisible();
   if (await titleCta.isVisible()) await titleCta.click();
+  if (await tutorialContinue.isVisible()) await tutorialContinue.click();
   await expect(page.locator('[data-entry-state="AGEHA_INTRO"]')).toBeVisible();
 
   await page.getByRole("button", { name: "次へ" }).click();
   await expect(page.locator('[data-entry-state="NAME_INPUT"]')).toBeVisible();
   await page.reload();
-  await expect(page.locator('[data-entry-state="NAME_INPUT"]').or(titleCta)).toBeVisible();
+  await expect(page.locator('[data-entry-state="NAME_INPUT"]').or(titleCta).or(tutorialContinue)).toBeVisible();
   if (await titleCta.isVisible()) await titleCta.click();
+  if (await tutorialContinue.isVisible()) await tutorialContinue.click();
   await expect(page.getByPlaceholder("プレイヤー名を入力")).toBeVisible();
 });
 

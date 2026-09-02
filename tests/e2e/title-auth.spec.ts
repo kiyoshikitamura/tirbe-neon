@@ -699,7 +699,7 @@ test.describe("X in-app browser Google OAuth guard", () => {
     test("blocks OAuth before it starts and retains the invitation URL", async ({ page }) => {
       await page.goto("/?invite=FRIEND-X-IOS");
       await page.getByText("TAP TO START").click();
-      await page.getByRole("button", { name: "既存アカウントでログイン" }).click();
+      await page.getByRole("button", { name: "データをお持ちの方" }).click();
       await page.locator(".auth-btn-google").click();
 
       await expect(page.getByText("Googleログインを続けるには、SafariまたはChromeでTRIBE NEONを開いてください。")).toBeVisible();

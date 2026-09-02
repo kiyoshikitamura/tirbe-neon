@@ -16,14 +16,15 @@ test.beforeEach(async ({ page }) => {
     localStorage.setItem("mock_db_user_login_bonuses", JSON.stringify([{ user_id: me, current_day: 1, total_logins: 1, last_claimed_date: cycleDate }]));
     localStorage.setItem("mock_db_users", JSON.stringify([
       { id: me, username: "V0確認", current_base_id: "shinjuku", favorite_character_id: "char_reiji_01", level: 10, cash: 50000, pvp_points: 5, total_power: 19000 },
-      { id: rivals[0], username: "街の強敵A", level: 12, total_power: 15000 },
-      { id: rivals[1], username: "街の強敵B", level: 11, total_power: 17000 },
+      { id: rivals[0], username: "街の強敵A", level: 12, total_power: 15000, favorite_character_id: "char_reiji_01" },
+      { id: rivals[1], username: "街の強敵B", level: 11, total_power: 17000, favorite_character_id: "char_rui_01" },
     ]));
     localStorage.setItem("mock_db_user_characters", JSON.stringify([
       { id: "10000000-0000-4000-8000-000000000001", user_id: me, character_id: "char_reiji_01", level: 12, awakening_level: 2, created_at: now },
       { id: "10000000-0000-4000-8000-000000000002", user_id: me, character_id: "char_rui_01", level: 10, awakening_level: 1, created_at: now },
       { id: "10000000-0000-4000-8000-000000000003", user_id: me, character_id: "char_chang_01", level: 9, awakening_level: 0, created_at: now },
       { id: "10000000-0000-4000-8000-000000000102", user_id: rivals[0], character_id: "char_reiji_01", name: "レイジ", rarity: "SSR", level: 12, awakening_level: 1, created_at: now },
+      { id: "10000000-0000-4000-8000-000000000103", user_id: rivals[1], character_id: "char_rui_01", name: "ルイ", rarity: "SSR", level: 11, awakening_level: 1, created_at: now },
     ]));
     localStorage.setItem("mock_db_user_skills", JSON.stringify([
       { id: "skill-owned-1", user_id: me, skill_card_id: "SKILL_001", plus_val: 3, equipped_character_id: "10000000-0000-4000-8000-000000000001", slot_index: 0 },
@@ -46,13 +47,14 @@ test.beforeEach(async ({ page }) => {
     localStorage.setItem("mock_db_pvp_ranks", JSON.stringify(location.search.includes("freshPvp=1") ? pvpRanks.filter((entry) => entry.user_id !== me) : pvpRanks));
     localStorage.setItem("mock_db_pvp_defense_decks", JSON.stringify([
       { user_id: rivals[0], character_1_id: "10000000-0000-4000-8000-000000000102", tactic: "BALANCED" },
-      { user_id: rivals[1], character_1_id: "10000000-0000-4000-8000-000000000102", tactic: "BALANCED" },
+      { user_id: rivals[1], character_1_id: "10000000-0000-4000-8000-000000000103", tactic: "BALANCED" },
     ]));
     localStorage.setItem("mock_db_user_main_formations", JSON.stringify([
       { user_id: me, slot: 1, user_character_id: "10000000-0000-4000-8000-000000000001" },
       { user_id: me, slot: 2, user_character_id: "10000000-0000-4000-8000-000000000002" },
       { user_id: me, slot: 3, user_character_id: "10000000-0000-4000-8000-000000000003" },
       { user_id: rivals[0], slot: 1, user_character_id: "10000000-0000-4000-8000-000000000102" },
+      { user_id: rivals[1], slot: 1, user_character_id: "10000000-0000-4000-8000-000000000103" },
     ]));
     localStorage.setItem("mock_db_user_power_rankings", JSON.stringify([
       { user_id: rivals[0], total_power: 15000, updated_at: now }, { user_id: rivals[1], total_power: 17000, updated_at: now }, { user_id: me, total_power: 19000, updated_at: now },
@@ -127,7 +129,7 @@ test("M9-V0 main cycle presents growth, mission, PvP, ranking, raid and guild di
   await expect(page.locator(".pvp-my-deck")).toContainText("総合力");
   await expect(page.locator(".pvp-opponent-card").first()).toContainText("総合力");
   await expect(page.locator(".pvp-opponent-card").first()).toContainText("順位 1位");
-  await expect(page.locator(".pvp-opponent-card").first()).toContainText("LEADER");
+  await expect(page.locator(".pvp-opponent-card").first().locator(".user-identity-row .character-presentation-character")).toBeVisible();
   await expect(page.locator(".pvp-opponent-card").first()).toContainText("総合力差");
   await expect(page.locator(".pvp-opponent-card").first().getByRole("button", { name: "対戦する" })).toBeVisible();
   await expect(page.locator(".pvp-opponent-deck .character-presentation-thumbnail").first()).toBeVisible();
