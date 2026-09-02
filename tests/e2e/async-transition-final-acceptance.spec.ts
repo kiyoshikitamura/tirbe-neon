@@ -56,7 +56,9 @@ for (const delay of DELAYS) {
     const receipt = page.getByRole("dialog", { name: "報酬獲得" });
     await probe.destinationPaint(receipt);
     await probe.unlock(operation);
-    expect(await page.evaluate(() => JSON.parse(localStorage.getItem("mock_db_presents") || "[]").filter((row: { message?: string }) => row.message === "ミッション報酬").length)).toBe(1);
+    expect(await page.evaluate(() => JSON.parse(localStorage.getItem("mock_db_presents") || "[]").filter((row: { message?: string }) => row.message === "ミッション報酬").length)).toBe(0);
+    expect(await page.evaluate(() => JSON.parse(localStorage.getItem("mock_db_user_items") || "[]").find((row: { item_id?: string; quantity?: number }) => row.item_id === "CHAR_EXP_S")?.quantity)).toBe(1);
+    expect(await page.evaluate(() => JSON.parse(localStorage.getItem("mock_db_mission_reward_delivery_ledger") || "[]").filter((row: { delivery_status?: string }) => row.delivery_status === "DELIVERED").length)).toBe(1);
     probe.assertContract();
     await probe.attach(testInfo);
   });

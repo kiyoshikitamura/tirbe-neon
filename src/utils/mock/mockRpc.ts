@@ -44,6 +44,47 @@ const resolveCanonicalRewardItem = (rewardId: string): string => {
   return rewardId;
 };
 
+const grantMockMissionReward = (client: any, userId: string, itemId: string, quantity: number) => {
+  if (!itemId || quantity <= 0) return;
+  const users = client.getStorage("users") || [];
+  const user = users.find((entry: any) => entry.id === userId);
+  if (!user) throw new Error("User not found");
+  if (itemId === "CASH") {
+    user.cash = Number(user.cash || 0) + quantity;
+    client.setStorage("users", users);
+    return;
+  }
+  if (itemId === "DIA" || itemId === "DIAMOND") {
+    user.neon_diamonds = Number(user.neon_diamonds || 0) + quantity;
+    client.setStorage("users", users);
+    return;
+  }
+  if (CANONICAL_EQUIPMENTS.some((master) => master.equipment_id === itemId)) {
+    const equipments = client.getStorage("user_equipments") || [];
+    for (let index = 0; index < quantity; index += 1) {
+      equipments.push({
+        id: `mission_equipment_${userId}_${itemId}_${Date.now()}_${index}`,
+        user_id: userId,
+        equipment_id: itemId,
+        equipment_master_id: itemId,
+        level: 1,
+        plus_val: 0,
+      });
+    }
+    client.setStorage("user_equipments", equipments);
+    return;
+  }
+  const items = client.getStorage("user_items") || [];
+  const existing = items.find((entry: any) => entry.user_id === userId && entry.item_id === itemId);
+  if (existing) existing.quantity = Number(existing.quantity || 0) + quantity;
+  else items.push({ id: `mission_item_${userId}_${itemId}`, user_id: userId, item_id: itemId, quantity });
+  client.setStorage("user_items", items);
+};
+
+const missionClaimKey = (userId: string, missionId: string, cycleDate?: string | null) => (
+  `${userId}:${missionId}:${cycleDate || "ONCE"}`
+);
+
 const canonicalQuestEnemySnapshot = (questId: string, encounterOverride?: ReturnType<typeof generateCanonicalQuestEncounter>) => {
   const encounter = encounterOverride ?? (canonicalQuestById(questId) ? generateCanonicalQuestEncounter(questId) : null);
   if (!encounter) return null;
@@ -3923,27 +3964,35 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     if (master.prerequisiteMissionId && !userMissions.some((row: any) => row.user_id === p_user_id && row.mission_id === master.prerequisiteMissionId && row.status === "CLAIMED")) {
       return { error: { message: "前提ミッションが未受取です。" } };
     }
+    const claimKey = missionClaimKey(p_user_id, p_mission_id, um.cycle_date);
+    const ledger = client.getStorage("mission_reward_delivery_ledger") || [];
+    if (ledger.some((entry: any) => entry.claim_key === claimKey)) return { error: { message: "Mission reward was already delivered." } };
+    const resolvedItemId = resolveCanonicalRewardItem(master.rewardItemId);
+    const rewards = [
+      ...(resolvedItemId && master.rewardQuantity > 0 ? [{ item_id: resolvedItemId, quantity: master.rewardQuantity }] : []),
+      ...(master.cashReward > 0 ? [{ item_id: "CASH", quantity: master.cashReward }] : []),
+    ];
+    rewards.forEach((reward) => grantMockMissionReward(client, p_user_id, reward.item_id, reward.quantity));
+    const deliveredAt = new Date().toISOString();
     um.status = "CLAIMED";
-    um.claimed_at = new Date().toISOString();
-    um.updated_at = new Date().toISOString();
-    
-    const presents = client.getStorage("presents") || [];
-    presents.push({
-      id: `mission_reward_${p_user_id}_${p_mission_id}`,
+    um.claimed_at = deliveredAt;
+    um.updated_at = deliveredAt;
+    ledger.push({
+      claim_key: claimKey,
+      user_mission_id: um.id,
       user_id: p_user_id,
-      item_id: resolveCanonicalRewardItem(master.rewardItemId),
-      quantity: master.rewardQuantity,
-      message: "ミッション報酬",
-      status: "UNCLAIMED",
-      sent_at: new Date().toISOString(),
+      mission_id: p_mission_id,
+      cycle_date: um.cycle_date || null,
+      resolved_item_id: resolvedItemId,
+      item_quantity: master.rewardQuantity,
+      cash_quantity: master.cashReward,
+      delivery_status: "DELIVERED",
+      delivered_at: deliveredAt,
     });
-    if (master.cashReward > 0) {
-      presents.push({ id:`mission_cash_${p_user_id}_${p_mission_id}`,user_id:p_user_id,item_id:"CASH",quantity:master.cashReward,message:"ミッション報酬",status:"UNCLAIMED",sent_at:new Date().toISOString() });
-    }
     unlockClaimedMissionChildren(canonicalMissionRows(), userMissions, p_user_id, p_mission_id, achievedFunnelTriggers(client, p_user_id));
     client.setStorage("user_missions", userMissions);
-    client.setStorage("presents", presents);
-    return { data: { status: "success", claimed: true, item_id: master.rewardItemId, quantity: master.rewardQuantity }, error: null };
+    client.setStorage("mission_reward_delivery_ledger", ledger);
+    return { data: { status: "success", claimed: true, mission_id: p_mission_id, delivery: "DIRECT", rewards }, error: null };
   }
 
   if (funcName === "claim_all_mission_rewards") {
@@ -3951,34 +4000,47 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     const p_user_id = typeof window === "undefined" ? null : localStorage.getItem("tribe_demo_uuid");
     if (!p_user_id) return { data: null, error: { message: "authentication required", code: "42501" } };
     const userMissions = client.getStorage("user_missions") || [];
-    const presents = client.getStorage("presents") || [];
     const candidates = userMissions.filter((um: any) => um.user_id === p_user_id && p_mission_ids.includes(um.mission_id) && um.status === "CLEAR");
     if (candidates.some((um: any) => !CANONICAL_MISSIONS.some((mission) => mission.id === um.mission_id && mission.isEnabled && mission.preopen))) {
       return { error: { message: "Canonical Mission Masterが見つかりません。" } };
     }
+    const ledger = client.getStorage("mission_reward_delivery_ledger") || [];
+    const duplicateClaim = candidates.find((um: any) => ledger.some((entry: any) => entry.claim_key === missionClaimKey(p_user_id, um.mission_id, um.cycle_date)));
+    if (duplicateClaim) return { error: { message: "Mission reward was already delivered." } };
     let count = 0;
+    const rewards: Array<{ mission_id: string; item_id: string; quantity: number }> = [];
     candidates.forEach((um: any) => {
         const master = CANONICAL_MISSIONS.find((mission) => mission.id === um.mission_id)!;
         if (master.prerequisiteMissionId && !userMissions.some((row: any) => row.user_id === p_user_id && row.mission_id === master.prerequisiteMissionId && row.status === "CLAIMED")) return;
+        const resolvedItemId = resolveCanonicalRewardItem(master.rewardItemId);
+        const missionRewards = [
+          ...(resolvedItemId && master.rewardQuantity > 0 ? [{ mission_id: um.mission_id, item_id: resolvedItemId, quantity: master.rewardQuantity }] : []),
+          ...(master.cashReward > 0 ? [{ mission_id: um.mission_id, item_id: "CASH", quantity: master.cashReward }] : []),
+        ];
+        missionRewards.forEach((reward) => grantMockMissionReward(client, p_user_id, reward.item_id, reward.quantity));
+        rewards.push(...missionRewards);
+        const deliveredAt = new Date().toISOString();
         um.status = "CLAIMED";
-        um.claimed_at = new Date().toISOString();
-        um.updated_at = new Date().toISOString();
-        presents.push({
-          id: `mission_reward_${p_user_id}_${um.mission_id}`,
+        um.claimed_at = deliveredAt;
+        um.updated_at = deliveredAt;
+        ledger.push({
+          claim_key: missionClaimKey(p_user_id, um.mission_id, um.cycle_date),
+          user_mission_id: um.id,
           user_id: p_user_id,
-          item_id: resolveCanonicalRewardItem(master.rewardItemId),
-          quantity: master.rewardQuantity,
-          message: "ミッション一括報酬",
-          status: "UNCLAIMED",
-          sent_at: new Date().toISOString(),
+          mission_id: um.mission_id,
+          cycle_date: um.cycle_date || null,
+          resolved_item_id: resolvedItemId,
+          item_quantity: master.rewardQuantity,
+          cash_quantity: master.cashReward,
+          delivery_status: "DELIVERED",
+          delivered_at: deliveredAt,
         });
-        if (master.cashReward > 0) presents.push({ id:`mission_cash_${p_user_id}_${um.mission_id}`,user_id:p_user_id,item_id:"CASH",quantity:master.cashReward,message:"ミッション一括報酬",status:"UNCLAIMED",sent_at:new Date().toISOString() });
         unlockClaimedMissionChildren(canonicalMissionRows(), userMissions, p_user_id, um.mission_id, achievedFunnelTriggers(client, p_user_id));
         count++;
     });
     client.setStorage("user_missions", userMissions);
-    client.setStorage("presents", presents);
-    return { data: { status: "success", claimed_count: count }, error: null };
+    client.setStorage("mission_reward_delivery_ledger", ledger);
+    return { data: { status: "success", claimed_count: count, delivery: "DIRECT", rewards }, error: null };
   }
 
   if (funcName === "admin_reset_daily_missions") {

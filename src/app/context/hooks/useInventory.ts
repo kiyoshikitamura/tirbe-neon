@@ -8,6 +8,21 @@ import { useImmediateActionLock } from "@/hooks/useImmediateActionLock";
 import { canonicalItemName } from "@/domain/gameplay/canonical/items";
 import { canonicalMissionRewardName } from "@/domain/gameplay/canonical/missions";
 
+const aggregateMissionRewards = (rows: Array<{ item_id?: string; quantity?: number }>) => {
+  const rewardByItem = new Map<string, number>();
+  rows.forEach((reward) => {
+    const itemId = String(reward.item_id || "");
+    const quantity = Number(reward.quantity || 0);
+    if (!itemId || quantity <= 0) return;
+    rewardByItem.set(itemId, (rewardByItem.get(itemId) || 0) + quantity);
+  });
+  return Array.from(rewardByItem, ([id, quantity]) => ({
+    id,
+    name: canonicalMissionRewardName(id),
+    quantity,
+  }));
+};
+
 export function useInventory(
   session: any,
   cash: number,
@@ -243,9 +258,8 @@ export function useInventory(
       setMissions(prev => prev.filter(m => m.id !== id));
       playCyberSe("MISSION_REWARD");
       await syncBootstrapData(session.user.id);
-      const rewards = [{ id: targetMission.reward_item || targetMission.rewardItemId, name: canonicalMissionRewardName(String(targetMission.reward_item || targetMission.rewardItemId || "")), quantity: Number(targetMission.reward_amount || targetMission.rewardQty || 0) }];
-      if (Number(targetMission.cashReward || 0) > 0) rewards.push({ id: "CASH", name: "キャッシュ", quantity: Number(targetMission.cashReward) });
-      setConfirmDialogConfig({ isOpen: true, title: "報酬獲得", message: "報酬はプレゼントへ送られました。", kind: "reward", delivery: "PRESENT", rewards, confirmText: "OK", cancelText: "", presentation: "canonical", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
+      const rewards = aggregateMissionRewards(Array.isArray(res.data?.rewards) ? res.data.rewards : []);
+      setConfirmDialogConfig({ isOpen: true, title: "報酬獲得", message: "報酬を獲得しました。", kind: "reward", delivery: "INVENTORY", rewards, confirmText: "OK", cancelText: "", presentation: "canonical", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
     } catch (err) {
       console.warn(err);
       setMissions(prev => prev.map(m => m.id === id ? { ...m, loading: false } : m));
@@ -275,13 +289,8 @@ export function useInventory(
       setMissions(prev => prev.filter(m => !(m.status === "CLEAR" && m.category === missionTab)));
       playCyberSe("MISSION_REWARD");
       await syncBootstrapData(session.user.id);
-      const rewardByItem = new Map<string, number>();
-      clearMissions.forEach((mission) => {
-        const itemId = String(mission.reward_item || mission.rewardItemId || "");
-        rewardByItem.set(itemId, (rewardByItem.get(itemId) || 0) + Number(mission.reward_amount || mission.rewardQty || 0));
-        if (Number(mission.cashReward || 0) > 0) rewardByItem.set("CASH", (rewardByItem.get("CASH") || 0) + Number(mission.cashReward));
-      });
-      setConfirmDialogConfig({ isOpen: true, title: "クリア報酬", message: "すべての報酬はプレゼントへ送られました。", kind: "reward", delivery: "PRESENT", rewards: Array.from(rewardByItem, ([id, quantity]) => ({ id, name: canonicalMissionRewardName(id), quantity })), confirmText: "閉じる", cancelText: "", presentation: "canonical", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
+      const rewards = aggregateMissionRewards(Array.isArray(res.data?.rewards) ? res.data.rewards : []);
+      setConfirmDialogConfig({ isOpen: true, title: "クリア報酬", message: "報酬を獲得しました。", kind: "reward", delivery: "INVENTORY", rewards, confirmText: "閉じる", cancelText: "", presentation: "canonical", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
     } catch (err: any) {
       console.warn(err.message);
       setMissions(prev => prev.map(m => ({ ...m, loading: false })));
