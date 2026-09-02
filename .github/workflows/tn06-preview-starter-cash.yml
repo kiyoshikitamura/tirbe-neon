@@ -105,7 +105,9 @@ jobs:
             `);
             for (const [key,value] of Object.entries(postflight)) assert.equal(value,true,`postflight ${key} failed`);
 
-            await query(await readFile(process.env.FIXTURE_FILE, "utf8"));
+            const fixtureSql = (await readFile(process.env.FIXTURE_FILE, "utf8"))
+              .replace(/^\\set[^\n]*\n/, "");
+            await query(fixtureSql);
             const [cleanup] = await query(`
               select not exists(
                 select 1 from public.users
