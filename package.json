@@ -153,7 +153,8 @@
     "verify:tn06-starter-cash-authority": "node --experimental-strip-types scripts/verify_tn06_starter_cash_authority.mjs",
     "verify:tn08-battle-terminology": "node --experimental-strip-types scripts/verify_tn08_battle_terminology.mjs",
     "verify:tn10-mission-direct-grant": "node --experimental-strip-types scripts/verify_tn10_mission_direct_grant.mjs",
-    "verify:tn11-location-quest-sync": "node --experimental-strip-types scripts/verify_tn11_location_quest_sync.mjs"
+    "verify:tn11-location-quest-sync": "node --experimental-strip-types scripts/verify_tn11_location_quest_sync.mjs",
+    "verify:tn13-inventory-projection": "node --experimental-strip-types scripts/verify_tn13_inventory_projection.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.110.2",

@@ -218,6 +218,11 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
   const {
     userItems, setUserItems,
+    inventoryProjectionOwnerUserId,
+    beginUserItemsProjectionRequest,
+    projectUserItems,
+    resetUserItemsProjection,
+    refreshUserItemsProjection,
     energyDrinks, setEnergyDrinks,
     charExpS, setCharExpS,
     charExpM, setCharExpM,
@@ -709,7 +714,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     setUserCharactersDbList([]);
     setUserSkillsList([]);
     setUserEquipmentsList([]);
-    setUserItems([]);
+    resetUserItemsProjection(nextUserId || "");
     setCash(0);
     setDiamonds(0);
     setUserLevel(1);
@@ -1106,6 +1111,10 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     if (identityLeaderOwnerUserId !== userId) setIdentityLeaderAuthorityReady(false);
     const identityAuthorityPromise = refreshIdentityLeaderAuthority(userId);
     const dailyFreeAuthorityPromise = refreshDailyFreeGachaAuthority(userId);
+    const inventoryProjectionPromise = refreshUserItemsProjection(userId).catch((error) => {
+      console.warn("Failed to prime inventory projection:", error);
+      return [];
+    });
 
     // Home badges are independent projections. Start their canonical reads at
     // bootstrap entry so Mission / Present badges do not wait behind the wider
@@ -1865,24 +1874,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
-      const { data: itemsData } = await supabase
-        .from("user_items")
-        .select("*")
-        .eq("user_id", userId);
-      
-      if (itemsData) {
-        setEnergyDrinks(itemsData.find(i => i.item_id === "ENERGY_DRINK")?.quantity || 0);
-        setCharExpS(itemsData.find(i => i.item_id === "CHAR_EXP_S")?.quantity || 0);
-        setCharExpM(itemsData.find(i => i.item_id === "CHAR_EXP_M")?.quantity || 0);
-        setCharExpL(itemsData.find(i => i.item_id === "CHAR_EXP_L")?.quantity || 0);
-        setEquipExpS(itemsData.find(i => i.item_id === "EQUIP_EXP_S")?.quantity || 0);
-        setEquipExpM(itemsData.find(i => i.item_id === "EQUIP_EXP_M")?.quantity || 0);
-        setEquipExpL(itemsData.find(i => i.item_id === "EQUIP_EXP_L")?.quantity || 0);
-        setAwakeningBooks(itemsData.find(i => i.item_id === "AWAKENING_BOOK")?.quantity || 0);
-        const skillManualQuantity = itemsData.find(i => i.item_id === "SKILL_MANUAL")?.quantity || 0;
-        setSkillManuals(skillManualQuantity);
-        setEquipLbParts(itemsData.find(i => i.item_id === "EQUIP_LB_PART")?.quantity || 0);
-      }
+      await inventoryProjectionPromise;
 
       const { data: equipsData } = await supabase
         .from("user_equipments")
@@ -2072,8 +2064,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     setResumeLoading(true);
     setAuthenticatedProjectionError(null);
     try {
-      // Continue waits only for the Home authority projection. Guild, ranking,
-      // inventory and other secondary bootstrap work stays in the background.
+      // Continue waits for the compact Home and inventory authority projections.
+      // Guild, ranking and other secondary bootstrap work stays in the background.
       const [{ data: state, error }, { data: profile, error: profileError }, { data: recovered }, { data: power }] = await Promise.all([
         supabase.rpc("get_current_onboarding_state"),
         supabase.from("users")
@@ -2082,6 +2074,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
           .single(),
         supabase.rpc("sync_and_recover_vitality_and_pvp_points", { p_user_id: userId }),
         supabase.rpc("get_my_power_snapshot"),
+        refreshUserItemsProjection(userId),
       ]);
       if (error || state?.user_id !== userId) throw error || new Error("Resume authority mismatch");
       if (profileError || profile?.id !== userId) throw profileError || new Error("Resume profile mismatch");
@@ -3300,6 +3293,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
           // The next mandatory screen needs only ownership and Growth items.
           // Project those independently of the much wider Home bootstrap so a
           // slow or unrelated feature query cannot strand the tutorial result.
+          const tutorialInventoryRequestGeneration = beginUserItemsProjectionRequest(session.user.id);
           void Promise.all([
             supabase.from("user_characters").select("*").eq("user_id", session.user.id),
             supabase.from("user_items").select("*").eq("user_id", session.user.id),
@@ -3309,11 +3303,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
             const ownedCharacters = charactersResult.data || [];
             const ownedItems = itemsResult.data || [];
             setUserCharactersDbList(ownedCharacters);
-            setUserItems(ownedItems);
-            setCharExpS(ownedItems.find((item: any) => item.item_id === "CHAR_EXP_S")?.quantity || 0);
-            setCharExpM(ownedItems.find((item: any) => item.item_id === "CHAR_EXP_M")?.quantity || 0);
-            setCharExpL(ownedItems.find((item: any) => item.item_id === "CHAR_EXP_L")?.quantity || 0);
-            setAwakeningBooks(ownedItems.find((item: any) => item.item_id === "AWAKENING_BOOK")?.quantity || 0);
+            projectUserItems(ownedItems, session.user.id, tutorialInventoryRequestGeneration);
           }).catch((projectionError) => console.warn("Tutorial acquisition projection failed:", projectionError));
         }
         const bootstrapPromise = syncBootstrapData(session.user.id)
@@ -4505,6 +4495,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     setGlobalInteractionBlocking,
     activeBanners, setActiveBanners,
     userItems, setUserItems,
+    inventoryProjectionOwnerUserId,
     raidPoints, setRaidPoints, raidFirstEntryFree, raidTopRefreshRevision,
     monthlyPassActive, setMonthlyPassActive,
     monthlyPassClaimedToday, setMonthlyPassClaimedToday,
