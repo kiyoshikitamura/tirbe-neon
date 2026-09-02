@@ -91,7 +91,7 @@ jobs:
             }
 
             await query(await readFile(process.env.POSTFLIGHT_FILE, "utf8"));
-            await query((await readFile(process.env.FIXTURE_FILE, "utf8")).replace(/^\\set[^\\n]*\\n/gm, ""));
+            await query((await readFile(process.env.FIXTURE_FILE, "utf8")).replace(/^\\set.*$/gm, ""));
 
             const [cleanup] = await query(`
               select
