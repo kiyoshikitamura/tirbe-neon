@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import { supabase, usingMockSupabase } from "@/utils/supabase";
 import { VITALITY_OVERFLOW_MAX } from "@/utils/game_constants";
 import { canUseEnergyDrink } from "@/domain/gameplay/canonical/action_resources";
@@ -40,6 +40,7 @@ export function useInventory(
   const [inventoryProjectionOwnerUserId, setInventoryProjectionOwnerUserId] = useState("");
   const activeInventoryUserIdRef = useRef(session?.user?.id || "");
   const inventoryProjectionGenerationRef = useRef(0);
+  const activeSessionUserId = session?.user?.id || "";
 
   // 消耗品ステート
   const [energyDrinks, setEnergyDrinks] = useState<number>(0);
@@ -66,7 +67,7 @@ export function useInventory(
     return inventoryProjectionGenerationRef.current;
   };
 
-  const projectUserItems = (rows: any[], ownerUserId: string, requestGeneration?: number | null) => {
+  const projectUserItems = useCallback((rows: any[], ownerUserId: string, requestGeneration?: number | null) => {
     if (ownerUserId && activeInventoryUserIdRef.current !== ownerUserId) return false;
     if (requestGeneration != null && requestGeneration !== inventoryProjectionGenerationRef.current) return false;
     const items = Array.isArray(rows) ? rows : [];
@@ -88,13 +89,20 @@ export function useInventory(
     setEquipLbParts(quantities.EQUIP_LB_PART);
     setInventoryProjectionOwnerUserId(ownerUserId);
     return true;
-  };
+  }, []);
 
-  const resetUserItemsProjection = (nextActiveUserId = "") => {
+  const resetUserItemsProjection = useCallback((nextActiveUserId = "") => {
     activeInventoryUserIdRef.current = nextActiveUserId;
     inventoryProjectionGenerationRef.current += 1;
     projectUserItems([], "");
-  };
+  }, [projectUserItems]);
+
+  useLayoutEffect(() => {
+    if (activeInventoryUserIdRef.current === activeSessionUserId) return;
+    // Some local/demo auth paths replace session directly without a Supabase
+    // auth observer event. They still need the same owner swap and full clear.
+    resetUserItemsProjection(activeSessionUserId);
+  }, [activeSessionUserId, resetUserItemsProjection]);
 
   const refreshUserItemsProjection = async (userId: string) => {
     const requestGeneration = beginUserItemsProjectionRequest(userId);

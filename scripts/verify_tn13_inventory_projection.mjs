@@ -43,7 +43,8 @@ assert.match(gameContext, /resetAuthenticatedProjection[\s\S]*?resetUserItemsPro
 assert.equal((inventoryHook.match(/refreshUserItemsProjection\(session\.user\.id\)/g) || []).length, 2, "single and bulk present claims must refresh inventory immediately");
 assert.match(inventoryHook, /activeInventoryUserIdRef\.current !== ownerUserId/, "stale responses from a previous auth owner must be rejected");
 assert.match(inventoryHook, /requestGeneration !== inventoryProjectionGenerationRef\.current/, "older requests for the same owner must be rejected");
-assert.match(inventoryHook, /resetUserItemsProjection = \(nextActiveUserId = ""\)[\s\S]*?activeInventoryUserIdRef\.current = nextActiveUserId[\s\S]*?inventoryProjectionGenerationRef\.current \+= 1/, "auth reset must replace the active owner before invalidating requests and clearing state");
+assert.match(inventoryHook, /resetUserItemsProjection = useCallback\(\(nextActiveUserId = ""\)[\s\S]*?activeInventoryUserIdRef\.current = nextActiveUserId[\s\S]*?inventoryProjectionGenerationRef\.current \+= 1/, "auth reset must replace the active owner before invalidating requests and clearing state");
+assert.match(inventoryHook, /useLayoutEffect\(\(\) => \{[\s\S]*?activeInventoryUserIdRef\.current === activeSessionUserId[\s\S]*?resetUserItemsProjection\(activeSessionUserId\)/, "direct session changes must receive the same synchronous owner reset fallback");
 assert.match(gameContext, /const inventoryProjectionPromise = refreshUserItemsProjection\(userId\)/, "bootstrap must reuse one executable inventory promise");
 assert.match(gameContext, /beginUserItemsProjectionRequest\(session\.user\.id\)[\s\S]*?projectUserItems\(ownedItems, session\.user\.id, tutorialInventoryRequestGeneration\)/, "tutorial projection must reject a stale response");
 assert.match(characterSystem, /inventoryProjectionOwnerUserId === game\.session\.user\.id/, "Growth must not expose false zeroes before the current user's inventory is ready");
