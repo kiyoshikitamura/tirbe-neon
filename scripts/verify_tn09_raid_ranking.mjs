@@ -22,8 +22,29 @@ assert.equal(rankingRewardSections("raid", "daily").length, 0);
 assert.equal(rankingRewardSections("power", "season").length, 0);
 assert.equal(rankingRewardSections("guild_power", "season").length, 0);
 
-const migration = fs.readFileSync("supabase/migrations/20260902000227_ranking_season_lifecycle.sql", "utf8");
-for (const contract of ["pg_advisory_xact_lock", "for update", "on conflict(ranking_type,starts_at)", "date_trunc('week'", "raid_damage_logs_ensure_season", "ensure_current_ranking_season('RAID'", "ensure_current_ranking_season('PVP'"]) assert.ok(migration.toLowerCase().includes(contract.toLowerCase()), contract);
+const migration = fs.readFileSync("supabase/migrations/20260902000229_ranking_season_lifecycle_authority.sql", "utf8");
+for (const contract of [
+  "canonical_ranking_reward_payload",
+  "canonical_master_freeze_versions",
+  "ranking_pvp_season_snapshots",
+  "ranking_raid_personal_season_snapshots",
+  "ranking_raid_guild_season_snapshots",
+  "ranking_season_reward_grants",
+  "finalize_pvp_season_rewards",
+  "finalize_raid_season_rewards",
+  "soft_reset_pvp_ratings",
+  "pg_advisory_xact_lock",
+  "advance_ranking_season('PVP'",
+  "advance_ranking_season('RAID'",
+  "ranking-pvp-monthly-jst",
+  "ranking-raid-weekly-jst",
+  "from public,anon,authenticated",
+]) assert.ok(migration.toLowerCase().includes(contract.toLowerCase()), contract);
+assert.ok(!migration.includes("create trigger raid_damage_logs_ensure_season"));
+assert.ok(!migration.includes("ensure_current_ranking_season"));
+const revert = fs.readFileSync("supabase/migrations/20260902000228_ranking_season_lifecycle_revert.sql", "utf8");
+assert.ok(revert.includes("20260902000227"));
+assert.ok(revert.includes("drop function if exists public.ensure_current_ranking_season"));
 const dialog = fs.readFileSync("src/app/components/ranking/RankingRewardDialog.tsx", "utf8");
 assert.ok(dialog.includes("CanonicalDialog"));
 assert.ok(dialog.includes("報酬定義なし"));
