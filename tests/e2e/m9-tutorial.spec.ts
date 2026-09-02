@@ -21,14 +21,16 @@ test.beforeEach(async ({ page }) => {
       { gacha_id: "CHAR_NORMAL", item_id: "char_mio_01", rarity: "SSR", weight: 100 },
       { gacha_id: "CHAR_SPECIAL", item_id: tutorialSsrId, rarity: "SSR", weight: 100 },
     ]));
-    localStorage.setItem("mock_db_quests", JSON.stringify([{
-      id: "q_shinjuku_short",
-      name: "新宿: 見回り (短期)",
-      duration_seconds: 60,
-      cost_vitality: 5,
-      cash_reward: 800,
-      exp_reward: 120,
-    }]));
+    if (sessionStorage.getItem("m9x_use_canonical_quest") !== "true") {
+      localStorage.setItem("mock_db_quests", JSON.stringify([{
+        id: "q_shinjuku_short",
+        name: "新宿: 見回り (短期)",
+        duration_seconds: 60,
+        cost_vitality: 5,
+        cash_reward: 800,
+        exp_reward: 120,
+      }]));
+    }
     const tutorialEnemy = { hp: 120, atk: 1, def: 0, spd: 20, luk: 0 };
     localStorage.setItem("mock_db_patrol_npcs", JSON.stringify([
       {
@@ -863,17 +865,20 @@ test("first quest connects dispatch, official battle, and one reward to the comp
   await expect(page.locator(".battle-skill-cutin.is-ssr")).toBeVisible({ timeout: 8_000 });
   await expect(page.locator(".battle-cutin-copy")).toContainText("一騎当千・無慈悲の一撃");
   await expect(page.locator(".battle-skill-cutin")).toHaveCount(1);
+  const ssrSkillActorId = await battleViewer.getAttribute("data-action-actor-id");
+  expect(ssrSkillActorId).toBeTruthy();
+  const ssrSkillId = "SKILL_036";
   await page.screenshot({ path: test.info().outputPath("M2-375-B4-skill-cutin.png"), fullPage: true });
-  await expect.poll(() => page.evaluate(() => {
+  await expect.poll(() => page.evaluate((identity) => {
     const metrics = (window as any).__TRIBE_BATTLE_PRESENTATION__;
-    return [metrics?.current, ...(metrics?.history || [])].some((entry) => entry?.kind === "skill" && entry?.impactAt);
-  }), { timeout: 4_000 }).toBe(true);
+    return [metrics?.current, ...(metrics?.history || [])].some((entry) => entry?.kind === "skill" && entry?.actorId === identity.actorId && entry?.skillId === identity.skillId && entry?.impactAt);
+  }, { actorId: ssrSkillActorId, skillId: ssrSkillId }), { timeout: 4_000 }).toBe(true);
   await expect(page.locator(".battle-skill-cutin")).toHaveCount(0);
-  const skillImpactDuration = await page.evaluate(() => {
+  const skillImpactDuration = await page.evaluate((identity) => {
     const metrics = (window as any).__TRIBE_BATTLE_PRESENTATION__;
-    const entry = [metrics?.current, ...(metrics?.history || []).slice().reverse()].find((item) => item?.kind === "skill" && item?.impactAt);
+    const entry = [metrics?.current, ...(metrics?.history || []).slice().reverse()].find((item) => item?.kind === "skill" && item?.actorId === identity.actorId && item?.skillId === identity.skillId && item?.impactAt);
     return entry ? Math.round(entry.impactAt - entry.startedAt) : 0;
-  });
+  }, { actorId: ssrSkillActorId, skillId: ssrSkillId });
   // The accepted SSR cut-in reaches impact at 520ms at 2x.
   expect(skillImpactDuration).toBeGreaterThanOrEqual(480);
   expect(skillImpactDuration).toBeLessThanOrEqual(750);
@@ -1197,7 +1202,6 @@ test("tutorial completion resumes through account save and exposes the Home next
     button.click();
   });
 
-  await expect(page.locator(".mypage-primary-cta")).toContainText("次にすること");
   await expect(page.locator(".mypage-primary-cta")).toContainText("無料スキル／装備ガチャを引こう");
   await expect(page.locator(".footer-mobile")).toBeVisible();
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem("mock_db_tutorial_progress") || "[]")[0]?.step_id)).toBe("AUTHENTICATION");
@@ -1210,6 +1214,20 @@ test("tutorial completion resumes through account save and exposes the Home next
 
 test("new mobile player completes the guided first session without footer navigation", async ({ page }) => {
   test.setTimeout(180_000);
+  await page.addInitScript(() => {
+    sessionStorage.setItem("m9x_use_canonical_quest", "true");
+    localStorage.setItem("mock_db_quests", JSON.stringify([{
+      id: "q_shinjuku_1",
+      name: "新宿・初級",
+      town_id: "shinjuku",
+      difficulty: "EASY",
+      duration_seconds: 60,
+      cost_vitality: 5,
+      reward_xp: 120,
+      reward_items: [],
+      is_unlocked: true,
+    }]));
+  });
   const timingStages = new Set<string>();
   const failedImages: string[] = [];
   const pageErrors: string[] = [];

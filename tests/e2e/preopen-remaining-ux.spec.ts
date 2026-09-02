@@ -58,7 +58,7 @@ async function enterGame(page: Page) {
 }
 
 async function openUtility(page: Page, label: "設定" | "プレゼント") {
-  await page.getByRole("button", { name: "MENU", exact: true }).click();
+  await page.getByRole("button", { name: /^MENU(?:\s|$)/ }).click();
   const menu = page.getByRole("dialog", { name: "ホームメニュー" });
   await expect(menu).toBeVisible();
   await menu.getByRole("button", { name: label, exact: true }).click();
