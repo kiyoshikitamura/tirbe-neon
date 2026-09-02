@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: targeted-acceptance-run391
+  group: targeted-acceptance-run391-wrapper
   cancel-in-progress: true
 
 jobs:
@@ -28,10 +28,9 @@ jobs:
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       - run: npm run build
-      - name: Run only the two remaining cases
+      - name: Run only the two remaining cases through the bounded runner
         run: >-
-          timeout --signal=TERM 300s
-          npx playwright test
+          npm run test:e2e --
           tests/e2e/m9-tutorial.spec.ts
           tests/e2e/quest-natural-completion.spec.ts
           --workers=2
