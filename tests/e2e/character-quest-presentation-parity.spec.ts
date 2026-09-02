@@ -68,10 +68,12 @@ async function enterGame(page: import("@playwright/test").Page) {
 
 async function continueAfterReload(page: import("@playwright/test").Page) {
   const tapToStart = page.getByRole("button", { name: "TAP TO START" });
+  const continueAction = page.getByRole("button", { name: "続きから" });
+  await expect(tapToStart.or(continueAction)).toBeVisible();
   if (await tapToStart.isVisible()) {
     await tapToStart.click();
-    await page.getByRole("button", { name: "続きから" }).click();
   }
+  await continueAction.click();
 }
 
 async function expectMobileGeometry(page: import("@playwright/test").Page, selector: string) {

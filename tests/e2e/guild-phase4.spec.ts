@@ -55,11 +55,12 @@ async function enterGuild(page: Page) {
   const titleAction = page.getByRole("button", { name: "TAP TO START" });
   const continueAction = page.getByRole("button", { name: "続きから" });
   const header = page.locator(".header-mobile");
+  const welcomeDialog = page.locator(".canonical-dialog").filter({ hasText: "ギルドへようこそ" });
   await expect(titleAction.or(continueAction).or(header)).toBeVisible();
+  if (await welcomeDialog.isVisible()) await welcomeDialog.getByRole("button", { name: "閉じる", exact: true }).last().click();
   if (await titleAction.isVisible()) await titleAction.click();
   if (await continueAction.isVisible()) await continueAction.click();
   await expect(header).toBeVisible();
-  const welcomeDialog = page.locator(".canonical-dialog").filter({ hasText: "ギルドへようこそ" });
   if (await welcomeDialog.isVisible()) await welcomeDialog.getByRole("button", { name: "閉じる", exact: true }).last().click();
   await page.getByRole("button", { name: "ギルド", exact: true }).click();
 }

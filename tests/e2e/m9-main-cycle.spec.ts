@@ -10,6 +10,10 @@ test.beforeEach(async ({ page }) => {
     const now = new Date().toISOString();
     localStorage.setItem("tribe_demo_uuid", me);
     localStorage.setItem("mock_auth_mode", "EMAIL");
+    localStorage.setItem("mock_db_tutorial_progress", JSON.stringify([{ user_id: me, step_id: "AUTHENTICATION" }]));
+    localStorage.setItem("mock_db_user_account_auth_methods", JSON.stringify([{ user_id: me, auth_method: "EMAIL" }]));
+    const cycleDate = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Tokyo" });
+    localStorage.setItem("mock_db_user_login_bonuses", JSON.stringify([{ user_id: me, current_day: 1, total_logins: 1, last_claimed_date: cycleDate }]));
     localStorage.setItem("mock_db_users", JSON.stringify([
       { id: me, username: "V0確認", current_base_id: "shinjuku", favorite_character_id: "char_reiji_01", level: 10, cash: 50000, pvp_points: 5 },
       { id: rivals[0], username: "街の強敵A", level: 12, total_power: 23500 },
@@ -62,7 +66,6 @@ test.beforeEach(async ({ page }) => {
     localStorage.setItem("mock_db_guild_members", JSON.stringify([]));
     const mission = { id: "ob_daily_patrol_01", title: "本日のシノギ", description: "クエスト派遣を1回完了する", category: "DAILY", trigger_type: "PATROL_CLEAR", target_value: 1, reward_item_id: "CASH", reward_quantity: 1000, condition_params: { cta_tab: "patrol", cta_label: "クエストへ" }, display_order: 20, is_enabled: true, is_provisional: false };
     localStorage.setItem("mock_db_missions", JSON.stringify([mission]));
-    const cycleDate = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Tokyo" });
     localStorage.setItem("mock_db_user_missions", JSON.stringify([{ id: "user-ob-daily-patrol", user_id: me, mission_id: mission.id, cycle_date: cycleDate, current_progress: 1, status: "CLEAR", claimed_at: null, missions: mission }]));
   });
 });
@@ -70,6 +73,7 @@ test.beforeEach(async ({ page }) => {
 async function enterGame(page: import("@playwright/test").Page) {
   await page.goto("/");
   await page.getByRole("button", { name: "TAP TO START" }).click();
+  await page.getByRole("button", { name: "続きから" }).click();
   await expect(page.locator(".header-mobile")).toBeVisible();
 }
 
@@ -162,6 +166,7 @@ test("Fresh player outside public top 100 receives opponents on first PvP view",
   test.setTimeout(35_000);
   await page.goto("/?freshPvp=1");
   await page.getByRole("button", { name: "TAP TO START" }).click();
+  await page.getByRole("button", { name: "続きから" }).click();
   await page.locator(".circle-menu-btn.fight").click();
   await expect(page.locator(".pvp-opponent-card")).toHaveCount(2);
   await expect(page.getByText("対戦相手が見つかりません")).toHaveCount(0);
