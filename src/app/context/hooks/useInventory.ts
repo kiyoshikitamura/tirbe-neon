@@ -1,6 +1,6 @@
 "use client";
 
-import { useLayoutEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { supabase, usingMockSupabase } from "@/utils/supabase";
 import { VITALITY_OVERFLOW_MAX } from "@/utils/game_constants";
 import { canUseEnergyDrink } from "@/domain/gameplay/canonical/action_resources";
@@ -38,14 +38,8 @@ export function useInventory(
 ) {
   const [userItems, setUserItems] = useState<any[]>([]);
   const [inventoryProjectionOwnerUserId, setInventoryProjectionOwnerUserId] = useState("");
-  const activeInventoryUserIdRef = useRef("");
+  const activeInventoryUserIdRef = useRef(session?.user?.id || "");
   const inventoryProjectionGenerationRef = useRef(0);
-  const activeInventoryUserId = session?.user?.id || "";
-  useLayoutEffect(() => {
-    if (activeInventoryUserIdRef.current === activeInventoryUserId) return;
-    activeInventoryUserIdRef.current = activeInventoryUserId;
-    inventoryProjectionGenerationRef.current += 1;
-  }, [activeInventoryUserId]);
 
   // 消耗品ステート
   const [energyDrinks, setEnergyDrinks] = useState<number>(0);
@@ -96,7 +90,8 @@ export function useInventory(
     return true;
   };
 
-  const resetUserItemsProjection = () => {
+  const resetUserItemsProjection = (nextActiveUserId = "") => {
+    activeInventoryUserIdRef.current = nextActiveUserId;
     inventoryProjectionGenerationRef.current += 1;
     projectUserItems([], "");
   };

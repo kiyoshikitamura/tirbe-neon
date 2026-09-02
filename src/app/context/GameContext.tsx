@@ -714,7 +714,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     setUserCharactersDbList([]);
     setUserSkillsList([]);
     setUserEquipmentsList([]);
-    resetUserItemsProjection();
+    resetUserItemsProjection(nextUserId || "");
     setCash(0);
     setDiamonds(0);
     setUserLevel(1);
