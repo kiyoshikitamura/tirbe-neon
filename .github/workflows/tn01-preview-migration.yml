@@ -1,4 +1,4 @@
-name: TN-01 Preview migration
+name: TN-01 Preview read-only postflight
 
 on:
   push:
@@ -12,13 +12,13 @@ permissions:
   statuses: write
 
 concurrency:
-  group: tn01-preview-migration-sufvuqdnqohpfzkwxohq
+  group: tn01-preview-postflight-sufvuqdnqohpfzkwxohq
   cancel-in-progress: false
 
 jobs:
-  apply-preview-only:
+  verify-preview-only:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 10
     env:
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
@@ -26,7 +26,6 @@ jobs:
       SUPABASE_EXPECTED_PROJECT_REF: sufvuqdnqohpfzkwxohq
       PRODUCTION_PROJECT_REF: ktpolnkyyfkowxdmijww
       MIGRATION_VERSION: "20260902000221"
-      MIGRATION_FILE: supabase/migrations/20260902000221_activation_membership_mission_handoff.sql
     steps:
       - uses: actions/checkout@v4
 
@@ -39,7 +38,7 @@ jobs:
         with:
           version: 2.116.0
 
-      - name: Guard secrets and exact Preview target
+      - name: Guard exact Preview read-only target
         shell: bash
         run: |
           set -euo pipefail
@@ -50,7 +49,7 @@ jobs:
           test "$SUPABASE_EXPECTED_PROJECT_REF" != "$PRODUCTION_PROJECT_REF"
           test "$GITHUB_REF_NAME" = "codex/tn01-activation-lifecycle"
 
-      - name: Publish guarded migration pending status
+      - name: Publish read-only postflight pending status
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -60,7 +59,7 @@ jobs:
             --header "Accept: application/vnd.github+json" \
             --header "X-GitHub-Api-Version: 2022-11-28" \
             "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/statuses/$GITHUB_SHA" \
-            --data "{\"state\":\"pending\",\"context\":\"tn01-preview-migration\",\"description\":\"Guarded Preview migration is running\",\"target_url\":\"$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID\"}"
+            --data "{\"state\":\"pending\",\"context\":\"tn01-preview-postflight\",\"description\":\"Read-only Preview postflight is running\",\"target_url\":\"$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID\"}"
 
       - run: npm ci --ignore-scripts
 
@@ -72,15 +71,14 @@ jobs:
             --project-ref "$SUPABASE_EXPECTED_PROJECT_REF" \
             --password "$SUPABASE_DB_PASSWORD"
 
-      - name: Confirm guarded Preview mutation
-        run: node scripts/supabase_target_guard.mjs --environment preview --mutation
+      - name: Confirm linked Preview target without mutation authority
+        run: node scripts/supabase_target_guard.mjs --environment preview
 
-      - name: Read-only preflight, apply 00221, register, and verify contract
+      - name: Verify 00221 read-only postflight contract
         shell: bash
         run: |
           set -euo pipefail
           node <<'NODE'
-          const { readFile } = require("node:fs/promises");
           const assert = require("node:assert/strict");
 
           (async () => {
@@ -88,14 +86,13 @@ jobs:
             const productionRef = process.env.PRODUCTION_PROJECT_REF;
             const token = process.env.SUPABASE_ACCESS_TOKEN;
             const version = process.env.MIGRATION_VERSION;
-            const migrationFile = process.env.MIGRATION_FILE;
             assert.equal(previewRef, "sufvuqdnqohpfzkwxohq");
             assert.notEqual(previewRef, productionRef);
             assert.ok(token);
 
             async function query(sql) {
-              assert.equal(typeof sql, "string", "SQL query must be a string");
-              assert.ok(sql.trim().length > 0, "SQL query must not be empty");
+              assert.equal(typeof sql, "string");
+              assert.ok(sql.trim().length > 0);
               const response = await fetch(`https://api.supabase.com/v1/projects/${previewRef}/database/query`, {
                 method: "POST",
                 headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
@@ -105,87 +102,56 @@ jobs:
               return response.json();
             }
 
-          const auditSql = `
-            select jsonb_build_object(
-              'migration_registered', exists(
-                select 1 from supabase_migrations.schema_migrations where version = '${version}'
-              ),
-              'migration_columns', (
-                select jsonb_agg(column_name order by ordinal_position)
-                from information_schema.columns
-                where table_schema = 'supabase_migrations' and table_name = 'schema_migrations'
-              ),
-              'guild_members_exists', to_regclass('public.guild_members') is not null,
-              'function_exists', to_regprocedure('public.complete_activation_mission_handoff()') is not null,
-              'function_definition', case
-                when to_regprocedure('public.complete_activation_mission_handoff()') is null then null
-                else pg_get_functiondef('public.complete_activation_mission_handoff()'::regprocedure)
-              end
-            ) audit;
-          `;
-            const [preflightRow] = await query(auditSql);
-            const preflight = preflightRow.audit;
-            console.log(JSON.stringify({ stage: "preflight", ...preflight }, null, 2));
-            assert.equal(preflight.guild_members_exists, true, "guild_members authority table is missing");
-            for (const required of ["version", "statements", "name"]) {
-              assert.ok(preflight.migration_columns.includes(required), `schema_migrations.${required} is missing`);
-            }
-
-            if (!preflight.migration_registered) {
-              const migrationSql = await readFile(migrationFile, "utf8");
-              await query(migrationSql);
-              await query(`
-              insert into supabase_migrations.schema_migrations(version, statements, name)
-              values (
-                '${version}',
-                array['TN-01 membership-only activation Mission handoff'],
-                'activation_membership_mission_handoff'
-              )
-              on conflict (version) do nothing;
-              `);
-              console.log(`Applied and registered migration ${version} on Preview ${previewRef}.`);
-            } else {
-              console.log(`Migration ${version} was already registered; mutation skipped.`);
-            }
-
-            const [postflightRow] = await query(`
-            select
-              exists(select 1 from supabase_migrations.schema_migrations where version = '${version}') as migration_registered,
-              to_regprocedure('public.complete_activation_mission_handoff()') is not null as function_exists,
-              p.prosecdef as security_definer,
-              has_function_privilege('authenticated', p.oid, 'EXECUTE') as authenticated_execute,
-              not has_function_privilege('anon', p.oid, 'EXECUTE') as anon_rejected,
-              position('=X/' in coalesce(array_to_string(p.proacl, ','), '')) = 0 as public_rejected,
-              position('auth.uid()' in lower(pg_get_functiondef(p.oid))) > 0 as caller_scoped,
-              position('public.guild_members' in lower(pg_get_functiondef(p.oid))) > 0 as membership_required,
-              position('activation_mission_handoff' in lower(pg_get_functiondef(p.oid))) > 0 as handoff_recorded,
-              position('on conflict' in lower(pg_get_functiondef(p.oid))) > 0 as idempotent,
-              position('guild_activation' in lower(pg_get_functiondef(p.oid))) = 0 as legacy_gate_absent
-            from pg_proc p
-            where p.oid = 'public.complete_activation_mission_handoff()'::regprocedure;
+            const [contract] = await query(`
+              select
+                exists(
+                  select 1 from supabase_migrations.schema_migrations where version = '${version}'
+                ) as migration_registered,
+                to_regprocedure('public.complete_activation_mission_handoff()') is not null as function_exists,
+                p.prosecdef as security_definer,
+                has_function_privilege('authenticated', p.oid, 'EXECUTE') as authenticated_execute,
+                not has_function_privilege('anon', p.oid, 'EXECUTE') as anon_rejected,
+                not exists (
+                  select 1
+                  from aclexplode(coalesce(p.proacl, acldefault('f', p.proowner))) acl
+                  where acl.grantee = 0 and acl.privilege_type = 'EXECUTE'
+                ) as public_rejected,
+                position('auth.uid()' in lower(pg_get_functiondef(p.oid))) > 0 as caller_scoped,
+                position('public.guild_members' in lower(pg_get_functiondef(p.oid))) > 0 as membership_required,
+                position('activation_mission_handoff' in lower(pg_get_functiondef(p.oid))) > 0 as handoff_recorded,
+                position('on conflict' in lower(pg_get_functiondef(p.oid))) > 0 as idempotent,
+                position('guild_activation' in lower(pg_get_functiondef(p.oid))) = 0 as legacy_gate_absent
+              from pg_proc p
+              where p.oid = 'public.complete_activation_mission_handoff()'::regprocedure;
             `);
-            assert.ok(postflightRow, "postflight function row is missing");
-            for (const [key, value] of Object.entries(postflightRow)) {
+            assert.ok(contract, "postflight function row is missing");
+            console.log(JSON.stringify({
+              stage: "read-only-postflight",
+              project_ref: previewRef,
+              production_ref_rejected: previewRef !== productionRef,
+              version,
+              ...contract,
+            }, null, 2));
+            for (const [key, value] of Object.entries(contract)) {
               assert.equal(value, true, `${key} contract failed`);
             }
-            console.log(JSON.stringify({ stage: "postflight", project_ref: previewRef, version, ...postflightRow }, null, 2));
           })().catch((error) => {
             console.error(error instanceof Error ? error.stack : error);
             process.exitCode = 1;
           });
           NODE
 
-      - name: Publish guarded migration result
+      - name: Publish read-only postflight result
         if: always()
         env:
           GH_TOKEN: ${{ github.token }}
           JOB_STATUS: ${{ job.status }}
         run: |
           state="failure"
-          description="Guarded Preview migration failed"
+          description="Read-only Preview postflight failed"
           if [ "$JOB_STATUS" = "success" ]; then
             state="success"
-            description="00221 applied and contract verified on Preview"
+            description="00221 read-only Preview contract verified"
           fi
           curl --fail-with-body --silent --show-error \
             --request POST \
@@ -193,4 +159,4 @@ jobs:
             --header "Accept: application/vnd.github+json" \
             --header "X-GitHub-Api-Version: 2022-11-28" \
             "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/statuses/$GITHUB_SHA" \
-            --data "{\"state\":\"$state\",\"context\":\"tn01-preview-migration\",\"description\":\"$description\",\"target_url\":\"$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID\"}"
+            --data "{\"state\":\"$state\",\"context\":\"tn01-preview-postflight\",\"description\":\"$description\",\"target_url\":\"$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID\"}"
