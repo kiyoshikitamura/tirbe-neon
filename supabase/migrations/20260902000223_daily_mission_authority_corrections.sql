@@ -97,7 +97,7 @@ execute function public.on_daily_mission_authority_change();
 insert into public.user_daily_gacha_claims (
   user_id, gacha_type, last_claimed_date, updated_at
 )
-select distinct
+select
   history.user_id,
   'CHARACTER',
   (clock_timestamp() at time zone 'Asia/Tokyo')::date,
@@ -111,6 +111,7 @@ where history.status = 'COMPLETED'
     ((clock_timestamp() at time zone 'Asia/Tokyo')::date::timestamp at time zone 'Asia/Tokyo')
   and coalesce(history.completed_at, history.created_at) <
     (((clock_timestamp() at time zone 'Asia/Tokyo')::date + 1)::timestamp at time zone 'Asia/Tokyo')
+group by history.user_id
 on conflict (user_id, gacha_type) do update
 set last_claimed_date = greatest(
       public.user_daily_gacha_claims.last_claimed_date,

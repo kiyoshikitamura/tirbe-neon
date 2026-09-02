@@ -3,7 +3,10 @@ name: TN-02 Preview correction
 on:
   push:
     branches: [codex/tn02-gacha-mission-authority]
-    paths: [.github/workflows/tn02-preview-correction.yml]
+    paths:
+      - .github/workflows/tn02-preview-correction.yml
+      - supabase/migrations/20260902000223_daily_mission_authority_corrections.sql
+      - supabase/postflight/20260902000223_daily_mission_authority_corrections_postflight.sql
 
 permissions:
   contents: read
