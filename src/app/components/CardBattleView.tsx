@@ -35,7 +35,6 @@ export default function CardBattleView() {
     setTactic,
     battleSpeed,
     setBattleSpeed,
-    monthlyPassActive,
     isAutoPaused,
     setIsAutoPaused,
     setConfirmDialogConfig,
@@ -486,7 +485,6 @@ export default function CardBattleView() {
         damagePopup={damagePopup}
         tactic={tactic}
         speed={battleSpeed}
-        monthlyPassActive={monthlyPassActive}
         paused={isAutoPaused}
         tutorial={isTutorialBattle}
         onSpeedChange={setBattleSpeed}

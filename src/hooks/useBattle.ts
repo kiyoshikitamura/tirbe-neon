@@ -210,7 +210,7 @@ export function useBattle(options: UseBattleOptions) {
   const [ap, setAp] = useState<number>(0);
   const [maxAp, setMaxAp] = useState<number>(0);
   const [tactic, setTactic] = useState<CompatibleBattleTacticId>("ATTACK_PRIORITY");
-  const [battleSpeed, setBattleSpeed] = useState<number>(1); // 1 = 1x, 2 = 2x
+  const [battleSpeed, setBattleSpeed] = useState<number>(2); // 1 = 1x, 2 = 2x（初期値）
   const [isAutoPaused, setIsAutoPaused] = useState<boolean>(false);
   const [gvgTargetBaseId, setGvgTargetBaseId] = useState<string | null>(null);
   const [battleLoading, setBattleLoading] = useState<boolean>(false);
