@@ -1,0 +1,121 @@
+name: TN-06 Preview starter CASH
+
+on:
+  push:
+    branches: [codex/tn06-starter-cash-authority]
+    paths:
+      - .github/workflows/tn06-preview-starter-cash.yml
+      - supabase/migrations/20260902000224_starter_cash_authority.sql
+      - tests/db/starter-cash-authority.sql
+
+permissions:
+  contents: read
+  statuses: write
+
+concurrency:
+  group: tn06-preview-starter-cash-sufvuqdnqohpfzkwxohq
+  cancel-in-progress: false
+
+jobs:
+  apply-preview-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_EXPECTED_PROJECT_REF: sufvuqdnqohpfzkwxohq
+      PRODUCTION_PROJECT_REF: ktpolnkyyfkowxdmijww
+      MIGRATION_VERSION: "20260902000224"
+      MIGRATION_FILE: supabase/migrations/20260902000224_starter_cash_authority.sql
+      FIXTURE_FILE: tests/db/starter-cash-authority.sql
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Guard exact Preview target
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${SUPABASE_ACCESS_TOKEN:-}"
+          test "$SUPABASE_EXPECTED_PROJECT_REF" = "sufvuqdnqohpfzkwxohq"
+          test "$SUPABASE_EXPECTED_PROJECT_REF" != "$PRODUCTION_PROJECT_REF"
+          test "$GITHUB_REF_NAME" = "codex/tn06-starter-cash-authority"
+
+      - name: Preflight, apply once, verify, and roll back fixture
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const { readFile } = require("node:fs/promises");
+          const assert = require("node:assert/strict");
+
+          (async () => {
+            const projectRef = process.env.SUPABASE_EXPECTED_PROJECT_REF;
+            const productionRef = process.env.PRODUCTION_PROJECT_REF;
+            const token = process.env.SUPABASE_ACCESS_TOKEN;
+            const version = process.env.MIGRATION_VERSION;
+            assert.equal(projectRef, "sufvuqdnqohpfzkwxohq");
+            assert.notEqual(projectRef, productionRef);
+            assert.ok(token);
+
+            async function query(sql) {
+              const response = await fetch(`https://api.supabase.com/v1/projects/${projectRef}/database/query`, {
+                method: "POST",
+                headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+                body: JSON.stringify({ query: sql }),
+              });
+              if (!response.ok) throw new Error(`${response.status} ${await response.text()}`);
+              return response.json();
+            }
+
+            const [preflight] = await query(`
+              select
+                exists(select 1 from supabase_migrations.schema_migrations where version='20260902000221') as migration_221,
+                exists(select 1 from supabase_migrations.schema_migrations where version='20260902000222') as migration_222,
+                exists(select 1 from supabase_migrations.schema_migrations where version='20260902000223') as migration_223,
+                exists(select 1 from supabase_migrations.schema_migrations where version='${version}') as migration_224,
+                count(*)::bigint as user_count,
+                coalesce(sum(cash),0)::numeric as cash_sum
+              from public.users;
+            `);
+            assert.equal(preflight.migration_221, true);
+            assert.equal(preflight.migration_222, true);
+            assert.equal(preflight.migration_223, true);
+
+            if (!preflight.migration_224) {
+              await query(await readFile(process.env.MIGRATION_FILE, "utf8"));
+              await query(`
+                insert into supabase_migrations.schema_migrations(version,statements,name)
+                values('${version}',array['TN-06 starter CASH default 2600'],'starter_cash_authority')
+                on conflict(version) do nothing;
+              `);
+            }
+
+            const [postflight] = await query(`
+              select
+                exists(select 1 from supabase_migrations.schema_migrations where version='${version}') as migration_registered,
+                regexp_replace(pg_get_expr(defaults.adbin,defaults.adrelid),'[^0-9]','','g')='2600' as default_is_2600,
+                (select count(*)::bigint from public.users)=${Number(preflight.user_count)} as existing_count_unchanged,
+                (select coalesce(sum(cash),0)::numeric from public.users)=${String(preflight.cash_sum)}::numeric as existing_cash_unchanged
+              from pg_attrdef defaults
+              join pg_attribute attributes
+                on attributes.attrelid=defaults.adrelid and attributes.attnum=defaults.adnum
+              where defaults.adrelid='public.users'::regclass and attributes.attname='cash';
+            `);
+            for (const [key,value] of Object.entries(postflight)) assert.equal(value,true,`postflight ${key} failed`);
+
+            await query(await readFile(process.env.FIXTURE_FILE, "utf8"));
+            const [cleanup] = await query(`
+              select not exists(
+                select 1 from public.users
+                where id in ('26000000-0000-4000-8000-000000000001','26000000-0000-4000-8000-000000000002')
+              ) as fixture_rolled_back;
+            `);
+            assert.equal(cleanup.fixture_rolled_back,true);
+            console.log(JSON.stringify({ projectRef,version,preflight,postflight,fixture:"PASS",cleanup },null,2));
+          })().catch((error) => {
+            console.error(error instanceof Error ? error.stack : error);
+            process.exitCode = 1;
+          });
+          NODE
