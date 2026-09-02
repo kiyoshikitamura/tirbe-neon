@@ -247,7 +247,7 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
     if (!funnelMilestones.has("first_free_skill_ten_pull")) return { key: "first_free_asset_gacha", title: "無料スキル／装備ガチャを引こう", tab: "gacha" };
     if (!funnelMilestones.has("first_free_equipment_ten_pull")) return { key: "first_free_asset_gacha", title: "無料スキル／装備ガチャを引こう", tab: "gacha" };
     if (!funnelMilestones.has("first_main_loadout")) return { key: "first_main_loadout", title: "装備を整えよう", tab: "character" };
-    if (!funnelMilestones.has("first_pvp")) return { key: "first_pvp", title: "最初のPvPへ挑戦", tab: "pvp" };
+    if (!funnelMilestones.has("first_pvp")) return { key: "first_pvp", title: "最初のバトルへ挑戦", tab: "pvp" };
     if (!funnelMilestones.has("first_raid") && isRaidActive) return { key: "first_raid", title: "開催中レイドへ", tab: "raid" };
     if (!userGuildMember) {
       if (pendingGuildJoinRequests.length > 0) return { key: "guild_pending", title: "ギルド申請を確認", tab: "guild" };

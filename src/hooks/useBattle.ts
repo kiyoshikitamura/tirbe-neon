@@ -33,6 +33,7 @@ import {
 } from "@/domain/presentation/battlePresentationUnit";
 import { resolveBattleSkillLabel, safeBattleCharacterName } from "@/domain/presentation/battleSkillLabels";
 import { canonicalItemName } from "@/domain/gameplay/canonical/items";
+import { battleDisplayText } from "@/domain/presentation/battleTerminology";
 
 export type { UseBattleOptions, ParticipantState, CardState, SkillLogItem };
 
@@ -1243,8 +1244,8 @@ export function useBattle(options: UseBattleOptions) {
         setBattleLoading(false);
         const isInsufficientPoint = error?.code === "23514" || /insufficient pvp points/i.test(error?.message || "");
         setErrorMessage(isInsufficientPoint
-          ? "PvP Pointが不足しています。回復を待ってから、もう一度お試しください。"
-          : error?.message || "PvPバトルの開始をサーバーで確定できませんでした。もう一度お試しください。");
+          ? "BPが不足しています。回復を待ってから、もう一度お試しください。"
+          : battleDisplayText(error?.message) || "バトルの開始をサーバーで確定できませんでした。もう一度お試しください。");
         return;
       }
       if (replayMode === "RAID" && (!replaySessionId || error)) {
@@ -1375,7 +1376,7 @@ export function useBattle(options: UseBattleOptions) {
         const canonicalEnemies = patrolSnapshotToParticipants(replayCreation.data?.enemy_snapshot, true);
         if (canonicalPlayers.length === 0 || canonicalEnemies.length === 0) {
           setBattleLoading(false);
-          setErrorMessage("PvPバトルの正規編成を取得できませんでした。もう一度お試しください。");
+          setErrorMessage("バトルの正規編成を取得できませんでした。もう一度お試しください。");
           return;
         }
         initialPlayerParty = canonicalPlayers;
@@ -1408,7 +1409,7 @@ export function useBattle(options: UseBattleOptions) {
         if (resolveError || (resolvedReplay?.winner !== "PLAYER" && resolvedReplay?.winner !== "ENEMY") || events.length === 0) {
           console.warn("Failed to resolve PvP replay on the server:", resolveError?.message);
           setBattleLoading(false);
-          setErrorMessage("PvPバトルの勝敗をサーバーで確定できませんでした。もう一度お試しください。");
+          setErrorMessage("バトルの勝敗をサーバーで確定できませんでした。もう一度お試しください。");
           return;
         }
         officialPvpReplayIdForBattle = replaySessionId;
@@ -2622,12 +2623,12 @@ export function useBattle(options: UseBattleOptions) {
         resultLabel: "NPC模擬戦結果",
         stats: [
           { label: "MODE", value: "PRACTICE" },
-          { label: "PVP POINT", value: "消費なし" },
+          { label: "BP", value: "消費なし" },
           { label: "RANK", value: "変動なし" },
         ],
         reward: "報酬なし",
         note: "模擬戦は戦績・ランキング・報酬へ反映されません。",
-        continueLabel: "PvPへ戻る",
+        continueLabel: "バトルへ戻る",
         destination: "pvp",
       });
       setBattleState("RESULT");
@@ -2667,7 +2668,7 @@ export function useBattle(options: UseBattleOptions) {
     } else if (modeTemp === "PVP") {
       if (!hasOfficialPvpResult || !pvpResultTemp) {
         releaseBattlePresentation();
-        setErrorMessage("PvPのサーバー確定結果を確認できませんでした。");
+        setErrorMessage("バトルのサーバー確定結果を確認できませんでした。");
         return;
       }
       const pointsDiff = Number(pvpResultTemp.rankDelta ?? 0);
@@ -2688,8 +2689,8 @@ export function useBattle(options: UseBattleOptions) {
           { label: "BP", value: `${Number(pvpResultTemp.remainingPvpPoints ?? 0)}/5` },
         ],
         reward: `CASH +${rewardCash.toLocaleString()}`,
-        note: isFirstOfficialPvp ? "初戦の順位を確認して、次のレイドへ進もう。" : "PvPへ戻って次の対戦相手を選べます。",
-        continueLabel: isFirstOfficialPvp ? "ランキングを確認" : "PvPへ戻る",
+        note: isFirstOfficialPvp ? "初戦の順位を確認して、次のレイドへ進もう。" : "バトルへ戻って次の対戦相手を選べます。",
+        continueLabel: isFirstOfficialPvp ? "ランキングを確認" : "バトルへ戻る",
         destination: isFirstOfficialPvp ? "ranking" : "pvp",
       });
       setBattleState("RESULT");

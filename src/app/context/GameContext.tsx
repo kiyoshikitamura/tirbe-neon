@@ -3113,7 +3113,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       if (error) throw error;
 
       await syncBootstrapData(session.user.id);
-      setConfirmDialogConfig({ isOpen: true, title: "リセット完了", message: "PvPシーズン終了。報酬転送完了。", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
+      setConfirmDialogConfig({ isOpen: true, title: "リセット完了", message: "バトルシーズン終了。報酬転送完了。", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
     } catch (err: any) {
       console.warn("Failed to reset PvP season:", err.message);
       setErrorMessage("シーズンリセット処理に失敗しました。");

@@ -98,7 +98,7 @@ test("stage two hubs share a mobile-safe page frame", async ({ page }) => {
   await enterGame(page);
 
   const cases = [
-    { selector: ".circle-menu-btn.fight", title: "喧嘩（PvP）", period: false, hero: ".pvp-hero" },
+    { selector: ".circle-menu-btn.fight", title: "バトル", period: false, hero: ".pvp-hero" },
     { selector: ".circle-menu-btn.conquest", title: "クエスト", period: false, hero: ".ui-hero-panel" },
     { selector: ".mypage-power-panel", title: "ランキング", period: true, hero: ".ui-hero-panel" },
   ];

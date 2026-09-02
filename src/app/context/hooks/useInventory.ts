@@ -117,7 +117,7 @@ export function useInventory(
         if (res.error) throw res.error;
         if (res.data?.error) throw new Error(res.data.error);
         await syncBootstrapData(session.user.id);
-        const resourceName = itemId === "PVP_POINT_TICKET" ? "PvPポイント" : "レイドポイント";
+        const resourceName = itemId === "PVP_POINT_TICKET" ? "BP" : "レイドポイント";
         setConfirmDialogConfig({ isOpen: true, title: "アイテム使用", message: `${resourceName}が1回復しました。`, confirmText: "OK", cancelText: "", presentation: "canonical", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
       } catch (err: any) {
         showActionError("アイテムを使用できませんでした", err);

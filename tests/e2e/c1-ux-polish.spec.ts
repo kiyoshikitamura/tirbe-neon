@@ -47,7 +47,7 @@ for (const viewport of [
   test(`${viewport.name}: Home and Mission reward feedback remain usable`, async ({ page }) => {
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
     await enterGame(page);
-    await expect(page.locator(".mypage-primary-cta")).toContainText("最初のPvPへ挑戦");
+    await expect(page.locator(".mypage-primary-cta")).toContainText("最初のバトルへ挑戦");
     await expect(page.locator(".mypage-live-ticker--visual")).toBeVisible();
     await expect(page.locator(".mypage-leader-layer.is-ssr")).toBeVisible();
     await expect(page.getByRole("button", { name: "抗争は準備中です" })).toBeDisabled();

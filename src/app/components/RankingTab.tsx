@@ -31,7 +31,7 @@ type PublicProfile = {
 const RANKING_TABS = [
   { id: "power", label: "総合力" },
   { id: "guild_power", label: "ギルド" },
-  { id: "pvp", label: "PvP" },
+  { id: "pvp", label: "バトル" },
   { id: "raid", label: "レイド" },
 ] as const;
 
@@ -255,7 +255,7 @@ export default function RankingTab() {
       {activationMilestones.has("first_pvp") && !activationMilestones.has("first_raid") && isRaidActive ? <OutlawButton variant="primary" fullWidth className="ranking-return-cta" onClick={() => setActiveTab("raid")}>次はレイドへ挑戦</OutlawButton>
         : activationMilestones.has("first_pvp") && !userGuildMember ? <OutlawButton variant="primary" fullWidth className="ranking-return-cta" onClick={() => setActiveTab("guild")}>おすすめTRIBEを見る</OutlawButton>
           : activationMilestones.has("first_pvp") && userGuildMember && !activationMilestones.has("guild_activation") ? <OutlawButton variant="primary" fullWidth className="ranking-return-cta" onClick={() => setActiveTab("guild")}>所属TRIBEへ</OutlawButton>
-            : activeTab === "pvp" ? <OutlawButton variant="secondary" fullWidth className="ranking-return-cta" onClick={() => setActiveTab("pvp")}>PvPへ戻る</OutlawButton> : null}
+            : activeTab === "pvp" ? <OutlawButton variant="secondary" fullWidth className="ranking-return-cta" onClick={() => setActiveTab("pvp")}>バトルへ戻る</OutlawButton> : null}
     </HubPage>
   );
 }

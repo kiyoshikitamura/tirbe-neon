@@ -85,7 +85,7 @@ test("guide resumes Skill, Equipment, loadout and PvP in order without view comp
   await addMilestones(page, "first_main_loadout");
   await page.reload();
   await enterGame(page);
-  await expect(primary).toContainText("最初のPvPへ挑戦");
+  await expect(primary).toContainText("最初のバトルへ挑戦");
   await expect(primary).not.toContainText("ランキングを確認");
 });
 

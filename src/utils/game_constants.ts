@@ -79,9 +79,9 @@ export const STORY_EPISODES_MASTER: { [key: string]: {
   outro: Array<{ speaker: string; img: string; expression: string; text: string }>;
 } } = {
   stage_tutorial_01: {
-    title: "PvP模擬戦: 新宿南部連合との接触",
+    title: "模擬戦: 新宿南部連合との接触",
     intro: [
-      { speaker: "レイジ", img: "/characters/reiji_transparent_asset.png", expression: "通常", text: "キョウジ、PvP模擬戦の準備はいいか？俺たちの連携力を見せてやろう。" },
+      { speaker: "レイジ", img: "/characters/reiji_transparent_asset.png", expression: "通常", text: "キョウジ、模擬戦の準備はいいか？俺たちの連携力を見せてやろう。" },
       { speaker: "ルイ", img: "/characters/rui_transparent_asset.png", expression: "笑顔", text: "対戦相手のシミュレーションデータをグリッドに同期したよ！勝率は99.8%！" },
       { speaker: "チャン", img: "/characters/chang_transparent_asset.png", expression: "真剣", text: "ふん、油断するな。敵も新宿南部連合の精鋭だ。牙を剥いてくるぞ。" }
     ],
@@ -117,7 +117,7 @@ export const PROFILE_BACKGROUNDS = [
 
 export const PROFILE_FRONT_EFFECTS = [
   { id: "effect_none", name: "エフェクトなし", desc: "初期解放" },
-  { id: "effect_lightning", name: "紫電一閃 (稲妻)", desc: "PvP 1,050点以上で解放" },
+  { id: "effect_lightning", name: "紫電一閃 (稲妻)", desc: "バトルRATE 1,050以上で解放" },
   { id: "effect_sparks", name: "百花繚乱 (火の粉)", desc: "Lv.10以上で解放" },
   { id: "effect_smoke", name: "硝煙黙示録 (煙)", desc: "3名以上のキャラ解放で解放" }
 ];

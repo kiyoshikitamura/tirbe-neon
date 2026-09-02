@@ -16,7 +16,7 @@ export async function postNpcYajiMessage(
 
   let text = "";
   if (triggerReason === "PVP_WIN") {
-    text = `${username} がPvPで荒稼ぎしているらしいぞ。`;
+    text = `${username} がバトルで荒稼ぎしているらしいぞ。`;
   } else if (triggerReason === "GVG_WIN") {
     text = `拠点 ${baseId.toUpperCase()} でGvGが発生！ポイントが更新されました。`;
   } else if (triggerReason === "RAID_DAMAGE") {
