@@ -157,7 +157,8 @@ test("M9-V0 main cycle presents growth, mission, PvP, ranking, raid and guild di
   await expect(page.locator(".raid-status-grid")).toContainText("CONTRIBUTION");
   await mobileFramePass(page, ".raid-view", "raid");
 
-  await page.getByRole("button", { name: /ギルド/ }).click();
+  await page.getByRole("button", { name: "マイページ", exact: true }).click();
+  await page.getByRole("button", { name: "ギルド", exact: true }).click();
   await expect(page.locator(".guild-activity-line").first()).toContainText("レイド貢献");
   await page.locator(".guild-detail-trigger").first().click();
   await expect(page.locator(".guild-public-status-grid")).toContainText("空き枠");

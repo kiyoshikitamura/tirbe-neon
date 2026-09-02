@@ -14,8 +14,8 @@ test.beforeEach(async ({ page }) => {
     localStorage.setItem("mock_db_tutorial_progress", JSON.stringify([{ user_id: userId, step_id: "AUTHENTICATION" }]));
     localStorage.setItem("mock_db_user_account_auth_methods", JSON.stringify([{ user_id: userId, auth_method: "EMAIL" }]));
     localStorage.setItem("mock_db_user_characters", JSON.stringify([{ id: "guide-character", user_id: userId, character_id: "char_reiji_01", level: 7, awakening_level: 0, created_at: now }]));
-    localStorage.setItem("mock_db_guilds", JSON.stringify([{ id: "30000000-0000-4000-8000-000000002217", name: "GUIDE OPEN TRIBE", leader_id: "00000000-0000-4000-8000-000000002217", level: 5, member_limit: 20, recruitment_mode: "OPEN_JOIN" }]));
-    localStorage.setItem("mock_db_guild_members", JSON.stringify([{ id: "guide-open-master", guild_id: "30000000-0000-4000-8000-000000002217", user_id: "00000000-0000-4000-8000-000000002217", role: "MASTER" }]));
+    if (!localStorage.getItem("mock_db_guilds")) localStorage.setItem("mock_db_guilds", JSON.stringify([{ id: "30000000-0000-4000-8000-000000002217", name: "GUIDE OPEN TRIBE", leader_id: "00000000-0000-4000-8000-000000002217", level: 5, member_limit: 20, recruitment_mode: "OPEN_JOIN" }]));
+    if (!localStorage.getItem("mock_db_guild_members")) localStorage.setItem("mock_db_guild_members", JSON.stringify([{ id: "guide-open-master", guild_id: "30000000-0000-4000-8000-000000002217", user_id: "00000000-0000-4000-8000-000000002217", role: "MASTER" }]));
     if (!localStorage.getItem("mock_db_user_funnel_milestones")) {
       localStorage.setItem("mock_db_user_funnel_milestones", JSON.stringify([{ user_id: userId, milestone: "tutorial_complete", occurrence_count: 1 }]));
     }

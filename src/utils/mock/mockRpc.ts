@@ -1157,7 +1157,8 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     const patrol = (client.getStorage("user_patrols") || []).find((entry: any) =>
       entry.id === params.p_patrol_id
       && entry.user_id === userId
-      && entry.status === "CLAIMABLE"
+      && (entry.status === "CLAIMABLE"
+        || (entry.status === "ONGOING" && Date.parse(entry.expires_at) <= Date.now()))
       && entry.has_battle_event
       && !entry.battle_resolved
     );

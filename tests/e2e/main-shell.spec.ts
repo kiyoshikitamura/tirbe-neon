@@ -106,7 +106,7 @@ test("stage two hubs share a mobile-safe page frame", async ({ page }) => {
 
   const cases = [
     { selector: ".circle-menu-btn.fight", title: "バトル", period: false, hero: ".pvp-hero" },
-    { selector: ".circle-menu-btn.conquest", title: "クエスト", period: false, hero: ".ui-hero-panel" },
+    { selector: ".circle-menu-btn.conquest", title: "クエスト", period: false, hero: ".quest-v2-identity" },
     { selector: ".mypage-power-panel", title: "ランキング", period: false, hero: ".ranking-current" },
   ];
 

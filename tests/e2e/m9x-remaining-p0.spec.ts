@@ -148,7 +148,7 @@ test("Title to Guild human response journey remains visible across every mobile 
   const guildChannel = page.getByRole("button", { name: "ギルド (1)", exact: true });
   await expect(guildChannel).toBeVisible();
   await guildChannel.click();
-  await expect(page.getByRole("button", { name: "ギルド", exact: true })).toHaveClass(/active/);
+  await expect(page.locator(".tribe-chat-panel").getByRole("button", { name: "ギルド", exact: true })).toHaveClass(/active/);
   await expect(page.locator(".tribe-msg-bubble").filter({ hasText: "次のレイドで待ってるよ" })).toBeVisible();
   await assertMobileWave(page, ".tribe-modal-container-inner", "journey-human-response");
 });

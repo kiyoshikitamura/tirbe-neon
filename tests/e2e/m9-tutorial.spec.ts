@@ -830,10 +830,13 @@ test("first quest connects dispatch, official battle, and one reward to the comp
     button.click();
   });
   await page.setViewportSize({ width: 375, height: 844 });
-  await expect(page.locator(".playing-container")).toBeVisible();
+  const battleViewer = page.locator(".quest-battle-viewer");
+  await expect(battleViewer).toBeVisible();
+  await expect(battleViewer).toHaveAttribute("data-battle-speed", "2");
   await expect(page.locator(".battle-log-box")).toHaveCount(0);
-  await expect(page.locator(".battle-timeline-slot.is-current")).toBeVisible();
-  await expect(page.locator(".battle-timeline-slot")).toHaveCount(3);
+  await expect(page.locator(".battle-timeline-slot")).toHaveCount(0);
+  await expect(page.getByLabel("味方パーティ").locator(".battle-unit-party")).toHaveCount(1);
+  await expect(page.getByLabel("敵パーティ").locator(".battle-unit-party")).toHaveCount(3);
   await expect(page.locator(".battle-unit.is-actor").first()).toBeVisible();
   await expect(page.locator(".battle-unit.is-target").first()).toBeVisible();
   await expect(page.locator(".battle-unit-party.is-actor .battle-unit-identity-badges img").first()).toBeVisible();
@@ -851,9 +854,9 @@ test("first quest connects dispatch, official battle, and one reward to the comp
   expect(normalImpactDuration).toBeLessThanOrEqual(1_300);
   test.info().annotations.push({ type: "normal-impact-ms", description: String(normalImpactDuration) });
   await page.screenshot({ path: test.info().outputPath("M1-375-B3-normal-attack.png"), fullPage: true });
-  await expect(page.locator(".battle-action-stage.is-enemy-actor")).toBeVisible({ timeout: 12_000 });
+  await expect.poll(() => battleViewer.evaluate((viewer) => viewer.dataset.actionKind === "normal"
+    && Boolean(viewer.querySelector(".battle-party-zone.is-enemy .battle-unit-party.is-actor"))), { timeout: 12_000 }).toBe(true);
   await expect(page.locator(".battle-party-zone.is-enemy .battle-unit-party.is-actor .battle-unit-identity-badges img").first()).toBeVisible();
-  await expect(page.locator(".battle-action-stage.is-enemy-actor.is-normal-action")).toBeVisible();
   await expect(page.locator(".battle-skill-cutin")).toHaveCount(0);
   await page.screenshot({ path: test.info().outputPath("M1-375-enemy-current-actor.png"), fullPage: true });
   await expect(page.locator(".battle-skill-cutin.is-ssr")).toBeVisible({ timeout: 8_000 });
@@ -960,7 +963,7 @@ test("first quest connects dispatch, official battle, and one reward to the comp
   await desktopPage.locator('[data-acceptance-state="Q6"] button').click();
   await desktopPage.locator('[data-acceptance-state="B1"] .start-battle-btn').click();
   await expect(desktopPage.locator('[data-acceptance-state="B4"]')).toBeVisible({ timeout: 20_000 });
-  await expect(desktopPage.locator(".battle-timeline-slot")).toHaveCount(3);
+  await expect(desktopPage.locator(".battle-timeline-slot")).toHaveCount(0);
   const desktopRoster = await desktopPage.locator(".battle-roster-stage").evaluate((stage) => [...stage.querySelectorAll<HTMLElement>(".battle-party-zone")].map((zone) => ({
     declared: Number(zone.dataset.partySize || 0),
     rendered: zone.querySelectorAll(".battle-unit-party").length,

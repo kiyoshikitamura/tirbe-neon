@@ -28,8 +28,27 @@ result = await executeMockRpc(client, "move_current_user_base", { p_base_id: "os
 assert.equal(result.error?.code, "22023");
 assert.equal(client.getStorage("users")[0].current_base_id, "yokohama");
 
-const [migration, context, patrolHook, presentation, mockRpc, dbTest] = await Promise.all([
+const expiredPatrol = {
+  id: "26000000-0000-4000-8000-000000000012",
+  user_id: userId,
+  course_id: "QUEST_SHINJUKU_EASY",
+  status: "ONGOING",
+  expires_at: new Date(Date.now() - 1_000).toISOString(),
+  has_battle_event: true,
+  battle_resolved: false,
+  encounter_snapshot: { encounterId: "natural-completion", questId: "QUEST_SHINJUKU_EASY", members: [{ level: 5 }] },
+};
+tables.set("user_patrols", [expiredPatrol]);
+result = await executeMockRpc(client, "get_patrol_battle_enemy", { p_patrol_id: expiredPatrol.id });
+assert.equal(result.error, null);
+assert.equal(result.data.id, "natural-completion");
+expiredPatrol.expires_at = new Date(Date.now() + 60_000).toISOString();
+result = await executeMockRpc(client, "get_patrol_battle_enemy", { p_patrol_id: expiredPatrol.id });
+assert.equal(result.error?.code, "P0002");
+
+const [migration, encounterMigration, context, patrolHook, presentation, mockRpc, dbTest] = await Promise.all([
   readFile(new URL("../supabase/migrations/20260902000226_location_movement_authority.sql", import.meta.url), "utf8"),
+  readFile(new URL("../supabase/migrations/20260902000231_natural_patrol_encounter_authority.sql", import.meta.url), "utf8"),
   readFile(new URL("../src/app/context/GameContext.tsx", import.meta.url), "utf8"),
   readFile(new URL("../src/app/context/hooks/usePatrol.ts", import.meta.url), "utf8"),
   readFile(new URL("../src/app/components/quest/QuestPresentationV2.tsx", import.meta.url), "utf8"),
@@ -43,6 +62,9 @@ for (const contract of ["security definer", "auth.uid()", "for update", "update 
 assert(!/from\("users"\)\s*\.update\(\{\s*current_base_id/.test(context), "client must not update current_base_id directly");
 assert(context.includes('supabase.rpc("move_current_user_base"'));
 assert(dbTest.includes("another user location was changed"));
+for (const contract of ["auth.uid()", "patrol.user_id = v_user_id", "patrol.status = 'ONGOING'", "patrol.expires_at <= now()", "patrol.encounter_snapshot is not null"]) {
+  assert(encounterMigration.includes(contract), `natural encounter migration contract missing: ${contract}`);
+}
 
 // TN-11B contracts are asserted after its independent commit is applied.
 if (patrolHook.includes("encounterSnapshot")) {
