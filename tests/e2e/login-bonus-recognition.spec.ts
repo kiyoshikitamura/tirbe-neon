@@ -36,6 +36,8 @@ test("distinguishes received rewards from today, next and future", async ({ page
 
 async function enterCompletedGame(page: import("@playwright/test").Page) {
   await page.goto("/");
+  const tapToStart = page.getByRole("button", { name: "TAP TO START" });
+  if (await tapToStart.isVisible()) await tapToStart.click();
   const titleEntry = page.getByRole("button", { name: "続きから" });
   await expect(titleEntry).toBeVisible();
   await titleEntry.click();
@@ -76,6 +78,8 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 412, height: 915 }
     expect(beforeReload).toEqual({ presents: 1, logins: 1 });
 
     await page.reload();
+    const tapToStart = page.getByRole("button", { name: "TAP TO START" });
+    if (await tapToStart.isVisible()) await tapToStart.click();
     const resume = page.getByRole("button", { name: "続きから" });
     await expect(resume).toBeVisible();
     await resume.click();

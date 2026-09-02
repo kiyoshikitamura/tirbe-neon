@@ -27,6 +27,10 @@ async function seedGuildVisitor(page: Page, level = 5, initialGuildRole: string 
     ]));
     localStorage.setItem("mock_db_tutorial_progress", JSON.stringify([{ user_id: me, step_id: "AUTHENTICATION" }]));
     localStorage.setItem("mock_db_user_account_auth_methods", JSON.stringify([{ user_id: me, auth_method: "EMAIL" }]));
+    const cycleDate = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Tokyo" });
+    localStorage.setItem("mock_db_user_login_bonuses", JSON.stringify([{
+      user_id: me, current_day: 1, total_logins: 1, last_claimed_date: cycleDate,
+    }]));
     localStorage.setItem("mock_db_guilds", JSON.stringify([
       { id: openGuild, name: "OPEN NEON", leader_id: openLeader, level: 6, xp: 1200, member_limit: 10, recruitment_mode: "OPEN_JOIN", approval_required: false, description: "毎晩レイドへ挑戦しています。", main_alignment: "CHAOS", sub_alignment: "JUSTICE" },
       { id: approvalGuild, name: "承認制ギルド", leader_id: approvalLeader, level: 5, xp: 900, member_limit: 10, recruitment_mode: "APPLICATION_REQUIRED", approval_required: true, description: "落ち着いて活動するギルドです。", main_alignment: "ORDER", sub_alignment: "EVIL" },
