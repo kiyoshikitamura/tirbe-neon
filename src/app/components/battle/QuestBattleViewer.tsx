@@ -41,6 +41,7 @@ type Props = {
   damagePopup: (BattleDamagePopup & { charId: string }) | null;
   tactic: string;
   speed: number;
+  monthlyPassActive: boolean;
   paused: boolean;
   tutorial: boolean;
   onSpeedChange: (speed: number) => void;
@@ -201,11 +202,11 @@ export default function QuestBattleViewer(props: Props) {
         <button
           className={`speed-toggle-btn active-scale-effect ${props.speed > 1 ? "active" : ""}`}
           onClick={() => {
-            const nextSpeed = props.speed === 2 ? 1 : 2;
+            const nextSpeed = props.speed === 2 ? 1 : props.speed === 1 && props.monthlyPassActive ? 3 : 2;
             props.onSpeedChange(nextSpeed);
             props.onSound();
           }}
-          title="1倍・2倍速を切替"
+          title={props.monthlyPassActive ? "1倍・2倍・3倍速を切替" : "通常は1倍・2倍速。3倍速はVIPパス限定"}
         >
           {props.speed}x
         </button>
