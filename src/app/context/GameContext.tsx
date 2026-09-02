@@ -219,6 +219,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const {
     userItems, setUserItems,
     inventoryProjectionOwnerUserId,
+    beginUserItemsProjectionRequest,
     projectUserItems,
     resetUserItemsProjection,
     refreshUserItemsProjection,
@@ -1110,16 +1111,9 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     if (identityLeaderOwnerUserId !== userId) setIdentityLeaderAuthorityReady(false);
     const identityAuthorityPromise = refreshIdentityLeaderAuthority(userId);
     const dailyFreeAuthorityPromise = refreshDailyFreeGachaAuthority(userId);
-    const inventoryProjectionPromise = supabase
-      .from("user_items")
-      .select("*")
-      .eq("user_id", userId);
-    void Promise.resolve(inventoryProjectionPromise).then(({ data, error }) => {
-      if (error) throw error;
-      if (currentAuthUserIdRef.current && currentAuthUserIdRef.current !== userId) return;
-      projectUserItems(data || [], userId);
-    }).catch((error) => {
+    const inventoryProjectionPromise = refreshUserItemsProjection(userId).catch((error) => {
       console.warn("Failed to prime inventory projection:", error);
+      return [];
     });
 
     // Home badges are independent projections. Start their canonical reads at
@@ -3299,6 +3293,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
           // The next mandatory screen needs only ownership and Growth items.
           // Project those independently of the much wider Home bootstrap so a
           // slow or unrelated feature query cannot strand the tutorial result.
+          const tutorialInventoryRequestGeneration = beginUserItemsProjectionRequest(session.user.id);
           void Promise.all([
             supabase.from("user_characters").select("*").eq("user_id", session.user.id),
             supabase.from("user_items").select("*").eq("user_id", session.user.id),
@@ -3308,7 +3303,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
             const ownedCharacters = charactersResult.data || [];
             const ownedItems = itemsResult.data || [];
             setUserCharactersDbList(ownedCharacters);
-            projectUserItems(ownedItems, session.user.id);
+            projectUserItems(ownedItems, session.user.id, tutorialInventoryRequestGeneration);
           }).catch((projectionError) => console.warn("Tutorial acquisition projection failed:", projectionError));
         }
         const bootstrapPromise = syncBootstrapData(session.user.id)

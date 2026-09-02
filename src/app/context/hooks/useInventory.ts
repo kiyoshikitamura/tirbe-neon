@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { supabase, usingMockSupabase } from "@/utils/supabase";
 import { VITALITY_OVERFLOW_MAX } from "@/utils/game_constants";
 import { canUseEnergyDrink } from "@/domain/gameplay/canonical/action_resources";
@@ -38,6 +38,14 @@ export function useInventory(
 ) {
   const [userItems, setUserItems] = useState<any[]>([]);
   const [inventoryProjectionOwnerUserId, setInventoryProjectionOwnerUserId] = useState("");
+  const activeInventoryUserIdRef = useRef("");
+  const inventoryProjectionGenerationRef = useRef(0);
+  const activeInventoryUserId = session?.user?.id || "";
+  useLayoutEffect(() => {
+    if (activeInventoryUserIdRef.current === activeInventoryUserId) return;
+    activeInventoryUserIdRef.current = activeInventoryUserId;
+    inventoryProjectionGenerationRef.current += 1;
+  }, [activeInventoryUserId]);
 
   // 消耗品ステート
   const [energyDrinks, setEnergyDrinks] = useState<number>(0);
@@ -58,7 +66,15 @@ export function useInventory(
   const trainingManuals = charExpS + charExpM + charExpL;
   const polishingStones = equipExpS + equipExpM + equipExpL;
 
-  const projectUserItems = (rows: any[], ownerUserId: string) => {
+  const beginUserItemsProjectionRequest = (ownerUserId: string) => {
+    if (!ownerUserId || activeInventoryUserIdRef.current !== ownerUserId) return null;
+    inventoryProjectionGenerationRef.current += 1;
+    return inventoryProjectionGenerationRef.current;
+  };
+
+  const projectUserItems = (rows: any[], ownerUserId: string, requestGeneration?: number | null) => {
+    if (ownerUserId && activeInventoryUserIdRef.current !== ownerUserId) return false;
+    if (requestGeneration != null && requestGeneration !== inventoryProjectionGenerationRef.current) return false;
     const items = Array.isArray(rows) ? rows : [];
     const quantities = buildInventoryQuantityProjection(items);
 
@@ -77,19 +93,23 @@ export function useInventory(
     setSkillManuals(quantities.SKILL_MANUAL);
     setEquipLbParts(quantities.EQUIP_LB_PART);
     setInventoryProjectionOwnerUserId(ownerUserId);
+    return true;
   };
 
   const resetUserItemsProjection = () => {
+    inventoryProjectionGenerationRef.current += 1;
     projectUserItems([], "");
   };
 
   const refreshUserItemsProjection = async (userId: string) => {
+    const requestGeneration = beginUserItemsProjectionRequest(userId);
+    if (requestGeneration == null) return [];
     const { data, error } = await supabase
       .from("user_items")
       .select("*")
       .eq("user_id", userId);
     if (error) throw error;
-    projectUserItems(data || [], userId);
+    projectUserItems(data || [], userId, requestGeneration);
     return data || [];
   };
 
@@ -346,6 +366,7 @@ export function useInventory(
   return {
     userItems, setUserItems,
     inventoryProjectionOwnerUserId,
+    beginUserItemsProjectionRequest,
     projectUserItems,
     resetUserItemsProjection,
     refreshUserItemsProjection,
