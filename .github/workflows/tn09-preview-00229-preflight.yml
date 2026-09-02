@@ -1,0 +1,78 @@
+name: TN-09 Preview ranking 00229 preflight
+
+on:
+  push:
+    branches: [codex/tn09-raid-ranking-complete]
+    paths:
+      - .github/workflows/tn09-preview-00229-preflight.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tn09-preview-00229-preflight-sufvuqdnqohpfzkwxohq
+  cancel-in-progress: false
+
+jobs:
+  inspect-preview-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_EXPECTED_PROJECT_REF: sufvuqdnqohpfzkwxohq
+      PRODUCTION_PROJECT_REF: ktpolnkyyfkowxdmijww
+    steps:
+      - uses: actions/checkout@v4
+      - name: Guard exact Preview target and source
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${SUPABASE_ACCESS_TOKEN:-}"
+          test "$SUPABASE_EXPECTED_PROJECT_REF" = "sufvuqdnqohpfzkwxohq"
+          test "$SUPABASE_EXPECTED_PROJECT_REF" != "$PRODUCTION_PROJECT_REF"
+          test "$GITHUB_REF_NAME" = "codex/tn09-raid-ranking-complete"
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+      - name: Read-only lifecycle inventory
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const assert=require("node:assert/strict");
+          (async()=>{
+            const projectRef=process.env.SUPABASE_EXPECTED_PROJECT_REF;
+            const token=process.env.SUPABASE_ACCESS_TOKEN;
+            assert.equal(projectRef,"sufvuqdnqohpfzkwxohq");
+            assert.notEqual(projectRef,process.env.PRODUCTION_PROJECT_REF);
+            const sql=`
+              select
+                exists(select 1 from supabase_migrations.schema_migrations where version='20260902000227') migration_227,
+                exists(select 1 from supabase_migrations.schema_migrations where version='20260902000228') migration_228,
+                exists(select 1 from supabase_migrations.schema_migrations where version='20260902000229') migration_229,
+                (select count(*) from public.ranking_seasons where id in(
+                  '90106a5f-ec9b-415f-98d0-754a525c1eb7'::uuid,
+                  '2828d27e-ebfd-4005-ba3b-0d618618c286'::uuid
+                ) and status='ACTIVE') old_active,
+                (select count(*) from public.ranking_seasons where id in(
+                  '74bacb55-cad3-4c23-bca7-67a2aeac931d'::uuid,
+                  'e7f40125-3f35-4774-ad2d-839b213cc1fd'::uuid
+                )) new_rows,
+                (select count(*) from public.pvp_ranks where updated_at>='2026-08-31 15:00:00+00') pvp_updates_after_expiry,
+                (select max(updated_at) from public.pvp_ranks) latest_pvp_update,
+                (select count(*) from public.raid_damage_logs where created_at>='2026-08-31 15:00:00+00') raid_logs_after_expiry,
+                (select max(created_at) from public.raid_damage_logs) latest_raid_log,
+                (select count(*) from public.battle_replay_sessions where finalized_at>='2026-08-31 15:00:00+00' and battle_mode in('PVP','RAID')) finalized_after_expiry;
+            `;
+            const response=await fetch(`https://api.supabase.com/v1/projects/${projectRef}/database/query`,{
+              method:"POST",headers:{Authorization:`Bearer ${token}`,"Content-Type":"application/json"},
+              body:JSON.stringify({query:sql})
+            });
+            if(!response.ok) throw new Error(`${response.status} ${await response.text()}`);
+            const [inventory]=await response.json();
+            assert.equal(inventory.migration_227,true);
+            assert.equal(inventory.migration_228,true);
+            assert.equal(inventory.migration_229,false);
+            assert.equal(inventory.old_active,2);
+            assert.equal(inventory.new_rows,0);
+            console.log(JSON.stringify({projectRef,inventory},null,2));
+          })().catch(error=>{console.error(error instanceof Error?error.stack:error);process.exitCode=1;});
+          NODE
