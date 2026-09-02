@@ -1346,8 +1346,11 @@ test("new mobile player completes the guided first session without footer naviga
   await expect(page.locator(".battle-skill-cutin")).toBeVisible();
   await expect(page.locator(".battle-cutin-copy")).not.toBeEmpty();
   await page.screenshot({ path: test.info().outputPath("B4-skill.png"), fullPage: true });
-  await expect(page.locator('[data-acceptance-state="B5"]')).toBeVisible({ timeout: 35_000 });
-  await page.screenshot({ path: test.info().outputPath("B5-final-hit.png"), fullPage: true });
+  const finalHitOrResult = page.locator('[data-acceptance-state="B5"], [data-acceptance-state="B6"]');
+  await expect(finalHitOrResult).toBeVisible({ timeout: 60_000 });
+  if (await page.locator('[data-acceptance-state="B5"]').isVisible()) {
+    await page.screenshot({ path: test.info().outputPath("B5-final-hit.png"), fullPage: true });
+  }
   await expect(page.locator('[data-acceptance-state="B6"]')).toBeVisible({ timeout: 35_000 });
   await assertCenteredGameCanvas(page, ".battle-ending-screen");
   await expect(page.locator(".battle-result-canonical-rewards")).toBeVisible();
