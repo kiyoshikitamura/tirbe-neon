@@ -59,7 +59,7 @@ test.beforeEach(async ({ page }) => {
     localStorage.setItem("mock_db_user_power_rankings", JSON.stringify([
       { user_id: rivals[0], total_power: 15000, updated_at: now }, { user_id: rivals[1], total_power: 17000, updated_at: now }, { user_id: me, total_power: 19000, updated_at: now },
     ]));
-    localStorage.setItem("mock_db_raid_bosses", JSON.stringify([{ id: "20000000-0000-4000-8000-000000000001", boss_master_id: "BOSS_001", boss_name: "極道連合組長", level: 99, current_hp: 7500000, max_hp: 10000000, base_id: "shinjuku", status: "ACTIVE", expires_at: new Date(Date.now() + 86400000).toISOString() }]));
+    localStorage.setItem("mock_db_raid_bosses", JSON.stringify([{ id: "20000000-0000-4000-8000-000000000001", boss_master_id: "RAID_SHINJUKU_V1", boss_name: "キングス・クラウン", level: 30, current_hp: 24000000, max_hp: 32000000, base_id: "shinjuku", status: "ACTIVE", expires_at: new Date(Date.now() + 86400000).toISOString() }]));
     localStorage.setItem("mock_db_guilds", JSON.stringify([
       { id: "30000000-0000-4000-8000-000000000001", name: "NEON WOLVES", level: 8, member_count: 6, member_limit: 10, approval_required: false, description: "毎日活動中" },
       { id: "30000000-0000-4000-8000-000000000002", name: "夜街連合", level: 6, member_count: 5, member_limit: 10, approval_required: true, description: "レイド重視" },
@@ -150,7 +150,10 @@ test("M9-V0 main cycle presents growth, mission, PvP, ranking, raid and guild di
 
   await page.getByRole("button", { name: /マイページ/ }).click();
   await page.locator('.mypage-sub-icons-left button:has(img[src="/menu/home_nav_raid.png"])').click();
-  await expect(page.locator(".raid-boss-stage")).toContainText("極道連合組長");
+  await expect(page.locator(".raid-party-heading")).toContainText("キングス・クラウン");
+  const raidRoster = page.locator('.raid-enemy-roster[data-raid-variant-id="RAID_SHINJUKU_V1"]');
+  await expect(raidRoster).toHaveAttribute("data-roster-ready", "true");
+  await expect(raidRoster.locator(".pvp-deck-member")).toHaveCount(5);
   await expect(page.locator(".raid-status-grid")).toContainText("CONTRIBUTION");
   await mobileFramePass(page, ".raid-view", "raid");
 

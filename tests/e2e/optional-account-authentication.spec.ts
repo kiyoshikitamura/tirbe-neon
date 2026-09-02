@@ -109,7 +109,9 @@ test("an open provider processes the next Login Bonus after the JST date changes
   await expect(loginBonus).toBeVisible();
   await loginBonus.getByRole("button", { name: "閉じる" }).click();
   const reminder = page.getByRole("dialog", { name: "アカウント認証のご案内" });
-  if (await reminder.isVisible()) await reminder.getByRole("button", { name: "閉じる" }).click();
+  await expect(reminder).toBeVisible();
+  await reminder.getByRole("button", { name: "閉じる" }).click();
+  await expect(reminder).toHaveCount(0);
 
   await page.getByRole("button", { name: "ガチャ", exact: true }).click();
   await page.clock.setFixedTime(new Date("2026-09-01T15:01:00Z"));

@@ -107,7 +107,7 @@ test("stage two hubs share a mobile-safe page frame", async ({ page }) => {
   const cases = [
     { selector: ".circle-menu-btn.fight", title: "バトル", period: false, hero: ".pvp-hero" },
     { selector: ".circle-menu-btn.conquest", title: "クエスト", period: false, hero: ".ui-hero-panel" },
-    { selector: ".mypage-power-panel", title: "ランキング", period: true, hero: ".ui-hero-panel" },
+    { selector: ".mypage-power-panel", title: "ランキング", period: false, hero: ".ranking-current" },
   ];
 
   for (const target of cases) {
@@ -120,7 +120,8 @@ test("stage two hubs share a mobile-safe page frame", async ({ page }) => {
     if (target.period) await expect(hub.locator(".period-status")).toBeVisible();
     if (target.title === "ランキング") {
       await expect(hub.locator(".ranking-category-nav")).toBeVisible();
-      await expect(hub.locator(".ranking-category-nav .sub-tab-scroll-button.next")).toBeVisible();
+      await expect(hub.getByRole("group", { name: "集計期間" })).toBeVisible();
+      await expect(hub.locator(".ranking-category-nav .sub-tab-item:visible")).toHaveCount(4);
       await expect(hub.locator(".ranking-current")).not.toContainText("--");
     }
     await page.locator(".footer-item").first().click();

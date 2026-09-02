@@ -807,7 +807,7 @@ test("first quest connects dispatch, official battle, and one reward to the comp
     button.click();
   });
   await expect(page.locator('[data-acceptance-state="B1"]')).toBeVisible();
-  await expect(page.locator(".tutorial-battle-party-icons .character-presentation-battle-party")).toHaveCount(1);
+  await expect(page.getByLabel("出撃パーティ").locator(".character-presentation-thumbnail")).toHaveCount(1);
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem("mock_db_battle_replay_sessions") || "[]").length)).toBe(1);
 
   // C3-R5's focused verification intentionally stops at the authoritative
@@ -1271,7 +1271,7 @@ test("new mobile player completes the guided first session without footer naviga
   await page.screenshot({ path: test.info().outputPath("Q6-battle-encounter.png"), fullPage: true });
   await page.getByRole("button", { name: "バトルへ" }).click();
   await expect(page.locator('[data-acceptance-state="B1"]')).toBeVisible();
-  await expect(page.locator(".tutorial-battle-party-icons .character-presentation-battle-party")).toHaveCount(5);
+  await expect(page.getByLabel("出撃パーティ").locator(".character-presentation-thumbnail")).toHaveCount(5);
   await assertCenteredGameCanvas(page, ".battle-screen");
   await page.screenshot({ path: test.info().outputPath("B1-battle-pre.png"), fullPage: true });
   await expect(page.getByRole("button", { name: "バトルスタート" })).toHaveClass(/semantic-cta--primary/);

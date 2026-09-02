@@ -142,10 +142,13 @@ test("Title to Guild human response journey remains visible across every mobile 
   if (await reloadedTitleAction.isVisible()) await reloadedTitleAction.click();
   if (await reloadedContinueAction.isVisible()) await reloadedContinueAction.click();
   await expect(page.locator(".header-mobile")).toBeVisible();
-  await page.getByRole("button", { name: "ギルド", exact: true }).click();
-  await page.getByRole("button", { name: "ギルドチャット" }).click();
-  await expect(page.getByRole("button", { name: /ギルド \(1\)/ })).toBeVisible();
-  await page.getByRole("button", { name: /ギルド \(1\)/ }).click();
+  const community = page.getByRole("button", { name: "コミュニティ", exact: true });
+  await expect(community.locator(".footer-unread-badge")).toHaveAttribute("aria-label", "コミュニティ未読1件");
+  await community.click();
+  const guildChannel = page.getByRole("button", { name: "ギルド (1)", exact: true });
+  await expect(guildChannel).toBeVisible();
+  await guildChannel.click();
+  await expect(page.getByRole("button", { name: "ギルド", exact: true })).toHaveClass(/active/);
   await expect(page.locator(".tribe-msg-bubble").filter({ hasText: "次のレイドで待ってるよ" })).toBeVisible();
   await assertMobileWave(page, ".tribe-modal-container-inner", "journey-human-response");
 });
