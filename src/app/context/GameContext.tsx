@@ -2496,12 +2496,12 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     setSelectedMapAreaId(null);
 
     try {
-      const { error } = await supabase
-        .from("users")
-        .update({ current_base_id: baseId })
-        .eq("id", session.user.id);
+      const { data, error } = await supabase.rpc("move_current_user_base", {
+        p_base_id: baseId,
+      });
 
       if (error) throw error;
+      if (data?.current_base_id !== baseId) throw new Error("Location movement response mismatch");
       return true;
     } catch (err: any) {
       console.warn("Move base failed, rolling back:", err.message);
