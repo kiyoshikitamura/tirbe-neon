@@ -77,9 +77,9 @@ jobs:
           exit 1
       - run: deno test supabase/functions/resolve-battle/engine_test.ts
 
-  browser-e2e:
+  browser-e2e-targeted:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 20
     env:
       NEXT_PUBLIC_APP_ENV: test
       NEXT_PUBLIC_USE_MOCK_DB: "true"
@@ -92,12 +92,54 @@ jobs:
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       - run: npm run build
-      - run: npm run test:e2e
+      - name: Run the current Acceptance reconciliation targets
+        run: >-
+          timeout --signal=TERM --kill-after=30s 12m
+          npm run test:e2e --
+          tests/e2e/m9-tutorial.spec.ts
+          tests/e2e/preopen-remaining-ux.spec.ts
+          --grep "first quest connects dispatch, official battle, and one reward to the completion boundary|tutorial completion resumes through account save and exposes the Home next action|new mobile player completes the guided first session without footer navigation|Home routes and editable Settings remain mobile-safe"
+          --workers=2
+          --retries=0
+          --max-failures=1
       - name: Upload Playwright diagnostics
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-diagnostics
+          name: playwright-targeted-diagnostics
+          path: |
+            test-results/**/test-failed-*.png
+            test-results/**/error-context.md
+            playwright-report/index.html
+          if-no-files-found: ignore
+          retention-days: 1
+
+  browser-e2e-full:
+    needs: browser-e2e-targeted
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      NEXT_PUBLIC_APP_ENV: test
+      NEXT_PUBLIC_USE_MOCK_DB: "true"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run build
+      - name: Run the final browser regression once
+        run: >-
+          timeout --signal=TERM --kill-after=30s 20m
+          npm run test:e2e --
+          --retries=0
+      - name: Upload Playwright diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-full-diagnostics
           path: |
             test-results/**/test-failed-*.png
             test-results/**/error-context.md
