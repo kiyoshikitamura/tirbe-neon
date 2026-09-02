@@ -125,6 +125,7 @@
     "verify:ranking-power:development": "node --env-file=.env.development.local scripts/verify_ranking_power_p0.mjs",
     "verify:ranking-power:preview": "node --env-file=.env.preview.local scripts/verify_ranking_power_p0.mjs",
     "verify:mock-direct-message-read": "node --experimental-strip-types scripts/verify_mock_direct_message_read.mjs",
+    "verify:dm-inbox-thread": "node --experimental-strip-types scripts/verify_dm_inbox_thread.mjs",
     "verify:mock-gvg-cancellation": "node --experimental-strip-types scripts/verify_mock_gvg_cancellation.mjs",
     "verify:mock-secure-decks": "node --experimental-strip-types scripts/verify_mock_secure_decks.mjs",
     "verify:mock-secure-awakening": "node --experimental-strip-types scripts/verify_mock_secure_awakening.mjs",
