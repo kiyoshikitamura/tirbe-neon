@@ -15,9 +15,9 @@ test.beforeEach(async ({ page }) => {
     const cycleDate = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Tokyo" });
     localStorage.setItem("mock_db_user_login_bonuses", JSON.stringify([{ user_id: me, current_day: 1, total_logins: 1, last_claimed_date: cycleDate }]));
     localStorage.setItem("mock_db_users", JSON.stringify([
-      { id: me, username: "V0確認", current_base_id: "shinjuku", favorite_character_id: "char_reiji_01", level: 10, cash: 50000, pvp_points: 5 },
-      { id: rivals[0], username: "街の強敵A", level: 12, total_power: 23500 },
-      { id: rivals[1], username: "街の強敵B", level: 11, total_power: 21000 },
+      { id: me, username: "V0確認", current_base_id: "shinjuku", favorite_character_id: "char_reiji_01", level: 10, cash: 50000, pvp_points: 5, total_power: 19000 },
+      { id: rivals[0], username: "街の強敵A", level: 12, total_power: 15000 },
+      { id: rivals[1], username: "街の強敵B", level: 11, total_power: 17000 },
     ]));
     localStorage.setItem("mock_db_user_characters", JSON.stringify([
       { id: "10000000-0000-4000-8000-000000000001", user_id: me, character_id: "char_reiji_01", level: 12, awakening_level: 2, created_at: now },
@@ -55,7 +55,7 @@ test.beforeEach(async ({ page }) => {
       { user_id: rivals[0], slot: 1, user_character_id: "10000000-0000-4000-8000-000000000102" },
     ]));
     localStorage.setItem("mock_db_user_power_rankings", JSON.stringify([
-      { user_id: rivals[0], total_power: 23500, updated_at: now }, { user_id: rivals[1], total_power: 21000, updated_at: now }, { user_id: me, total_power: 19000, updated_at: now },
+      { user_id: rivals[0], total_power: 15000, updated_at: now }, { user_id: rivals[1], total_power: 17000, updated_at: now }, { user_id: me, total_power: 19000, updated_at: now },
     ]));
     localStorage.setItem("mock_db_raid_bosses", JSON.stringify([{ id: "20000000-0000-4000-8000-000000000001", boss_master_id: "BOSS_001", boss_name: "極道連合組長", level: 99, current_hp: 7500000, max_hp: 10000000, base_id: "shinjuku", status: "ACTIVE", expires_at: new Date(Date.now() + 86400000).toISOString() }]));
     localStorage.setItem("mock_db_guilds", JSON.stringify([
@@ -89,16 +89,25 @@ async function mobileFramePass(page: import("@playwright/test").Page, selector: 
 test("M9-V0 main cycle presents growth, mission, PvP, ranking, raid and guild discovery", async ({ page }) => {
   await enterGame(page);
 
-  await page.getByRole("button", { name: /キャラ/ }).click();
-  await expect(page.locator(".char-identity-summary")).toContainText("RARITY");
-  await expect(page.locator(".char-layer-character .character-presentation-portrait")).toBeVisible();
-  await page.getByRole("button", { name: "強化", exact: true }).click();
-  await page.getByRole("button", { name: "スキル", exact: true }).click();
-  await expect(page.locator(".char-skill-spec").first()).toContainText("再使用 3T");
-  await page.getByRole("button", { name: "装備", exact: true }).click();
-  await expect(page.getByText("装備強化・限界突破")).toBeVisible();
-  await mobileFramePass(page, ".char-tab-container", "character-skill-equipment");
-  await page.getByRole("button", { name: /閉じる/ }).click();
+  await page.getByRole("button", { name: "キャラ", exact: true }).click();
+  await expect(page.locator(".character-v2-character-grid .character-v2-card")).toHaveCount(3);
+  await page.locator(".character-v2-character-grid .character-v2-card").first().click();
+  await expect(page.locator(".character-v2-stage-meta")).toContainText("SSR");
+  await expect(page.locator(".character-v2-status-block")).toContainText("総合力");
+  await page.locator(".character-v2-primary-actions").getByRole("button", { name: "強化", exact: true }).click();
+  await expect(page.locator(".character-v2-growth")).toBeVisible();
+  await expect(page.locator(".character-v2-current-after").first()).toContainText("After");
+  await page.locator(".character-v2-main-nav").getByRole("button", { name: "スキル", exact: true }).click();
+  await expect(page.locator(".character-v2-asset-grid .character-v2-asset-card")).toHaveCount(2);
+  await page.locator(".character-v2-asset-grid .character-v2-asset-card").first().click();
+  await expect(page.getByRole("dialog", { name: "スキル詳細" })).toContainText("Target");
+  await page.getByRole("dialog", { name: "スキル詳細" }).getByRole("button", { name: "閉じる" }).click();
+  await page.locator(".character-v2-main-nav").getByRole("button", { name: "装備", exact: true }).click();
+  await expect(page.locator(".character-v2-asset-grid .character-v2-asset-card")).toHaveCount(2);
+  await page.locator(".character-v2-asset-grid .character-v2-asset-card").first().click();
+  await expect(page.getByRole("dialog", { name: "装備詳細" })).toContainText("Slot");
+  await page.getByRole("dialog", { name: "装備詳細" }).getByRole("button", { name: "閉じる" }).click();
+  await mobileFramePass(page, ".character-v2-shell", "character-skill-equipment");
 
   await page.getByRole("button", { name: /マイページ/ }).click();
   await page.getByRole("button", { name: /ミッション/ }).click();

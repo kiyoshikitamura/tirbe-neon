@@ -104,9 +104,19 @@ async function enterNameRegistration(page: import("@playwright/test").Page, audi
 }
 
 async function beginNewTutorial(page: import("@playwright/test").Page) {
-  const legacyTap = page.getByText("TAP TO START");
-  if (await legacyTap.isVisible()) await legacyTap.click();
+  const titleAction = page.getByRole("button", { name: "TAP TO START" });
+  await expect(titleAction).toBeVisible();
+  await titleAction.click();
   await page.getByRole("button", { name: "はじめから" }).click();
+}
+
+async function resumeRuleGuide(page: import("@playwright/test").Page) {
+  const titleAction = page.getByRole("button", { name: "TAP TO START" });
+  const continueAction = page.getByRole("button", { name: "続きから" });
+  await expect(titleAction.or(continueAction)).toBeVisible();
+  if (await titleAction.isVisible()) await titleAction.click();
+  await expect(continueAction).toBeVisible();
+  await continueAction.click();
 }
 
 function tutorialEncounterSnapshot(encounterId: string) {
@@ -317,6 +327,7 @@ test("tutorial completion presentation uses final WORLD POWER TRIBE assets", asy
   await seedRuleGuideState(page, "00000000-0000-4000-8000-000000000913");
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");
+  await resumeRuleGuide(page);
 
   await expect(page.locator('[data-acceptance-state="COMPLETION_DIALOGUE"]')).toBeVisible();
   await page.screenshot({ path: testInfo.outputPath("M7-Ageha-Completion-Mobile.png") });
@@ -345,6 +356,7 @@ test("tutorial completion presentation uses final WORLD POWER TRIBE assets", asy
   const desktopPage = await desktopContext.newPage();
   await seedRuleGuideState(desktopPage, "00000000-0000-4000-8000-000000000914");
   await desktopPage.goto("/");
+  await resumeRuleGuide(desktopPage);
   await desktopPage.locator('[data-acceptance-state="COMPLETION_DIALOGUE"] button').click();
   for (const width of [1024, 1440, 1920]) {
     await desktopPage.setViewportSize({ width, height: 1000 });
@@ -377,7 +389,7 @@ test("common app shell owns safe area through entry and tutorial overlay", async
   for (const width of [375, 390, 430]) {
     await page.setViewportSize({ width, height: 844 });
     const titleCta = page.getByRole("button", { name: "TAP TO START" });
-    await expect(titleCta).toHaveClass(/semantic-cta--primary/);
+    await expect(titleCta).toHaveClass(/title-tap-text/);
     await expect(titleCta).toHaveCSS("min-height", "50px");
     await page.screenshot({ path: test.info().outputPath(`m9-design-title-${width}.png`) });
   }
@@ -385,7 +397,7 @@ test("common app shell owns safe area through entry and tutorial overlay", async
   await page.setViewportSize({ width: 390, height: 844 });
   await page.getByText("TAP TO START").click();
   await expect(page.getByRole("button", { name: "はじめから" })).toHaveClass(/semantic-cta--primary/);
-  await expect(page.getByRole("button", { name: "既存アカウントでログイン" })).toHaveClass(/semantic-cta--secondary/);
+  await expect(page.getByRole("button", { name: "データをお持ちの方" })).toHaveClass(/semantic-cta--secondary/);
   await page.screenshot({ path: test.info().outputPath("m9-design-entry-390.png") });
   await page.getByRole("button", { name: "はじめから" }).click();
   // Fast auth may complete before Playwright observes the transient. Both the

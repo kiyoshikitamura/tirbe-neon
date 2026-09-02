@@ -65,6 +65,19 @@ async function enterGuild(page: Page) {
   await page.getByRole("button", { name: "ギルド", exact: true }).click();
 }
 
+async function resumeAfterReload(page: Page) {
+  const titleAction = page.getByRole("button", { name: "TAP TO START" });
+  const continueAction = page.getByRole("button", { name: "続きから" });
+  const header = page.locator(".header-mobile");
+  const welcomeDialog = page.locator(".canonical-dialog").filter({ hasText: "ギルドへようこそ" });
+  await expect(titleAction.or(continueAction).or(header)).toBeVisible();
+  if (await welcomeDialog.isVisible()) await welcomeDialog.getByRole("button", { name: "閉じる", exact: true }).last().click();
+  if (await titleAction.isVisible()) await titleAction.click();
+  if (await continueAction.isVisible()) await continueAction.click();
+  await expect(header).toBeVisible();
+  if (await welcomeDialog.isVisible()) await welcomeDialog.getByRole("button", { name: "閉じる", exact: true }).last().click();
+}
+
 async function expectNoOverflow(page: Page, selector: string) {
   const geometry = await page.locator(selector).evaluate((node) => ({ scrollWidth: node.scrollWidth, clientWidth: node.clientWidth }));
   expect(geometry.scrollWidth).toBeLessThanOrEqual(geometry.clientWidth + 1);
@@ -154,10 +167,7 @@ test("direct join refreshes membership and opens persistent Guild Chat without r
   await expect(page.getByRole("button", { name: "Open Leaderのプロフィールを開く" })).toBeVisible();
   await page.getByRole("button", { name: "ギルドマイページへ戻る" }).click();
   await page.reload();
-  const titleAction = page.getByRole("button", { name: "TAP TO START" });
-  if (await titleAction.isVisible()) await titleAction.click();
-  const continueAction = page.getByRole("button", { name: "続きから" });
-  if (await continueAction.isVisible()) await continueAction.click();
+  await resumeAfterReload(page);
   await page.getByRole("button", { name: "ギルド", exact: true }).click();
   await expect(page.locator(".guild-main-container")).toBeVisible();
   await expect(page.locator(".guild-visual-identity")).toBeVisible();
@@ -274,10 +284,7 @@ test("Lv5 user creates a Guild, becomes master, and persists saved attributes", 
   await expect(page.locator(".guild-identity-attributes")).toContainText("メイン属性 悪");
   await expect(page.locator(".guild-identity-attributes")).toContainText("サブ属性 混沌");
   await page.reload();
-  const titleAction = page.getByRole("button", { name: "TAP TO START" });
-  if (await titleAction.isVisible()) await titleAction.click();
-  const continueAction = page.getByRole("button", { name: "続きから" });
-  if (await continueAction.isVisible()) await continueAction.click();
+  await resumeAfterReload(page);
   await page.getByRole("button", { name: "ギルド", exact: true }).click();
   await expect(page.locator(".guild-identity-attributes")).toContainText("メイン属性 悪");
   await expect(page.locator(".guild-identity-attributes")).toContainText("サブ属性 混沌");
@@ -409,10 +416,7 @@ test("role navigation exposes settings to submasters and master leave remains sa
     localStorage.setItem("mock_db_guild_members", JSON.stringify(rows.map((row: any) => row.user_id === me && row.guild_id === openGuild ? { ...row, role: "MASTER" } : row)));
   }, { me, openGuild });
   await page.reload();
-  const titleAction = page.getByRole("button", { name: "TAP TO START" });
-  if (await titleAction.isVisible()) await titleAction.click();
-  const continueAction = page.getByRole("button", { name: "続きから" });
-  if (await continueAction.isVisible()) await continueAction.click();
+  await resumeAfterReload(page);
   await page.getByRole("button", { name: "ギルド", exact: true }).click();
   await page.getByRole("button", { name: "ギルドを脱退" }).click();
   await expect(page.getByText("脱退する前に、マスター権限を譲渡してください。")).toBeVisible();
@@ -472,10 +476,7 @@ test("approval request becomes pending and survives reload", async ({ page }) =>
   await page.getByRole("button", { name: "OK" }).click();
   await expect(page.getByRole("button", { name: "申請中（取消）" }).first()).toBeVisible();
   await page.reload();
-  const titleAction = page.getByRole("button", { name: "TAP TO START" });
-  if (await titleAction.isVisible()) await titleAction.click();
-  const continueAction = page.getByRole("button", { name: "続きから" });
-  if (await continueAction.isVisible()) await continueAction.click();
+  await resumeAfterReload(page);
   await page.getByRole("button", { name: "ギルド", exact: true }).click();
   await expect(page.getByRole("button", { name: "申請中（取消）" }).first()).toBeVisible();
 });
