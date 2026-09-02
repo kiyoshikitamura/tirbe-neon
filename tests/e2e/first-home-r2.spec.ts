@@ -733,7 +733,7 @@ test("existing-account login uses the shared tutorial surface and CTA geometry",
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");
   await page.getByRole("button", { name: "TAP TO START" }).click();
-  await page.getByRole("button", { name: "続きから" }).click();
+  await page.getByRole("button", { name: "データをお持ちの方" }).click();
   const card = page.locator(".auth-card");
   await expect(card).toBeVisible();
   await expect(page.getByRole("button", { name: "Googleでログイン" })).toHaveClass(/semantic-cta--primary/);

@@ -136,7 +136,10 @@ test("Pre-open operations hides closed surfaces and rejects closed deep links", 
   await expect(page.getByRole("button", { name: "クエスト", exact: true })).toBeVisible();
 
   await page.goto("/?tab=shop");
+  const restart = page.getByRole("button", { name: "TAP TO START" });
   const resume = page.getByRole("button", { name: "続きから" });
+  await expect(restart.or(resume)).toBeVisible();
+  if (await restart.isVisible()) await restart.click();
   if (await resume.isVisible()) await resume.click();
   await expect(page.locator(".header-mobile")).toBeVisible();
   await expect(page.getByText(/通常ショップ|月額パス/)).toHaveCount(0);

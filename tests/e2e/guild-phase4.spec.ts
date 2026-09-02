@@ -301,7 +301,10 @@ test("Guild creation entry is first and Lv4 or insufficient CASH remains gated",
     localStorage.setItem("mock_db_users", JSON.stringify(users));
   });
   await page.reload();
+  const titleAction = page.getByRole("button", { name: "TAP TO START" });
   const continueAction = page.getByRole("button", { name: "続きから" });
+  await expect(titleAction.or(continueAction)).toBeVisible();
+  if (await titleAction.isVisible()) await titleAction.click();
   await expect(continueAction).toBeVisible();
   await continueAction.click();
   await expect(page.locator(".header-mobile")).toBeVisible();
