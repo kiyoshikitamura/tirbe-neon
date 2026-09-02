@@ -45,7 +45,10 @@ test.beforeEach(async ({ page }) => {
 
 async function enterGame(page: Page) {
   await page.goto("/");
+  const titleAction = page.getByRole("button", { name: "TAP TO START" });
   const continueButton = page.getByRole("button", { name: "続きから" });
+  await expect(titleAction.or(continueButton)).toBeVisible();
+  if (await titleAction.isVisible()) await titleAction.click();
   await expect(continueButton).toBeVisible();
   await continueButton.click();
   await expect(page.locator(".header-mobile")).toBeVisible();
@@ -124,23 +127,18 @@ test("Quest, Character and BBS consume canonical presentation contracts", async 
   await expect(page.locator(".patrol-container")).toContainText("強化ドリンク・小");
   await expectNoOverflow(page, ".patrol-container");
 
-  await page.getByRole("button", { name: /キャラ/ }).click();
-  await expect(page.locator(".char-tab-container")).not.toContainText("WEAPON_001");
-  await expect(page.locator(".char-slider-item .character-frame")).toHaveCount(0);
-  await expect(page.locator(".char-slider-item .character-attribute-badge")).toHaveCount(0);
-  await expect(page.locator(".char-main-actions").getByRole("button", { name: "強化" })).toBeVisible();
-  await expect(page.locator(".char-main-actions").getByRole("button", { name: "スキル" })).toBeVisible();
-  await expect(page.locator(".char-main-actions").getByRole("button", { name: "装備" })).toBeVisible();
-  await expect(page.locator(".char-firstview-skill.is-locked")).toHaveCount(2);
-  await expect(page.locator(".char-firstview-skills")).not.toContainText("LOCK");
-  await expect(page.locator(".char-firstview-skill .shared-skill-icon").first()).toBeVisible();
-  await page.locator(".char-main-actions").getByRole("button", { name: "強化" }).click();
-  await expect(page.locator(".char-growth-contract")).toContainText("現在");
-  await expect(page.locator(".char-growth-contract")).toContainText("強化後");
-  await expect(page.locator(".char-growth-contract")).not.toContainText("CHAR_EXP_S");
-  await page.getByRole("button", { name: "閉じる" }).click();
-  await page.locator(".char-main-stage").evaluate((node) => Promise.all(node.getAnimations().map((animation) => animation.finished)));
-  await expectNoOverflow(page, ".char-tab-container");
+  await page.getByRole("button", { name: "キャラ", exact: true }).click();
+  await expect(page.locator(".character-v2-character-grid .character-v2-card")).toHaveCount(1);
+  await page.locator(".character-v2-character-grid .character-v2-card").click();
+  await expect(page.locator(".character-v2-stage-meta")).toContainText("レイジ");
+  await expect(page.locator(".character-v2-status-block")).toContainText("総合力");
+  await expect(page.locator(".character-v2-primary-actions").getByRole("button", { name: "強化" })).toBeVisible();
+  await expect(page.locator(".character-v2-primary-actions").getByRole("button", { name: "スキル・装備" })).toBeVisible();
+  await page.locator(".character-v2-primary-actions").getByRole("button", { name: "強化" }).click();
+  await expect(page.locator(".character-v2-growth")).toContainText("Current");
+  await expect(page.locator(".character-v2-growth")).toContainText("After");
+  await expect(page.locator(".character-v2-growth")).not.toContainText("CHAR_EXP_S");
+  await expectNoOverflow(page, ".character-v2-shell");
 
   await page.getByRole("button", { name: /マイページ/ }).click();
   await page.locator(".mypage-sub-icons-left .sub-icon-unit").filter({ hasText: "コミュニティ" }).click();

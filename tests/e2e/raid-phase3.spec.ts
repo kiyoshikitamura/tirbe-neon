@@ -33,6 +33,7 @@ test.beforeEach(async ({ page }) => {
 
 async function openRaid(page: Page, path = "/") {
   await page.goto(path);
+  await page.getByRole("button", { name: "TAP TO START" }).click();
   await page.getByRole("button", { name: "続きから" }).click();
   await expect(page.locator(".header-mobile")).toBeVisible();
   await page.locator(".mypage-sub-icons-left .sub-icon-unit").filter({ hasText: "レイド" }).click();

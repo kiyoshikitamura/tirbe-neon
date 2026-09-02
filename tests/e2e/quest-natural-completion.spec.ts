@@ -77,7 +77,12 @@ test("normal Quest becomes claimable without reload after natural expiry", async
   });
 
   await page.goto("/");
-  await page.getByRole("button", { name: "続きから" }).click();
+  const titleAction = page.getByRole("button", { name: "TAP TO START" });
+  const continueAction = page.getByRole("button", { name: "続きから" });
+  await expect(titleAction.or(continueAction)).toBeVisible();
+  if (await titleAction.isVisible()) await titleAction.click();
+  await expect(continueAction).toBeVisible();
+  await continueAction.click();
   const header = page.locator(".header-mobile");
   await expect(header).toBeVisible();
 

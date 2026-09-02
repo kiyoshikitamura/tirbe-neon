@@ -28,6 +28,7 @@ async function installPrimaryCtaObserver(page: Page) {
 }
 
 const resumeSnapshot = {
+  userId: "00000000-0000-4000-8000-000000000405",
   backgroundUrl: "/bg/bg_street_shibuya.jpg",
   leaderImageUrl: "/characters/reiji_transparent_asset.png",
   leaderName: "reiji",
@@ -36,6 +37,7 @@ const resumeSnapshot = {
 test("reload uses the stable Home resume shell instead of branded boot loading", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.addInitScript((snapshot) => {
+    window.localStorage.setItem("tribe_demo_uuid", snapshot.userId);
     window.sessionStorage.setItem("tribe-neon.home-resume-visual.v1", JSON.stringify(snapshot));
   }, resumeSnapshot);
   await page.route("**/branding/title-key-visual.png", async (route) => {
@@ -139,7 +141,7 @@ for (const viewport of viewports) {
     await expect(page.locator(".header-mobile")).toContainText("⚡");
     await expect(page.locator(".header-mobile-power")).toContainText("総合力");
     await expect(page.locator(".mypage-current-location")).toContainText("新宿");
-    await expect(page.locator(".mypage-sub-icons-left .sub-icon-unit")).toHaveCount(3);
+    await expect(page.locator(".mypage-sub-icons-left .sub-icon-label")).toHaveText(["ボーナス", "ミッション", "ランキング", "レイド"]);
     await expect(page.locator(".mypage-sub-icons-right")).toHaveCount(0);
     await expect(page.locator(".footer-mobile .footer-item")).toHaveCount(5);
     await expect(page.locator(".footer-mobile .footer-label")).toHaveText(["マイページ", "コミュニティ", "キャラ", "ガチャ", "ショップ"]);
@@ -553,8 +555,8 @@ test("Activity uses shared identity and respects reduced motion", async ({ page 
   await page.setViewportSize({ width: 390, height: 844 });
   await openHomeScenario(page, "first-home-fresh");
   const ticker = page.locator(".mypage-live-ticker--visual");
-  await expect(ticker.locator(".user-identity-row .character-presentation-icon")).toBeVisible();
-  const underlyingActivityIcon = ticker.locator(".character-presentation-icon");
+  await expect(ticker.locator(".user-identity-row .character-presentation-thumbnail")).toBeVisible();
+  const underlyingActivityIcon = ticker.locator(".character-presentation-thumbnail");
   await ticker.click();
   const dialog = page.getByRole("dialog", { name: "アクティビティ履歴" });
   await expect(dialog).toBeVisible();
@@ -571,7 +573,7 @@ test("Activity uses shared identity and respects reduced motion", async ({ page 
     const firstRect = firstRow.getBoundingClientRect();
     const footerRect = footer.getBoundingClientRect();
     const overlay = node.parentElement!;
-    const activityIcon = document.querySelector<HTMLElement>(".mypage-live-ticker--visual .character-presentation-icon")!;
+    const activityIcon = document.querySelector<HTMLElement>(".mypage-live-ticker--visual .character-presentation-thumbnail")!;
     const activityIconRect = activityIcon.getBoundingClientRect();
     const overlayStyle = getComputedStyle(overlay);
     const dialogStyle = getComputedStyle(node);
@@ -684,7 +686,7 @@ test("Activity self identity opens the current user profile authority", async ({
   expect(clipGeometry.overlayAnimation).toBe("none");
   expect(clipGeometry.horizontalOverflow).toBeLessThanOrEqual(1);
   const identity = dialog.getByRole("button", { name: "NEON-Rのプロフィールを開く", exact: true });
-  await expect(identity.locator(".character-presentation-icon")).toBeVisible();
+  await expect(identity.locator(".character-presentation-thumbnail")).toBeVisible();
   await identity.click();
   await expect(page.locator('[data-opened-profile-id="qa-self"]')).toBeAttached();
 });
@@ -730,7 +732,8 @@ test("unaffiliated and pending Guild CTAs wait for their authoritative projectio
 test("existing-account login uses the shared tutorial surface and CTA geometry", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");
-  await page.getByRole("button", { name: "続きから" }).click();
+  await page.getByRole("button", { name: "TAP TO START" }).click();
+  await page.getByRole("button", { name: "データをお持ちの方" }).click();
   const card = page.locator(".auth-card");
   await expect(card).toBeVisible();
   await expect(page.getByRole("button", { name: "Googleでログイン" })).toHaveClass(/semantic-cta--primary/);

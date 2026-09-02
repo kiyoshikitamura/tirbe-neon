@@ -9,6 +9,9 @@ export default defineConfig({
   timeout: 30_000,
   expect: { timeout: 12_000 },
   retries: process.env.CI ? 1 : 0,
+  // 共通導線やfixtureの破綻時に全件を数時間再試行しない。
+  // 最終失敗5件で共通原因の診断に必要な情報を確保する。
+  maxFailures: process.env.CI ? 5 : 0,
   reporter: process.env.CI ? [["github"], ["list"]] : "list",
   fullyParallel: false,
   // The suite shares one Next.js dev server. Bounding browser concurrency keeps
@@ -17,9 +20,10 @@ export default defineConfig({
   use: {
     baseURL: testBaseUrl,
     headless: true,
-    trace: "retain-on-failure",
+    trace: process.env.CI ? "off" : "retain-on-failure",
     screenshot: "only-on-failure",
-    video: "retain-on-failure",
+    // CI失敗時の動画・trace肥大化を避け、スクリーンショットとerror contextを残す。
+    video: process.env.CI ? "off" : "retain-on-failure",
   },
   webServer: {
     // Invoke Next directly so Playwright owns the actual server process. npm.cmd
