@@ -27,7 +27,7 @@ test.beforeEach(async ({ page }) => {
     localStorage.setItem("mock_db_user_equipments", JSON.stringify([{ id: "equipment-sweep", user_id: userId, equipment_id: "WEAPON_001", equipped_character_id: "10000000-0000-4000-8000-000000000829", slot_index: 0, level: 1, plus_val: 0, created_at: now }]));
     localStorage.setItem("mock_db_user_items", JSON.stringify([{ id: "item-sweep", user_id: userId, item_id: "CHAR_EXP_S", quantity: 3 }]));
     localStorage.setItem("mock_db_quests", JSON.stringify([{
-      id: "q_shinjuku_1", name: "歌舞伎町 夜間見回り", town_id: "shinjuku", level_type: "EASY", duration_seconds: 60, cost_vitality: 5,
+      id: "QUEST_SHINJUKU_EASY", name: "歌舞伎町一番街", town_id: "shinjuku", level_type: "EASY", duration_seconds: 300, cost_vitality: 3,
       cash_reward: 300, exp_reward: 100, recommended_level: 1, recommended_power: 1000, enemy_member_count: 1,
       enemy_members: [{ characterId: "char_takeshi_01", skillLoadout: ["SKILL_001"] }], enemy_attributes: ["EVIL"], enemy_tactic: "BALANCED",
       reward_items: [{ item_id: "CHAR_EXP_S", quantity: 1, probability_bp: 10000 }], first_clear_items: [], first_clear_user_exp: 100,
@@ -127,7 +127,7 @@ test("Quest, Character and BBS consume canonical presentation contracts", async 
   const easyCourse = page.locator(".quest-v2-courses").getByRole("button", { name: /初級/ });
   await expect(easyCourse).toBeVisible();
   await easyCourse.click();
-  await expect(page.locator(".quest-v2-brief")).toContainText("歌舞伎町 夜間見回り");
+  await expect(page.locator(".quest-v2-brief")).toContainText("歌舞伎町一番街");
   await expect(page.locator(".quest-v2-brief")).toContainText("出現する敵");
   await expect(page.locator(".quest-v2-brief")).toContainText("所要時間");
   await expect(page.locator(".quest-v0-summary")).toHaveCount(0);
