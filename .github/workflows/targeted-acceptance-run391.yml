@@ -3,6 +3,8 @@ name: Targeted Acceptance Run 391
 on:
   push:
     branches: [codex/targeted-acceptance-run391]
+  pull_request:
+    branches: [develop]
   workflow_dispatch:
 
 concurrency:
