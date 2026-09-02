@@ -36,7 +36,11 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 412, height: 915 }
     await seedDmState(page);
     await enterGame(page);
 
-    await page.locator(".chat-preview-bar").click();
+    const communityButton = page.getByRole("button", { name: "コミュニティ" });
+    await expect(communityButton).toBeVisible();
+    await communityButton.click();
+    await expect(page.locator(".tribe-chat-panel")).toBeVisible();
+    await expect(page.getByRole("button", { name: "全体", exact: true })).toHaveClass(/active/);
     await page.getByRole("button", { name: /個人\(DM\)/ }).click();
 
     const panel = page.locator(".tribe-chat-panel");
@@ -59,5 +63,9 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 412, height: 915 }
     await expect(panel.locator('[aria-label="DM一覧"]')).toBeVisible();
     const geometry = await panel.evaluate((node) => ({ clientWidth: node.clientWidth, scrollWidth: node.scrollWidth }));
     expect(geometry.scrollWidth).toBeLessThanOrEqual(geometry.clientWidth + 1);
+
+    await panel.getByRole("button", { name: "BBSを開く" }).click();
+    await expect(page.locator(".bbs-view-container")).toBeVisible();
+    await expect(page.getByRole("button", { name: "ショップは準備中です" })).toContainText("準備中");
   });
 }

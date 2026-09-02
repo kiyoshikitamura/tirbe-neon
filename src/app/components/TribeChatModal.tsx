@@ -31,7 +31,8 @@ export default function TribeChatModal() {
     dmUnreadConversations,
     dmUnreadTotal,
     handleSendDirectMessage,
-    fetchPlayerDetail
+    fetchPlayerDetail,
+    navigateTab,
   } = useGame();
 
   const [localDmText, setLocalDmText] = useState("");
@@ -119,6 +120,20 @@ export default function TribeChatModal() {
           }}
           className="mb-3"
         />
+        <div className="tribe-community-secondary-nav">
+          <OutlawButton
+            variant="ghost"
+            className="tribe-bbs-link"
+            onClick={() => {
+              setDmRecipientId(null);
+              setLocalDmText("");
+              setShowTribeChatPanel(false);
+              navigateTab("bbs");
+            }}
+          >
+            BBSを開く
+          </OutlawButton>
+        </div>
 
         {chatChannel === "DM" && dmRecipientId && (
           <div className="tribe-dm-thread-header">
