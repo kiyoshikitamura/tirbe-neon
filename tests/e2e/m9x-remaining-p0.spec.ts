@@ -70,7 +70,7 @@ async function enterHome(page: Page) {
 test("PvP uses the main formation, offers a weaker first opponent, and has no defense-deck UI", async ({ page }) => {
   await seedAuthenticatedPlayer(page);
   await enterHome(page);
-  await page.getByRole("button", { name: "喧嘩" }).click();
+  await page.getByRole("button", { name: "バトル", exact: true }).click();
   await expect(page.getByRole("button", { name: "防衛・履歴" })).toHaveCount(0);
   await expect(page.getByText(/防衛デッキ|防衛設定/)).toHaveCount(0);
   await expect(page.locator('.pvp-opponent-card')).toHaveCount(1);

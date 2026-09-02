@@ -118,7 +118,7 @@ test("stage two hubs share a mobile-safe page frame", async ({ page }) => {
     if (target.title === "ランキング") {
       await expect(hub.locator(".ranking-category-nav")).toBeVisible();
       await expect(hub.locator(".ranking-category-nav .sub-tab-scroll-button.next")).toBeVisible();
-      await expect(hub.locator(".ranking-hero-copy")).not.toContainText("--");
+      await expect(hub.locator(".ranking-current")).not.toContainText("--");
     }
     await page.locator(".footer-item").first().click();
     await expect(page.locator(target.selector)).toBeVisible();

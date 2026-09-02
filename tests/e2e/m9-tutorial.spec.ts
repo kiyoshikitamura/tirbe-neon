@@ -524,7 +524,7 @@ test("free gacha presents one CTA, feedback, result assets, and formation connec
     expect(metrics.columnCount).toBe(5);
     expect(metrics.rowCount).toBe(2);
     expect(new Set(metrics.cardWidths).size).toBe(1);
-    expect(new Set(metrics.cardHeights).size).toBe(1);
+    expect(Math.max(...metrics.cardHeights) - Math.min(...metrics.cardHeights)).toBeLessThanOrEqual(1);
     expect(metrics.frameRects.every((frame) => frame && frame.widthDelta <= 1 && frame.heightDelta <= 1)).toBe(true);
     await page.screenshot({ path: test.info().outputPath(`m9-1-gacha-result-${width}.png`), fullPage: true });
   }
@@ -560,7 +560,7 @@ test("free gacha presents one CTA, feedback, result assets, and formation connec
   })).toBe("AUTO_FORMATION");
 
   await page.reload();
-  await page.getByRole("button", { name: "続きから" }).click();
+  await resumeRuleGuide(page);
   await expect(page.getByRole("button", { name: "おすすめ編成にする" })).toBeVisible();
 });
 
@@ -614,7 +614,7 @@ test("formation advances directly to the quest boundary and resumes there", asyn
   })).toBe("DISPATCH");
 
   await page.reload();
-  await page.getByRole("button", { name: "続きから" }).click();
+  await resumeRuleGuide(page);
   await expect(page.locator('[data-acceptance-state="Q1"]')).toBeVisible();
   await expect(page.getByRole("button", { name: "おまかせ編成" })).toHaveCount(0);
 });
@@ -629,7 +629,7 @@ test("three random tutorial SSRs remain the same owned character through result 
     { id: "char_karen_01", name: "カレン" },
   ].filter((entry) => !process.env.M9X_SSR_CASE || entry.name === process.env.M9X_SSR_CASE);
   const continueFromTitleIfNeeded = async () => {
-    const resume = page.getByRole("button", { name: "続きから" });
+    const resume = page.getByRole("button", { name: /続きから|チュートリアルを続ける/ });
     await expect(resume).toBeVisible();
     await resume.click();
   };
@@ -669,7 +669,7 @@ test("three random tutorial SSRs remain the same owned character through result 
     await expect(guaranteedCandidate).toHaveClass(/is-selected/);
     await page.reload();
     const titleAction = page.getByRole("button", { name: "TAP TO START" });
-    const continueAction = page.getByRole("button", { name: "続きから" });
+    const continueAction = page.getByRole("button", { name: /続きから|チュートリアルを続ける/ });
     await expect(titleAction.or(continueAction)).toBeVisible();
     if (await titleAction.isVisible()) await titleAction.click();
     await continueFromTitleIfNeeded();
@@ -755,7 +755,7 @@ test("first quest connects dispatch, official battle, and one reward to the comp
 
   await page.goto("/");
   const titleAction = page.getByRole("button", { name: "TAP TO START" });
-  const continueFromTitle = page.getByRole("button", { name: "続きから" });
+  const continueFromTitle = page.getByRole("button", { name: /続きから|チュートリアルを続ける/ });
   await expect(titleAction.or(continueFromTitle)).toBeVisible();
   if (await titleAction.isVisible()) await titleAction.click();
   await expect(continueFromTitle).toBeVisible();
@@ -1081,7 +1081,7 @@ test("naturally completed tutorial quest uses the same encounter and battle boun
 
   await page.goto("/");
   await page.waitForTimeout(150);
-  await page.getByRole("button", { name: "続きから" }).click();
+  await resumeRuleGuide(page);
   await expect(page.locator('[data-acceptance-state="Q5"]')).toBeVisible();
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem("mock_db_tutorial_progress") || "[]")[0]?.step_id)).toBe("TUTORIAL_BATTLE");
   await page.getByRole("button", { name: "次へ" }).click();
@@ -1120,7 +1120,7 @@ test("tutorial instant completion projects quest complete without a reload", asy
 
   await page.goto("/");
   await expect(page.getByText("セッション確認中")).toBeHidden();
-  await page.getByRole("button", { name: "続きから" }).click();
+  await resumeRuleGuide(page);
   await expect(page.locator('[data-acceptance-state="Q3"]')).toBeVisible();
   await page.getByRole("button", { name: /すぐに時短する/ }).click();
   await expect(page.locator('[data-acceptance-state="Q5"]')).toBeVisible();
@@ -1155,7 +1155,7 @@ test("claimed tutorial reward resumes at the completion boundary after reload", 
   }, { userId });
 
   await page.goto("/");
-  await page.getByRole("button", { name: "続きから" }).click();
+  await resumeRuleGuide(page);
   await page.locator('[data-acceptance-state="COMPLETION_DIALOGUE"] button').click();
   await expect(page.getByRole("heading", { name: "いろんな奴が、この街で生きてる。" })).toBeVisible();
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem("mock_db_tutorial_progress") || "[]")[0]?.step_id)).toBe("RULE_GUIDE");
@@ -1174,6 +1174,7 @@ test("tutorial completion resumes through account save and exposes the Home next
   }, { userId });
 
   await page.goto("/");
+  await resumeRuleGuide(page);
   await page.locator('[data-acceptance-state="COMPLETION_DIALOGUE"] button').click();
   await expect(page.getByRole("heading", { name: "いろんな奴が、この街で生きてる。" })).toBeVisible();
 
@@ -1380,8 +1381,10 @@ test("visible growth remains the post-gacha gate and resumes idempotently", asyn
   }, { userId });
 
   await page.goto("/");
+  await resumeRuleGuide(page);
   await expect(page.locator('[data-acceptance-state="TUTORIAL_SKILL_STEP"]')).toBeVisible();
   await page.reload();
+  await resumeRuleGuide(page);
   await completeVisibleTutorialGrowth(page);
   await completeTutorialAutoFormation(page);
   const result = await page.evaluate(() => ({

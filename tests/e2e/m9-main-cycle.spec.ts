@@ -136,8 +136,10 @@ test("M9-V0 main cycle presents growth, mission, PvP, ranking, raid and guild di
   expect(await page.locator(".pvp-opponent-card").first().evaluate((node) => node.getBoundingClientRect().top < window.innerHeight)).toBe(true);
   await mobileFramePass(page, ".pvp-view", "pvp");
   await page.getByRole("button", { name: "ランキング", exact: true }).click();
-  await expect(page.locator(".ranking-hero-copy")).toContainText("あなたの現在地");
-  await expect(page.locator(".ranking-hero-copy strong")).toHaveText(`${pvpTopRank}位`);
+  const currentRanking = page.locator(".ranking-current");
+  await expect(currentRanking).toBeVisible();
+  await expect(currentRanking).toHaveAccessibleName("あなたの現在地");
+  await expect(currentRanking).toContainText(`${pvpTopRank}位`);
   await expect(page.getByRole("button", { name: "PvPへ戻る" })).toBeVisible();
   await page.locator(".ranking-tab-view .clickable-item").first().click();
   await expect(page.locator(".modal-card").getByText("街の強敵A", { exact: true })).toBeVisible();

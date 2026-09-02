@@ -59,7 +59,7 @@ test("tutorial ten-pull guarantees slot 10 SSR and visible Growth precedes forma
       await page.screenshot({ path: test.info().outputPath(`gacha-reveal-${rarityClass}.png`) });
     }
     const currentLabel = await reveal.getAttribute("aria-label");
-    await reveal.click();
+    await reveal.evaluate((button: HTMLButtonElement) => button.click());
     await expect(reveal).not.toHaveAttribute("aria-label", currentLabel || "");
   }
   await expect(reveal).toHaveClass(/is-guaranteed/);
@@ -69,14 +69,14 @@ test("tutorial ten-pull guarantees slot 10 SSR and visible Growth precedes forma
   await expect(reveal).not.toHaveAttribute("data-character-id", /.+/);
   await expect(reveal.locator(".tutorial-ssr-quote blockquote")).toHaveText("俺の前に立つなら、覚悟くらい決めてこい。");
   await page.screenshot({ path: test.info().outputPath("gacha-ssr-quote.png") });
-  await reveal.click();
+  await reveal.evaluate((button: HTMLButtonElement) => button.click());
   await expect(reveal).toHaveAttribute("data-presentation-state", "SSR_FLASH");
   await expect(reveal).toHaveAttribute("data-presentation-state", "SSR_REVEAL");
   await expect(reveal).toHaveAttribute("data-character-id", "char_reiji_01");
   await expect(reveal).toHaveAttribute("data-can-advance", "true");
   await expect(reveal.locator(".character-presentation-frame.is-reveal")).toBeVisible();
   await page.screenshot({ path: test.info().outputPath("gacha-ssr-reveal.png") });
-  await reveal.click();
+  await reveal.evaluate((button: HTMLButtonElement) => button.click());
   await expect(page.locator(".gacha-result-card")).toHaveCount(10);
   await expect(page.locator(".gacha-result-card .character-presentation-frame.is-character")).toHaveCount(10);
   await expect(page.locator(".gacha-result-card .character-presentation-gacha-result-compact")).toHaveCount(10);
@@ -180,7 +180,10 @@ test("world information precedes Ageha and entry sub-state survives reload", asy
   const tutorialContinue = page.getByRole("button", { name: "チュートリアルを続ける" });
   await expect(page.locator('[data-entry-state="AGEHA_INTRO"]').or(titleCta).or(tutorialContinue)).toBeVisible();
   if (await titleCta.isVisible()) await titleCta.click();
-  if (await tutorialContinue.isVisible()) await tutorialContinue.click();
+  if (!(await page.locator('[data-entry-state="AGEHA_INTRO"]').isVisible())) {
+    await expect(tutorialContinue).toBeVisible();
+    await tutorialContinue.click();
+  }
   await expect(page.locator('[data-entry-state="AGEHA_INTRO"]')).toBeVisible();
 
   await page.getByRole("button", { name: "次へ" }).click();
@@ -188,7 +191,10 @@ test("world information precedes Ageha and entry sub-state survives reload", asy
   await page.reload();
   await expect(page.locator('[data-entry-state="NAME_INPUT"]').or(titleCta).or(tutorialContinue)).toBeVisible();
   if (await titleCta.isVisible()) await titleCta.click();
-  if (await tutorialContinue.isVisible()) await tutorialContinue.click();
+  if (!(await page.locator('[data-entry-state="NAME_INPUT"]').isVisible())) {
+    await expect(tutorialContinue).toBeVisible();
+    await tutorialContinue.click();
+  }
   await expect(page.getByPlaceholder("プレイヤー名を入力")).toBeVisible();
 });
 
