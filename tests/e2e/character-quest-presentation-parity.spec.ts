@@ -6,8 +6,10 @@ test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
     const userId = "00000000-0000-4000-8000-000000000829";
     const now = new Date().toISOString();
+    const cycleDate = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Tokyo" });
     localStorage.setItem("tribe_demo_uuid", userId);
     localStorage.setItem("mock_auth_mode", "EMAIL");
+    localStorage.setItem("mock_db_user_login_bonuses", JSON.stringify([{ user_id: userId, current_day: 1, total_logins: 1, last_claimed_date: cycleDate }]));
     if (!localStorage.getItem("mock_db_users")) {
       localStorage.setItem("mock_db_users", JSON.stringify([{ id: userId, username: "Presentation QA", current_base_id: "shinjuku", favorite_character_id: "char_reiji_01", level: 10, cash: 50000, vitality: 100 }]));
     }

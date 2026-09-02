@@ -9,6 +9,7 @@ test.beforeEach(async ({ page }) => {
     const cycleDate = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Tokyo" });
     localStorage.setItem("tribe_demo_uuid", userId);
     localStorage.setItem("mock_auth_mode", "EMAIL");
+    localStorage.setItem("mock_db_user_login_bonuses", JSON.stringify([{ user_id: userId, current_day: 1, total_logins: 1, last_claimed_date: cycleDate }]));
     localStorage.setItem("mock_db_users", JSON.stringify([{ id: userId, username: "C1検証ユーザー", current_base_id: "shinjuku", favorite_character_id: "char_reiji_01", level: 10, cash: 50_000 }]));
     localStorage.setItem("mock_db_user_characters", JSON.stringify([{ id: "10000000-0000-4000-8000-000000000201", user_id: userId, character_id: "char_reiji_01", level: 10, awakening_level: 1, created_at: now }]));
     localStorage.setItem("mock_db_user_main_formations", JSON.stringify([{ user_id: userId, character_ids: ["10000000-0000-4000-8000-000000000201"] }]));
@@ -74,19 +75,22 @@ for (const viewport of [
   });
 }
 
-test("Guild recommendation explains why and keeps join feedback actionable", async ({ page }) => {
+test("Guild recommendations expose current activity and keep join feedback actionable", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await enterGame(page);
   await page.locator(".circle-menu-btn.guild").click();
+  await expect(page.locator(".guild-lobby-section-heading").first()).toContainText("おすすめギルド");
   await expect(page.locator(".guild-lobby-guild-card").first()).toBeVisible();
-  await expect(page.locator(".guild-recommendation-reason").first()).toContainText("おすすめ理由");
+  await expect(page.locator(".guild-lobby-guild-card").first()).toContainText("直近7日アクティブ");
+  await expect(page.locator(".guild-lobby-guild-card").first()).toContainText("レイド貢献");
   await expectNoHorizontalOverflow(page, ".guild-lobby-view");
 });
 
 test("Present claim uses the shared reward result and mobile-safe layout", async ({ page }) => {
   await page.setViewportSize({ width: 412, height: 915 });
   await enterGame(page);
-  await page.locator(".sub-icon-unit").filter({ hasText: "プレゼント" }).click();
+  await page.getByRole("button", { name: "MENU" }).click();
+  await page.getByRole("button", { name: "プレゼント" }).click();
   await expect(page.locator(".inbox-present-item")).toBeVisible();
   await expectNoHorizontalOverflow(page, ".inbox-panel-container-inner");
   await page.getByRole("button", { name: "受け取る", exact: true }).click();
