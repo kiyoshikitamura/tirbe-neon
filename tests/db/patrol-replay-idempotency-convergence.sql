@@ -34,17 +34,32 @@ insert into public.user_patrols(
   '13000000-0000-4000-8000-000000000002',
   '11000000-0000-4000-8000-000000000001',
   'q_shinjuku_1','q_shinjuku_1','char_ageha_01','ONGOING',true,false,now()-interval '1 second',
-  '{"encounterId":"natural-completion","members":[{"id":"enemy-1","level":5}]}'::jsonb
+  null
 ),(
   '13000000-0000-4000-8000-000000000003',
   '11000000-0000-4000-8000-000000000001',
   'q_shinjuku_1','q_shinjuku_1','char_ageha_01','ONGOING',true,false,now()+interval '1 minute',
-  '{"encounterId":"early-completion","members":[{"id":"enemy-1","level":5}]}'::jsonb
+  null
 ),(
   '13000000-0000-4000-8000-000000000004',
   '11000000-0000-4000-8000-000000000002',
   'q_shinjuku_1','q_shinjuku_1','char_ageha_01','ONGOING',true,false,now()-interval '1 second',
-  '{"encounterId":"foreign-completion","members":[{"id":"enemy-1","level":5}]}'::jsonb
+  null
+);
+
+-- The canonical snapshot trigger intentionally owns INSERT. Override only after it
+-- has run so this regression can assert the RPC returns the frozen row payload.
+update public.user_patrols
+set encounter_snapshot = case id
+  when '13000000-0000-4000-8000-000000000002' then '{"encounterId":"natural-completion","members":[{"id":"enemy-1","level":5}]}'::jsonb
+  when '13000000-0000-4000-8000-000000000003' then '{"encounterId":"early-completion","members":[{"id":"enemy-1","level":5}]}'::jsonb
+  when '13000000-0000-4000-8000-000000000004' then '{"encounterId":"foreign-completion","members":[{"id":"enemy-1","level":5}]}'::jsonb
+  else encounter_snapshot
+end
+where id in (
+  '13000000-0000-4000-8000-000000000002',
+  '13000000-0000-4000-8000-000000000003',
+  '13000000-0000-4000-8000-000000000004'
 );
 
 insert into public.tutorial_progress(user_id,step_id)
