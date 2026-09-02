@@ -70,7 +70,7 @@ for (const viewport of [
     const rewardDialog = page.getByRole("dialog", { name: "報酬獲得" });
     await expect(rewardDialog).toBeVisible();
     await expect(rewardDialog).toContainText("強化ドリンク・小");
-    await expect(rewardDialog).toContainText("プレゼント");
+    await expect(rewardDialog).toContainText("報酬を獲得しました");
     await expectNoHorizontalOverflow(page, ".canonical-dialog");
   });
 }

@@ -8,6 +8,8 @@ async function seedDmState(page: Page) {
   await page.addInitScript(({ currentId, firstId, secondId }) => {
     localStorage.setItem("tribe_demo_uuid", currentId);
     localStorage.setItem("mock_auth_mode", "EMAIL");
+    const todayJst = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+    localStorage.setItem("mock_db_user_login_bonuses", JSON.stringify([{ user_id: currentId, current_day: 1, total_logins: 1, last_claimed_date: todayJst }]));
     localStorage.setItem("mock_db_users", JSON.stringify([
       { id: currentId, username: "検証ユーザー", level: 5, current_base_id: "shinjuku" },
       { id: firstId, username: "アキラ", level: 5, current_base_id: "shinjuku" },
@@ -24,6 +26,7 @@ async function seedDmState(page: Page) {
 async function enterGame(page: Page) {
   await page.goto("/");
   await page.getByText("TAP TO START").click();
+  await page.getByRole("button", { name: "続きから" }).click();
   await expect(page.locator(".header-mobile")).toBeVisible();
   const welcomeAction = page.getByRole("button", { name: "抗争に参入する" });
   await welcomeAction.waitFor({ state: "visible", timeout: 3_000 }).catch(() => undefined);

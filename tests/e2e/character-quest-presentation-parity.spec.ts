@@ -43,6 +43,7 @@ test.beforeEach(async ({ page }) => {
       { id: "item-equip-s", user_id: userId, item_id: "EQUIP_EXP_S", quantity: 5 },
       { id: "item-equip-m", user_id: userId, item_id: "EQUIP_EXP_M", quantity: 4 },
       { id: "item-equip-l", user_id: userId, item_id: "EQUIP_EXP_L", quantity: 2 },
+      { id: "item-skill-manual", user_id: userId, item_id: "SKILL_MANUAL", quantity: 1 },
     ]));
     localStorage.setItem("mock_db_quests", JSON.stringify([
       { id: "QUEST_SHINJUKU_EASY", name: "歌舞伎町一番街", town_id: "shinjuku", level_type: "EASY", duration_seconds: 300, cost_vitality: 3, cash_reward: 0, exp_reward: 100 },
@@ -134,9 +135,7 @@ test("Character, Party, Growth, Skill and Equipment follow the fixed mobile hier
   await expect(page.locator(".canonical-dialog-close")).toHaveCount(0);
   await page.getByRole("button", { name: "強化", exact: true }).click();
   await expect(page.locator(".character-v2-asset-growth")).toBeVisible();
-  await expect(page.locator(".character-v2-material", { hasText: "カスタムオイル・小" })).toContainText("所持 5 / 使用 0");
-  await expect(page.locator(".character-v2-material", { hasText: "カスタムオイル・中" })).toContainText("所持 4 / 使用 0");
-  await expect(page.locator(".character-v2-material", { hasText: "カスタムオイル・大" })).toContainText("所持 2 / 使用 0");
+  await expect(page.locator(".character-v2-material", { hasText: "スキル指南書" })).toContainText("所持 1 / 必要 1");
   await expect(page.locator(".character-v2-current-after")).toContainText("After");
   await page.getByRole("button", { name: "戻る", exact: true }).click();
 
