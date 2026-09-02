@@ -198,7 +198,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const [raidPoints, setRaidPoints] = useState<number>(5);
   const [raidTopRefreshRevision, setRaidTopRefreshRevision] = useState(0);
   const [raidFirstEntryFree, setRaidFirstEntryFree] = useState<boolean>(true);
-  const [cash, setCash] = useState<number>(10000);
+  const [cash, setCash] = useState<number>(2600);
   const [diamonds, setDiamonds] = useState<number>(200);
   const [vitality, setVitality] = useState<number>(100);
   const [vitalityNextRecoveryAt, setVitalityNextRecoveryAt] = useState<string | null>(null);

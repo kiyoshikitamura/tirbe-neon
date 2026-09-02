@@ -2191,7 +2191,7 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
       gift_code: null,
       bio: "歌舞伎町の覇権を握るため立ち上がる。",
       avatar_url: p_character_id === "char_reiji_01" ? "/characters/reiji_transparent_asset.png" : p_character_id === "char_rui_01" ? "/characters/rui_transparent_asset.png" : p_character_id === "char_chang_01" ? "/characters/chang_transparent_asset.png" : "/characters/reiji_transparent_asset.png",
-      cash: 10000,
+      cash: 2600,
       neon_diamonds: 200,
       vitality: 100,
       pvp_points: 5,
@@ -2353,7 +2353,7 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
       username,
       bio: "歌舞伎町の覇権を握るため立ち上がる。",
       avatar_url: "/characters/reiji_transparent_asset.png",
-      cash: 10000,
+      cash: 2600,
       neon_diamonds: 200,
       vitality: 100,
       pvp_points: 5,
@@ -3139,7 +3139,7 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     client.setStorage("user_missions", missions);
     const users = client.getStorage("users") || [];
     const user = users.find((row: any) => row.id === userId);
-    if (user) Object.assign(user, { level: 1, xp: 0, cash: 10000, neon_diamonds: 200, diamonds: 0, vitality: 100, pvp_points: 5, raid_points: 5, favorite_character_id: null, current_base_id: "shinjuku" });
+    if (user) Object.assign(user, { level: 1, xp: 0, cash: 2600, neon_diamonds: 200, diamonds: 0, vitality: 100, pvp_points: 5, raid_points: 5, favorite_character_id: null, current_base_id: "shinjuku" });
     client.setStorage("users", users);
     const progressRows = client.getStorage("tutorial_progress") || [];
     const progress = progressRows.find((row: any) => row.user_id === userId);
