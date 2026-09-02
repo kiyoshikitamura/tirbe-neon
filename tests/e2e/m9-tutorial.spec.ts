@@ -1011,6 +1011,11 @@ test("first quest connects dispatch, official battle, and one reward to the comp
   }
   await expect(page.locator('[data-acceptance-state="B6"]')).toBeVisible({ timeout: 35_000 });
   const rewardStartedAt = Date.now();
+  console.log(`M9_REWARD_DEBUG ${JSON.stringify(await page.evaluate(() => ({
+    resultText: document.querySelector('[data-acceptance-state="B6"]')?.textContent,
+    patrols: JSON.parse(localStorage.getItem("mock_db_user_patrols") || "[]"),
+    progress: JSON.parse(localStorage.getItem("mock_db_tutorial_progress") || "[]"),
+  })))}`);
   await expect(page.locator(".battle-result-canonical-rewards")).toBeVisible();
   await expect(page.locator(".battle-result-canonical-rewards")).not.toContainText("CHAR_EXP_S");
   await expect(page.locator(".battle-result-canonical-rewards")).not.toContainText("CASH");

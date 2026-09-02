@@ -9,9 +9,9 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  two-remaining-cases:
+  remaining-case:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 12
     env:
       NEXT_PUBLIC_APP_ENV: test
       NEXT_PUBLIC_USE_MOCK_DB: "true"
@@ -25,10 +25,9 @@ jobs:
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       - run: npm run build
-      - name: Run two cases through bounded project runner
+      - name: Diagnose the remaining case through bounded project runner
         run: >-
           npm run test:e2e --
           tests/e2e/m9-tutorial.spec.ts
-          tests/e2e/quest-natural-completion.spec.ts
-          --workers=2
-          --grep "first quest connects|normal Quest starts"
+          --workers=1
+          --grep "first quest connects"
