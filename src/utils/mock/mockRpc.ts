@@ -1697,6 +1697,7 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     const post = { id: `chat_${Date.now()}`, title: "", user_id: userId, author_id: userId, author_name: user.username || "Player", author_avatar_url: user.avatar_url, content: p_content.trim(), target_type: p_target_type, target_id: p_target_type === "GUILD" ? membership.guild_id : null, reply_to_message_id: p_reply_to_message_id || null, is_system: false, created_at: new Date().toISOString() };
     posts.push(post);
     client.setStorage("board_posts", posts);
+    if (p_target_type === "GUILD" && userId) evaluateMockMissionProgress(client, userId, "GUILD_CHAT", 1);
     return { data: post, error: null };
   }
 
@@ -3169,6 +3170,14 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     const lifetimeGrant = (client.getStorage("user_lifetime_onboarding_grants") || []).find((row: any) => row.user_id === userId);
     const lifetimeResults = lifetimeGrant?.canonical_payload?.gacha_results;
     if (!normal.length || !ssr.length) return { data: null, error: { message: "canonical tutorial gacha bucket is empty" } };
+    const claims = client.getStorage("user_daily_gacha_claims") || [];
+    const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Tokyo" });
+    const existingClaim = claims.find((entry: any) => entry.user_id === userId && entry.gacha_type === "CHARACTER");
+    if (existingClaim?.last_claimed_date === today) {
+      return { data: null, error: { message: "daily free gacha already claimed", code: "23505" } };
+    }
+    if (existingClaim) existingClaim.last_claimed_date = today;
+    else claims.push({ user_id: userId, gacha_type: "CHARACTER", last_claimed_date: today });
     const characters = client.getStorage("user_characters") || [];
     const results = Array.from({ length: 10 }, (_, index) => {
       // Stable tutorial fixture order keeps N/R/SR visual contract assertions
@@ -3193,7 +3202,10 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     });
     const response = { status: "success", request_id: params.p_request_id, results, tutorial: true, guaranteed_ssr_slot: 10 };
     histories.push({ user_id: userId, request_id: params.p_request_id, gacha_id: "CHAR_NORMAL", payment_source: "free", pull_count: 10, status: "COMPLETED", result_payload: response });
-    client.setStorage("gacha_execution_history", histories); client.setStorage("user_characters", characters);
+    client.setStorage("gacha_execution_history", histories);
+    client.setStorage("user_daily_gacha_claims", claims);
+    client.setStorage("user_characters", characters);
+    evaluateMockMissionProgress(client, userId, "GACHA_PULL", 1);
     return { data: response, error: null };
   }
 
@@ -3275,6 +3287,9 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     const response = { status: "success", request_id: p_request_id, results, cash: user.cash, diamonds: user.neon_diamonds };
     histories.push({ user_id: p_user_id, request_id: p_request_id, gacha_id: p_gacha_id, payment_source: p_currency_type, pull_count: p_pull_count, status: "COMPLETED", result_payload: response });
     client.setStorage("gacha_execution_history", histories);
+    if (p_currency_type === "free" && p_gacha_id === "CHAR_NORMAL" && p_pull_count === 10) {
+      evaluateMockMissionProgress(client, p_user_id, "GACHA_PULL", 1);
+    }
     return { data: response, error: null };
   }
 
@@ -3391,6 +3406,9 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     const response = { status: "success", request_id: p_request_id, results, cash: user.cash, diamonds: user.neon_diamonds };
     histories.push({ user_id: p_user_id, request_id: p_request_id, gacha_id: p_gacha_id, payment_source: p_currency_type, pull_count: p_pull_count, status: "COMPLETED", result_payload: response });
     client.setStorage("gacha_execution_history", histories);
+    if (p_currency_type === "free" && ["SKILL_NORMAL", "EQUIP_NORMAL"].includes(p_gacha_id) && p_pull_count === 10) {
+      evaluateMockMissionProgress(client, p_user_id, "GACHA_PULL", 1);
+    }
     return { data: response, error: null };
   }
 
