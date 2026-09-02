@@ -9,20 +9,24 @@ declare
   v_old_raid constant uuid:='2828d27e-ebfd-4005-ba3b-0d618618c286';
 begin
   if not exists(select 1 from supabase_migrations.schema_migrations where version='20260902000227') then raise exception '00227 is not registered'; end if;
-  if (select count(*) from public.ranking_seasons where id=v_new_pvp and ranking_type='PVP' and status='ACTIVE' and starts_at='2026-08-31 15:00:00+00' and ends_at='2026-09-30 15:00:00+00')<>1 then raise exception 'new PVP season identity mismatch'; end if;
-  if (select count(*) from public.ranking_seasons where id=v_new_raid and ranking_type='RAID' and status='ACTIVE' and starts_at='2026-08-30 15:00:00+00' and ends_at='2026-09-06 15:00:00+00')<>1 then raise exception 'new RAID season identity mismatch'; end if;
-  if (select count(*) from public.ranking_seasons where id=v_old_pvp and ranking_type='PVP' and status='CLOSED' and starts_at='2026-07-31 15:00:00+00' and ends_at='2026-08-31 15:00:00+00')<>1 then raise exception 'old PVP season identity mismatch'; end if;
-  if (select count(*) from public.ranking_seasons where id=v_old_raid and ranking_type='RAID' and status='CLOSED' and starts_at='2026-07-31 15:00:00+00' and ends_at='2026-08-31 15:00:00+00')<>1 then raise exception 'old RAID season identity mismatch'; end if;
-  if exists(select 1 from public.pvp_ranking_reward_grants where season_id in(v_new_pvp,v_new_raid))
-    or exists(select 1 from public.gvg_guild_season_rankings where season_id in(v_new_pvp,v_new_raid))
-    or exists(select 1 from public.gvg_individual_season_rankings where season_id in(v_new_pvp,v_new_raid)) then raise exception 'new season has dependent rows'; end if;
-  if exists(select 1 from public.raid_damage_logs where created_at>='2026-09-02 06:47:40+00')
-    or exists(select 1 from public.pvp_ranks where updated_at>='2026-09-02 06:47:40+00')
-    or exists(select 1 from public.pvp_ranking_reward_grants where granted_at>='2026-09-02 06:47:40+00')
-    or exists(select 1 from public.battle_replay_sessions where finalized_at>='2026-09-02 06:47:40+00') then raise exception 'ranking activity occurred after 00227'; end if;
+  -- The original incident repair is exact and may only touch the known Preview
+  -- inventory. Every other environment falls through to the schema-only safety
+  -- restoration below; it must never fail on Preview-specific identities.
+  if (select count(*) from public.ranking_seasons where id=v_new_pvp and ranking_type='PVP' and status='ACTIVE' and starts_at='2026-08-31 15:00:00+00' and ends_at='2026-09-30 15:00:00+00')=1
+     and (select count(*) from public.ranking_seasons where id=v_new_raid and ranking_type='RAID' and status='ACTIVE' and starts_at='2026-08-30 15:00:00+00' and ends_at='2026-09-06 15:00:00+00')=1
+     and (select count(*) from public.ranking_seasons where id=v_old_pvp and ranking_type='PVP' and status='CLOSED' and starts_at='2026-07-31 15:00:00+00' and ends_at='2026-08-31 15:00:00+00')=1
+     and (select count(*) from public.ranking_seasons where id=v_old_raid and ranking_type='RAID' and status='CLOSED' and starts_at='2026-07-31 15:00:00+00' and ends_at='2026-08-31 15:00:00+00')=1 then
+    if exists(select 1 from public.pvp_ranking_reward_grants where season_id in(v_new_pvp,v_new_raid))
+      or exists(select 1 from public.gvg_guild_season_rankings where season_id in(v_new_pvp,v_new_raid))
+      or exists(select 1 from public.gvg_individual_season_rankings where season_id in(v_new_pvp,v_new_raid)) then raise exception 'new season has dependent rows'; end if;
+    if exists(select 1 from public.raid_damage_logs where created_at>='2026-09-02 06:47:40+00')
+      or exists(select 1 from public.pvp_ranks where updated_at>='2026-09-02 06:47:40+00')
+      or exists(select 1 from public.pvp_ranking_reward_grants where granted_at>='2026-09-02 06:47:40+00')
+      or exists(select 1 from public.battle_replay_sessions where finalized_at>='2026-09-02 06:47:40+00') then raise exception 'ranking activity occurred after 00227'; end if;
 
-  delete from public.ranking_seasons where id in(v_new_pvp,v_new_raid);
-  update public.ranking_seasons set status='ACTIVE',updated_at=created_at where id in(v_old_pvp,v_old_raid);
+    delete from public.ranking_seasons where id in(v_new_pvp,v_new_raid);
+    update public.ranking_seasons set status='ACTIVE',updated_at=created_at where id in(v_old_pvp,v_old_raid);
+  end if;
 end;
 $$;
 

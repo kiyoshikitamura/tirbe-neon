@@ -45,6 +45,32 @@ assert.ok(!migration.includes("ensure_current_ranking_season"));
 const revert = fs.readFileSync("supabase/migrations/20260902000228_ranking_season_lifecycle_revert.sql", "utf8");
 assert.ok(revert.includes("20260902000227"));
 assert.ok(revert.includes("drop function if exists public.ensure_current_ranking_season"));
+assert.ok(revert.includes("if (select count(*)"));
+assert.ok(!revert.includes("identity mismatch"));
+assert.ok(revert.indexOf("drop trigger if exists raid_damage_logs_ensure_season") > revert.indexOf("end;\n$$;"));
+const convergence = fs.readFileSync("supabase/migrations/20260902000230_ranking_lifecycle_safety_convergence.sql", "utf8");
+for (const contract of [
+  "converge_ranking_lifecycle_safety",
+  "assert_pvp_boundary_replay_continuity",
+  "finalize_pvp_season_rewards",
+  "reconcile_pvp_after_season_boundary",
+  "finalize_raid_season_rewards",
+  "Raid cutover overlap contains damage logs",
+  "advance_ranking_season(''PVP''",
+  "from public,anon,authenticated",
+]) assert.ok(convergence.toLowerCase().includes(contract.toLowerCase()), contract);
+assert.ok(migration.includes("event.event_no=event.event_total"));
+const convergencePostflight = fs.readFileSync("supabase/postflight/20260902000230_ranking_lifecycle_safety_convergence_postflight.sql", "utf8");
+assert.ok(convergencePostflight.includes("closed.ends_at<active.ends_at"));
+const emergencyRollback = fs.readFileSync("supabase/manual/20260902000227_ranking_season_lifecycle_rollback.sql", "utf8");
+for (const contract of [
+  "ranking-pvp-monthly-jst",
+  "ranking-raid-weekly-jst",
+  "start_pvp_battle(uuid,text[],text)",
+  "finalize_pvp_battle(uuid,jsonb)",
+  "finalize_raid_battle(uuid,jsonb)",
+  "drop function if exists public.advance_ranking_season",
+]) assert.ok(emergencyRollback.includes(contract), contract);
 const dialog = fs.readFileSync("src/app/components/ranking/RankingRewardDialog.tsx", "utf8");
 assert.ok(dialog.includes("CanonicalDialog"));
 assert.ok(dialog.includes("報酬定義なし"));

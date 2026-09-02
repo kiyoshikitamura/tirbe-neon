@@ -214,6 +214,7 @@ begin
       (replay.finalization_result->>'rankDelta')::integer rank_delta,
       (replay.finalization_result->>'newRankPoints')::integer new_rank,
       row_number() over(partition by replay.requester_user_id order by replay.finalized_at,replay.id) event_no,
+      count(*) over(partition by replay.requester_user_id) event_total,
       lag((replay.finalization_result->>'newRankPoints')::integer)
         over(partition by replay.requester_user_id order by replay.finalized_at,replay.id) previous_new
     from public.battle_replay_sessions replay
@@ -223,9 +224,7 @@ begin
     select event.user_id,count(*) event_count,
       count(*) filter(where event.winner='PLAYER') win_count,
       max(event.new_rank) filter(where event.event_no=1) first_new,
-      max(event.new_rank) filter(where event.finalized_at=(
-        select max(last_event.finalized_at) from events last_event where last_event.user_id=event.user_id
-      )) last_new,
+      max(event.new_rank) filter(where event.event_no=event.event_total) last_new,
       max(event.finalized_at) last_finalized,
       count(*) filter(where event.winner is null or event.declared_old is null
         or event.opponent_rating is null or event.rank_delta is null or event.new_rank is null) incomplete,
