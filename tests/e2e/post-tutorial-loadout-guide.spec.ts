@@ -106,6 +106,7 @@ test("post-loadout guide keeps PvP, Raid, Guild and Mission handoff", async ({ p
     const guildId = "30000000-0000-4000-8000-000000002218";
     localStorage.setItem("mock_db_guilds", JSON.stringify([{ id: guildId, name: "GUIDE TRIBE", leader_id: userId, level: 5 }]));
     localStorage.setItem("mock_db_guild_members", JSON.stringify([{ id: "guide-member", guild_id: guildId, user_id: userId, role: "MASTER" }]));
+    sessionStorage.setItem(`tribe-neon:guild-welcome-shown:${userId}:${guildId}`, "1");
   }, { userId });
   await page.reload();
   await enterGame(page);

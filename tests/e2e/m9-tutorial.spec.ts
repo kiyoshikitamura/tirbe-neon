@@ -850,8 +850,9 @@ test("first quest connects dispatch, official battle, and one reward to the comp
     const entry = [metrics?.current, ...(metrics?.history || []).slice().reverse()].find((item) => item?.kind === "normal" && item?.impactAt);
     return entry ? Math.round(entry.impactAt - entry.startedAt) : 0;
   });
-  expect(normalImpactDuration).toBeGreaterThanOrEqual(650);
-  expect(normalImpactDuration).toBeLessThanOrEqual(1_300);
+  // The accepted presentation rhythm is 260ms at the now-default 2x speed.
+  expect(normalImpactDuration).toBeGreaterThanOrEqual(240);
+  expect(normalImpactDuration).toBeLessThanOrEqual(450);
   test.info().annotations.push({ type: "normal-impact-ms", description: String(normalImpactDuration) });
   await page.screenshot({ path: test.info().outputPath("M1-375-B3-normal-attack.png"), fullPage: true });
   await expect.poll(() => battleViewer.evaluate((viewer) => viewer.dataset.actionKind === "normal"
@@ -873,8 +874,9 @@ test("first quest connects dispatch, official battle, and one reward to the comp
     const entry = [metrics?.current, ...(metrics?.history || []).slice().reverse()].find((item) => item?.kind === "skill" && item?.impactAt);
     return entry ? Math.round(entry.impactAt - entry.startedAt) : 0;
   });
-  expect(skillImpactDuration).toBeGreaterThanOrEqual(2_100);
-  expect(skillImpactDuration).toBeLessThanOrEqual(3_000);
+  // The accepted SSR cut-in reaches impact at 520ms at 2x.
+  expect(skillImpactDuration).toBeGreaterThanOrEqual(480);
+  expect(skillImpactDuration).toBeLessThanOrEqual(750);
   test.info().annotations.push({ type: "skill-impact-ms", description: String(skillImpactDuration) });
   const pauseButton = page.getByRole("button", { name: "一時停止" });
   if (await pauseButton.isVisible()) {
@@ -1186,6 +1188,7 @@ test("tutorial completion resumes through account save and exposes the Home next
   await page.reload();
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem("mock_db_tutorial_progress") || "[]")[0]?.step_id)).toBe("COMPLETE");
   await page.getByText("TAP TO START").click();
+  await page.getByRole("button", { name: "チュートリアルを続ける" }).click();
   await expect(page.getByText("ゲームデータを保存")).toBeVisible();
   await page.getByPlaceholder("メールアドレス").fill("m9-f@example.com");
   await page.getByPlaceholder("パスワード（6文字以上）").fill("m9-f-preview-pass");

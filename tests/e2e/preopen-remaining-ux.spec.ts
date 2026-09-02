@@ -52,6 +52,16 @@ async function enterGame(page: Page) {
   await expect(continueButton).toBeVisible();
   await continueButton.click();
   await expect(page.locator(".header-mobile")).toBeVisible();
+  const loginBonus = page.getByRole("dialog", { name: "ログインボーナス" });
+  await expect(loginBonus).toBeVisible();
+  await loginBonus.getByRole("button", { name: "閉じる", exact: true }).click();
+}
+
+async function openUtility(page: Page, label: "設定" | "プレゼント") {
+  await page.getByRole("button", { name: "MENU", exact: true }).click();
+  const menu = page.getByRole("dialog", { name: "ホームメニュー" });
+  await expect(menu).toBeVisible();
+  await menu.getByRole("button", { name: label, exact: true }).click();
 }
 
 async function expectNoOverflow(page: Page, selector: string) {
@@ -73,11 +83,10 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 412, height: 915 }
     await page.setViewportSize(viewport);
     await enterGame(page);
 
-    const community = page.locator(".mypage-sub-icons-left .sub-icon-unit").filter({ hasText: "コミュニティ" });
-    const ranking = page.locator(".mypage-sub-icons-left .sub-icon-unit").filter({ hasText: "ランキング" });
+    const community = page.locator(".footer-mobile").getByRole("button", { name: "コミュニティ", exact: true });
+    const ranking = page.locator(".mypage-sub-icons-left").getByRole("button", { name: /ランキング/ });
     await expect(community).toBeVisible();
     await expect(ranking).toBeVisible();
-    expect((await ranking.boundingBox())!.y).toBeGreaterThan((await community.boundingBox())!.y);
     await ranking.click();
     await expect(page.locator(".ranking-tab-view")).toBeVisible();
 
@@ -94,12 +103,12 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 412, height: 915 }
     await expect(moveDialog.getByText("ジャンクバザール")).toHaveCount(0);
     await moveDialog.getByRole("button", { name: "閉じる" }).click();
 
-    await page.locator(".mypage-sub-icons-right .sub-icon-unit").filter({ hasText: "設定" }).click();
+    await openUtility(page, "設定");
     await expect(page.getByText("設定 / プロフィール", { exact: true })).toBeVisible();
     await expect(page.locator(".settings-panel-container-inner select")).toHaveCount(0);
     await page.locator(".editable-setting-section").first().getByRole("button", { name: "編集" }).click();
     await expect(page.getByLabel("プレイヤー名")).toBeVisible();
-    await expect(page.getByRole("radiogroup", { name: "称号" })).toBeVisible();
+    await expect(page.getByRole("radiogroup", { name: "称号" })).toHaveCount(0);
     await page.getByLabel("自己紹介").fill(`保存確認${viewport.width}`);
     await page.locator(".editable-setting-section").first().getByRole("button", { name: "保存", exact: true }).click();
     const saved = page.getByRole("dialog", { name: "保存完了" });
@@ -141,7 +150,8 @@ test("Quest, Character and BBS consume canonical presentation contracts", async 
   await expectNoOverflow(page, ".character-v2-shell");
 
   await page.getByRole("button", { name: /マイページ/ }).click();
-  await page.locator(".mypage-sub-icons-left .sub-icon-unit").filter({ hasText: "コミュニティ" }).click();
+  await page.locator(".footer-mobile").getByRole("button", { name: "コミュニティ", exact: true }).click();
+  await page.getByRole("button", { name: "BBSを開く" }).click();
   const thread = page.locator(".bbs-thread-card").filter({ hasText: "仲間募集" });
   await expect(thread).toBeVisible();
   await expect(thread.locator(".user-identity-row")).toContainText("掲示板ユーザー");
@@ -170,7 +180,7 @@ test("Mission and Present mutations retain canonical item receipts", async ({ pa
   await expectNoOverflow(page, ".mission-panel-container-inner");
   await page.getByRole("button", { name: "閉じる" }).click();
 
-  await page.locator(".mypage-sub-icons-right .sub-icon-unit").filter({ hasText: "プレゼント" }).click();
+  await openUtility(page, "プレゼント");
   const present = page.locator(".inbox-present-item").filter({ hasText: "Sweep検証プレゼント" });
   await expect(present).toContainText("カスタムオイル・中");
   await expect(present).not.toContainText("EQUIP_EXP_M");
@@ -185,7 +195,7 @@ test("Mission and Present mutations retain canonical item receipts", async ({ pa
 test("Present bulk claim locks its surface through the canonical receipt", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await enterGame(page);
-  await page.locator(".mypage-sub-icons-right .sub-icon-unit").filter({ hasText: "プレゼント" }).click();
+  await openUtility(page, "プレゼント");
   const reward = page.locator(".inbox-present-reward").first();
   await expect(reward.locator(".inbox-present-reward-icon")).toBeVisible();
   await expect(reward).toContainText("× 2");

@@ -105,13 +105,13 @@ test("stage two hubs share a mobile-safe page frame", async ({ page }) => {
   await enterGame(page);
 
   const cases = [
-    { selector: ".circle-menu-btn.fight", title: "バトル", period: false, hero: ".pvp-hero" },
-    { selector: ".circle-menu-btn.conquest", title: "クエスト", period: false, hero: ".quest-v2-identity" },
-    { selector: ".mypage-power-panel", title: "ランキング", period: false, hero: ".ranking-current" },
+    { trigger: page.locator(".circle-menu-btn.fight"), title: "バトル", period: false, hero: ".pvp-hero" },
+    { trigger: page.locator(".circle-menu-btn.conquest"), title: "クエスト", period: false, hero: ".quest-v2-identity" },
+    { trigger: page.locator(".mypage-sub-icons-left").getByRole("button", { name: /ランキング/ }), title: "ランキング", period: false, hero: ".ranking-current" },
   ];
 
   for (const target of cases) {
-    await page.locator(target.selector).click();
+    await target.trigger.click();
     const hub = page.locator(".ui-hub-page");
     await expect(hub.getByRole("heading", { name: target.title, exact: true })).toBeVisible();
     await expect(hub.locator(target.hero).first()).toBeVisible();
@@ -125,6 +125,6 @@ test("stage two hubs share a mobile-safe page frame", async ({ page }) => {
       await expect(hub.locator(".ranking-current")).not.toContainText("--");
     }
     await page.locator(".footer-item").first().click();
-    await expect(page.locator(target.selector)).toBeVisible();
+    await expect(target.trigger).toBeVisible();
   }
 });
