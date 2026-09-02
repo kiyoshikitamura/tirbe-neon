@@ -684,15 +684,29 @@ test("a completed account with two auth methods is blocked on revisit", async ({
 });
 
 test("switching from a recorded email method to Google is refused", async ({ page }) => {
-  await seedCompletedAnonymous(page);
   await page.addInitScript(() => {
-    const userId = localStorage.getItem("tribe_demo_uuid");
+    const userId = "00000000-0000-4000-8000-000000000099";
+    localStorage.setItem("tribe_demo_uuid", userId);
     localStorage.setItem("mock_auth_mode", "GOOGLE");
     localStorage.setItem("mock_session_identity_providers", JSON.stringify(["google"]));
+    localStorage.setItem("mock_db_users", JSON.stringify([{
+      id: userId,
+      username: "認証待ち",
+      current_base_id: "neon_tower",
+      favorite_character_id: "char_reiji_01",
+    }]));
+    localStorage.setItem("mock_db_user_characters", JSON.stringify([{
+      id: `starter_${userId}`,
+      user_id: userId,
+      character_id: "char_reiji_01",
+      level: 1,
+      awakening_level: 0,
+    }]));
+    localStorage.setItem("mock_db_tutorial_progress", JSON.stringify([{ user_id: userId, step_id: "COMPLETE" }]));
     localStorage.setItem("mock_db_user_account_auth_methods", JSON.stringify([{ user_id: userId, auth_method: "EMAIL" }]));
   });
   await page.goto("/");
-  if (await page.getByText("TAP TO START").isVisible()) await page.getByText("TAP TO START").click();
+  await openCompletedAnonymousAuthentication(page);
 
   await expect(page.getByText("A different authentication method is already linked")).toBeVisible();
   const progress = await page.evaluate(() => JSON.parse(localStorage.getItem("mock_db_tutorial_progress") || "[]"));
@@ -702,7 +716,7 @@ test("switching from a recorded email method to Google is refused", async ({ pag
 test("an expired Google linking intent is discarded", async ({ page }) => {
   await seedCompletedAnonymous(page);
   await page.addInitScript(() => {
-    const userId = localStorage.getItem("tribe_demo_uuid");
+    const userId = "00000000-0000-4000-8000-000000000099";
     localStorage.setItem("tribe_onboarding_auth_intent", JSON.stringify({
       method: "GOOGLE",
       userId,

@@ -2138,7 +2138,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       return true;
     } catch (error) {
       console.warn("Resume authority resolution failed:", error);
-      setAuthenticatedProjectionError((current) => current || "再開先を確認できませんでした。再度お試しください。");
+      setAuthenticatedProjectionError("プレイヤーデータを確認できませんでした。再度お試しください。");
       // TitleView has render priority over the authenticated projection guard.
       // Close it on a failed explicit resume so the canonical retry dialog is
       // visible instead of leaving the player on a non-responsive title menu.
