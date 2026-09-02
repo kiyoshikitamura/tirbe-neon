@@ -10,7 +10,8 @@ export function useChat(
   userGuildMember: any,
   showTribeChatPanel: boolean,
   playCyberSe: (type: string) => void,
-  setErrorMessage: (message: string) => void
+  setErrorMessage: (message: string) => void,
+  refreshAfterGuildChat: (userId: string) => Promise<void>
 ) {
   const currentUserId = session?.user?.id as string | undefined;
   const [guildChats, setGuildChats] = useState<any[]>([]);
@@ -315,6 +316,14 @@ export function useChat(
       setChatInput("");
       setChatReplyTo(null);
       setChatCooldown(chatChannel === "GUILD" ? 3 : 10);
+      if (chatChannel === "GUILD") {
+        try {
+          await refreshAfterGuildChat(session.user.id);
+        } catch (refreshError) {
+          // メッセージは確定済みなので、表示同期の失敗を送信失敗として扱わない。
+          console.warn("Guild chat mission projection refresh failed:", refreshError);
+        }
+      }
     } catch (err: any) {
       setGuildChats((previous) => previous.filter((message) => message.id !== temporaryMessageId));
       console.warn(err.message);

@@ -535,7 +535,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     userGuildMember,
     showTribeChatPanel,
     (type: string) => playCyberSe(type as any),
-    setErrorMessage
+    setErrorMessage,
+    (userId: string) => syncBootstrapData(userId)
   );
 
   const {
