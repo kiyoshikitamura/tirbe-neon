@@ -91,7 +91,7 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 412, height: 915 }
 test("Open Beta home prioritizes the next action and keeps unreleased GvG unavailable", async ({ page }) => {
   await enterGame(page);
   await expect(page.locator(".mypage-primary-cta")).toBeVisible();
-  await expect(page.getByRole("button", { name: "抗争は準備中です" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "ギルドバトルは準備中です" })).toBeDisabled();
 });
 
 test("stage two hubs share a mobile-safe page frame", async ({ page }) => {

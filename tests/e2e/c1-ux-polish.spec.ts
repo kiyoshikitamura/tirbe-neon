@@ -56,7 +56,7 @@ for (const viewport of [
     await expect(page.locator(".mypage-primary-cta")).toContainText("最初のPvPへ挑戦");
     await expect(page.locator(".mypage-live-ticker--visual")).toBeVisible();
     await expect(page.locator(".mypage-leader-layer.is-ssr")).toBeVisible();
-    await expect(page.getByRole("button", { name: "抗争は準備中です" })).toBeDisabled();
+    await expect(page.getByRole("button", { name: "ギルドバトルは準備中です" })).toBeDisabled();
     await expect(page.getByRole("button", { name: "ショップは準備中です" })).toBeDisabled();
     await expect(page.getByRole("button", { name: /フレンド/ })).toHaveCount(0);
     await expectNoHorizontalOverflow(page, ".mypage-view");
