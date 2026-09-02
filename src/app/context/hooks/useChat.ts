@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { supabase } from "@/utils/supabase";
+import { supabase, usingMockSupabase } from "@/utils/supabase";
 import type { DirectMessageRow } from "./directMessageConversations";
 
 export function useChat(
@@ -157,43 +157,68 @@ export function useChat(
     return () => clearTimeout(timer);
   }, [chatCooldown]);
 
+  const hydrateDirectMessage = useCallback(async (message: DirectMessageRow) => {
+    if (!currentUserId) return;
+    const participantId = message.sender_id === currentUserId ? message.recipient_id : message.sender_id;
+    const { data: participants, error } = await supabase.rpc("get_public_profiles", {
+      p_user_ids: [participantId]
+    });
+    if (error) console.warn("direct message participant fetch error:", error.message);
+    const participantName = participants?.[0]?.username || "ユーザー";
+    setDirectMessages((previous) => previous.some((entry) => entry.id === message.id)
+      ? previous
+      : [...previous, { ...message, participant_name: participantName }]);
+  }, [currentUserId]);
+
   const fetchDirectMessages = useCallback(async () => {
     if (!currentUserId) {
       setDirectMessages([]);
       return;
     }
+    if (!showTribeChatPanel || chatChannel !== "DM") return;
 
-    const { data, error } = await supabase
-      .from("direct_messages")
-      .select("*")
-      .or(`and(sender_id.eq.${currentUserId}),and(recipient_id.eq.${currentUserId})`)
-      .order("created_at", { ascending: true });
-    if (error) {
-      console.warn("direct_messages fetch error:", error.message);
-      return;
+    const pageSize = 500;
+    const rawMessages: DirectMessageRow[] = [];
+    let page = 0;
+    while (true) {
+      let query = supabase
+        .from("direct_messages")
+        .select("*")
+        .or(`and(sender_id.eq.${currentUserId}),and(recipient_id.eq.${currentUserId})`)
+        .order("created_at", { ascending: false });
+      query = usingMockSupabase
+        ? query.limit(pageSize)
+        : query.range(page * pageSize, (page + 1) * pageSize - 1);
+      const { data, error } = await query;
+      if (error) {
+        console.warn("direct_messages fetch error:", error.message);
+        return;
+      }
+      const rows = (data || []) as DirectMessageRow[];
+      rawMessages.push(...rows);
+      if (usingMockSupabase || rows.length < pageSize) break;
+      page += 1;
     }
-    const rawMessages = (data || []) as DirectMessageRow[];
     const participantIds = [...new Set(rawMessages.map((message) => (
       message.sender_id === currentUserId ? message.recipient_id : message.sender_id
     )).filter(Boolean))];
     const participantNames = new Map<string, string>();
     if (participantIds.length > 0) {
-      const { data: participants, error: participantError } = await supabase
-        .from("users")
-        .select("id, username")
-        .in("id", participantIds);
+      const { data: participants, error: participantError } = await supabase.rpc("get_public_profiles", {
+        p_user_ids: participantIds
+      });
       if (participantError) {
         console.warn("direct message participants fetch error:", participantError.message);
       } else {
         for (const participant of participants || []) {
-          participantNames.set(participant.id, participant.username || "ユーザー");
+          participantNames.set(participant.user_id || participant.id, participant.username || "ユーザー");
         }
       }
     }
     const messages = rawMessages.map((message) => {
       const participantId = message.sender_id === currentUserId ? message.recipient_id : message.sender_id;
       return { ...message, participant_name: participantNames.get(participantId) || "ユーザー" };
-    });
+    }).sort((left, right) => String(left.created_at || "").localeCompare(String(right.created_at || "")));
     setDirectMessages(messages);
     if (showTribeChatPanel && chatChannel === "DM" && dmRecipientId) {
       void markDirectMessagesRead(messages
@@ -219,14 +244,14 @@ export function useChat(
           const isConversationMessage = (message.sender_id === currentUserId && message.recipient_id === dmRecipientId)
             || (message.sender_id === dmRecipientId && message.recipient_id === currentUserId);
           if (isConversationMessage) {
-            void fetchDirectMessages();
+            void hydrateDirectMessage(message);
             if (showTribeChatPanel && chatChannel === "DM" && message.recipient_id === currentUserId && !message.is_read) {
               void markDirectMessagesRead([message.id]);
             } else {
               void refreshDirectMessageUnreadCounts();
             }
           } else if (message.recipient_id === currentUserId || message.sender_id === currentUserId) {
-            void fetchDirectMessages();
+            void hydrateDirectMessage(message);
             void refreshDirectMessageUnreadCounts();
           }
         }
@@ -250,7 +275,7 @@ export function useChat(
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       supabase.removeChannel(channel);
     };
-  }, [session?.user?.id, dmRecipientId, showTribeChatPanel, chatChannel, fetchDirectMessages, markDirectMessagesRead, refreshDirectMessageUnreadCounts]);
+  }, [session?.user?.id, dmRecipientId, showTribeChatPanel, chatChannel, fetchDirectMessages, hydrateDirectMessage, markDirectMessagesRead, refreshDirectMessageUnreadCounts]);
 
   const handleSendChat = async () => {
     if (!session || !chatInput.trim() || chatCooldown > 0 || chatSending) return;
@@ -318,8 +343,7 @@ export function useChat(
         message: data?.message || text.trim(),
         created_at: data?.created_at || new Date().toISOString()
       };
-      setDirectMessages((prev) => prev.some((message) => message.id === sentMessage.id) ? prev : [...prev, sentMessage]);
-      await fetchDirectMessages();
+      await hydrateDirectMessage(sentMessage);
       return true;
     } catch (err: any) {
       console.warn("direct message send error:", err.message);

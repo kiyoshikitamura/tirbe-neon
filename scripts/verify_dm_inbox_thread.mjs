@@ -61,7 +61,11 @@ assert.match(modalSource, /DM一覧に戻る/);
 assert.match(modalSource, /activeDirectMessages\.map/);
 assert.doesNotMatch(modalSource, /<select[\s>]/);
 assert.match(chatHookSource, /\.from\("direct_messages"\)[\s\S]*\.or\(`/);
-assert.match(chatHookSource, /\.from\("users"\)[\s\S]*\.in\("id", participantIds\)/);
+assert.match(chatHookSource, /\.rpc\("get_public_profiles",[\s\S]*p_user_ids: participantIds/);
+assert.doesNotMatch(chatHookSource, /\.from\("users"\)/);
+assert.match(chatHookSource, /if \(!showTribeChatPanel \|\| chatChannel !== "DM"\) return/);
+assert.match(chatHookSource, /query\.range\(page \* pageSize/);
+assert.match(chatHookSource, /hydrateDirectMessage\(message\)/);
 assert.match(chatHookSource, /send_direct_message/);
 assert.match(chatHookSource, /mark_direct_message_read/);
 
