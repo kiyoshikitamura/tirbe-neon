@@ -7,6 +7,7 @@ import { applyFrozenUserXp, canUseEnergyDrink, recoverCanonicalResource } from "
 import { CANONICAL_QUESTS, canonicalQuestById, generateCanonicalQuestEncounter, rollCanonicalQuestItems } from "../../domain/gameplay/canonical/quests.ts";
 import { parseCanonicalEffects } from "../../domain/battle/canonical_effects.ts";
 import { DEFAULT_OPERATIONS_STATE, type OperationsFeatureKey } from "../../domain/operations/operations.ts";
+import { isInsideRankingSeason, rankingSeasonWindow } from "../../domain/ranking/rankingSeason.ts";
 import {
   evaluateCanonicalMissionProgress,
   FUNNEL_TRIGGER_BY_MILESTONE,
@@ -428,14 +429,13 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
   }
 
   if (funcName === "get_active_ranking_seasons") {
-    const start = new Date();
-    start.setUTCDate(1);
-    start.setUTCHours(-9, 0, 0, 0);
-    const end = new Date(start);
-    end.setUTCMonth(end.getUTCMonth() + 1);
+    const monthly = rankingSeasonWindow("PVP");
+    const weekly = rankingSeasonWindow("RAID");
     return { data: ["POWER", "GUILD_POWER", "PVP", "GVG", "RAID"].map((rankingType) => ({
       season_id: `mock-${rankingType.toLowerCase()}-season`, ranking_type: rankingType,
-      starts_at: start.toISOString(), ends_at: end.toISOString(), status: "ACTIVE",
+      starts_at: rankingType === "RAID" ? weekly.startsAt : monthly.startsAt,
+      ends_at: rankingType === "RAID" ? weekly.endsAt : monthly.endsAt,
+      status: "ACTIVE",
     })), error: null };
   }
 
@@ -566,7 +566,8 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
   if (funcName === "get_raid_season_rankings") {
     const users = client.getStorage("users") || [];
     const guilds = client.getStorage("guilds") || [];
-    const logs = client.getStorage("raid_damage_logs") || [];
+    const season = rankingSeasonWindow("RAID");
+    const logs = (client.getStorage("raid_damage_logs") || []).filter((log: any) => isInsideRankingSeason(log.created_at, season));
     const personalTotals = new Map<string, number>();
     const guildTotals = new Map<string, { contribution: number; participants: Set<string> }>();
     logs.forEach((log: any) => {
@@ -581,7 +582,7 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     const individual = [...personalTotals.entries()].sort((a, b) => b[1] - a[1]).map(([userId, contribution], index) => ({ user_id: userId, username: users.find((user: any) => user.id === userId)?.username || "プレイヤー", contribution, rank_position: index + 1 }));
     const guild = [...guildTotals.entries()].sort((a, b) => b[1].contribution - a[1].contribution).map(([guildId, total], index) => ({ guild_id: guildId, guild_name: guilds.find((entry: any) => entry.id === guildId)?.name || "ギルド", contribution: total.contribution, participant_count: total.participants.size, rank_position: index + 1 }));
     const userId = typeof window === "undefined" ? null : localStorage.getItem("tribe_demo_uuid");
-    return { data: { season_id: "mock-raid-season", starts_at: new Date(Date.now() - 86400000).toISOString(), ends_at: new Date(Date.now() + 86400000).toISOString(), individual, guild, selfRank: individual.find((row) => row.user_id === userId) || null }, error: null };
+    return { data: { season_id: "mock-raid-season", starts_at: season.startsAt, ends_at: season.endsAt, individual, guild, selfRank: individual.find((row) => row.user_id === userId) || null }, error: null };
   }
 
   if (funcName === "get_public_gvg_rankings") {

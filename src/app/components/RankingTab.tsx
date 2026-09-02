@@ -13,6 +13,8 @@ import RankPresentation from "./presentation/RankPresentation";
 import StatusMetric from "./presentation/StatusMetric";
 import { useScreenReadiness } from "../hooks/useScreenReadiness";
 import { SCREEN_ASSET_MANIFESTS } from "../lib/screenManifests";
+import RankingRewardDialog from "./ranking/RankingRewardDialog";
+import "./ranking/RankingRewardButton.css";
 import "./RankingTab.css";
 import "./RaidRankingMetric.css";
 
@@ -95,6 +97,7 @@ export default function RankingTab() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [clock, setClock] = useState(() => new Date());
+  const [rewardDialogOpen, setRewardDialogOpen] = useState(false);
   const [activationMilestones, setActivationMilestones] = useState<Set<string>>(new Set());
   const rankingMilestoneStarted = useRef(false);
   const requestVersion = useRef(0);
@@ -227,7 +230,7 @@ export default function RankingTab() {
     <HubPage className="ranking-tab-view" title="ランキング" hideVisualHeader status={readiness.status} onRetry={readiness.retry}>
       <div className="ranking-context"><div><small>RANKING</small><strong>{activeCategoryLabel}</strong></div><button type="button" onClick={() => void loadRanking()} disabled={loading}>更新</button></div>
       <SubTabNav className="ranking-category-nav" tabs={[...RANKING_TABS]} activeTabId={activeTab} onSelect={(tabId) => setRankingActiveTab(tabId)} />
-      <div className="ranking-period-row"><div role="group" aria-label="集計期間">{PERIOD_TABS.map((period) => <button key={period.id} type="button" className={activePeriod === period.id ? "is-active" : ""} onClick={() => setActivePeriod(period.id)}>{period.label}</button>)}</div><span>{periodLabel}・{updateLabel}</span></div>
+      <div className="ranking-period-row"><div role="group" aria-label="集計期間">{PERIOD_TABS.map((period) => <button key={period.id} type="button" className={activePeriod === period.id ? "is-active" : ""} onClick={() => setActivePeriod(period.id)}>{period.label}</button>)}</div><span>{periodLabel}・{updateLabel}</span><button type="button" className="ranking-reward-button" onClick={() => setRewardDialogOpen(true)}>報酬確認</button></div>
 
       <section className="ranking-current" aria-label="あなたの現在地">
         <div className="ranking-current-identity">
@@ -256,6 +259,7 @@ export default function RankingTab() {
         : activationMilestones.has("first_pvp") && !userGuildMember ? <OutlawButton variant="primary" fullWidth className="ranking-return-cta" onClick={() => setActiveTab("guild")}>おすすめTRIBEを見る</OutlawButton>
           : activationMilestones.has("first_pvp") && userGuildMember && !activationMilestones.has("guild_activation") ? <OutlawButton variant="primary" fullWidth className="ranking-return-cta" onClick={() => setActiveTab("guild")}>所属TRIBEへ</OutlawButton>
             : activeTab === "pvp" ? <OutlawButton variant="secondary" fullWidth className="ranking-return-cta" onClick={() => setActiveTab("pvp")}>バトルへ戻る</OutlawButton> : null}
+      {rewardDialogOpen && <RankingRewardDialog category={activeTab} period={activePeriod} onClose={() => setRewardDialogOpen(false)} />}
     </HubPage>
   );
 }
