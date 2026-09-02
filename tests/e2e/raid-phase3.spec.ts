@@ -49,6 +49,7 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 412, height: 915 }
     await expect(page.locator(".raid-view")).not.toContainText("出現中の強敵");
     await expect(page.locator(".raid-party-heading")).toContainText("ロイヤル・フラッシュ");
     const topRoster = page.locator('.raid-view .raid-enemy-roster[data-raid-variant-id="RAID_ROPPONGI_V1"]');
+    await expect(topRoster).toHaveAttribute("data-roster-ready", "true");
     await expect(topRoster).toContainText("メンバー");
     await expect(topRoster.locator(".pvp-deck-member")).toHaveCount(5);
     await expect(topRoster.locator('[data-character-id="char_kaede_01"]')).toHaveCount(1);
@@ -66,6 +67,7 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 412, height: 915 }
     await expect(page.locator(".raid-battle-setup")).toBeVisible();
     await expect(page.locator(".raid-battle-target")).toContainText("ロイヤル・フラッシュ");
     const briefingRoster = page.locator('.raid-battle-target .raid-enemy-roster[data-raid-variant-id="RAID_ROPPONGI_V1"]');
+    await expect(briefingRoster).toHaveAttribute("data-roster-ready", "true");
     await expect(briefingRoster).toContainText("メンバー");
     await expect(briefingRoster.locator(".pvp-deck-member")).toHaveCount(5);
     expect(await page.locator(".raid-battle-setup").evaluate((node) => getComputedStyle(node).backgroundImage)).toContain("bg_street_roppongi.jpg");
