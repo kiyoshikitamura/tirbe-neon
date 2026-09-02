@@ -169,15 +169,16 @@ test("RankPresentation uses 圏外 for missing server placement", async ({ page 
 test("Ranking rewards use frozen canonical definitions and Raid season excludes historical damage", async ({ page }) => {
   await openRanking(page);
   await page.getByRole("button", { name: "報酬確認" }).click();
-  await expect(page.getByRole("dialog", { name: "ランキング報酬確認" })).toContainText("報酬定義なし");
-  await page.getByRole("button", { name: "閉じる" }).click();
+  const powerRewards = page.getByRole("dialog", { name: "ランキング報酬確認" });
+  await expect(powerRewards).toContainText("報酬定義なし");
+  await powerRewards.getByRole("button", { name: "閉じる" }).last().click();
 
   await page.locator(".ranking-category-nav").getByRole("button", { name: "バトル", exact: true }).click();
   await page.getByRole("button", { name: "報酬確認" }).click();
   const pvpRewards = page.getByRole("dialog", { name: "ランキング報酬確認" });
   await expect(pvpRewards).toContainText("月次");
   await expect(pvpRewards).toContainText("ランダムSPガチャチケット");
-  await page.getByRole("button", { name: "閉じる" }).click();
+  await pvpRewards.getByRole("button", { name: "閉じる" }).last().click();
 
   await page.locator(".ranking-category-nav").getByRole("button", { name: "レイド", exact: true }).click();
   await expect(page.locator(".ranking-skeleton")).toHaveCount(0);

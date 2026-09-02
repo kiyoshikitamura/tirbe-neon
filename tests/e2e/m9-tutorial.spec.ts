@@ -702,6 +702,14 @@ test("three random tutorial SSRs remain the same owned character through result 
 test("first quest connects dispatch, official battle, and one reward to the completion boundary", async ({ page }) => {
   const userId = "00000000-0000-4000-8000-000000000910";
   await page.addInitScript(({ userId }) => {
+    // The application may refresh mock master projections while this journey
+    // reloads between Q3 and Q5. Keep the canonical quest row available on
+    // every document so the final reward claim uses the same quest authority.
+    const quests = JSON.parse(localStorage.getItem("mock_db_quests") || "[]");
+    if (!quests.some((quest: { id?: string }) => quest.id === "q_shinjuku_1")) {
+      quests.push({ id: "q_shinjuku_1", name: "新宿・初級", town_id: "shinjuku", difficulty: "EASY", duration_seconds: 60, cost_vitality: 5, reward_xp: 120, reward_items: [], is_unlocked: true });
+      localStorage.setItem("mock_db_quests", JSON.stringify(quests));
+    }
     if (sessionStorage.getItem("m9_0e_seeded") === "true") return;
     sessionStorage.setItem("m9_0e_seeded", "true");
     localStorage.setItem("tribe_demo_uuid", userId);
@@ -725,17 +733,6 @@ test("first quest connects dispatch, official battle, and one reward to the comp
     localStorage.setItem("mock_db_user_patrols", "[]");
     localStorage.setItem("mock_db_battle_replay_sessions", "[]");
     localStorage.setItem("mock_db_presents", "[]");
-    localStorage.setItem("mock_db_quests", JSON.stringify([{
-      id: "q_shinjuku_1",
-      name: "新宿・初級",
-      town_id: "shinjuku",
-      difficulty: "EASY",
-      duration_seconds: 60,
-      cost_vitality: 5,
-      reward_xp: 120,
-      reward_items: [],
-      is_unlocked: true,
-    }]));
   }, { userId });
 
   await page.goto("/");
