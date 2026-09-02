@@ -124,11 +124,13 @@ test("production battle viewer renders actual 5v3 roster without empty slots", a
   await page.screenshot({ path: test.info().outputPath("quest-battle-5v3-390.png"), fullPage: true });
 });
 
-test("tutorial presentation advances from learned 1x actions to 2x and remains user-toggleable", async ({ page }) => {
+test("battle starts at 2x and toggles between 2x and 1x", async ({ page }) => {
   await openScenario(page, "battle-2x");
   await expect(page.locator(".quest-battle-viewer")).toHaveAttribute("data-battle-speed", "2");
   await page.locator(".speed-toggle-btn").click();
   await expect(page.locator(".quest-battle-viewer")).toHaveAttribute("data-battle-speed", "1");
+  await page.locator(".speed-toggle-btn").click();
+  await expect(page.locator(".quest-battle-viewer")).toHaveAttribute("data-battle-speed", "2");
 });
 
 test("SSR skill cut-in overlays the full roster rather than the center action column", async ({ page }) => {
