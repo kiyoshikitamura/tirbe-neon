@@ -707,7 +707,11 @@ test("first quest connects dispatch, official battle, and one reward to the comp
     localStorage.setItem("tribe_demo_uuid", userId);
     localStorage.setItem("mock_auth_mode", "ANONYMOUS");
     localStorage.setItem("mock_db_users", JSON.stringify([{ id: userId, username: "初戦確認", cash: 10000, vitality: 100, level: 1, xp: 0, current_base_id: "shinjuku" }]));
-    localStorage.setItem("mock_db_user_characters", JSON.stringify([{ id: `starter_${userId}`, user_id: userId, character_id: "char_reiji_01", level: 3, awakening_level: 0 }]));
+    // This focused contract intentionally uses a one-member deck. Give that
+    // isolated member enough level to represent the five-member tutorial
+    // formation used by the real journey, so reward assertions cannot land on
+    // a fixture-only defeat.
+    localStorage.setItem("mock_db_user_characters", JSON.stringify([{ id: `starter_${userId}`, user_id: userId, character_id: "char_reiji_01", level: 100, awakening_level: 0 }]));
     localStorage.setItem("mock_db_user_skills", JSON.stringify([
       { id: `skill_sr_${userId}`, user_id: userId, skill_card_id: "SKILL_021", equipped_character_id: `starter_${userId}`, slot_index: 0, plus_val: 0 },
       { id: `skill_ssr_${userId}`, user_id: userId, skill_card_id: "SKILL_036", equipped_character_id: `starter_${userId}`, slot_index: 1, plus_val: 0 },
@@ -1017,8 +1021,9 @@ test("reaches the battle action boundary", async ({ page }) => {
     localStorage.setItem("mock_db_skill_battle_master", JSON.stringify([{ skill_id: "SKILL_036", display_name: "SSR TEST BREAK", kind: "ATTACK", target: "ENEMY_SINGLE", power_percent: 240, cooldown: 1, initial_cooldown: 0, enabled: true }]));
     localStorage.setItem("mock_db_pvp_defense_decks", JSON.stringify([{ id: `deck_${desktopUserId}`, user_id: desktopUserId, character_1_id: `starter_${desktopUserId}` }]));
     localStorage.setItem("mock_db_tutorial_progress", JSON.stringify([{ user_id: desktopUserId, step_id: "DISPATCH" }]));
-    localStorage.setItem("mock_db_quests", JSON.stringify([{ id: "q_shinjuku_short", name: "新宿", duration_seconds: 60, cost_vitality: 5, cash_reward: 800, exp_reward: 120 }]));
-    localStorage.setItem("mock_db_patrol_npcs", JSON.stringify([{ id: "npc_tutorial_short", quest_id: "q_shinjuku_short", npc_name: "路地裏のならず者", enemy_data: { hp: 120, atk: 1, def: 0, spd: 20, luk: 0 } }]));
+    // Use the canonical first quest so start_patrol projects the authoritative
+    // encounter snapshot required before the Q5 action becomes enabled.
+    localStorage.setItem("mock_db_quests", JSON.stringify([{ id: "q_shinjuku_1", name: "新宿・初級", duration_seconds: 60, cost_vitality: 5, reward_xp: 120, reward_items: [] }]));
     localStorage.setItem("mock_db_user_patrols", "[]");
     localStorage.setItem("mock_db_battle_replay_sessions", "[]");
   }, { desktopUserId });
@@ -1030,7 +1035,9 @@ test("reaches the battle action boundary", async ({ page }) => {
   await expect(page.locator('[data-acceptance-state="Q3"]')).toBeVisible();
   await page.locator('[data-acceptance-state="Q3"] button').click();
   await expect(page.locator('[data-acceptance-state="Q5"]')).toBeVisible();
-  await page.locator('[data-acceptance-state="Q5"] button').click();
+  const encounterContinue = page.locator('[data-acceptance-state="Q5"] button');
+  await expect(encounterContinue).toBeEnabled({ timeout: 15_000 });
+  await encounterContinue.click();
   await expect(page.locator('[data-acceptance-state="Q6"] [data-encounter-ready="true"]')).toBeVisible();
   await page.locator('[data-acceptance-state="Q6"] button').click();
   await page.locator('[data-acceptance-state="B1"] .start-battle-btn').click();

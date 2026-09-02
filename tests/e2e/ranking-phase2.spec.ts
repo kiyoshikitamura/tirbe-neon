@@ -68,7 +68,7 @@ async function openRanking(page: Page, path = "/") {
   if (await loginBonus.isVisible()) {
     await loginBonus.getByRole("button", { name: "閉じる", exact: true }).click();
   }
-  const rankingEntry = page.getByRole("button", { name: "総合力ランキングを開く" });
+  const rankingEntry = page.locator(".mypage-sub-icons-left .sub-icon-unit").filter({ hasText: "ランキング" });
   await expect(rankingEntry).toBeVisible();
   await rankingEntry.click();
   await expect(page.locator(".ranking-tab-view")).toBeVisible();
