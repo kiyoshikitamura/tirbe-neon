@@ -199,17 +199,17 @@ export default function PvpTab() {
     <>
     <HubPage
       className="pvp-view"
-      title="喧嘩（PvP）"
+      title="バトル"
       status={readiness.status}
       onRetry={readiness.retry}
       hideVisualHeader
     >
-        <section className="pvp-hero" style={pvpBackgroundPath ? { "--pvp-hero-bg": `url(${pvpBackgroundPath})` } as React.CSSProperties : undefined} aria-label="PvP対戦">
+        <section className="pvp-hero" style={pvpBackgroundPath ? { "--pvp-hero-bg": `url(${pvpBackgroundPath})` } as React.CSSProperties : undefined} aria-label="バトル対戦">
           <div className="pvp-hero-shade" aria-hidden="true" />
           <CharacterPresentation className="pvp-hero-fighter is-player" src={playerLeaderMaster ? getCharacterTransparentImg(playerLeaderMaster.name) : undefined} alt={playerLeaderMaster?.jpName || "PLAYER"} variant="battle-leader" />
           <CharacterPresentation className="pvp-hero-fighter is-opponent" src={heroOpponentLeader?.asset_identifier || undefined} alt={heroOpponentLeader?.display_name || "OPPONENT"} variant="battle-leader" />
         </section>
-        <section className="pvp-self-summary" aria-label="自分のPvP情報">
+        <section className="pvp-self-summary" aria-label="自分のバトル情報">
           <StatusMetric label="順位" value={ownPvpStanding === undefined ? "—" : <RankPresentation rank={ownPvpStanding?.rankPosition} />} />
           <StatusMetric label="RATE" value={displayedPvpRate.toLocaleString()} />
           <StatusMetric label="BP" value={pvpPoints} suffix={<span>/5</span>} />
@@ -253,7 +253,7 @@ export default function PvpTab() {
 
                 <details className="pvp-rules-help">
                   <summary>公式戦・模擬戦のルール</summary>
-                  <p><b>公式戦</b> PvP Point 1消費・Rating変動あり</p>
+                  <p><b>公式戦</b> BP 1消費・Rating変動あり</p>
                   <p><b>勝利</b> {rewardLabel("VICTORY")}</p>
                   <p><b>敗北</b> {rewardLabel("DEFEAT")}</p>
                   <p><b>模擬戦</b> 消費・報酬・Rating・Mission進捗なし</p>

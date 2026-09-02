@@ -5,6 +5,7 @@ import SubTabNav from "./ui/SubTabNav";
 import OutlawButton from "./ui/OutlawButton";
 import { canonicalMissionRewardName } from "@/domain/gameplay/canonical/missions";
 import CanonicalItemIcon from "./ui/CanonicalItemIcon";
+import { battleDisplayText } from "@/domain/presentation/battleTerminology";
 import "./MissionPanel.css";
 
 const MISSION_STATUS_LABELS: Record<string, string> = {
@@ -104,10 +105,10 @@ export default function MissionPanel() {
                 <div key={m.id} className={`mission-item ${m.status}`}>
                   <div className="mission-info">
                     <div className="mission-heading">
-                      <div className="mission-title">{m.title}</div>
+                      <div className="mission-title">{battleDisplayText(m.title)}</div>
                       <span className="mission-status">{statusLabel}</span>
                     </div>
-                    <div className="mission-desc">{m.description}</div>
+                    <div className="mission-desc">{battleDisplayText(m.description)}</div>
                     <div className="mission-reward">
                       <span>REWARD</span><CanonicalItemIcon itemId={m.reward_item} alt="" className="mission-reward-art" /><strong>{canonicalMissionRewardName(String(m.reward_item || ""))} × {Number(m.reward_amount || 0).toLocaleString()}</strong>
                       {Number(m.cashReward || 0) > 0 && <><CanonicalItemIcon itemId="CASH" alt="" className="mission-reward-art" /><strong>キャッシュ × {Number(m.cashReward).toLocaleString()}</strong></>}
@@ -159,10 +160,10 @@ export default function MissionPanel() {
                 const progressPercent = Math.min(100, Math.floor((currentProgress / targetValue) * 100));
                 return <div key={mission.id} className="mission-group-current">
                   <div className="mission-group-heading">
-                    <strong>{mission.title}</strong>
+                    <strong>{battleDisplayText(mission.title)}</strong>
                     <span>{currentProgress} / {targetValue}</span>
                   </div>
-                  <p>{mission.description}</p>
+                  <p>{battleDisplayText(mission.description)}</p>
                   <div className="mission-group-reward">
                     <CanonicalItemIcon itemId={mission.reward_item} alt="" className="mission-reward-art" />
                     <span>{canonicalMissionRewardName(String(mission.reward_item || ""))} × {Number(mission.reward_amount || 0).toLocaleString()}</span>
