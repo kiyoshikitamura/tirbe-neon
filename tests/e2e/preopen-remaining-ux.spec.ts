@@ -27,7 +27,7 @@ test.beforeEach(async ({ page }) => {
     localStorage.setItem("mock_db_user_equipments", JSON.stringify([{ id: "equipment-sweep", user_id: userId, equipment_id: "WEAPON_001", equipped_character_id: "10000000-0000-4000-8000-000000000829", slot_index: 0, level: 1, plus_val: 0, created_at: now }]));
     localStorage.setItem("mock_db_user_items", JSON.stringify([{ id: "item-sweep", user_id: userId, item_id: "CHAR_EXP_S", quantity: 3 }]));
     localStorage.setItem("mock_db_quests", JSON.stringify([{
-      id: "q_shinjuku_1", name: "歌舞伎町 夜間見回り", town_id: "shinjuku", level_type: "EASY", duration_seconds: 60, cost_vitality: 5,
+      id: "QUEST_SHINJUKU_EASY", name: "歌舞伎町一番街", town_id: "shinjuku", level_type: "EASY", duration_seconds: 60, cost_vitality: 5,
       cash_reward: 300, exp_reward: 100, recommended_level: 1, recommended_power: 1000, enemy_member_count: 1,
       enemy_members: [{ characterId: "char_takeshi_01", skillLoadout: ["SKILL_001"] }], enemy_attributes: ["EVIL"], enemy_tactic: "BALANCED",
       reward_items: [{ item_id: "CHAR_EXP_S", quantity: 1, probability_bp: 10000 }], first_clear_items: [], first_clear_user_exp: 100,
@@ -36,7 +36,7 @@ test.beforeEach(async ({ page }) => {
     localStorage.setItem("mock_db_bbs_threads", JSON.stringify([{ id: "bbs-sweep", category: "RECRUIT", title: "仲間募集", content: "一緒に遊びましょう", user_id: otherId, author_name: "旧表示名", created_at: now, updated_at: now }]));
     localStorage.setItem("mock_db_bbs_posts", "[]");
     const cycleDate = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Tokyo" });
-    const mission = { id: "ob_daily_patrol_01", title: "街の見回り", description: "クエストを1回完了", category: "DAILY", trigger_type: "PATROL_CLEAR", target_value: 1, reward_item_id: "CHAR_EXP_M", reward_quantity: 2, condition_params: { cta_tab: "patrol", cta_label: "クエストへ" }, display_order: 20, is_enabled: true, is_provisional: false };
+    const mission = { id: "MIS_D_003", title: "キャラクターを強化しよう", description: "キャラクターを強化しよう", category: "DAILY", display_group: "GROWTH", trigger_type: "CHARACTER_ENHANCE_COUNT", target_value: 1, reward_item_id: "CHAR_EXP_M", reward_quantity: 1, cash_reward: 0, condition_params: {}, display_order: 30, repeat_rule: "DAILY_RESET", claim_rule: "EXACTLY_ONCE", is_enabled: true, is_repeatable: true, is_provisional: false, preopen: true };
     localStorage.setItem("mock_db_missions", JSON.stringify([mission]));
     localStorage.setItem("mock_db_user_missions", JSON.stringify([{ id: "mission-sweep", user_id: userId, mission_id: mission.id, cycle_date: cycleDate, current_progress: 1, status: "CLEAR", claimed_at: null, missions: mission }]));
     localStorage.setItem("mock_db_presents", JSON.stringify([{ id: "present-sweep", user_id: userId, item_id: "EQUIP_EXP_M", quantity: 2, message: "Sweep検証プレゼント", status: "UNCLAIMED", created_at: now }]));
@@ -61,7 +61,8 @@ async function openUtility(page: Page, label: "設定" | "プレゼント") {
   await page.getByRole("button", { name: /^MENU(?:\s|$)/ }).click();
   const menu = page.getByRole("dialog", { name: "ホームメニュー" });
   await expect(menu).toBeVisible();
-  await menu.getByRole("button", { name: label, exact: true }).click();
+  const accessibleName = label === "プレゼント" ? /^プレゼント(?:\s|$)/ : /^設定(?:\s|$)/;
+  await menu.getByRole("button", { name: accessibleName }).click();
 }
 
 async function expectNoOverflow(page: Page, selector: string) {
@@ -124,16 +125,16 @@ test("Quest, Character and BBS consume canonical presentation contracts", async 
   await enterGame(page);
 
   await page.locator(".circle-menu-btn.conquest").click();
-  await expect(page.locator(".course-name", { hasText: "歌舞伎町 夜間見回り" })).toBeVisible();
-  await expect(page.locator(".quest-canonical-context")).toContainText("クエスト選択");
-  await expect(page.locator(".quest-canonical-brief")).toContainText("出現する敵");
-  await expect(page.locator(".quest-canonical-brief")).toContainText("所要時間");
+  await expect(page.locator(".quest-v2-identity")).toContainText("クエスト選択");
+  await expect(page.locator(".quest-v2-brief")).toContainText("歌舞伎町一番街");
+  await expect(page.locator(".quest-v2-brief")).toContainText("出現する敵");
+  await expect(page.locator(".quest-v2-brief")).toContainText("所要時間");
   await expect(page.locator(".quest-v0-summary")).toHaveCount(0);
-  await page.locator(".patrol-char-item:not(.locked)").first().click();
+  await page.locator(".quest-v2-character-grid button:not(.deployed)").first().click();
   const dispatch = page.getByRole("button", { name: "新宿へ派遣する" });
   await expect(dispatch).toBeEnabled();
-  await expect(page.locator(".patrol-container")).not.toContainText("CHAR_EXP_S");
-  await expect(page.locator(".patrol-container")).toContainText("強化ドリンク・小");
+  await expect(page.locator(".quest-v2-brief")).not.toContainText("CHAR_EXP_S");
+  await expect(page.locator(".quest-v2-brief")).toContainText("強化ドリンク・小");
   await expectNoOverflow(page, ".patrol-container");
 
   await page.getByRole("button", { name: "キャラ", exact: true }).click();

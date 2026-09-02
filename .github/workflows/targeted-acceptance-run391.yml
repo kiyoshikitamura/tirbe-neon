@@ -1,0 +1,45 @@
+name: Targeted Acceptance Run 391
+
+on:
+  push:
+    branches: [codex/targeted-acceptance-run391]
+  workflow_dispatch:
+
+concurrency:
+  group: targeted-acceptance-run391
+  cancel-in-progress: true
+
+jobs:
+  failed-cases-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      NEXT_PUBLIC_APP_ENV: test
+      NEXT_PUBLIC_USE_MOCK_DB: "true"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run build
+      - name: Run only failures exposed by Quality 391
+        run: >-
+          npx playwright test
+          tests/e2e/m9-tutorial.spec.ts
+          tests/e2e/preopen-remaining-ux.spec.ts
+          tests/e2e/quest-natural-completion.spec.ts
+          --grep "first quest connects|new mobile player|Quest, Character and BBS|Mission and Present|Present bulk|normal Quest starts"
+      - name: Upload focused diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: targeted-playwright-diagnostics
+          path: |
+            test-results/**/test-failed-*.png
+            test-results/**/error-context.md
+            playwright-report/index.html
+          if-no-files-found: ignore
+          retention-days: 1

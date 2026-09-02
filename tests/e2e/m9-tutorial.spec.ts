@@ -1312,8 +1312,8 @@ test("new mobile player completes the guided first session without footer naviga
   await expect(page.locator('[data-acceptance-state="B3"]')).toBeVisible();
   await expect(page.locator('.battle-party-zone.is-player')).toHaveAttribute("data-party-size", "5");
   const playerRosterRows = await page.locator('.battle-party-zone.is-player .battle-unit-party').evaluateAll((rows) => rows.map((row) => {
-    const rect = row.getBoundingClientRect();
-    return { top: Math.round(rect.top), left: Math.round(rect.left) };
+    const element = row as HTMLElement;
+    return { top: element.offsetTop, left: element.offsetLeft };
   }));
   expect(playerRosterRows).toHaveLength(5);
   expect(new Set(playerRosterRows.map((row) => row.top)).size).toBe(5);

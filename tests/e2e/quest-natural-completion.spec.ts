@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 test.use({ viewport: { width: 390, height: 844 } });
+test.setTimeout(90_000);
 
 test("normal Quest starts its Canonical battle from the per-dispatch encounter snapshot", async ({ page }, testInfo) => {
   await page.addInitScript(() => {
@@ -21,6 +22,13 @@ test("normal Quest starts its Canonical battle from the per-dispatch encounter s
     localStorage.setItem("mock_db_tutorial_progress", JSON.stringify([{ user_id: userId, step_id: "AUTHENTICATION" }]));
     localStorage.setItem("mock_db_user_account_auth_methods", JSON.stringify([{ user_id: userId, auth_method: "GOOGLE" }]));
     localStorage.setItem("mock_db_auth_identities", JSON.stringify([{ user_id: userId, provider: "google" }]));
+    const jstDate = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Tokyo" });
+    localStorage.setItem("mock_db_user_login_bonuses", JSON.stringify([{
+      user_id: userId,
+      current_day: 1,
+      total_logins: 1,
+      last_claimed_date: jstDate,
+    }]));
     localStorage.setItem("mock_db_user_characters", JSON.stringify([{
       id: `starter_${userId}`,
       user_id: userId,

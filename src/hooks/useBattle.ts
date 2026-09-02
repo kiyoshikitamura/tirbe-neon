@@ -80,6 +80,12 @@ function canonicalParticipantSkill(owned: any) {
 }
 
 const patrolReplayCursorKey = (replayId: string) => `tribe_neon_patrol_replay_cursor_${replayId}`;
+
+function participantPresentationRarity(participant?: ParticipantState) {
+  if (participant?.rarity) return participant.rarity;
+  return CHARACTERS_MASTER.find((character) => character.id === participant?.characterId)?.rarity;
+}
+
 export type BattleMode = "PVP" | "PVP_PRACTICE" | "RAID" | "GVG" | "PATROL";
 export type BattlePresentationPhase = "IDLE" | "ACTOR_FOCUS" | "TARGET_FOCUS" | "ATTACK_MOTION" | "IMPACT" | "DAMAGE" | "HP_TRANSITION" | "ACTION_HOLD";
 export type BattlePresentationTimelineNode = { id: string; name: string; isEnemy?: boolean };
@@ -2097,7 +2103,7 @@ export function useBattle(options: UseBattleOptions) {
       const previousActor = previousAction
         ? participantSnapshot.find((participant) => participant.id === String(previousAction.payload.actorId ?? ""))
         : undefined;
-      const previousTier = battlePresentationTier(previousActionWasSkill, previousActor?.rarity);
+      const previousTier = battlePresentationTier(previousActionWasSkill, participantPresentationRarity(previousActor));
       const delay = replayEvent.type === "ACTION"
         ? previousAction
           // The previous Presentation Unit already consumed its complete
@@ -2146,7 +2152,7 @@ export function useBattle(options: UseBattleOptions) {
           }
           const actorName = safeBattleCharacterName(actor?.name);
           const skillName = resolveBattleSkillLabel(skillId, (actor?.skills || []) as Array<Record<string, unknown>>);
-          const tier = battlePresentationTier(isSkill, actor?.rarity);
+          const tier = battlePresentationTier(isSkill, participantPresentationRarity(actor));
           setActionPresentation(unit ? { unit, beat: "ACTOR", tier, skillName } : null);
           const nextActions = authoritativeEvents
             .slice(authoritativeEventIndex)
@@ -2170,7 +2176,7 @@ export function useBattle(options: UseBattleOptions) {
           const actionSkillId = outcomeUnit.skillId;
           const actionIsSkill = actionSkillId !== "BASIC_ATTACK";
           const actionSkillName = resolveBattleSkillLabel(actionSkillId, (actionActor?.skills || []) as Array<Record<string, unknown>>);
-          const actionTier = battlePresentationTier(actionIsSkill, actionActor?.rarity);
+          const actionTier = battlePresentationTier(actionIsSkill, participantPresentationRarity(actionActor));
           const groupByTarget = new Map(outcomeUnit.targets.map((group) => [group.targetId, group]));
           const projectParticipant = (participant: ParticipantState) => {
             const group = groupByTarget.get(participant.id);
