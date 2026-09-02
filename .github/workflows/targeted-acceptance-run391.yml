@@ -14,10 +14,11 @@ concurrency:
 jobs:
   failed-cases-only:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 15
     env:
       NEXT_PUBLIC_APP_ENV: test
       NEXT_PUBLIC_USE_MOCK_DB: "true"
+      PLAYWRIGHT_HTML_OPEN: never
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -27,13 +28,14 @@ jobs:
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       - run: npm run build
-      - name: Run only failures exposed by Quality 391
+      - name: Run only the two remaining cases
         run: >-
+          timeout --signal=TERM 300s
           npx playwright test
           tests/e2e/m9-tutorial.spec.ts
-          tests/e2e/preopen-remaining-ux.spec.ts
           tests/e2e/quest-natural-completion.spec.ts
-          --grep "first quest connects|new mobile player|Quest, Character and BBS|Mission and Present|Present bulk|normal Quest starts"
+          --workers=2
+          --grep "first quest connects|normal Quest starts"
       - name: Upload focused diagnostics
         if: failure()
         uses: actions/upload-artifact@v4
