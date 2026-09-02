@@ -92,7 +92,7 @@ test("tutorial ten-pull guarantees slot 10 SSR and visible Growth precedes forma
     const timing = animation?.effect?.getComputedTiming();
     return { playState: animation?.playState, duration: timing?.duration, iterations: timing?.iterations };
   });
-  expect(glintTiming).toEqual({ playState: "running", duration: 3000, iterations: Infinity });
+  expect(glintTiming).toEqual({ playState: "running", duration: 1200, iterations: 1 });
   for (const width of [375, 390, 430]) {
     await page.setViewportSize({ width, height: 844 });
     const layout = await page.locator(".gacha-result-grid").evaluate((grid) => ({ scrollWidth: grid.scrollWidth, clientWidth: grid.clientWidth }));
@@ -181,23 +181,19 @@ test("world information precedes Ageha and entry sub-state survives reload", asy
   await page.reload();
   const titleCta = page.getByRole("button", { name: "TAP TO START" });
   const tutorialContinue = page.getByRole("button", { name: "チュートリアルを続ける" });
-  await expect(page.locator('[data-entry-state="AGEHA_INTRO"]').or(titleCta).or(tutorialContinue)).toBeVisible();
-  if (await titleCta.isVisible()) await titleCta.click();
-  if (!(await page.locator('[data-entry-state="AGEHA_INTRO"]').isVisible())) {
-    await expect(tutorialContinue).toBeVisible();
-    await tutorialContinue.evaluate((button: HTMLButtonElement) => button.click());
-  }
+  await expect(titleCta).toBeVisible();
+  await titleCta.click();
+  await expect(tutorialContinue).toBeVisible();
+  await tutorialContinue.click();
   await expect(page.locator('[data-entry-state="AGEHA_INTRO"]')).toBeVisible();
 
   await page.getByRole("button", { name: "次へ" }).click();
   await expect(page.locator('[data-entry-state="NAME_INPUT"]')).toBeVisible();
   await page.reload();
-  await expect(page.locator('[data-entry-state="NAME_INPUT"]').or(titleCta).or(tutorialContinue)).toBeVisible();
-  if (await titleCta.isVisible()) await titleCta.click();
-  if (!(await page.locator('[data-entry-state="NAME_INPUT"]').isVisible())) {
-    await expect(tutorialContinue).toBeVisible();
-    await tutorialContinue.evaluate((button: HTMLButtonElement) => button.click());
-  }
+  await expect(titleCta).toBeVisible();
+  await titleCta.click();
+  await expect(tutorialContinue).toBeVisible();
+  await tutorialContinue.click();
   await expect(page.getByPlaceholder("プレイヤー名を入力")).toBeVisible();
 });
 

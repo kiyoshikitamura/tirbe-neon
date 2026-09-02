@@ -79,14 +79,14 @@ test("PvP uses the main formation, offers a weaker first opponent, and has no de
   await expect(page.locator('.pvp-opponent-card')).toHaveCount(1);
   await expect(page.locator('.pvp-opponent-card')).toContainText("格下");
   await page.getByText("公式戦・模擬戦のルール").click();
-  await expect(page.getByText("勝敗報酬なし", { exact: true })).toHaveCount(2);
+  await expect(page.locator("p").filter({ hasText: "勝敗報酬なし" })).toHaveCount(2);
   await assertMobileWave(page, ".pvp-view", "pvp-no-defense-first-match");
 });
 
 test("Guild master edits the welcome message through the existing secure contract", async ({ page }) => {
   await seedAuthenticatedPlayer(page, true);
   await enterHome(page);
-  await page.getByRole("button", { name: "ギルド" }).click();
+  await page.getByRole("button", { name: "ギルド", exact: true }).click();
   await expect(page.locator(".guild-welcome-compact")).toContainText("来てくれてありがとう");
   await page.getByRole("button", { name: "ギルド設定" }).click();
   const welcome = page.locator(".editable-setting-section").filter({ hasText: "歓迎メッセージ" });
@@ -103,7 +103,7 @@ test("Guild master edits the welcome message through the existing secure contrac
   if (await titleAction.isVisible()) await titleAction.click();
   if (await continueAction.isVisible()) await continueAction.click();
   await expect(page.locator(".header-mobile")).toBeVisible();
-  await page.getByRole("button", { name: "ギルド" }).click();
+  await page.getByRole("button", { name: "ギルド", exact: true }).click();
   await expect(page.locator(".guild-welcome-compact")).toContainText("みんなでレイドへ行こう");
 });
 
@@ -118,7 +118,7 @@ test("Title to Guild human response journey remains visible across every mobile 
   if (await titleAction.isVisible()) await titleAction.click();
   if (await continueAction.isVisible()) await continueAction.click();
   await assertMobileWave(page, ".mypage-view", "journey-home");
-  await page.getByRole("button", { name: "ギルド" }).click();
+  await page.getByRole("button", { name: "ギルド", exact: true }).click();
   await assertMobileWave(page, ".guild-lobby-view", "journey-guild-discovery");
   await page.locator(".guild-detail-trigger").first().click();
   await expect(page.locator(".guild-public-status-grid")).toBeVisible();
@@ -140,7 +140,7 @@ test("Title to Guild human response journey remains visible across every mobile 
   if (await reloadedTitleAction.isVisible()) await reloadedTitleAction.click();
   if (await reloadedContinueAction.isVisible()) await reloadedContinueAction.click();
   await expect(page.locator(".header-mobile")).toBeVisible();
-  await page.getByRole("button", { name: "ギルド" }).click();
+  await page.getByRole("button", { name: "ギルド", exact: true }).click();
   await page.getByRole("button", { name: "ギルドチャット" }).click();
   await expect(page.getByRole("button", { name: /ギルド \(1\)/ })).toBeVisible();
   await page.getByRole("button", { name: /ギルド \(1\)/ }).click();
