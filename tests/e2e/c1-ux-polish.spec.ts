@@ -12,7 +12,7 @@ test.beforeEach(async ({ page }) => {
     localStorage.setItem("mock_db_users", JSON.stringify([{ id: userId, username: "C1検証ユーザー", current_base_id: "shinjuku", favorite_character_id: "char_reiji_01", level: 10, cash: 50_000 }]));
     localStorage.setItem("mock_db_user_characters", JSON.stringify([{ id: "10000000-0000-4000-8000-000000000201", user_id: userId, character_id: "char_reiji_01", level: 10, awakening_level: 1, created_at: now }]));
     localStorage.setItem("mock_db_user_main_formations", JSON.stringify([{ user_id: userId, character_ids: ["10000000-0000-4000-8000-000000000201"] }]));
-    const mission = { id: "ob_daily_patrol_01", title: "長いタイトルでも報酬受取導線を確認するミッション", description: "クエストを完了して報酬を受け取り、次の行動へ進みます。", category: "DAILY", trigger_type: "PATROL_CLEAR", target_value: 1, reward_item_id: "CASH", reward_quantity: 1000, condition_params: { cta_tab: "patrol", cta_label: "クエストへ" }, display_order: 20, is_enabled: true, is_provisional: false };
+    const mission = { id: "MIS_D_002", title: "派遣に出よう", description: "派遣に出よう", category: "DAILY", trigger_type: "QUEST_COMPLETE_COUNT", target_value: 1, reward_item_id: "CHAR_EXP_S", reward_quantity: 1, condition_params: {}, display_order: 20, is_enabled: true, is_provisional: false };
     localStorage.setItem("mock_db_missions", JSON.stringify([mission]));
     localStorage.setItem("mock_db_user_missions", JSON.stringify([{ id: "user-c1-mission", user_id: userId, mission_id: mission.id, cycle_date: cycleDate, current_progress: 1, status: "CLEAR", claimed_at: null, missions: mission }]));
     localStorage.setItem("mock_db_presents", JSON.stringify([{ id: "present-c1", user_id: userId, item_id: "CHAR_EXP_M", quantity: 2, message: "C1検証プレゼント", status: "UNCLAIMED", created_at: now }]));
@@ -63,12 +63,12 @@ for (const viewport of [
 
     await page.getByRole("button", { name: /ミッション/ }).click();
     await expect(page.locator(".mission-item.CLEAR")).toBeVisible();
-    await expect(page.locator(".mission-reward")).toContainText("CASH");
+    await expect(page.locator(".mission-reward")).toContainText("強化ドリンク・小");
     await expectNoHorizontalOverflow(page, ".mission-panel-container-inner");
     await page.getByRole("button", { name: "受け取る", exact: true }).click();
     const rewardDialog = page.locator(".outlaw-confirm-dialog.kind-reward");
     await expect(rewardDialog).toBeVisible();
-    await expect(rewardDialog).toContainText("CASH");
+    await expect(rewardDialog).toContainText("強化ドリンク・小");
     await expect(rewardDialog).toContainText("プレゼント");
     await expectNoHorizontalOverflow(page, ".outlaw-confirm-dialog");
   });

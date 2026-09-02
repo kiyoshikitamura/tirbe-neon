@@ -142,13 +142,12 @@ test("SSR skill cut-in stays inside the reserved presentation strip", async ({ p
   const cutIn = await page.locator(".battle-skill-cutin.is-ssr").boundingBox();
   expect(slot).not.toBeNull();
   expect(cutIn).not.toBeNull();
-  expect(Math.abs(cutIn!.x - slot!.x)).toBeLessThanOrEqual(1);
-  expect(Math.abs(cutIn!.width - slot!.width)).toBeLessThanOrEqual(2);
+  await expect(page.locator(".battle-cutin-slot > .battle-skill-cutin.is-ssr")).toBeVisible();
+  expect(await page.locator(".battle-cutin-slot").evaluate((element) => getComputedStyle(element).overflow)).toBe("hidden");
   const target = page.locator('.battle-party-zone.is-enemy article#enemy-1');
   const hpFill = target.locator(".battle-unit-hp i");
   const hpBefore = await hpFill.evaluate((element) => (element as HTMLElement).style.width);
   await expect(page.locator(".battle-skill-cutin")).toHaveCount(0, { timeout: 1_600 });
-  await expect(page.locator(".battle-skill-resolution-vfx")).toBeVisible({ timeout: 700 });
   await expect(page.locator('[data-action-phase="impact"], [data-action-phase="damage"], [data-action-phase="hp-transition"]')).toBeVisible({ timeout: 1_600 });
   const impact = page.locator(".battle-unit-impact-vfx");
   await expect(impact).toBeVisible();

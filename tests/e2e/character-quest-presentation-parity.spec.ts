@@ -54,8 +54,22 @@ test.beforeEach(async ({ page }) => {
 
 async function enterGame(page: import("@playwright/test").Page) {
   await page.goto("/");
-  await page.getByRole("button", { name: /TAP TO START|続きから/ }).click();
+  await page.getByRole("button", { name: "TAP TO START" }).click();
+  await page.getByRole("button", { name: "続きから" }).click();
   await expect(page.locator(".header-mobile")).toBeVisible();
+  const loginBonus = page.getByRole("dialog", { name: "ログインボーナス" });
+  await loginBonus.waitFor({ state: "visible", timeout: 3_000 }).catch(() => undefined);
+  if (await loginBonus.isVisible()) {
+    await loginBonus.getByRole("button", { name: "閉じる", exact: true }).click();
+  }
+}
+
+async function continueAfterReload(page: import("@playwright/test").Page) {
+  const tapToStart = page.getByRole("button", { name: "TAP TO START" });
+  if (await tapToStart.isVisible()) {
+    await tapToStart.click();
+    await page.getByRole("button", { name: "続きから" }).click();
+  }
 }
 
 async function expectMobileGeometry(page: import("@playwright/test").Page, selector: string) {
@@ -146,8 +160,7 @@ test("canonical Leader changes update Home and Header immediately and persist ac
   await page.setViewportSize({ width: 412, height: 915 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
   await page.reload();
-  const titleAction = page.getByRole("button", { name: /TAP TO START|続きから/ });
-  if (await titleAction.isVisible()) await titleAction.click();
+  await continueAfterReload(page);
   await expect(page.locator('.mypage-leader-layer[data-character-authority="char_rui_01"]')).toBeVisible();
   await expect(page.locator('.header-mobile img[alt="Presentation QAのリーダー"]')).toHaveAttribute("src", /rui_transparent_asset/);
 
@@ -164,8 +177,7 @@ test("canonical Leader changes update Home and Header immediately and persist ac
     localStorage.setItem("mock_db_users", JSON.stringify(users));
   });
   await page.reload();
-  const restartAction = page.getByRole("button", { name: /TAP TO START|続きから/ });
-  if (await restartAction.isVisible()) await restartAction.click();
+  await continueAfterReload(page);
   await expect(page.locator('.mypage-leader-layer[data-character-authority="placeholder"]')).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
 });
