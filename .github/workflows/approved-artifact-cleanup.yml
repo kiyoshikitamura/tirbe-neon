@@ -1,0 +1,125 @@
+name: Approved large Playwright artifact cleanup
+
+on:
+  push:
+    branches:
+      - codex/admin-delete-large-playwright-artifacts-20260902
+    paths:
+      - .github/workflows/approved-artifact-cleanup.yml
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  delete-approved-artifacts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Revalidate and delete exact approved artifacts
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const approvedIds = [
+              9788134107,9787887759,9788261413,9798390294,9793332056,9792850953,
+              9788657536,9790610650,9789214284,9787954233,9793171700,9793899736,
+              9800387141,9788685496,9788942876,9787250787,9800823625,9795126309,
+              9798417417,9806175528,9814889810,9809139813,9800450490,9836845624,
+              9795490696,9833553064,9829947500,9797641495,9805421222,9806235686,
+              9798395762,9838280035,9815141017,9807025668,9804487937,9800450295,
+              9800768157,9798504163,9815402122,9804478282,9806752088,9804293366,
+              9804499943,9815514802,9833715171,9809388988,9836849347,9837834956,
+              9814666944,9838094132,9830876415,9833458034,9831699046,9832337720,
+              9831560919,9833669481,9832082853,9815219870,9832003487,9836814964,
+              9830525935,9815317686,9815211992,9815590085,9810723778,9810862214,
+              9814875115,9814637716,9810787280,9836253394,9815529594,9835969464,
+              9809541425,9815449077,9838343833,9834615097,9836160729,9837250930,
+              9836050495,9836292593,9838174035,9810903395,9830845596,9836829898,
+              9831835456,9808787656,9831970450,9831063429,9831741071,9833114018,
+              9831924028,9831662957,9832819178,9831568039,9831036744,9834060776,
+              9830865246,9830974009,9833990366,9832009565,9833822233,9830476988,
+              9725593261,9725669388,9726452196,9727952699,9727423835,9728031876
+            ];
+            const minimumBytes = 10 * 1024 * 1024 * 1024;
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const deleted = [];
+            const skipped = [];
+            const failed = [];
+
+            for (const artifactId of approvedIds) {
+              let artifact;
+              try {
+                const response = await github.request(
+                  'GET /repos/{owner}/{repo}/actions/artifacts/{artifact_id}',
+                  { owner, repo, artifact_id: artifactId }
+                );
+                artifact = response.data;
+              } catch (error) {
+                skipped.push({ artifactId, reason: error.status === 404 ? 'already_absent' : `lookup_${error.status || 'error'}` });
+                continue;
+              }
+
+              const eligible =
+                artifact.id === artifactId &&
+                artifact.name === 'playwright-diagnostics' &&
+                artifact.size_in_bytes >= minimumBytes &&
+                artifact.expired === false;
+
+              if (!eligible) {
+                skipped.push({
+                  artifactId,
+                  reason: 'guard_mismatch',
+                  observed: {
+                    id: artifact.id,
+                    name: artifact.name,
+                    size_in_bytes: artifact.size_in_bytes,
+                    expired: artifact.expired
+                  }
+                });
+                continue;
+              }
+
+              try {
+                await github.request(
+                  'DELETE /repos/{owner}/{repo}/actions/artifacts/{artifact_id}',
+                  { owner, repo, artifact_id: artifactId }
+                );
+                deleted.push({ artifactId, size_in_bytes: artifact.size_in_bytes });
+              } catch (error) {
+                failed.push({ artifactId, status: error.status || null, message: error.message });
+              }
+            }
+
+            const residual = [];
+            for (const item of deleted) {
+              try {
+                const response = await github.request(
+                  'GET /repos/{owner}/{repo}/actions/artifacts/{artifact_id}',
+                  { owner, repo, artifact_id: item.artifactId }
+                );
+                residual.push({ artifactId: item.artifactId, size_in_bytes: response.data.size_in_bytes });
+              } catch (error) {
+                if (error.status !== 404) {
+                  residual.push({ artifactId: item.artifactId, verify_status: error.status || null });
+                }
+              }
+            }
+
+            const result = {
+              approved_count: approvedIds.length,
+              deleted_count: deleted.length,
+              deleted_bytes: deleted.reduce((sum, item) => sum + item.size_in_bytes, 0),
+              skipped_count: skipped.length,
+              failed_count: failed.length,
+              residual_count: residual.length,
+              skipped,
+              failed,
+              residual
+            };
+            core.summary.addHeading('Approved artifact cleanup').addCodeBlock(JSON.stringify(result, null, 2), 'json');
+            await core.summary.write();
+            console.log(`CLEANUP_RESULT=${JSON.stringify(result)}`);
+            if (failed.length || residual.length) {
+              core.setFailed(`Cleanup incomplete: failures=${failed.length}, residual=${residual.length}`);
+            }
