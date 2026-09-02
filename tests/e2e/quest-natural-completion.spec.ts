@@ -74,6 +74,9 @@ test("normal Quest starts its Canonical battle from the per-dispatch encounter s
   await continueAction.click();
   const header = page.locator(".header-mobile");
   await expect(header).toBeVisible();
+  const loginBonus = page.getByRole("dialog", { name: "ログインボーナス" });
+  await expect(loginBonus).toBeVisible();
+  await loginBonus.getByRole("button", { name: "閉じる", exact: true }).click();
 
   await page.locator(".circle-menu-btn.conquest").click();
   await expect(page.locator(".patrol-container")).toBeVisible();

@@ -98,10 +98,11 @@ jobs:
           npm run test:e2e --
           tests/e2e/m9-tutorial.spec.ts
           tests/e2e/preopen-remaining-ux.spec.ts
-          --grep "first quest connects dispatch, official battle, and one reward to the completion boundary|tutorial completion resumes through account save and exposes the Home next action|new mobile player completes the guided first session without footer navigation|Home routes and editable Settings remain mobile-safe"
+          tests/e2e/quest-natural-completion.spec.ts
+          --grep "first quest connects dispatch, official battle, and one reward to the completion boundary|new mobile player completes the guided first session without footer navigation|Quest, Character and BBS consume canonical presentation contracts|Mission and Present mutations retain canonical item receipts|Present bulk claim locks its surface through the canonical receipt|normal Quest starts its Canonical battle from the per-dispatch encounter snapshot"
           --workers=2
           --retries=0
-          --max-failures=1
+          --max-failures=2
       - name: Upload Playwright diagnostics
         if: failure()
         uses: actions/upload-artifact@v4
