@@ -159,7 +159,7 @@ jobs:
             await query(`
               begin;
               insert into public.users(id, username)
-              values ('00000000-0000-4000-8000-000000002222', 'TN02_ROLLBACK_FIXTURE');
+              values ('00000000-0000-4000-8000-000000002222', 'TN02_QA');
               insert into public.tutorial_progress(user_id, step_id)
               values ('00000000-0000-4000-8000-000000002222', 'FREE_GACHA');
               insert into public.user_missions(user_id, mission_id, current_progress, progress_val, status, cycle_date)
@@ -184,7 +184,7 @@ jobs:
               $fixture$;
               select public.evaluate_mission_progress('00000000-0000-4000-8000-000000002222', 'PVP_BATTLE_COUNT', 1);
               insert into public.board_posts(title, content, author_id, user_id, author_name, target_type, is_system)
-              values ('', 'TN02 rollback Guild fixture', '00000000-0000-4000-8000-000000002222', '00000000-0000-4000-8000-000000002222', 'TN02_ROLLBACK_FIXTURE', 'GUILD', false);
+              values ('', 'TN02 rollback Guild fixture', '00000000-0000-4000-8000-000000002222', '00000000-0000-4000-8000-000000002222', 'TN02_QA', 'GUILD', false);
               do $fixture$
               begin
                 if not exists (
