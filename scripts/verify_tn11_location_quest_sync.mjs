@@ -48,7 +48,7 @@ assert(dbTest.includes("another user location was changed"));
 if (patrolHook.includes("encounterSnapshot")) {
   assert(context.includes("encounterSnapshot: p.encounter_snapshot"));
   assert(presentation.includes("patrol.encounterSnapshot?.members"));
-  assert(mockRpc.includes("enemy_members: []"), "mock progression must match Production dynamic encounter projection");
+  assert(/enemy_members:\s*\[\]/.test(mockRpc), "mock progression must match Production dynamic encounter projection");
 }
 
 console.log("TN-11 location and Quest synchronization verification: PASS");

@@ -170,7 +170,7 @@ test("canonical Leader changes update Home and Header immediately and persist ac
   expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
 });
 
-test("Normal Quest uses the tutorial-passed identity, enemy, reward and progress grammar", async ({ page }) => {
+test("Normal Quest uses the tutorial-passed identity, reward and progress grammar", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await enterGame(page);
   await page.locator(".circle-menu-btn.conquest").click();
@@ -179,8 +179,9 @@ test("Normal Quest uses the tutorial-passed identity, enemy, reward and progress
   await expect(page.locator(".quest-v2-identity")).toContainText("クエスト選択");
   await expect(page.locator(".quest-v2-metrics")).toContainText("所要時間");
   await expect(page.locator(".quest-v2-enemies")).toContainText("出現する敵");
-  await expect(page.locator(".quest-v2-enemies article > span").first()).toContainText(/^Lv /);
-  await expect(page.locator(".quest-v2-enemies article > span").first()).not.toContainText(/^(N|R|SR|SSR)$/);
+  // Production generates the exact enemy party for each dispatch. The Quest
+  // progression projection must not invent a static party before dispatch.
+  await expect(page.locator(".quest-v2-enemies article")).toHaveCount(0);
   await expect(page.locator(".quest-v2-rewards").first()).toBeVisible();
   await expect(page.getByRole("button", { name: "新宿へ派遣する", exact: true })).toBeVisible();
   await expect(page.locator("[data-quest-state]" )).toHaveCount(0);
