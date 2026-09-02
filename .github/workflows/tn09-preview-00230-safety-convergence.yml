@@ -102,8 +102,8 @@ jobs:
             assert.equal(pre.migration_230,false);
             assert.equal(pre.pvp_audit,1);
             assert.equal(pre.old_closed,2);
-            assert.equal(pre.raid_starts_at,"2026-08-30T15:00:00+00:00");
-            assert.equal(pre.raid_ends_at,"2026-09-06T15:00:00+00:00");
+            assert.equal(pre.raid_starts_at,"2026-08-30 15:00:00+00");
+            assert.equal(pre.raid_ends_at,"2026-09-06 15:00:00+00");
             assert.equal(pre.overlap_raid_logs,0);
             assert.equal(pre.current_raid_logs,5);
             assert.equal(pre.grants,11);
@@ -126,7 +126,7 @@ jobs:
             assert.equal(post.pvp_audit,pre.pvp_audit);
             assert.deepEqual(post.pvp_projection,pre.pvp_projection);
             assert.equal(post.old_closed,pre.old_closed);
-            assert.equal(post.raid_starts_at,"2026-08-31T15:00:00+00:00");
+            assert.equal(post.raid_starts_at,"2026-08-31 15:00:00+00");
             assert.equal(post.raid_ends_at,pre.raid_ends_at);
             assert.equal(post.overlap_raid_logs,0);
             assert.equal(post.current_raid_logs,pre.current_raid_logs);
