@@ -1,0 +1,34 @@
+name: Targeted Acceptance Run 391 V2
+
+on:
+  pull_request:
+    branches: [develop]
+
+concurrency:
+  group: targeted-acceptance-run391-v2
+  cancel-in-progress: true
+
+jobs:
+  two-remaining-cases:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      NEXT_PUBLIC_APP_ENV: test
+      NEXT_PUBLIC_USE_MOCK_DB: "true"
+      PLAYWRIGHT_HTML_OPEN: never
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run build
+      - name: Run two cases through bounded project runner
+        run: >-
+          npm run test:e2e --
+          tests/e2e/m9-tutorial.spec.ts
+          tests/e2e/quest-natural-completion.spec.ts
+          --workers=2
+          --grep "first quest connects|normal Quest starts"
