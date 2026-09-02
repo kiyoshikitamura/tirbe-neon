@@ -77,9 +77,13 @@ jobs:
                   '2828d27e-ebfd-4005-ba3b-0d618618c286'::uuid
                 ) and status='CLOSED') old_closed,
                 (select starts_at from public.ranking_seasons
-                  where id='e7f40125-3f35-4774-ad2d-839b213cc1fd'::uuid and status='ACTIVE') raid_starts_at,
+                  where ranking_type='RAID' and status='ACTIVE'
+                    and clock_timestamp()>=starts_at and clock_timestamp()<ends_at
+                  order by starts_at desc limit 1) raid_starts_at,
                 (select ends_at from public.ranking_seasons
-                  where id='e7f40125-3f35-4774-ad2d-839b213cc1fd'::uuid and status='ACTIVE') raid_ends_at,
+                  where ranking_type='RAID' and status='ACTIVE'
+                    and clock_timestamp()>=starts_at and clock_timestamp()<ends_at
+                  order by starts_at desc limit 1) raid_ends_at,
                 (select count(*) from public.raid_damage_logs
                   where created_at>='2026-08-30 15:00:00+00' and created_at<'2026-08-31 15:00:00+00') overlap_raid_logs,
                 (select count(*) from public.raid_damage_logs
