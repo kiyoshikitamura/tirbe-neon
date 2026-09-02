@@ -32,7 +32,7 @@ jobs:
           test "$SUPABASE_EXPECTED_PROJECT_REF" != "$PRODUCTION_PROJECT_REF"
           test "$GITHUB_REF_NAME" = "codex/tn09-raid-ranking-complete"
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
-      - name: Read-only lifecycle inventory
+      - name: Read-only PVP replay continuity
         shell: bash
         run: |
           set -euo pipefail
@@ -44,35 +44,71 @@ jobs:
             assert.equal(projectRef,"sufvuqdnqohpfzkwxohq");
             assert.notEqual(projectRef,process.env.PRODUCTION_PROJECT_REF);
             const sql=`
-              select
-                exists(select 1 from supabase_migrations.schema_migrations where version='20260902000227') migration_227,
-                exists(select 1 from supabase_migrations.schema_migrations where version='20260902000228') migration_228,
-                exists(select 1 from supabase_migrations.schema_migrations where version='20260902000229') migration_229,
-                (select count(*) from public.ranking_seasons where id in(
-                  '90106a5f-ec9b-415f-98d0-754a525c1eb7'::uuid,
-                  '2828d27e-ebfd-4005-ba3b-0d618618c286'::uuid
-                ) and status='ACTIVE') old_active,
-                (select count(*) from public.ranking_seasons where id in(
-                  '74bacb55-cad3-4c23-bca7-67a2aeac931d'::uuid,
-                  'e7f40125-3f35-4774-ad2d-839b213cc1fd'::uuid
-                )) new_rows,
-                (select count(*) from public.pvp_ranks where updated_at>='2026-08-31 15:00:00+00') pvp_updates_after_expiry,
-                (select max(updated_at) from public.pvp_ranks) latest_pvp_update,
-                (select count(*) from public.raid_damage_logs where created_at>='2026-08-31 15:00:00+00') raid_logs_after_expiry,
-                (select max(created_at) from public.raid_damage_logs) latest_raid_log,
-                (select count(*) from public.battle_replay_sessions where finalized_at>='2026-08-31 15:00:00+00' and battle_mode in('PVP','RAID')) finalized_after_expiry;
+              with events as (
+                select replay.id replay_id,replay.requester_user_id user_id,
+                  replay.source_reference_id opponent_user_id,replay.finalized_at,
+                  replay.finalization_result->>'winner' winner,
+                  (replay.finalization_result->>'oldRating')::integer declared_old_rating,
+                  (replay.finalization_result->>'opponentRating')::integer opponent_rating,
+                  (replay.finalization_result->>'rankDelta')::integer rank_delta,
+                  (replay.finalization_result->>'newRankPoints')::integer new_rank_points,
+                  row_number() over(partition by replay.requester_user_id order by replay.finalized_at,replay.id) event_no,
+                  lag((replay.finalization_result->>'newRankPoints')::integer)
+                    over(partition by replay.requester_user_id order by replay.finalized_at,replay.id) previous_new_rank
+                from public.battle_replay_sessions replay
+                where replay.battle_mode='PVP' and replay.finalization_status='FINALIZED'
+                  and replay.finalized_at>='2026-08-31 15:00:00+00'
+              ), per_user as (
+                select event.user_id,count(*) event_count,
+                  count(*) filter(where event.winner='PLAYER') win_count,
+                  min(event.finalized_at) first_finalized_at,max(event.finalized_at) last_finalized_at,
+                  max(event.new_rank_points) filter(where event.event_no=1) first_new_rank,
+                  max(event.rank_delta) filter(where event.event_no=1) first_delta,
+                  max(event.new_rank_points) filter(where event.finalized_at=(
+                    select max(last_event.finalized_at) from events last_event where last_event.user_id=event.user_id
+                  )) last_new_rank,
+                  count(*) filter(where event.declared_old_rating is null or event.opponent_rating is null
+                    or event.rank_delta is null or event.new_rank_points is null) incomplete_payloads,
+                  count(*) filter(where event.event_no>1
+                    and event.new_rank_points<>greatest(event.previous_new_rank+event.rank_delta,0)) discontinuities
+                from events event group by event.user_id
+              ), report as (
+                select per_user.*,rank.rank_points current_rank_points,
+                  rank.daily_wins current_daily_wins,rank.season_wins current_season_wins,rank.updated_at,
+                  case when per_user.first_new_rank=0 then null
+                    else per_user.first_new_rank-per_user.first_delta end inferred_boundary_rating,
+                  rank.season_wins-per_user.win_count inferred_boundary_season_wins,
+                  rank.daily_wins-per_user.win_count inferred_boundary_daily_wins,
+                  (rank.rank_points<>per_user.last_new_rank) projection_mismatch,
+                  (rank.updated_at>per_user.last_finalized_at) unexplained_later_rank_update
+                from per_user join public.pvp_ranks rank on rank.user_id=per_user.user_id
+              )
+              select jsonb_build_object(
+                'events',(select coalesce(jsonb_agg(to_jsonb(events) order by user_id,event_no),'[]'::jsonb) from events),
+                'users',(select coalesce(jsonb_agg(to_jsonb(report) order by user_id),'[]'::jsonb) from report),
+                'summary',jsonb_build_object(
+                  'event_count',(select count(*) from events),
+                  'user_count',(select count(*) from report),
+                  'rank_rows_updated_after_boundary',(select count(*) from public.pvp_ranks where updated_at>='2026-08-31 15:00:00+00'),
+                  'incomplete_payloads',(select coalesce(sum(incomplete_payloads),0) from report),
+                  'discontinuities',(select coalesce(sum(discontinuities),0) from report),
+                  'ambiguous_first_zero',(select count(*) from report where first_new_rank=0),
+                  'projection_mismatches',(select count(*) from report where projection_mismatch),
+                  'unexplained_later_updates',(select count(*) from report where unexplained_later_rank_update),
+                  'negative_reconstructed_wins',(select count(*) from report where inferred_boundary_season_wins<0 or inferred_boundary_daily_wins<0),
+                  'legacy_rpc_authenticated',has_function_privilege('authenticated','public.update_pvp_result(boolean,integer)','execute'),
+                  'direct_table_update_authenticated',has_table_privilege('authenticated','public.pvp_ranks','update'),
+                  'duplicate_replay_ids',(select count(*)-count(distinct replay_id) from events),
+                  'raid_logs_after_boundary',(select count(*) from public.raid_damage_logs where created_at>='2026-08-31 15:00:00+00'),
+                  'raid_logs_without_timestamp',(select count(*) from public.raid_damage_logs where created_at is null)
+                )
+              ) result;
             `;
             const response=await fetch(`https://api.supabase.com/v1/projects/${projectRef}/database/query`,{
               method:"POST",headers:{Authorization:`Bearer ${token}`,"Content-Type":"application/json"},
               body:JSON.stringify({query:sql})
             });
             if(!response.ok) throw new Error(`${response.status} ${await response.text()}`);
-            const [inventory]=await response.json();
-            assert.equal(inventory.migration_227,true);
-            assert.equal(inventory.migration_228,true);
-            assert.equal(inventory.migration_229,false);
-            assert.equal(inventory.old_active,2);
-            assert.equal(inventory.new_rows,0);
-            console.log(JSON.stringify({projectRef,inventory},null,2));
+            console.log(JSON.stringify((await response.json())[0].result,null,2));
           })().catch(error=>{console.error(error instanceof Error?error.stack:error);process.exitCode=1;});
           NODE
