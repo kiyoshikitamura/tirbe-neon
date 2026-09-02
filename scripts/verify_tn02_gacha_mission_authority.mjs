@@ -5,7 +5,10 @@ import {
   CANONICAL_CHARACTERS,
   CANONICAL_MISSIONS,
 } from "../src/domain/gameplay/canonical/masters.ts";
-import { jstCycleDate } from "../src/domain/gameplay/canonical/mission_runtime.ts";
+import {
+  jstCycleDate,
+  refreshDailyMissionCompletionAggregates,
+} from "../src/domain/gameplay/canonical/mission_runtime.ts";
 
 const userId = "00000000-0000-4000-8000-000000002222";
 const storage = new Map();
@@ -99,6 +102,44 @@ await rpc("evaluate_mission_progress", { p_user_id: userId, p_trigger_type: "PAT
 await rpc("evaluate_mission_progress", { p_user_id: userId, p_trigger_type: "CHAR_LEVEL_UP", p_progress_increment: 1 });
 assert.equal(mission("MIS_D_009")?.current_progress, 5, "five source daily completions must be server-aggregated");
 assert.equal(mission("MIS_D_009")?.status, "CLEAR");
+
+const aggregateMaster = CANONICAL_MISSIONS.filter((entry) => (
+  ["MIS_D_001", "MIS_D_002", "MIS_D_003", "MIS_D_004", "MIS_D_009"].includes(entry.id)
+)).map((entry) => ({
+  id: entry.id,
+  category: entry.category,
+  trigger_type: entry.triggerType,
+  target_value: entry.targetValue,
+  is_enabled: entry.isEnabled,
+  prerequisite_mission_id: entry.prerequisiteMissionId,
+}));
+aggregateMaster.push({
+  ...aggregateMaster.find((entry) => entry.id === "MIS_D_001"),
+  id: "MIS_D_DISABLED_FIXTURE",
+  is_enabled: false,
+});
+const aggregateRows = aggregateMaster.map((entry) => ({
+  id: `um-aggregate-${entry.id}`,
+  user_id: userId,
+  mission_id: entry.id,
+  current_progress: entry.id === "MIS_D_009" ? 0 : 1,
+  status: entry.id === "MIS_D_009" ? "PROGRESS" : "CLEAR",
+  cycle_date: cycleDate,
+}));
+aggregateRows.push({
+  id: "um-disabled-fixture",
+  user_id: userId,
+  mission_id: "MIS_D_DISABLED_FIXTURE",
+  current_progress: 1,
+  status: "CLEAR",
+  cycle_date: cycleDate,
+});
+refreshDailyMissionCompletionAggregates(aggregateMaster, aggregateRows, userId, cycleDate);
+assert.equal(
+  aggregateRows.find((row) => row.mission_id === "MIS_D_009")?.current_progress,
+  4,
+  "disabled Daily rows must not contribute to the server-authoritative aggregate",
+);
 
 Object.assign(mission("MIS_D_001"), { current_progress: 0, status: "PROGRESS" });
 result = await rpc("execute_character_gacha", {

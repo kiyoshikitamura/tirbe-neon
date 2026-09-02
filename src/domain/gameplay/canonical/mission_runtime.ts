@@ -134,7 +134,9 @@ export function refreshDailyMissionCompletionAggregates(
     if (row.user_id !== userId || row.cycle_date !== cycleDate) return false;
     if (row.status !== "CLEAR" && row.status !== "CLAIMED") return false;
     const mission = master.find((entry) => entry.id === row.mission_id);
-    return mission?.category === "DAILY" && mission.trigger_type !== "DAILY_MISSION_COMPLETED_COUNT";
+    return mission?.is_enabled === true
+      && mission.category === "DAILY"
+      && mission.trigger_type !== "DAILY_MISSION_COMPLETED_COUNT";
   }).length;
 
   for (const mission of master.filter((entry) => (
