@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-30",
+  "version": "2026-09-02",
   "authority": "M6_Mission_Canonical",
   "missions": [
     {
@@ -122,8 +122,8 @@
       "category": "DAILY",
       "displayGroup": "GUILD",
       "triggerType": "GUILD_ACTIVITY_COUNT",
-      "title": "ギルドで活動しよう",
-      "description": "ギルドで活動しよう",
+      "title": "ギルドで発言しよう",
+      "description": "ギルドで発言しよう",
       "targetValue": 1,
       "conditionParams": {},
       "rewardItemId": "CHAR_EXP_S",
