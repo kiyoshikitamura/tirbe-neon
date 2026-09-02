@@ -91,7 +91,7 @@ jobs:
             }
 
             await query(await readFile(process.env.POSTFLIGHT_FILE, "utf8"));
-            await query(await readFile(process.env.FIXTURE_FILE, "utf8"));
+            await query((await readFile(process.env.FIXTURE_FILE, "utf8")).replace(/^\\set[^\\n]*\\n/gm, ""));
 
             const [cleanup] = await query(`
               select
@@ -99,8 +99,7 @@ jobs:
                 not exists(
                   select 1 from public.users
                   where id in (
-                    '25000000-0000-4000-8000-000000000001',
-                    '25000000-0000-4000-8000-000000000002'
+                    '25100000-0000-4000-8000-000000000001'
                   )
                 ) as fixture_rolled_back;
             `);
