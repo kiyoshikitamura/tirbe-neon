@@ -1,0 +1,71 @@
+name: TN-09 Preview raid ranking lifecycle
+
+on:
+  push:
+    branches: [codex/tn09-raid-ranking-complete]
+    paths:
+      - .github/workflows/tn09-preview-raid-ranking.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tn09-preview-raid-ranking-sufvuqdnqohpfzkwxohq
+  cancel-in-progress: false
+
+jobs:
+  apply-preview-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_EXPECTED_PROJECT_REF: sufvuqdnqohpfzkwxohq
+      PRODUCTION_PROJECT_REF: ktpolnkyyfkowxdmijww
+      MIGRATION_VERSION: "20260902000227"
+      MIGRATION_FILE: supabase/migrations/20260902000227_ranking_season_lifecycle.sql
+      POSTFLIGHT_FILE: supabase/postflight/20260902000227_ranking_season_lifecycle_postflight.sql
+      FIXTURE_FILE: tests/db/ranking-season-lifecycle.sql
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Guard exact Preview target and source
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${SUPABASE_ACCESS_TOKEN:-}"
+          test "$SUPABASE_EXPECTED_PROJECT_REF" = "sufvuqdnqohpfzkwxohq"
+          test "$SUPABASE_EXPECTED_PROJECT_REF" != "$PRODUCTION_PROJECT_REF"
+          test "$GITHUB_REF_NAME" = "codex/tn09-raid-ranking-complete"
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+      - name: Preflight apply postflight and rollback fixture
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const { readFile } = require("node:fs/promises");
+          const assert = require("node:assert/strict");
+          (async () => {
+            const projectRef=process.env.SUPABASE_EXPECTED_PROJECT_REF;
+            const token=process.env.SUPABASE_ACCESS_TOKEN;
+            const version=process.env.MIGRATION_VERSION;
+            assert.equal(projectRef,"sufvuqdnqohpfzkwxohq");
+            assert.notEqual(projectRef,process.env.PRODUCTION_PROJECT_REF);
+            assert.ok(token);
+            async function query(sql) {
+              const response=await fetch(`https://api.supabase.com/v1/projects/${projectRef}/database/query`,{method:"POST",headers:{Authorization:`Bearer ${token}`,"Content-Type":"application/json"},body:JSON.stringify({query:sql})});
+              if(!response.ok) throw new Error(`${response.status} ${await response.text()}`);
+              return response.json();
+            }
+            const [preflight]=await query(`select ${[221,222,223,224,225,226].map(n=>`exists(select 1 from supabase_migrations.schema_migrations where version='20260902000${n}') as migration_${n}`).join(",")}, exists(select 1 from supabase_migrations.schema_migrations where version='${version}') as migration_227;`);
+            for(const n of [221,222,223,224,225,226]) assert.equal(preflight[`migration_${n}`],true,`preflight migration_${n} missing`);
+            if(!preflight.migration_227) {
+              await query(await readFile(process.env.MIGRATION_FILE,"utf8"));
+              await query(`insert into supabase_migrations.schema_migrations(version,statements,name) values('${version}',array['TN-09 raid ranking lifecycle'],'ranking_season_lifecycle') on conflict(version) do nothing;`);
+            }
+            await query(await readFile(process.env.POSTFLIGHT_FILE,"utf8"));
+            await query(await readFile(process.env.FIXTURE_FILE,"utf8"));
+            console.log(JSON.stringify({projectRef,version,preflight,postflight:"PASS",fixture:"PASS"},null,2));
+          })().catch(error=>{console.error(error instanceof Error?error.stack:error);process.exitCode=1;});
+          NODE
