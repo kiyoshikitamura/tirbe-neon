@@ -237,7 +237,11 @@ export function usePatrol(
     }
   };
 
-  const transitionTutorialQuestToBattle = async (patrolId: string, authoritativeStep?: string | null) => {
+  const transitionTutorialQuestToBattle = async (
+    patrolId: string,
+    authoritativeStep?: string | null,
+    encounterSnapshot?: unknown,
+  ) => {
     if (!session) return false;
     const existingOwner = tutorialCompletionOwnerRef.current;
     if (existingOwner?.patrolId === patrolId) {
@@ -271,7 +275,7 @@ export function usePatrol(
         // broad bootstrap refresh must not keep the speed-up CTA locked.
         invalidatePatrolBootstrap();
         setActivePatrols((current) => current.map((entry) => entry.id === patrolId
-          ? { ...entry, status: "CLAIMABLE", secondsLeft: 0, expires_at: new Date().toISOString() }
+          ? { ...entry, encounterSnapshot, status: "CLAIMABLE", secondsLeft: 0, expires_at: new Date().toISOString() }
           : entry));
         setTutorialStep("TUTORIAL_BATTLE");
         owner.status = "SUCCESS";
@@ -342,7 +346,11 @@ export function usePatrol(
         const encounterSnapshot = targetPatrol.encounterSnapshot
           ?? await fetchPatrolEncounterSnapshot(patrolId);
         if (currency === "FREE_TUTORIAL") {
-          const transitioned = await transitionTutorialQuestToBattle(patrolId, nextTutorialStep);
+          const transitioned = await transitionTutorialQuestToBattle(
+            patrolId,
+            nextTutorialStep,
+            encounterSnapshot,
+          );
           if (!transitioned) return false;
           nextTutorialStep = "TUTORIAL_BATTLE";
         } else {

@@ -49,6 +49,10 @@ if (patrolHook.includes("encounterSnapshot")) {
   assert(context.includes("encounterSnapshot: p.encounter_snapshot"));
   assert(presentation.includes("patrol.encounterSnapshot?.members"));
   assert(/enemy_members:\s*\[\]/.test(mockRpc), "mock progression must match Production dynamic encounter projection");
+  assert(
+    patrolHook.includes("transitionTutorialQuestToBattle(\n            patrolId,\n            nextTutorialStep,\n            encounterSnapshot,"),
+    "tutorial speed-up must carry the recovered encounter snapshot into immediate state",
+  );
 }
 
 console.log("TN-11 location and Quest synchronization verification: PASS");
