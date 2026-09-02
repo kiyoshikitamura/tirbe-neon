@@ -151,7 +151,8 @@
     "verify:post-tutorial-loadout-guide": "node --experimental-strip-types scripts/verify_post_tutorial_loadout_guide.mjs",
     "verify:tn02-gacha-mission-authority": "node --experimental-strip-types scripts/verify_tn02_gacha_mission_authority.mjs",
     "verify:tn06-starter-cash-authority": "node --experimental-strip-types scripts/verify_tn06_starter_cash_authority.mjs",
-    "verify:tn08-battle-terminology": "node --experimental-strip-types scripts/verify_tn08_battle_terminology.mjs"
+    "verify:tn08-battle-terminology": "node --experimental-strip-types scripts/verify_tn08_battle_terminology.mjs",
+    "verify:tn12-community-shell-ux": "node scripts/verify_tn12_community_shell_ux.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.110.2",
