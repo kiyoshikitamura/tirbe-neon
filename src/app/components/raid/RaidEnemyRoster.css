@@ -1,0 +1,7 @@
+.raid-enemy-roster { display: grid; width: 100%; min-width: 0; gap: 5px; }
+.raid-enemy-roster > header { display: flex; min-width: 0; align-items: baseline; justify-content: space-between; gap: 8px; }
+.raid-enemy-roster > header strong { color: #fff; font-size: 10px; }
+.raid-enemy-roster > header span { color: var(--ui-text-secondary); font-size: 8px; }
+.raid-enemy-roster .pvp-deck-presentation { margin: 0; }
+.raid-enemy-roster__names { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; min-width: 0; }
+.raid-enemy-roster__names span { overflow: hidden; color: var(--ui-text-secondary); font-size: 7px; font-weight: 700; text-align: center; text-overflow: ellipsis; white-space: nowrap; }

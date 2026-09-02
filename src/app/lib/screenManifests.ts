@@ -1,4 +1,5 @@
 import { AssetRequest } from "./screenAssets";
+import { canonicalRaidMemberAssetPaths } from "@/domain/presentation/raidRosterPresentation";
 
 const FRAME_ASSETS = [
   "/frames/sq_n.png", "/frames/sq_r.png", "/frames/sq_sr.png", "/frames/sq_ssr.png",
@@ -45,7 +46,7 @@ export const SCREEN_ASSET_MANIFESTS = {
   quest: optionalAssets([...FRAME_ASSETS, ...COMMON_SHELL_ASSETS]),
   pvp: optionalAssets([...FRAME_ASSETS, ...COMMON_SHELL_ASSETS]),
   gvg: optionalAssets([...FRAME_ASSETS, ...COMMON_SHELL_ASSETS]),
-  raid: optionalAssets([...FRAME_ASSETS, ...COMMON_SHELL_ASSETS]),
+  raid: optionalAssets([...FRAME_ASSETS, ...COMMON_SHELL_ASSETS, ...canonicalRaidMemberAssetPaths()]),
   ranking: optionalAssets([...FRAME_ASSETS, ...COMMON_SHELL_ASSETS]),
 } as const;
 

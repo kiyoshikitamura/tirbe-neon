@@ -12,6 +12,7 @@ import { preloadTutorialCompletionAssets } from "../lib/tutorialCompletionAssets
 import { CANONICAL_SKILL_VIEW } from "@/utils/skills_master_data";
 import { parseCanonicalEffects } from "@/domain/battle/canonical_effects";
 import PvpDeckPresentation, { PvpPowerSummary, canonicalPvpCharacter } from "./pvp/PvpDeckPresentation";
+import RaidEnemyRoster from "./raid/RaidEnemyRoster";
 import { SkillDetailDialog, SkillIconGrid } from "./skill/SkillPresentation";
 import "./CardBattleView.css";
 
@@ -250,10 +251,10 @@ export default function CardBattleView() {
           </header>
           <main className="raid-battle-setup__body">
             <section className="raid-battle-target" aria-label="レイド対象">
-              <div className="raid-battle-boss-visual" role="img" aria-label={`${battleOpponentName} 画像準備中`}><span aria-hidden="true" /></div>
-              <div><small>RAID BOSS</small><strong>{battleOpponentName}</strong><span>Lv.{boss?.level || 1}</span></div>
+              <div className="raid-battle-target__heading"><small>エネミーパーティ</small><strong>{battleOpponentName}</strong><span>Lv.{boss?.level || 1}</span></div>
+              <RaidEnemyRoster raidName={battleOpponentName} />
               <dl><div><dt>HP</dt><dd>{Number(boss?.hp || 0).toLocaleString()} / {Number(boss?.maxHp || 0).toLocaleString()}</dd></div><div><dt>ATK</dt><dd>{Number(boss?.stats?.atk || 0).toLocaleString()}</dd></div><div><dt>DEF</dt><dd>{Number(boss?.stats?.def || 0).toLocaleString()}</dd></div></dl>
-              {canonicalRaidBossSkills.length > 0 && <div className="raid-battle-boss-skills"><strong>ボススキル</strong><SkillIconGrid skills={canonicalRaidBossSkills} onSelect={setSelectedOpponentSkill} /></div>}
+              {canonicalRaidBossSkills.length > 0 && <div className="raid-battle-boss-skills"><strong>スキル</strong><SkillIconGrid skills={canonicalRaidBossSkills} onSelect={setSelectedOpponentSkill} /></div>}
             </section>
             <section className="raid-battle-deck" aria-label="自分のデッキ">
               <header><strong>MY DECK</strong><span>総合力 {playerPower.toLocaleString()}</span></header>
