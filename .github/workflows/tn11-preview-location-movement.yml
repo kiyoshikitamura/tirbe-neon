@@ -1,4 +1,5 @@
 name: TN-11 Preview location movement authority
+# Retry 1: fixture username aligned with the canonical 1-8 character constraint.
 
 on:
   push:

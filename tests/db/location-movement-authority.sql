@@ -4,7 +4,7 @@ begin;
 insert into public.users(id, username, current_base_id)
 values
   ('26000000-0000-4000-8000-000000000011', 'TN11移動元', 'shinjuku'),
-  ('26000000-0000-4000-8000-000000000012', 'TN11別ユーザー', 'ikebukuro');
+  ('26000000-0000-4000-8000-000000000012', 'TN11別人', 'ikebukuro');
 
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '26000000-0000-4000-8000-000000000011', true);
