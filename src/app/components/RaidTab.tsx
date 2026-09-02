@@ -13,6 +13,7 @@ import OutlawButton from "./ui/OutlawButton";
 import OutlawCard from "./ui/OutlawCard";
 import RankPresentation from "./presentation/RankPresentation";
 import StatusMetric from "./presentation/StatusMetric";
+import RaidEnemyRoster from "./raid/RaidEnemyRoster";
 import "./RaidTab.css";
 
 type RaidDialog = "shortage" | "recovery" | "recovery-error" | null;
@@ -122,9 +123,10 @@ export default function RaidTab() {
       {loading ? <div className="raid-loading" role="status">レイド情報を取得中…</div> : errorMessage ? <OutlawCard className="raid-error"><p>{errorMessage}</p><OutlawButton variant="primary" onClick={() => void loadRaidTop()}>再読み込み</OutlawButton></OutlawCard> : activeRaids.length === 0 ? <OutlawCard className="raid-empty"><strong>現在開催中のレイドはありません</strong><p>次の開催情報が確定すると、ここに表示されます。</p></OutlawCard> : <>
         <div className="raid-target-tabs" role="tablist" aria-label="レイド対象">{activeRaids.map((raid) => <button key={raid.id} role="tab" aria-selected={raid.id === selectedRaid?.id} className={raid.id === selectedRaid?.id ? "is-active" : ""} onClick={() => setSelectedRaidId(raid.id)}>{BASE_MAP_MASTER.find((base) => base.id === raid.baseId)?.name || raid.baseId}</button>)}</div>
         <OutlawCard className={`raid-boss-hero ${isDefeated || isExpired ? "raid-boss-ended" : ""}`}>
-          <div className="raid-boss-stage"><div className="raid-boss-visual" role="img" aria-label={`${selectedRaid?.bossName || "レイドボス"} 画像準備中`}><span aria-hidden="true" /></div><div><span>RAID BOSS</span><strong>{selectedRaid?.bossName}</strong><small>Lv.{selectedRaid?.level || 1} ・ {baseName}</small></div><Badge tone={isDefeated || isExpired ? "neutral" : "danger"}>{isDefeated ? "討伐済み" : formatTime(displaySeconds)}</Badge></div>
-          <div className="raid-hp-heading"><span>BOSS HP</span><strong>{hpPercent.toFixed(1)}%</strong></div>
-          <div className="raid-hp-bar-container" role="meter" aria-label="ボス残りHP" aria-valuemin={0} aria-valuemax={displayMaxHp} aria-valuenow={displayHp}><div className="raid-hp-bar-fill" style={{ width: `${hpPercent}%` }} /><span className="raid-hp-text">{displayHp.toLocaleString()} / {displayMaxHp.toLocaleString()}</span></div>
+          <div className="raid-party-heading"><div><span>エネミーパーティ</span><strong>{selectedRaid?.bossName}</strong><small>Lv.{selectedRaid?.level || 1} ・ {baseName}</small></div><Badge tone={isDefeated || isExpired ? "neutral" : "danger"}>{isDefeated ? "討伐済み" : formatTime(displaySeconds)}</Badge></div>
+          <RaidEnemyRoster bossMasterId={selectedRaid?.bossMasterId} raidName={selectedRaid?.bossName} />
+          <div className="raid-hp-heading"><span>レイドHP</span><strong>{hpPercent.toFixed(1)}%</strong></div>
+          <div className="raid-hp-bar-container" role="meter" aria-label="レイド残りHP" aria-valuemin={0} aria-valuemax={displayMaxHp} aria-valuenow={displayHp}><div className="raid-hp-bar-fill" style={{ width: `${hpPercent}%` }} /><span className="raid-hp-text">{displayHp.toLocaleString()} / {displayMaxHp.toLocaleString()}</span></div>
           <div className="raid-status-grid"><StatusMetric label="RAID POINT" value={raidFirstEntryFree ? "初回無料" : `${raidPoints} / 5`} /><StatusMetric label="CONTRIBUTION" value={Number(selfRank?.contribution || 0).toLocaleString()} /><StatusMetric label="RANK" value={<RankPresentation rank={selfRank?.rank_position} />} /></div>
           <OutlawButton variant="primary" fullWidth onClick={openBriefing} disabled={!canOpenBriefing}>{userLevel < 5 ? "プレイヤーLv5以上で解放" : isDefeated ? "討伐済み" : isExpired ? "開催終了" : "挑戦する"}</OutlawButton>
           {!raidFirstEntryFree && <small className="raid-cost-copy">討伐開始時にRPを1消費 ・ 2時間ごとに1回復</small>}

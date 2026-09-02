@@ -142,5 +142,10 @@
 }
 .mission-group { border-top:1px solid rgba(0,240,255,.18);padding:8px 2px;color:var(--text-primary); }
 .mission-group summary { cursor:pointer;font-size:13px;font-weight:800;color:var(--neon-cyan); }
-.mission-group-current { display:flex;justify-content:space-between;gap:10px;padding:8px 4px 2px;font-size:11px;color:var(--text-secondary); }
+.mission-group summary span { margin-left:6px;color:var(--text-secondary);font-size:11px; }
+.mission-group-list { display:grid;gap:8px;padding-top:8px; }
+.mission-group-current { padding:10px;border:1px solid rgba(0,240,255,.14);background:rgba(4,12,24,.72);font-size:11px;color:var(--text-secondary); }
+.mission-group-heading { display:flex;justify-content:space-between;gap:10px; }
 .mission-group-current strong { color:var(--text-primary); }
+.mission-group-current p { margin:6px 0;color:var(--text-secondary);line-height:1.5; }
+.mission-group-reward { display:flex;align-items:center;flex-wrap:wrap;gap:5px;color:var(--text-primary); }

@@ -27,6 +27,10 @@ async function seedGuildVisitor(page: Page, level = 5, initialGuildRole: string 
     ]));
     localStorage.setItem("mock_db_tutorial_progress", JSON.stringify([{ user_id: me, step_id: "AUTHENTICATION" }]));
     localStorage.setItem("mock_db_user_account_auth_methods", JSON.stringify([{ user_id: me, auth_method: "EMAIL" }]));
+    const cycleDate = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Tokyo" });
+    localStorage.setItem("mock_db_user_login_bonuses", JSON.stringify([{
+      user_id: me, current_day: 1, total_logins: 1, last_claimed_date: cycleDate,
+    }]));
     localStorage.setItem("mock_db_guilds", JSON.stringify([
       { id: openGuild, name: "OPEN NEON", leader_id: openLeader, level: 6, xp: 1200, member_limit: 10, recruitment_mode: "OPEN_JOIN", approval_required: false, description: "毎晩レイドへ挑戦しています。", main_alignment: "CHAOS", sub_alignment: "JUSTICE" },
       { id: approvalGuild, name: "承認制ギルド", leader_id: approvalLeader, level: 5, xp: 900, member_limit: 10, recruitment_mode: "APPLICATION_REQUIRED", approval_required: true, description: "落ち着いて活動するギルドです。", main_alignment: "ORDER", sub_alignment: "EVIL" },
@@ -51,13 +55,27 @@ async function enterGuild(page: Page) {
   const titleAction = page.getByRole("button", { name: "TAP TO START" });
   const continueAction = page.getByRole("button", { name: "続きから" });
   const header = page.locator(".header-mobile");
+  const welcomeDialog = page.locator(".canonical-dialog").filter({ hasText: "ギルドへようこそ" });
   await expect(titleAction.or(continueAction).or(header)).toBeVisible();
+  if (await welcomeDialog.isVisible()) await welcomeDialog.getByRole("button", { name: "閉じる", exact: true }).last().click();
   if (await titleAction.isVisible()) await titleAction.click();
   if (await continueAction.isVisible()) await continueAction.click();
   await expect(header).toBeVisible();
-  const welcomeDialog = page.locator(".canonical-dialog").filter({ hasText: "ギルドへようこそ" });
   if (await welcomeDialog.isVisible()) await welcomeDialog.getByRole("button", { name: "閉じる", exact: true }).last().click();
   await page.getByRole("button", { name: "ギルド", exact: true }).click();
+}
+
+async function resumeAfterReload(page: Page) {
+  const titleAction = page.getByRole("button", { name: "TAP TO START" });
+  const continueAction = page.getByRole("button", { name: "続きから" });
+  const header = page.locator(".header-mobile");
+  const welcomeDialog = page.locator(".canonical-dialog").filter({ hasText: "ギルドへようこそ" });
+  await expect(titleAction.or(continueAction).or(header)).toBeVisible();
+  if (await welcomeDialog.isVisible()) await welcomeDialog.getByRole("button", { name: "閉じる", exact: true }).last().click();
+  if (await titleAction.isVisible()) await titleAction.click();
+  if (await continueAction.isVisible()) await continueAction.click();
+  await expect(header).toBeVisible();
+  if (await welcomeDialog.isVisible()) await welcomeDialog.getByRole("button", { name: "閉じる", exact: true }).last().click();
 }
 
 async function expectNoOverflow(page: Page, selector: string) {
@@ -149,10 +167,7 @@ test("direct join refreshes membership and opens persistent Guild Chat without r
   await expect(page.getByRole("button", { name: "Open Leaderのプロフィールを開く" })).toBeVisible();
   await page.getByRole("button", { name: "ギルドマイページへ戻る" }).click();
   await page.reload();
-  const titleAction = page.getByRole("button", { name: "TAP TO START" });
-  if (await titleAction.isVisible()) await titleAction.click();
-  const continueAction = page.getByRole("button", { name: "続きから" });
-  if (await continueAction.isVisible()) await continueAction.click();
+  await resumeAfterReload(page);
   await page.getByRole("button", { name: "ギルド", exact: true }).click();
   await expect(page.locator(".guild-main-container")).toBeVisible();
   await expect(page.locator(".guild-visual-identity")).toBeVisible();
@@ -269,10 +284,7 @@ test("Lv5 user creates a Guild, becomes master, and persists saved attributes", 
   await expect(page.locator(".guild-identity-attributes")).toContainText("メイン属性 悪");
   await expect(page.locator(".guild-identity-attributes")).toContainText("サブ属性 混沌");
   await page.reload();
-  const titleAction = page.getByRole("button", { name: "TAP TO START" });
-  if (await titleAction.isVisible()) await titleAction.click();
-  const continueAction = page.getByRole("button", { name: "続きから" });
-  if (await continueAction.isVisible()) await continueAction.click();
+  await resumeAfterReload(page);
   await page.getByRole("button", { name: "ギルド", exact: true }).click();
   await expect(page.locator(".guild-identity-attributes")).toContainText("メイン属性 悪");
   await expect(page.locator(".guild-identity-attributes")).toContainText("サブ属性 混沌");
@@ -297,7 +309,10 @@ test("Guild creation entry is first and Lv4 or insufficient CASH remains gated",
     localStorage.setItem("mock_db_users", JSON.stringify(users));
   });
   await page.reload();
+  const titleAction = page.getByRole("button", { name: "TAP TO START" });
   const continueAction = page.getByRole("button", { name: "続きから" });
+  await expect(titleAction.or(continueAction)).toBeVisible();
+  if (await titleAction.isVisible()) await titleAction.click();
   await expect(continueAction).toBeVisible();
   await continueAction.click();
   await expect(page.locator(".header-mobile")).toBeVisible();
@@ -401,10 +416,7 @@ test("role navigation exposes settings to submasters and master leave remains sa
     localStorage.setItem("mock_db_guild_members", JSON.stringify(rows.map((row: any) => row.user_id === me && row.guild_id === openGuild ? { ...row, role: "MASTER" } : row)));
   }, { me, openGuild });
   await page.reload();
-  const titleAction = page.getByRole("button", { name: "TAP TO START" });
-  if (await titleAction.isVisible()) await titleAction.click();
-  const continueAction = page.getByRole("button", { name: "続きから" });
-  if (await continueAction.isVisible()) await continueAction.click();
+  await resumeAfterReload(page);
   await page.getByRole("button", { name: "ギルド", exact: true }).click();
   await page.getByRole("button", { name: "ギルドを脱退" }).click();
   await expect(page.getByText("脱退する前に、マスター権限を譲渡してください。")).toBeVisible();
@@ -464,10 +476,7 @@ test("approval request becomes pending and survives reload", async ({ page }) =>
   await page.getByRole("button", { name: "OK" }).click();
   await expect(page.getByRole("button", { name: "申請中（取消）" }).first()).toBeVisible();
   await page.reload();
-  const titleAction = page.getByRole("button", { name: "TAP TO START" });
-  if (await titleAction.isVisible()) await titleAction.click();
-  const continueAction = page.getByRole("button", { name: "続きから" });
-  if (await continueAction.isVisible()) await continueAction.click();
+  await resumeAfterReload(page);
   await page.getByRole("button", { name: "ギルド", exact: true }).click();
   await expect(page.getByRole("button", { name: "申請中（取消）" }).first()).toBeVisible();
 });

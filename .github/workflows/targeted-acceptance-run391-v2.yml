@@ -1,0 +1,33 @@
+name: Targeted Acceptance Run 391 V2
+
+on:
+  pull_request:
+    branches: [develop]
+
+concurrency:
+  group: targeted-acceptance-run391-v2
+  cancel-in-progress: true
+
+jobs:
+  remaining-case:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      NEXT_PUBLIC_APP_ENV: test
+      NEXT_PUBLIC_USE_MOCK_DB: "true"
+      PLAYWRIGHT_HTML_OPEN: never
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run build
+      - name: Diagnose the remaining case through bounded project runner
+        run: >-
+          npm run test:e2e --
+          tests/e2e/m9-tutorial.spec.ts
+          --workers=1
+          --grep "first quest connects"

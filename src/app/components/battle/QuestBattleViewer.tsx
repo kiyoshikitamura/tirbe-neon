@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { CHARACTERS_MASTER, getCharacterTransparentImg } from "@/utils/game_constants";
 import BattleUnitPortrait, { BattleDamagePopup, BattleParticipantView } from "./BattleUnitPortrait";
 import {
@@ -127,21 +127,6 @@ export default function QuestBattleViewer(props: Props) {
   const lastResolutionAudioKeyRef = useRef<string>("");
   const lastLegacySkillCueRef = useRef<unknown>(null);
   const lastLegacyDamageCueRef = useRef<unknown>(null);
-  const tutorialPaceRef = useRef({ normalSeen: false, skillSeen: false, advanced: false });
-  const [showSpeedGuidance, setShowSpeedGuidance] = useState(false);
-  useEffect(() => {
-    if (!props.tutorial || props.presentationPhase !== "ACTION_HOLD") return;
-    if (isSkillAction) tutorialPaceRef.current.skillSeen = true;
-    else tutorialPaceRef.current.normalSeen = true;
-    const pace = tutorialPaceRef.current;
-    if (!pace.advanced && pace.normalSeen && pace.skillSeen) {
-      pace.advanced = true;
-      props.onSpeedChange(2);
-      setShowSpeedGuidance(true);
-      const timer = window.setTimeout(() => setShowSpeedGuidance(false), 1800);
-      return () => window.clearTimeout(timer);
-    }
-  }, [isSkillAction, props.onSpeedChange, props.presentationPhase, props.tutorial]);
   useEffect(() => {
     const action = props.actionPresentation;
     if (!action || action.beat !== "ACTOR") return;
@@ -212,13 +197,12 @@ export default function QuestBattleViewer(props: Props) {
         <BattleSkillCutIn actionKey={props.actionPresentation?.unit.replayStartCursor} presentation={skillPresentation} participant={activeParticipant ? { ...activeParticipant, rarity: activeVisual.rarity } : undefined} imageSrc={activeVisual.src} speed={props.speed} />
       </section>
       {isFinalHit && <div className="battle-final-hit-overlay" role="status"><strong>FINAL HIT</strong><i /></div>}
-      {showSpeedGuidance && <div className="battle-speed-guidance" role="status">ここからは2倍速で進むよ</div>}
       <footer className="battle-viewer-controls">
         <span className="battle-tactic-label">{tacticLabel[props.tactic] || tacticLabel.BALANCED}</span>
         <button
           className={`speed-toggle-btn active-scale-effect ${props.speed > 1 ? "active" : ""}`}
           onClick={() => {
-            const nextSpeed = props.speed === 1 ? 2 : props.speed === 2 && props.monthlyPassActive ? 3 : 1;
+            const nextSpeed = props.speed === 2 ? 1 : props.speed === 1 && props.monthlyPassActive ? 3 : 2;
             props.onSpeedChange(nextSpeed);
             props.onSound();
           }}

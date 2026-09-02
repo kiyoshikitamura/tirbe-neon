@@ -113,6 +113,7 @@ test("an authenticated Google user without game data cannot enter anonymous name
 
 test("name-only initialization is idempotent and resumes the tutorial after reload", async ({ page }) => {
   await page.goto("/");
+  await page.getByText("TAP TO START").click();
   await page.getByRole("button", { name: "はじめから" }).click();
   await enterNameRegistration(page);
   await page.getByPlaceholder("プレイヤー名を入力").fill("新宿太郎");
@@ -133,14 +134,16 @@ test("name-only initialization is idempotent and resumes the tutorial after relo
   expect(storedCounts).toEqual({ users: 1, characters: 0, progress: 1 });
 
   await page.reload();
-  await page.getByRole("button", { name: "続きから" }).click();
+  await page.getByText("TAP TO START").click();
+  await page.getByRole("button", { name: "チュートリアルを続ける" }).click();
   await expect(page.getByRole("dialog", { name: "アゲハからの案内" })).toBeVisible();
   const resumedNext = page.getByRole("button", { name: "次へ" });
   await expect(resumedNext).toBeEnabled();
   await resumedNext.click();
   await expect(page.getByRole("button", { name: "無料10連を引く" })).toBeVisible();
   await page.reload();
-  await page.getByRole("button", { name: "続きから" }).click();
+  await page.getByText("TAP TO START").click();
+  await page.getByRole("button", { name: "チュートリアルを続ける" }).click();
   await expect(page.getByRole("button", { name: "無料10連を引く" })).toBeVisible();
   const reloadedCounts = await page.evaluate(() => ({
     users: JSON.parse(localStorage.getItem("mock_db_users") || "[]").length,
@@ -155,6 +158,7 @@ test("name-only initialization rejects a normalized duplicate username", async (
     localStorage.setItem("mock_db_users", JSON.stringify([{ id: "other-user", username: "NEON" }]));
   });
   await page.goto("/");
+  await page.getByText("TAP TO START").click();
   await page.getByRole("button", { name: "はじめから" }).click();
   await enterNameRegistration(page);
   await page.getByPlaceholder("プレイヤー名を入力").fill(" neon ");
@@ -325,6 +329,7 @@ test("Google OAuth redirect resumes with the same anonymous user id", async ({ p
   await seedCompletedAnonymous(page);
   await page.addInitScript(() => localStorage.setItem("mock_google_redirect_required", "true"));
   await page.goto("/");
+  await page.getByText("TAP TO START").click();
   await page.getByRole("button", { name: "続きから" }).click();
   await page.getByRole("button", { name: "Googleアカウントを連携" }).click();
 
@@ -395,6 +400,7 @@ test("a core onboarding authority failure uses the canonical error dialog and re
   });
 
   await page.goto("/");
+  await page.getByText("TAP TO START").click();
   await page.getByRole("button", { name: "続きから" }).click();
 
   const errorDialog = page.getByRole("dialog", { name: "エラー" });
@@ -699,7 +705,7 @@ test.describe("X in-app browser Google OAuth guard", () => {
     test("blocks OAuth before it starts and retains the invitation URL", async ({ page }) => {
       await page.goto("/?invite=FRIEND-X-IOS");
       await page.getByText("TAP TO START").click();
-      await page.getByRole("button", { name: "既存アカウントでログイン" }).click();
+      await page.getByRole("button", { name: "データをお持ちの方" }).click();
       await page.locator(".auth-btn-google").click();
 
       await expect(page.getByText("Googleログインを続けるには、SafariまたはChromeでTRIBE NEONを開いてください。")).toBeVisible();
@@ -738,7 +744,8 @@ test.describe("external browsers keep normal Google OAuth behavior", () => {
       test.use({ userAgent: browserProfile.userAgent });
       test("starts Google OAuth and uses the existing intent contract", async ({ page }) => {
         await page.goto("/?invite=DIRECT-BROWSER");
-        await page.getByRole("button", { name: "続きから" }).click();
+        await page.getByText("TAP TO START").click();
+        await page.getByRole("button", { name: "データをお持ちの方" }).click();
         await page.locator(".auth-btn-google").click();
 
         await expect.poll(async () => page.evaluate(() => localStorage.getItem("mock_auth_mode"))).toBe("GOOGLE");

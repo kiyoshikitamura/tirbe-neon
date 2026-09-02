@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useGame } from "@/app/context/GameContext";
 import { CHARACTERS_MASTER, GEAR_SLOTS_MASTER, getCharacterTransparentImg } from "@/utils/game_constants";
 import { CANONICAL_SKILL_VIEW } from "@/utils/skills_master_data";
@@ -47,7 +47,8 @@ function SkillArt({ master }: { master: any }) {
 
 export default function CharacterSystemV2() {
   const game = useGame() as any;
-  const [mainView, setMainView] = useState<MainView>("CHARACTERS");
+  const { characterEntryView, setCharacterEntryView } = game;
+  const [mainView, setMainView] = useState<MainView>(characterEntryView === "party" ? "PARTY" : "CHARACTERS");
   const [characterView, setCharacterView] = useState<CharacterView>("LIST");
   const [assetDetail, setAssetDetail] = useState<AssetDetail>(null);
   const [assetGrowth, setAssetGrowth] = useState<AssetDetail>(null);
@@ -59,6 +60,10 @@ export default function CharacterSystemV2() {
   const [partyPending, setPartyPending] = useState(false);
   const [growthCounts, setGrowthCounts] = useState<Record<string, number>>({ CHAR_EXP_S: 0, CHAR_EXP_M: 0, CHAR_EXP_L: 0 });
   const [equipmentGrowthCounts, setEquipmentGrowthCounts] = useState<Record<string, number>>({ EQUIP_EXP_S: 0, EQUIP_EXP_M: 0, EQUIP_EXP_L: 0 });
+
+  useEffect(() => {
+    if (characterEntryView === "party") setCharacterEntryView(null);
+  }, [characterEntryView, setCharacterEntryView]);
 
   const ownedCharacters = game.userCharactersDbList || [];
   const selectedCharacter = ownedCharacters.find((entry: any) => entry.character_id === game.upgradeSelectedCharId) || ownedCharacters[0];
@@ -199,7 +204,9 @@ export default function CharacterSystemV2() {
     </div>;
   };
 
-  if (!selectedCharacter || !selectedMaster) return <div className="character-v2-empty" role="status"><span className="spinner" /></div>;
+  const inventoryReady = Boolean(game.session?.user?.id)
+    && game.inventoryProjectionOwnerUserId === game.session.user.id;
+  if (!selectedCharacter || !selectedMaster || !inventoryReady) return <div className="character-v2-empty" role="status"><span className="spinner" /></div>;
 
   return <div className="character-v2-shell">
     <nav className="character-v2-main-nav" aria-label="キャラクター管理">

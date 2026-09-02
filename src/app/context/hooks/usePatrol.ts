@@ -37,6 +37,7 @@ export function usePatrol(
     battle_resolved?: boolean;
     battle_result?: "VICTORY" | "DEFEAT" | null;
     rewards_accrued?: any;
+    encounterSnapshot?: any;
     started_at?: string;
     expires_at?: string;
   }>>([]);
@@ -66,6 +67,20 @@ export function usePatrol(
   const endMutation = () => {
     mutationInFlightRef.current = false;
     setDispatchLoading(false);
+  };
+
+  const fetchPatrolEncounterSnapshot = async (patrolId: string) => {
+    const { data, error } = await supabase
+      .from("user_patrols")
+      .select("encounter_snapshot")
+      .eq("id", patrolId)
+      .eq("user_id", session.user.id)
+      .maybeSingle();
+    if (error) {
+      console.warn("Quest encounter projection refresh failed:", error.message);
+      return null;
+    }
+    return data?.encounter_snapshot ?? null;
   };
 
   const recoverCommittedTutorialDispatch = async (courseId: string, characterId: string, ownedCharacterId: string | null) => {
@@ -163,6 +178,11 @@ export function usePatrol(
       if (res.data?.error) throw new Error(res.data.error);
       actionPerformance.mark("response");
 
+      // The server creates the per-dispatch Canonical enemy party in the
+      // user_patrols insert trigger. Read that owner projection narrowly so a
+      // subsequent speed-up does not wait for the broad application bootstrap.
+      const encounterSnapshot = await fetchPatrolEncounterSnapshot(res.data.patrol_id);
+
       const remainingVitality = Number(res.data?.remaining_vitality);
       if (Number.isFinite(remainingVitality)) setVitality(remainingVitality);
       else setVitality(prev => prev - course.cost_vitality);
@@ -177,6 +197,7 @@ export function usePatrol(
         has_battle_event: res.data.has_battle,
         battle_resolved: false,
         battle_result: null,
+        encounterSnapshot,
         started_at: startedAt.toISOString(),
         expires_at: expiresAt.toISOString()
       };
@@ -216,7 +237,11 @@ export function usePatrol(
     }
   };
 
-  const transitionTutorialQuestToBattle = async (patrolId: string, authoritativeStep?: string | null) => {
+  const transitionTutorialQuestToBattle = async (
+    patrolId: string,
+    authoritativeStep?: string | null,
+    encounterSnapshot?: unknown,
+  ) => {
     if (!session) return false;
     const existingOwner = tutorialCompletionOwnerRef.current;
     if (existingOwner?.patrolId === patrolId) {
@@ -250,7 +275,7 @@ export function usePatrol(
         // broad bootstrap refresh must not keep the speed-up CTA locked.
         invalidatePatrolBootstrap();
         setActivePatrols((current) => current.map((entry) => entry.id === patrolId
-          ? { ...entry, status: "CLAIMABLE", secondsLeft: 0, expires_at: new Date().toISOString() }
+          ? { ...entry, encounterSnapshot, status: "CLAIMABLE", secondsLeft: 0, expires_at: new Date().toISOString() }
           : entry));
         setTutorialStep("TUTORIAL_BATTLE");
         owner.status = "SUCCESS";
@@ -318,14 +343,20 @@ export function usePatrol(
         if (Number.isFinite(Number(data.free_skips_remaining))) setDailyCashSkips(5 - Number(data.free_skips_remaining));
         if (Number.isFinite(Number(data.paid_skips_remaining))) setDailyPaidSkips(10 - Number(data.paid_skips_remaining));
         let nextTutorialStep = data.tutorial_step;
+        const encounterSnapshot = targetPatrol.encounterSnapshot
+          ?? await fetchPatrolEncounterSnapshot(patrolId);
         if (currency === "FREE_TUTORIAL") {
-          const transitioned = await transitionTutorialQuestToBattle(patrolId, nextTutorialStep);
+          const transitioned = await transitionTutorialQuestToBattle(
+            patrolId,
+            nextTutorialStep,
+            encounterSnapshot,
+          );
           if (!transitioned) return false;
           nextTutorialStep = "TUTORIAL_BATTLE";
         } else {
           invalidatePatrolBootstrap();
           setActivePatrols((current) => current.map((entry) => entry.id === patrolId
-            ? { ...entry, status: "CLAIMABLE", secondsLeft: 0, expires_at: new Date().toISOString() }
+            ? { ...entry, encounterSnapshot, status: "CLAIMABLE", secondsLeft: 0, expires_at: new Date().toISOString() }
             : entry));
           void syncBootstrapData(session.user.id).catch((bootstrapError) => {
             console.warn("Patrol bootstrap refresh failed:", bootstrapError);

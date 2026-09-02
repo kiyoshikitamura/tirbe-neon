@@ -7,6 +7,7 @@ import { applyFrozenUserXp, canUseEnergyDrink, recoverCanonicalResource } from "
 import { CANONICAL_QUESTS, canonicalQuestById, generateCanonicalQuestEncounter, rollCanonicalQuestItems } from "../../domain/gameplay/canonical/quests.ts";
 import { parseCanonicalEffects } from "../../domain/battle/canonical_effects.ts";
 import { DEFAULT_OPERATIONS_STATE, type OperationsFeatureKey } from "../../domain/operations/operations.ts";
+import { isInsideRankingSeason, rankingSeasonWindow } from "../../domain/ranking/rankingSeason.ts";
 import {
   evaluateCanonicalMissionProgress,
   FUNNEL_TRIGGER_BY_MILESTONE,
@@ -43,6 +44,47 @@ const resolveCanonicalRewardItem = (rewardId: string): string => {
   }
   return rewardId;
 };
+
+const grantMockMissionReward = (client: any, userId: string, itemId: string, quantity: number) => {
+  if (!itemId || quantity <= 0) return;
+  const users = client.getStorage("users") || [];
+  const user = users.find((entry: any) => entry.id === userId);
+  if (!user) throw new Error("User not found");
+  if (itemId === "CASH") {
+    user.cash = Number(user.cash || 0) + quantity;
+    client.setStorage("users", users);
+    return;
+  }
+  if (itemId === "DIA" || itemId === "DIAMOND") {
+    user.neon_diamonds = Number(user.neon_diamonds || 0) + quantity;
+    client.setStorage("users", users);
+    return;
+  }
+  if (CANONICAL_EQUIPMENTS.some((master) => master.equipment_id === itemId)) {
+    const equipments = client.getStorage("user_equipments") || [];
+    for (let index = 0; index < quantity; index += 1) {
+      equipments.push({
+        id: `mission_equipment_${userId}_${itemId}_${Date.now()}_${index}`,
+        user_id: userId,
+        equipment_id: itemId,
+        equipment_master_id: itemId,
+        level: 1,
+        plus_val: 0,
+      });
+    }
+    client.setStorage("user_equipments", equipments);
+    return;
+  }
+  const items = client.getStorage("user_items") || [];
+  const existing = items.find((entry: any) => entry.user_id === userId && entry.item_id === itemId);
+  if (existing) existing.quantity = Number(existing.quantity || 0) + quantity;
+  else items.push({ id: `mission_item_${userId}_${itemId}`, user_id: userId, item_id: itemId, quantity });
+  client.setStorage("user_items", items);
+};
+
+const missionClaimKey = (userId: string, missionId: string, cycleDate?: string | null) => (
+  `${userId}:${missionId}:${cycleDate || "ONCE"}`
+);
 
 const canonicalQuestEnemySnapshot = (questId: string, encounterOverride?: ReturnType<typeof generateCanonicalQuestEncounter>) => {
   const encounter = encounterOverride ?? (canonicalQuestById(questId) ? generateCanonicalQuestEncounter(questId) : null);
@@ -356,8 +398,7 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     const members = client.getStorage("guild_members") || [];
     const milestones = client.getStorage("user_funnel_milestones") || [];
     const isGuildMember = members.some((entry: any) => entry.user_id === userId);
-    const hasGuildActivation = milestones.some((entry: any) => entry.user_id === userId && entry.milestone === "guild_activation");
-    if (!isGuildMember || !hasGuildActivation) {
+    if (!isGuildMember) {
       return { data: null, error: { message: "activation prerequisites not met", code: "55000" } };
     }
     if (!milestones.some((entry: any) => entry.user_id === userId && entry.milestone === "activation_mission_handoff")) {
@@ -388,14 +429,13 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
   }
 
   if (funcName === "get_active_ranking_seasons") {
-    const start = new Date();
-    start.setUTCDate(1);
-    start.setUTCHours(-9, 0, 0, 0);
-    const end = new Date(start);
-    end.setUTCMonth(end.getUTCMonth() + 1);
+    const monthly = rankingSeasonWindow("PVP");
+    const weekly = rankingSeasonWindow("RAID");
     return { data: ["POWER", "GUILD_POWER", "PVP", "GVG", "RAID"].map((rankingType) => ({
       season_id: `mock-${rankingType.toLowerCase()}-season`, ranking_type: rankingType,
-      starts_at: start.toISOString(), ends_at: end.toISOString(), status: "ACTIVE",
+      starts_at: rankingType === "RAID" ? weekly.startsAt : monthly.startsAt,
+      ends_at: rankingType === "RAID" ? weekly.endsAt : monthly.endsAt,
+      status: "ACTIVE",
     })), error: null };
   }
 
@@ -429,6 +469,9 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
   }
 
   if (funcName === "search_guilds") {
+    if (typeof window !== "undefined" && localStorage.getItem("mock_rpc_error:search_guilds") === "true") {
+      return { data: null, error: { message: "mock guild discovery failure", code: "MOCK_ERROR" } };
+    }
     const query = String(params?.p_query || "").trim().toLocaleLowerCase();
     const guilds = client.getStorage("guilds") || [];
     const members = client.getStorage("guild_members") || [];
@@ -523,7 +566,8 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
   if (funcName === "get_raid_season_rankings") {
     const users = client.getStorage("users") || [];
     const guilds = client.getStorage("guilds") || [];
-    const logs = client.getStorage("raid_damage_logs") || [];
+    const season = rankingSeasonWindow("RAID");
+    const logs = (client.getStorage("raid_damage_logs") || []).filter((log: any) => isInsideRankingSeason(log.created_at, season));
     const personalTotals = new Map<string, number>();
     const guildTotals = new Map<string, { contribution: number; participants: Set<string> }>();
     logs.forEach((log: any) => {
@@ -538,7 +582,7 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     const individual = [...personalTotals.entries()].sort((a, b) => b[1] - a[1]).map(([userId, contribution], index) => ({ user_id: userId, username: users.find((user: any) => user.id === userId)?.username || "プレイヤー", contribution, rank_position: index + 1 }));
     const guild = [...guildTotals.entries()].sort((a, b) => b[1].contribution - a[1].contribution).map(([guildId, total], index) => ({ guild_id: guildId, guild_name: guilds.find((entry: any) => entry.id === guildId)?.name || "ギルド", contribution: total.contribution, participant_count: total.participants.size, rank_position: index + 1 }));
     const userId = typeof window === "undefined" ? null : localStorage.getItem("tribe_demo_uuid");
-    return { data: { season_id: "mock-raid-season", starts_at: new Date(Date.now() - 86400000).toISOString(), ends_at: new Date(Date.now() + 86400000).toISOString(), individual, guild, selfRank: individual.find((row) => row.user_id === userId) || null }, error: null };
+    return { data: { season_id: "mock-raid-season", starts_at: season.startsAt, ends_at: season.endsAt, individual, guild, selfRank: individual.find((row) => row.user_id === userId) || null }, error: null };
   }
 
   if (funcName === "get_public_gvg_rankings") {
@@ -1113,7 +1157,8 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     const patrol = (client.getStorage("user_patrols") || []).find((entry: any) =>
       entry.id === params.p_patrol_id
       && entry.user_id === userId
-      && entry.status === "CLAIMABLE"
+      && (entry.status === "CLAIMABLE"
+        || (entry.status === "ONGOING" && Date.parse(entry.expires_at) <= Date.now()))
       && entry.has_battle_event
       && !entry.battle_resolved
     );
@@ -1123,12 +1168,12 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     }
     return {
       data: {
-        id: encounter.encounterId,
-        quest_id: encounter.questId,
+        id: encounter.encounterId ?? patrol.id,
+        quest_id: patrol.course_id ?? patrol.quest_id,
         npc_name: "Canonical NPC Party",
         npc_level: encounter.members[0]?.level ?? 1,
         encounter_rate: 1,
-        enemy_data: {},
+        enemy_data: encounter,
       },
       error: null,
     };
@@ -1695,6 +1740,7 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     const post = { id: `chat_${Date.now()}`, title: "", user_id: userId, author_id: userId, author_name: user.username || "Player", author_avatar_url: user.avatar_url, content: p_content.trim(), target_type: p_target_type, target_id: p_target_type === "GUILD" ? membership.guild_id : null, reply_to_message_id: p_reply_to_message_id || null, is_system: false, created_at: new Date().toISOString() };
     posts.push(post);
     client.setStorage("board_posts", posts);
+    if (p_target_type === "GUILD" && userId) evaluateMockMissionProgress(client, userId, "GUILD_CHAT", 1);
     return { data: post, error: null };
   }
 
@@ -2188,7 +2234,7 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
       gift_code: null,
       bio: "歌舞伎町の覇権を握るため立ち上がる。",
       avatar_url: p_character_id === "char_reiji_01" ? "/characters/reiji_transparent_asset.png" : p_character_id === "char_rui_01" ? "/characters/rui_transparent_asset.png" : p_character_id === "char_chang_01" ? "/characters/chang_transparent_asset.png" : "/characters/reiji_transparent_asset.png",
-      cash: 10000,
+      cash: 2600,
       neon_diamonds: 200,
       vitality: 100,
       pvp_points: 5,
@@ -2350,7 +2396,7 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
       username,
       bio: "歌舞伎町の覇権を握るため立ち上がる。",
       avatar_url: "/characters/reiji_transparent_asset.png",
-      cash: 10000,
+      cash: 2600,
       neon_diamonds: 200,
       vitality: 100,
       pvp_points: 5,
@@ -2947,6 +2993,21 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     };
   }
 
+  if (funcName === "move_current_user_base") {
+    const userId = typeof window === "undefined" ? null : localStorage.getItem("tribe_demo_uuid");
+    const nextBaseId = String(params.p_base_id || "");
+    const canonicalBaseIds = ["shinjuku", "shibuya", "ikebukuro", "roppongi", "akihabara", "kawasaki", "yokohama"];
+    if (!userId) return { data: null, error: { message: "Player authentication required", code: "42501" } };
+    if (!canonicalBaseIds.includes(nextBaseId)) return { data: null, error: { message: "Invalid base id", code: "22023" } };
+    const users = client.getStorage("users") || [];
+    const user = users.find((entry: any) => entry.id === userId);
+    if (!user) return { data: null, error: { message: "Player was not found", code: "P0002" } };
+    const previousBaseId = user.current_base_id;
+    user.current_base_id = nextBaseId;
+    client.setStorage("users", users);
+    return { data: { status: "success", previous_base_id: previousBaseId, current_base_id: nextBaseId }, error: null };
+  }
+
   if (funcName === "claim_patrol_rewards") {
     const { p_patrol_id } = params;
     const userId = typeof window === "undefined" ? null : localStorage.getItem("tribe_demo_uuid");
@@ -3136,7 +3197,7 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     client.setStorage("user_missions", missions);
     const users = client.getStorage("users") || [];
     const user = users.find((row: any) => row.id === userId);
-    if (user) Object.assign(user, { level: 1, xp: 0, cash: 10000, neon_diamonds: 200, diamonds: 0, vitality: 100, pvp_points: 5, raid_points: 5, favorite_character_id: null, current_base_id: "shinjuku" });
+    if (user) Object.assign(user, { level: 1, xp: 0, cash: 2600, neon_diamonds: 200, diamonds: 0, vitality: 100, pvp_points: 5, raid_points: 5, favorite_character_id: null, current_base_id: "shinjuku" });
     client.setStorage("users", users);
     const progressRows = client.getStorage("tutorial_progress") || [];
     const progress = progressRows.find((row: any) => row.user_id === userId);
@@ -3167,6 +3228,14 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     const lifetimeGrant = (client.getStorage("user_lifetime_onboarding_grants") || []).find((row: any) => row.user_id === userId);
     const lifetimeResults = lifetimeGrant?.canonical_payload?.gacha_results;
     if (!normal.length || !ssr.length) return { data: null, error: { message: "canonical tutorial gacha bucket is empty" } };
+    const claims = client.getStorage("user_daily_gacha_claims") || [];
+    const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Tokyo" });
+    const existingClaim = claims.find((entry: any) => entry.user_id === userId && entry.gacha_type === "CHARACTER");
+    if (existingClaim?.last_claimed_date === today) {
+      return { data: null, error: { message: "daily free gacha already claimed", code: "23505" } };
+    }
+    if (existingClaim) existingClaim.last_claimed_date = today;
+    else claims.push({ user_id: userId, gacha_type: "CHARACTER", last_claimed_date: today });
     const characters = client.getStorage("user_characters") || [];
     const results = Array.from({ length: 10 }, (_, index) => {
       // Stable tutorial fixture order keeps N/R/SR visual contract assertions
@@ -3191,7 +3260,10 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     });
     const response = { status: "success", request_id: params.p_request_id, results, tutorial: true, guaranteed_ssr_slot: 10 };
     histories.push({ user_id: userId, request_id: params.p_request_id, gacha_id: "CHAR_NORMAL", payment_source: "free", pull_count: 10, status: "COMPLETED", result_payload: response });
-    client.setStorage("gacha_execution_history", histories); client.setStorage("user_characters", characters);
+    client.setStorage("gacha_execution_history", histories);
+    client.setStorage("user_daily_gacha_claims", claims);
+    client.setStorage("user_characters", characters);
+    evaluateMockMissionProgress(client, userId, "GACHA_PULL", 1);
     return { data: response, error: null };
   }
 
@@ -3273,6 +3345,9 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     const response = { status: "success", request_id: p_request_id, results, cash: user.cash, diamonds: user.neon_diamonds };
     histories.push({ user_id: p_user_id, request_id: p_request_id, gacha_id: p_gacha_id, payment_source: p_currency_type, pull_count: p_pull_count, status: "COMPLETED", result_payload: response });
     client.setStorage("gacha_execution_history", histories);
+    if (p_currency_type === "free" && p_gacha_id === "CHAR_NORMAL" && p_pull_count === 10) {
+      evaluateMockMissionProgress(client, p_user_id, "GACHA_PULL", 1);
+    }
     return { data: response, error: null };
   }
 
@@ -3389,6 +3464,9 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     const response = { status: "success", request_id: p_request_id, results, cash: user.cash, diamonds: user.neon_diamonds };
     histories.push({ user_id: p_user_id, request_id: p_request_id, gacha_id: p_gacha_id, payment_source: p_currency_type, pull_count: p_pull_count, status: "COMPLETED", result_payload: response });
     client.setStorage("gacha_execution_history", histories);
+    if (p_currency_type === "free" && ["SKILL_NORMAL", "EQUIP_NORMAL"].includes(p_gacha_id) && p_pull_count === 10) {
+      evaluateMockMissionProgress(client, p_user_id, "GACHA_PULL", 1);
+    }
     return { data: response, error: null };
   }
 
@@ -3903,27 +3981,35 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     if (master.prerequisiteMissionId && !userMissions.some((row: any) => row.user_id === p_user_id && row.mission_id === master.prerequisiteMissionId && row.status === "CLAIMED")) {
       return { error: { message: "前提ミッションが未受取です。" } };
     }
+    const claimKey = missionClaimKey(p_user_id, p_mission_id, um.cycle_date);
+    const ledger = client.getStorage("mission_reward_delivery_ledger") || [];
+    if (ledger.some((entry: any) => entry.claim_key === claimKey)) return { error: { message: "Mission reward was already delivered." } };
+    const resolvedItemId = resolveCanonicalRewardItem(master.rewardItemId);
+    const rewards = [
+      ...(resolvedItemId && master.rewardQuantity > 0 ? [{ item_id: resolvedItemId, quantity: master.rewardQuantity }] : []),
+      ...(master.cashReward > 0 ? [{ item_id: "CASH", quantity: master.cashReward }] : []),
+    ];
+    rewards.forEach((reward) => grantMockMissionReward(client, p_user_id, reward.item_id, reward.quantity));
+    const deliveredAt = new Date().toISOString();
     um.status = "CLAIMED";
-    um.claimed_at = new Date().toISOString();
-    um.updated_at = new Date().toISOString();
-    
-    const presents = client.getStorage("presents") || [];
-    presents.push({
-      id: `mission_reward_${p_user_id}_${p_mission_id}`,
+    um.claimed_at = deliveredAt;
+    um.updated_at = deliveredAt;
+    ledger.push({
+      claim_key: claimKey,
+      user_mission_id: um.id,
       user_id: p_user_id,
-      item_id: resolveCanonicalRewardItem(master.rewardItemId),
-      quantity: master.rewardQuantity,
-      message: "ミッション報酬",
-      status: "UNCLAIMED",
-      sent_at: new Date().toISOString(),
+      mission_id: p_mission_id,
+      cycle_date: um.cycle_date || null,
+      resolved_item_id: resolvedItemId,
+      item_quantity: master.rewardQuantity,
+      cash_quantity: master.cashReward,
+      delivery_status: "DELIVERED",
+      delivered_at: deliveredAt,
     });
-    if (master.cashReward > 0) {
-      presents.push({ id:`mission_cash_${p_user_id}_${p_mission_id}`,user_id:p_user_id,item_id:"CASH",quantity:master.cashReward,message:"ミッション報酬",status:"UNCLAIMED",sent_at:new Date().toISOString() });
-    }
     unlockClaimedMissionChildren(canonicalMissionRows(), userMissions, p_user_id, p_mission_id, achievedFunnelTriggers(client, p_user_id));
     client.setStorage("user_missions", userMissions);
-    client.setStorage("presents", presents);
-    return { data: { status: "success", claimed: true, item_id: master.rewardItemId, quantity: master.rewardQuantity }, error: null };
+    client.setStorage("mission_reward_delivery_ledger", ledger);
+    return { data: { status: "success", claimed: true, mission_id: p_mission_id, delivery: "DIRECT", rewards }, error: null };
   }
 
   if (funcName === "claim_all_mission_rewards") {
@@ -3931,34 +4017,47 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     const p_user_id = typeof window === "undefined" ? null : localStorage.getItem("tribe_demo_uuid");
     if (!p_user_id) return { data: null, error: { message: "authentication required", code: "42501" } };
     const userMissions = client.getStorage("user_missions") || [];
-    const presents = client.getStorage("presents") || [];
     const candidates = userMissions.filter((um: any) => um.user_id === p_user_id && p_mission_ids.includes(um.mission_id) && um.status === "CLEAR");
     if (candidates.some((um: any) => !CANONICAL_MISSIONS.some((mission) => mission.id === um.mission_id && mission.isEnabled && mission.preopen))) {
       return { error: { message: "Canonical Mission Masterが見つかりません。" } };
     }
+    const ledger = client.getStorage("mission_reward_delivery_ledger") || [];
+    const duplicateClaim = candidates.find((um: any) => ledger.some((entry: any) => entry.claim_key === missionClaimKey(p_user_id, um.mission_id, um.cycle_date)));
+    if (duplicateClaim) return { error: { message: "Mission reward was already delivered." } };
     let count = 0;
+    const rewards: Array<{ mission_id: string; item_id: string; quantity: number }> = [];
     candidates.forEach((um: any) => {
         const master = CANONICAL_MISSIONS.find((mission) => mission.id === um.mission_id)!;
         if (master.prerequisiteMissionId && !userMissions.some((row: any) => row.user_id === p_user_id && row.mission_id === master.prerequisiteMissionId && row.status === "CLAIMED")) return;
+        const resolvedItemId = resolveCanonicalRewardItem(master.rewardItemId);
+        const missionRewards = [
+          ...(resolvedItemId && master.rewardQuantity > 0 ? [{ mission_id: um.mission_id, item_id: resolvedItemId, quantity: master.rewardQuantity }] : []),
+          ...(master.cashReward > 0 ? [{ mission_id: um.mission_id, item_id: "CASH", quantity: master.cashReward }] : []),
+        ];
+        missionRewards.forEach((reward) => grantMockMissionReward(client, p_user_id, reward.item_id, reward.quantity));
+        rewards.push(...missionRewards);
+        const deliveredAt = new Date().toISOString();
         um.status = "CLAIMED";
-        um.claimed_at = new Date().toISOString();
-        um.updated_at = new Date().toISOString();
-        presents.push({
-          id: `mission_reward_${p_user_id}_${um.mission_id}`,
+        um.claimed_at = deliveredAt;
+        um.updated_at = deliveredAt;
+        ledger.push({
+          claim_key: missionClaimKey(p_user_id, um.mission_id, um.cycle_date),
+          user_mission_id: um.id,
           user_id: p_user_id,
-          item_id: resolveCanonicalRewardItem(master.rewardItemId),
-          quantity: master.rewardQuantity,
-          message: "ミッション一括報酬",
-          status: "UNCLAIMED",
-          sent_at: new Date().toISOString(),
+          mission_id: um.mission_id,
+          cycle_date: um.cycle_date || null,
+          resolved_item_id: resolvedItemId,
+          item_quantity: master.rewardQuantity,
+          cash_quantity: master.cashReward,
+          delivery_status: "DELIVERED",
+          delivered_at: deliveredAt,
         });
-        if (master.cashReward > 0) presents.push({ id:`mission_cash_${p_user_id}_${um.mission_id}`,user_id:p_user_id,item_id:"CASH",quantity:master.cashReward,message:"ミッション一括報酬",status:"UNCLAIMED",sent_at:new Date().toISOString() });
         unlockClaimedMissionChildren(canonicalMissionRows(), userMissions, p_user_id, um.mission_id, achievedFunnelTriggers(client, p_user_id));
         count++;
     });
     client.setStorage("user_missions", userMissions);
-    client.setStorage("presents", presents);
-    return { data: { status: "success", claimed_count: count }, error: null };
+    client.setStorage("mission_reward_delivery_ledger", ledger);
+    return { data: { status: "success", claimed_count: count, delivery: "DIRECT", rewards }, error: null };
   }
 
   if (funcName === "admin_reset_daily_missions") {
@@ -3985,7 +4084,7 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
       const prerequisite = condition.type === "FIRST_CLEAR" ? condition.questId : null;
       const memberCharacters = encounter.members.map((member) => CANONICAL_CHARACTERS.find((entry) => entry.character_id === member.characterId)!);
       const recommendedPower = encounter.members.reduce((total,member,index) => { const stats=canonicalCharacterStats(memberCharacters[index].lv1,memberCharacters[index].lv100,member.level,member.awakening); return total+stats.hp+stats.atk+stats.def; },0);
-      return { quest_id:encounter.questId, unlock_condition:condition.type === "OPEN" ? "OPEN" : `FIRST_CLEAR:${prerequisite}`, is_unlocked:condition.type === "OPEN" || firstClears.some((entry:any)=>entry.user_id===userId&&entry.quest_id===prerequisite), is_first_cleared:firstClears.some((entry:any)=>entry.user_id===userId&&entry.quest_id===encounter.questId), enemy_tactic:encounter.enemyTactic, enemy_member_count:encounter.members.length, enemy_members:encounter.members, enemy_attributes:[...new Set(memberCharacters.map((entry)=>entry.attribute))], recommended_level:encounter.members[0]?.level ?? null, recommended_power:recommendedPower };
+      return { quest_id:encounter.questId, unlock_condition:condition.type === "OPEN" ? "OPEN" : `FIRST_CLEAR:${prerequisite}`, is_unlocked:condition.type === "OPEN" || firstClears.some((entry:any)=>entry.user_id===userId&&entry.quest_id===prerequisite), is_first_cleared:firstClears.some((entry:any)=>entry.user_id===userId&&entry.quest_id===encounter.questId), enemy_tactic:encounter.enemyTactic, enemy_member_count:encounter.members.length, enemy_members:[], enemy_attributes:[...new Set(memberCharacters.map((entry)=>entry.attribute))], recommended_level:encounter.members[0]?.level ?? null, recommended_power:recommendedPower };
     }), error:null };
   }
 

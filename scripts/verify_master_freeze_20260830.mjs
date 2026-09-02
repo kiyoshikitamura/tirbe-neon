@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 
 const readJson = async (name) => JSON.parse(await readFile(new URL(`../src/domain/gameplay/canonical/data/${name}`, import.meta.url), "utf8"));
 const quests = await readJson("quests_20260830.json");
-const missions = await readJson("missions_20260830.json");
+const missions = await readJson("missions_20260902.json");
 const login = await readJson("login_bonus_20260830.json");
 const gacha = await readJson("gacha_production_20260830.json");
 const enemies = await readJson("quest_enemy_pools_20260830.json");

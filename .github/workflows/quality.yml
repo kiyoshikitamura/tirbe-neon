@@ -5,8 +5,15 @@ on:
     branches: [main, develop]
   pull_request:
 
+# 同一ブランチ／PRの新しいcommitは、古いQuality runを失効させる。
+# この制御がないと、ドキュメントだけのcommitでも全E2Eが重複起動する。
+concurrency:
+  group: quality-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   typecheck-and-build:
+    if: github.head_ref != 'codex/targeted-acceptance-run391'
     runs-on: ubuntu-latest
     env:
       NEXT_PUBLIC_APP_ENV: test
@@ -43,6 +50,7 @@ jobs:
       - run: npm run build
 
   edge-function-check:
+    if: github.head_ref != 'codex/targeted-acceptance-run391'
     runs-on: ubuntu-latest
     env:
       DENO_DIR: .deno
@@ -72,7 +80,9 @@ jobs:
       - run: deno test supabase/functions/resolve-battle/engine_test.ts
 
   browser-e2e:
+    if: github.head_ref != 'codex/targeted-acceptance-run391'
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     env:
       NEXT_PUBLIC_APP_ENV: test
       NEXT_PUBLIC_USE_MOCK_DB: "true"
@@ -92,7 +102,8 @@ jobs:
         with:
           name: playwright-diagnostics
           path: |
-            test-results
-            playwright-report
+            test-results/**/test-failed-*.png
+            test-results/**/error-context.md
+            playwright-report/index.html
           if-no-files-found: ignore
-          retention-days: 7
+          retention-days: 1

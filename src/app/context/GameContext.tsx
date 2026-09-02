@@ -135,6 +135,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     showTitleView, setShowTitleView,
     inboxPanelTab, setInboxPanelTab,
     rankingActiveTab, setRankingActiveTab,
+    characterEntryView, setCharacterEntryView,
     confirmDialogConfig, setConfirmDialogConfig,
     globalInteractionBlocking, setGlobalInteractionBlocking
   } = nav;
@@ -197,7 +198,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const [raidPoints, setRaidPoints] = useState<number>(5);
   const [raidTopRefreshRevision, setRaidTopRefreshRevision] = useState(0);
   const [raidFirstEntryFree, setRaidFirstEntryFree] = useState<boolean>(true);
-  const [cash, setCash] = useState<number>(10000);
+  const [cash, setCash] = useState<number>(2600);
   const [diamonds, setDiamonds] = useState<number>(200);
   const [vitality, setVitality] = useState<number>(100);
   const [vitalityNextRecoveryAt, setVitalityNextRecoveryAt] = useState<string | null>(null);
@@ -217,6 +218,11 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
   const {
     userItems, setUserItems,
+    inventoryProjectionOwnerUserId,
+    beginUserItemsProjectionRequest,
+    projectUserItems,
+    resetUserItemsProjection,
+    refreshUserItemsProjection,
     energyDrinks, setEnergyDrinks,
     charExpS, setCharExpS,
     charExpM, setCharExpM,
@@ -534,7 +540,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     userGuildMember,
     showTribeChatPanel,
     (type: string) => playCyberSe(type as any),
-    setErrorMessage
+    setErrorMessage,
+    (userId: string) => syncBootstrapData(userId)
   );
 
   const {
@@ -583,6 +590,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const [identityLeaderOwnerUserId, setIdentityLeaderOwnerUserId] = useState<string>("");
   const [identityLeaderAuthorityReady, setIdentityLeaderAuthorityReady] = useState(false);
   const [guildAuthorityOwnerUserId, setGuildAuthorityOwnerUserId] = useState<string>("");
+  const [guildDiscoveryState, setGuildDiscoveryState] = useState<"pending" | "error" | "empty" | "available">("pending");
   const [authenticatedProjectionOwnerUserId, setAuthenticatedProjectionOwnerUserId] = useState<string>("");
   const [authenticatedProjectionError, setAuthenticatedProjectionError] = useState<string | null>(null);
   const [resumeLoading, setResumeLoading] = useState(false);
@@ -694,6 +702,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     setIdentityLeaderCharacterId("");
     setIdentityLeaderAuthorityReady(false);
     setGuildAuthorityOwnerUserId("");
+    setGuildDiscoveryState("pending");
     setOnboardingState(null);
     setUsername("");
     setSelectedLeader("");
@@ -705,7 +714,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     setUserCharactersDbList([]);
     setUserSkillsList([]);
     setUserEquipmentsList([]);
-    setUserItems([]);
+    resetUserItemsProjection(nextUserId || "");
     setCash(0);
     setDiamonds(0);
     setUserLevel(1);
@@ -1025,9 +1034,11 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
           last_claimed_date: claimRes.last_claimed_date || null
         });
 
-        if (claimRes.claimed && onboardingState?.gameplay_authorized && activeTab === "home") {
-          setShowLoginBonusModal(true);
-          setPresentsPrefetched(false);
+        if (claimRes.claimed) {
+          if (onboardingState?.gameplay_authorized && activeTab === "home") {
+            setShowLoginBonusModal(true);
+            setPresentsPrefetched(false);
+          }
         }
       }
     } catch (err: any) {
@@ -1042,15 +1053,11 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const userId = session?.user?.id;
     if (!userId || showTitleView || !onboardingState?.gameplay_authorized || activeTab !== "home") return;
-    if (loginBonusClaimResult?.claimed) {
-      setShowLoginBonusModal(true);
-      setPresentsPrefetched(false);
-      return;
-    }
-    if (loginBonusRequestUserRef.current === userId) return;
-    loginBonusRequestUserRef.current = userId;
+    const requestKey = `${userId}:${getJstDateString()}`;
+    if (loginBonusRequestUserRef.current === requestKey) return;
+    loginBonusRequestUserRef.current = requestKey;
     void checkAndClaimLoginBonus(userId);
-  }, [activeTab, loginBonusClaimResult?.claimed, onboardingState?.gameplay_authorized, session?.user?.id, showTitleView]);
+  }, [activeTab, onboardingState?.gameplay_authorized, session?.user?.id, showTitleView]);
 
   useEffect(() => {
     const userId = session?.user?.id;
@@ -1104,6 +1111,10 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     if (identityLeaderOwnerUserId !== userId) setIdentityLeaderAuthorityReady(false);
     const identityAuthorityPromise = refreshIdentityLeaderAuthority(userId);
     const dailyFreeAuthorityPromise = refreshDailyFreeGachaAuthority(userId);
+    const inventoryProjectionPromise = refreshUserItemsProjection(userId).catch((error) => {
+      console.warn("Failed to prime inventory projection:", error);
+      return [];
+    });
 
     // Home badges are independent projections. Start their canonical reads at
     // bootstrap entry so Mission / Present badges do not wait behind the wider
@@ -1405,6 +1416,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         .single();
 
       if (guildMemberRec) {
+        setGuildDiscoveryState("pending");
         setUserGuildMember(guildMemberRec);
         setPendingGuildJoinRequests([]);
 
@@ -1489,16 +1501,23 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         setUserGuildMember(null);
         setGuildMembersList([]);
         setGuildJoinRequests([]);
+        setGuildDiscoveryState("pending");
 
-        const [{ data: listAllGuilds }, { data: pendingRequests }] = await Promise.all([
+        const [{ data: listAllGuilds, error: guildDiscoveryError }, { data: pendingRequests }] = await Promise.all([
           supabase.rpc("search_guilds", { p_query: "" }),
           supabase.from("guild_join_requests")
             .select("id,guild_id,user_id,status,requested_at")
             .eq("user_id", userId)
             .eq("status", "PENDING"),
         ]);
-        if (listAllGuilds) {
-          setAllGuildsDbList(listAllGuilds);
+        if (guildDiscoveryError) {
+          console.warn("Guild discovery authority is unavailable:", guildDiscoveryError);
+          setAllGuildsDbList([]);
+          setGuildDiscoveryState("error");
+        } else {
+          const guilds = Array.isArray(listAllGuilds) ? listAllGuilds : [];
+          setAllGuildsDbList(guilds);
+          setGuildDiscoveryState(guilds.length === 0 ? "empty" : "available");
         }
         setPendingGuildJoinRequests(pendingRequests || []);
       }
@@ -1615,6 +1634,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
             battle_resolved: p.battle_resolved,
             battle_result: p.battle_result,
             rewards_accrued: p.rewards_accrued,
+            encounterSnapshot: p.encounter_snapshot,
             started_at: p.started_at,
             expires_at: p.expires_at
           };
@@ -1854,24 +1874,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
-      const { data: itemsData } = await supabase
-        .from("user_items")
-        .select("*")
-        .eq("user_id", userId);
-      
-      if (itemsData) {
-        setEnergyDrinks(itemsData.find(i => i.item_id === "ENERGY_DRINK")?.quantity || 0);
-        setCharExpS(itemsData.find(i => i.item_id === "CHAR_EXP_S")?.quantity || 0);
-        setCharExpM(itemsData.find(i => i.item_id === "CHAR_EXP_M")?.quantity || 0);
-        setCharExpL(itemsData.find(i => i.item_id === "CHAR_EXP_L")?.quantity || 0);
-        setEquipExpS(itemsData.find(i => i.item_id === "EQUIP_EXP_S")?.quantity || 0);
-        setEquipExpM(itemsData.find(i => i.item_id === "EQUIP_EXP_M")?.quantity || 0);
-        setEquipExpL(itemsData.find(i => i.item_id === "EQUIP_EXP_L")?.quantity || 0);
-        setAwakeningBooks(itemsData.find(i => i.item_id === "AWAKENING_BOOK")?.quantity || 0);
-        const skillManualQuantity = itemsData.find(i => i.item_id === "SKILL_MANUAL")?.quantity || 0;
-        setSkillManuals(skillManualQuantity);
-        setEquipLbParts(itemsData.find(i => i.item_id === "EQUIP_LB_PART")?.quantity || 0);
-      }
+      await inventoryProjectionPromise;
 
       const { data: equipsData } = await supabase
         .from("user_equipments")
@@ -2061,8 +2064,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     setResumeLoading(true);
     setAuthenticatedProjectionError(null);
     try {
-      // Continue waits only for the Home authority projection. Guild, ranking,
-      // inventory and other secondary bootstrap work stays in the background.
+      // Continue waits for the compact Home and inventory authority projections.
+      // Guild, ranking and other secondary bootstrap work stays in the background.
       const [{ data: state, error }, { data: profile, error: profileError }, { data: recovered }, { data: power }] = await Promise.all([
         supabase.rpc("get_current_onboarding_state"),
         supabase.from("users")
@@ -2071,8 +2074,19 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
           .single(),
         supabase.rpc("sync_and_recover_vitality_and_pvp_points", { p_user_id: userId }),
         supabase.rpc("get_my_power_snapshot"),
+        refreshUserItemsProjection(userId),
       ]);
       if (error || state?.user_id !== userId) throw error || new Error("Resume authority mismatch");
+      // An anonymous onboarding identity exists before the player submits a
+      // name, so public.users, wallet and power projections do not exist yet.
+      // Resume that pre-profile lifecycle directly into SetupView instead of
+      // treating the intentionally absent profile as a broken save.
+      if (state.is_anonymous && !state.has_profile) {
+        setOnboardingState(state);
+        setIsSetupRequired(true);
+        setShowTitleView(false);
+        return true;
+      }
       if (profileError || profile?.id !== userId) throw profileError || new Error("Resume profile mismatch");
       const recovery = Array.isArray(recovered) ? recovered[0] : recovered;
       if (recovery) {
@@ -2486,12 +2500,12 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     setSelectedMapAreaId(null);
 
     try {
-      const { error } = await supabase
-        .from("users")
-        .update({ current_base_id: baseId })
-        .eq("id", session.user.id);
+      const { data, error } = await supabase.rpc("move_current_user_base", {
+        p_base_id: baseId,
+      });
 
       if (error) throw error;
+      if (data?.current_base_id !== baseId) throw new Error("Location movement response mismatch");
       return true;
     } catch (err: any) {
       console.warn("Move base failed, rolling back:", err.message);
@@ -3104,7 +3118,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       if (error) throw error;
 
       await syncBootstrapData(session.user.id);
-      setConfirmDialogConfig({ isOpen: true, title: "リセット完了", message: "PvPシーズン終了。報酬転送完了。", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
+      setConfirmDialogConfig({ isOpen: true, title: "リセット完了", message: "バトルシーズン終了。報酬転送完了。", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
     } catch (err: any) {
       console.warn("Failed to reset PvP season:", err.message);
       setErrorMessage("シーズンリセット処理に失敗しました。");
@@ -3289,6 +3303,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
           // The next mandatory screen needs only ownership and Growth items.
           // Project those independently of the much wider Home bootstrap so a
           // slow or unrelated feature query cannot strand the tutorial result.
+          const tutorialInventoryRequestGeneration = beginUserItemsProjectionRequest(session.user.id);
           void Promise.all([
             supabase.from("user_characters").select("*").eq("user_id", session.user.id),
             supabase.from("user_items").select("*").eq("user_id", session.user.id),
@@ -3298,11 +3313,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
             const ownedCharacters = charactersResult.data || [];
             const ownedItems = itemsResult.data || [];
             setUserCharactersDbList(ownedCharacters);
-            setUserItems(ownedItems);
-            setCharExpS(ownedItems.find((item: any) => item.item_id === "CHAR_EXP_S")?.quantity || 0);
-            setCharExpM(ownedItems.find((item: any) => item.item_id === "CHAR_EXP_M")?.quantity || 0);
-            setCharExpL(ownedItems.find((item: any) => item.item_id === "CHAR_EXP_L")?.quantity || 0);
-            setAwakeningBooks(ownedItems.find((item: any) => item.item_id === "AWAKENING_BOOK")?.quantity || 0);
+            projectUserItems(ownedItems, session.user.id, tutorialInventoryRequestGeneration);
           }).catch((projectionError) => console.warn("Tutorial acquisition projection failed:", projectionError));
         }
         const bootstrapPromise = syncBootstrapData(session.user.id)
@@ -4130,6 +4141,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     activeUsersCount, setActiveUsersCount,
     chatCooldown, setChatCooldown,
     inboxPanelTab, setInboxPanelTab,
+    characterEntryView, setCharacterEntryView,
     userGuild, setUserGuild,
     userGuildMember, setUserGuildMember,
     guildMembersList, setGuildMembersList,
@@ -4138,6 +4150,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     guildSubTab, setGuildSubTab,
     pendingGuildJoinRequests, setPendingGuildJoinRequests,
     guildMembershipAuthorityReady: guildAuthorityOwnerUserId === session?.user?.id,
+    guildDiscoveryState,
     authenticatedProjectionReady: Boolean(session?.user?.id)
       && onboardingState?.user_id === session.user.id
       && authenticatedProjectionOwnerUserId === session.user.id,
@@ -4492,6 +4505,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     setGlobalInteractionBlocking,
     activeBanners, setActiveBanners,
     userItems, setUserItems,
+    inventoryProjectionOwnerUserId,
     raidPoints, setRaidPoints, raidFirstEntryFree, raidTopRefreshRevision,
     monthlyPassActive, setMonthlyPassActive,
     monthlyPassClaimedToday, setMonthlyPassClaimedToday,

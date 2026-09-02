@@ -16,7 +16,7 @@ export default function MenuTab() {
 
   const MENU_ITEMS = [
     { label: "クエスト", action: () => navigateTab("patrol"), color: "green" },
-    { label: "PvP", action: () => navigateTab("pvp"), color: "blue" },
+    { label: "バトル", action: () => navigateTab("pvp"), color: "blue" },
     { label: "レイド", action: () => navigateTab("raid"), color: "orange" },
     { label: "ランキング", action: () => navigateTab("ranking"), color: "silver" },
     { label: "BBS", action: () => navigateTab("bbs"), color: "silver" },
