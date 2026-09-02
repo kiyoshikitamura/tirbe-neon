@@ -103,7 +103,8 @@ assert.doesNotMatch(viewer, />CURRENT<|`NEXT \$\{index\}`/, "Battle V2 must not 
 assert.doesNotMatch(viewer, /className="battle-action-stage/, "Battle V2 must not render a central action stage");
 assert.match(runtime, /buildBattlePresentationUnit\(authoritativeEvents/, "Production replay must use the presentation-only ACTION builder");
 assert.match(runtime, /waitForRenderedBattleHpParity/, "RESULT must wait for rendered HP parity before leaving the field");
-assert.match(runtime, /setTimeout\(\(\) => void finishCanonicalResult\(\), 120\)/, "RESULT parity must retry the same canonical terminal event instead of stalling Journey playback");
+assert.match(runtime, /waitForBattleHpParityGate/, "ACTION, RESULT and Skip parity must use the finite liveness gate");
+assert.doesNotMatch(runtime, /setTimeout\(\(\) => void finishCanonicalResult\(\), 120\)/, "RESULT parity must not retry forever");
 assert.match(runtime, /playerPartyStatesRef\.current = canonicalPlayers;[\s\S]*enemyPartyStatesRef\.current = canonicalEnemies;/, "RESULT must commit the canonical terminal HP projection before its visual gate");
 assert.match(runtime, /waitForRenderedBattleActionHpParity/, "Every HP-changing ACTION must wait for DOM and fill parity before advancing");
 assert.match(runtime, /recordBattleHpProjection/, "Every ACTION HP projection must be traced before RESULT");
