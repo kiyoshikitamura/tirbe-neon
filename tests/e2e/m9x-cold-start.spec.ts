@@ -3,6 +3,18 @@ import { expect, test } from "@playwright/test";
 test.use({ viewport: { width: 390, height: 844 } });
 test.setTimeout(60_000);
 
+async function resumeEntryState(page: import("@playwright/test").Page, state: "AGEHA_INTRO" | "NAME_INPUT") {
+  const titleCta = page.getByRole("button", { name: "TAP TO START" });
+  const tutorialContinue = page.getByRole("button", { name: "チュートリアルを続ける" });
+  await expect(titleCta).toBeVisible();
+  await titleCta.click();
+  await expect(tutorialContinue).toBeVisible();
+  await expect.poll(async () => {
+    if (await tutorialContinue.isVisible() && await tutorialContinue.isEnabled()) await tutorialContinue.click();
+    return page.locator(`[data-entry-state="${state}"]`).isVisible();
+  }).toBe(true);
+}
+
 async function advanceEntryToName(page: import("@playwright/test").Page) {
   await expect(page.locator('[data-entry-state="WORLD_INFORMATION"]')).toBeVisible();
   await expect(page.locator('[data-world-stage="4"] .setup-world-tap')).toBeVisible({ timeout: 30_000 });
@@ -179,21 +191,13 @@ test("world information precedes Ageha and entry sub-state survives reload", asy
     await page.screenshot({ path: test.info().outputPath(`m9x-ageha-intro-${width}.png`) });
   }
   await page.reload();
-  const titleCta = page.getByRole("button", { name: "TAP TO START" });
-  const tutorialContinue = page.getByRole("button", { name: "チュートリアルを続ける" });
-  await expect(titleCta).toBeVisible();
-  await titleCta.click();
-  await expect(tutorialContinue).toBeVisible();
-  await tutorialContinue.click();
+  await resumeEntryState(page, "AGEHA_INTRO");
   await expect(page.locator('[data-entry-state="AGEHA_INTRO"]')).toBeVisible();
 
   await page.getByRole("button", { name: "次へ" }).click();
   await expect(page.locator('[data-entry-state="NAME_INPUT"]')).toBeVisible();
   await page.reload();
-  await expect(titleCta).toBeVisible();
-  await titleCta.click();
-  await expect(tutorialContinue).toBeVisible();
-  await tutorialContinue.click();
+  await resumeEntryState(page, "NAME_INPUT");
   await expect(page.getByPlaceholder("プレイヤー名を入力")).toBeVisible();
 });
 

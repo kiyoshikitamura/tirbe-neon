@@ -28,6 +28,8 @@ async function seedAuthenticatedPlayer(page: Page, asMaster = false) {
     const now = new Date().toISOString();
     localStorage.setItem("tribe_demo_uuid", me);
     localStorage.setItem("mock_auth_mode", "EMAIL");
+    const todayJst = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+    localStorage.setItem("mock_db_user_login_bonuses", JSON.stringify([{ user_id: me, current_day: 1, total_logins: 1, last_claimed_date: todayJst }]));
     localStorage.setItem("mock_db_users", JSON.stringify([
       { id: me, username: asMaster ? "Welcome Master" : "Journey Player", level: 8, cash: 10000, pvp_points: 5, rank_points: 1200, total_power: 20000, current_base_id: "shinjuku", last_active_at: now, guild_id: asMaster ? guildId : null },
       { id: master, username: "Human Master", level: 20, cash: 10000, total_power: 10000, current_base_id: "shinjuku", last_active_at: now, guild_id: guildId },

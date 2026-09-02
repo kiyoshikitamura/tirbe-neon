@@ -142,9 +142,10 @@ test("M9-V0 main cycle presents growth, mission, PvP, ranking, raid and guild di
   await expect(currentRanking).toContainText(`${pvpTopRank}位`);
   await expect(page.getByRole("button", { name: "PvPへ戻る" })).toBeVisible();
   await page.locator(".ranking-user-row .user-identity-row").first().click();
-  await expect(page.locator(".modal-card").getByText("街の強敵A", { exact: true })).toBeVisible();
-  await expect(page.getByText("総合力", { exact: false }).last()).toBeVisible();
-  await page.getByRole("button", { name: "閉じる" }).click();
+  const profileDialog = page.getByRole("dialog", { name: "街の強敵Aの公開プロフィール" });
+  await expect(profileDialog.getByRole("heading", { name: "街の強敵A" })).toBeVisible();
+  await expect(profileDialog.getByText("総合力", { exact: true })).toBeVisible();
+  await profileDialog.getByRole("button", { name: "閉じる" }).click();
   await mobileFramePass(page, ".ranking-tab-view", "ranking");
 
   await page.getByRole("button", { name: /マイページ/ }).click();

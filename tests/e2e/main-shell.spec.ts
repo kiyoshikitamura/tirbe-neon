@@ -22,6 +22,9 @@ async function enterGame(page: import("@playwright/test").Page) {
   await page.getByRole("button", { name: "TAP TO START" }).click();
   await page.getByRole("button", { name: "続きから" }).click();
   await expect(page.locator(".header-mobile")).toBeVisible();
+  const loginBonus = page.getByRole("dialog", { name: "ログインボーナス" });
+  await loginBonus.waitFor({ state: "visible", timeout: 3_000 }).catch(() => undefined);
+  if (await loginBonus.isVisible()) await loginBonus.getByRole("button", { name: "閉じる", exact: true }).click();
   const welcomeAction = page.getByRole("button", { name: "抗争に参入する" });
   await welcomeAction.waitFor({ state: "visible", timeout: 3_000 }).catch(() => undefined);
   if (await welcomeAction.isVisible()) await welcomeAction.click();
@@ -45,7 +48,7 @@ test("authenticated game shell keeps the header and footer inside its safe frame
 
 test("shared shell preserves footer navigation", async ({ page }) => {
   await enterGame(page);
-  await page.getByRole("button", { name: /キャラ/ }).click();
+  await page.getByRole("button", { name: "キャラ", exact: true }).click();
   await expect(page.locator(".footer-item.active")).toContainText("キャラ");
 });
 
