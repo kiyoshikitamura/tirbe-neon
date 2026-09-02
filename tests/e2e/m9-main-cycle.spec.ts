@@ -121,7 +121,7 @@ test("M9-V0 main cycle presents growth, mission, PvP, ranking, raid and guild di
   await page.locator(".circle-menu-btn.fight").click();
   await expect(page.locator(".pvp-hero")).toBeVisible();
   await expect(page.locator(".pvp-self-summary > div").first().locator("strong")).not.toHaveText("—");
-  const pvpTopRank = (await page.locator(".pvp-self-summary > div").first().locator("strong").textContent())?.replace("#", "");
+  const pvpTopRank = (await page.locator(".pvp-self-summary > div").first().locator("strong").textContent())?.replace(/\D/g, "");
   await expect(page.locator(".pvp-self-summary")).toContainText("順位");
   await expect(page.locator(".pvp-self-summary")).toContainText("RATE");
   await expect(page.locator(".pvp-self-summary")).toContainText("BP");

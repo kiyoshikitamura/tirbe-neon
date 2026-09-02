@@ -629,7 +629,10 @@ test("three random tutorial SSRs remain the same owned character through result 
     { id: "char_karen_01", name: "カレン" },
   ].filter((entry) => !process.env.M9X_SSR_CASE || entry.name === process.env.M9X_SSR_CASE);
   const continueFromTitleIfNeeded = async () => {
+    const tapToStart = page.getByRole("button", { name: "TAP TO START" });
     const resume = page.getByRole("button", { name: /続きから|チュートリアルを続ける/ });
+    await expect(tapToStart.or(resume)).toBeVisible();
+    if (await tapToStart.isVisible()) await tapToStart.click();
     await expect(resume).toBeVisible();
     await resume.click();
   };
@@ -756,6 +759,12 @@ test("first quest connects dispatch, official battle, and one reward to the comp
   await page.goto("/");
   const titleAction = page.getByRole("button", { name: "TAP TO START" });
   const continueFromTitle = page.getByRole("button", { name: /続きから|チュートリアルを続ける/ });
+  const resumeAfterReload = async () => {
+    await expect(titleAction.or(continueFromTitle)).toBeVisible();
+    if (await titleAction.isVisible()) await titleAction.click();
+    await expect(continueFromTitle).toBeVisible();
+    await continueFromTitle.click();
+  };
   await expect(titleAction.or(continueFromTitle)).toBeVisible();
   if (await titleAction.isVisible()) await titleAction.click();
   await expect(continueFromTitle).toBeVisible();
@@ -789,6 +798,7 @@ test("first quest connects dispatch, official battle, and one reward to the comp
   expect(dispatchRequests).toBe(1);
 
   await page.reload();
+  await resumeAfterReload();
   await expect(page.locator('[data-acceptance-state="Q3"]')).toBeVisible();
   const instantAction = page.getByRole("button", { name: /すぐに時短する/ });
   await expect(instantAction).toBeVisible();
@@ -802,6 +812,7 @@ test("first quest connects dispatch, official battle, and one reward to the comp
   await expect(page.locator(".modal-card").filter({ hasText: "初回バトル" })).toHaveCount(0);
 
   await page.reload();
+  await resumeAfterReload();
   await expect(page.locator('[data-acceptance-state="Q5"]')).toBeVisible();
   const nextToEncounter = page.getByRole("button", { name: "次へ" });
   await expect(nextToEncounter).toBeEnabled({ timeout: 15_000 });
@@ -1210,6 +1221,7 @@ test("tutorial completion resumes through account save and exposes the Home next
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem("mock_db_tutorial_progress") || "[]")[0]?.step_id)).toBe("AUTHENTICATION");
 
   await page.reload();
+  await resumeRuleGuide(page);
   await expect(page.locator(".mypage-primary-cta")).toContainText("無料スキル／装備ガチャを引こう");
   await expect(page.getByText("ゲームデータを保存")).toBeHidden();
 });

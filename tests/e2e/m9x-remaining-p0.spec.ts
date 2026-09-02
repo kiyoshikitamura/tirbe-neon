@@ -65,6 +65,9 @@ async function enterHome(page: Page) {
   if (await titleAction.isVisible()) await titleAction.click();
   if (await continueAction.isVisible()) await continueAction.click();
   await expect(header).toBeVisible();
+  const loginBonus = page.getByRole("dialog", { name: "ログインボーナス" });
+  await loginBonus.waitFor({ state: "visible", timeout: 3_000 }).catch(() => undefined);
+  if (await loginBonus.isVisible()) await loginBonus.getByRole("button", { name: "閉じる", exact: true }).click();
 }
 
 test("PvP uses the main formation, offers a weaker first opponent, and has no defense-deck UI", async ({ page }) => {

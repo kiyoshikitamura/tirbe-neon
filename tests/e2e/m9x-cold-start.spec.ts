@@ -60,6 +60,9 @@ test("tutorial ten-pull guarantees slot 10 SSR and visible Growth precedes forma
     }
     const currentLabel = await reveal.getAttribute("aria-label");
     await reveal.evaluate((button: HTMLButtonElement) => button.click());
+    const nextGate = page.locator(".gacha-character-logo-gate");
+    await expect(nextGate).toBeVisible();
+    await nextGate.click();
     await expect(reveal).not.toHaveAttribute("aria-label", currentLabel || "");
   }
   await expect(reveal).toHaveClass(/is-guaranteed/);
@@ -182,7 +185,7 @@ test("world information precedes Ageha and entry sub-state survives reload", asy
   if (await titleCta.isVisible()) await titleCta.click();
   if (!(await page.locator('[data-entry-state="AGEHA_INTRO"]').isVisible())) {
     await expect(tutorialContinue).toBeVisible();
-    await tutorialContinue.click();
+    await tutorialContinue.evaluate((button: HTMLButtonElement) => button.click());
   }
   await expect(page.locator('[data-entry-state="AGEHA_INTRO"]')).toBeVisible();
 
@@ -193,7 +196,7 @@ test("world information precedes Ageha and entry sub-state survives reload", asy
   if (await titleCta.isVisible()) await titleCta.click();
   if (!(await page.locator('[data-entry-state="NAME_INPUT"]').isVisible())) {
     await expect(tutorialContinue).toBeVisible();
-    await tutorialContinue.click();
+    await tutorialContinue.evaluate((button: HTMLButtonElement) => button.click());
   }
   await expect(page.getByPlaceholder("プレイヤー名を入力")).toBeVisible();
 });
