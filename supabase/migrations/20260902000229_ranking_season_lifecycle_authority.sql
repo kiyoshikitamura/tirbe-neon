@@ -608,6 +608,9 @@ grant execute on function public.ranking_period_bounds(text,timestamptz),
 
 -- Reconcile the intentionally restored expired Preview rows through the same
 -- production lifecycle. This is idempotent when the current periods exist.
+lock table public.battle_replay_sessions in share row exclusive mode;
+lock table public.pvp_ranks in share row exclusive mode;
+lock table public.raid_damage_logs in share row exclusive mode;
 select public.advance_all_ranking_seasons(clock_timestamp());
 
 commit;
