@@ -50,7 +50,10 @@ test.beforeEach(async ({ page }) => {
       { user_id: users[0], total_power: 55300, rank_position: 11, updated_at: now },
     ]));
     localStorage.setItem("mock_db_pvp_ranks", JSON.stringify(users.map((userId: string, index: number) => ({ user_id: userId, rank_points: 1500 - index * 100, daily_wins: 5 - index, updated_at: now }))));
-    localStorage.setItem("mock_db_raid_damage_logs", JSON.stringify(users.flatMap((userId: string, index: number) => [{ user_id: userId, guild_id: index < 2 ? "guild-1" : index === 2 ? "guild-2" : "guild-3", raw_damage: 50000 - index * 5000, created_at: now, raid_boss_instance_id: "raid-1" }])));
+    localStorage.setItem("mock_db_raid_damage_logs", JSON.stringify([
+      ...users.flatMap((userId: string, index: number) => [{ user_id: userId, guild_id: index < 2 ? "guild-1" : index === 2 ? "guild-2" : "guild-3", raw_damage: 50000 - index * 5000, created_at: now, raid_boss_instance_id: "raid-1" }]),
+      { user_id: me, guild_id: "guild-1", raw_damage: 9999999, created_at: "2026-08-01T00:00:00.000Z", raid_boss_instance_id: "raid-old" },
+    ]));
     localStorage.setItem("mock_db_raid_bosses", JSON.stringify([{ id: "raid-1", status: "ACTIVE", expires_at: new Date(Date.now() + 86400000).toISOString() }]));
     localStorage.setItem("mock_db_user_funnel_milestones", JSON.stringify([{ user_id: me, milestone: "ranking_viewed" }]));
   }, { me: ME, users: USERS, characterIds: CHARACTER_IDS });
@@ -97,7 +100,7 @@ test("Ranking categories isolate metrics and profiles preserve identity context"
   await page.getByRole("button", { name: "閉じる" }).click();
   await expect(page.locator(".ranking-category-nav .sub-tab-item.active")).toHaveText("総合力");
 
-  await page.getByRole("button", { name: "PvP", exact: true }).click();
+  await page.getByRole("button", { name: "バトル", exact: true }).click();
   await expect(page.locator(".ranking-skeleton")).toHaveCount(0);
   await expect(page.locator(".ranking-metric small").first()).toHaveText("RATE");
   await expect(page.locator(".ranking-metric small").first()).not.toHaveText("総合力");
@@ -138,7 +141,7 @@ test("Top three rank stays compact beside identity and Raid Daily keeps canonica
   expect(rankBox.height).toBeLessThanOrEqual(26);
   expect(rankBox.width).toBeLessThanOrEqual(leaderBox.width);
 
-  await page.getByRole("button", { name: "PvP", exact: true }).click();
+  await page.getByRole("button", { name: "バトル", exact: true }).click();
   await expect(page.locator(".ranking-skeleton")).toHaveCount(0);
   expect(await page.locator(".ranking-position").first().evaluate((node) => node.getBoundingClientRect().width)).toBeLessThanOrEqual(30);
 
@@ -155,4 +158,27 @@ test("RankPresentation uses 圏外 for missing server placement", async ({ page 
   await openRanking(page, "/?unranked=1");
   await expect(page.locator(".ranking-position").first()).toHaveText("圏外");
   await expect(page.locator(".ranking-tab-view")).not.toContainText(/(?:^|\D)0位|undefined位|null位|#0/);
+});
+
+test("Ranking rewards use frozen canonical definitions and Raid season excludes historical damage", async ({ page }) => {
+  await openRanking(page);
+  await page.getByRole("button", { name: "報酬確認" }).click();
+  await expect(page.getByRole("dialog", { name: "ランキング報酬確認" })).toContainText("報酬定義なし");
+  await page.getByRole("button", { name: "閉じる" }).click();
+
+  await page.locator(".ranking-category-nav").getByRole("button", { name: "バトル", exact: true }).click();
+  await page.getByRole("button", { name: "報酬確認" }).click();
+  const pvpRewards = page.getByRole("dialog", { name: "ランキング報酬確認" });
+  await expect(pvpRewards).toContainText("月次");
+  await expect(pvpRewards).toContainText("ランダムSPガチャチケット");
+  await page.getByRole("button", { name: "閉じる" }).click();
+
+  await page.locator(".ranking-category-nav").getByRole("button", { name: "レイド", exact: true }).click();
+  await expect(page.locator(".ranking-skeleton")).toHaveCount(0);
+  await expect(page.locator(".ranking-user-row").first().locator(".ranking-metric")).toContainText("50,000");
+  await page.getByRole("button", { name: "報酬確認" }).click();
+  const raidRewards = page.getByRole("dialog", { name: "ランキング報酬確認" });
+  await expect(raidRewards).toContainText("週次");
+  await expect(raidRewards).toContainText("個人ランキング");
+  await expect(raidRewards).toContainText("ギルドランキング");
 });
