@@ -203,9 +203,10 @@ export function useChat(
       message.sender_id === currentUserId ? message.recipient_id : message.sender_id
     )).filter(Boolean))];
     const participantNames = new Map<string, string>();
-    if (participantIds.length > 0) {
+    for (let start = 0; start < participantIds.length; start += 100) {
+      const participantChunk = participantIds.slice(start, start + 100);
       const { data: participants, error: participantError } = await supabase.rpc("get_public_profiles", {
-        p_user_ids: participantIds
+        p_user_ids: participantChunk
       });
       if (participantError) {
         console.warn("direct message participants fetch error:", participantError.message);
