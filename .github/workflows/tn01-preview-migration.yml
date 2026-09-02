@@ -35,6 +35,10 @@ jobs:
           node-version: 22
           cache: npm
 
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.116.0
+
       - name: Guard secrets and exact Preview target
         shell: bash
         run: |
@@ -61,7 +65,12 @@ jobs:
       - run: npm ci --ignore-scripts
 
       - name: Link exact Preview project
-        run: node scripts/link_guarded_supabase.mjs --environment preview
+        env:
+          SUPABASE_TELEMETRY_DISABLED: "1"
+        run: |
+          supabase link \
+            --project-ref "$SUPABASE_EXPECTED_PROJECT_REF" \
+            --password "$SUPABASE_DB_PASSWORD"
 
       - name: Confirm guarded Preview mutation
         run: node scripts/supabase_target_guard.mjs --environment preview --mutation
