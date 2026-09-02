@@ -67,6 +67,7 @@ type HomeTabQaState = Readonly<{
   socialActivities?: readonly any[];
   funnelMilestones?: readonly string[];
   ctaAuthorityReady?: boolean;
+  guildDiscoveryState?: "pending" | "error" | "empty" | "available";
 }>;
 
 type HomeActivity = {
@@ -122,6 +123,7 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
     userGuildMember,
     pendingGuildJoinRequests,
     guildMembershipAuthorityReady,
+    guildDiscoveryState,
     featureOperatingStates,
     fetchPlayerDetail,
     setErrorMessage,
@@ -249,16 +251,18 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
     if (!funnelMilestones.has("first_raid") && isRaidActive) return { key: "first_raid", title: "開催中レイドへ", tab: "raid" };
     if (!userGuildMember) {
       if (pendingGuildJoinRequests.length > 0) return { key: "guild_pending", title: "ギルド申請を確認", tab: "guild" };
-      return { key: "guild_discovery", title: "ギルドに加入しよう", tab: "guild" };
+      const discoveryState = qaState?.guildDiscoveryState || guildDiscoveryState;
+      if (discoveryState === "empty") return { key: "guild_creation", title: "ギルドを設立しよう", tab: "guild" };
+      if (discoveryState === "available") return { key: "guild_discovery", title: "ギルドに加入しよう", tab: "guild" };
+      return null;
     }
-    if (!funnelMilestones.has("guild_activation")) return { key: "guild_home", title: "所属ギルドを確認", tab: "guild" };
     if (!funnelMilestones.has("activation_mission_handoff")) return {
       key: "activation_mission_handoff",
       title: "ミッションを進めよう",
       action: "mission_handoff",
     };
     return null;
-  }, [funnelMilestones, funnelAuthorityOwnerUserId, guildMembershipAuthorityReady, onboardingState, pendingGuildJoinRequests.length, qaState, session?.user?.id, userGuildMember, isRaidActive]);
+  }, [funnelMilestones, funnelAuthorityOwnerUserId, guildDiscoveryState, guildMembershipAuthorityReady, onboardingState, pendingGuildJoinRequests.length, qaState, session?.user?.id, userGuildMember, isRaidActive]);
 
   useEffect(() => {
     if (!session?.user?.id || !primaryCta || lastCtaImpression.current === primaryCta.key) return;
@@ -295,7 +299,7 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
       if (primaryCta.key === "first_free_asset_gacha") {
         setGuideGachaCategory(funnelMilestones.has("first_free_skill_ten_pull") ? "EQUIPMENT" : "SKILL");
       }
-      navigateTab(primaryCta.tab);
+      navigateTab(primaryCta.tab, primaryCta.key === "first_main_loadout" ? "party" : undefined);
     }
     playCyberSe("click");
   };

@@ -78,6 +78,18 @@ test("anonymous COMPLETE can defer authentication and receives ordered exactly-o
   await page.getByRole("button", { name: "閉じる" }).click();
   await expect(page.getByRole("button", { name: "未認証：アカウント認証を開く" })).toBeVisible();
 
+  await page.getByRole("button", { name: "ガチャ", exact: true }).click();
+  await page.getByRole("button", { name: "マイページ", exact: true }).click();
+  await expect(page.getByRole("dialog", { name: "ログインボーナス" })).toHaveCount(0);
+
+  const manualLoginBonus = page.locator(".sub-icon-unit").filter({ hasText: "ボーナス" });
+  await manualLoginBonus.click();
+  await expect(loginBonus).toBeVisible();
+  await loginBonus.getByRole("button", { name: "閉じる" }).click();
+  await page.getByRole("button", { name: "ガチャ", exact: true }).click();
+  await page.getByRole("button", { name: "マイページ", exact: true }).click();
+  await expect(loginBonus).toHaveCount(0);
+
   await page.reload();
   await page.getByRole("button", { name: "TAP TO START" }).click();
   await expect(page.getByRole("button", { name: "続きから" })).toBeVisible({ timeout: 20_000 });
@@ -85,6 +97,24 @@ test("anonymous COMPLETE can defer authentication and receives ordered exactly-o
   await expect(page.locator(".mypage-view")).toBeVisible({ timeout: 20_000 });
   await expect(page.getByRole("dialog", { name: "ログインボーナス" })).toHaveCount(0);
   await expect(page.getByRole("dialog", { name: "アカウント認証のご案内" })).toHaveCount(0);
+});
+
+test("an open provider processes the next Login Bonus after the JST date changes", async ({ page }) => {
+  await page.clock.setFixedTime(new Date("2026-09-01T14:59:00Z"));
+  await seedPlayer(page);
+  await enterFromTitle(page, "チュートリアルを続ける");
+  await page.getByRole("button", { name: "そのまま続ける" }).click();
+
+  const loginBonus = page.getByRole("dialog", { name: "ログインボーナス" });
+  await expect(loginBonus).toBeVisible();
+  await loginBonus.getByRole("button", { name: "閉じる" }).click();
+  const reminder = page.getByRole("dialog", { name: "アカウント認証のご案内" });
+  if (await reminder.isVisible()) await reminder.getByRole("button", { name: "閉じる" }).click();
+
+  await page.getByRole("button", { name: "ガチャ", exact: true }).click();
+  await page.clock.setFixedTime(new Date("2026-09-01T15:01:00Z"));
+  await page.getByRole("button", { name: "マイページ", exact: true }).click();
+  await expect(loginBonus).toBeVisible();
 });
 
 test("pending icon reuses the authentication modal, preserves collisions, and disappears after email authentication", async ({ page }) => {
