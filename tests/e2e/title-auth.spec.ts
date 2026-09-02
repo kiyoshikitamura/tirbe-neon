@@ -35,6 +35,15 @@ async function seedCompletedAnonymous(page: import("@playwright/test").Page, con
   }, { confirmationRequired });
 }
 
+async function openCompletedAnonymousAuthentication(page: import("@playwright/test").Page) {
+  const tapToStart = page.getByRole("button", { name: "TAP TO START" });
+  await tapToStart.waitFor({ state: "visible", timeout: 10_000 }).catch(() => undefined);
+  if (await tapToStart.isVisible()) await tapToStart.click();
+  const resume = page.getByRole("button", { name: /^(チュートリアルを続ける|続きから)$/ });
+  await resume.waitFor({ state: "visible", timeout: 2_000 }).catch(() => undefined);
+  if (await resume.isVisible()) await resume.click();
+}
+
 test("title screen opens the authentication menu", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByText("TAP TO START")).toBeVisible();
@@ -237,7 +246,7 @@ test("tutorial gacha failure overlays the intact offer and remains retryable", a
 test("email linking keeps the anonymous user id and completes onboarding once", async ({ page }) => {
   await seedCompletedAnonymous(page);
   await page.goto("/");
-  await page.getByText("TAP TO START").click();
+  await openCompletedAnonymousAuthentication(page);
   await expect(page.getByText("ゲームデータを保存")).toBeVisible();
   await page.getByPlaceholder("メールアドレス").fill("new@example.com");
   await page.getByPlaceholder("パスワード（6文字以上）").fill("secure-pass-123");
@@ -257,15 +266,14 @@ test("email linking keeps the anonymous user id and completes onboarding once", 
 test("email confirmation wait survives reload and finalizes after the callback session", async ({ page }) => {
   await seedCompletedAnonymous(page, true);
   await page.goto("/");
-  await page.getByText("TAP TO START").click();
+  await openCompletedAnonymousAuthentication(page);
   await page.getByPlaceholder("メールアドレス").fill("confirm@example.com");
   await page.getByPlaceholder("パスワード（6文字以上）").fill("secure-pass-123");
   await page.getByRole("button", { name: "メールアカウントを連携" }).click();
 
   await expect(page.getByRole("status")).toContainText("確認メールを confirm@example.com に送信しました");
   await page.reload();
-  await page.getByText("TAP TO START").waitFor({ state: "visible", timeout: 2_000 }).catch(() => undefined);
-  if (await page.getByText("TAP TO START").isVisible()) await page.getByText("TAP TO START").click();
+  await openCompletedAnonymousAuthentication(page);
   await expect(page.getByRole("status")).toContainText("確認メールを confirm@example.com に送信しました");
 
   await page.evaluate(() => {
@@ -276,8 +284,7 @@ test("email confirmation wait survives reload and finalizes after the callback s
     localStorage.setItem("mock_db_auth_identities", JSON.stringify([{ user_id: userId, provider: "email", email: "confirm@example.com" }]));
   });
   await page.reload();
-  await page.getByText("TAP TO START").waitFor({ state: "visible", timeout: 2_000 }).catch(() => undefined);
-  if (await page.getByText("TAP TO START").isVisible()) await page.getByText("TAP TO START").click();
+  await openCompletedAnonymousAuthentication(page);
   await expect(page.getByRole("status")).toContainText("メール確認が完了しました");
   await page.getByPlaceholder("パスワード（6文字以上）").fill("secure-pass-123");
   await page.getByRole("button", { name: "パスワードを設定して完了" }).click();
@@ -292,7 +299,7 @@ test("email identity collision can be cancelled without changing anonymous tutor
     localStorage.setItem("mock_db_auth_identities", JSON.stringify([{ user_id: "other-user", provider: "email", email: "used@example.com" }]));
   });
   await page.goto("/");
-  await page.getByText("TAP TO START").click();
+  await openCompletedAnonymousAuthentication(page);
   await page.getByPlaceholder("メールアドレス").fill("used@example.com");
   await page.getByPlaceholder("パスワード（6文字以上）").fill("secure-pass-123");
   await page.getByRole("button", { name: "メールアカウントを連携" }).click();
@@ -329,8 +336,7 @@ test("Google OAuth redirect resumes with the same anonymous user id", async ({ p
   await seedCompletedAnonymous(page);
   await page.addInitScript(() => localStorage.setItem("mock_google_redirect_required", "true"));
   await page.goto("/");
-  await page.getByText("TAP TO START").click();
-  await page.getByRole("button", { name: "続きから" }).click();
+  await openCompletedAnonymousAuthentication(page);
   await page.getByRole("button", { name: "Googleアカウントを連携" }).click();
 
   const intent = await page.evaluate(() => JSON.parse(localStorage.getItem("tribe_onboarding_auth_intent") || "null"));
@@ -604,7 +610,7 @@ test("email identity collision verifies credentials before discard and resumes t
     localStorage.setItem("mock_db_user_account_auth_methods", JSON.stringify([{ user_id: existingId, auth_method: "EMAIL" }]));
   });
   await page.goto("/");
-  await page.getByText("TAP TO START").click();
+  await openCompletedAnonymousAuthentication(page);
   await page.getByPlaceholder("メールアドレス").fill("existing@example.com");
   await page.getByPlaceholder("パスワード（6文字以上）").fill("existing-pass");
   await page.getByRole("button", { name: "メールアカウントを連携" }).click();
@@ -621,7 +627,7 @@ test("email identity collision verifies credentials before discard and resumes t
 test("Google OAuth cancellation returns to onboarding and can be retried", async ({ page }) => {
   await seedCompletedAnonymous(page);
   await page.goto("/?error=access_denied&error_description=cancelled");
-  await page.getByText("TAP TO START").click();
+  await openCompletedAnonymousAuthentication(page);
 
   await expect(page.getByText("Google連携はキャンセルされました。もう一度お試しください。")).toBeVisible();
   await expect(page).toHaveURL("/");
@@ -636,7 +642,7 @@ test("two supported identities cannot complete tutorial authentication", async (
     localStorage.setItem("mock_session_identity_providers", JSON.stringify(["email", "google"]));
   });
   await page.goto("/");
-  await page.getByText("TAP TO START").click();
+  await openCompletedAnonymousAuthentication(page);
 
   await expect(page.getByText("メールとGoogleの両方が検出されました。データ保護のため認証完了を中止しました。")).toBeVisible();
   const state = await page.evaluate(() => ({
@@ -690,7 +696,7 @@ test("an expired Google linking intent is discarded", async ({ page }) => {
     }));
   });
   await page.goto("/");
-  await page.getByText("TAP TO START").click();
+  await openCompletedAnonymousAuthentication(page);
 
   await expect(page.getByText("ゲームデータを保存")).toBeVisible();
   await expect.poll(async () => page.evaluate(() => localStorage.getItem("tribe_onboarding_auth_intent"))).toBeNull();
@@ -724,7 +730,7 @@ test.describe("X in-app browser Google OAuth guard", () => {
     test("blocks anonymous identity linking before OAuth starts", async ({ page }) => {
       await seedCompletedAnonymous(page);
       await page.goto("/?invite=FRIEND-X-ANDROID");
-      await page.getByText("TAP TO START").click();
+      await openCompletedAnonymousAuthentication(page);
       await expect(page.getByText("ゲームデータを保存")).toBeVisible();
       await page.getByRole("button", { name: "Googleアカウントを連携" }).click();
 

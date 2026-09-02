@@ -992,7 +992,12 @@ test("first quest connects dispatch, official battle, and one reward to the comp
     expect(resultLayout.bottom).toBeLessThanOrEqual(resultLayout.viewportHeight);
     expect(resultLayout.scrollWidth).toBeLessThanOrEqual(resultLayout.clientWidth + 1);
   }
-  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem("mock_db_presents") || "[]").filter((present: any) => String(present.id).startsWith("patrol_reward_")).length)).toBe(1);
+  await expect.poll(() => page.evaluate(() => {
+    const presents = JSON.parse(localStorage.getItem("mock_db_presents") || "[]");
+    return presents.some((present: any) => String(present.id).startsWith("patrol_item_") && present.item_id === "CHAR_EXP_S" && present.quantity === 1);
+  })).toBe(true);
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem("mock_db_presents") || "[]")
+    .filter((present: any) => String(present.id).startsWith("patrol_reward_")).length)).toBe(0);
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem("mock_db_tutorial_progress") || "[]")[0]?.step_id)).toBe("TUTORIAL_BATTLE");
   if (captureAcceptanceVisuals) await page.screenshot({ path: test.info().outputPath("m9-0e-reward-430.png"), fullPage: true });
 
