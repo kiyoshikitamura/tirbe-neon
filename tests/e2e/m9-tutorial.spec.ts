@@ -707,7 +707,10 @@ test("first quest connects dispatch, official battle, and one reward to the comp
     localStorage.setItem("tribe_demo_uuid", userId);
     localStorage.setItem("mock_auth_mode", "ANONYMOUS");
     localStorage.setItem("mock_db_users", JSON.stringify([{ id: userId, username: "初戦確認", cash: 10000, vitality: 100, level: 1, xp: 0, current_base_id: "shinjuku" }]));
-    localStorage.setItem("mock_db_user_characters", JSON.stringify([{ id: `starter_${userId}`, user_id: userId, character_id: "char_reiji_01", level: 3, awakening_level: 0 }]));
+    // This focused replay fixture owns one character rather than the five-member
+    // new-player formation covered below. Keep it decisively victorious so the
+    // test reaches and verifies the reward presentation contract.
+    localStorage.setItem("mock_db_user_characters", JSON.stringify([{ id: `starter_${userId}`, user_id: userId, character_id: "char_reiji_01", level: 100, awakening_level: 0 }]));
     localStorage.setItem("mock_db_user_skills", JSON.stringify([
       { id: `skill_sr_${userId}`, user_id: userId, skill_card_id: "SKILL_021", equipped_character_id: `starter_${userId}`, slot_index: 0, plus_val: 0 },
       { id: `skill_ssr_${userId}`, user_id: userId, skill_card_id: "SKILL_036", equipped_character_id: `starter_${userId}`, slot_index: 1, plus_val: 0 },

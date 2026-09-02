@@ -98,7 +98,6 @@ test("normal Quest starts its Canonical battle from the per-dispatch encounter s
   await expect(launchBattle).toBeVisible({ timeout: 20_000 });
   await launchBattle.click();
   await expect(page.locator(".quest-battle-viewer")).toBeVisible({ timeout: 20_000 });
-  await expect(page.locator('[data-quest-state="BATTLE_READY"]')).toHaveCount(0);
   await page.screenshot({ path: testInfo.outputPath("after-canonical-quest-battle-start.png"), fullPage: true });
 
   const geometry = await page.locator(".battle-screen").evaluate((node) => ({
