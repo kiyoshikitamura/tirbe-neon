@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 
 test.use({ viewport: { width: 390, height: 844 } });
 
-test("normal Quest becomes claimable and starts its Canonical battle without patrol_npcs", async ({ page }, testInfo) => {
+test("normal Quest starts its Canonical battle from the per-dispatch encounter snapshot", async ({ page }, testInfo) => {
   await page.addInitScript(() => {
     const userId = "00000000-0000-4000-8000-000000000925";
     const now = Date.now();
@@ -79,6 +79,7 @@ test("normal Quest becomes claimable and starts its Canonical battle without pat
   await expect(battleStart).toBeVisible({ timeout: 20_000 });
   await expect(battleStart).toBeEnabled();
   await expect(page.locator('[data-quest-state="BATTLE_READY"]')).toBeVisible();
+  await expect(page.locator(".quest-v2-battle-enemies article")).toHaveCount(3);
   await page.screenshot({ path: testInfo.outputPath("before-canonical-quest-battle-start.png"), fullPage: true });
 
   await battleStart.click();

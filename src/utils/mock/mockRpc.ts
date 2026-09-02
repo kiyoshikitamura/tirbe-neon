@@ -2991,6 +2991,21 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     };
   }
 
+  if (funcName === "move_current_user_base") {
+    const userId = typeof window === "undefined" ? null : localStorage.getItem("tribe_demo_uuid");
+    const nextBaseId = String(params.p_base_id || "");
+    const canonicalBaseIds = ["shinjuku", "shibuya", "ikebukuro", "roppongi", "akihabara", "kawasaki", "yokohama"];
+    if (!userId) return { data: null, error: { message: "Player authentication required", code: "42501" } };
+    if (!canonicalBaseIds.includes(nextBaseId)) return { data: null, error: { message: "Invalid base id", code: "22023" } };
+    const users = client.getStorage("users") || [];
+    const user = users.find((entry: any) => entry.id === userId);
+    if (!user) return { data: null, error: { message: "Player was not found", code: "P0002" } };
+    const previousBaseId = user.current_base_id;
+    user.current_base_id = nextBaseId;
+    client.setStorage("users", users);
+    return { data: { status: "success", previous_base_id: previousBaseId, current_base_id: nextBaseId }, error: null };
+  }
+
   if (funcName === "claim_patrol_rewards") {
     const { p_patrol_id } = params;
     const userId = typeof window === "undefined" ? null : localStorage.getItem("tribe_demo_uuid");
@@ -4067,7 +4082,7 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
       const prerequisite = condition.type === "FIRST_CLEAR" ? condition.questId : null;
       const memberCharacters = encounter.members.map((member) => CANONICAL_CHARACTERS.find((entry) => entry.character_id === member.characterId)!);
       const recommendedPower = encounter.members.reduce((total,member,index) => { const stats=canonicalCharacterStats(memberCharacters[index].lv1,memberCharacters[index].lv100,member.level,member.awakening); return total+stats.hp+stats.atk+stats.def; },0);
-      return { quest_id:encounter.questId, unlock_condition:condition.type === "OPEN" ? "OPEN" : `FIRST_CLEAR:${prerequisite}`, is_unlocked:condition.type === "OPEN" || firstClears.some((entry:any)=>entry.user_id===userId&&entry.quest_id===prerequisite), is_first_cleared:firstClears.some((entry:any)=>entry.user_id===userId&&entry.quest_id===encounter.questId), enemy_tactic:encounter.enemyTactic, enemy_member_count:encounter.members.length, enemy_members:encounter.members, enemy_attributes:[...new Set(memberCharacters.map((entry)=>entry.attribute))], recommended_level:encounter.members[0]?.level ?? null, recommended_power:recommendedPower };
+      return { quest_id:encounter.questId, unlock_condition:condition.type === "OPEN" ? "OPEN" : `FIRST_CLEAR:${prerequisite}`, is_unlocked:condition.type === "OPEN" || firstClears.some((entry:any)=>entry.user_id===userId&&entry.quest_id===prerequisite), is_first_cleared:firstClears.some((entry:any)=>entry.user_id===userId&&entry.quest_id===encounter.questId), enemy_tactic:encounter.enemyTactic, enemy_member_count:encounter.members.length, enemy_members:[], enemy_attributes:[...new Set(memberCharacters.map((entry)=>entry.attribute))], recommended_level:encounter.members[0]?.level ?? null, recommended_power:recommendedPower };
     }), error:null };
   }
 
