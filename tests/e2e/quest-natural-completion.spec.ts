@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 
 test.use({ viewport: { width: 390, height: 844 } });
 test.setTimeout(60_000);
+const captureAcceptanceVisuals = process.env.CAPTURE_ACCEPTANCE_VISUALS === "1";
 
 test("normal Quest starts its Canonical battle from the per-dispatch encounter snapshot", async ({ page }, testInfo) => {
   await page.addInitScript(() => {
@@ -87,12 +88,14 @@ test("normal Quest starts its Canonical battle from the per-dispatch encounter s
   await expect(battleStart).toBeEnabled();
   await expect(page.locator('[data-quest-state="BATTLE_READY"]')).toBeVisible();
   await expect(page.locator(".quest-v2-battle-enemies article")).toHaveCount(3);
-  await page.screenshot({ path: testInfo.outputPath("before-canonical-quest-battle-start.png"), fullPage: true });
+  if (captureAcceptanceVisuals) await page.screenshot({ path: testInfo.outputPath("before-canonical-quest-battle-start.png"), fullPage: true });
 
   await battleStart.click();
-  await expect(page.getByRole("button", { name: "出撃開始" })).toBeVisible({ timeout: 20_000 });
-  await expect(page.locator('[data-quest-state="BATTLE_READY"]')).toHaveCount(0);
-  await page.screenshot({ path: testInfo.outputPath("after-canonical-quest-battle-start.png"), fullPage: true });
+  const sortieAction = page.getByRole("button", { name: "出撃開始" });
+  await expect(page.locator(".battle-screen")).toBeVisible({ timeout: 20_000 });
+  await expect(sortieAction).toBeVisible();
+  await expect(sortieAction).toBeEnabled();
+  if (captureAcceptanceVisuals) await page.screenshot({ path: testInfo.outputPath("after-canonical-quest-battle-start.png"), fullPage: true });
 
   const geometry = await page.locator(".battle-screen").evaluate((node) => ({
     scrollWidth: node.scrollWidth,

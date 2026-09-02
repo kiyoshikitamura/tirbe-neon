@@ -37,11 +37,26 @@ begin
       and starts_at=v_raid.starts_at and ends_at=v_raid.ends_at)<>1 then
     raise exception 'current RAID season invalid';
   end if;
-  if (select count(*) from public.ranking_seasons where id in(
-      '90106a5f-ec9b-415f-98d0-754a525c1eb7'::uuid,
-      '2828d27e-ebfd-4005-ba3b-0d618618c286'::uuid
-    ) and status='CLOSED')<>2 then
-    raise exception 'restored historical seasons were not finalized';
+  -- Previewの事故復旧で使用した固定UUIDをProduction/clean replayへ要求しない。
+  -- どの環境でも成立すべき期間・状態の不変条件だけを検査する。
+  if exists(
+    select 1
+    from public.ranking_seasons left_season
+    join public.ranking_seasons right_season
+      on right_season.ranking_type=left_season.ranking_type
+     and right_season.id<>left_season.id
+     and right_season.starts_at<left_season.ends_at
+     and right_season.ends_at>left_season.starts_at
+    where left_season.status='ACTIVE'
+      and right_season.status='ACTIVE'
+  ) then
+    raise exception 'active ranking seasons overlap';
+  end if;
+  if exists(
+    select 1 from public.ranking_seasons
+    where status='ACTIVE' and starts_at>=ends_at
+  ) then
+    raise exception 'active ranking season has invalid bounds';
   end if;
 
   if public.canonical_ranking_reward_payload()<>(select payload

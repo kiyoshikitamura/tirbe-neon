@@ -2,6 +2,8 @@
 -- Align the encounter preauthorization boundary with create_patrol_battle_replay:
 -- the owner may proceed when the server deadline has elapsed, but never early.
 
+begin;
+
 create or replace function public.get_patrol_battle_enemy(p_patrol_id uuid)
 returns jsonb
 language plpgsql
@@ -51,4 +53,5 @@ revoke all on function public.get_patrol_battle_enemy(uuid) from public;
 revoke all on function public.get_patrol_battle_enemy(uuid) from anon;
 grant execute on function public.get_patrol_battle_enemy(uuid) to authenticated;
 
+commit;
 notify pgrst, 'reload schema';

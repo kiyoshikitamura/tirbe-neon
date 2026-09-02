@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import Link from "next/link";
 import { supabase } from "@/utils/supabase";
 import { PROFILE_BACKGROUNDS, PROFILE_FRONT_EFFECTS, PROFILE_INTERIORS } from "@/utils/game_constants";
 import { useGame } from "../context/GameContext";
@@ -136,6 +137,14 @@ export default function SettingsPanel() {
             <input id="se-volume" className="settings-volume" type="range" min="0" max="1" step="0.05" value={game.seVolume} disabled={!game.seEnabled} onChange={(event) => game.setSeVolume(Number(event.target.value))} />
           </div>
           <p className="settings-help-text">この端末のブラウザに保存されます。</p>
+        </section>
+        <section className="settings-section" aria-labelledby="settings-legal-title">
+          <h4 id="settings-legal-title" className="settings-section-title">法的情報</h4>
+          <nav className="settings-legal-links" aria-label="法的情報">
+            <Link href="/legal/terms">利用規約</Link>
+            <Link href="/legal/privacy">プライバシーポリシー</Link>
+            <Link href="/legal/commercial">特定商取引法に基づく表記</Link>
+          </nav>
         </section>
         <div className="settings-panel-footer">
           <OutlawButton

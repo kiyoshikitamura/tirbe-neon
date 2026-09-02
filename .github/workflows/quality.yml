@@ -77,12 +77,18 @@ jobs:
           exit 1
       - run: deno test supabase/functions/resolve-battle/engine_test.ts
 
-  browser-e2e-targeted:
+  browser-e2e:
+    name: browser-e2e (shard ${{ matrix.shard }}/4)
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
     env:
       NEXT_PUBLIC_APP_ENV: test
       NEXT_PUBLIC_USE_MOCK_DB: "true"
+      CAPTURE_ACCEPTANCE_VISUALS: "0"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -90,16 +96,18 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Cache Playwright browser
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
       - run: npx playwright install --with-deps chromium
       - run: npm run build
-      - name: Run the current Acceptance reconciliation targets
+      - name: Run bounded browser shard
         run: >-
           timeout --signal=TERM --kill-after=30s 12m
-          npm run test:e2e --
-          tests/e2e/m9-tutorial.spec.ts
-          tests/e2e/preopen-remaining-ux.spec.ts
-          tests/e2e/quest-natural-completion.spec.ts
-          --grep "first quest connects dispatch, official battle, and one reward to the completion boundary|new mobile player completes the guided first session without footer navigation|Quest, Character and BBS consume canonical presentation contracts|normal Quest starts its Canonical battle from the per-dispatch encounter snapshot"
+          node scripts/run_browser_e2e.mjs
+          --shard=${{ matrix.shard }}/4
           --workers=2
           --retries=0
           --max-failures=2
@@ -107,40 +115,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-targeted-diagnostics
-          path: |
-            test-results/**/test-failed-*.png
-            test-results/**/error-context.md
-            playwright-report/index.html
-          if-no-files-found: ignore
-          retention-days: 1
-
-  browser-e2e-full:
-    needs: browser-e2e-targeted
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    env:
-      NEXT_PUBLIC_APP_ENV: test
-      NEXT_PUBLIC_USE_MOCK_DB: "true"
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-      - run: npm ci
-      - run: npx playwright install --with-deps chromium
-      - run: npm run build
-      - name: Run the final browser regression once
-        run: >-
-          timeout --signal=TERM --kill-after=30s 20m
-          npm run test:e2e --
-          --retries=0
-      - name: Upload Playwright diagnostics
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: playwright-full-diagnostics
+          name: playwright-diagnostics-shard-${{ matrix.shard }}
           path: |
             test-results/**/test-failed-*.png
             test-results/**/error-context.md

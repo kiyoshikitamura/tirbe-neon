@@ -62,6 +62,7 @@ const c2AcceptanceViewports = [
   { label: "pixel7", width: 412, height: 915 },
   { label: "desktop", width: 1024, height: 768 },
 ];
+const captureAcceptanceVisuals = process.env.CAPTURE_ACCEPTANCE_VISUALS === "1";
 
 async function assertCenteredGameCanvas(page: import("@playwright/test").Page, screenSelector: string) {
   for (const viewport of canvasAuditViewports) {
@@ -698,8 +699,7 @@ test("three random tutorial SSRs remain the same owned character through result 
   }
 });
 
-test("first quest connects dispatch, official battle, and one reward to the completion boundary", async ({ page, browser }) => {
-  test.setTimeout(300_000);
+test("first quest connects dispatch, official battle, and one reward to the completion boundary", async ({ page }) => {
   const userId = "00000000-0000-4000-8000-000000000910";
   await page.addInitScript(({ userId }) => {
     if (sessionStorage.getItem("m9_0e_seeded") === "true") return;
@@ -761,7 +761,7 @@ test("first quest connects dispatch, official battle, and one reward to the comp
     });
     expect(metrics.scrollWidth).toBeLessThanOrEqual(metrics.clientWidth + 1);
     expect(metrics.actionHeight).toBeGreaterThanOrEqual(44);
-    await page.screenshot({ path: test.info().outputPath(`m9-1-quest-${width}.png`), fullPage: true });
+    if (captureAcceptanceVisuals) await page.screenshot({ path: test.info().outputPath(`m9-1-quest-${width}.png`), fullPage: true });
   }
   const questStartedAt = Date.now();
   await questAction.evaluate((button: HTMLButtonElement) => {
@@ -798,12 +798,14 @@ test("first quest connects dispatch, official battle, and one reward to the comp
   const battlePromptAction = page.getByRole("button", { name: "バトルへ" });
   await expect(battlePromptAction).toBeVisible();
   await expect(page.locator('[data-acceptance-state="Q6"] [data-encounter-projection]')).toHaveAttribute("data-encounter-projection", "ready");
-  await page.screenshot({ path: test.info().outputPath("Q6-battle-encounter-initial.png"), fullPage: true });
-  await page.waitForTimeout(320);
-  await page.screenshot({ path: test.info().outputPath("Q6-battle-encounter-impact.png"), fullPage: true });
+  if (captureAcceptanceVisuals) await page.screenshot({ path: test.info().outputPath("Q6-battle-encounter-initial.png"), fullPage: true });
+  if (captureAcceptanceVisuals) {
+    await page.waitForTimeout(320);
+    await page.screenshot({ path: test.info().outputPath("Q6-battle-encounter-impact.png"), fullPage: true });
+  }
   await expect(page.locator('[data-acceptance-state="Q6"] [data-encounter-ready="true"]')).toBeVisible({ timeout: 2_000 });
   await expect(battlePromptAction).toBeEnabled();
-  await page.screenshot({ path: test.info().outputPath("Q6-battle-encounter-ready.png"), fullPage: true });
+  if (captureAcceptanceVisuals) await page.screenshot({ path: test.info().outputPath("Q6-battle-encounter-ready.png"), fullPage: true });
   await battlePromptAction.evaluate((button: HTMLButtonElement) => {
     button.click();
     button.click();
@@ -824,7 +826,7 @@ test("first quest connects dispatch, official battle, and one reward to the comp
     });
     expect(setupMetrics.scrollWidth).toBeLessThanOrEqual(setupMetrics.clientWidth + 1);
     expect(setupMetrics.ctaHeight).toBeGreaterThanOrEqual(44);
-    await page.screenshot({ path: test.info().outputPath(`m9-battle-setup-${width}.png`), fullPage: true });
+    if (captureAcceptanceVisuals) await page.screenshot({ path: test.info().outputPath(`m9-battle-setup-${width}.png`), fullPage: true });
   }
 
   await page.getByRole("button", { name: "バトルスタート" }).evaluate((button: HTMLButtonElement) => {
@@ -856,19 +858,19 @@ test("first quest connects dispatch, official battle, and one reward to the comp
   expect(normalImpactDuration).toBeGreaterThanOrEqual(240);
   expect(normalImpactDuration).toBeLessThanOrEqual(450);
   test.info().annotations.push({ type: "normal-impact-ms", description: String(normalImpactDuration) });
-  await page.screenshot({ path: test.info().outputPath("M1-375-B3-normal-attack.png"), fullPage: true });
+  if (captureAcceptanceVisuals) await page.screenshot({ path: test.info().outputPath("M1-375-B3-normal-attack.png"), fullPage: true });
   await expect.poll(() => battleViewer.evaluate((viewer) => viewer.dataset.actionKind === "normal"
     && Boolean(viewer.querySelector(".battle-party-zone.is-enemy .battle-unit-party.is-actor"))), { timeout: 12_000 }).toBe(true);
   await expect(page.locator(".battle-party-zone.is-enemy .battle-unit-party.is-actor .battle-unit-identity-badges img").first()).toBeVisible();
   await expect(page.locator(".battle-skill-cutin")).toHaveCount(0);
-  await page.screenshot({ path: test.info().outputPath("M1-375-enemy-current-actor.png"), fullPage: true });
+  if (captureAcceptanceVisuals) await page.screenshot({ path: test.info().outputPath("M1-375-enemy-current-actor.png"), fullPage: true });
   await expect(page.locator(".battle-skill-cutin.is-ssr")).toBeVisible({ timeout: 8_000 });
   await expect(page.locator(".battle-cutin-copy")).toContainText("一騎当千・無慈悲の一撃");
   await expect(page.locator(".battle-skill-cutin")).toHaveCount(1);
   const ssrSkillActorId = await battleViewer.getAttribute("data-action-actor-id");
   expect(ssrSkillActorId).toBeTruthy();
   const ssrSkillId = "SKILL_036";
-  await page.screenshot({ path: test.info().outputPath("M2-375-B4-skill-cutin.png"), fullPage: true });
+  if (captureAcceptanceVisuals) await page.screenshot({ path: test.info().outputPath("M2-375-B4-skill-cutin.png"), fullPage: true });
   await expect.poll(() => page.evaluate((identity) => {
     const metrics = (window as any).__TRIBE_BATTLE_PRESENTATION__;
     return [metrics?.current, ...(metrics?.history || [])].some((entry) => entry?.kind === "skill" && entry?.actorId === identity.actorId && entry?.skillId === identity.skillId && entry?.impactAt);
@@ -888,7 +890,7 @@ test("first quest connects dispatch, official battle, and one reward to the comp
     await pauseButton.click();
     await expect(page.getByRole("button", { name: "再開" })).toBeVisible();
   }
-  await page.screenshot({ path: test.info().outputPath("M3-375-B4-impact.png"), fullPage: true });
+  if (captureAcceptanceVisuals) await page.screenshot({ path: test.info().outputPath("M3-375-B4-impact.png"), fullPage: true });
   await expect.poll(() => page.evaluate(() => performance.getEntriesByType("resource")
     .filter((entry) => entry.name.includes("/effects/")).length)).toBeGreaterThanOrEqual(7);
   const effectPerformance = await page.evaluate(() => {
@@ -938,64 +940,14 @@ test("first quest connects dispatch, official battle, and one reward to the comp
     expect(battleMetrics.actionUnitCollision).toBe(false);
     expect(battleMetrics.actionArtCollision).toBe(false);
     expect(battleMetrics.teamCollision).toBe(false);
-    if (width === 390) await page.screenshot({ path: test.info().outputPath("M5-390-B4-skill.png"), fullPage: true });
-    if (width === 430) await page.screenshot({ path: test.info().outputPath("M6-430-B4-skill.png"), fullPage: true });
+    if (captureAcceptanceVisuals && width === 390) await page.screenshot({ path: test.info().outputPath("M5-390-B4-skill.png"), fullPage: true });
+    if (captureAcceptanceVisuals && width === 430) await page.screenshot({ path: test.info().outputPath("M6-430-B4-skill.png"), fullPage: true });
   }
-  const desktopContext = await browser.newContext({
-    viewport: { width: 1440, height: 1000 },
-    deviceScaleFactor: 2,
-  });
-  const desktopPage = await desktopContext.newPage();
-  await desktopPage.addInitScript(() => {
-    const desktopUserId = "00000000-0000-4000-8000-000000000919";
-    localStorage.setItem("tribe_demo_uuid", desktopUserId);
-    localStorage.setItem("mock_auth_mode", "ANONYMOUS");
-    localStorage.setItem("mock_db_users", JSON.stringify([{ id: desktopUserId, username: "DPR2 QA", cash: 10000, vitality: 100, level: 1, xp: 0, current_base_id: "shinjuku" }]));
-    localStorage.setItem("mock_db_user_characters", JSON.stringify([{ id: `starter_${desktopUserId}`, user_id: desktopUserId, character_id: "char_reiji_01", level: 3, awakening_level: 0 }]));
-    localStorage.setItem("mock_db_user_skills", JSON.stringify([{ id: `skill_${desktopUserId}`, user_id: desktopUserId, skill_card_id: "SKILL_036", equipped_character_id: `starter_${desktopUserId}`, slot_index: 0, plus_val: 0 }]));
-    localStorage.setItem("mock_db_skill_battle_master", JSON.stringify([{ skill_id: "SKILL_036", display_name: "SSR TEST BREAK", kind: "ATTACK", target: "ENEMY_SINGLE", power_percent: 240, cooldown: 1, initial_cooldown: 0, enabled: true }]));
-    localStorage.setItem("mock_db_pvp_defense_decks", JSON.stringify([{ id: `deck_${desktopUserId}`, user_id: desktopUserId, character_1_id: `starter_${desktopUserId}` }]));
-    localStorage.setItem("mock_db_tutorial_progress", JSON.stringify([{ user_id: desktopUserId, step_id: "DISPATCH" }]));
-    localStorage.setItem("mock_db_quests", JSON.stringify([{ id: "q_shinjuku_short", name: "新宿", duration_seconds: 60, cost_vitality: 5, cash_reward: 800, exp_reward: 120 }]));
-    localStorage.setItem("mock_db_patrol_npcs", JSON.stringify([{ id: "npc_tutorial_short", quest_id: "q_shinjuku_short", npc_name: "路地裏のならず者", enemy_data: { hp: 120, atk: 1, def: 0, spd: 20, luk: 0 } }]));
-    localStorage.setItem("mock_db_user_patrols", "[]");
-    localStorage.setItem("mock_db_battle_replay_sessions", "[]");
-  });
-  await desktopPage.goto("/");
-  await desktopPage.locator('[data-acceptance-state="Q1"] button').click();
-  await expect(desktopPage.locator('[data-acceptance-state="Q3"]')).toBeVisible();
-  await desktopPage.locator('[data-acceptance-state="Q3"] button').click();
-  await expect(desktopPage.locator('[data-acceptance-state="Q5"]')).toBeVisible();
-  await desktopPage.locator('[data-acceptance-state="Q5"] button').click();
-  await desktopPage.locator('[data-acceptance-state="Q6"] button').click();
-  await desktopPage.locator('[data-acceptance-state="B1"] .start-battle-btn').click();
-  await expect(desktopPage.locator('[data-acceptance-state="B4"]')).toBeVisible({ timeout: 20_000 });
-  await expect(desktopPage.locator(".battle-timeline-slot")).toHaveCount(0);
-  const desktopRoster = await desktopPage.locator(".battle-roster-stage").evaluate((stage) => [...stage.querySelectorAll<HTMLElement>(".battle-party-zone")].map((zone) => ({
-    declared: Number(zone.dataset.partySize || 0),
-    rendered: zone.querySelectorAll(".battle-unit-party").length,
-  })));
-  expect(desktopRoster).toHaveLength(2);
-  for (const side of desktopRoster) {
-    expect(side.declared).toBeGreaterThanOrEqual(1);
-    expect(side.declared).toBeLessThanOrEqual(5);
-    expect(side.rendered).toBe(side.declared);
-  }
-  await expect(desktopPage.locator('.battle-skip-btn')).toHaveCount(0);
-  const desktopCanvas = await desktopPage.locator(".app-container").evaluate((canvas) => {
-    const rect = canvas.getBoundingClientRect();
-    return { width: rect.width, center: rect.left + rect.width / 2, viewportCenter: innerWidth / 2 };
-  });
-  expect(desktopCanvas.width).toBeLessThanOrEqual(431);
-  expect(Math.abs(desktopCanvas.center - desktopCanvas.viewportCenter)).toBeLessThanOrEqual(1);
-  expect(await desktopPage.evaluate(() => ({ dpr: devicePixelRatio, width: innerWidth }))).toEqual({ dpr: 2, width: 1440 });
-  await desktopPage.screenshot({ path: test.info().outputPath("M9-desktop-DPR2-B4.png"), fullPage: true });
-  await desktopContext.close();
   await page.setViewportSize({ width: 375, height: 844 });
   const resumeButton = page.getByRole("button", { name: "再開" });
   if (await resumeButton.isVisible()) await resumeButton.click();
   if (await page.locator('[data-acceptance-state="B5"]').isVisible()) {
-    await page.screenshot({ path: test.info().outputPath("M4-375-B5-final-hit.png"), fullPage: true });
+    if (captureAcceptanceVisuals) await page.screenshot({ path: test.info().outputPath("M4-375-B5-final-hit.png"), fullPage: true });
   }
   await expect(page.locator('[data-acceptance-state="B6"]')).toBeVisible({ timeout: 35_000 });
   const rewardStartedAt = Date.now();
@@ -1025,7 +977,7 @@ test("first quest connects dispatch, official battle, and one reward to the comp
     expect(rewardMetrics.top).toBeGreaterThanOrEqual(0);
     expect(rewardMetrics.bottom).toBeLessThanOrEqual(rewardMetrics.viewportHeight);
     expect(rewardMetrics.actionHeight).toBeGreaterThanOrEqual(44);
-    await page.screenshot({ path: test.info().outputPath(`m9-1-reward-${width}.png`), fullPage: true });
+    if (captureAcceptanceVisuals) await page.screenshot({ path: test.info().outputPath(`m9-1-reward-${width}.png`), fullPage: true });
   }
   for (const viewport of c2AcceptanceViewports) {
     await page.setViewportSize(viewport);
@@ -1041,7 +993,7 @@ test("first quest connects dispatch, official battle, and one reward to the comp
   }
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem("mock_db_presents") || "[]").filter((present: any) => String(present.id).startsWith("patrol_reward_")).length)).toBe(1);
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem("mock_db_tutorial_progress") || "[]")[0]?.step_id)).toBe("TUTORIAL_BATTLE");
-  await page.screenshot({ path: test.info().outputPath("m9-0e-reward-430.png"), fullPage: true });
+  if (captureAcceptanceVisuals) await page.screenshot({ path: test.info().outputPath("m9-0e-reward-430.png"), fullPage: true });
 
   await page.getByRole("button", { name: "次へ" }).click();
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem("mock_db_tutorial_progress") || "[]")[0]?.step_id)).toBe("RULE_GUIDE");
@@ -1049,6 +1001,61 @@ test("first quest connects dispatch, official battle, and one reward to the comp
   await expect(page.locator('[data-acceptance-state="COMPLETION_DIALOGUE"]')).toContainText("最後に、TRIBE NEONの世界を紹介するね。");
   await page.locator('[data-acceptance-state="COMPLETION_DIALOGUE"] button').click();
   await expect(page.getByRole("heading", { name: "いろんな奴が、この街で生きてる。" })).toBeVisible();
+});
+
+test.describe("first quest desktop presentation", () => {
+test.use({ viewport: { width: 1440, height: 1000 }, deviceScaleFactor: 2 });
+
+test("reaches the battle action boundary", async ({ page }) => {
+  const desktopUserId = "00000000-0000-4000-8000-000000000919";
+  await page.addInitScript(({ desktopUserId }) => {
+    localStorage.setItem("tribe_demo_uuid", desktopUserId);
+    localStorage.setItem("mock_auth_mode", "ANONYMOUS");
+    localStorage.setItem("mock_db_users", JSON.stringify([{ id: desktopUserId, username: "DPR2 QA", cash: 10000, vitality: 100, level: 1, xp: 0, current_base_id: "shinjuku" }]));
+    localStorage.setItem("mock_db_user_characters", JSON.stringify([{ id: `starter_${desktopUserId}`, user_id: desktopUserId, character_id: "char_reiji_01", level: 3, awakening_level: 0 }]));
+    localStorage.setItem("mock_db_user_skills", JSON.stringify([{ id: `skill_${desktopUserId}`, user_id: desktopUserId, skill_card_id: "SKILL_036", equipped_character_id: `starter_${desktopUserId}`, slot_index: 0, plus_val: 0 }]));
+    localStorage.setItem("mock_db_skill_battle_master", JSON.stringify([{ skill_id: "SKILL_036", display_name: "SSR TEST BREAK", kind: "ATTACK", target: "ENEMY_SINGLE", power_percent: 240, cooldown: 1, initial_cooldown: 0, enabled: true }]));
+    localStorage.setItem("mock_db_pvp_defense_decks", JSON.stringify([{ id: `deck_${desktopUserId}`, user_id: desktopUserId, character_1_id: `starter_${desktopUserId}` }]));
+    localStorage.setItem("mock_db_tutorial_progress", JSON.stringify([{ user_id: desktopUserId, step_id: "DISPATCH" }]));
+    localStorage.setItem("mock_db_quests", JSON.stringify([{ id: "q_shinjuku_short", name: "新宿", duration_seconds: 60, cost_vitality: 5, cash_reward: 800, exp_reward: 120 }]));
+    localStorage.setItem("mock_db_patrol_npcs", JSON.stringify([{ id: "npc_tutorial_short", quest_id: "q_shinjuku_short", npc_name: "路地裏のならず者", enemy_data: { hp: 120, atk: 1, def: 0, spd: 20, luk: 0 } }]));
+    localStorage.setItem("mock_db_user_patrols", "[]");
+    localStorage.setItem("mock_db_battle_replay_sessions", "[]");
+  }, { desktopUserId });
+
+  await page.goto("/");
+  await resumeRuleGuide(page);
+  await expect(page.locator('[data-acceptance-state="Q1"]')).toBeVisible();
+  await page.locator('[data-acceptance-state="Q1"] button').click();
+  await expect(page.locator('[data-acceptance-state="Q3"]')).toBeVisible();
+  await page.locator('[data-acceptance-state="Q3"] button').click();
+  await expect(page.locator('[data-acceptance-state="Q5"]')).toBeVisible();
+  await page.locator('[data-acceptance-state="Q5"] button').click();
+  await expect(page.locator('[data-acceptance-state="Q6"] [data-encounter-ready="true"]')).toBeVisible();
+  await page.locator('[data-acceptance-state="Q6"] button').click();
+  await page.locator('[data-acceptance-state="B1"] .start-battle-btn').click();
+  await expect(page.locator('[data-acceptance-state="B4"]')).toBeVisible({ timeout: 20_000 });
+  await expect(page.locator(".battle-timeline-slot")).toHaveCount(0);
+  const desktopRoster = await page.locator(".battle-roster-stage").evaluate((stage) => [...stage.querySelectorAll<HTMLElement>(".battle-party-zone")].map((zone) => ({
+    declared: Number(zone.dataset.partySize || 0),
+    rendered: zone.querySelectorAll(".battle-unit-party").length,
+  })));
+  expect(desktopRoster).toHaveLength(2);
+  for (const side of desktopRoster) {
+    expect(side.declared).toBeGreaterThanOrEqual(1);
+    expect(side.declared).toBeLessThanOrEqual(5);
+    expect(side.rendered).toBe(side.declared);
+  }
+  await expect(page.locator(".battle-skip-btn")).toHaveCount(0);
+  const desktopCanvas = await page.locator(".app-container").evaluate((canvas) => {
+    const rect = canvas.getBoundingClientRect();
+    return { width: rect.width, center: rect.left + rect.width / 2, viewportCenter: innerWidth / 2 };
+  });
+  expect(desktopCanvas.width).toBeLessThanOrEqual(431);
+  expect(Math.abs(desktopCanvas.center - desktopCanvas.viewportCenter)).toBeLessThanOrEqual(1);
+  expect(await page.evaluate(() => ({ dpr: devicePixelRatio, width: innerWidth }))).toEqual({ dpr: 2, width: 1440 });
+  if (captureAcceptanceVisuals) await page.screenshot({ path: test.info().outputPath("M9-desktop-DPR2-B4.png"), fullPage: true });
+});
 });
 
 test("naturally completed tutorial quest uses the same encounter and battle boundary as instant completion", async ({ page }) => {
