@@ -908,7 +908,8 @@ test("first quest connects dispatch, official battle, and one reward to the comp
     const battleMetrics = await page.locator(".quest-battle-viewer").evaluate((viewer) => {
       const rect = viewer.getBoundingClientRect();
       const hp = viewer.querySelector(".battle-unit-hp")?.getBoundingClientRect();
-      const partyArt = viewer.querySelector(".battle-unit-party .battle-unit-art")?.getBoundingClientRect();
+      const playerPartyArt = viewer.querySelector(".battle-party-zone.is-player .battle-unit-party .battle-unit-art")?.getBoundingClientRect();
+      const enemyPartyArt = viewer.querySelector(".battle-party-zone.is-enemy .battle-unit-party .battle-unit-art")?.getBoundingClientRect();
       const regions = [".battle-viewer-header", ".battle-timeline", ".battle-roster-stage", ".battle-viewer-controls"]
         .map((selector) => viewer.querySelector<HTMLElement>(selector)?.getBoundingClientRect())
         .filter(Boolean) as DOMRect[];
@@ -922,7 +923,8 @@ test("first quest connects dispatch, official battle, and one reward to the comp
         right: rect.right,
         viewportWidth: innerWidth,
         hpWidth: hp?.width || 0,
-        partyArtHeight: partyArt?.height || 0,
+        playerPartyArtHeight: playerPartyArt?.height || 0,
+        enemyPartyArtHeight: enemyPartyArt?.height || 0,
         verticalOverlap: regions.some((region, index) => index > 0 && region.top < regions[index - 1].bottom - 1),
         actionUnitCollision: Boolean(actionStage && actionUnits.some((unit) => unit.left < actionStage.left - 1 || unit.right > actionStage.right + 1 || unit.top < actionStage.top - 1 || unit.bottom > actionStage.bottom + 1)),
         actionArtCollision: Boolean(actionStage && actionArt.some((art) => art.left < actionStage.left - 1 || art.right > actionStage.right + 1 || art.top < actionStage.top - 1 || art.bottom > actionStage.bottom + 1))
@@ -933,7 +935,8 @@ test("first quest connects dispatch, official battle, and one reward to the comp
     expect(battleMetrics.left).toBeGreaterThanOrEqual(0);
     expect(battleMetrics.right).toBeLessThanOrEqual(battleMetrics.viewportWidth);
     expect(battleMetrics.hpWidth).toBeGreaterThan(20);
-    expect(battleMetrics.partyArtHeight).toBeGreaterThanOrEqual(48);
+    expect(battleMetrics.playerPartyArtHeight).toBeGreaterThanOrEqual(45);
+    expect(battleMetrics.playerPartyArtHeight).toBe(battleMetrics.enemyPartyArtHeight);
     expect(battleMetrics.verticalOverlap).toBe(false);
     expect(battleMetrics.actionUnitCollision).toBe(false);
     expect(battleMetrics.actionArtCollision).toBe(false);
