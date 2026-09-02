@@ -462,7 +462,12 @@ function ProductionHomeFixture({ scenario }: { scenario: HomeScenario }) {
   return <GameContext.Provider value={game}>
     <div className="qa-production-home" data-home-scenario={scenario} data-raid-active={String(raidActive)} data-guild-joined={String(guildJoined)} data-cta-authority-ready={String(ctaAuthorityReady)} data-identity-authority-ready={String(identityAuthorityReady)}>
       <PageShell header={<Header />} footer={<Footer />}>
-        <HomeTab qaState={{ socialActivities: activities, funnelMilestones: milestones, ctaAuthorityReady }} />
+        <HomeTab qaState={{
+          socialActivities: activities,
+          funnelMilestones: milestones,
+          ctaAuthorityReady,
+          guildDiscoveryState: ctaAuthorityReady && !guildJoined ? "available" : "pending",
+        }} />
         <MoveBaseModal />
         {openedProfileId && <output data-opened-profile-id={openedProfileId} />}
       </PageShell>

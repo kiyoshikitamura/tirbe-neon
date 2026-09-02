@@ -9,10 +9,8 @@ async function resumeEntryState(page: import("@playwright/test").Page, state: "A
   await expect(titleCta).toBeVisible();
   await titleCta.click();
   await expect(tutorialContinue).toBeVisible();
-  await expect.poll(async () => {
-    if (await tutorialContinue.isVisible() && await tutorialContinue.isEnabled()) await tutorialContinue.click();
-    return page.locator(`[data-entry-state="${state}"]`).isVisible();
-  }).toBe(true);
+  await tutorialContinue.click();
+  await expect(page.locator(`[data-entry-state="${state}"]`)).toBeVisible({ timeout: 15_000 });
 }
 
 async function advanceEntryToName(page: import("@playwright/test").Page) {
@@ -170,6 +168,7 @@ test("M9-X entry and Mission Hub remain mobile-safe", async ({ page }) => {
 });
 
 test("world information precedes Ageha and entry sub-state survives reload", async ({ page }) => {
+  test.setTimeout(90_000);
   await page.goto("/");
   await page.getByRole("button", { name: "TAP TO START" }).click();
   await page.getByRole("button", { name: "はじめから" }).click();

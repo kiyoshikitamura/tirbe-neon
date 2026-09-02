@@ -2077,6 +2077,16 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         refreshUserItemsProjection(userId),
       ]);
       if (error || state?.user_id !== userId) throw error || new Error("Resume authority mismatch");
+      // An anonymous onboarding identity exists before the player submits a
+      // name, so public.users, wallet and power projections do not exist yet.
+      // Resume that pre-profile lifecycle directly into SetupView instead of
+      // treating the intentionally absent profile as a broken save.
+      if (state.is_anonymous && !state.has_profile) {
+        setOnboardingState(state);
+        setIsSetupRequired(true);
+        setShowTitleView(false);
+        return true;
+      }
       if (profileError || profile?.id !== userId) throw profileError || new Error("Resume profile mismatch");
       const recovery = Array.isArray(recovered) ? recovered[0] : recovered;
       if (recovery) {

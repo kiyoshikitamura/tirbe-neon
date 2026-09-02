@@ -149,7 +149,7 @@ test("M9-V0 main cycle presents growth, mission, PvP, ranking, raid and guild di
   await mobileFramePass(page, ".ranking-tab-view", "ranking");
 
   await page.getByRole("button", { name: /マイページ/ }).click();
-  await page.getByRole("button", { name: "⚠ レイド開催中", exact: true }).click();
+  await page.locator('.mypage-sub-icons-left button:has(img[src="/menu/home_nav_raid.png"])').click();
   await expect(page.locator(".raid-boss-stage")).toContainText("極道連合組長");
   await expect(page.locator(".raid-status-grid")).toContainText("CONTRIBUTION");
   await mobileFramePass(page, ".raid-view", "raid");
@@ -158,7 +158,7 @@ test("M9-V0 main cycle presents growth, mission, PvP, ranking, raid and guild di
   await expect(page.locator(".guild-activity-line").first()).toContainText("レイド貢献");
   await page.locator(".guild-detail-trigger").first().click();
   await expect(page.locator(".guild-public-status-grid")).toContainText("空き枠");
-  await expect(page.getByRole("button", { name: /このTRIBEに加入する|加入申請する/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /このギルドに加入する|加入申請する/ })).toBeVisible();
   await mobileFramePass(page, ".guild-lobby-view", "guild-detail");
 });
 

@@ -719,6 +719,17 @@ test("first quest connects dispatch, official battle, and one reward to the comp
     localStorage.setItem("mock_db_user_patrols", "[]");
     localStorage.setItem("mock_db_battle_replay_sessions", "[]");
     localStorage.setItem("mock_db_presents", "[]");
+    localStorage.setItem("mock_db_quests", JSON.stringify([{
+      id: "q_shinjuku_1",
+      name: "新宿・初級",
+      town_id: "shinjuku",
+      difficulty: "EASY",
+      duration_seconds: 60,
+      cost_vitality: 5,
+      reward_xp: 120,
+      reward_items: [],
+      is_unlocked: true,
+    }]));
   }, { userId });
 
   await page.goto("/");
