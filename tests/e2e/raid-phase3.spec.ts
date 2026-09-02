@@ -38,6 +38,11 @@ async function openRaid(page: Page, path = "/") {
   if (await tapToStart.isVisible()) await tapToStart.click();
   await page.getByRole("button", { name: "続きから" }).click();
   await expect(page.locator(".header-mobile")).toBeVisible();
+  const loginBonus = page.getByRole("dialog", { name: "ログインボーナス" });
+  await loginBonus.waitFor({ state: "visible", timeout: 3_000 }).catch(() => undefined);
+  if (await loginBonus.isVisible()) {
+    await loginBonus.getByRole("button", { name: "閉じる", exact: true }).click();
+  }
   await page.locator(".mypage-sub-icons-left .sub-icon-unit").filter({ hasText: "レイド" }).click();
   await expect(page.locator(".raid-view")).toBeVisible();
 }

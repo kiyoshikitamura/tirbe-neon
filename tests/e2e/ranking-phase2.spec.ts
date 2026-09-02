@@ -63,6 +63,11 @@ async function openRanking(page: Page, path = "/") {
   await page.goto(path);
   await page.getByRole("button", { name: "TAP TO START" }).click();
   await page.getByRole("button", { name: "続きから" }).click();
+  const loginBonus = page.getByRole("dialog", { name: "ログインボーナス" });
+  await loginBonus.waitFor({ state: "visible", timeout: 3_000 }).catch(() => undefined);
+  if (await loginBonus.isVisible()) {
+    await loginBonus.getByRole("button", { name: "閉じる", exact: true }).click();
+  }
   const rankingEntry = page.getByRole("button", { name: "総合力ランキングを開く" });
   await expect(rankingEntry).toBeVisible();
   await rankingEntry.click();
