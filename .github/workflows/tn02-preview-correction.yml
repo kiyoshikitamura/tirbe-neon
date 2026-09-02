@@ -149,7 +149,7 @@ jobs:
             await query(`
               begin;
               insert into public.users(id, username)
-              values ('00000000-0000-4000-8000-000000002224', 'TN02_ROLL');
+              values ('00000000-0000-4000-8000-000000002224', 'TN02_RL');
               insert into public.user_missions(user_id, mission_id, current_progress, progress_val, status, cycle_date)
               select '00000000-0000-4000-8000-000000002224', id,
                 case when id = 'MIS_D_008' then 3 else 1 end,
