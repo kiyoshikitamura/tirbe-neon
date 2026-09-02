@@ -114,8 +114,19 @@ export default function QuestPresentationV2() {
         const course = (game.patrolCourses || []).find((entry: any) => entry.id === patrol.courseId);
         const patrolTownName = TOWNS.find(([id]) => id === course?.town_id)?.[1] || townName;
         const character = CHARACTERS_MASTER.find((entry: any) => entry.id === patrol.characterId);
-        const npc = (game.patrolNpcs || []).find((entry: any) => entry.quest_id === patrol.courseId);
-        const battleEnemies = (course?.enemy_members || npc?.members || []).map((member: any) => ({
+        const projectedNpc = (game.patrolNpcs || []).find((entry: any) => entry.quest_id === patrol.courseId);
+        const canonicalEnemyMembers = Array.isArray(course?.enemy_members) ? course.enemy_members : [];
+        // Production no longer loads the retired patrol_npcs master. Use the
+        // server-projected Canonical Quest members for the encounter hand-off;
+        // the authoritative replay is still created from the patrol ID.
+        const npc = projectedNpc || (canonicalEnemyMembers.length > 0 ? {
+          id: patrol.courseId,
+          quest_id: patrol.courseId,
+          npc_name: course?.name || "クエスト",
+          npc_level: Number(course?.recommended_level || canonicalEnemyMembers[0]?.level || 1),
+          members: canonicalEnemyMembers,
+        } : null);
+        const battleEnemies = (canonicalEnemyMembers.length > 0 ? canonicalEnemyMembers : npc?.members || []).map((member: any) => ({
           member,
           master: CHARACTERS_MASTER.find((entry: any) => entry.id === member.characterId),
         })).filter((entry: any) => entry.master);
