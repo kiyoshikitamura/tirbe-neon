@@ -4,6 +4,19 @@
   height: 100%;
 }
 
+.tribe-community-secondary-nav {
+  display: flex;
+  flex: 0 0 auto;
+  justify-content: flex-end;
+  margin: -4px 0 8px;
+}
+
+.tribe-bbs-link.outlaw-button {
+  min-height: 34px;
+  padding: 5px 12px;
+  font-size: 10px;
+}
+
 /* Chat can be opened after horizontally scrollable tabs/details. Anchor the
    modal to the viewport instead of inheriting a shifted containing block. */
 .modal-shell.tribe-chat-panel {

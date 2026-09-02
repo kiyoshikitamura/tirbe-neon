@@ -204,7 +204,9 @@ export default function CharacterSystemV2() {
     </div>;
   };
 
-  if (!selectedCharacter || !selectedMaster) return <div className="character-v2-empty" role="status"><span className="spinner" /></div>;
+  const inventoryReady = Boolean(game.session?.user?.id)
+    && game.inventoryProjectionOwnerUserId === game.session.user.id;
+  if (!selectedCharacter || !selectedMaster || !inventoryReady) return <div className="character-v2-empty" role="status"><span className="spinner" /></div>;
 
   return <div className="character-v2-shell">
     <nav className="character-v2-main-nav" aria-label="キャラクター管理">

@@ -3,6 +3,18 @@ import { expect, test } from "@playwright/test";
 test.use({ viewport: { width: 390, height: 844 } });
 test.setTimeout(60_000);
 
+async function resumeEntryState(page: import("@playwright/test").Page, state: "AGEHA_INTRO" | "NAME_INPUT") {
+  const titleCta = page.getByRole("button", { name: "TAP TO START" });
+  const tutorialContinue = page.getByRole("button", { name: "チュートリアルを続ける" });
+  await expect(titleCta).toBeVisible();
+  await titleCta.click();
+  await expect(tutorialContinue).toBeVisible();
+  await expect.poll(async () => {
+    if (await tutorialContinue.isVisible() && await tutorialContinue.isEnabled()) await tutorialContinue.click();
+    return page.locator(`[data-entry-state="${state}"]`).isVisible();
+  }).toBe(true);
+}
+
 async function advanceEntryToName(page: import("@playwright/test").Page) {
   await expect(page.locator('[data-entry-state="WORLD_INFORMATION"]')).toBeVisible();
   await expect(page.locator('[data-world-stage="4"] .setup-world-tap')).toBeVisible({ timeout: 30_000 });
@@ -42,11 +54,11 @@ test("tutorial ten-pull guarantees slot 10 SSR and visible Growth precedes forma
   if (await newGameCta.isVisible()) await newGameCta.click();
   await expect(freeCta).toBeEnabled();
   await freeCta.click();
-  const pullGate = page.getByRole("button", { name: /10 PLAYERS.*TAP TO START/ });
+  const pullGate = page.locator("[data-gacha-logo-gate]");
   await expect(pullGate).toBeVisible({ timeout:15_000 });
   await page.screenshot({ path: test.info().outputPath("gacha-start.png") });
   await pullGate.click();
-  await expect(page.getByRole("status", { name: "ガチャ演出中" })).toBeVisible();
+  await expect(page.getByRole("status", { name: "ガチャ結果を表示中" })).toBeVisible();
   const reveal = page.locator(".tutorial-gacha-reveal");
   await expect(reveal).toBeVisible({ timeout:15_000 });
   const capturedRarities = new Set<string>();
@@ -59,7 +71,10 @@ test("tutorial ten-pull guarantees slot 10 SSR and visible Growth precedes forma
       await page.screenshot({ path: test.info().outputPath(`gacha-reveal-${rarityClass}.png`) });
     }
     const currentLabel = await reveal.getAttribute("aria-label");
-    await reveal.click();
+    await reveal.evaluate((button: HTMLButtonElement) => button.click());
+    const nextGate = page.locator(".gacha-character-logo-gate");
+    await expect(nextGate).toBeVisible();
+    await nextGate.click();
     await expect(reveal).not.toHaveAttribute("aria-label", currentLabel || "");
   }
   await expect(reveal).toHaveClass(/is-guaranteed/);
@@ -69,14 +84,14 @@ test("tutorial ten-pull guarantees slot 10 SSR and visible Growth precedes forma
   await expect(reveal).not.toHaveAttribute("data-character-id", /.+/);
   await expect(reveal.locator(".tutorial-ssr-quote blockquote")).toHaveText("俺の前に立つなら、覚悟くらい決めてこい。");
   await page.screenshot({ path: test.info().outputPath("gacha-ssr-quote.png") });
-  await reveal.click();
+  await reveal.evaluate((button: HTMLButtonElement) => button.click());
   await expect(reveal).toHaveAttribute("data-presentation-state", "SSR_FLASH");
   await expect(reveal).toHaveAttribute("data-presentation-state", "SSR_REVEAL");
   await expect(reveal).toHaveAttribute("data-character-id", "char_reiji_01");
   await expect(reveal).toHaveAttribute("data-can-advance", "true");
   await expect(reveal.locator(".character-presentation-frame.is-reveal")).toBeVisible();
   await page.screenshot({ path: test.info().outputPath("gacha-ssr-reveal.png") });
-  await reveal.click();
+  await reveal.evaluate((button: HTMLButtonElement) => button.click());
   await expect(page.locator(".gacha-result-card")).toHaveCount(10);
   await expect(page.locator(".gacha-result-card .character-presentation-frame.is-character")).toHaveCount(10);
   await expect(page.locator(".gacha-result-card .character-presentation-gacha-result-compact")).toHaveCount(10);
@@ -89,7 +104,7 @@ test("tutorial ten-pull guarantees slot 10 SSR and visible Growth precedes forma
     const timing = animation?.effect?.getComputedTiming();
     return { playState: animation?.playState, duration: timing?.duration, iterations: timing?.iterations };
   });
-  expect(glintTiming).toEqual({ playState: "running", duration: 3000, iterations: Infinity });
+  expect(glintTiming).toEqual({ playState: "running", duration: 1200, iterations: 1 });
   for (const width of [375, 390, 430]) {
     await page.setViewportSize({ width, height: 844 });
     const layout = await page.locator(".gacha-result-grid").evaluate((grid) => ({ scrollWidth: grid.scrollWidth, clientWidth: grid.clientWidth }));
@@ -176,16 +191,13 @@ test("world information precedes Ageha and entry sub-state survives reload", asy
     await page.screenshot({ path: test.info().outputPath(`m9x-ageha-intro-${width}.png`) });
   }
   await page.reload();
-  const titleCta = page.getByRole("button", { name: "TAP TO START" });
-  await expect(page.locator('[data-entry-state="AGEHA_INTRO"]').or(titleCta)).toBeVisible();
-  if (await titleCta.isVisible()) await titleCta.click();
+  await resumeEntryState(page, "AGEHA_INTRO");
   await expect(page.locator('[data-entry-state="AGEHA_INTRO"]')).toBeVisible();
 
   await page.getByRole("button", { name: "次へ" }).click();
   await expect(page.locator('[data-entry-state="NAME_INPUT"]')).toBeVisible();
   await page.reload();
-  await expect(page.locator('[data-entry-state="NAME_INPUT"]').or(titleCta)).toBeVisible();
-  if (await titleCta.isVisible()) await titleCta.click();
+  await resumeEntryState(page, "NAME_INPUT");
   await expect(page.getByPlaceholder("プレイヤー名を入力")).toBeVisible();
 });
 

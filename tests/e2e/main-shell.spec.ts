@@ -19,8 +19,12 @@ test.beforeEach(async ({ page }) => {
 async function enterGame(page: import("@playwright/test").Page) {
   await page.goto("/");
   await page.locator("html").evaluate((root) => root.style.setProperty("--app-safe-top", "47px"));
-  await page.getByText("TAP TO START").click();
+  await page.getByRole("button", { name: "TAP TO START" }).click();
+  await page.getByRole("button", { name: "続きから" }).click();
   await expect(page.locator(".header-mobile")).toBeVisible();
+  const loginBonus = page.getByRole("dialog", { name: "ログインボーナス" });
+  await loginBonus.waitFor({ state: "visible", timeout: 3_000 }).catch(() => undefined);
+  if (await loginBonus.isVisible()) await loginBonus.getByRole("button", { name: "閉じる", exact: true }).click();
   const welcomeAction = page.getByRole("button", { name: "抗争に参入する" });
   await welcomeAction.waitFor({ state: "visible", timeout: 3_000 }).catch(() => undefined);
   if (await welcomeAction.isVisible()) await welcomeAction.click();
@@ -44,7 +48,7 @@ test("authenticated game shell keeps the header and footer inside its safe frame
 
 test("shared shell preserves footer navigation", async ({ page }) => {
   await enterGame(page);
-  await page.getByRole("button", { name: /キャラ/ }).click();
+  await page.getByRole("button", { name: "キャラ", exact: true }).click();
   await expect(page.locator(".footer-item.active")).toContainText("キャラ");
 });
 
@@ -79,9 +83,12 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 412, height: 915 }
     await expect(page.locator(".header-mobile .user-identity-row.is-compact")).toBeVisible();
 
     await page.reload();
-    const titleStart = page.getByText("TAP TO START");
-    await titleStart.waitFor({ state: "visible", timeout: 5_000 }).catch(() => undefined);
+    const titleStart = page.getByRole("button", { name: "TAP TO START" });
+    const continueAction = page.getByRole("button", { name: "続きから" });
+    const headerAfterReload = page.locator(".header-mobile");
+    await expect(titleStart.or(continueAction).or(headerAfterReload)).toBeVisible();
     if (await titleStart.isVisible()) await titleStart.click();
+    if (await continueAction.isVisible()) await continueAction.click();
     const reloadedIdentity = page.locator(".header-mobile .user-identity-row.is-compact");
     await expect(reloadedIdentity).toBeVisible();
     await expect(reloadedIdentity.locator(".character-presentation-character")).toHaveAttribute("src", /reiji_transparent_asset/);
@@ -91,7 +98,7 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 412, height: 915 }
 test("Open Beta home prioritizes the next action and keeps unreleased GvG unavailable", async ({ page }) => {
   await enterGame(page);
   await expect(page.locator(".mypage-primary-cta")).toBeVisible();
-  await expect(page.getByRole("button", { name: "抗争は準備中です" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "ギルドバトルは準備中です" })).toBeDisabled();
 });
 
 test("stage two hubs share a mobile-safe page frame", async ({ page }) => {
@@ -114,7 +121,7 @@ test("stage two hubs share a mobile-safe page frame", async ({ page }) => {
     if (target.title === "ランキング") {
       await expect(hub.locator(".ranking-category-nav")).toBeVisible();
       await expect(hub.locator(".ranking-category-nav .sub-tab-scroll-button.next")).toBeVisible();
-      await expect(hub.locator(".ranking-hero-copy")).not.toContainText("--");
+      await expect(hub.locator(".ranking-current")).not.toContainText("--");
     }
     await page.locator(".footer-item").first().click();
     await expect(page.locator(target.selector)).toBeVisible();

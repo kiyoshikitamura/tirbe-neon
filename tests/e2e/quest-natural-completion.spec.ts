@@ -66,9 +66,12 @@ test("normal Quest starts its Canonical battle from the per-dispatch encounter s
   });
 
   await page.goto("/");
-  const tapToStart = page.getByRole("button", { name: "TAP TO START" });
-  if (await tapToStart.isVisible()) await tapToStart.click();
-  await page.getByRole("button", { name: "続きから" }).click();
+  const titleAction = page.getByRole("button", { name: "TAP TO START" });
+  const continueAction = page.getByRole("button", { name: "続きから" });
+  await expect(titleAction.or(continueAction)).toBeVisible();
+  if (await titleAction.isVisible()) await titleAction.click();
+  await expect(continueAction).toBeVisible();
+  await continueAction.click();
   const header = page.locator(".header-mobile");
   await expect(header).toBeVisible();
 

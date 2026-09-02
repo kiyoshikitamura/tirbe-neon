@@ -34,6 +34,7 @@ test.beforeEach(async ({ page }) => {
 async function openRaid(page: Page, path = "/") {
   await page.goto(path);
   const tapToStart = page.getByRole("button", { name: "TAP TO START" });
+  await expect(tapToStart).toBeVisible();
   if (await tapToStart.isVisible()) await tapToStart.click();
   await page.getByRole("button", { name: "続きから" }).click();
   await expect(page.locator(".header-mobile")).toBeVisible();

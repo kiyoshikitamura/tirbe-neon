@@ -31,7 +31,6 @@ export default function SettingsPanel() {
   const [homeEditing, setHomeEditing] = useState(false);
   const [usernameDraft, setUsernameDraft] = useState("");
   const [bioDraft, setBioDraft] = useState("");
-  const [titleDraft, setTitleDraft] = useState("title_none");
   const [backgroundDraft, setBackgroundDraft] = useState("auto");
   const [foregroundDraft, setForegroundDraft] = useState("effect_none");
   const [interiorDraft, setInteriorDraft] = useState("none");
@@ -47,7 +46,6 @@ export default function SettingsPanel() {
   const resetDrafts = () => {
     setUsernameDraft(game.username);
     setBioDraft(game.bio);
-    setTitleDraft(game.titleEquipped);
     setBackgroundDraft(game.selectedBgMode);
     setForegroundDraft(game.equippedFrontEffect);
     setInteriorDraft(game.interiorItem);
@@ -69,7 +67,7 @@ export default function SettingsPanel() {
   };
 
   const saveProfile = async () => {
-    const saved = await game.handleUpdateProfile({ username: usernameDraft, bio: bioDraft, title: titleDraft });
+    const saved = await game.handleUpdateProfile({ username: usernameDraft, bio: bioDraft });
     if (saved) setProfileEditing(false);
   };
 
@@ -105,10 +103,9 @@ export default function SettingsPanel() {
       <div className="settings-panel-container-inner">
         {game.errorMessage && <div className="settings-error-message">{game.errorMessage}</div>}
 
-        <EditableSettingSection title="プロフィール" editing={profileEditing} pending={game.profileLoading} onEdit={() => setProfileEditing(true)} summary={<dl className="settings-summary"><div><dt>プレイヤー名</dt><dd>{game.username}</dd></div><div><dt>自己紹介</dt><dd>{game.bio || "未設定"}</dd></div><div><dt>称号</dt><dd>{game.userTitle}</dd></div></dl>}>
+        <EditableSettingSection title="プロフィール" editing={profileEditing} pending={game.profileLoading} onEdit={() => setProfileEditing(true)} summary={<dl className="settings-summary"><div><dt>プレイヤー名</dt><dd>{game.username}</dd></div><div><dt>自己紹介</dt><dd>{game.bio || "未設定"}</dd></div></dl>}>
           <div className="settings-field"><label htmlFor="profile-name">プレイヤー名</label><input id="profile-name" className="settings-input" value={usernameDraft} maxLength={8} disabled={game.profileLoading} onChange={(event) => setUsernameDraft(event.target.value)} /></div>
           <div className="settings-field settings-bio-field"><label htmlFor="profile-bio">自己紹介</label><textarea id="profile-bio" className="settings-textarea" value={bioDraft} maxLength={USER_BIO_MAX_LENGTH} rows={4} placeholder="自己紹介を入力" disabled={game.profileLoading} onChange={(event) => setBioDraft(event.target.value)} /><span>{Array.from(bioDraft).length} / {USER_BIO_MAX_LENGTH}</span></div>
-          <ChoiceGroup label="称号" value={titleDraft} disabled={game.profileLoading} onChange={setTitleDraft} options={[{ value: "title_none", label: "称号なし" }, ...game.ownedTitles.filter((title: { id: string }) => title.id !== "title_none").map((title: { id: string; name: string }) => ({ value: title.id, label: title.name }))]} />
           <div className="settings-edit-actions"><OutlawButton variant="secondary" disabled={game.profileLoading} onClick={() => { resetDrafts(); setProfileEditing(false); }}>キャンセル</OutlawButton><OutlawButton variant="primary" isLoading={game.profileLoading} loadingLabel="保存中…" disabled={!usernameDraft.trim()} onClick={() => void saveProfile()}>保存</OutlawButton></div>
         </EditableSettingSection>
 

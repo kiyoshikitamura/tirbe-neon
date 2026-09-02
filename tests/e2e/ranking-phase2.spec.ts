@@ -61,6 +61,7 @@ test.beforeEach(async ({ page }) => {
 
 async function openRanking(page: Page, path = "/") {
   await page.goto(path);
+  await page.getByRole("button", { name: "TAP TO START" }).click();
   await page.getByRole("button", { name: "続きから" }).click();
   const rankingEntry = page.getByRole("button", { name: "総合力ランキングを開く" });
   await expect(rankingEntry).toBeVisible();

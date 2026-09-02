@@ -33,10 +33,16 @@ test.beforeEach(async ({ page }) => {
 
 async function enterGame(page: Page) {
   await page.goto("/");
-  const entry = page.getByRole("button", { name: /TAP TO START|続きから/ });
-  await expect(entry).toBeVisible();
-  await entry.click();
+  const tapToStart = page.getByRole("button", { name: "TAP TO START" });
+  await expect(tapToStart).toBeVisible();
+  await tapToStart.click();
+  await page.getByRole("button", { name: "続きから" }).click();
   await expect(page.locator(".header-mobile")).toBeVisible();
+  const loginBonus = page.getByRole("dialog", { name: "ログインボーナス" });
+  await loginBonus.waitFor({ state: "visible", timeout: 3_000 }).catch(() => undefined);
+  if (await loginBonus.isVisible()) {
+    await loginBonus.getByRole("button", { name: "閉じる", exact: true }).click();
+  }
 }
 
 for (const delay of DELAYS) {

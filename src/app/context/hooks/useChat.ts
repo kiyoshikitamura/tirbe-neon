@@ -102,6 +102,34 @@ export function useChat(
     void refreshChatUnreadCounts();
   }, [refreshChatUnreadCounts]);
 
+  // The visible chat feed owns its Realtime subscription outside this hook.
+  // While DM is selected that feed intentionally unsubscribes, so keep Guild
+  // unread notification authority live without fetching or exposing messages.
+  useEffect(() => {
+    if (!currentUserId || !userGuildMember?.guild_id || chatChannel !== "DM") return;
+
+    const channel = supabase
+      .channel(`guild_chat_unread_${currentUserId}`)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "board_posts", filter: "target_type=eq.GUILD" },
+        () => { void refreshChatUnreadCounts(); }
+      )
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED") void refreshChatUnreadCounts();
+      });
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") void refreshChatUnreadCounts();
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      supabase.removeChannel(channel);
+    };
+  }, [chatChannel, currentUserId, refreshChatUnreadCounts, userGuildMember?.guild_id]);
+
   useEffect(() => {
     if (!showTribeChatPanel || chatChannel === "DM") return;
     void markChatChannelRead(chatChannel);
