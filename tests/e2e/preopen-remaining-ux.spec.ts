@@ -124,7 +124,9 @@ test("Quest, Character and BBS consume canonical presentation contracts", async 
   await enterGame(page);
 
   await page.locator(".circle-menu-btn.conquest").click();
-  await expect(page.locator(".quest-v2-courses").getByRole("button", { name: /初級/ })).toBeVisible();
+  const easyCourse = page.locator(".quest-v2-courses").getByRole("button", { name: /初級/ });
+  await expect(easyCourse).toBeVisible();
+  await easyCourse.click();
   await expect(page.locator(".quest-v2-brief")).toContainText("歌舞伎町 夜間見回り");
   await expect(page.locator(".quest-v2-brief")).toContainText("出現する敵");
   await expect(page.locator(".quest-v2-brief")).toContainText("所要時間");

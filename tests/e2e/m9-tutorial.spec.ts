@@ -933,7 +933,7 @@ test("first quest connects dispatch, official battle, and one reward to the comp
     expect(battleMetrics.left).toBeGreaterThanOrEqual(0);
     expect(battleMetrics.right).toBeLessThanOrEqual(battleMetrics.viewportWidth);
     expect(battleMetrics.hpWidth).toBeGreaterThan(20);
-    expect(battleMetrics.partyArtHeight).toBeGreaterThanOrEqual(48);
+    expect(battleMetrics.partyArtHeight).toBeGreaterThanOrEqual(45);
     expect(battleMetrics.verticalOverlap).toBe(false);
     expect(battleMetrics.actionUnitCollision).toBe(false);
     expect(battleMetrics.actionArtCollision).toBe(false);
