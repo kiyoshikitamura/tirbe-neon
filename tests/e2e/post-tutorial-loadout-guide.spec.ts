@@ -13,6 +13,9 @@ test.beforeEach(async ({ page }) => {
     localStorage.setItem("mock_db_users", JSON.stringify([{ id: userId, username: "Guide QA", level: 5, cash: 100000, pvp_points: 5, current_base_id: "shinjuku", last_active_at: now }]));
     localStorage.setItem("mock_db_tutorial_progress", JSON.stringify([{ user_id: userId, step_id: "AUTHENTICATION" }]));
     localStorage.setItem("mock_db_user_account_auth_methods", JSON.stringify([{ user_id: userId, auth_method: "EMAIL" }]));
+    localStorage.setItem("mock_db_user_characters", JSON.stringify([{ id: "guide-character", user_id: userId, character_id: "char_reiji_01", level: 7, awakening_level: 0, created_at: now }]));
+    localStorage.setItem("mock_db_guilds", JSON.stringify([{ id: "30000000-0000-4000-8000-000000002217", name: "GUIDE OPEN TRIBE", leader_id: "00000000-0000-4000-8000-000000002217", level: 5, member_limit: 20, recruitment_mode: "OPEN_JOIN" }]));
+    localStorage.setItem("mock_db_guild_members", JSON.stringify([{ id: "guide-open-master", guild_id: "30000000-0000-4000-8000-000000002217", user_id: "00000000-0000-4000-8000-000000002217", role: "MASTER" }]));
     if (!localStorage.getItem("mock_db_user_funnel_milestones")) {
       localStorage.setItem("mock_db_user_funnel_milestones", JSON.stringify([{ user_id: userId, milestone: "tutorial_complete", occurrence_count: 1 }]));
     }
@@ -68,6 +71,14 @@ test("guide resumes Skill, Equipment, loadout and PvP in order without view comp
   await expect(primary).toContainText("装備を整えよう");
   await primary.click();
   await expect(page.getByRole("button", { name: "キャラ", exact: true })).toHaveClass(/active/);
+  await expect(page.locator(".character-v2-party")).toBeVisible();
+  await expect(page.getByRole("button", { name: "おまかせ編成", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "おまかせ装備", exact: true })).toBeVisible();
+
+  await page.getByRole("button", { name: "マイページ", exact: true }).click();
+  await page.getByRole("button", { name: "キャラ", exact: true }).click();
+  await expect(page.locator(".character-v2-party")).toHaveCount(0);
+  await expect(page.getByText("所持キャラクター", { exact: true })).toBeVisible();
   persisted = await page.evaluate(() => JSON.parse(localStorage.getItem("mock_db_user_funnel_milestones") || "[]"));
   expect(persisted.some((row: any) => row.milestone === "first_main_loadout")).toBeFalsy();
 
@@ -95,9 +106,6 @@ test("post-loadout guide keeps PvP, Raid, Guild and Mission handoff", async ({ p
     const guildId = "30000000-0000-4000-8000-000000002218";
     localStorage.setItem("mock_db_guilds", JSON.stringify([{ id: guildId, name: "GUIDE TRIBE", leader_id: userId, level: 5 }]));
     localStorage.setItem("mock_db_guild_members", JSON.stringify([{ id: "guide-member", guild_id: guildId, user_id: userId, role: "MASTER" }]));
-    const rows = JSON.parse(localStorage.getItem("mock_db_user_funnel_milestones") || "[]");
-    rows.push({ user_id: userId, milestone: "guild_activation", occurrence_count: 1 });
-    localStorage.setItem("mock_db_user_funnel_milestones", JSON.stringify(rows));
   }, { userId });
   await page.reload();
   await enterGame(page);

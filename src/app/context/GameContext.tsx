@@ -135,6 +135,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     showTitleView, setShowTitleView,
     inboxPanelTab, setInboxPanelTab,
     rankingActiveTab, setRankingActiveTab,
+    characterEntryView, setCharacterEntryView,
     confirmDialogConfig, setConfirmDialogConfig,
     globalInteractionBlocking, setGlobalInteractionBlocking
   } = nav;
@@ -197,7 +198,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const [raidPoints, setRaidPoints] = useState<number>(5);
   const [raidTopRefreshRevision, setRaidTopRefreshRevision] = useState(0);
   const [raidFirstEntryFree, setRaidFirstEntryFree] = useState<boolean>(true);
-  const [cash, setCash] = useState<number>(10000);
+  const [cash, setCash] = useState<number>(2600);
   const [diamonds, setDiamonds] = useState<number>(200);
   const [vitality, setVitality] = useState<number>(100);
   const [vitalityNextRecoveryAt, setVitalityNextRecoveryAt] = useState<string | null>(null);
@@ -583,6 +584,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const [identityLeaderOwnerUserId, setIdentityLeaderOwnerUserId] = useState<string>("");
   const [identityLeaderAuthorityReady, setIdentityLeaderAuthorityReady] = useState(false);
   const [guildAuthorityOwnerUserId, setGuildAuthorityOwnerUserId] = useState<string>("");
+  const [guildDiscoveryState, setGuildDiscoveryState] = useState<"pending" | "error" | "empty" | "available">("pending");
   const [authenticatedProjectionOwnerUserId, setAuthenticatedProjectionOwnerUserId] = useState<string>("");
   const [authenticatedProjectionError, setAuthenticatedProjectionError] = useState<string | null>(null);
   const [resumeLoading, setResumeLoading] = useState(false);
@@ -694,6 +696,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     setIdentityLeaderCharacterId("");
     setIdentityLeaderAuthorityReady(false);
     setGuildAuthorityOwnerUserId("");
+    setGuildDiscoveryState("pending");
     setOnboardingState(null);
     setUsername("");
     setSelectedLeader("");
@@ -1025,9 +1028,11 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
           last_claimed_date: claimRes.last_claimed_date || null
         });
 
-        if (claimRes.claimed && onboardingState?.gameplay_authorized && activeTab === "home") {
-          setShowLoginBonusModal(true);
-          setPresentsPrefetched(false);
+        if (claimRes.claimed) {
+          if (onboardingState?.gameplay_authorized && activeTab === "home") {
+            setShowLoginBonusModal(true);
+            setPresentsPrefetched(false);
+          }
         }
       }
     } catch (err: any) {
@@ -1042,15 +1047,11 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const userId = session?.user?.id;
     if (!userId || showTitleView || !onboardingState?.gameplay_authorized || activeTab !== "home") return;
-    if (loginBonusClaimResult?.claimed) {
-      setShowLoginBonusModal(true);
-      setPresentsPrefetched(false);
-      return;
-    }
-    if (loginBonusRequestUserRef.current === userId) return;
-    loginBonusRequestUserRef.current = userId;
+    const requestKey = `${userId}:${getJstDateString()}`;
+    if (loginBonusRequestUserRef.current === requestKey) return;
+    loginBonusRequestUserRef.current = requestKey;
     void checkAndClaimLoginBonus(userId);
-  }, [activeTab, loginBonusClaimResult?.claimed, onboardingState?.gameplay_authorized, session?.user?.id, showTitleView]);
+  }, [activeTab, onboardingState?.gameplay_authorized, session?.user?.id, showTitleView]);
 
   useEffect(() => {
     const userId = session?.user?.id;
@@ -1405,6 +1406,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         .single();
 
       if (guildMemberRec) {
+        setGuildDiscoveryState("pending");
         setUserGuildMember(guildMemberRec);
         setPendingGuildJoinRequests([]);
 
@@ -1489,16 +1491,23 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         setUserGuildMember(null);
         setGuildMembersList([]);
         setGuildJoinRequests([]);
+        setGuildDiscoveryState("pending");
 
-        const [{ data: listAllGuilds }, { data: pendingRequests }] = await Promise.all([
+        const [{ data: listAllGuilds, error: guildDiscoveryError }, { data: pendingRequests }] = await Promise.all([
           supabase.rpc("search_guilds", { p_query: "" }),
           supabase.from("guild_join_requests")
             .select("id,guild_id,user_id,status,requested_at")
             .eq("user_id", userId)
             .eq("status", "PENDING"),
         ]);
-        if (listAllGuilds) {
-          setAllGuildsDbList(listAllGuilds);
+        if (guildDiscoveryError) {
+          console.warn("Guild discovery authority is unavailable:", guildDiscoveryError);
+          setAllGuildsDbList([]);
+          setGuildDiscoveryState("error");
+        } else {
+          const guilds = Array.isArray(listAllGuilds) ? listAllGuilds : [];
+          setAllGuildsDbList(guilds);
+          setGuildDiscoveryState(guilds.length === 0 ? "empty" : "available");
         }
         setPendingGuildJoinRequests(pendingRequests || []);
       }
@@ -4130,6 +4139,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     activeUsersCount, setActiveUsersCount,
     chatCooldown, setChatCooldown,
     inboxPanelTab, setInboxPanelTab,
+    characterEntryView, setCharacterEntryView,
     userGuild, setUserGuild,
     userGuildMember, setUserGuildMember,
     guildMembersList, setGuildMembersList,
@@ -4138,6 +4148,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     guildSubTab, setGuildSubTab,
     pendingGuildJoinRequests, setPendingGuildJoinRequests,
     guildMembershipAuthorityReady: guildAuthorityOwnerUserId === session?.user?.id,
+    guildDiscoveryState,
     authenticatedProjectionReady: Boolean(session?.user?.id)
       && onboardingState?.user_id === session.user.id
       && authenticatedProjectionOwnerUserId === session.user.id,

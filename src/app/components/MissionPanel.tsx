@@ -148,11 +148,36 @@ export default function MissionPanel() {
         </div>
         {missionTab === "NORMAL" && (["GROWTH", "BATTLE", "GUILD"] as const).map((group) => {
           const labels = { GROWTH: "育成", BATTLE: "バトル", GUILD: "ギルド" };
-          const groupMissions = currentMissions.filter((mission: any) => mission.displayGroup === group && mission.status === "IN_PROGRESS").slice(0, 1);
+          const groupMissions = currentMissions.filter((mission: any) => mission.displayGroup === group && mission.status === "IN_PROGRESS");
           if (!groupMissions.length) return null;
           return <details key={group} className="mission-group">
-            <summary>{labels[group]}</summary>
-            {groupMissions.map((mission: any) => <div key={mission.id} className="mission-group-current"><strong>{mission.title}</strong><span>{mission.current_progress || 0} / {mission.target_value || 1}</span></div>)}
+            <summary>{labels[group]} <span>{groupMissions.length}件</span></summary>
+            <div className="mission-group-list">
+              {groupMissions.map((mission: any) => {
+                const targetValue = Number(mission.target_value || 1);
+                const currentProgress = Number(mission.current_progress || 0);
+                const progressPercent = Math.min(100, Math.floor((currentProgress / targetValue) * 100));
+                return <div key={mission.id} className="mission-group-current">
+                  <div className="mission-group-heading">
+                    <strong>{mission.title}</strong>
+                    <span>{currentProgress} / {targetValue}</span>
+                  </div>
+                  <p>{mission.description}</p>
+                  <div className="mission-group-reward">
+                    <CanonicalItemIcon itemId={mission.reward_item} alt="" className="mission-reward-art" />
+                    <span>{canonicalMissionRewardName(String(mission.reward_item || ""))} × {Number(mission.reward_amount || 0).toLocaleString()}</span>
+                    {Number(mission.cashReward || 0) > 0 && <>
+                      <CanonicalItemIcon itemId="CASH" alt="" className="mission-reward-art" />
+                      <span>キャッシュ × {Number(mission.cashReward).toLocaleString()}</span>
+                    </>}
+                  </div>
+                  <div className="mission-progress-bar-container">
+                    <div className="mission-progress-bar" style={{ width: `${progressPercent}%` }}></div>
+                    <span className="mission-progress-text">{currentProgress} / {targetValue}</span>
+                  </div>
+                </div>;
+              })}
+            </div>
           </details>;
         })}
       </fieldset>

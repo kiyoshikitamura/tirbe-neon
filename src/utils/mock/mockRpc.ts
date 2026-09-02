@@ -356,8 +356,7 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     const members = client.getStorage("guild_members") || [];
     const milestones = client.getStorage("user_funnel_milestones") || [];
     const isGuildMember = members.some((entry: any) => entry.user_id === userId);
-    const hasGuildActivation = milestones.some((entry: any) => entry.user_id === userId && entry.milestone === "guild_activation");
-    if (!isGuildMember || !hasGuildActivation) {
+    if (!isGuildMember) {
       return { data: null, error: { message: "activation prerequisites not met", code: "55000" } };
     }
     if (!milestones.some((entry: any) => entry.user_id === userId && entry.milestone === "activation_mission_handoff")) {
@@ -429,6 +428,9 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
   }
 
   if (funcName === "search_guilds") {
+    if (typeof window !== "undefined" && localStorage.getItem("mock_rpc_error:search_guilds") === "true") {
+      return { data: null, error: { message: "mock guild discovery failure", code: "MOCK_ERROR" } };
+    }
     const query = String(params?.p_query || "").trim().toLocaleLowerCase();
     const guilds = client.getStorage("guilds") || [];
     const members = client.getStorage("guild_members") || [];
@@ -1695,6 +1697,7 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     const post = { id: `chat_${Date.now()}`, title: "", user_id: userId, author_id: userId, author_name: user.username || "Player", author_avatar_url: user.avatar_url, content: p_content.trim(), target_type: p_target_type, target_id: p_target_type === "GUILD" ? membership.guild_id : null, reply_to_message_id: p_reply_to_message_id || null, is_system: false, created_at: new Date().toISOString() };
     posts.push(post);
     client.setStorage("board_posts", posts);
+    if (p_target_type === "GUILD" && userId) evaluateMockMissionProgress(client, userId, "GUILD_CHAT", 1);
     return { data: post, error: null };
   }
 
@@ -2188,7 +2191,7 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
       gift_code: null,
       bio: "歌舞伎町の覇権を握るため立ち上がる。",
       avatar_url: p_character_id === "char_reiji_01" ? "/characters/reiji_transparent_asset.png" : p_character_id === "char_rui_01" ? "/characters/rui_transparent_asset.png" : p_character_id === "char_chang_01" ? "/characters/chang_transparent_asset.png" : "/characters/reiji_transparent_asset.png",
-      cash: 10000,
+      cash: 2600,
       neon_diamonds: 200,
       vitality: 100,
       pvp_points: 5,
@@ -2350,7 +2353,7 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
       username,
       bio: "歌舞伎町の覇権を握るため立ち上がる。",
       avatar_url: "/characters/reiji_transparent_asset.png",
-      cash: 10000,
+      cash: 2600,
       neon_diamonds: 200,
       vitality: 100,
       pvp_points: 5,
@@ -3136,7 +3139,7 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     client.setStorage("user_missions", missions);
     const users = client.getStorage("users") || [];
     const user = users.find((row: any) => row.id === userId);
-    if (user) Object.assign(user, { level: 1, xp: 0, cash: 10000, neon_diamonds: 200, diamonds: 0, vitality: 100, pvp_points: 5, raid_points: 5, favorite_character_id: null, current_base_id: "shinjuku" });
+    if (user) Object.assign(user, { level: 1, xp: 0, cash: 2600, neon_diamonds: 200, diamonds: 0, vitality: 100, pvp_points: 5, raid_points: 5, favorite_character_id: null, current_base_id: "shinjuku" });
     client.setStorage("users", users);
     const progressRows = client.getStorage("tutorial_progress") || [];
     const progress = progressRows.find((row: any) => row.user_id === userId);
@@ -3167,6 +3170,14 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     const lifetimeGrant = (client.getStorage("user_lifetime_onboarding_grants") || []).find((row: any) => row.user_id === userId);
     const lifetimeResults = lifetimeGrant?.canonical_payload?.gacha_results;
     if (!normal.length || !ssr.length) return { data: null, error: { message: "canonical tutorial gacha bucket is empty" } };
+    const claims = client.getStorage("user_daily_gacha_claims") || [];
+    const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Tokyo" });
+    const existingClaim = claims.find((entry: any) => entry.user_id === userId && entry.gacha_type === "CHARACTER");
+    if (existingClaim?.last_claimed_date === today) {
+      return { data: null, error: { message: "daily free gacha already claimed", code: "23505" } };
+    }
+    if (existingClaim) existingClaim.last_claimed_date = today;
+    else claims.push({ user_id: userId, gacha_type: "CHARACTER", last_claimed_date: today });
     const characters = client.getStorage("user_characters") || [];
     const results = Array.from({ length: 10 }, (_, index) => {
       // Stable tutorial fixture order keeps N/R/SR visual contract assertions
@@ -3191,7 +3202,10 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     });
     const response = { status: "success", request_id: params.p_request_id, results, tutorial: true, guaranteed_ssr_slot: 10 };
     histories.push({ user_id: userId, request_id: params.p_request_id, gacha_id: "CHAR_NORMAL", payment_source: "free", pull_count: 10, status: "COMPLETED", result_payload: response });
-    client.setStorage("gacha_execution_history", histories); client.setStorage("user_characters", characters);
+    client.setStorage("gacha_execution_history", histories);
+    client.setStorage("user_daily_gacha_claims", claims);
+    client.setStorage("user_characters", characters);
+    evaluateMockMissionProgress(client, userId, "GACHA_PULL", 1);
     return { data: response, error: null };
   }
 
@@ -3273,6 +3287,9 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     const response = { status: "success", request_id: p_request_id, results, cash: user.cash, diamonds: user.neon_diamonds };
     histories.push({ user_id: p_user_id, request_id: p_request_id, gacha_id: p_gacha_id, payment_source: p_currency_type, pull_count: p_pull_count, status: "COMPLETED", result_payload: response });
     client.setStorage("gacha_execution_history", histories);
+    if (p_currency_type === "free" && p_gacha_id === "CHAR_NORMAL" && p_pull_count === 10) {
+      evaluateMockMissionProgress(client, p_user_id, "GACHA_PULL", 1);
+    }
     return { data: response, error: null };
   }
 
@@ -3389,6 +3406,9 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     const response = { status: "success", request_id: p_request_id, results, cash: user.cash, diamonds: user.neon_diamonds };
     histories.push({ user_id: p_user_id, request_id: p_request_id, gacha_id: p_gacha_id, payment_source: p_currency_type, pull_count: p_pull_count, status: "COMPLETED", result_payload: response });
     client.setStorage("gacha_execution_history", histories);
+    if (p_currency_type === "free" && ["SKILL_NORMAL", "EQUIP_NORMAL"].includes(p_gacha_id) && p_pull_count === 10) {
+      evaluateMockMissionProgress(client, p_user_id, "GACHA_PULL", 1);
+    }
     return { data: response, error: null };
   }
 
