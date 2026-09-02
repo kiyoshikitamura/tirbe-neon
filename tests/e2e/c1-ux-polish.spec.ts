@@ -67,11 +67,11 @@ for (const viewport of [
     await expect(page.locator(".mission-reward")).toContainText("強化ドリンク・小");
     await expectNoHorizontalOverflow(page, ".mission-panel-container-inner");
     await page.getByRole("button", { name: "受け取る", exact: true }).click();
-    const rewardDialog = page.locator(".outlaw-confirm-dialog.kind-reward");
+    const rewardDialog = page.getByRole("dialog", { name: "報酬獲得" });
     await expect(rewardDialog).toBeVisible();
     await expect(rewardDialog).toContainText("強化ドリンク・小");
     await expect(rewardDialog).toContainText("プレゼント");
-    await expectNoHorizontalOverflow(page, ".outlaw-confirm-dialog");
+    await expectNoHorizontalOverflow(page, ".canonical-dialog");
   });
 }
 
@@ -94,7 +94,7 @@ test("Present claim uses the shared reward result and mobile-safe layout", async
   await expect(page.locator(".inbox-present-item")).toBeVisible();
   await expectNoHorizontalOverflow(page, ".inbox-panel-container-inner");
   await page.getByRole("button", { name: "受け取る", exact: true }).click();
-  const dialog = page.locator(".outlaw-confirm-dialog.kind-reward");
+  const dialog = page.getByRole("dialog", { name: "報酬獲得" });
   await expect(dialog).toContainText("× 2");
   await expect(dialog).not.toContainText("CHAR_EXP_M");
 });

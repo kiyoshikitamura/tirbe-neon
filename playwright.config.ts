@@ -20,9 +20,9 @@ export default defineConfig({
   use: {
     baseURL: testBaseUrl,
     headless: true,
-    trace: process.env.CI ? "on-first-retry" : "retain-on-failure",
+    trace: process.env.CI ? "off" : "retain-on-failure",
     screenshot: "only-on-failure",
-    // CI失敗時の動画肥大化を避け、スクリーンショットと初回retryのtraceを残す。
+    // CI失敗時の動画・trace肥大化を避け、スクリーンショットとerror contextを残す。
     video: process.env.CI ? "off" : "retain-on-failure",
   },
   webServer: {

@@ -100,8 +100,7 @@ jobs:
           name: playwright-diagnostics
           path: |
             test-results/**/test-failed-*.png
-            test-results/**/trace.zip
             test-results/**/error-context.md
             playwright-report/index.html
           if-no-files-found: ignore
-          retention-days: 2
+          retention-days: 1

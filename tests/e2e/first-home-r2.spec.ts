@@ -28,6 +28,7 @@ async function installPrimaryCtaObserver(page: Page) {
 }
 
 const resumeSnapshot = {
+  userId: "00000000-0000-4000-8000-000000000405",
   backgroundUrl: "/bg/bg_street_shibuya.jpg",
   leaderImageUrl: "/characters/reiji_transparent_asset.png",
   leaderName: "reiji",
@@ -36,6 +37,7 @@ const resumeSnapshot = {
 test("reload uses the stable Home resume shell instead of branded boot loading", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.addInitScript((snapshot) => {
+    window.localStorage.setItem("tribe_demo_uuid", snapshot.userId);
     window.sessionStorage.setItem("tribe-neon.home-resume-visual.v1", JSON.stringify(snapshot));
   }, resumeSnapshot);
   await page.route("**/branding/title-key-visual.png", async (route) => {
@@ -139,7 +141,7 @@ for (const viewport of viewports) {
     await expect(page.locator(".header-mobile")).toContainText("⚡");
     await expect(page.locator(".header-mobile-power")).toContainText("総合力");
     await expect(page.locator(".mypage-current-location")).toContainText("新宿");
-    await expect(page.locator(".mypage-sub-icons-left .sub-icon-unit")).toHaveCount(3);
+    await expect(page.locator(".mypage-sub-icons-left .sub-icon-label")).toHaveText(["ボーナス", "ミッション", "ランキング", "レイド"]);
     await expect(page.locator(".mypage-sub-icons-right")).toHaveCount(0);
     await expect(page.locator(".footer-mobile .footer-item")).toHaveCount(5);
     await expect(page.locator(".footer-mobile .footer-label")).toHaveText(["マイページ", "コミュニティ", "キャラ", "ガチャ", "ショップ"]);
