@@ -48,10 +48,10 @@ jobs:
                   'gvg_individual_refs',(select count(*) from public.gvg_individual_season_rankings g where g.season_id=s.id)
                 ) order by s.ranking_type,s.starts_at),'[]'::jsonb) from public.ranking_seasons s where s.ranking_type in('PVP','RAID')),
                 'fk_constraints',(select coalesce(jsonb_agg(jsonb_build_object('table',c.conrelid::regclass::text,'name',c.conname,'delete_action',c.confdeltype)),'[]'::jsonb) from pg_constraint c where c.contype='f' and c.confrelid='public.ranking_seasons'::regclass),
-                'damage_after_apply',(select count(*) from public.raid_damage_logs where created_at>=${JSON.stringify(process.env.APPLIED_AT)}::timestamptz),
-                'pvp_updates_after_apply',(select count(*) from public.pvp_ranks where updated_at>=${JSON.stringify(process.env.APPLIED_AT)}::timestamptz),
-                'pvp_grants_after_apply',(select count(*) from public.pvp_ranking_reward_grants where granted_at>=${JSON.stringify(process.env.APPLIED_AT)}::timestamptz),
-                'finalized_replays_after_apply',(select count(*) from public.battle_replay_sessions where finalized_at>=${JSON.stringify(process.env.APPLIED_AT)}::timestamptz)
+                'damage_after_apply',(select count(*) from public.raid_damage_logs where created_at>='2026-09-02T06:47:40Z'::timestamptz),
+                'pvp_updates_after_apply',(select count(*) from public.pvp_ranks where updated_at>='2026-09-02T06:47:40Z'::timestamptz),
+                'pvp_grants_after_apply',(select count(*) from public.pvp_ranking_reward_grants where granted_at>='2026-09-02T06:47:40Z'::timestamptz),
+                'finalized_replays_after_apply',(select count(*) from public.battle_replay_sessions where finalized_at>='2026-09-02T06:47:40Z'::timestamptz)
               ) inventory;
             `);
             assert.equal(result.length,1);
