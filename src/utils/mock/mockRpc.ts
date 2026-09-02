@@ -1248,6 +1248,9 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
         team: "PLAYER",
         alignment: characterMaster?.attribute || "ORDER",
         characterId: character.character_id,
+        level: Math.max(1, Number(character.level || 1)),
+        awakeningLevel: Math.max(0, Number(character.awakening_level || 0)),
+        rarity: characterMaster?.rarity || "N",
         stats: {
           hp: characterStats.hp + equipmentStats.hp,
           atk: characterStats.atk + equipmentStats.atk,

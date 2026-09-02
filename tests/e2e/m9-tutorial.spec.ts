@@ -1313,11 +1313,17 @@ test("new mobile player completes the guided first session without footer naviga
   await expect(page.locator('.battle-party-zone.is-player')).toHaveAttribute("data-party-size", "5");
   const playerRosterRows = await page.locator('.battle-party-zone.is-player .battle-unit-party').evaluateAll((rows) => rows.map((row) => {
     const rect = row.getBoundingClientRect();
-    return { top: Math.round(rect.top), left: Math.round(rect.left) };
+    return { top: Math.round(rect.top), left: Math.round(rect.left), actor: row.classList.contains("is-actor") };
   }));
   expect(playerRosterRows).toHaveLength(5);
   expect(new Set(playerRosterRows.map((row) => row.top)).size).toBe(5);
-  expect(Math.max(...playerRosterRows.map((row) => row.left)) - Math.min(...playerRosterRows.map((row) => row.left))).toBeLessThanOrEqual(1);
+  const restingPlayerRows = playerRosterRows.filter((row) => !row.actor);
+  const activePlayerRow = playerRosterRows.find((row) => row.actor);
+  expect(restingPlayerRows).toHaveLength(4);
+  expect(Math.max(...restingPlayerRows.map((row) => row.left)) - Math.min(...restingPlayerRows.map((row) => row.left))).toBeLessThanOrEqual(1);
+  expect(activePlayerRow).toBeTruthy();
+  expect((activePlayerRow?.left || 0) - restingPlayerRows[0].left).toBeGreaterThanOrEqual(20);
+  expect((activePlayerRow?.left || 0) - restingPlayerRows[0].left).toBeLessThanOrEqual(30);
   await expect(page.locator(".battle-unit-party.is-actor .battle-unit-identity-badges img")).toHaveCount(1);
   await page.screenshot({ path: test.info().outputPath("B3-normal-attack.png"), fullPage: true });
   await expect(page.locator('[data-acceptance-state="B4"]')).toBeVisible({ timeout: 35_000 });
