@@ -356,8 +356,7 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     const members = client.getStorage("guild_members") || [];
     const milestones = client.getStorage("user_funnel_milestones") || [];
     const isGuildMember = members.some((entry: any) => entry.user_id === userId);
-    const hasGuildActivation = milestones.some((entry: any) => entry.user_id === userId && entry.milestone === "guild_activation");
-    if (!isGuildMember || !hasGuildActivation) {
+    if (!isGuildMember) {
       return { data: null, error: { message: "activation prerequisites not met", code: "55000" } };
     }
     if (!milestones.some((entry: any) => entry.user_id === userId && entry.milestone === "activation_mission_handoff")) {
@@ -429,6 +428,9 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
   }
 
   if (funcName === "search_guilds") {
+    if (typeof window !== "undefined" && localStorage.getItem("mock_rpc_error:search_guilds") === "true") {
+      return { data: null, error: { message: "mock guild discovery failure", code: "MOCK_ERROR" } };
+    }
     const query = String(params?.p_query || "").trim().toLocaleLowerCase();
     const guilds = client.getStorage("guilds") || [];
     const members = client.getStorage("guild_members") || [];
