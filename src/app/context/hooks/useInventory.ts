@@ -7,6 +7,7 @@ import { canUseEnergyDrink } from "@/domain/gameplay/canonical/action_resources"
 import { useImmediateActionLock } from "@/hooks/useImmediateActionLock";
 import { canonicalItemName } from "@/domain/gameplay/canonical/items";
 import { canonicalMissionRewardName } from "@/domain/gameplay/canonical/missions";
+import { buildInventoryQuantityProjection } from "@/domain/gameplay/inventoryProjection";
 
 const aggregateMissionRewards = (rows: Array<{ item_id?: string; quantity?: number }>) => {
   const rewardByItem = new Map<string, number>();
@@ -36,6 +37,7 @@ export function useInventory(
   setConfirmDialogConfig: React.Dispatch<React.SetStateAction<import("@/app/components/ui/ConfirmDialog").ConfirmDialogConfig | null>>
 ) {
   const [userItems, setUserItems] = useState<any[]>([]);
+  const [inventoryProjectionOwnerUserId, setInventoryProjectionOwnerUserId] = useState("");
 
   // 消耗品ステート
   const [energyDrinks, setEnergyDrinks] = useState<number>(0);
@@ -55,6 +57,41 @@ export function useInventory(
   const pvpVipPasses = 0;
   const trainingManuals = charExpS + charExpM + charExpL;
   const polishingStones = equipExpS + equipExpM + equipExpL;
+
+  const projectUserItems = (rows: any[], ownerUserId: string) => {
+    const items = Array.isArray(rows) ? rows : [];
+    const quantities = buildInventoryQuantityProjection(items);
+
+    // Keep the canonical row projection and the compatibility counters in one
+    // synchronous React update boundary. Bag and Growth must never observe
+    // different ownership values for the same user_items rows.
+    setUserItems(items);
+    setEnergyDrinks(quantities.ENERGY_DRINK);
+    setCharExpS(quantities.CHAR_EXP_S);
+    setCharExpM(quantities.CHAR_EXP_M);
+    setCharExpL(quantities.CHAR_EXP_L);
+    setEquipExpS(quantities.EQUIP_EXP_S);
+    setEquipExpM(quantities.EQUIP_EXP_M);
+    setEquipExpL(quantities.EQUIP_EXP_L);
+    setAwakeningBooks(quantities.AWAKENING_BOOK);
+    setSkillManuals(quantities.SKILL_MANUAL);
+    setEquipLbParts(quantities.EQUIP_LB_PART);
+    setInventoryProjectionOwnerUserId(ownerUserId);
+  };
+
+  const resetUserItemsProjection = () => {
+    projectUserItems([], "");
+  };
+
+  const refreshUserItemsProjection = async (userId: string) => {
+    const { data, error } = await supabase
+      .from("user_items")
+      .select("*")
+      .eq("user_id", userId);
+    if (error) throw error;
+    projectUserItems(data || [], userId);
+    return data || [];
+  };
 
   // ミッション ＆ プレゼント
   const [missions, setMissions] = useState<any[]>([]);
@@ -168,7 +205,10 @@ export function useInventory(
       if (res.data?.error) throw new Error(res.data.error);
 
       setPresents(prev => prev.filter(p => p.id !== id));
-      await syncBootstrapData(session.user.id);
+      await Promise.all([
+        refreshUserItemsProjection(session.user.id),
+        syncBootstrapData(session.user.id),
+      ]);
       if (targetPresent) {
         setConfirmDialogConfig({
           isOpen: true,
@@ -218,7 +258,10 @@ export function useInventory(
       if (res.data?.error) throw new Error(res.data.error);
 
       setPresents(prev => prev.filter(p => p.status !== "UNCLAIMED"));
-      await syncBootstrapData(session.user.id);
+      await Promise.all([
+        refreshUserItemsProjection(session.user.id),
+        syncBootstrapData(session.user.id),
+      ]);
       const rewardByItem = new Map<string, number>();
       unclaimed.forEach((present) => {
         const itemId = String(present.itemId || present.item_id || "");
@@ -302,6 +345,10 @@ export function useInventory(
 
   return {
     userItems, setUserItems,
+    inventoryProjectionOwnerUserId,
+    projectUserItems,
+    resetUserItemsProjection,
+    refreshUserItemsProjection,
     energyDrinks, setEnergyDrinks,
     charExpS, setCharExpS,
     charExpM, setCharExpM,

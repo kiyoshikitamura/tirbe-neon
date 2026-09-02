@@ -39,6 +39,8 @@ test.beforeEach(async ({ page }) => {
       { id: "item-char-l", user_id: userId, item_id: "CHAR_EXP_L", quantity: 2 },
       { id: "item-awaken", user_id: userId, item_id: "AWAKENING_BOOK", quantity: 1 },
       { id: "item-equip-s", user_id: userId, item_id: "EQUIP_EXP_S", quantity: 5 },
+      { id: "item-equip-m", user_id: userId, item_id: "EQUIP_EXP_M", quantity: 4 },
+      { id: "item-equip-l", user_id: userId, item_id: "EQUIP_EXP_L", quantity: 2 },
     ]));
     localStorage.setItem("mock_db_quests", JSON.stringify([
       { id: "QUEST_SHINJUKU_EASY", name: "歌舞伎町一番街", town_id: "shinjuku", level_type: "EASY", duration_seconds: 300, cost_vitality: 3, cash_reward: 0, exp_reward: 100 },
@@ -74,6 +76,10 @@ async function expectMobileGeometry(page: import("@playwright/test").Page, selec
 test("Character, Party, Growth, Skill and Equipment follow the fixed mobile hierarchy", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await enterGame(page);
+  await page.getByRole("button", { name: /MENU/ }).click();
+  await page.getByRole("button", { name: "バッグ", exact: true }).click();
+  await expect(page.locator(".bag-item-card", { hasText: "強化ドリンク・小" })).toContainText("所持数: 10");
+  await expect(page.locator(".bag-item-card", { hasText: "カスタムオイル・小" })).toContainText("所持数: 5");
   await page.locator('.footer-item[aria-label="キャラ"]').click();
   await expect(page.locator(".character-v2-shell")).toBeVisible();
   await expect(page.locator(".character-v2-character-grid .character-v2-card")).toHaveCount(3);
@@ -91,6 +97,7 @@ test("Character, Party, Growth, Skill and Equipment follow the fixed mobile hier
   await expect(page.getByText("強化ドリンク・中", { exact: true })).toBeVisible();
   await expect(page.getByText("強化ドリンク・大", { exact: true })).toBeVisible();
   await expect(page.getByText("覚醒の書", { exact: true })).toBeVisible();
+  await expect(page.locator(".character-v2-material", { hasText: "強化ドリンク・小" })).toContainText("所持 10 / 使用 0");
   await expect(page.getByText("同一Character Duplicate取得時は自動覚醒します。", { exact: true })).toHaveCount(0);
   await page.locator(".character-v2-material").first().locator("button").last().click();
   await expect(page.locator(".character-v2-current-after").first()).toContainText("Lv.13");
@@ -109,6 +116,9 @@ test("Character, Party, Growth, Skill and Equipment follow the fixed mobile hier
   await expect(page.locator(".canonical-dialog-close")).toHaveCount(0);
   await page.getByRole("button", { name: "強化", exact: true }).click();
   await expect(page.locator(".character-v2-asset-growth")).toBeVisible();
+  await expect(page.locator(".character-v2-material", { hasText: "カスタムオイル・小" })).toContainText("所持 5 / 使用 0");
+  await expect(page.locator(".character-v2-material", { hasText: "カスタムオイル・中" })).toContainText("所持 4 / 使用 0");
+  await expect(page.locator(".character-v2-material", { hasText: "カスタムオイル・大" })).toContainText("所持 2 / 使用 0");
   await expect(page.locator(".character-v2-current-after")).toContainText("After");
   await page.getByRole("button", { name: "戻る", exact: true }).click();
 
