@@ -120,8 +120,9 @@ result = await rpc("execute_character_gacha", {
 assert(result.error);
 assert.equal(mission("MIS_D_001")?.current_progress, 0, "failed free gacha must not complete the daily mission");
 
-const [migration, panel, missionMaster] = await Promise.all([
+const [migration, correction, panel, missionMaster] = await Promise.all([
   readFile(new URL("../supabase/migrations/20260902000222_daily_mission_authority_convergence.sql", import.meta.url), "utf8"),
+  readFile(new URL("../supabase/migrations/20260902000223_daily_mission_authority_corrections.sql", import.meta.url), "utf8"),
   readFile(new URL("../src/app/components/MissionPanel.tsx", import.meta.url), "utf8"),
   readFile(new URL("../src/domain/gameplay/canonical/data/missions_20260902.json", import.meta.url), "utf8"),
 ]);
@@ -133,6 +134,13 @@ for (const contract of [
   "PVP_FINALIZED_BATTLE_COUNT",
   "GUILD_ACTIVITY_COUNT",
 ]) assert(migration.includes(contract), `migration authority contract missing: ${contract}`);
+for (const contract of [
+  "new.status not in ('CLEAR', 'CLAIMED')",
+  "new.status in ('CLEAR', 'CLAIMED')",
+  "and m.is_enabled",
+  "insert into public.user_daily_gacha_claims",
+  "NORMAL_FREE_GACHA_PULL_COUNT",
+]) assert(correction.includes(contract), `correction authority contract missing: ${contract}`);
 assert(!panel.includes("displayGroup === group && mission.status === \"IN_PROGRESS\").slice(0, 1)"), "Normal mission groups must not truncate details to one row");
 for (const detail of ["mission.description", "mission.reward_item", "mission.reward_amount", "mission.current_progress", "mission.target_value"]) {
   assert(panel.includes(detail), `Normal mission details are missing: ${detail}`);
