@@ -1168,12 +1168,12 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
     }
     return {
       data: {
-        id: encounter.encounterId,
-        quest_id: encounter.questId,
+        id: encounter.encounterId ?? patrol.id,
+        quest_id: patrol.course_id ?? patrol.quest_id,
         npc_name: "Canonical NPC Party",
         npc_level: encounter.members[0]?.level ?? 1,
         encounter_rate: 1,
-        enemy_data: {},
+        enemy_data: encounter,
       },
       error: null,
     };

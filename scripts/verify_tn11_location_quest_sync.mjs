@@ -42,11 +42,18 @@ tables.set("user_patrols", [expiredPatrol]);
 result = await executeMockRpc(client, "get_patrol_battle_enemy", { p_patrol_id: expiredPatrol.id });
 assert.equal(result.error, null);
 assert.equal(result.data.id, "natural-completion");
+assert.equal(result.data.quest_id, expiredPatrol.course_id);
+assert.equal(result.data.npc_level, 5);
+assert.deepEqual(result.data.enemy_data, expiredPatrol.encounter_snapshot);
 expiredPatrol.expires_at = new Date(Date.now() + 60_000).toISOString();
 result = await executeMockRpc(client, "get_patrol_battle_enemy", { p_patrol_id: expiredPatrol.id });
 assert.equal(result.error?.code, "P0002");
+expiredPatrol.expires_at = new Date(Date.now() - 1_000).toISOString();
+expiredPatrol.user_id = "26000000-0000-4000-8000-000000000099";
+result = await executeMockRpc(client, "get_patrol_battle_enemy", { p_patrol_id: expiredPatrol.id });
+assert.equal(result.error?.code, "P0002");
 
-const [migration, encounterMigration, context, patrolHook, presentation, mockRpc, dbTest] = await Promise.all([
+const [migration, encounterMigration, context, patrolHook, presentation, mockRpc, dbTest, patrolDbTest] = await Promise.all([
   readFile(new URL("../supabase/migrations/20260902000226_location_movement_authority.sql", import.meta.url), "utf8"),
   readFile(new URL("../supabase/migrations/20260902000231_natural_patrol_encounter_authority.sql", import.meta.url), "utf8"),
   readFile(new URL("../src/app/context/GameContext.tsx", import.meta.url), "utf8"),
@@ -54,6 +61,7 @@ const [migration, encounterMigration, context, patrolHook, presentation, mockRpc
   readFile(new URL("../src/app/components/quest/QuestPresentationV2.tsx", import.meta.url), "utf8"),
   readFile(new URL("../src/utils/mock/mockRpc.ts", import.meta.url), "utf8"),
   readFile(new URL("../tests/db/location-movement-authority.sql", import.meta.url), "utf8"),
+  readFile(new URL("../tests/db/patrol-replay-idempotency-convergence.sql", import.meta.url), "utf8"),
 ]);
 
 for (const contract of ["security definer", "auth.uid()", "for update", "update public.users", "Invalid base id"]) {
@@ -64,6 +72,9 @@ assert(context.includes('supabase.rpc("move_current_user_base"'));
 assert(dbTest.includes("another user location was changed"));
 for (const contract of ["auth.uid()", "patrol.user_id = v_user_id", "patrol.status = 'ONGOING'", "patrol.expires_at <= now()", "patrol.encounter_snapshot is not null"]) {
   assert(encounterMigration.includes(contract), `natural encounter migration contract missing: ${contract}`);
+}
+for (const contract of ["natural completion was not authorized", "early natural completion was authorized", "another user''s natural completion was authorized", "enemy_data did not preserve encounter snapshot"]) {
+  assert(patrolDbTest.includes(contract), `natural encounter DB regression missing: ${contract}`);
 }
 
 // TN-11B contracts are asserted after its independent commit is applied.

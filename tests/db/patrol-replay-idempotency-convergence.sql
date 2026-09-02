@@ -2,7 +2,9 @@
 begin;
 
 insert into public.users(id,username)
-values('11000000-0000-4000-8000-000000000001','patrol');
+values
+ ('11000000-0000-4000-8000-000000000001','patrol'),
+ ('11000000-0000-4000-8000-000000000002','patrol_other');
 
 insert into public.user_characters(id,user_id,character_id,level) values
  ('12000000-0000-4000-8000-000000000001','11000000-0000-4000-8000-000000000001','char_ageha_01',7),
@@ -23,11 +25,26 @@ insert into public.pvp_defense_decks(
 );
 
 insert into public.user_patrols(
-  id,user_id,course_id,quest_id,character_id,status,has_battle_event,battle_resolved,expires_at
+  id,user_id,course_id,quest_id,character_id,status,has_battle_event,battle_resolved,expires_at,encounter_snapshot
 ) values(
   '13000000-0000-4000-8000-000000000001',
   '11000000-0000-4000-8000-000000000001',
-  'q_shinjuku_1','q_shinjuku_1','char_ageha_01','ONGOING',true,false,now()+interval '1 minute'
+  'q_shinjuku_1','q_shinjuku_1','char_ageha_01','ONGOING',true,false,now()+interval '1 minute',null
+),(
+  '13000000-0000-4000-8000-000000000002',
+  '11000000-0000-4000-8000-000000000001',
+  'q_shinjuku_1','q_shinjuku_1','char_ageha_01','ONGOING',true,false,now()-interval '1 second',
+  '{"encounterId":"natural-completion","members":[{"id":"enemy-1","level":5}]}'::jsonb
+),(
+  '13000000-0000-4000-8000-000000000003',
+  '11000000-0000-4000-8000-000000000001',
+  'q_shinjuku_1','q_shinjuku_1','char_ageha_01','ONGOING',true,false,now()+interval '1 minute',
+  '{"encounterId":"early-completion","members":[{"id":"enemy-1","level":5}]}'::jsonb
+),(
+  '13000000-0000-4000-8000-000000000004',
+  '11000000-0000-4000-8000-000000000002',
+  'q_shinjuku_1','q_shinjuku_1','char_ageha_01','ONGOING',true,false,now()-interval '1 second',
+  '{"encounterId":"foreign-completion","members":[{"id":"enemy-1","level":5}]}'::jsonb
 );
 
 insert into public.tutorial_progress(user_id,step_id)
@@ -45,7 +62,35 @@ declare
   v_resolved_retry jsonb;
   v_count integer;
   v_duplicate_rejected boolean:=false;
+  v_early_rejected boolean:=false;
+  v_foreign_rejected boolean:=false;
 begin
+  v_encounter:=public.get_patrol_battle_enemy('13000000-0000-4000-8000-000000000002');
+  if v_encounter->>'id'<>'natural-completion' then
+    raise exception 'natural completion was not authorized';
+  end if;
+  if v_encounter->'enemy_data'->'members'->0->>'id'<>'enemy-1' then
+    raise exception 'enemy_data did not preserve encounter snapshot';
+  end if;
+
+  begin
+    perform public.get_patrol_battle_enemy('13000000-0000-4000-8000-000000000003');
+  exception when sqlstate 'P0002' then
+    v_early_rejected:=true;
+  end;
+  if not v_early_rejected then
+    raise exception 'early natural completion was authorized';
+  end if;
+
+  begin
+    perform public.get_patrol_battle_enemy('13000000-0000-4000-8000-000000000004');
+  exception when sqlstate 'P0002' then
+    v_foreign_rejected:=true;
+  end;
+  if not v_foreign_rejected then
+    raise exception 'another user''s natural completion was authorized';
+  end if;
+
   v_completion:=public.complete_patrol_instantly(
     '11000000-0000-4000-8000-000000000001',
     '13000000-0000-4000-8000-000000000001',
