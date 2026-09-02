@@ -20,6 +20,7 @@ jobs:
     env:
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      SUPABASE_PREVIEW_PROJECT_REF: sufvuqdnqohpfzkwxohq
       SUPABASE_EXPECTED_PROJECT_REF: sufvuqdnqohpfzkwxohq
       PRODUCTION_PROJECT_REF: ktpolnkyyfkowxdmijww
       MIGRATION_VERSION: "20260902000223"
