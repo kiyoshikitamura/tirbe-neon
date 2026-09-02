@@ -96,7 +96,7 @@ jobs:
                   'projection_mismatches',(select count(*) from report where projection_mismatch),
                   'unexplained_later_updates',(select count(*) from report where unexplained_later_rank_update),
                   'negative_reconstructed_wins',(select count(*) from report where inferred_boundary_season_wins<0 or inferred_boundary_daily_wins<0),
-                  'legacy_rpc_authenticated',has_function_privilege('authenticated','public.update_pvp_result(boolean,integer)','execute'),
+                  'legacy_rpc_authenticated',coalesce(has_function_privilege('authenticated',to_regprocedure('public.update_pvp_result(boolean,integer)'),'execute'),false),
                   'direct_table_update_authenticated',has_table_privilege('authenticated','public.pvp_ranks','update'),
                   'duplicate_replay_ids',(select count(*)-count(distinct replay_id) from events),
                   'raid_logs_after_boundary',(select count(*) from public.raid_damage_logs where created_at>='2026-08-31 15:00:00+00'),
