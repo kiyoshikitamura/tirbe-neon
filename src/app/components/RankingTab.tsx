@@ -31,6 +31,14 @@ type PublicProfile = {
   main_formation_character_ids?: string[] | null;
 };
 
+type GuildSeasonMetadata = {
+  starts_at?: string | null;
+  ends_at?: string | null;
+  status?: string | null;
+  finalized_at?: string | null;
+  updated_at?: string | null;
+};
+
 const RANKING_TABS = [
   { id: "power", label: "総合力" },
   { id: "guild_power", label: "ギルド" },
@@ -47,6 +55,53 @@ const validRank = (value: unknown) => {
   const rank = Number(value);
   return Number.isInteger(rank) && rank > 0 ? rank : null;
 };
+
+const asRecord = (value: unknown): Record<string, any> | null => value && typeof value === "object" && !Array.isArray(value)
+  ? value as Record<string, any>
+  : null;
+
+function normalizeGuildRankingPayload(data: unknown) {
+  if (Array.isArray(data)) return { rows: data, selfRank: null, season: null };
+  const payload = asRecord(data);
+  if (!payload) return { rows: [], selfRank: null, season: null };
+  const rows = [payload.rows, payload.rankings, payload.guilds, payload.data].find(Array.isArray) || [];
+  const selfPayload = asRecord(payload.selfRank) || asRecord(payload.self_rank) || asRecord(payload.self_guild) || asRecord(payload.current_guild);
+  const selfRank = asRecord(selfPayload?.row) || asRecord(selfPayload?.guild) || selfPayload;
+  const nestedSeason = asRecord(payload.season) || asRecord(payload.metadata);
+  const seasonSource = nestedSeason || payload;
+  const season: GuildSeasonMetadata | null = ["starts_at", "ends_at", "status", "finalized_at", "updated_at"].some((key) => key in seasonSource)
+    ? {
+      starts_at: seasonSource.starts_at ?? seasonSource.startsAt,
+      ends_at: seasonSource.ends_at ?? seasonSource.endsAt,
+      status: seasonSource.status,
+      finalized_at: seasonSource.finalized_at ?? seasonSource.finalizedAt ?? (seasonSource.is_finalized ? seasonSource.server_updated_at : null),
+      updated_at: seasonSource.updated_at ?? seasonSource.updatedAt ?? seasonSource.server_updated_at,
+    }
+    : null;
+  return { rows, selfRank, season };
+}
+
+function formatJstTimestamp(value: string | null | undefined) {
+  if (!value) return null;
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return null;
+  return date.toLocaleString("ja-JP", {
+    timeZone: "Asia/Tokyo",
+    month: "numeric",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hourCycle: "h23",
+  });
+}
+
+function formatJstDay(value: string | null | undefined, subtractMillisecond = false) {
+  if (!value) return null;
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return null;
+  if (subtractMillisecond) date.setTime(date.getTime() - 1);
+  return date.toLocaleDateString("ja-JP", { timeZone: "Asia/Tokyo", month: "numeric", day: "numeric" });
+}
 
 function RankingDeck({ characterIds = [] }: { characterIds?: string[] | null }) {
   const canonicalIds = (characterIds || []).filter(Boolean).slice(0, 5);
@@ -95,6 +150,7 @@ export default function RankingTab() {
   const [profiles, setProfiles] = useState<Record<string, PublicProfile>>({});
   const [currentIdentity, setCurrentIdentity] = useState<{ userId: string; profile: PublicProfile } | null>(null);
   const [selfRank, setSelfRank] = useState<any | null>(null);
+  const [guildSeason, setGuildSeason] = useState<GuildSeasonMetadata | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [clock, setClock] = useState(() => new Date());
@@ -115,20 +171,30 @@ export default function RankingTab() {
     setGuildRows([]);
     setProfiles({});
     setSelfRank(null);
+    setGuildSeason(null);
 
     try {
       let nextRows: any[] = [];
       let nextGuildRows: any[] = [];
       let nextSelfRank: any | null = null;
+      let nextGuildSeason: GuildSeasonMetadata | null = null;
 
       if (activeTab === "power") {
         const { data, error: rpcError } = await supabase.rpc("get_public_power_rankings", { p_daily: activePeriod === "daily", p_limit: 100, p_offset: 0 });
         if (rpcError) throw rpcError;
         nextRows = Array.isArray(data) ? data : [];
       } else if (activeTab === "guild_power") {
-        const { data, error: rpcError } = await supabase.rpc("get_public_guild_power_rankings", { p_daily: activePeriod === "daily", p_limit: 100, p_offset: 0 });
+        let { data, error: rpcError } = activePeriod === "season"
+          ? await supabase.rpc("get_preopen_guild_power_ranking", { p_limit: 100, p_offset: 0 })
+          : await supabase.rpc("get_public_guild_power_rankings", { p_daily: true, p_limit: 100, p_offset: 0 });
+        if (activePeriod === "season" && ((!rpcError && data == null) || (rpcError && ["42883", "PGRST202"].includes(String((rpcError as any).code || ""))))) {
+          ({ data, error: rpcError } = await supabase.rpc("get_public_guild_power_rankings", { p_daily: false, p_limit: 100, p_offset: 0 }));
+        }
         if (rpcError) throw rpcError;
-        nextGuildRows = Array.isArray(data) ? data : [];
+        const normalized = normalizeGuildRankingPayload(data);
+        nextGuildRows = normalized.rows;
+        nextSelfRank = normalized.selfRank;
+        nextGuildSeason = activePeriod === "season" ? normalized.season : null;
       } else if (activeTab === "pvp") {
         const { data, error: rpcError } = await supabase.rpc("get_public_pvp_rankings", { p_daily: activePeriod === "daily", p_limit: 100, p_offset: 0 });
         if (rpcError) throw rpcError;
@@ -165,6 +231,7 @@ export default function RankingTab() {
       setGuildRows(nextGuildRows);
       setProfiles(nextProfiles);
       setSelfRank(nextSelfRank);
+      setGuildSeason(nextGuildSeason);
     } catch {
       if (requestId === requestVersion.current) setError(true);
     } finally {
@@ -209,16 +276,17 @@ export default function RankingTab() {
   const currentUserId = session?.user?.id;
   const currentGuildId = userGuildMember?.guild_id || userGuild?.id || currentUser?.guild_members?.[0]?.guild_id;
   const currentRow = rows.find((row) => row.user_id === currentUserId);
-  const currentGuildRow = guildRows.find((row) => row.guild_id === currentGuildId);
+  const listedGuildRow = guildRows.find((row) => row.guild_id === currentGuildId);
+  const currentGuildRow = listedGuildRow || (activeTab === "guild_power" ? selfRank : null);
   const currentIdentityProfile = currentIdentity && currentIdentity.userId === currentUserId ? currentIdentity.profile : null;
   const currentProfile = currentIdentityProfile || (currentUserId ? profiles[currentUserId] : undefined);
   const currentIdentityName = currentProfile?.username || currentUser?.username;
-  const currentRank = activeTab === "guild_power" ? validRank(currentGuildRow?.rank_position) : validRank(currentRow?.rank_position ?? selfRank?.rank_position);
+  const currentRank = activeTab === "guild_power" ? validRank(currentGuildRow?.rank_position ?? currentGuildRow?.rank) : validRank(currentRow?.rank_position ?? selfRank?.rank_position);
   const currentMetric = useMemo(() => {
     if (activeTab === "power") return Number(currentRow?.current_power || currentUser?.total_power || 0).toLocaleString();
     if (activeTab === "guild_power") {
       if (!currentGuildId) return "対象外";
-      return Number(activePeriod === "daily" ? currentGuildRow?.daily_power : currentGuildRow?.current_power || 0).toLocaleString();
+      return Number(activePeriod === "daily" ? currentGuildRow?.daily_power : currentGuildRow?.current_power ?? currentGuildRow?.guild_power ?? currentGuildRow?.score ?? 0).toLocaleString();
     }
     if (activeTab === "pvp") return activePeriod === "daily" ? `${Number(currentRow?.daily_wins || 0).toLocaleString()}勝` : `${Number(currentRow?.rank_points || 0).toLocaleString()} RATE`;
     return Number(currentRow?.contribution ?? selfRank?.contribution ?? 0).toLocaleString();
@@ -227,7 +295,18 @@ export default function RankingTab() {
   const activeCategoryLabel = RANKING_TABS.find((tab) => tab.id === activeTab)?.label || "総合力";
   const metricLabel = activeTab === "power" ? "総合力" : activeTab === "guild_power" ? "ギルド総合力" : activeTab === "pvp" ? "RATE" : "累計ダメージ";
   const periodLabel = activePeriod === "daily" ? "デイリー" : "シーズン";
-  const updateLabel = `${clock.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" })} 更新`;
+  const isGuildSeason = activeTab === "guild_power" && activePeriod === "season";
+  const guildSeasonFinalized = Boolean(guildSeason?.finalized_at) || ["FINALIZED", "COMPLETED", "CLOSED"].includes(String(guildSeason?.status || "").toUpperCase());
+  const serverUpdatedAt = formatJstTimestamp(guildSeason?.updated_at || guildSeason?.finalized_at);
+  const guildSeasonStartLabel = formatJstDay(guildSeason?.starts_at);
+  const guildSeasonLastDayLabel = formatJstDay(guildSeason?.ends_at, true);
+  const guildSeasonPeriodLabel = guildSeasonStartLabel && guildSeasonLastDayLabel
+    ? `${guildSeasonStartLabel}〜${guildSeasonLastDayLabel}`
+    : "9/4〜9/8";
+  const guildSeasonEndLabel = formatJstTimestamp(guildSeason?.ends_at) || "9/9 0:00";
+  const updateLabel = isGuildSeason && serverUpdatedAt
+    ? `最終更新 ${serverUpdatedAt}`
+    : `${clock.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" })} 更新`;
 
   const openPlayer = (userId: string) => { if (userId) { playCyberSe("click"); void fetchPlayerDetail(userId); } };
   const openGuild = (guildId: string) => { if (guildId) { playCyberSe("click"); void fetchGuildDetail(guildId); } };
@@ -258,6 +337,12 @@ export default function RankingTab() {
       <SubTabNav className="ranking-category-nav" tabs={[...RANKING_TABS]} activeTabId={activeTab} onSelect={(tabId) => setRankingActiveTab(tabId)} />
       <div className="ranking-period-row"><div role="group" aria-label="集計期間">{PERIOD_TABS.map((period) => <button key={period.id} type="button" className={activePeriod === period.id ? "is-active" : ""} onClick={() => setActivePeriod(period.id)}>{period.label}</button>)}</div><span>{periodLabel}・{updateLabel}</span><button type="button" className="ranking-reward-button" onClick={openRewardDialog}>報酬確認</button></div>
 
+      {isGuildSeason && <section className={`ranking-guild-season-summary ${guildSeasonFinalized ? "is-finalized" : ""}`} aria-label="プレオープン限定シーズン情報">
+        <div><strong>プレオープン限定シーズン</strong><span>{guildSeasonFinalized ? "順位確定" : "集計中"}</span></div>
+        <p className="ranking-guild-season-period">{guildSeasonPeriodLabel} <small>{guildSeasonEndLabel}集計終了</small></p>
+        <p>ギルドメンバー全員の総合力で順位が決まります。仲間を集めて戦力を強化し、限定ギルド装飾を獲得しよう！</p>
+      </section>}
+
       <section className="ranking-current" aria-label="あなたの現在地">
         <div className="ranking-current-identity">
           {activeTab === "guild_power" ? <div><small>YOUR GUILD</small><strong>{userGuild?.name || "未所属"}</strong></div> : currentIdentityName ? <UserIdentityRow userName={currentIdentityName} guildName={currentProfile?.guild_name || userGuild?.name} leaderCharacterId={currentProfile?.favorite_character_id || currentUser?.favorite_character_id} onOpen={currentUserId ? () => openPlayer(currentUserId) : undefined} variant="compact" /> : <div className="ranking-current-identity-loading" role="status">ユーザー情報を取得中</div>}
@@ -271,7 +356,7 @@ export default function RankingTab() {
         : loading ? <div className="ranking-skeleton" aria-label="ランキング取得中">{[0, 1, 2].map((key) => <span key={key} />)}</div>
           : activeTab === "guild_power" ? <div className="ranking-list">{guildRows.length > 0 ? guildRows.map((row) => {
             const rank = validRank(row.rank_position);
-            return <button type="button" key={row.guild_id} className={`ranking-guild-row ${row.guild_id === currentGuildId ? "is-current" : ""}`} onClick={() => openGuild(row.guild_id)}><span className={`ranking-position is-${rank || "out"}`}><RankPresentation rank={rank} /></span><span className="ranking-guild-identity"><strong>{row.name || row.guild_name || "ギルド"}</strong><small>{Number(row.member_count || row.participant_count || 0)} MEMBERS</small></span><span className="ranking-metric">{Number(activePeriod === "daily" ? row.daily_power : row.current_power || row.contribution || 0).toLocaleString()}<small>総合力</small></span></button>;
+            return <button type="button" key={row.guild_id} className={`ranking-guild-row ${row.guild_id === currentGuildId ? "is-current" : ""}`} onClick={() => openGuild(row.guild_id)}><span className={`ranking-position is-${rank || "out"}`}><RankPresentation rank={rank} /></span><span className="ranking-guild-identity"><strong>{row.name || row.guild_name || "ギルド"}</strong><small>{Number(row.member_count || row.participant_count || 0)} MEMBERS</small></span><span className="ranking-metric">{Number(activePeriod === "daily" ? row.daily_power : row.current_power ?? row.guild_power ?? row.score ?? row.contribution ?? 0).toLocaleString()}<small>総合力</small></span></button>;
           }) : <div className="ranking-empty">まだランキングデータがありません</div>}</div>
             : <div className="ranking-list">{rows.length > 0 ? rows.map((row) => {
               const profile = profiles[row.user_id];
