@@ -1,0 +1,349 @@
+-- Pre-open guild Power season: immutable close snapshot and guild-owned cosmetic rewards.
+begin;
+
+create extension if not exists pg_cron with schema pg_catalog;
+
+create table if not exists public.ranking_guild_power_season_master (
+  season_id uuid primary key references public.ranking_seasons(id),
+  event_key text not null unique,
+  display_name text not null,
+  starts_at timestamptz not null,
+  ends_at timestamptz not null,
+  display_period_text text not null,
+  created_at timestamptz not null default clock_timestamp(),
+  check (ends_at > starts_at)
+);
+
+-- Deliberately empty until Operations explicitly registers a guild. Never infer
+-- exclusions from names because that could suppress a real guild's reward.
+create table if not exists public.ranking_guild_exclusions (
+  guild_id uuid primary key references public.guilds(id) on delete cascade,
+  reason text not null,
+  registered_at timestamptz not null default clock_timestamp()
+);
+
+create table if not exists public.ranking_guild_power_season_snapshots (
+  season_id uuid not null references public.ranking_seasons(id),
+  guild_id uuid not null,
+  guild_name text not null,
+  total_power bigint not null check (total_power > 0),
+  member_count integer not null check (member_count > 0),
+  rank_position integer not null check (rank_position > 0),
+  snapshotted_at timestamptz not null default clock_timestamp(),
+  primary key (season_id,guild_id)
+);
+
+create table if not exists public.ranking_guild_power_reward_grants (
+  season_id uuid not null references public.ranking_seasons(id),
+  guild_id uuid not null references public.guilds(id) on delete cascade,
+  cosmetic_id text not null references public.cosmetic_master(id),
+  rank_position integer not null check (rank_position > 0),
+  granted_at timestamptz not null default clock_timestamp(),
+  primary key (season_id,guild_id,cosmetic_id)
+);
+
+create table if not exists public.ranking_guild_power_finalization_audits (
+  season_id uuid primary key references public.ranking_seasons(id),
+  ranked_guild_count integer not null,
+  reward_grant_count integer not null,
+  completed_at timestamptz not null default clock_timestamp()
+);
+
+create or replace function public.reject_guild_power_snapshot_mutation()
+returns trigger language plpgsql security definer set search_path=public as $$
+begin
+  raise exception 'final guild Power snapshot is immutable' using errcode='55000';
+end;
+$$;
+drop trigger if exists ranking_guild_power_snapshot_immutable
+  on public.ranking_guild_power_season_snapshots;
+create trigger ranking_guild_power_snapshot_immutable
+before update or delete on public.ranking_guild_power_season_snapshots
+for each row execute function public.reject_guild_power_snapshot_mutation();
+
+insert into public.cosmetic_master(
+  id,owner_scope,slot,rarity,display_name,asset_key,source_type,source_reference,metadata,active
+) values
+  ('guild_preopen_2026_participation','GUILD','GUILD_DECORATION','EVENT',
+   'プレオープン参加記念ギルド装飾','guild_preopen_2026_participation','RANKING','PREOPEN_GUILD_POWER_2026',
+   '{"effect":"NONE","competitive_advantage":false,"asset_status":"PENDING_FINAL_ASSET"}'::jsonb,true),
+  ('guild_preopen_2026_rank_1','GUILD','GUILD_DECORATION','EVENT',
+   'プレオープン第1位限定ギルド装飾','guild_preopen_2026_rank_1','RANKING','PREOPEN_GUILD_POWER_2026',
+   '{"effect":"NONE","competitive_advantage":false,"asset_status":"PENDING_FINAL_ASSET"}'::jsonb,true),
+  ('guild_preopen_2026_rank_2','GUILD','GUILD_DECORATION','EVENT',
+   'プレオープン第2位限定ギルド装飾','guild_preopen_2026_rank_2','RANKING','PREOPEN_GUILD_POWER_2026',
+   '{"effect":"NONE","competitive_advantage":false,"asset_status":"PENDING_FINAL_ASSET"}'::jsonb,true),
+  ('guild_preopen_2026_rank_3','GUILD','GUILD_DECORATION','EVENT',
+   'プレオープン第3位限定ギルド装飾','guild_preopen_2026_rank_3','RANKING','PREOPEN_GUILD_POWER_2026',
+   '{"effect":"NONE","competitive_advantage":false,"asset_status":"PENDING_FINAL_ASSET"}'::jsonb,true)
+on conflict(id) do update set
+  owner_scope=excluded.owner_scope,slot=excluded.slot,rarity=excluded.rarity,
+  display_name=excluded.display_name,asset_key=excluded.asset_key,
+  source_type=excluded.source_type,source_reference=excluded.source_reference,
+  metadata=excluded.metadata,active=excluded.active;
+
+-- The launch season supersedes the generic live GUILD_POWER season only. Other
+-- ranking categories and their season lifecycle are untouched.
+update public.ranking_seasons
+set status='CLOSED',updated_at=clock_timestamp()
+where ranking_type='GUILD_POWER' and status='ACTIVE'
+  and not (starts_at='2026-09-03 15:00:00+00'::timestamptz
+       and ends_at='2026-09-08 15:00:00+00'::timestamptz);
+
+insert into public.ranking_seasons(ranking_type,starts_at,ends_at,status)
+values(
+  'GUILD_POWER',
+  '2026-09-03 15:00:00+00'::timestamptz,'2026-09-08 15:00:00+00'::timestamptz,
+  case when clock_timestamp()<'2026-09-08 15:00:00+00'::timestamptz then 'ACTIVE' else 'FINALIZING' end
+)
+on conflict(ranking_type,starts_at) do update set
+  ends_at=excluded.ends_at,
+  status=case when public.ranking_seasons.status='CLOSED' then 'CLOSED' else excluded.status end,
+  updated_at=clock_timestamp();
+
+insert into public.ranking_guild_power_season_master(
+  season_id,event_key,display_name,starts_at,ends_at,display_period_text
+) select season.id,'PREOPEN_GUILD_POWER_2026','プレオープン限定 ギルド総合力ランキング',
+  season.starts_at,season.ends_at,'9/4 0:00〜9/8 23:59'
+from public.ranking_seasons season
+where season.ranking_type='GUILD_POWER'
+  and season.starts_at='2026-09-03 15:00:00+00'::timestamptz
+on conflict(event_key) do update set
+  season_id=excluded.season_id,display_name=excluded.display_name,
+  starts_at=excluded.starts_at,ends_at=excluded.ends_at,
+  display_period_text=excluded.display_period_text;
+
+create or replace function public.finalize_preopen_guild_power_season()
+returns jsonb
+language plpgsql
+security definer
+set search_path=public
+as $$
+declare
+  v_season public.ranking_seasons%rowtype;
+  v_ranked_count integer;
+  v_grant_count integer;
+begin
+  perform pg_advisory_xact_lock(hashtextextended('PREOPEN_GUILD_POWER_2026',0));
+  select season.* into strict v_season
+  from public.ranking_seasons season
+  join public.ranking_guild_power_season_master master on master.season_id=season.id
+  where master.event_key='PREOPEN_GUILD_POWER_2026'
+  for update of season;
+
+  if clock_timestamp()<v_season.ends_at then
+    raise exception 'pre-open guild Power season is not closed' using errcode='22023';
+  end if;
+
+  if exists(select 1 from public.ranking_guild_power_finalization_audits audit
+            where audit.season_id=v_season.id) then
+    return (select jsonb_build_object(
+      'season_id',audit.season_id,'status','ALREADY_FINALIZED',
+      'ranked_guild_count',audit.ranked_guild_count,
+      'reward_grant_count',audit.reward_grant_count)
+      from public.ranking_guild_power_finalization_audits audit
+      where audit.season_id=v_season.id);
+  end if;
+
+  update public.ranking_seasons set status='FINALIZING',updated_at=clock_timestamp()
+  where id=v_season.id and status<>'CLOSED';
+
+  insert into public.ranking_guild_power_season_snapshots(
+    season_id,guild_id,guild_name,total_power,member_count,rank_position
+  )
+  with totals as (
+    select guild.id guild_id,guild.name guild_name,
+      sum(public.calculate_user_total_power(member.user_id))::bigint total_power,
+      count(*)::integer member_count
+    from public.guilds guild
+    join public.guild_members member on member.guild_id=guild.id
+    where not exists(
+      select 1 from public.ranking_guild_exclusions exclusion where exclusion.guild_id=guild.id
+    )
+    group by guild.id,guild.name
+    having sum(public.calculate_user_total_power(member.user_id))>0
+  ), ranked as (
+    select totals.*,rank() over(order by totals.total_power desc)::integer rank_position
+    from totals
+  )
+  select v_season.id,ranked.guild_id,ranked.guild_name,ranked.total_power,
+    ranked.member_count,ranked.rank_position
+  from ranked
+  on conflict(season_id,guild_id) do nothing;
+
+  insert into public.ranking_guild_power_reward_grants(
+    season_id,guild_id,cosmetic_id,rank_position
+  )
+  select snapshot.season_id,snapshot.guild_id,reward.cosmetic_id,snapshot.rank_position
+  from public.ranking_guild_power_season_snapshots snapshot
+  cross join lateral (
+    values ('guild_preopen_2026_participation'::text),
+      (case snapshot.rank_position
+        when 1 then 'guild_preopen_2026_rank_1'
+        when 2 then 'guild_preopen_2026_rank_2'
+        when 3 then 'guild_preopen_2026_rank_3'
+        else null end)
+  ) reward(cosmetic_id)
+  where snapshot.season_id=v_season.id and reward.cosmetic_id is not null
+  on conflict(season_id,guild_id,cosmetic_id) do nothing;
+
+  insert into public.guild_cosmetics(
+    guild_id,cosmetic_id,source_type,source_reference
+  )
+  select grant_row.guild_id,grant_row.cosmetic_id,'RANKING',
+    concat('PREOPEN_GUILD_POWER_2026:',grant_row.season_id)
+  from public.ranking_guild_power_reward_grants grant_row
+  where grant_row.season_id=v_season.id
+  on conflict(guild_id,cosmetic_id) do nothing;
+
+  select count(*) into v_ranked_count
+  from public.ranking_guild_power_season_snapshots where season_id=v_season.id;
+  select count(*) into v_grant_count
+  from public.ranking_guild_power_reward_grants where season_id=v_season.id;
+
+  update public.ranking_seasons set status='CLOSED',updated_at=clock_timestamp()
+  where id=v_season.id;
+  insert into public.ranking_guild_power_finalization_audits(
+    season_id,ranked_guild_count,reward_grant_count
+  ) values(v_season.id,v_ranked_count,v_grant_count);
+
+  return jsonb_build_object(
+    'season_id',v_season.id,'status','FINALIZED',
+    'ranked_guild_count',v_ranked_count,'reward_grant_count',v_grant_count
+  );
+end;
+$$;
+
+create or replace function public.get_preopen_guild_power_ranking(
+  p_limit integer default 100,
+  p_offset integer default 0
+) returns jsonb
+language plpgsql
+volatile
+security definer
+set search_path=public
+as $$
+declare
+  v_uid uuid:=auth.uid();
+  v_season public.ranking_seasons%rowtype;
+  v_master public.ranking_guild_power_season_master%rowtype;
+  v_my_guild_id uuid;
+  v_rows jsonb:='[]'::jsonb;
+  v_self jsonb;
+  v_updated_at timestamptz;
+  v_is_final boolean;
+begin
+  if v_uid is null then raise exception 'authentication required' using errcode='42501'; end if;
+  if p_limit not between 1 and 100 or p_offset not between 0 and 10000 then
+    raise exception 'invalid pagination' using errcode='22023';
+  end if;
+  select master.* into strict v_master from public.ranking_guild_power_season_master master
+  where master.event_key='PREOPEN_GUILD_POWER_2026';
+  select * into strict v_season from public.ranking_seasons where id=v_master.season_id;
+  select member.guild_id into v_my_guild_id from public.guild_members member
+  where member.user_id=v_uid;
+  v_is_final:=v_season.status='CLOSED';
+
+  if v_is_final then
+    select coalesce(jsonb_agg(to_jsonb(page) order by page.rank_position,page.guild_id),'[]'::jsonb)
+    into v_rows from (
+      select snapshot.guild_id,snapshot.guild_name name,snapshot.total_power current_power,
+        snapshot.total_power score,snapshot.member_count,snapshot.rank_position,snapshot.snapshotted_at updated_at
+      from public.ranking_guild_power_season_snapshots snapshot
+      where snapshot.season_id=v_season.id
+      order by snapshot.rank_position,snapshot.guild_id limit p_limit offset p_offset
+    ) page;
+    select to_jsonb(self_row) into v_self from (
+      select snapshot.guild_id,snapshot.guild_name name,snapshot.total_power current_power,
+        snapshot.total_power score,snapshot.member_count,snapshot.rank_position,snapshot.snapshotted_at updated_at
+      from public.ranking_guild_power_season_snapshots snapshot
+      where snapshot.season_id=v_season.id and snapshot.guild_id=v_my_guild_id
+    ) self_row;
+    select max(snapshot.snapshotted_at) into v_updated_at
+    from public.ranking_guild_power_season_snapshots snapshot where snapshot.season_id=v_season.id;
+  elsif clock_timestamp()>=v_season.starts_at and clock_timestamp()<v_season.ends_at then
+    with totals as (
+      select guild.id guild_id,guild.name,
+        sum(public.calculate_user_total_power(member.user_id))::bigint current_power,
+        count(*)::integer member_count
+      from public.guilds guild join public.guild_members member on member.guild_id=guild.id
+      where not exists(select 1 from public.ranking_guild_exclusions exclusion where exclusion.guild_id=guild.id)
+      group by guild.id,guild.name
+      having sum(public.calculate_user_total_power(member.user_id))>0
+    ), ranked as (
+      select totals.*,totals.current_power score,
+        rank() over(order by totals.current_power desc)::integer rank_position
+      from totals
+    )
+    select coalesce(jsonb_agg(to_jsonb(page) order by page.rank_position,page.guild_id),'[]'::jsonb)
+    into v_rows from (
+      select ranked.* from ranked order by rank_position,guild_id limit p_limit offset p_offset
+    ) page;
+
+    with totals as (
+      select guild.id guild_id,guild.name,
+        sum(public.calculate_user_total_power(member.user_id))::bigint current_power,
+        count(*)::integer member_count
+      from public.guilds guild join public.guild_members member on member.guild_id=guild.id
+      where not exists(select 1 from public.ranking_guild_exclusions exclusion where exclusion.guild_id=guild.id)
+      group by guild.id,guild.name
+      having sum(public.calculate_user_total_power(member.user_id))>0
+    ), ranked as (
+      select totals.*,totals.current_power score,
+        rank() over(order by totals.current_power desc)::integer rank_position from totals
+    )
+    select to_jsonb(ranked) into v_self from ranked where ranked.guild_id=v_my_guild_id;
+    v_updated_at:=clock_timestamp();
+  else
+    -- Before opening or during the short server-only finalization interval.
+    v_rows:='[]'::jsonb;
+    v_self:=null;
+    v_updated_at:=v_season.updated_at;
+  end if;
+
+  return jsonb_build_object(
+    'season_id',v_season.id,'event_key',v_master.event_key,
+    'display_name',v_master.display_name,'display_period_text',v_master.display_period_text,
+    'starts_at',v_season.starts_at,'ends_at',v_season.ends_at,'status',v_season.status,
+    'is_finalized',v_is_final,'server_updated_at',v_updated_at,
+    'rows',v_rows,'self_guild',v_self
+  );
+end;
+$$;
+
+alter table public.ranking_guild_power_season_master enable row level security;
+alter table public.ranking_guild_exclusions enable row level security;
+alter table public.ranking_guild_power_season_snapshots enable row level security;
+alter table public.ranking_guild_power_reward_grants enable row level security;
+alter table public.ranking_guild_power_finalization_audits enable row level security;
+
+revoke all on public.ranking_guild_power_season_master,
+  public.ranking_guild_exclusions,public.ranking_guild_power_season_snapshots,
+  public.ranking_guild_power_reward_grants,public.ranking_guild_power_finalization_audits
+  from public,anon,authenticated;
+grant all on public.ranking_guild_power_season_master,
+  public.ranking_guild_exclusions,public.ranking_guild_power_season_snapshots,
+  public.ranking_guild_power_reward_grants,public.ranking_guild_power_finalization_audits
+  to service_role;
+
+revoke all on function public.finalize_preopen_guild_power_season() from public,anon,authenticated;
+grant execute on function public.finalize_preopen_guild_power_season() to service_role;
+revoke all on function public.reject_guild_power_snapshot_mutation() from public,anon,authenticated;
+grant execute on function public.reject_guild_power_snapshot_mutation() to service_role;
+revoke all on function public.get_preopen_guild_power_ranking(integer,integer) from public,anon;
+grant execute on function public.get_preopen_guild_power_ranking(integer,integer) to authenticated,service_role;
+
+do $$
+declare v_job_id bigint;
+begin
+  select jobid into v_job_id from cron.job where jobname='preopen-guild-power-finalize-20260909-jst';
+  if v_job_id is not null then perform cron.unschedule(v_job_id); end if;
+  perform cron.schedule(
+    'preopen-guild-power-finalize-20260909-jst','0 15 8 9 *',
+    $job$select public.finalize_preopen_guild_power_season();$job$
+  );
+end;
+$$;
+
+notify pgrst,'reload schema';
+commit;
