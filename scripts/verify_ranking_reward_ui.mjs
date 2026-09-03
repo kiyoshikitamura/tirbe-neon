@@ -16,12 +16,18 @@ assert.equal(rankingRewardSections("guild_power", "season").length, 0);
 
 const serverMaster = {
   periods: { POWER: "MONTHLY" },
-  progressionByPeriod: { DAILY: { POWER: [[1, 3, "CASH", 100]] } },
+  daily: { POWER: [
+    { rankMin: 1, rankMax: 3, itemId: "CHAR_EXP_L", quantity: 1 },
+    { rankMin: 1, rankMax: 3, itemId: "EQUIP_EXP_L", quantity: 1 },
+  ] },
 };
 assert.deepEqual(rankingRewardSectionsFromPayload(serverMaster, "power", "daily"), [{
   title: "個人ランキング",
   cadence: "DAILY",
-  tiers: [{ from: 1, to: 3, itemId: "CASH", quantity: 100 }],
+  tiers: [
+    { from: 1, to: 3, itemId: "CHAR_EXP_L", quantity: 1 },
+    { from: 1, to: 3, itemId: "EQUIP_EXP_L", quantity: 1 },
+  ],
 }]);
 assert.equal(rankingRewardSectionsFromPayload({ progression: { PVP: [[0, 1, "CASH", 100]] } }, "pvp", "season").length, 0);
 
@@ -42,5 +48,6 @@ assert.match(controller, /acknowledge_ranking_reward_notifications/);
 assert.match(controller, /onConfirm: acknowledge/);
 assert.match(controller, /onCancel: acknowledge/);
 assert.match(controller, /setPending\(null\);\s*setConfirmDialogConfig\(null\);/);
+assert.match(controller, /delivery: "INVENTORY"/);
 
 console.log("Ranking reward UI contract: PASS");

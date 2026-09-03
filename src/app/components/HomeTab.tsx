@@ -8,6 +8,7 @@ import { HOME_ACTION_PRESENTATION_SLOTS } from "@/domain/presentation/homeAction
 import { resolveHomeCharacterDialogueLines } from "@/domain/presentation/homeCharacterDialogue";
 import { isDestinationAvailable } from "@/domain/operations/operations";
 import { resolvePresentableAssetUrl } from "@/utils/assetPresentation";
+import { getJstDateString } from "@/utils/jst_date";
 import CharacterPresentation from "./character/CharacterPresentation";
 import UserIdentityRow from "./profile/UserIdentityRow";
 import CanonicalDialog from "./ui/CanonicalDialog";
@@ -82,6 +83,16 @@ type HomeActivity = {
   [key: string]: unknown;
 };
 
+type HomeBanner = {
+  id: string;
+  title: string;
+  subtitle?: string;
+  ctaLabel?: string;
+  img: string | null;
+  destination: string | null;
+  eventId?: string;
+};
+
 function activityDescription(activity: HomeActivity) {
   if (activity.activity_type === "GUILD_CREATED") return "TRIBEを結成";
   if (activity.activity_type === "POWER_RANK_1") return "総戦力ランキング1位に到達";
@@ -106,6 +117,7 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
     guildChats,
     chatUnreadCounts,
     setShowMissionPanel,
+    setMissionTab,
     setShowLoginBonusModal,
     setShowAccountAuthenticationModal,
     setShowMoveBaseModal,
@@ -147,7 +159,8 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
   const [socialActivities, setSocialActivities] = useState<HomeActivity[]>([...(qaState?.socialActivities || [])] as HomeActivity[]);
   const [showActivityLog, setShowActivityLog] = useState(false);
   const lastCtaImpression = useRef<string | null>(null);
-  const [banners, setBanners] = useState(() => PRODUCTION_MY_PAGE_CREATIVES?.map((creative) => ({
+  const lastBannerImpression = useRef<string | null>(null);
+  const [banners, setBanners] = useState<HomeBanner[]>(() => PRODUCTION_MY_PAGE_CREATIVES?.map((creative) => ({
     id: creative.id,
     title: "",
     img: creative.assetPath,
@@ -161,6 +174,20 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
 
   const openBanner = (destination: string | null) => {
     if (!destination) return;
+    const currentBanner = visibleBanners[activeBannerIndex];
+    if (currentBanner?.eventId) void supabase.rpc("record_mission_event_telemetry", {
+      p_event_id: currentBanner.eventId,
+      p_event_name: "banner_click",
+      p_source: "rotation_banner",
+      p_mission_id: null,
+      p_metadata: { jst_date: getJstDateString() },
+    });
+    if (destination === "mission:SPECIAL") {
+      setMissionTab("SPECIAL");
+      setShowMissionPanel(true);
+      playCyberSe("click");
+      return;
+    }
     const [tab, subTab] = destination.split(":");
     navigateTab(tab, subTab);
     playCyberSe("click");
@@ -173,6 +200,45 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
     }, 4000);
     return () => clearInterval(timer);
   }, [visibleBanners.length]);
+
+  useEffect(() => {
+    const banner = visibleBanners[activeBannerIndex];
+    if (!banner?.eventId || lastBannerImpression.current === banner.id) return;
+    lastBannerImpression.current = banner.id;
+    void supabase.rpc("record_mission_event_telemetry", {
+      p_event_id: banner.eventId,
+      p_event_name: "banner_impression",
+      p_source: "rotation_banner",
+      p_mission_id: null,
+      p_metadata: { jst_date: getJstDateString() },
+    });
+  }, [activeBannerIndex, visibleBanners]);
+
+  useEffect(() => {
+    if (!session?.user?.id) return;
+    let cancelled = false;
+    void supabase.rpc("get_active_mission_events").then(({ data, error }) => {
+      if (cancelled || error || !Array.isArray(data)) return;
+      const eventBanners: HomeBanner[] = data.flatMap((event: any) => {
+        const eventId = String(event.event_id || event.id || "");
+        if (!eventId || event.banner_visible === false) return [];
+        return [{
+          id: `mission-event-${eventId}`,
+          eventId,
+          title: String(event.banner_title || "ギルドバトル開幕に備えよ"),
+          subtitle: String(event.banner_subtitle || "準備ミッション開催中"),
+          ctaLabel: String(event.banner_cta_label || "ミッションを見る"),
+          img: resolvePresentableAssetUrl(event.banner_image_url),
+          destination: "mission:SPECIAL",
+        }];
+      });
+      if (eventBanners.length > 0) setBanners((current) => [
+        ...current.filter((banner) => !banner.eventId),
+        ...eventBanners,
+      ]);
+    });
+    return () => { cancelled = true; };
+  }, [session?.user?.id]);
 
   useEffect(() => {
     if (PRODUCTION_MY_PAGE_CREATIVES) return;
@@ -441,7 +507,12 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
   };
 
   return (
-    <div className="mypage-view">
+    <div
+      className={`mypage-view ${visualReady ? "is-interactive" : "is-interaction-locked"}`}
+      data-home-interaction={visualReady ? "ready" : "blocked"}
+      aria-busy={!visualReady}
+      inert={!visualReady}
+    >
       <section
         key={latestActivity?.id || "empty"}
         className={`mypage-live-ticker mypage-live-ticker--visual ${homeEventState}`}
@@ -616,9 +687,16 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
               onClick={() => openBanner(visibleBanners[activeBannerIndex].destination)}
               aria-disabled={!visibleBanners[activeBannerIndex].destination}
             >
-              <img src={visibleBanners[activeBannerIndex].img} alt="Banner" className="banner-bg-img" />
+              {visibleBanners[activeBannerIndex].img
+                ? <img src={visibleBanners[activeBannerIndex].img!} alt="" className="banner-bg-img" onError={() => {
+                    const failedId = visibleBanners[activeBannerIndex].id;
+                    setBanners((current) => current.map((banner) => banner.id === failedId ? { ...banner, img: null } : banner));
+                  }} />
+                : <span className="banner-fallback-art" aria-hidden="true" />}
               <div className="banner-info-overlay">
                 <span className="banner-title">{visibleBanners[activeBannerIndex].title}</span>
+                {visibleBanners[activeBannerIndex].subtitle && <span className="banner-subtitle">{visibleBanners[activeBannerIndex].subtitle}</span>}
+                {visibleBanners[activeBannerIndex].ctaLabel && <span className="banner-cta-label">{visibleBanners[activeBannerIndex].ctaLabel}</span>}
               </div>
             </button>
             <button

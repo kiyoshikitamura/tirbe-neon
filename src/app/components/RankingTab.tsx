@@ -189,7 +189,9 @@ export default function RankingTab() {
     return () => window.clearInterval(timer);
   }, []);
   useEffect(() => {
-    if (!session?.user?.id || rankingMilestoneStarted.current) return;
+    // A tap/open is not a successful ranking view. Record the milestone only
+    // after the active ranking request (including public profiles) completed.
+    if (!session?.user?.id || loading || error || rankingMilestoneStarted.current) return;
     rankingMilestoneStarted.current = true;
     void supabase.from("user_funnel_milestones").select("milestone").eq("user_id", session.user.id)
       .then(async ({ data }) => {
@@ -202,7 +204,7 @@ export default function RankingTab() {
         }
         setActivationMilestones(milestones);
       });
-  }, [session?.user?.id]);
+  }, [error, loading, session?.user?.id]);
 
   const currentUserId = session?.user?.id;
   const currentGuildId = userGuildMember?.guild_id || userGuild?.id || currentUser?.guild_members?.[0]?.guild_id;

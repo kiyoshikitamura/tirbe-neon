@@ -2,7 +2,7 @@ export type MissionServerStatus = "PROGRESS" | "CLEAR" | "CLAIMED";
 
 export type MissionMasterRow = {
   id: string;
-  category: "DAILY" | "NORMAL";
+  category: "DAILY" | "NORMAL" | "SPECIAL";
   trigger_type: string;
   target_value: number;
   prerequisite_mission_id: string | null;

@@ -118,7 +118,7 @@ export function useInventory(
 
   // ミッション ＆ プレゼント
   const [missions, setMissions] = useState<any[]>([]);
-  const [missionTab, setMissionTab] = useState<"DAILY" | "NORMAL">("DAILY");
+  const [missionTab, setMissionTab] = useState<"DAILY" | "NORMAL" | "SPECIAL">("DAILY");
   const [presents, setPresents] = useState<any[]>([]);
   const [presentsPrefetched, setPresentsPrefetched] = useState<boolean>(false);
   const [presentsSyncing, setPresentsSyncing] = useState<boolean>(false);
@@ -321,11 +321,13 @@ export function useInventory(
       if (res.error) throw res.error;
       if (res.data?.error) throw new Error(res.data.error);
 
-      setMissions(prev => prev.filter(m => m.id !== id));
+      setMissions(prev => targetMission.category === "SPECIAL"
+        ? prev.map(m => m.id === id ? { ...m, status: "CLAIMED", loading: false } : m)
+        : prev.filter(m => m.id !== id));
       playCyberSe("MISSION_REWARD");
       await syncBootstrapData(session.user.id);
       const rewards = aggregateMissionRewards(Array.isArray(res.data?.rewards) ? res.data.rewards : []);
-      setConfirmDialogConfig({ isOpen: true, title: "報酬獲得", message: "報酬を獲得しました。", kind: "reward", delivery: "INVENTORY", rewards, confirmText: "OK", cancelText: "", presentation: "canonical", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
+      setConfirmDialogConfig({ isOpen: true, title: "報酬獲得", message: targetMission.isCompletion ? "ギルドバトル開幕の準備完了！\n9月8日の正式オープンを待とう！" : "報酬を獲得しました。", kind: "reward", delivery: "INVENTORY", rewards, confirmText: "OK", cancelText: "", presentation: "canonical", onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null) });
     } catch (err) {
       console.warn(err);
       setMissions(prev => prev.map(m => m.id === id ? { ...m, loading: false } : m));
@@ -352,7 +354,9 @@ export function useInventory(
       if (res.error) throw res.error;
       if (res.data?.error) throw new Error(res.data.error);
 
-      setMissions(prev => prev.filter(m => !(m.status === "CLEAR" && m.category === missionTab)));
+      setMissions(prev => missionTab === "SPECIAL"
+        ? prev.map(m => m.status === "CLEAR" && m.category === missionTab ? { ...m, status: "CLAIMED", loading: false } : m)
+        : prev.filter(m => !(m.status === "CLEAR" && m.category === missionTab)));
       playCyberSe("MISSION_REWARD");
       await syncBootstrapData(session.user.id);
       const rewards = aggregateMissionRewards(Array.isArray(res.data?.rewards) ? res.data.rewards : []);

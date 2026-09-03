@@ -7,6 +7,7 @@ export type RankingRewardCadence = "DAILY" | "WEEKLY" | "MONTHLY";
 export type RankingRewardSection = { title: string; cadence: RankingRewardCadence; tiers: RankingRewardTier[] };
 export type RankingRewardMasterPayload = {
   periods?: Record<string, unknown>;
+  daily?: Record<string, unknown>;
   progression?: Record<string, unknown>;
   progressionByPeriod?: Record<string, Record<string, unknown>>;
 };
@@ -36,6 +37,18 @@ function isRewardTier(value: unknown): value is [number, number, string, number]
     && Number(quantity) > 0;
 }
 
+function parseRewardTier(value: unknown): RankingRewardTier | null {
+  if (isRewardTier(value)) return { from: Number(value[0]), to: Number(value[1]), itemId: value[2], quantity: Number(value[3]) };
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const row = value as Record<string, unknown>;
+  const from = Number(row.rankMin ?? row.rank_min ?? row.from);
+  const to = Number(row.rankMax ?? row.rank_max ?? row.to);
+  const itemId = String(row.itemId ?? row.item_id ?? "");
+  const quantity = Number(row.quantity);
+  if (!Number.isInteger(from) || from <= 0 || !Number.isInteger(to) || to < from || !itemId || !Number.isFinite(quantity) || quantity <= 0) return null;
+  return { from, to, itemId, quantity };
+}
+
 function cadenceFor(payload: RankingRewardMasterPayload, key: string, period: RankingRewardPeriod): RankingRewardCadence {
   if (period === "daily") return "DAILY";
   const cadence = payload.periods?.[key];
@@ -49,18 +62,16 @@ export function rankingRewardSectionsFromPayload(
 ): RankingRewardSection[] {
   if (!payload) return [];
   const progression = period === "daily"
-    ? payload.progressionByPeriod?.DAILY
+    ? payload.daily ?? payload.progressionByPeriod?.DAILY
     : payload.progressionByPeriod?.SEASON ?? payload.progression;
 
   return CATEGORY_DEFINITIONS[category].flatMap(({ key, title }) => {
     const rows = progression?.[key];
     if (!Array.isArray(rows)) return [];
-    const tiers = rows.filter(isRewardTier).map(([from, to, itemId, quantity]) => ({
-      from: Number(from),
-      to: Number(to),
-      itemId,
-      quantity: Number(quantity),
-    }));
+    const tiers = rows.flatMap((row) => {
+      const tier = parseRewardTier(row);
+      return tier ? [tier] : [];
+    });
     return tiers.length > 0 ? [{ title, cadence: cadenceFor(payload, key, period), tiers }] : [];
   });
 }

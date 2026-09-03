@@ -606,6 +606,9 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const [showLoginBonusModal, setShowLoginBonusModal] = useState<boolean>(false);
   const [loginBonusClaimResult, setLoginBonusClaimResult] = useState<LoginBonusClaimResult | null>(null);
   const [loginBonusCheckComplete, setLoginBonusCheckComplete] = useState(false);
+  const [showPrepMissionDialog, setShowPrepMissionDialog] = useState(false);
+  const [prepMissionDialogCheckComplete, setPrepMissionDialogCheckComplete] = useState(false);
+  const [rankingRewardNotificationCheckComplete, setRankingRewardNotificationCheckComplete] = useState(false);
   const [showAccountAuthenticationModal, setShowAccountAuthenticationModal] = useState(false);
   const [showAuthenticationReminder, setShowAuthenticationReminder] = useState(false);
   const loginBonusRequestUserRef = useRef<string | null>(null);
@@ -729,6 +732,9 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     setUserLoginBonus(null);
     setShowLoginBonusModal(false);
     setLoginBonusCheckComplete(false);
+    setShowPrepMissionDialog(false);
+    setPrepMissionDialogCheckComplete(false);
+    setRankingRewardNotificationCheckComplete(false);
     setShowAccountAuthenticationModal(false);
     setShowAuthenticationReminder(false);
   };
@@ -1073,7 +1079,14 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       setShowAccountAuthenticationModal(false);
       return;
     }
-    if (showTitleView || activeTab !== "home" || !loginBonusCheckComplete || showLoginBonusModal || showAccountAuthenticationModal) return;
+    if (showTitleView
+      || activeTab !== "home"
+      || !loginBonusCheckComplete
+      || showLoginBonusModal
+      || !prepMissionDialogCheckComplete
+      || showPrepMissionDialog
+      || !rankingRewardNotificationCheckComplete
+      || showAccountAuthenticationModal) return;
     const reminderKey = authenticationReminderKey(userId!);
     const today = getJstDateString();
     if (window.localStorage.getItem(reminderKey) === today) return;
@@ -1083,10 +1096,13 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   }, [
     activeTab,
     loginBonusCheckComplete,
+    prepMissionDialogCheckComplete,
+    rankingRewardNotificationCheckComplete,
     onboardingState,
     session?.user?.id,
     showAccountAuthenticationModal,
     showLoginBonusModal,
+    showPrepMissionDialog,
     showTitleView,
   ]);
 
@@ -1116,6 +1132,16 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       return [];
     });
 
+    // Materialize the current mission cycle/event state before reading the Home
+    // projection. Fresh users can otherwise render SPECIAL missions at zero
+    // until the next reload, including missing start-time power achievements.
+    try {
+      const { error: missionSyncError } = await supabase.rpc("sync_current_missions");
+      if (missionSyncError) throw missionSyncError;
+    } catch (err) {
+      console.warn("Failed to sync current missions:", err);
+    }
+
     // Home badges are independent projections. Start their canonical reads at
     // bootstrap entry so Mission / Present badges do not wait behind the wider
     // inventory, social and battle bootstrap. The overlays already reserve no
@@ -1124,7 +1150,9 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       supabase.from("presents").select("*").eq("user_id", userId).order("sent_at", { ascending: false }),
       supabase.from("missions").select("*").eq("is_enabled", true),
       supabase.from("user_missions").select("*").eq("user_id", userId),
-    ]).then(([presentsResult, missionMasterResult, userMissionResult]) => {
+      supabase.from("mission_reward_components").select("mission_id,item_id,quantity,reward_order").order("reward_order", { ascending: true }),
+      supabase.rpc("get_active_mission_events"),
+    ]).then(([presentsResult, missionMasterResult, userMissionResult, rewardComponentResult, activeEventResult]) => {
       if (currentAuthUserIdRef.current && currentAuthUserIdRef.current !== userId) return;
       if (presentsResult.data) {
         setPresents(presentsResult.data.map((present) => {
@@ -1147,14 +1175,29 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         }));
       }
       if (missionMasterResult.data && userMissionResult.data) {
+        const rewardComponentsByMission = new Map<string, Array<{ itemId: string; quantity: number }>>();
+        for (const component of rewardComponentResult.data || []) {
+          const missionId = String(component.mission_id || "");
+          if (!missionId) continue;
+          const rewards = rewardComponentsByMission.get(missionId) || [];
+          rewards.push({ itemId: String(component.item_id || ""), quantity: Number(component.quantity || 0) });
+          rewardComponentsByMission.set(missionId, rewards);
+        }
+        const visibleEvents = new Map(
+          (Array.isArray(activeEventResult.data) ? activeEventResult.data : [])
+            .map((event: any) => [String(event.event_id || event.id || ""), event] as const)
+            .filter(([eventId]) => Boolean(eventId)),
+        );
         const userMissionById = new Map(userMissionResult.data.map((row: any) => [row.mission_id, row]));
         const claimedMissionIds = new Set(
           userMissionResult.data.filter((row: any) => row.status === "CLAIMED").map((row: any) => row.mission_id),
         );
         setMissions(missionMasterResult.data
           .filter((mission: any) => mission.trigger_type !== "USER_INVITE" || featureUiExposure("INVITE") === "ACTIVE")
+          .filter((mission: any) => mission.category !== "SPECIAL" || !mission.event_id || visibleEvents.has(String(mission.event_id)))
           .map((mission: any) => {
           const userMission: any = userMissionById.get(mission.id);
+          const eventProjection: any = mission.event_id ? visibleEvents.get(String(mission.event_id)) : null;
           const prerequisiteClaimed = !mission.prerequisite_mission_id || claimedMissionIds.has(mission.prerequisite_mission_id);
           return {
             id: mission.id,
@@ -1164,13 +1207,24 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
             reward_amount: mission.reward_quantity || 0,
             rewardItemId: mission.reward_item_id || "CASH",
             rewardQty: mission.reward_quantity || 0,
+            rewards: rewardComponentsByMission.get(String(mission.id)) || [{ itemId: mission.reward_item_id || "CASH", quantity: Number(mission.reward_quantity || 0) }],
             cashReward: Number(mission.cash_reward || 0),
             current_progress: userMission?.current_progress || 0,
             target_value: mission.target_value || 1,
             display_order: mission.display_order || 0,
             category: mission.category || "DAILY",
+            eventId: mission.event_id || null,
+            eventProgressOpen: eventProjection?.progress_open !== false,
             displayGroup: mission.display_group || "PROGRESS",
             conditionParams: mission.condition_params || {},
+            triggerType: mission.trigger_type || "",
+            isCompletion: Boolean(
+              mission.is_completion
+              || mission.condition_params?.is_completion
+              || mission.display_group === "COMPLETE"
+              || mission.trigger_type === "EVENT_ALL_COMPLETE"
+              || mission.trigger_type === "GVG_PREP_REQUIRED_MISSIONS_COMPLETED"
+            ),
             prerequisiteMissionId: mission.prerequisite_mission_id || null,
             ctaTab: mission.condition_params?.cta_tab || null,
             ctaAction: mission.condition_params?.cta_action || null,
@@ -1236,13 +1290,6 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       // Friend/Friend Helper are PRE-OPEN OMIT. Existing relationship data is
       // retained server-side, but bootstrap does not expose or notify it.
       
-      // 00:00 JST mission cycle sync, including unclaimed daily rescue.
-      try {
-        await supabase.rpc("sync_current_missions");
-      } catch (err) {
-        console.warn("Failed to sync current missions:", err);
-      }
-
       const { data: recovered } = await supabase.rpc("sync_and_recover_vitality_and_pvp_points", {
         p_user_id: userId
       });
@@ -4252,6 +4299,9 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     showLoginBonusModal, setShowLoginBonusModal,
     loginBonusClaimResult, setLoginBonusClaimResult,
     loginBonusCheckComplete,
+    showPrepMissionDialog, setShowPrepMissionDialog,
+    prepMissionDialogCheckComplete, setPrepMissionDialogCheckComplete,
+    rankingRewardNotificationCheckComplete, setRankingRewardNotificationCheckComplete,
     showAccountAuthenticationModal, setShowAccountAuthenticationModal,
     showAuthenticationReminder, setShowAuthenticationReminder,
     checkAndClaimLoginBonus,

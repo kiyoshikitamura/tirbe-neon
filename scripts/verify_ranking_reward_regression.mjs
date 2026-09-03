@@ -16,10 +16,8 @@ const dialog = read("src/app/components/ranking/RankingRewardDialog.tsx");
 const controller = read("src/app/components/ranking/RankingRewardNotificationController.tsx");
 const page = read("src/app/page.tsx");
 
-// The canonical payload is the only reward authority. An absent DAILY branch
-// must stay empty rather than borrowing or fabricating season values.
-assert.equal(rankingRewardSectionsFromPayload(canonical, "pvp", "daily").length, 0);
-assert.equal(rankingRewardSectionsFromPayload(canonical, "raid", "daily").length, 0);
+// Season fallback remains canonical. Daily rewards are supplied by the server
+// master independently and must never borrow season values.
 assert.equal(rankingRewardSectionsFromPayload(canonical, "pvp", "season")[0]?.cadence, "MONTHLY");
 assert.deepEqual(
   rankingRewardSectionsFromPayload(canonical, "raid", "season").map((section) => section.cadence),
@@ -27,16 +25,20 @@ assert.deepEqual(
 );
 
 const payloadWithDaily = {
-  progressionByPeriod: {
-    DAILY: { PVP: [[1, 1, "NORMAL_GACHA_TICKET_RANDOM", 1]] },
-    SEASON: canonical.progression,
-  },
+  daily: { PVP: [
+    { rankMin: 1, rankMax: 1, itemId: "CHAR_EXP_L", quantity: 2 },
+    { rankMin: 1, rankMax: 1, itemId: "EQUIP_EXP_L", quantity: 2 },
+  ] },
+  progressionByPeriod: { SEASON: canonical.progression },
   periods: canonical.periods,
 };
 assert.deepEqual(rankingRewardSectionsFromPayload(payloadWithDaily, "pvp", "daily"), [{
   title: "個人ランキング",
   cadence: "DAILY",
-  tiers: [{ from: 1, to: 1, itemId: "NORMAL_GACHA_TICKET_RANDOM", quantity: 1 }],
+  tiers: [
+    { from: 1, to: 1, itemId: "CHAR_EXP_L", quantity: 2 },
+    { from: 1, to: 1, itemId: "EQUIP_EXP_L", quantity: 2 },
+  ],
 }]);
 
 const rawPending = {
@@ -84,6 +86,7 @@ const acknowledgeBody = controller.slice(controller.indexOf("const acknowledge =
 assert.match(acknowledgeBody, /rpc\("acknowledge_ranking_reward_notifications"/);
 assert.match(acknowledgeBody, /onConfirm: acknowledge/);
 assert.match(acknowledgeBody, /onCancel: acknowledge/);
+assert.match(controller, /delivery: "INVENTORY"/);
 assert.match(acknowledgeBody, /if \(error\) throw error;[\s\S]*setPending\(null\)[\s\S]*setConfirmDialogConfig\(null\)/);
 const beforeAcknowledge = controller.slice(0, controller.indexOf("const acknowledge = async"));
 assert.doesNotMatch(beforeAcknowledge, /acknowledge_ranking_reward_notifications/,

@@ -118,13 +118,18 @@ test("Home reveals the Town and decoded Leader as one visual on a cold load and 
 
   await page.goto("/qa/presentation?scenario=first-home-fresh", { waitUntil: "domcontentloaded" });
   const visual = page.locator(".mypage-visual-area");
+  const home = page.locator('[data-home-interaction]');
   await expect(visual).toHaveAttribute("data-visual-readiness", "preparing");
+  await expect(home).toHaveAttribute("data-home-interaction", "blocked");
+  await expect(home).toHaveAttribute("inert", "");
   await expect(page.locator(".mypage-visual-loading")).toBeVisible();
   await expect(page.locator(".mypage-leader-layer")).toHaveCount(0);
   expect(await visual.evaluate((node) => getComputedStyle(node).backgroundImage)).toBe("none");
 
   releaseLeader();
   await expect(visual).toHaveAttribute("data-visual-readiness", "ready");
+  await expect(home).toHaveAttribute("data-home-interaction", "ready");
+  await expect(home).not.toHaveAttribute("inert", "");
   await expect(page.locator(".mypage-visual-loading")).toHaveCount(0);
   await expect(page.locator(".mypage-leader-layer.is-ssr")).toBeVisible();
   expect(await visual.evaluate((node) => getComputedStyle(node).backgroundImage)).toContain("bg_street_shinjuku.jpg");

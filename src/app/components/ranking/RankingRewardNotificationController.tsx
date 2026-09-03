@@ -20,6 +20,9 @@ export default function RankingRewardNotificationController() {
     loginBonusCheckComplete,
     showLoginBonusModal,
     showAccountAuthenticationModal,
+    showPrepMissionDialog,
+    prepMissionDialogCheckComplete,
+    setRankingRewardNotificationCheckComplete,
   } = useGame();
   const [pending, setPending] = useState<PendingRankingRewardNotification | null>(null);
   const previousHomeRef = useRef(false);
@@ -40,25 +43,36 @@ export default function RankingRewardNotificationController() {
       previousHomeRef.current = false;
       presentedKeyRef.current = null;
       setPending(null);
+      setRankingRewardNotificationCheckComplete(false);
     }
     const isHome = activeTab === "home";
     const enteredHome = isHome && !previousHomeRef.current;
     previousHomeRef.current = isHome;
+    if (!isHome) {
+      setRankingRewardNotificationCheckComplete(false);
+      return;
+    }
     if (!userId || !enteredHome || requestInFlightRef.current) return;
+    setRankingRewardNotificationCheckComplete(false);
 
     let cancelled = false;
     requestInFlightRef.current = true;
     void (async () => {
       try {
         const { data, error } = await supabase.rpc("get_my_pending_ranking_reward_notification");
-        if (!cancelled && !error) setPending(parsePendingRankingRewardNotification(data));
+        if (!cancelled && !error) {
+          const parsed = parsePendingRankingRewardNotification(data);
+          setPending(parsed);
+          if (!parsed) setRankingRewardNotificationCheckComplete(true);
+        }
         if (!cancelled && error) console.warn("Failed to load ranking reward notification", error);
+        if (!cancelled && error) setRankingRewardNotificationCheckComplete(true);
       } finally {
         requestInFlightRef.current = false;
       }
     })();
     return () => { cancelled = true; };
-  }, [activeTab, session?.user?.id]);
+  }, [activeTab, session?.user?.id, setRankingRewardNotificationCheckComplete]);
 
   useEffect(() => {
     if (activeTab !== "home"
@@ -68,6 +82,8 @@ export default function RankingRewardNotificationController() {
       || confirmDialogConfig
       || !loginBonusCheckComplete
       || showLoginBonusModal
+      || !prepMissionDialogCheckComplete
+      || showPrepMissionDialog
       || showAccountAuthenticationModal) return;
 
     presentedKeyRef.current = pendingKey;
@@ -83,6 +99,7 @@ export default function RankingRewardNotificationController() {
         }
         setPending(null);
         setConfirmDialogConfig(null);
+        setRankingRewardNotificationCheckComplete(true);
       } finally {
         setGlobalInteractionBlocking(false);
       }
@@ -97,7 +114,7 @@ export default function RankingRewardNotificationController() {
       onCancel: acknowledge,
       kind: "reward",
       rewards,
-      delivery: "PRESENT",
+      delivery: "INVENTORY",
       presentation: "canonical",
     });
   }, [
@@ -106,11 +123,14 @@ export default function RankingRewardNotificationController() {
     loginBonusCheckComplete,
     pending,
     pendingKey,
+    prepMissionDialogCheckComplete,
     rewards,
     setConfirmDialogConfig,
     setGlobalInteractionBlocking,
+    setRankingRewardNotificationCheckComplete,
     showAccountAuthenticationModal,
     showLoginBonusModal,
+    showPrepMissionDialog,
   ]);
 
   return null;

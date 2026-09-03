@@ -162,6 +162,8 @@
     "verify:tn09-raid-ranking": "node --experimental-strip-types scripts/verify_tn09_raid_ranking.mjs",
     "verify:ranking-reward-regression": "node --experimental-strip-types scripts/verify_ranking_reward_regression.mjs",
     "verify:quest-battle-result-liveness": "node scripts/verify_quest_battle_result_liveness.mjs",
+    "verify:preopen-human-acceptance": "npm run verify:quest-battle-result-liveness && npm run verify:dm-inbox-thread && npm run verify:home-character-dialogue && npm run verify:async-transition-acceptance && npm run verify:ranking-reward-regression",
+    "verify:preopen-reward-addendum": "node scripts/verify_preopen_reward_addendum_contract.mjs",
     "audit:release-db-readiness": "node scripts/verify_release_db_migration_readiness.mjs --allow-known-blockers",
     "verify:release-db-readiness": "node scripts/verify_release_db_migration_readiness.mjs"
   },
