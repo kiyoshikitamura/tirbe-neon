@@ -122,6 +122,8 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
     setShowAccountAuthenticationModal,
     setShowMoveBaseModal,
     setShowTribeChatPanel,
+    setChatChannel,
+    setDmRecipientId,
     navigateTab,
     playCyberSe,
     selectedBgMode,
@@ -158,14 +160,14 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
   const [activationHandoffPending, setActivationHandoffPending] = useState(false);
   const [socialActivities, setSocialActivities] = useState<HomeActivity[]>([...(qaState?.socialActivities || [])] as HomeActivity[]);
   const [showActivityLog, setShowActivityLog] = useState(false);
+  const [showGuildRankingCampaign, setShowGuildRankingCampaign] = useState(false);
+  const [guildRankingVisualReady, setGuildRankingVisualReady] = useState(false);
   const lastCtaImpression = useRef<string | null>(null);
   const lastBannerImpression = useRef<string | null>(null);
-  const [banners, setBanners] = useState<HomeBanner[]>(() => PRODUCTION_MY_PAGE_CREATIVES?.map((creative) => ({
-    id: creative.id,
-    title: "",
-    img: creative.assetPath,
-    destination: creative.destination
-  })).filter((banner) => !banner.destination || isDestinationAvailable(banner.destination)) ?? []);
+  const bannerAuthorityKeyRef = useRef("");
+  // Do not render a guessed banner set before the server event authority has
+  // answered. This prevents a normal banner from flashing during the campaign.
+  const [banners, setBanners] = useState<HomeBanner[]>([]);
   const visibleBanners = useMemo(
     () => banners.filter((banner) => banner.destination !== "raid" || isRaidActive),
     [banners, isRaidActive],
@@ -185,6 +187,19 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
     if (destination === "mission:SPECIAL") {
       setMissionTab("SPECIAL");
       setShowMissionPanel(true);
+      playCyberSe("click");
+      return;
+    }
+    if (destination === "campaign:GUILD_POWER") {
+      setGuildRankingVisualReady(false);
+      setShowGuildRankingCampaign(true);
+      playCyberSe("click");
+      return;
+    }
+    if (destination === "community") {
+      setDmRecipientId(null);
+      setChatChannel("GLOBAL");
+      setShowTribeChatPanel(true);
       playCyberSe("click");
       return;
     }
@@ -217,44 +232,36 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
   useEffect(() => {
     if (!session?.user?.id) return;
     let cancelled = false;
-    void supabase.rpc("get_active_mission_events").then(({ data, error }) => {
+    const loadBannerAuthority = async () => {
+      const { data, error } = await supabase.rpc("get_active_mission_events");
       if (cancelled || error || !Array.isArray(data)) return;
-      const eventBanners: HomeBanner[] = data.flatMap((event: any) => {
-        const eventId = String(event.event_id || event.id || "");
-        if (!eventId || event.banner_visible === false) return [];
-        return [{
-          id: `mission-event-${eventId}`,
-          eventId,
-          title: String(event.banner_title || "ギルドバトル開幕に備えよ"),
-          subtitle: String(event.banner_subtitle || "準備ミッション開催中"),
-          ctaLabel: String(event.banner_cta_label || "ミッションを見る"),
-          img: resolvePresentableAssetUrl(event.banner_image_url),
-          destination: "mission:SPECIAL",
-        }];
-      });
-      if (eventBanners.length > 0) setBanners((current) => [
-        ...current.filter((banner) => !banner.eventId),
-        ...eventBanners,
-      ]);
-    });
-    return () => { cancelled = true; };
-  }, [session?.user?.id]);
-
-  useEffect(() => {
-    if (PRODUCTION_MY_PAGE_CREATIVES) return;
-    void supabase.from("home_banner_master").select("id, title, image_url, destination_value").order("priority", { ascending: false }).then(({ data, error }) => {
-      const released = (data || []).filter((item) => isDestinationAvailable(item.destination_value || "home", featureOperatingStates));
-      const presentable = released.flatMap((item) => {
-        const imageUrl = resolvePresentableAssetUrl(item.image_url);
-        return imageUrl ? [{ id: item.id, title: item.title, img: imageUrl, destination: item.destination_value || "home" }] : [];
-      });
-      if (!error && presentable.length) setBanners(presentable);
-    });
-  }, [featureOperatingStates]);
-
-  useEffect(() => {
-    setBanners((current) => current.filter((banner) => !banner.destination || isDestinationAvailable(banner.destination, featureOperatingStates)));
-  }, [featureOperatingStates]);
+      const prepEvent = data.find((event: any) => String(event.event_id || event.id || "") === "GVG_PREP_20260904");
+      const campaignOpen = prepEvent?.is_progress_active === true || prepEvent?.progress_open === true;
+      const nextBanners: HomeBanner[] = campaignOpen
+        ? [
+          { id: "gvg-prep", eventId: "GVG_PREP_20260904", title: "", img: resolvePresentableAssetUrl(prepEvent.banner_image_url) || "/promotion/mypage_banner_gvg_prep.webp", destination: "mission:SPECIAL" },
+          { id: "guild-power-ranking", eventId: "GVG_PREP_20260904", title: "", img: "/promotion/mypage_banner_guild_power_ranking.webp", destination: "campaign:GUILD_POWER" },
+        ]
+        : (PRODUCTION_MY_PAGE_CREATIVES || []).map((creative) => ({ id: creative.id, title: "", img: creative.assetPath, destination: creative.destination }));
+      const loadableBanners = nextBanners.filter((banner) => !banner.destination || banner.destination === "community" || banner.destination.startsWith("campaign:") || isDestinationAvailable(banner.destination, featureOperatingStates));
+      const loaded = await Promise.all(loadableBanners.map((banner) => banner.img ? preloadAndDecodeHomeImage(banner.img) : Promise.resolve(false)));
+      if (cancelled || loaded.some((value) => !value)) return;
+      const nextKey = loadableBanners.map((banner) => banner.id).join(":");
+      if (bannerAuthorityKeyRef.current === nextKey) return;
+      bannerAuthorityKeyRef.current = nextKey;
+      setBannerIndex(0);
+      setBanners(loadableBanners);
+    };
+    void loadBannerAuthority();
+    const timer = window.setInterval(() => void loadBannerAuthority(), 15000);
+    const refreshOnFocus = () => { if (document.visibilityState === "visible") void loadBannerAuthority(); };
+    document.addEventListener("visibilitychange", refreshOnFocus);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", refreshOnFocus);
+    };
+  }, [featureOperatingStates, session?.user?.id]);
 
   useEffect(() => {
     if (qaState?.funnelMilestones) return;
@@ -693,11 +700,6 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
                     setBanners((current) => current.map((banner) => banner.id === failedId ? { ...banner, img: null } : banner));
                   }} />
                 : <span className="banner-fallback-art" aria-hidden="true" />}
-              <div className="banner-info-overlay">
-                <span className="banner-title">{visibleBanners[activeBannerIndex].title}</span>
-                {visibleBanners[activeBannerIndex].subtitle && <span className="banner-subtitle">{visibleBanners[activeBannerIndex].subtitle}</span>}
-                {visibleBanners[activeBannerIndex].ctaLabel && <span className="banner-cta-label">{visibleBanners[activeBannerIndex].ctaLabel}</span>}
-              </div>
             </button>
             <button
               className="banner-arrow right"
@@ -732,6 +734,31 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
           </div>
         </div>
       </div>
+
+      {showGuildRankingCampaign && <CanonicalDialog
+        title="プレオープン限定 ギルド総合力ランキング"
+        ariaLabel="プレオープン限定ギルド総合力ランキングのご案内"
+        size="large"
+        onClose={() => setShowGuildRankingCampaign(false)}
+        loading={!guildRankingVisualReady}
+        actions={[
+          { label: "閉じる", semantic: "secondary", disabled: !guildRankingVisualReady, onClick: () => setShowGuildRankingCampaign(false) },
+          { label: "ランキングを見る", semantic: "primary", disabled: !guildRankingVisualReady, onClick: () => { setShowGuildRankingCampaign(false); navigateTab("ranking", "guild_power"); } },
+        ]}
+      >
+        <div className="campaign-keyvisual-dialog">
+          <img
+            src="/promotion/guild_power_ranking_keyvisual.webp"
+            alt="ギルド総合力ランキング"
+            onLoad={(event) => {
+              const image = event.currentTarget;
+              if (typeof image.decode === "function") void image.decode().catch(() => undefined).finally(() => setGuildRankingVisualReady(true));
+              else setGuildRankingVisualReady(true);
+            }}
+          />
+          <p>ギルドメンバー全員のメインデッキ総合力で順位が決まります。<br />報酬は限定ギルド装飾のみで、総合力やバトル性能には影響しません。</p>
+        </div>
+      </CanonicalDialog>}
 
     </div>
   );

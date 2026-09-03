@@ -33,6 +33,8 @@ const HOME_ASSETS = [
   "/gacha/bg_gacha_ssr.jpg", "/gacha/bg_gacha_sr.jpg", "/gacha/bg_gacha_normal.jpg",
   "/ui/icon_bag.png", "/ui/icon_community.png", "/ui/icon_map.png", "/ui/icon_mission.png",
   "/ui/icon_news.png", "/ui/icon_present.png", "/ui/icon_raid.png", "/ui/icon_ranking.png", "/ui/icon_settings.png",
+  "/promotion/mypage_banner_quest.webp", "/promotion/mypage_banner_battle.webp",
+  "/promotion/mypage_banner_ranking.webp", "/promotion/mypage_banner_community.webp",
 ];
 
 function optionalAssets(paths: string[]): AssetRequest[] {
@@ -43,7 +45,7 @@ export const SCREEN_ASSET_MANIFESTS = {
   commonShell: optionalAssets([...FRAME_ASSETS, ...COMMON_SHELL_ASSETS]),
   home: optionalAssets([...FRAME_ASSETS, ...COMMON_SHELL_ASSETS, ...HOME_ASSETS]),
   quest: optionalAssets([...FRAME_ASSETS, ...COMMON_SHELL_ASSETS]),
-  pvp: optionalAssets([...FRAME_ASSETS, ...COMMON_SHELL_ASSETS]),
+  pvp: [...optionalAssets([...FRAME_ASSETS, ...COMMON_SHELL_ASSETS]), { src: "/promotion/battle_page_header.webp", required: true }],
   gvg: optionalAssets([...FRAME_ASSETS, ...COMMON_SHELL_ASSETS]),
   raid: optionalAssets([...FRAME_ASSETS, ...COMMON_SHELL_ASSETS]),
   ranking: optionalAssets([...FRAME_ASSETS, ...COMMON_SHELL_ASSETS]),

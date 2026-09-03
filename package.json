@@ -162,6 +162,7 @@
     "verify:tn09-raid-ranking": "node --experimental-strip-types scripts/verify_tn09_raid_ranking.mjs",
     "verify:ranking-reward-regression": "node --experimental-strip-types scripts/verify_ranking_reward_regression.mjs",
     "verify:preopen-guild-power-ui": "node --experimental-strip-types scripts/verify_preopen_guild_power_ui.mjs",
+    "verify:preopen-promotion-assets": "node scripts/verify_preopen_promotion_assets.mjs",
     "verify:guild-cosmetic-notification-ui": "node --experimental-strip-types scripts/verify_guild_cosmetic_notification_ui.mjs",
     "verify:quest-battle-result-liveness": "node scripts/verify_quest_battle_result_liveness.mjs",
     "verify:preopen-human-acceptance": "npm run verify:quest-battle-result-liveness && npm run verify:dm-inbox-thread && npm run verify:home-character-dialogue && npm run verify:async-transition-acceptance && npm run verify:ranking-reward-regression",

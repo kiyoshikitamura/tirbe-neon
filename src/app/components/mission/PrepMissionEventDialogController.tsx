@@ -28,7 +28,7 @@ function parsePendingDialog(value: unknown): PendingEventDialog | null {
     eventId,
     jstDate,
     displayName: String(row.display_name || "ギルドバトル準備ミッション"),
-    imageUrl: resolvePresentableAssetUrl(row.dialog_image_url),
+    imageUrl: resolvePresentableAssetUrl(row.dialog_image_url) || (eventId === "GVG_PREP_20260904" ? "/promotion/gvg_preopen_mission_keyvisual.webp" : null),
     body: String(row.dialog_body || "正式オープンに備えて戦力を強化しよう！\nミッションを達成して報酬を獲得！"),
     primaryLabel: String(row.primary_cta_label || "準備ミッションを見る"),
     secondaryLabel: String(row.secondary_cta_label || "あとで"),
@@ -50,6 +50,8 @@ export default function PrepMissionEventDialogController() {
     setShowMissionPanel,
   } = useGame();
   const [pending, setPending] = useState<PendingEventDialog | null>(null);
+  const [imageReady, setImageReady] = useState(false);
+  const [imageFailed, setImageFailed] = useState(false);
   const requestedKeyRef = useRef("");
   const presentedKeyRef = useRef("");
 
@@ -80,6 +82,8 @@ export default function PrepMissionEventDialogController() {
       }
       const parsed = parsePendingDialog(data);
       setPending(parsed);
+      setImageReady(!parsed?.imageUrl);
+      setImageFailed(false);
       if (!parsed) setPrepMissionDialogCheckComplete(true);
     })();
     return () => { cancelled = true; };
@@ -97,7 +101,7 @@ export default function PrepMissionEventDialogController() {
   }, [activeTab, confirmDialogConfig, loginBonusCheckComplete, pending, setShowPrepMissionDialog, showAccountAuthenticationModal, showLoginBonusModal, showPrepMissionDialog]);
 
   useEffect(() => {
-    if (!showPrepMissionDialog || !pending) return;
+    if (!showPrepMissionDialog || !pending || !imageReady) return;
     const presentationKey = `${pending.eventId}:${pending.jstDate}`;
     if (presentedKeyRef.current === presentationKey) return;
     presentedKeyRef.current = presentationKey;
@@ -107,11 +111,13 @@ export default function PrepMissionEventDialogController() {
       });
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [pending, showPrepMissionDialog]);
+  }, [imageReady, pending, showPrepMissionDialog]);
 
   if (!showPrepMissionDialog || !pending) return null;
 
   const dismiss = (openMission: boolean) => {
+    if (openMission && !imageReady) return;
+    if (!imageReady && !imageFailed) return;
     const cta = openMission ? "view_missions" : "later";
     void supabase.rpc("record_mission_event_telemetry", {
       p_event_id: pending.eventId,
@@ -132,13 +138,19 @@ export default function PrepMissionEventDialogController() {
   return <CanonicalDialog
     title={pending.displayName}
     ariaLabel="ギルドバトル準備ミッションのご案内"
+    loading={!imageReady && !imageFailed}
     actions={[
-      { label: pending.secondaryLabel, semantic: "secondary", onClick: () => dismiss(false) },
-      { label: pending.primaryLabel, semantic: "primary", onClick: () => dismiss(true) },
+      { label: pending.secondaryLabel, semantic: "secondary", disabled: !imageReady && !imageFailed, onClick: () => dismiss(false) },
+      { label: pending.primaryLabel, semantic: "primary", disabled: !imageReady, onClick: () => dismiss(true) },
     ]}
   >
     <div className="prep-mission-dialog-content">
-      {pending.imageUrl && <img src={pending.imageUrl} alt="" className="prep-mission-dialog-image" onError={(event) => { event.currentTarget.hidden = true; }} />}
+      {pending.imageUrl && !imageFailed && <img src={pending.imageUrl} alt="" className="prep-mission-dialog-image" onError={() => setImageFailed(true)} onLoad={(event) => {
+        const image = event.currentTarget;
+        if (typeof image.decode === "function") void image.decode().catch(() => undefined).finally(() => setImageReady(true));
+        else setImageReady(true);
+      }} />}
+      {imageFailed && <span role="alert">画像を読み込めませんでした。次回の表示で再試行します。</span>}
       <p>{pending.body}</p>
     </div>
   </CanonicalDialog>;

@@ -6,7 +6,7 @@ import { AssetRequest, AssetResult, preloadAssetManifest } from "../lib/screenAs
 export type ScreenReadinessStatus = "loading" | "ready" | "error";
 
 interface ScreenReadinessOptions {
-  assets?: AssetRequest[];
+  assets?: readonly AssetRequest[];
   dataReady?: boolean;
   dataError?: unknown;
   timeoutMs?: number;
