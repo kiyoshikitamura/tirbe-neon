@@ -115,7 +115,7 @@ export function useAuth(
       }));
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
-        options: { redirectTo: getOAuthCallbackUrl() }
+        options: { redirectTo: getOAuthCallbackUrl(), queryParams: { prompt: "select_account" } }
       });
       if (error) throw error;
     } catch (e: any) {

@@ -134,6 +134,7 @@ export class MockSupabaseClient {
     signInWithOAuth: async ({ options }: any = {}) => {
       if (typeof window !== "undefined") {
         localStorage.setItem("mock_last_oauth_redirect_to", String(options?.redirectTo || ""));
+        localStorage.setItem("mock_last_oauth_query_params", JSON.stringify(options?.queryParams || {}));
         const existingId = localStorage.getItem("mock_existing_google_user_id");
         const switchIntent = JSON.parse(localStorage.getItem("tribe_existing_google_login_intent") || "null");
         if (existingId && switchIntent?.method === "GOOGLE_SWITCH") {

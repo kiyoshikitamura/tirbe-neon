@@ -62,6 +62,17 @@ test("title screen opens the authentication menu", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Googleでログイン" })).toHaveClass(/semantic-cta--primary/);
 });
 
+test("title Google login always asks the browser to select an account", async ({ page }) => {
+  await page.goto("/");
+  await page.getByText("TAP TO START").click();
+  await page.getByRole("button", { name: "データをお持ちの方" }).click();
+  await page.getByRole("button", { name: "Googleでログイン" }).click();
+
+  await expect.poll(async () => page.evaluate(() =>
+    JSON.parse(localStorage.getItem("mock_last_oauth_query_params") || "{}")
+  )).toEqual({ prompt: "select_account" });
+});
+
 test("authentication menu opens the email login form", async ({ page }) => {
   await page.goto("/");
   const tapToStart = page.getByText("TAP TO START");
@@ -356,6 +367,48 @@ test("Google OAuth redirect resumes with the same anonymous user id", async ({ p
   await expect(page.getByText("ゲームデータを保存")).toBeHidden();
   await expect.poll(async () => page.evaluate(() => JSON.parse(localStorage.getItem("mock_db_tutorial_progress") || "[]")[0]?.step_id)).toBe("AUTHENTICATION");
   await expect.poll(async () => page.evaluate(() => localStorage.getItem("tribe_onboarding_auth_intent"))).toBeNull();
+});
+
+test("Google linking callback fails closed when the source anonymous session is missing", async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem("tribe_demo_uuid", "00000000-0000-4000-8000-000000000302");
+    localStorage.setItem("mock_auth_mode", "GOOGLE");
+    localStorage.setItem("tribe_onboarding_auth_intent", JSON.stringify({
+      method: "GOOGLE",
+      userId: "00000000-0000-4000-8000-000000000099",
+      startedAt: Date.now(),
+    }));
+  });
+
+  await page.goto("/auth/callback?code=mock-google-code");
+
+  await expect(page).toHaveURL(/\/auth\/callback/);
+  await expect(page.getByText(/Google連携を開始したゲームデータのセッションを確認できませんでした/)).toBeVisible();
+  await expect(page.getByText(/このGoogleアカウントにはゲームデータがありません/)).toHaveCount(0);
+});
+
+test("Google linking callback restores the anonymous player when Google returns another user id", async ({ page }) => {
+  const sourceUserId = "00000000-0000-4000-8000-000000000099";
+  await page.addInitScript(({ sourceUserId }) => {
+    localStorage.setItem("tribe_demo_uuid", sourceUserId);
+    localStorage.setItem("mock_auth_mode", "ANONYMOUS");
+    localStorage.setItem("mock_oauth_callback_user_id", "00000000-0000-4000-8000-000000000302");
+    localStorage.setItem("tribe_onboarding_auth_intent", JSON.stringify({
+      method: "GOOGLE",
+      userId: sourceUserId,
+      startedAt: Date.now(),
+    }));
+  }, { sourceUserId });
+
+  await page.goto("/auth/callback?code=mock-google-code");
+
+  await expect(page).toHaveURL(/\/auth\/callback/);
+  await expect(page.getByText(/選択されたGoogleアカウントは別のユーザーに登録されています/)).toBeVisible();
+  await expect.poll(async () => page.evaluate(() => ({
+    userId: localStorage.getItem("tribe_demo_uuid"),
+    authMode: localStorage.getItem("mock_auth_mode"),
+  }))).toEqual({ userId: sourceUserId, authMode: "ANONYMOUS" });
+  await expect(page.getByText(/このGoogleアカウントにはゲームデータがありません/)).toHaveCount(0);
 });
 
 test("existing Google login returns directly to the game without the war-entry dialog", async ({ page }) => {
