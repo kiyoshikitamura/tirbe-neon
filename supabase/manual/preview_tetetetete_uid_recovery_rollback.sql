@@ -16,7 +16,7 @@ declare
   v_source constant uuid := '0d77f162-c15f-45c5-a7de-eb82fc9fa8c6';
   v_target constant uuid := '5ae66150-068e-4001-9018-3ba3e904f62e';
   v_approval constant text := 'ROLLBACK:ててててて:5ae66150->0d77f162';
-  v_target_profile jsonb; v_changed bigint; v_expected bigint; r record;
+  v_target_profile jsonb; v_critical jsonb; v_changed bigint; v_expected bigint; r record;
 begin
   if current_setting('tribe.target_project_ref',true) is distinct from 'sufvuqdnqohpfzkwxohq' then raise exception 'PREVIEW ONLY'; end if;
   if current_setting('tribe.preview_uid_recovery_rollback_approval',true) is distinct from v_approval then raise exception 'explicit rollback approval key is missing'; end if;
@@ -34,6 +34,17 @@ begin
   insert into public.users
   select (jsonb_populate_record(null::public.users,
            v_target_profile || jsonb_build_object('id',v_source))).*;
+
+  select critical_state into v_critical from ops_account_recovery.cases where case_id=v_case;
+  update public.battle_replay_sessions
+  set result=jsonb_set(result,'{participationProgress,user_id}',to_jsonb(v_source::text),false),
+      finalization_result=jsonb_set(finalization_result,'{participationProgress,user_id}',to_jsonb(v_source::text),false)
+  where requester_user_id=v_target and battle_mode='RAID'
+    and result #>> '{participationProgress,user_id}'=v_target::text
+    and finalization_result #>> '{participationProgress,user_id}'=v_target::text
+    and result=finalization_result;
+  get diagnostics v_changed=row_count;
+  if v_changed<(v_critical->>'battle_replay_result_rows')::bigint then raise exception 'battle replay participation rollback row count regressed'; end if;
 
   -- Re-discover the same reviewed class of UUID ownership columns so rows
   -- created after recovery are moved back rather than cascaded away. Original
@@ -78,6 +89,10 @@ begin
   if not found then raise exception 'audit status update failed'; end if;
   if not exists(select 1 from public.users where id=v_source and username='ててててて') then raise exception 'restored source profile mismatch'; end if;
   if exists(select 1 from public.users where id=v_target) then raise exception 'target profile remains'; end if;
+  if exists(select 1 from public.battle_replay_sessions where result #>> '{participationProgress,user_id}'=v_target::text)
+     or exists(select 1 from public.battle_replay_sessions where finalization_result #>> '{participationProgress,user_id}'=v_target::text) then
+    raise exception 'target UID remains in battle replay participation path';
+  end if;
 end;
 $$;
 

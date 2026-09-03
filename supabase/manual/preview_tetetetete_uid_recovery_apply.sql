@@ -29,6 +29,7 @@ declare
   v_char_rows bigint; v_char_levels bigint;
   v_equipment_rows bigint; v_equipment_levels bigint;
   v_skill_rows bigint; v_skill_plus bigint;
+  v_replay_result_rows bigint := 0; v_replay_final_rows bigint := 0;
   v_before bigint; v_after bigint; v_changed bigint;
   r record;
 begin
@@ -97,10 +98,34 @@ begin
   loop
     execute format('select count(*) from %I.%I where %I::text like $1',r.schema_name,r.table_name,r.column_name)
       into v_before using '%'||v_source::text||'%';
+    execute format('select count(*) from %I.%I where %I::text like $1',r.schema_name,r.table_name,r.column_name)
+      into v_after using '%'||v_target::text||'%';
+    if v_after<>0 then
+      raise exception 'target UID already embedded in %.% (% rows)',r.table_name,r.column_name,v_after;
+    end if;
     if v_before<>0 then
-      raise exception 'source UID embedded in %.% (% rows); manual review required',r.table_name,r.column_name,v_before;
+      if r.table_name='battle_replay_sessions' and r.column_name in ('result','finalization_result') then
+        execute format('select count(*) from public.battle_replay_sessions where requester_user_id=$1 and battle_mode=''RAID'' and %I #>> ''{participationProgress,user_id}''=$2 and (%I #- ''{participationProgress,user_id}'')::text not like $3',r.column_name,r.column_name)
+          into v_changed using v_source,v_source::text,'%'||v_source::text||'%';
+        if v_changed<>v_before then
+          raise exception 'source UID appears outside audited raid participation path in %.% (% vs % rows)',r.table_name,r.column_name,v_before,v_changed;
+        end if;
+        if r.column_name='result' then v_replay_result_rows:=v_before;
+        else v_replay_final_rows:=v_before; end if;
+      else
+        raise exception 'source UID embedded in %.% (% rows); manual review required',r.table_name,r.column_name,v_before;
+      end if;
     end if;
   end loop;
+  if v_replay_result_rows<>1 or v_replay_final_rows<>1 or not exists(
+    select 1 from public.battle_replay_sessions
+    where requester_user_id=v_source and battle_mode='RAID'
+      and result #>> '{participationProgress,user_id}'=v_source::text
+      and finalization_result #>> '{participationProgress,user_id}'=v_source::text
+      and result=finalization_result
+  ) then
+    raise exception 'expected one identical audited Raid result/finalization document; got result %, final %',v_replay_result_rows,v_replay_final_rows;
+  end if;
 
   select count(*),coalesce(sum(quantity),0) into v_items_rows,v_items_quantity from public.user_items where user_id=v_source;
   select count(*),coalesce(sum(level),0) into v_char_rows,v_char_levels from public.user_characters where user_id=v_source;
@@ -134,7 +159,9 @@ begin
     'items_rows',v_items_rows,'items_quantity',v_items_quantity,
     'character_rows',v_char_rows,'character_levels',v_char_levels,
     'equipment_rows',v_equipment_rows,'equipment_levels',v_equipment_levels,
-    'skill_rows',v_skill_rows,'skill_plus',v_skill_plus
+    'skill_rows',v_skill_rows,'skill_plus',v_skill_plus,
+    'battle_replay_result_rows',v_replay_result_rows,
+    'battle_replay_finalization_result_rows',v_replay_final_rows
   ),'APPLIED');
 
   -- Temporarily free normalized username and gift-code uniqueness, then clone
@@ -182,6 +209,19 @@ begin
     end if;
   end loop;
 
+  -- The UUID loop above captured the original replay row before ownership was
+  -- moved. Rewrite only the canonical Raid participation ownership path now.
+  -- Battle actors, targets and owned-character identifiers remain untouched.
+  update public.battle_replay_sessions
+  set result=jsonb_set(result,'{participationProgress,user_id}',to_jsonb(v_target::text),false),
+      finalization_result=jsonb_set(finalization_result,'{participationProgress,user_id}',to_jsonb(v_target::text),false)
+  where requester_user_id=v_target and battle_mode='RAID'
+    and result #>> '{participationProgress,user_id}'=v_source::text
+    and finalization_result #>> '{participationProgress,user_id}'=v_source::text
+    and result=finalization_result;
+  get diagnostics v_changed=row_count;
+  if v_changed<>1 then raise exception 'audited Raid participation transfer count mismatch: %',v_changed; end if;
+
   -- Canonical final authentication state. auth.identities remains untouched.
   insert into public.user_account_auth_methods(user_id,auth_method)
   values(v_target,'GOOGLE');
@@ -213,6 +253,13 @@ begin
   end if;
   if not exists(select 1 from auth.users where id=v_source and is_anonymous) then
     raise exception 'rollback auth user was not retained';
+  end if;
+  if exists(select 1 from public.battle_replay_sessions where result::text like '%'||v_source::text||'%')
+     or exists(select 1 from public.battle_replay_sessions where finalization_result::text like '%'||v_source::text||'%')
+     or (select count(*) from public.battle_replay_sessions where result #>> '{participationProgress,user_id}'=v_target::text)<>v_replay_result_rows
+     or (select count(*) from public.battle_replay_sessions where finalization_result #>> '{participationProgress,user_id}'=v_target::text)<>v_replay_final_rows
+     or exists(select 1 from public.battle_replay_sessions where requester_user_id=v_target and battle_mode='RAID' and result #>> '{participationProgress,user_id}'=v_target::text and result is distinct from finalization_result) then
+    raise exception 'battle replay embedded UID postcondition failed';
   end if;
 end;
 $$;
