@@ -61,6 +61,8 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 412, height: 915 }
     await panel.getByPlaceholder("暗号DMを入力...").fill("次の連絡です");
     await panel.getByRole("button", { name: "送信", exact: true }).click();
     await expect(panel.getByText("次の連絡です", { exact: true })).toBeVisible();
+    await expect(panel.locator(".tribe-dm-thread-header strong")).toHaveText("アキラ");
+    await expect(panel.locator(".tribe-dm-thread-header strong")).not.toHaveText(/^(null|undefined)$/i);
 
     await panel.getByRole("button", { name: "DM一覧に戻る" }).click();
     await expect(panel.locator('[aria-label="DM一覧"]')).toBeVisible();

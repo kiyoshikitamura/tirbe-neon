@@ -2,7 +2,11 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { supabase, usingMockSupabase } from "@/utils/supabase";
-import type { DirectMessageRow } from "./directMessageConversations";
+import {
+  projectDirectMessageIdentities,
+  type DirectMessageProfileRow,
+  type DirectMessageRow,
+} from "./directMessageConversations";
 
 export function useChat(
   session: any,
@@ -188,15 +192,26 @@ export function useChat(
 
   const hydrateDirectMessage = useCallback(async (message: DirectMessageRow) => {
     if (!currentUserId) return;
-    const participantId = message.sender_id === currentUserId ? message.recipient_id : message.sender_id;
     const { data: participants, error } = await supabase.rpc("get_public_profiles", {
-      p_user_ids: [participantId]
+      p_user_ids: [...new Set([message.sender_id, message.recipient_id])]
     });
     if (error) console.warn("direct message participant fetch error:", error.message);
-    const participantName = participants?.[0]?.username || "ユーザー";
+    const [hydratedMessage] = projectDirectMessageIdentities(
+      [message],
+      currentUserId,
+      (Array.isArray(participants) ? participants : []) as DirectMessageProfileRow[]
+    );
     setDirectMessages((previous) => previous.some((entry) => entry.id === message.id)
-      ? previous
-      : [...previous, { ...message, participant_name: participantName }]);
+      ? previous.map((entry) => entry.id === message.id
+        ? {
+            ...entry,
+            ...hydratedMessage,
+            sender_name: hydratedMessage.sender_name || entry.sender_name || null,
+            recipient_name: hydratedMessage.recipient_name || entry.recipient_name || null,
+            participant_name: hydratedMessage.participant_name || entry.participant_name || "ユーザー",
+          }
+        : entry)
+      : [...previous, hydratedMessage]);
   }, [currentUserId]);
 
   const fetchDirectMessages = useCallback(async () => {
@@ -228,27 +243,23 @@ export function useChat(
       if (usingMockSupabase || rows.length < pageSize) break;
       page += 1;
     }
-    const participantIds = [...new Set(rawMessages.map((message) => (
-      message.sender_id === currentUserId ? message.recipient_id : message.sender_id
+    const actorIds = [...new Set(rawMessages.flatMap((message) => (
+      [message.sender_id, message.recipient_id]
     )).filter(Boolean))];
-    const participantNames = new Map<string, string>();
-    for (let start = 0; start < participantIds.length; start += 100) {
-      const participantChunk = participantIds.slice(start, start + 100);
+    const actorProfiles: DirectMessageProfileRow[] = [];
+    for (let start = 0; start < actorIds.length; start += 100) {
+      const actorChunk = actorIds.slice(start, start + 100);
       const { data: participants, error: participantError } = await supabase.rpc("get_public_profiles", {
-        p_user_ids: participantChunk
+        p_user_ids: actorChunk
       });
       if (participantError) {
         console.warn("direct message participants fetch error:", participantError.message);
       } else {
-        for (const participant of participants || []) {
-          participantNames.set(participant.user_id || participant.id, participant.username || "ユーザー");
-        }
+        actorProfiles.push(...(Array.isArray(participants) ? participants : []));
       }
     }
-    const messages = rawMessages.map((message) => {
-      const participantId = message.sender_id === currentUserId ? message.recipient_id : message.sender_id;
-      return { ...message, participant_name: participantNames.get(participantId) || "ユーザー" };
-    }).sort((left, right) => String(left.created_at || "").localeCompare(String(right.created_at || "")));
+    const messages = projectDirectMessageIdentities(rawMessages, currentUserId, actorProfiles)
+      .sort((left, right) => String(left.created_at || "").localeCompare(String(right.created_at || "")));
     setDirectMessages(messages);
     if (showTribeChatPanel && chatChannel === "DM" && dmRecipientId) {
       void markDirectMessagesRead(messages
