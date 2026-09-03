@@ -46,6 +46,8 @@ jobs:
       - run: npm run verify:battle-mvp-result
       - run: npm run verify:battle-presentation
       - run: npm run verify:visual-compliance
+      - run: npm run verify:preopen-guild-power-ui
+      - run: npm run verify:guild-cosmetic-notification-ui
       - run: npm run build
 
   edge-function-check:

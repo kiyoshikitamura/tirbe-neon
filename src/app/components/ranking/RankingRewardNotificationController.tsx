@@ -36,8 +36,9 @@ export default function RankingRewardNotificationController() {
     name: reward.displayName || canonicalItemName(reward.id),
     kind: reward.rewardKind,
   })), [pending]);
-  const hasItemRewards = rewards.some((reward) => reward.kind === "ITEM");
   const hasCosmeticRewards = rewards.some((reward) => reward.kind === "COSMETIC");
+  const hasDailyItemRewards = pending?.grants.some((grant) => grant.rewardKind === "ITEM" && grant.periodKind === "DAILY") || false;
+  const hasSeasonItemRewards = pending?.grants.some((grant) => grant.rewardKind === "ITEM" && grant.periodKind === "SEASON") || false;
 
   useEffect(() => {
     const userId = session?.user?.id || null;
@@ -110,16 +111,18 @@ export default function RankingRewardNotificationController() {
     setConfirmDialogConfig({
       isOpen: true,
       title: "ランキング報酬獲得",
-      message: hasCosmeticRewards
-        ? `${hasItemRewards ? "アイテム報酬はバッグへ直接付与されました。\n" : ""}ギルド装飾を獲得しました。\nランキング報酬の限定ギルド装飾は、正式オープン後のギルド装飾機能追加時に使用できるようになります。`
-        : "ランキング報酬はバッグへ直接付与されました。",
+      message: [
+        hasDailyItemRewards ? "デイリーランキング報酬はバッグへ直接付与されました。" : "",
+        hasSeasonItemRewards ? "シーズンランキング報酬はプレゼントBOXへ付与されました。" : "",
+        hasCosmeticRewards ? "ギルド装飾を獲得しました。\nランキング報酬の限定ギルド装飾は、正式オープン後のギルド装飾機能追加時に使用できるようになります。" : "",
+      ].filter(Boolean).join("\n"),
       confirmText: "閉じる",
       cancelText: "",
       onConfirm: acknowledge,
       onCancel: acknowledge,
       kind: "reward",
       rewards,
-      delivery: "INVENTORY",
+      delivery: hasSeasonItemRewards && !hasDailyItemRewards ? "PRESENT" : "INVENTORY",
       presentation: "canonical",
     });
   }, [
@@ -131,7 +134,8 @@ export default function RankingRewardNotificationController() {
     prepMissionDialogCheckComplete,
     rewards,
     hasCosmeticRewards,
-    hasItemRewards,
+    hasDailyItemRewards,
+    hasSeasonItemRewards,
     setConfirmDialogConfig,
     setGlobalInteractionBlocking,
     setRankingRewardNotificationCheckComplete,

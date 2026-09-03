@@ -9,7 +9,7 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "test": "pnpm verify:battle-presentation && pnpm verify:battle-full-skill-load && pnpm verify:battle-ai-audit",
-    "quality:preflight": "npm run lint && npm run typecheck && npm run verify:visual-compliance && npm run verify:mock-asset-gacha && npm run verify:mock-direct-message-read && npm run verify:mock-gvg-cancellation && npm run verify:mock-secure-decks && npm run verify:mock-secure-patrol && npm run build",
+    "quality:preflight": "npm run lint && npm run typecheck && npm run verify:visual-compliance && npm run verify:mock-asset-gacha && npm run verify:mock-direct-message-read && npm run verify:mock-gvg-cancellation && npm run verify:mock-secure-decks && npm run verify:mock-secure-patrol && npm run verify:preopen-guild-power-ui && npm run verify:guild-cosmetic-notification-ui && npm run build",
     "test:e2e": "node scripts/run_browser_e2e.mjs",
     "verify:asset-gacha": "node scripts/verify_asset_gacha.mjs",
     "verify:sound-assets": "node scripts/verify_sound_assets.mjs",

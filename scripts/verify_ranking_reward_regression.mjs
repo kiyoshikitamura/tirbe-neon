@@ -86,7 +86,9 @@ const acknowledgeBody = controller.slice(controller.indexOf("const acknowledge =
 assert.match(acknowledgeBody, /rpc\("acknowledge_ranking_reward_notifications"/);
 assert.match(acknowledgeBody, /onConfirm: acknowledge/);
 assert.match(acknowledgeBody, /onCancel: acknowledge/);
-assert.match(controller, /delivery: "INVENTORY"/);
+assert.match(controller, /delivery: hasSeasonItemRewards && !hasDailyItemRewards \? "PRESENT" : "INVENTORY"/);
+assert.match(controller, /デイリーランキング報酬はバッグへ直接付与されました/);
+assert.match(controller, /シーズンランキング報酬はプレゼントBOXへ付与されました/);
 assert.match(acknowledgeBody, /if \(error\) throw error;[\s\S]*setPending\(null\)[\s\S]*setConfirmDialogConfig\(null\)/);
 const beforeAcknowledge = controller.slice(0, controller.indexOf("const acknowledge = async"));
 assert.doesNotMatch(beforeAcknowledge, /acknowledge_ranking_reward_notifications/,
