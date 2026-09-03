@@ -27,7 +27,7 @@ const PREOPEN_GUILD_COSMETIC_FALLBACK: RankingRewardTier[] = [
   {
     from: 1,
     to: Number.MAX_SAFE_INTEGER,
-    itemId: "PREOPEN_GUILD_PARTICIPATION_COSMETIC",
+    itemId: "guild_preopen_2026_participation",
     quantity: 1,
     displayName: "プレオープン参加記念ギルド装飾",
     eligibilityLabel: "参加ギルド",
@@ -36,7 +36,7 @@ const PREOPEN_GUILD_COSMETIC_FALLBACK: RankingRewardTier[] = [
   ...[1, 2, 3].map((rank): RankingRewardTier => ({
     from: rank,
     to: rank,
-    itemId: `PREOPEN_GUILD_RANK_${rank}_COSMETIC`,
+    itemId: `guild_preopen_2026_rank_${rank}`,
     quantity: 1,
     displayName: `プレオープン第${rank}位限定ギルド装飾`,
     rewardKind: "cosmetic",

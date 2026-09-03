@@ -15,6 +15,11 @@ import { useScreenReadiness } from "../hooks/useScreenReadiness";
 import { SCREEN_ASSET_MANIFESTS } from "../lib/screenManifests";
 import RankingRewardDialog from "./ranking/RankingRewardDialog";
 import type { RankingRewardMasterPayload } from "@/domain/ranking/rankingRewardPresentation";
+import {
+  isPreopenGuildPowerSeasonContext,
+  normalizeGuildRankingPayload,
+  type GuildSeasonMetadata,
+} from "@/domain/ranking/preopenGuildPowerSeason";
 import "./ranking/RankingRewardButton.css";
 import "./RankingTab.css";
 import "./RaidRankingMetric.css";
@@ -29,14 +34,6 @@ type PublicProfile = {
   guild_name?: string | null;
   favorite_character_id?: string | null;
   main_formation_character_ids?: string[] | null;
-};
-
-type GuildSeasonMetadata = {
-  starts_at?: string | null;
-  ends_at?: string | null;
-  status?: string | null;
-  finalized_at?: string | null;
-  updated_at?: string | null;
 };
 
 const RANKING_TABS = [
@@ -55,31 +52,6 @@ const validRank = (value: unknown) => {
   const rank = Number(value);
   return Number.isInteger(rank) && rank > 0 ? rank : null;
 };
-
-const asRecord = (value: unknown): Record<string, any> | null => value && typeof value === "object" && !Array.isArray(value)
-  ? value as Record<string, any>
-  : null;
-
-function normalizeGuildRankingPayload(data: unknown) {
-  if (Array.isArray(data)) return { rows: data, selfRank: null, season: null };
-  const payload = asRecord(data);
-  if (!payload) return { rows: [], selfRank: null, season: null };
-  const rows = [payload.rows, payload.rankings, payload.guilds, payload.data].find(Array.isArray) || [];
-  const selfPayload = asRecord(payload.selfRank) || asRecord(payload.self_rank) || asRecord(payload.self_guild) || asRecord(payload.current_guild);
-  const selfRank = asRecord(selfPayload?.row) || asRecord(selfPayload?.guild) || selfPayload;
-  const nestedSeason = asRecord(payload.season) || asRecord(payload.metadata);
-  const seasonSource = nestedSeason || payload;
-  const season: GuildSeasonMetadata | null = ["starts_at", "ends_at", "status", "finalized_at", "updated_at"].some((key) => key in seasonSource)
-    ? {
-      starts_at: seasonSource.starts_at ?? seasonSource.startsAt,
-      ends_at: seasonSource.ends_at ?? seasonSource.endsAt,
-      status: seasonSource.status,
-      finalized_at: seasonSource.finalized_at ?? seasonSource.finalizedAt ?? (seasonSource.is_finalized ? seasonSource.server_updated_at : null),
-      updated_at: seasonSource.updated_at ?? seasonSource.updatedAt ?? seasonSource.server_updated_at,
-    }
-    : null;
-  return { rows, selfRank, season };
-}
 
 function formatJstTimestamp(value: string | null | undefined) {
   if (!value) return null;
@@ -295,7 +267,8 @@ export default function RankingTab() {
   const activeCategoryLabel = RANKING_TABS.find((tab) => tab.id === activeTab)?.label || "総合力";
   const metricLabel = activeTab === "power" ? "総合力" : activeTab === "guild_power" ? "ギルド総合力" : activeTab === "pvp" ? "RATE" : "累計ダメージ";
   const periodLabel = activePeriod === "daily" ? "デイリー" : "シーズン";
-  const isGuildSeason = activeTab === "guild_power" && activePeriod === "season";
+  const isGuildSeasonTab = activeTab === "guild_power" && activePeriod === "season";
+  const isPreopenGuildSeason = isGuildSeasonTab && isPreopenGuildPowerSeasonContext(guildSeason);
   const guildSeasonFinalized = Boolean(guildSeason?.finalized_at) || ["FINALIZED", "COMPLETED", "CLOSED"].includes(String(guildSeason?.status || "").toUpperCase());
   const serverUpdatedAt = formatJstTimestamp(guildSeason?.updated_at || guildSeason?.finalized_at);
   const guildSeasonStartLabel = formatJstDay(guildSeason?.starts_at);
@@ -304,7 +277,7 @@ export default function RankingTab() {
     ? `${guildSeasonStartLabel}〜${guildSeasonLastDayLabel}`
     : "9/4〜9/8";
   const guildSeasonEndLabel = formatJstTimestamp(guildSeason?.ends_at) || "9/9 0:00";
-  const updateLabel = isGuildSeason && serverUpdatedAt
+  const updateLabel = isPreopenGuildSeason && serverUpdatedAt
     ? `最終更新 ${serverUpdatedAt}`
     : `${clock.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" })} 更新`;
 
@@ -337,7 +310,7 @@ export default function RankingTab() {
       <SubTabNav className="ranking-category-nav" tabs={[...RANKING_TABS]} activeTabId={activeTab} onSelect={(tabId) => setRankingActiveTab(tabId)} />
       <div className="ranking-period-row"><div role="group" aria-label="集計期間">{PERIOD_TABS.map((period) => <button key={period.id} type="button" className={activePeriod === period.id ? "is-active" : ""} onClick={() => setActivePeriod(period.id)}>{period.label}</button>)}</div><span>{periodLabel}・{updateLabel}</span><button type="button" className="ranking-reward-button" onClick={openRewardDialog}>報酬確認</button></div>
 
-      {isGuildSeason && <section className={`ranking-guild-season-summary ${guildSeasonFinalized ? "is-finalized" : ""}`} aria-label="プレオープン限定シーズン情報">
+      {isPreopenGuildSeason && <section className={`ranking-guild-season-summary ${guildSeasonFinalized ? "is-finalized" : ""}`} aria-label="プレオープン限定シーズン情報">
         <div><strong>プレオープン限定シーズン</strong><span>{guildSeasonFinalized ? "順位確定" : "集計中"}</span></div>
         <p className="ranking-guild-season-period">{guildSeasonPeriodLabel} <small>{guildSeasonEndLabel}集計終了</small></p>
         <p>ギルドメンバー全員の総合力で順位が決まります。仲間を集めて戦力を強化し、限定ギルド装飾を獲得しよう！</p>
@@ -370,7 +343,7 @@ export default function RankingTab() {
         : activationMilestones.has("first_pvp") && !userGuildMember ? <OutlawButton variant="primary" fullWidth className="ranking-return-cta" onClick={() => setActiveTab("guild")}>おすすめTRIBEを見る</OutlawButton>
           : activationMilestones.has("first_pvp") && userGuildMember && !activationMilestones.has("guild_activation") ? <OutlawButton variant="primary" fullWidth className="ranking-return-cta" onClick={() => setActiveTab("guild")}>所属TRIBEへ</OutlawButton>
             : activeTab === "pvp" ? <OutlawButton variant="secondary" fullWidth className="ranking-return-cta" onClick={() => setActiveTab("pvp")}>バトルへ戻る</OutlawButton> : null}
-      {rewardDialogOpen && <RankingRewardDialog category={activeTab} period={activePeriod} master={rewardMaster} loading={rewardMasterLoading} onClose={() => setRewardDialogOpen(false)} />}
+      {rewardDialogOpen && <RankingRewardDialog category={activeTab} period={activePeriod} master={rewardMaster} loading={rewardMasterLoading} preopenGuildSeason={isPreopenGuildSeason} onClose={() => setRewardDialogOpen(false)} />}
     </HubPage>
   );
 }

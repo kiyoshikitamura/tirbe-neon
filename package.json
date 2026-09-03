@@ -161,6 +161,7 @@
     "verify:tn09a-raid-playback-liveness": "node --experimental-strip-types scripts/verify_tn09a_raid_playback_liveness.mjs",
     "verify:tn09-raid-ranking": "node --experimental-strip-types scripts/verify_tn09_raid_ranking.mjs",
     "verify:ranking-reward-regression": "node --experimental-strip-types scripts/verify_ranking_reward_regression.mjs",
+    "verify:preopen-guild-power-ui": "node --experimental-strip-types scripts/verify_preopen_guild_power_ui.mjs",
     "verify:quest-battle-result-liveness": "node scripts/verify_quest_battle_result_liveness.mjs",
     "verify:preopen-human-acceptance": "npm run verify:quest-battle-result-liveness && npm run verify:dm-inbox-thread && npm run verify:home-character-dialogue && npm run verify:async-transition-acceptance && npm run verify:ranking-reward-regression",
     "verify:preopen-reward-addendum": "node scripts/verify_preopen_reward_addendum_contract.mjs",
