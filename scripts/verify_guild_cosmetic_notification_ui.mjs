@@ -11,7 +11,7 @@ const parsed = parsePendingRankingRewardNotification({
     {
       period_kind: "DAILY",
       period_key: "2026-09-08",
-      ranking_category: "PVP",
+      ranking_category: "GUILD_POWER",
       rank_position: 2,
       item_id: "CHAR_EXP_L",
       quantity: 1,

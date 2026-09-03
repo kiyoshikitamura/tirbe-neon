@@ -28,7 +28,7 @@ function isCosmeticGrant(grant: Record<string, unknown>): boolean {
   const rewardKind = String(grant.reward_kind ?? "").toUpperCase();
   const displayName = String(grant.display_name ?? "");
   return rewardKind === "COSMETIC"
-    || grant.ranking_category === "GUILD_POWER"
+    || (grant.period_kind === "SEASON" && grant.ranking_category === "GUILD_POWER")
     || /ギルド装飾/.test(displayName)
     || /^guild_preopen_2026_/.test(String(grant.item_id ?? ""));
 }
