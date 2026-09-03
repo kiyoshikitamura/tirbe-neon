@@ -38,5 +38,6 @@ const rankingTab = fs.readFileSync("src/app/components/RankingTab.tsx", "utf8");
 assert.match(rankingTab, /preopenGuildSeason=\{isPreopenGuildSeason\}/);
 assert.match(rankingTab, /get_preopen_guild_power_ranking/);
 assert.match(rankingTab, /get_public_guild_power_rankings/);
+assert.match(rankingTab, /normalized\.season && !isPreopenGuildPowerSeasonContext\(normalized\.season\)/);
 
 console.log("Pre-open guild Power season UI contract: PASS");

@@ -163,7 +163,12 @@ export default function RankingTab() {
           ({ data, error: rpcError } = await supabase.rpc("get_public_guild_power_rankings", { p_daily: false, p_limit: 100, p_offset: 0 }));
         }
         if (rpcError) throw rpcError;
-        const normalized = normalizeGuildRankingPayload(data);
+        let normalized = normalizeGuildRankingPayload(data);
+        if (activePeriod === "season" && normalized.season && !isPreopenGuildPowerSeasonContext(normalized.season)) {
+          const fallback = await supabase.rpc("get_public_guild_power_rankings", { p_daily: false, p_limit: 100, p_offset: 0 });
+          if (fallback.error) throw fallback.error;
+          normalized = normalizeGuildRankingPayload(fallback.data);
+        }
         nextGuildRows = normalized.rows;
         nextSelfRank = normalized.selfRank;
         nextGuildSeason = activePeriod === "season" ? normalized.season : null;
