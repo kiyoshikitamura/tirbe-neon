@@ -3,9 +3,12 @@ import LegalPage from "../LegalPage";
 
 export const metadata: Metadata = { title: "プライバシーポリシー | TRIBE NEON" };
 
-export default function PrivacyPage() {
+type PrivacyPageProps = { searchParams: Promise<{ from?: string }> };
+
+export default async function PrivacyPage({ searchParams }: PrivacyPageProps) {
+  const { from } = await searchParams;
   return (
-    <LegalPage title="プライバシーポリシー" updatedAt="2026年8月5日">
+    <LegalPage title="プライバシーポリシー" updatedAt="2026年8月5日" returnToGame={from === "settings"}>
       <p className="legal-page-notice">本ページは開発・検証環境用の草案です。正式公開前に、実際の取得情報、外部サービス、問い合わせ先および保管期間を反映した正式文面へ更新してください。</p>
       <h2>1. 取得する情報</h2>
       <p>本サービスは、アカウント識別情報、ゲーム内プロフィール情報、利用状況、端末・ブラウザ情報その他サービス提供に必要な情報を取得することがあります。</p>

@@ -8,6 +8,7 @@ import OutlawButton from "./ui/OutlawButton";
 import "./SettingsPanel.css";
 import { USER_BIO_MAX_LENGTH } from "@/domain/presentation/userBio";
 import EditableSettingSection, { ChoiceGroup } from "./ui/EditableSettingSection";
+import { armLegalSettingsReturn } from "@/utils/legalSettingsReturn";
 
 const QA_EMAIL = "izasama39@gmail.com";
 const QA_TOOLS_ENABLED = process.env.NEXT_PUBLIC_APP_ENV === "development"
@@ -65,6 +66,10 @@ export default function SettingsPanel() {
     game.setErrorMessage("");
     resetDrafts();
     game.setShowSettingsPanel(false);
+  };
+
+  const rememberLegalReturn = () => {
+    armLegalSettingsReturn(game.session?.user?.id || "");
   };
 
   const saveProfile = async () => {
@@ -141,9 +146,9 @@ export default function SettingsPanel() {
         <section className="settings-section" aria-labelledby="settings-legal-title">
           <h4 id="settings-legal-title" className="settings-section-title">法的情報</h4>
           <nav className="settings-legal-links" aria-label="法的情報">
-            <Link href="/legal/terms">利用規約</Link>
-            <Link href="/legal/privacy">プライバシーポリシー</Link>
-            <Link href="/legal/commercial">特定商取引法に基づく表記</Link>
+            <Link href="/legal/terms?from=settings" onClick={rememberLegalReturn}>利用規約</Link>
+            <Link href="/legal/privacy?from=settings" onClick={rememberLegalReturn}>プライバシーポリシー</Link>
+            <Link href="/legal/commercial?from=settings" onClick={rememberLegalReturn}>特定商取引法に基づく表記</Link>
           </nav>
         </section>
         <div className="settings-panel-footer">

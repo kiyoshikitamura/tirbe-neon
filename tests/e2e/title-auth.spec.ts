@@ -85,6 +85,22 @@ test("authentication menu opens the email login form", async ({ page }) => {
   await expect(page.locator('input[type="password"]')).toBeVisible();
 });
 
+test("email login without a game profile uses provider-neutral guidance", async ({ page }) => {
+  await page.addInitScript(() => {
+    const userId = "00000000-0000-4000-8000-000000000778";
+    localStorage.setItem("mock_db_auth_identities", JSON.stringify([{ user_id: userId, provider: "email", email: "empty@example.com" }]));
+  });
+  await page.goto("/");
+  await page.getByText("TAP TO START").click();
+  await page.getByRole("button", { name: "データをお持ちの方" }).click();
+  await page.getByPlaceholder("メールアドレス").fill("empty@example.com");
+  await page.getByPlaceholder("パスワード (6文字以上)").fill("secure-pass-123");
+  await page.getByRole("button", { name: "メールでログイン" }).click();
+
+  await expect(page.getByText(/この認証アカウントにはゲームデータがありません/)).toBeVisible();
+  await expect(page.getByText(/このGoogleアカウントにはゲームデータがありません/)).toHaveCount(0);
+});
+
 test("a new player explicitly creates an anonymous session before name setup", async ({ page }) => {
   await page.goto("/");
   await page.getByText("TAP TO START").click();
@@ -121,7 +137,7 @@ test("an authenticated Google user without game data cannot enter anonymous name
   await page.goto("/");
   await page.getByText("TAP TO START").click();
 
-  await expect(page.getByText(/このGoogleアカウントにはゲームデータがありません/)).toBeVisible();
+  await expect(page.getByText(/この認証アカウントにはゲームデータがありません/)).toBeVisible();
   await expect(page.getByRole("heading", { name: "プレイヤー名" })).toBeHidden();
 
   await page.locator(".title-entry-primary").click();
@@ -274,6 +290,33 @@ test("email linking keeps the anonymous user id and completes onboarding once", 
   expect(state.methods).toEqual([{ user_id: state.userId, auth_method: "EMAIL" }]);
 });
 
+test("email linking fails closed when immediate completion returns another user id", async ({ page }) => {
+  await seedCompletedAnonymous(page);
+  await page.addInitScript(() => {
+    localStorage.setItem("mock_email_link_user_id", "00000000-0000-4000-8000-000000000298");
+  });
+  await page.goto("/");
+  await openCompletedAnonymousAuthentication(page);
+  await page.getByPlaceholder("メールアドレス").fill("mismatch@example.com");
+  await page.getByPlaceholder("パスワード（6文字以上）").fill("secure-pass-123");
+  await page.getByRole("button", { name: "メールアカウントを連携" }).click();
+
+  await expect(page.getByText(/メール連携の開始時と異なるユーザーが検出されました/)).toBeVisible();
+  const result = await page.evaluate(() => ({
+    userId: localStorage.getItem("tribe_demo_uuid"),
+    authMode: localStorage.getItem("mock_auth_mode"),
+    progress: JSON.parse(localStorage.getItem("mock_db_tutorial_progress") || "[]"),
+    methods: JSON.parse(localStorage.getItem("mock_db_user_account_auth_methods") || "[]"),
+  }));
+  expect(result.userId).toBe("00000000-0000-4000-8000-000000000099");
+  expect(result.authMode).toBe("ANONYMOUS");
+  expect(result.progress).toContainEqual(expect.objectContaining({
+    user_id: "00000000-0000-4000-8000-000000000099",
+    step_id: "COMPLETE",
+  }));
+  expect(result.methods).toEqual([]);
+});
+
 test("email confirmation wait survives reload and finalizes after the callback session", async ({ page }) => {
   await seedCompletedAnonymous(page, true);
   await page.goto("/");
@@ -302,6 +345,38 @@ test("email confirmation wait survives reload and finalizes after the callback s
   await expect(page.getByText("ゲームデータを保存")).toBeHidden();
   await expect.poll(async () => page.evaluate(() => JSON.parse(localStorage.getItem("mock_db_tutorial_progress") || "[]")[0]?.step_id)).toBe("AUTHENTICATION");
   await expect.poll(async () => page.evaluate(() => localStorage.getItem("tribe_onboarding_email_intent"))).toBeNull();
+});
+
+test("email confirmation return with a different uid is rejected before finalization", async ({ page }) => {
+  const sourceUserId = "00000000-0000-4000-8000-000000000099";
+  const returnedUserId = "00000000-0000-4000-8000-000000000299";
+  await page.addInitScript(({ sourceUserId, returnedUserId }) => {
+    localStorage.setItem("tribe_demo_uuid", returnedUserId);
+    localStorage.setItem("mock_auth_mode", "EMAIL");
+    localStorage.setItem("tribe_onboarding_email_intent", JSON.stringify({
+      method: "EMAIL",
+      userId: sourceUserId,
+      email: "confirm@example.com",
+      startedAt: Date.now(),
+    }));
+    localStorage.setItem("mock_db_users", JSON.stringify([
+      { id: sourceUserId, username: "元データ" },
+      { id: returnedUserId, username: "別データ" },
+    ]));
+    localStorage.setItem("mock_db_tutorial_progress", JSON.stringify([
+      { user_id: sourceUserId, step_id: "COMPLETE", authentication_pending: true },
+      { user_id: returnedUserId, step_id: "AUTHENTICATION", authentication_pending: false },
+    ]));
+    localStorage.setItem("mock_db_user_account_auth_methods", JSON.stringify([
+      { user_id: returnedUserId, auth_method: "EMAIL" },
+    ]));
+  }, { sourceUserId, returnedUserId });
+  await page.goto("/");
+
+  await expect(page.getByText(/メール連携を開始したゲームデータと異なるユーザーが検出されました/)).toBeVisible();
+  await expect.poll(async () => page.evaluate(() => localStorage.getItem("tribe_demo_uuid"))).toBeNull();
+  const progress = await page.evaluate(() => JSON.parse(localStorage.getItem("mock_db_tutorial_progress") || "[]"));
+  expect(progress.find((row: any) => row.user_id === sourceUserId)?.step_id).toBe("COMPLETE");
 });
 
 test("email identity collision can be cancelled without changing anonymous tutorial data", async ({ page }) => {
@@ -675,6 +750,35 @@ test("email identity collision verifies credentials before discard and resumes t
   const users = await page.evaluate(() => JSON.parse(localStorage.getItem("mock_db_users") || "[]"));
   expect(users.some((row: any) => row.id === "00000000-0000-4000-8000-000000000099")).toBe(false);
   expect(users.find((row: any) => row.id === "00000000-0000-4000-8000-000000000201")?.username).toBe("既存Email");
+});
+
+test("email account switch keeps anonymous data when the destination authority is incomplete", async ({ page }) => {
+  await seedCompletedAnonymous(page);
+  await page.addInitScript(() => {
+    const existingId = "00000000-0000-4000-8000-000000000202";
+    localStorage.setItem("mock_existing_email_password", "existing-pass");
+    localStorage.setItem("mock_db_auth_identities", JSON.stringify([{ user_id: existingId, provider: "email", email: "unsafe@example.com" }]));
+    const users = JSON.parse(localStorage.getItem("mock_db_users") || "[]");
+    users.push({ id: existingId, username: "未完了Email" });
+    localStorage.setItem("mock_db_users", JSON.stringify(users));
+    localStorage.setItem("mock_db_user_account_auth_methods", JSON.stringify([]));
+  });
+  await page.goto("/");
+  await openCompletedAnonymousAuthentication(page);
+  await page.getByPlaceholder("メールアドレス").fill("unsafe@example.com");
+  await page.getByPlaceholder("パスワード（6文字以上）").fill("existing-pass");
+  await page.getByRole("button", { name: "メールアカウントを連携" }).click();
+  await page.getByRole("button", { name: "既存データへ切り替える" }).click();
+
+  await expect(page.getByText(/既存のメール認証済みゲームデータを確認できませんでした/)).toBeVisible();
+  const state = await page.evaluate(() => ({
+    userId: localStorage.getItem("tribe_demo_uuid"),
+    discarded: localStorage.getItem("mock_discarded_anonymous_user_id"),
+    users: JSON.parse(localStorage.getItem("mock_db_users") || "[]"),
+  }));
+  expect(state.userId).toBe("00000000-0000-4000-8000-000000000099");
+  expect(state.discarded).toBeNull();
+  expect(state.users.some((row: any) => row.id === state.userId)).toBe(true);
 });
 
 test("Google OAuth cancellation returns to onboarding and can be retried", async ({ page }) => {

@@ -45,7 +45,7 @@ const legalRoutes = [
   { path: "/legal/commercial", title: "特定商取引法に基づく表記", notice: "未確定" },
 ] as const;
 
-for (const viewport of [{ width: 360, height: 800 }, { width: 390, height: 844 }]) {
+for (const viewport of [{ width: 390, height: 844 }, { width: 412, height: 915 }, { width: 1280, height: 900 }]) {
   for (const legal of legalRoutes) {
     test(`${legal.title} remains explicit and mobile-safe at ${viewport.width}x${viewport.height}`, async ({ page }) => {
       await page.setViewportSize(viewport);
@@ -59,10 +59,14 @@ for (const viewport of [{ width: 360, height: 800 }, { width: 390, height: 844 }
       const geometry = await page.locator(".legal-page").evaluate((root) => ({
         clientWidth: root.clientWidth,
         scrollWidth: root.scrollWidth,
+        clientHeight: root.clientHeight,
+        scrollHeight: root.scrollHeight,
         linkHeights: Array.from(root.querySelectorAll("a")).map((link) => link.getBoundingClientRect().height),
       }));
       expect(geometry.scrollWidth).toBeLessThanOrEqual(geometry.clientWidth + 1);
+      expect(geometry.scrollHeight).toBeGreaterThanOrEqual(geometry.clientHeight);
       expect(geometry.linkHeights.every((height) => height >= 44)).toBe(true);
+      await expect(page.locator(".legal-page-scroll-thumb")).toBeVisible();
     });
   }
 }
@@ -75,9 +79,26 @@ test("authenticated Settings exposes the canonical legal routes", async ({ page 
   await page.getByRole("dialog", { name: "ホームメニュー" }).getByRole("button", { name: "設定", exact: true }).click();
 
   const legalNavigation = page.getByRole("navigation", { name: "法的情報" });
-  await expect(legalNavigation.getByRole("link", { name: "利用規約" })).toHaveAttribute("href", "/legal/terms");
-  await expect(legalNavigation.getByRole("link", { name: "プライバシーポリシー" })).toHaveAttribute("href", "/legal/privacy");
-  await expect(legalNavigation.getByRole("link", { name: "特定商取引法に基づく表記" })).toHaveAttribute("href", "/legal/commercial");
+  await expect(legalNavigation.getByRole("link", { name: "利用規約" })).toHaveAttribute("href", "/legal/terms?from=settings");
+  await expect(legalNavigation.getByRole("link", { name: "プライバシーポリシー" })).toHaveAttribute("href", "/legal/privacy?from=settings");
+  await expect(legalNavigation.getByRole("link", { name: "特定商取引法に基づく表記" })).toHaveAttribute("href", "/legal/commercial?from=settings");
+
+  await legalNavigation.getByRole("link", { name: "利用規約" }).click();
+  await expect(page.getByRole("button", { name: "閉じる", exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "タイトルへ戻る" })).toHaveCount(0);
+  await expect(page.getByRole("navigation", { name: "法的情報" }).getByRole("link", { name: "プライバシーポリシー" }))
+    .toHaveAttribute("href", "/legal/privacy?from=settings");
+  await page.getByRole("button", { name: "閉じる", exact: true }).click();
+  await expect(page.locator(".header-mobile")).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "設定" })).toBeVisible();
+  await expect(page).not.toHaveURL(/return_from=legal_settings/);
+});
+
+test("direct legal return query cannot bypass Title without a session marker", async ({ page }) => {
+  await page.goto("/?return_from=legal_settings");
+  await expect(page.getByRole("button", { name: "TAP TO START" })).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "設定" })).toHaveCount(0);
+  await expect(page).not.toHaveURL(/return_from=legal_settings/);
 });
 
 test("pre-open keeps real-money products closed", async ({ page }) => {

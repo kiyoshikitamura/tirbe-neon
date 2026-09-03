@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from "react";
 import { flushSync } from "react-dom";
 import { supabase } from "@/utils/supabase";
+import { EMAIL_ONBOARDING_INTENT_KEY, readEmailOnboardingIntent } from "@/utils/authIntents";
 import { CANONICAL_SKILL_VIEW } from "@/utils/skills_master_data";
 import { CANONICAL_EQUIPMENT_VIEW } from "@/utils/equipments_master_data";
 import { getCanonicalSkillIcon } from "@/utils/skillVisualAssets";
@@ -100,6 +101,7 @@ import { useStory } from "./hooks/useStory";
 import { useCharacterProgression } from "./hooks/useCharacterProgression";
 import { shouldRevalidateAuthSession } from "@/utils/auth_session_events";
 import { getJstDateString } from "@/utils/jst_date";
+import { clearLegalSettingsReturn, hasPendingLegalSettingsReturn, isLegalSettingsReturnRequested } from "@/utils/legalSettingsReturn";
 
 export const GameContext = createContext<any>(null);
 
@@ -757,6 +759,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       setSession(null);
       setOnboardingState(null);
       setIsSetupRequired(false);
+      clearLegalSettingsReturn();
+      setShowTitleView(true);
       setAuthLoading(false);
     };
     void restoreAuthSession();
@@ -816,6 +820,17 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       if (nextState?.user_id !== userId || (currentAuthUserIdRef.current && currentAuthUserIdRef.current !== userId)) {
         throw new Error("Authenticated player projection did not match the active session.");
       }
+      const emailIntent = readEmailOnboardingIntent();
+      if (emailIntent && emailIntent.userId !== userId) {
+        await supabase.auth.signOut();
+        setSession(null);
+        setOnboardingState(null);
+        setIsSetupRequired(false);
+        window.localStorage.removeItem(EMAIL_ONBOARDING_INTENT_KEY);
+        setErrorMessage("メール連携を開始したゲームデータと異なるユーザーが検出されました。データ保護のため連携を中止しました。");
+        setShowTitleView(true);
+        return;
+      }
       if (nextState.tutorial_step === "TUTORIAL_BATTLE") {
         // Reward claiming is authoritative and idempotent, but the tutorial
         // step is deliberately kept on TUTORIAL_BATTLE while its result modal
@@ -848,13 +863,33 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         setSession(null);
         setOnboardingState(null);
         setIsSetupRequired(false);
-        setErrorMessage("このGoogleアカウントにはゲームデータがありません。「はじめから」で匿名チュートリアルを開始し、完了後にGoogleアカウントを連携してください。");
+        setErrorMessage("この認証アカウントにはゲームデータがありません。「はじめから」で匿名チュートリアルを開始し、完了後にアカウントを連携してください。");
         window.localStorage.removeItem(EXISTING_GOOGLE_LOGIN_INTENT_KEY);
         setShowTitleView(true);
         return;
       }
       setOnboardingState(nextState);
       setIsSetupRequired(nextState.is_anonymous && !nextState.has_profile);
+      const legalSettingsReturnRequested = isLegalSettingsReturnRequested();
+      if (nextState.gameplay_authorized && hasPendingLegalSettingsReturn(userId)) {
+        setShowTitleView(false);
+        setShowSettingsPanel(true);
+        clearLegalSettingsReturn();
+      } else if (legalSettingsReturnRequested) {
+        clearLegalSettingsReturn();
+        setShowTitleView(true);
+      }
+      const isVerifiedEmailReturn = Boolean(emailIntent
+        && nextState.user_id === emailIntent.userId
+        && !nextState.is_anonymous
+        && nextState.has_profile
+        && nextState.tutorial_step === "COMPLETE"
+        && nextState.auth_method === "EMAIL"
+        && nextState.identity_integrity_valid);
+      if (isVerifiedEmailReturn) {
+        setShowTitleView(false);
+        setShowAccountAuthenticationModal(true);
+      }
       if (nextState.gameplay_authorized && hasValidExistingGoogleLoginIntent()) {
         window.localStorage.removeItem(EXISTING_GOOGLE_LOGIN_INTENT_KEY);
         setShowTitleView(false);
@@ -1067,6 +1102,16 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const userId = session?.user?.id;
+    const emailIntent = readEmailOnboardingIntent();
+    const emailConfirmationPending = Boolean(
+      userId
+      && emailIntent?.userId === userId
+      && !session?.user?.is_anonymous
+      && onboardingState?.user_id === userId
+      && onboardingState?.tutorial_step === "COMPLETE"
+      && onboardingState?.auth_method === "EMAIL"
+      && onboardingState?.identity_integrity_valid
+    );
     const authenticationPending = Boolean(
       userId
       && onboardingState?.user_id === userId
@@ -1074,6 +1119,11 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       && onboardingState?.authentication_pending
       && onboardingState?.gameplay_authorized
     );
+    if (emailConfirmationPending) {
+      setShowAuthenticationReminder(false);
+      setShowAccountAuthenticationModal(true);
+      return;
+    }
     if (!authenticationPending) {
       setShowAuthenticationReminder(false);
       setShowAccountAuthenticationModal(false);

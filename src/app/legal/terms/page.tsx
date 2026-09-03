@@ -3,9 +3,12 @@ import LegalPage from "../LegalPage";
 
 export const metadata: Metadata = { title: "利用規約 | TRIBE NEON" };
 
-export default function TermsPage() {
+type TermsPageProps = { searchParams: Promise<{ from?: string }> };
+
+export default async function TermsPage({ searchParams }: TermsPageProps) {
+  const { from } = await searchParams;
   return (
-    <LegalPage title="利用規約" updatedAt="2026年8月5日">
+    <LegalPage title="利用規約" updatedAt="2026年8月5日" returnToGame={from === "settings"}>
       <p className="legal-page-notice">本ページは開発・検証環境用の草案です。正式公開前に、運営者情報および正式な規約文を確定し、法務確認を完了してください。</p>
       <h2>第1条（適用）</h2>
       <p>本規約は、TRIBE NEON（以下「本サービス」）の利用条件を定めるものです。ユーザーは、本規約に同意した上で本サービスを利用します。</p>

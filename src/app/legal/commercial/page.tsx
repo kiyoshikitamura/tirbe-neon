@@ -3,9 +3,12 @@ import LegalPage from "../LegalPage";
 
 export const metadata: Metadata = { title: "特定商取引法に基づく表記 | TRIBE NEON" };
 
-export default function CommercialPage() {
+type CommercialPageProps = { searchParams: Promise<{ from?: string }> };
+
+export default async function CommercialPage({ searchParams }: CommercialPageProps) {
+  const { from } = await searchParams;
   return (
-    <LegalPage title="特定商取引法に基づく表記" updatedAt="2026年8月5日">
+    <LegalPage title="特定商取引法に基づく表記" updatedAt="2026年8月5日" returnToGame={from === "settings"}>
       <p className="legal-page-notice">販売事業者名、所在地、連絡先、販売価格、支払方法および返金方針は未確定です。実課金を公開する前に、特定商取引法その他の適用法令に沿った正式な表記へ必ず差し替えてください。</p>
       <h2>販売事業者</h2>
       <p>正式公開前に確定・掲載します。</p>
