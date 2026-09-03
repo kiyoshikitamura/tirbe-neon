@@ -298,7 +298,13 @@ export default function AccountAuthenticationModal() {
   const providers = new Set((session?.user?.identities || []).map((identity: { provider?: string }) => identity.provider));
   const hasOnlyEmailIdentity = !session?.user?.is_anonymous && providers.has("email") && !providers.has("google");
 
-  if ((!isTutorialCompletion && !showAccountAuthenticationModal && !googleIdentityMismatch) || (showTitleView && hiddenForTitle)) return null;
+  const ownsAnonymousOnboardingState = session?.user?.is_anonymous === true
+    && onboardingState?.user_id === session.user.id
+    && onboardingState?.is_anonymous;
+
+  if ((!ownsAnonymousOnboardingState && !accountConflict && !googleIdentityMismatch)
+    || (!isTutorialCompletion && !showAccountAuthenticationModal && !googleIdentityMismatch)
+    || (showTitleView && hiddenForTitle)) return null;
 
   const continueWithoutAuthentication = async () => {
     if (!session?.user?.id || !session.user.is_anonymous || !isTutorialCompletion || !beginWorking()) return;
