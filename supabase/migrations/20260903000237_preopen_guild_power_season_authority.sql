@@ -3,6 +3,22 @@ begin;
 
 create extension if not exists pg_cron with schema pg_catalog;
 
+-- Preview intentionally does not require the broader 00233 migration. Keep the
+-- notification/acknowledgement contract needed by 00234 and this season local
+-- and convergent when the table already exists.
+create table if not exists public.ranking_reward_notifications (
+  id uuid primary key default gen_random_uuid(),
+  recipient_user_id uuid not null references public.users(id) on delete cascade,
+  period_kind text not null check (period_kind in ('DAILY','SEASON')),
+  period_key text not null,
+  awarded_at timestamptz not null default clock_timestamp(),
+  acknowledged_at timestamptz,
+  unique(recipient_user_id,period_kind,period_key)
+);
+create index if not exists ranking_reward_notifications_pending_idx
+  on public.ranking_reward_notifications(recipient_user_id,awarded_at,id)
+  where acknowledged_at is null;
+
 create table if not exists public.ranking_guild_power_season_master (
   season_id uuid primary key references public.ranking_seasons(id),
   event_key text not null unique,
@@ -142,12 +158,14 @@ declare
   v_grant_count integer;
   v_job_id bigint;
 begin
-  perform pg_advisory_xact_lock(hashtextextended('PREOPEN_GUILD_POWER_2026',0));
+  -- All paths lock the season row before the event advisory lock. This avoids
+  -- inversion with a transaction that edits season state then Power inputs.
   select season.* into strict v_season
   from public.ranking_seasons season
   join public.ranking_guild_power_season_master master on master.season_id=season.id
   where master.event_key='PREOPEN_GUILD_POWER_2026'
   for update of season;
+  perform pg_advisory_xact_lock(hashtextextended('PREOPEN_GUILD_POWER_2026',0));
 
   if clock_timestamp()<v_season.ends_at then
     raise exception 'pre-open guild Power season is not closed' using errcode='22023';
@@ -155,6 +173,9 @@ begin
 
   if exists(select 1 from public.ranking_guild_power_finalization_audits audit
             where audit.season_id=v_season.id) then
+    select jobid into v_job_id from cron.job
+    where jobname='preopen-guild-power-finalize-20260909-jst';
+    if v_job_id is not null then perform cron.unschedule(v_job_id); end if;
     return (select jsonb_build_object(
       'season_id',audit.season_id,'status','ALREADY_FINALIZED',
       'ranked_guild_count',audit.ranked_guild_count,
@@ -258,23 +279,27 @@ $$;
 -- state. This closes the cron-delay gap without changing other rank types.
 create or replace function public.guard_preopen_guild_power_cutoff()
 returns trigger language plpgsql security definer set search_path=public as $$
+declare
+  v_season_id uuid;
+  v_ends_at timestamptz;
+  v_finalized boolean;
 begin
-  if exists(
-    select 1
-    from public.ranking_guild_power_season_master master
-    join public.ranking_guild_power_finalization_audits audit
-      on audit.season_id=master.season_id
-    where master.event_key='PREOPEN_GUILD_POWER_2026'
-  ) then
+  select season.id,season.ends_at,
+    exists(select 1 from public.ranking_guild_power_finalization_audits audit
+           where audit.season_id=season.id)
+  into strict v_season_id,v_ends_at,v_finalized
+  from public.ranking_guild_power_season_master master
+  join public.ranking_seasons season on season.id=master.season_id
+  where master.event_key='PREOPEN_GUILD_POWER_2026';
+
+  if v_finalized then
     return null;
-  elsif exists(
-    select 1
-    from public.ranking_guild_power_season_master master
-    where master.event_key='PREOPEN_GUILD_POWER_2026'
-      and clock_timestamp()>=master.ends_at
-  ) then
+  elsif clock_timestamp()>=v_ends_at then
     perform public.finalize_preopen_guild_power_season();
   else
+    -- Pre-cutoff work is admitted by season-row/share then advisory/share.
+    -- The finalizer uses the same order with exclusive modes and waits for it.
+    perform 1 from public.ranking_seasons where id=v_season_id for share;
     -- A transaction admitted before cutoff holds a shared lock through commit.
     -- The finalizer's exclusive lock therefore waits for all admitted writes.
     perform pg_advisory_xact_lock_shared(hashtextextended('PREOPEN_GUILD_POWER_2026',0));
@@ -312,6 +337,12 @@ create trigger character_battle_preopen_power_cutoff_guard before insert or upda
 for each statement execute function public.guard_preopen_guild_power_cutoff();
 drop trigger if exists equipment_battle_preopen_power_cutoff_guard on public.equipment_battle_master;
 create trigger equipment_battle_preopen_power_cutoff_guard before insert or update or delete on public.equipment_battle_master
+for each statement execute function public.guard_preopen_guild_power_cutoff();
+drop trigger if exists canonical_character_preopen_power_cutoff_guard on public.canonical_character_master;
+create trigger canonical_character_preopen_power_cutoff_guard before insert or update or delete on public.canonical_character_master
+for each statement execute function public.guard_preopen_guild_power_cutoff();
+drop trigger if exists canonical_equipment_preopen_power_cutoff_guard on public.canonical_equipment_master;
+create trigger canonical_equipment_preopen_power_cutoff_guard before insert or update or delete on public.canonical_equipment_master
 for each statement execute function public.guard_preopen_guild_power_cutoff();
 
 create or replace function public.get_preopen_guild_power_ranking(
@@ -352,7 +383,6 @@ begin
     select 1 from public.ranking_seasons newer
     where newer.ranking_type=v_season.ranking_type
       and newer.starts_at>v_season.starts_at
-      and newer.status in ('ACTIVE','FINALIZING')
   );
 
   if v_is_final then
@@ -428,7 +458,8 @@ begin
   with grant_rows as (
     select notification.awarded_at notification_at,notification.period_kind,notification.period_key,
       season.ranking_category,season.rank_position,season.resolved_item_id item_id,
-      season.quantity,season.granted_at,season.reward_key ordering_key
+      season.quantity,season.granted_at,season.reward_key ordering_key,
+      'ITEM'::text reward_kind,null::text display_name
     from public.ranking_reward_notifications notification
     join public.ranking_season_reward_grants season
       on notification.period_kind='SEASON' and season.season_id::text=notification.period_key
@@ -436,7 +467,8 @@ begin
     where notification.recipient_user_id=v_uid and notification.acknowledged_at is null
     union all
     select notification.awarded_at,notification.period_kind,notification.period_key,
-      award.ranking_type,award.rank_position,item.item_id,item.quantity,item.granted_at,item.item_id
+      award.ranking_type,award.rank_position,item.item_id,item.quantity,item.granted_at,item.item_id,
+      'ITEM'::text,null::text
     from public.ranking_reward_notifications notification
     join public.ranking_daily_reward_awards award
       on notification.period_kind='DAILY' and award.ranking_day_key::text=notification.period_key
@@ -446,23 +478,46 @@ begin
     union all
     select notification.awarded_at,notification.period_kind,notification.period_key,
       'GUILD_POWER',grant_row.rank_position,grant_row.cosmetic_id,1,
-      grant_row.granted_at,grant_row.cosmetic_id
+      grant_row.granted_at,grant_row.cosmetic_id,'GUILD_COSMETIC',cosmetic.display_name
     from public.ranking_reward_notifications notification
     join public.ranking_guild_power_reward_recipients recipient
       on notification.period_kind='SEASON' and recipient.season_id::text=notification.period_key
       and recipient.recipient_user_id=notification.recipient_user_id
     join public.ranking_guild_power_reward_grants grant_row
       on grant_row.season_id=recipient.season_id and grant_row.guild_id=recipient.guild_id
+    join public.cosmetic_master cosmetic on cosmetic.id=grant_row.cosmetic_id
     where notification.recipient_user_id=v_uid and notification.acknowledged_at is null
   )
   select coalesce(jsonb_agg(jsonb_build_object(
     'period_kind',grant_row.period_kind,'period_key',grant_row.period_key,
     'ranking_category',grant_row.ranking_category,'rank_position',grant_row.rank_position,
-    'item_id',grant_row.item_id,'quantity',grant_row.quantity,'granted_at',grant_row.granted_at
+    'item_id',grant_row.item_id,'quantity',grant_row.quantity,'granted_at',grant_row.granted_at,
+    'reward_kind',grant_row.reward_kind,'display_name',grant_row.display_name
   ) order by grant_row.notification_at,grant_row.ranking_category,
     grant_row.rank_position,grant_row.ordering_key),'[]'::jsonb)
   into v_grants from grant_rows grant_row;
   return jsonb_build_object('notification_ids',v_notification_ids,'grants',v_grants);
+end;
+$$;
+
+create or replace function public.acknowledge_ranking_reward_notifications(
+  p_notification_ids uuid[]
+) returns jsonb language plpgsql security definer set search_path=public as $$
+declare
+  v_uid uuid:=auth.uid();
+  v_acknowledged integer:=0;
+begin
+  if v_uid is null then raise exception 'authentication required' using errcode='42501'; end if;
+  if coalesce(cardinality(p_notification_ids),0)=0 then
+    return jsonb_build_object('acknowledged',0);
+  end if;
+  update public.ranking_reward_notifications notification
+  set acknowledged_at=clock_timestamp()
+  where notification.recipient_user_id=v_uid
+    and notification.id=any(p_notification_ids)
+    and notification.acknowledged_at is null;
+  get diagnostics v_acknowledged=row_count;
+  return jsonb_build_object('acknowledged',v_acknowledged);
 end;
 $$;
 
@@ -472,6 +527,7 @@ alter table public.ranking_guild_power_season_snapshots enable row level securit
 alter table public.ranking_guild_power_reward_grants enable row level security;
 alter table public.ranking_guild_power_reward_recipients enable row level security;
 alter table public.ranking_guild_power_finalization_audits enable row level security;
+alter table public.ranking_reward_notifications enable row level security;
 
 revoke all on public.ranking_guild_power_season_master,
   public.ranking_guild_exclusions,public.ranking_guild_power_season_snapshots,
@@ -483,6 +539,8 @@ grant all on public.ranking_guild_power_season_master,
   public.ranking_guild_power_reward_grants,public.ranking_guild_power_reward_recipients,
   public.ranking_guild_power_finalization_audits
   to service_role;
+revoke all on public.ranking_reward_notifications from public,anon,authenticated;
+grant all on public.ranking_reward_notifications to service_role;
 
 revoke all on function public.finalize_preopen_guild_power_season() from public,anon,authenticated;
 grant execute on function public.finalize_preopen_guild_power_season() to service_role;
@@ -492,6 +550,10 @@ revoke all on function public.reject_guild_power_snapshot_mutation() from public
 grant execute on function public.reject_guild_power_snapshot_mutation() to service_role;
 revoke all on function public.get_preopen_guild_power_ranking(integer,integer) from public,anon;
 grant execute on function public.get_preopen_guild_power_ranking(integer,integer) to authenticated,service_role;
+revoke all on function public.get_my_pending_ranking_reward_notification(),
+  public.acknowledge_ranking_reward_notifications(uuid[]) from public,anon,authenticated;
+grant execute on function public.get_my_pending_ranking_reward_notification(),
+  public.acknowledge_ranking_reward_notifications(uuid[]) to authenticated,service_role;
 
 do $$
 declare v_job_id bigint;

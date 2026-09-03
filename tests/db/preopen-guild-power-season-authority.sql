@@ -18,18 +18,21 @@ declare
   v_snapshot_power bigint;
   v_current_power bigint;
   v_result jsonb;
+  v_pending jsonb;
+  v_notification_ids uuid[];
   v_grant_count integer;
 begin
   select master.season_id into strict v_season_id
   from public.ranking_guild_power_season_master master
   where master.event_key='PREOPEN_GUILD_POWER_2026';
 
-  select battle.character_id into strict v_character_id
-  from public.character_battle_master battle
-  join public.character_growth_patterns growth on growth.pattern_id=battle.growth_pattern_id
-  where growth.base_hp+growth.base_atk+growth.base_def>0
-    and growth.hp_gain+growth.atk_gain+growth.def_gain>0
-  order by battle.character_id limit 1;
+  select master.character_id into strict v_character_id
+  from public.canonical_character_master master
+  where master.version='2026-08-21'
+    and master.lv1_hp+master.lv1_atk+master.lv1_def>0
+    and master.lv100_hp+master.lv100_atk+master.lv100_def
+      > master.lv1_hp+master.lv1_atk+master.lv1_def
+  order by master.character_id limit 1;
 
   select coalesce(jsonb_agg(to_jsonb(season) order by season.id),'[]'::jsonb)
   into v_other_seasons_before
@@ -64,6 +67,10 @@ begin
       ends_at=clock_timestamp()-interval '1 second'
   where season_id=v_season_id;
 
+  -- Canonical Character is a direct dependency of current Power calculation;
+  -- even a no-op master write must cross the same cutoff guard.
+  update public.canonical_character_master set display_name=display_name
+  where version='2026-08-21' and character_id=v_character_id;
   update public.user_characters set level=3 where id=v_owned_1;
 
   if not exists(select 1 from public.ranking_guild_power_finalization_audits
@@ -99,6 +106,30 @@ begin
         and notification.recipient_user_id in(v_user_1,v_user_2,v_user_3))<>3 then
     raise exception 'guild result notifications were not issued';
   end if;
+  if not exists(
+    select 1 from public.ranking_reward_notifications notification
+    join public.ranking_guild_power_reward_recipients recipient
+      on recipient.season_id::text=notification.period_key
+     and recipient.recipient_user_id=notification.recipient_user_id
+    where notification.period_kind='SEASON' and recipient.season_id=v_season_id
+      and notification.acknowledged_at is null
+  ) then
+    raise exception 'pending notification is not backed by a guild reward recipient';
+  end if;
+  perform set_config('request.jwt.claim.sub',v_user_1::text,true);
+  v_pending:=public.get_my_pending_ranking_reward_notification();
+  if v_pending is null
+     or not exists(select 1 from jsonb_array_elements(v_pending->'grants') grant_row
+                   where grant_row->>'reward_kind'='GUILD_COSMETIC'
+                     and coalesce(grant_row->>'display_name','')<>'') then
+    raise exception 'cosmetic notification metadata contract is incomplete';
+  end if;
+  select array_agg(value::uuid) into v_notification_ids
+  from jsonb_array_elements_text(v_pending->'notification_ids') ids(value);
+  if (public.acknowledge_ranking_reward_notifications(v_notification_ids)->>'acknowledged')::integer<>1
+     or public.get_my_pending_ranking_reward_notification() is not null then
+    raise exception 'notification acknowledgement is not one-time';
+  end if;
 
   select count(*) into v_grant_count from public.ranking_guild_power_reward_grants
   where season_id=v_season_id;
@@ -107,6 +138,9 @@ begin
      or (select count(*) from public.ranking_guild_power_reward_grants
          where season_id=v_season_id)<>v_grant_count then
     raise exception 'finalizer retry is not idempotent';
+  end if;
+  if public.get_my_pending_ranking_reward_notification() is not null then
+    raise exception 'finalizer retry reopened an acknowledged notification';
   end if;
   if exists(select 1 from cron.job
             where jobname='preopen-guild-power-finalize-20260909-jst') then

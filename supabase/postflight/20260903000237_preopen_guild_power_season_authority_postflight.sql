@@ -36,15 +36,30 @@ begin
     raise exception 'immutable final snapshot trigger is missing';
   end if;
   if (select count(*) from pg_trigger
-      where tgname like '%preopen_power_cutoff_guard' and not tgisinternal)<>10 then
+      where tgname like '%preopen_power_cutoff_guard' and not tgisinternal)<>12 then
     raise exception 'pre-open cutoff mutation guards are incomplete';
   end if;
   if to_regclass('public.ranking_guild_power_reward_recipients') is null then
     raise exception 'guild result notification recipient Authority is missing';
   end if;
+  if to_regclass('public.ranking_reward_notifications') is null
+     or not has_function_privilege('authenticated',
+       'public.acknowledge_ranking_reward_notifications(uuid[])','execute') then
+    raise exception 'ranking result one-time notification/ack contract is incomplete';
+  end if;
   if position('is_current_context' in
       pg_get_functiondef('public.get_preopen_guild_power_ranking(integer,integer)'::regprocedure))=0 then
     raise exception 'future-season context guard is missing';
+  end if;
+  if position('newer.status' in
+      pg_get_functiondef('public.get_preopen_guild_power_ranking(integer,integer)'::regprocedure))>0 then
+    raise exception 'closed/preparing future season can reactivate pre-open presentation';
+  end if;
+  if not exists(select 1 from pg_trigger
+    where tgname='canonical_character_preopen_power_cutoff_guard' and not tgisinternal)
+     or not exists(select 1 from pg_trigger
+    where tgname='canonical_equipment_preopen_power_cutoff_guard' and not tgisinternal) then
+    raise exception 'canonical Power master cutoff guards are missing';
   end if;
 end;
 $$;
