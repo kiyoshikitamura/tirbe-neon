@@ -15,19 +15,40 @@ import "./RankingRewardDialog.css";
 
 const rankLabel = (from: number, to: number) => from === to ? `${from}位` : `${from}〜${to}位`;
 
-export default function RankingRewardDialog({ category, period, master, loading = false, preopenGuildSeason = false, onClose }: { category: RankingRewardCategory; period: RankingRewardPeriod; master?: RankingRewardMasterPayload | null; loading?: boolean; preopenGuildSeason?: boolean; onClose: () => void }) {
-  const sections = preopenGuildSeason
+export default function RankingRewardDialog({ category, period, master, loading = false, error = null, preopenGuildSeason = false, onPeriodChange, onRetry, onClose }: {
+  category: RankingRewardCategory;
+  period: RankingRewardPeriod;
+  master?: RankingRewardMasterPayload | null;
+  loading?: boolean;
+  error?: string | null;
+  preopenGuildSeason?: boolean;
+  onPeriodChange: (period: RankingRewardPeriod) => void;
+  onRetry: () => void;
+  onClose: () => void;
+}) {
+  const showGuildSeasonCosmetics = category === "guild_power" && period === "season" && preopenGuildSeason;
+  const sections = showGuildSeasonCosmetics
     ? guildSeasonCosmeticRewardSectionsFromPayload(master)
     : master === undefined ? rankingRewardSections(category, period) : rankingRewardSectionsFromPayload(master, category, period);
   return <CanonicalDialog title="ランキング報酬" ariaLabel="ランキング報酬確認" onClose={onClose} loading={loading} actions={[{ label: "閉じる", onClick: onClose, disabled: loading }]}>
-    {loading ? <span className="spinner" role="status" aria-label="報酬情報を取得中" /> : sections.length === 0 ? <p className="ranking-reward-empty">報酬定義なし</p> : <div className="ranking-reward-sections">
+    <div className="ranking-reward-period-tabs" role="group" aria-label="報酬期間">
+      {(["daily", "season"] as const).map((rewardPeriod) => <button
+        key={rewardPeriod}
+        type="button"
+        className={period === rewardPeriod ? "is-active" : ""}
+        aria-pressed={period === rewardPeriod}
+        disabled={loading}
+        onClick={() => onPeriodChange(rewardPeriod)}
+      >{rewardPeriod === "daily" ? "デイリー" : "シーズン"}</button>)}
+    </div>
+    {loading ? <span className="spinner" role="status" aria-label="報酬情報を取得中" /> : error ? <div className="ranking-reward-error" role="alert"><p>{error}</p><button type="button" onClick={onRetry}>再試行</button></div> : sections.length === 0 ? <p className="ranking-reward-empty">{period === "season" ? "このランキングのシーズン報酬はありません" : "このランキングのデイリー報酬はありません"}</p> : <div className="ranking-reward-sections">
       {sections.map((rewardSection) => <section key={rewardSection.title}>
         <header><strong>{rewardSection.title}</strong><span>{rewardSection.cadence === "MONTHLY" ? "月次" : rewardSection.cadence === "WEEKLY" ? "週次" : "日次"}</span></header>
         <div className="ranking-reward-tiers">{rewardSection.tiers.map((tier) => <div key={`${tier.from}-${tier.to}-${tier.itemId}`} className={`ranking-reward-tier ${tier.rewardKind === "cosmetic" ? "is-cosmetic" : ""}`}>
           <strong>{tier.eligibilityLabel || rankLabel(tier.from, tier.to)}</strong>{tier.rewardKind === "cosmetic" ? <span className="ranking-reward-cosmetic-mark">装飾</span> : <CanonicalItemIcon itemId={tier.itemId} alt={canonicalItemName(tier.itemId)} fallback="券" />}<span>{tier.displayName || canonicalItemName(tier.itemId)}</span>{tier.rewardKind === "cosmetic" ? null : <b>×{tier.quantity}</b>}
         </div>)}</div>
       </section>)}
-      {preopenGuildSeason && <div className="ranking-reward-cosmetic-notes">
+      {showGuildSeasonCosmetics && <div className="ranking-reward-cosmetic-notes">
         <p>上位3ギルドにも参加記念ギルド装飾を付与します。</p>
         <p>ランキング報酬の限定ギルド装飾は、正式オープン後のギルド装飾機能追加時に使用できるようになります。</p>
       </div>}

@@ -432,6 +432,16 @@ export function usePatrol(
 
       setLastPatrolRewards(rewardSummary);
       if (!options?.suppressResultModal) setShowPatrolRewardModal(true);
+
+      // The claim is authoritative at this point. Remove the completed quest
+      // from the local projection before the battle result releases its screen;
+      // otherwise the Quest tab can briefly render the same patrol as
+      // CLAIMABLE and expose a second "報酬獲得" action until bootstrap catches
+      // up. Non-battle claims still keep their reward modal above the list.
+      invalidatePatrolBootstrap();
+      setActivePatrols((current) => current.filter((entry) => entry.id !== patrolId));
+      setHasActivePatrolBattle((current) => targetPatrol.has_battle_event ? false : current);
+
       void Promise.allSettled([
         syncBootstrapData(session.user.id),
         addGuildXpAndContributionByAction("QUEST", patrolId),

@@ -202,13 +202,34 @@ test("Present bulk claim locks its surface through the canonical receipt", async
   await expect(reward.locator(".inbox-present-reward-icon")).toBeVisible();
   await expect(reward).toContainText("× 2");
   await expect(reward).not.toContainText("EQUIP_EXP_M");
+  await page.evaluate(() => localStorage.setItem("mock_rpc_delay_ms:claim_all_presents", "800"));
   const bulkClaim = page.getByRole("button", { name: "一括受け取り", exact: true });
   await bulkClaim.click();
+  const pendingPanel = page.locator(".inbox-panel-pending");
+  await expect(pendingPanel).toBeVisible();
+  await expect(bulkClaim).toBeDisabled();
+
+  // Exercise real pointer hit-testing while the RPC is pending. The pending
+  // surface must own both tab and close coordinates instead of passing the
+  // taps through to the panel or the Home screen behind it.
+  for (const target of [
+    page.getByRole("button", { name: "お知らせ", exact: true }),
+    page.getByRole("button", { name: "閉じる", exact: true }).last(),
+  ]) {
+    const box = await target.boundingBox();
+    expect(box).not.toBeNull();
+    const point = { x: box!.x + box!.width / 2, y: box!.y + box!.height / 2 };
+    expect(await page.evaluate(({ x, y }) => Boolean(document.elementFromPoint(x, y)?.closest(".inbox-panel-pending")), point)).toBe(true);
+    await page.mouse.click(point.x, point.y);
+    await expect(pendingPanel).toBeVisible();
+    await expect(reward).toBeVisible();
+  }
   const receipt = page.getByRole("dialog", { name: "報酬獲得" });
   await expect(receipt).toBeVisible();
-  await expect(page.locator(".inbox-panel-pending")).toHaveCount(1);
+  await expect(pendingPanel).toHaveCount(1);
   await expect(receipt).toContainText("カスタムオイル・中");
   await expect(receipt.locator(".reward-receipt-mark")).toBeVisible();
   await receipt.locator(".canonical-dialog-actions").getByRole("button", { name: "閉じる", exact: true }).click();
-  await expect(page.locator(".inbox-panel-pending")).toHaveCount(0);
+  await expect(pendingPanel).toHaveCount(0);
+  await page.evaluate(() => localStorage.removeItem("mock_rpc_delay_ms:claim_all_presents"));
 });

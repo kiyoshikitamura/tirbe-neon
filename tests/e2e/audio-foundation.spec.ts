@@ -2,7 +2,17 @@ import { expect, test, type Page } from "@playwright/test";
 
 declare global {
   interface Window {
-    __audioQa?: { resumes: number; suspends: number; starts: number; requests: string[]; hidden: boolean };
+    __audioQa?: {
+      resumes: number;
+      suspends: number;
+      starts: number;
+      stops: number;
+      contexts: number;
+      requests: string[];
+      hidden: boolean;
+      rejectResumes: number;
+      forceState: (state: "suspended" | "running" | "closed") => void;
+    };
   }
 }
 
@@ -10,16 +20,42 @@ test.use({ viewport: { width: 390, height: 844 } });
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
-    const qa = { resumes: 0, suspends: 0, starts: 0, requests: [] as string[], hidden: false };
-    window.__audioQa = qa;
+    let forceActiveContextState: (state: "suspended" | "running" | "closed") => void = () => undefined;
+    const qa = {
+      resumes: 0,
+      suspends: 0,
+      starts: 0,
+      stops: 0,
+      contexts: 0,
+      requests: [] as string[],
+      hidden: false,
+      rejectResumes: 0,
+      forceState: (state: "suspended" | "running" | "closed") => forceActiveContextState(state),
+    };
     Object.defineProperty(document, "hidden", { configurable: true, get: () => qa.hidden });
-    class FakeAudioContext {
+    class FakeAudioContext extends EventTarget {
       state: "suspended" | "running" | "closed" = "suspended";
       currentTime = 0;
       destination = {};
-      async resume() { qa.resumes += 1; this.state = "running"; }
-      async suspend() { qa.suspends += 1; this.state = "suspended"; }
-      async close() { this.state = "closed"; }
+      constructor() {
+        super();
+        forceActiveContextState = (state) => this.forceState(state);
+        qa.contexts += 1;
+      }
+      forceState(state: "suspended" | "running" | "closed") {
+        this.state = state;
+        this.dispatchEvent(new Event("statechange"));
+      }
+      async resume() {
+        qa.resumes += 1;
+        if (qa.rejectResumes > 0) {
+          qa.rejectResumes -= 1;
+          throw new DOMException("gesture required", "NotAllowedError");
+        }
+        this.forceState("running");
+      }
+      async suspend() { qa.suspends += 1; this.forceState("suspended"); }
+      async close() { this.forceState("closed"); }
       async decodeAudioData() { return { duration: 2 } as AudioBuffer; }
       createBufferSource() {
         return {
@@ -27,7 +63,7 @@ test.beforeEach(async ({ page }) => {
           loop: false,
           connect() {},
           start() { qa.starts += 1; },
-          stop() {},
+          stop() { qa.stops += 1; },
         } as unknown as AudioBufferSourceNode;
       }
       createGain() {
@@ -40,6 +76,7 @@ test.beforeEach(async ({ page }) => {
         return { gain: audioParam, connect() {} } as unknown as GainNode;
       }
     }
+    window.__audioQa = qa;
     Object.defineProperty(window, "AudioContext", { configurable: true, value: FakeAudioContext });
     const originalFetch = window.fetch.bind(window);
     window.fetch = async (input, init) => {
@@ -85,6 +122,7 @@ test("background visibility suspends and resumes an unlocked audio context", asy
   await page.goto("/");
   await continueFromTitle(page);
   await expect.poll(() => page.evaluate(() => window.__audioQa?.resumes)).toBe(1);
+  await expect.poll(() => page.evaluate(() => window.__audioQa?.starts)).toBe(1);
   await page.evaluate(() => {
     window.__audioQa!.hidden = true;
     document.dispatchEvent(new Event("visibilitychange"));
@@ -95,6 +133,47 @@ test("background visibility suspends and resumes an unlocked audio context", asy
     document.dispatchEvent(new Event("visibilitychange"));
   });
   await expect.poll(() => page.evaluate(() => window.__audioQa?.resumes)).toBe(2);
+  await expect.poll(() => page.evaluate(() => window.__audioQa?.starts)).toBe(2);
+  await page.evaluate(() => {
+    window.dispatchEvent(new Event("pageshow"));
+    window.dispatchEvent(new Event("focus"));
+  });
+  await page.waitForTimeout(50);
+  expect(await page.evaluate(() => window.__audioQa?.starts)).toBe(2);
+});
+
+test("foreground gesture recovers once when iOS blocks the automatic resume", async ({ page }) => {
+  await page.goto("/");
+  await continueFromTitle(page);
+  await expect.poll(() => page.evaluate(() => window.__audioQa?.starts)).toBe(1);
+  await page.evaluate(() => {
+    window.__audioQa!.hidden = true;
+    document.dispatchEvent(new Event("visibilitychange"));
+    window.__audioQa!.rejectResumes = 1;
+    window.__audioQa!.hidden = false;
+    document.dispatchEvent(new Event("visibilitychange"));
+  });
+  await expect.poll(() => page.evaluate(() => window.__audioQa?.resumes)).toBe(2);
+  expect(await page.evaluate(() => window.__audioQa?.starts)).toBe(1);
+  await page.evaluate(() => window.dispatchEvent(new Event("pointerdown")));
+  await expect.poll(() => page.evaluate(() => window.__audioQa?.resumes)).toBe(3);
+  await expect.poll(() => page.evaluate(() => window.__audioQa?.starts)).toBe(2);
+  await page.evaluate(() => window.dispatchEvent(new Event("touchend")));
+  await page.waitForTimeout(50);
+  expect(await page.evaluate(() => window.__audioQa?.starts)).toBe(2);
+});
+
+test("a closed iOS audio context is recreated without retaining a stale BGM source", async ({ page }) => {
+  await page.goto("/");
+  await continueFromTitle(page);
+  await expect.poll(() => page.evaluate(() => window.__audioQa?.starts)).toBe(1);
+  await page.evaluate(() => {
+    window.dispatchEvent(new Event("pagehide"));
+    window.__audioQa!.forceState("closed");
+    window.dispatchEvent(new Event("pageshow"));
+  });
+  await expect.poll(() => page.evaluate(() => window.__audioQa?.contexts)).toBe(2);
+  await expect.poll(() => page.evaluate(() => window.__audioQa?.starts)).toBe(2);
 });
 
 test("missing audio assets stay silent without blocking title interaction", async ({ page }) => {

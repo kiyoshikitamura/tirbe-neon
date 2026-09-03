@@ -141,8 +141,14 @@ test("direct join refreshes membership and opens persistent Guild Chat without r
   await expect(page.locator(".canonical-dialog").getByRole("button", { name: "レイドへ" })).toHaveCount(0);
   await expect(page.getByText("OPEN NEON", { exact: true }).first()).toBeVisible();
   await page.getByRole("button", { name: "ギルドチャットを見る" }).click();
-  await expect(page.getByPlaceholder("ギルドへ送信...")).toBeVisible();
-  await page.getByPlaceholder("ギルドへ送信...").fill("参加しました。よろしくお願いします！");
+  const guildChatInput = page.getByPlaceholder("ギルドへ送信...");
+  await expect(guildChatInput).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "ギルドへようこそ" })).toHaveCount(0);
+  // Give the asynchronous membership/milestone effect enough time to settle.
+  // A late response must not place a second welcome dialog over the composer.
+  await page.waitForTimeout(300);
+  await expect(page.getByRole("dialog", { name: "ギルドへようこそ" })).toHaveCount(0);
+  await guildChatInput.fill("参加しました。よろしくお願いします！");
   await page.getByRole("button", { name: "送信", exact: true }).click();
   await expect(page.locator(".tribe-msg-bubble")).toContainText("参加しました");
   await expect(page.locator(".tribe-msg-identity .character-presentation")).toBeVisible();

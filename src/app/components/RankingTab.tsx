@@ -129,7 +129,8 @@ export default function RankingTab() {
   const [rewardDialogOpen, setRewardDialogOpen] = useState(false);
   const [rewardMaster, setRewardMaster] = useState<RankingRewardMasterPayload | undefined>(undefined);
   const [rewardMasterLoading, setRewardMasterLoading] = useState(false);
-  const rewardMasterLoaded = useRef(false);
+  const [rewardMasterLoaded, setRewardMasterLoaded] = useState(false);
+  const [rewardMasterError, setRewardMasterError] = useState<string | null>(null);
   const [activationMilestones, setActivationMilestones] = useState<Set<string>>(new Set());
   const rankingMilestoneStarted = useRef(false);
   const requestVersion = useRef(0);
@@ -288,25 +289,32 @@ export default function RankingTab() {
 
   const openPlayer = (userId: string) => { if (userId) { playCyberSe("click"); void fetchPlayerDetail(userId); } };
   const openGuild = (guildId: string) => { if (guildId) { playCyberSe("click"); void fetchGuildDetail(guildId); } };
-  const openRewardDialog = () => {
-    setRewardDialogOpen(true);
-    if (rewardMasterLoaded.current || rewardMasterLoading) return;
-    rewardMasterLoaded.current = true;
+  const loadRewardMaster = () => {
+    if (rewardMasterLoaded || rewardMasterLoading) return;
     setRewardMasterLoading(true);
+    setRewardMasterError(null);
     void (async () => {
       try {
         const { data, error: masterError } = await supabase.rpc("get_public_ranking_reward_master");
         if (masterError) {
           console.warn("Failed to load ranking reward master", masterError);
+          setRewardMasterError("報酬情報を取得できませんでした");
           return;
         }
         if (data && typeof data === "object" && !Array.isArray(data)) {
           setRewardMaster(data as RankingRewardMasterPayload);
+          setRewardMasterLoaded(true);
+          return;
         }
+        setRewardMasterError("報酬情報を取得できませんでした");
       } finally {
         setRewardMasterLoading(false);
       }
     })();
+  };
+  const openRewardDialog = () => {
+    setRewardDialogOpen(true);
+    loadRewardMaster();
   };
 
   return (
@@ -348,7 +356,17 @@ export default function RankingTab() {
         : activationMilestones.has("first_pvp") && !userGuildMember ? <OutlawButton variant="primary" fullWidth className="ranking-return-cta" onClick={() => setActiveTab("guild")}>おすすめTRIBEを見る</OutlawButton>
           : activationMilestones.has("first_pvp") && userGuildMember && !activationMilestones.has("guild_activation") ? <OutlawButton variant="primary" fullWidth className="ranking-return-cta" onClick={() => setActiveTab("guild")}>所属TRIBEへ</OutlawButton>
             : activeTab === "pvp" ? <OutlawButton variant="secondary" fullWidth className="ranking-return-cta" onClick={() => setActiveTab("pvp")}>バトルへ戻る</OutlawButton> : null}
-      {rewardDialogOpen && <RankingRewardDialog category={activeTab} period={activePeriod} master={rewardMaster} loading={rewardMasterLoading} preopenGuildSeason={isPreopenGuildSeason} onClose={() => setRewardDialogOpen(false)} />}
+      {rewardDialogOpen && <RankingRewardDialog
+        category={activeTab}
+        period={activePeriod}
+        master={rewardMaster}
+        loading={rewardMasterLoading}
+        error={rewardMasterError}
+        preopenGuildSeason={isPreopenGuildSeason}
+        onPeriodChange={setActivePeriod}
+        onRetry={loadRewardMaster}
+        onClose={() => setRewardDialogOpen(false)}
+      />}
     </HubPage>
   );
 }

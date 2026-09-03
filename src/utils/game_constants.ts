@@ -58,9 +58,26 @@ export const BASE_MAP_MASTER = [
   { id: "akihabara",  name: "秋葉原", rank: "B", rewardMultiplier: 1.0, dailyRankPt: 10, description: "ジャンク電子パーツとコンカフェ情報網の闇市。" }
 ];
 
+const CANONICAL_BATTLE_AREA_PRESENTATION = {
+  shinjuku: { name: "新宿", backgroundPath: "/bg/bg_street_shinjuku.jpg" },
+  shibuya: { name: "渋谷", backgroundPath: "/bg/bg_street_shibuya.jpg" },
+  ikebukuro: { name: "池袋", backgroundPath: "/bg/bg_street_ikebukuro.jpg" },
+  roppongi: { name: "六本木", backgroundPath: "/bg/bg_street_roppongi.jpg" },
+  akihabara: { name: "秋葉原", backgroundPath: "/bg/bg_street_akihabara.jpg" },
+  kawasaki: { name: "川崎", backgroundPath: "/bg/bg_street_kawasaki.jpg" },
+  yokohama: { name: "横浜", backgroundPath: "/bg/bg_street_yokohama.jpg" },
+} as const;
+
+function canonicalBattleAreaId(areaId: string | null | undefined) {
+  return String(areaId || "").trim().toLowerCase() as keyof typeof CANONICAL_BATTLE_AREA_PRESENTATION;
+}
+
+export function getCanonicalBattleAreaName(areaId: string | null | undefined): string | undefined {
+  return CANONICAL_BATTLE_AREA_PRESENTATION[canonicalBattleAreaId(areaId)]?.name;
+}
+
 export function getCanonicalBattleBackground(areaId: string | null | undefined): string | undefined {
-  const canonicalArea = BASE_MAP_MASTER.find((area) => area.id === areaId);
-  return canonicalArea ? `/bg/bg_street_${canonicalArea.id}.jpg` : undefined;
+  return CANONICAL_BATTLE_AREA_PRESENTATION[canonicalBattleAreaId(areaId)]?.backgroundPath;
 }
 
 export const GEAR_SLOTS_MASTER = [

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
+  guildSeasonCosmeticRewardSectionsFromPayload,
   rankingRewardSectionsFromPayload,
 } from "../src/domain/ranking/rankingRewardPresentation.ts";
 import {
@@ -11,6 +12,7 @@ import {
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 const canonical = JSON.parse(read("src/domain/gameplay/canonical/data/ranking_season_rewards_20260830.json"));
 const migration = read("supabase/migrations/20260903000233_ranking_reward_notification_contract.sql");
+const publicProjectionMigration = read("supabase/migrations/20260904000239_public_ranking_reward_master_projection.sql");
 const rankingTab = read("src/app/components/RankingTab.tsx");
 const dialog = read("src/app/components/ranking/RankingRewardDialog.tsx");
 const controller = read("src/app/components/ranking/RankingRewardNotificationController.tsx");
@@ -40,6 +42,17 @@ assert.deepEqual(rankingRewardSectionsFromPayload(payloadWithDaily, "pvp", "dail
     { from: 1, to: 1, itemId: "EQUIP_EXP_L", quantity: 2 },
   ],
 }]);
+
+const guildCosmetics = guildSeasonCosmeticRewardSectionsFromPayload({
+  guildSeasonCosmetics: [
+    { cosmeticId: "guild_preopen_2026_participation", displayName: "プレオープン参加記念ギルド装飾", rewardKind: "GUILD_COSMETIC", quantity: 1, isParticipation: true },
+    { cosmeticId: "guild_preopen_2026_rank_1", displayName: "プレオープン第1位限定ギルド装飾", rewardKind: "GUILD_COSMETIC", quantity: 1, rankMin: 1, rankMax: 1 },
+  ],
+});
+assert.deepEqual(guildCosmetics[0].tiers.map((tier) => tier.itemId), [
+  "guild_preopen_2026_participation",
+  "guild_preopen_2026_rank_1",
+]);
 
 const rawPending = {
   notification_ids: ["10000000-0000-4000-8000-000000000001"],
@@ -73,11 +86,18 @@ for (const contract of [
   assert(source.includes(contract.toLowerCase()), `migration contract missing: ${contract}`);
 }
 assert.doesNotMatch(migration, /progressionByPeriod[\s\S]*DAILY[\s\S]*\[\s*\[/i, "migration must not fabricate DAILY reward tiers");
+assert.match(publicProjectionMigration, /canonical_ranking_reward_payload/);
+assert.match(publicProjectionMigration, /guildSeasonCosmetics/);
+assert.match(publicProjectionMigration, /cosmetic_master/);
+assert.match(publicProjectionMigration, /grant execute on function public\.get_public_ranking_reward_master\(\)[\s\S]*authenticated, service_role/i);
+assert.doesNotMatch(publicProjectionMigration, /grant execute[\s\S]*\bto anon\b/i);
 
 assert.match(rankingTab, /rpc\("get_public_ranking_reward_master"\)/);
-assert.match(rankingTab, /<RankingRewardDialog[\s\S]*master=\{rewardMaster\}[\s\S]*loading=\{rewardMasterLoading\}/);
+assert.match(rankingTab, /<RankingRewardDialog[\s\S]*master=\{rewardMaster\}[\s\S]*loading=\{rewardMasterLoading\}[\s\S]*error=\{rewardMasterError\}/);
 assert.match(dialog, /rankingRewardSectionsFromPayload\(master, category, period\)/);
-assert.match(dialog, /報酬定義なし/);
+assert.match(dialog, /aria-label="報酬期間"/);
+assert.match(dialog, /このランキングのシーズン報酬はありません/);
+assert.match(dialog, /onClick=\{onRetry\}/);
 
 assert.match(page, /<RankingRewardNotificationController \/>/);
 assert.match(controller, /activeTab !== "home"/);

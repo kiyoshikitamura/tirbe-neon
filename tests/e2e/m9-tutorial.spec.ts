@@ -238,9 +238,11 @@ async function completeVisibleTutorialGrowth(page: import("@playwright/test").Pa
   await expect(growth).toContainText("強化ドリンク・小 ×6 / CASH 600");
   await page.getByRole("button", { name: "Lv.7まで強化" }).click();
   await expect(page.getByRole("heading", { name: "レベルアップ結果" })).toBeVisible();
+  await expect(page.locator(".outlaw-confirm-dialog.kind-result")).toBeVisible();
   await expect(page.locator('[data-growth-result="level-up"]')).toContainText(/Lv\.1\s*→\s*Lv\.7/);
   await expect(page.locator('[data-growth-result="level-up"]')).toContainText("総合力");
   await page.getByRole("button", { name: "編成へ進む" }).click();
+  await expect(page.locator('[data-acceptance-state="TUTORIAL_GROWTH_STEP"]')).toHaveCount(0);
   await expect(page.getByRole("button", { name: "おすすめ編成にする" })).toBeVisible();
 }
 
@@ -249,8 +251,26 @@ async function completeTutorialAutoFormation(page: import("@playwright/test").Pa
   const completion = page.locator('[data-acceptance-state="AUTO_FORMATION_COMPLETE"]');
   await expect(completion).toContainText("編成しました");
   await expect(page.locator('[data-acceptance-state="Q1"]')).toHaveCount(0);
+  await page.evaluate(() => {
+    const runtime = window as typeof window & {
+      __TRIBE_TUTORIAL_FORMATION_FLASH__?: boolean;
+      __TRIBE_TUTORIAL_FORMATION_OBSERVER__?: MutationObserver;
+    };
+    runtime.__TRIBE_TUTORIAL_FORMATION_FLASH__ = false;
+    runtime.__TRIBE_TUTORIAL_FORMATION_OBSERVER__?.disconnect();
+    runtime.__TRIBE_TUTORIAL_FORMATION_OBSERVER__ = new MutationObserver(() => {
+      const characterPage = document.querySelector(".char-tab-container");
+      const tutorialForeground = document.querySelector(".char-party-modal-backdrop");
+      if (characterPage && !tutorialForeground) runtime.__TRIBE_TUTORIAL_FORMATION_FLASH__ = true;
+      if (document.querySelector('[data-acceptance-state="Q1"]')) {
+        runtime.__TRIBE_TUTORIAL_FORMATION_OBSERVER__?.disconnect();
+      }
+    });
+    runtime.__TRIBE_TUTORIAL_FORMATION_OBSERVER__.observe(document.body, { childList: true, subtree: true });
+  });
   await completion.getByRole("button", { name: "OK" }).click();
   await expect(page.locator('[data-acceptance-state="Q1"]')).toBeVisible();
+  await expect.poll(() => page.evaluate(() => (window as typeof window & { __TRIBE_TUTORIAL_FORMATION_FLASH__?: boolean }).__TRIBE_TUTORIAL_FORMATION_FLASH__)).toBe(false);
 }
 
 async function completeRuleGuide(page: import("@playwright/test").Page) {

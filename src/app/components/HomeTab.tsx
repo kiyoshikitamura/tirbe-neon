@@ -252,7 +252,11 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
           { id: "guild-power-ranking", eventId: "GVG_PREP_20260904", title: "", img: "/promotion/mypage_banner_guild_power_ranking.webp", destination: "campaign:GUILD_POWER" },
         ]
         : (PRODUCTION_MY_PAGE_CREATIVES || []).map((creative) => ({ id: creative.id, title: "", img: creative.assetPath, destination: creative.destination }));
-      const loadableBanners = nextBanners.filter((banner) => !banner.destination || banner.destination === "community" || banner.destination.startsWith("campaign:") || isDestinationAvailable(banner.destination, featureOperatingStates));
+      const loadableBanners = nextBanners.filter((banner) => !banner.destination
+        || banner.destination === "community"
+        || banner.destination.startsWith("campaign:")
+        || banner.destination.startsWith("mission:")
+        || isDestinationAvailable(banner.destination, featureOperatingStates));
       const loaded = await Promise.all(loadableBanners.map((banner) => banner.img ? preloadAndDecodeHomeImage(banner.img) : Promise.resolve(false)));
       if (cancelled || loaded.some((value) => !value)) return;
       const nextKey = loadableBanners.map((banner) => banner.id).join(":");
@@ -701,6 +705,12 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
             <button
               className={`banner-card${visibleBanners[activeBannerIndex].id === "vip_pass" ? " vip" : ""}`}
               onClick={() => openBanner(visibleBanners[activeBannerIndex].destination)}
+              data-banner-id={visibleBanners[activeBannerIndex].id}
+              aria-label={visibleBanners[activeBannerIndex].id === "gvg-prep"
+                ? "ギルドバトル準備ミッション"
+                : visibleBanners[activeBannerIndex].id === "guild-power-ranking"
+                  ? "ギルド総合力ランキング"
+                  : visibleBanners[activeBannerIndex].title || "プロモーション"}
               aria-disabled={!visibleBanners[activeBannerIndex].destination}
             >
               {visibleBanners[activeBannerIndex].img

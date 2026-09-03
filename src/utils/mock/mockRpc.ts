@@ -8,6 +8,7 @@ import { CANONICAL_QUESTS, canonicalQuestById, generateCanonicalQuestEncounter, 
 import { parseCanonicalEffects } from "../../domain/battle/canonical_effects.ts";
 import { DEFAULT_OPERATIONS_STATE, type OperationsFeatureKey } from "../../domain/operations/operations.ts";
 import { isInsideRankingSeason, rankingSeasonWindow } from "../../domain/ranking/rankingSeason.ts";
+import { CANONICAL_RANKING_REWARDS } from "../../domain/gameplay/canonical/combat_production.ts";
 import {
   evaluateCanonicalMissionProgress,
   FUNNEL_TRIGGER_BY_MILESTONE,
@@ -437,6 +438,51 @@ export async function executeMockRpc(client: any, funcName: string, params: any)
       ends_at: rankingType === "RAID" ? weekly.endsAt : monthly.endsAt,
       status: "ACTIVE",
     })), error: null };
+  }
+
+  if (funcName === "get_public_ranking_reward_master") {
+    const dailyTiers = [
+      [1, 1, "L", 2],
+      [2, 3, "L", 1],
+      [4, 10, "M", 3],
+      [11, 30, "M", 2],
+      [31, 100, "M", 1],
+    ].flatMap(([rankMin, rankMax, size, quantity]) => [
+      [rankMin, rankMax, `CHAR_EXP_${size}`, quantity],
+      [rankMin, rankMax, `EQUIP_EXP_${size}`, quantity],
+    ]);
+    return { data: {
+      ...CANONICAL_RANKING_REWARDS,
+      daily: Object.fromEntries(["POWER", "GUILD_POWER", "PVP", "RAID_PERSONAL"].map((key) => [key, dailyTiers])),
+      guildSeasonCosmetics: [
+        { cosmeticId: "guild_preopen_2026_participation", displayName: "プレオープン参加記念ギルド装飾", rewardKind: "GUILD_COSMETIC", quantity: 1, isParticipation: true, eligibilityLabel: "参加ギルド" },
+        ...[1, 2, 3].map((rank) => ({ cosmeticId: `guild_preopen_2026_rank_${rank}`, displayName: `プレオープン第${rank}位限定ギルド装飾`, rewardKind: "GUILD_COSMETIC", quantity: 1, rankMin: rank, rankMax: rank })),
+      ],
+    }, error: null };
+  }
+
+  if (funcName === "get_preopen_guild_power_ranking") {
+    const guilds = client.getStorage("guilds") || [];
+    const memberships = client.getStorage("guild_members") || [];
+    const powers = client.getStorage("user_power_rankings") || [];
+    const rows = guilds.map((guild: any) => {
+      const members = memberships.filter((member: any) => member.guild_id === guild.id);
+      const currentPower = members.reduce((sum: number, member: any) => sum + Number(powers.find((power: any) => power.user_id === member.user_id)?.total_power || 0), 0);
+      return { guild_id: guild.id, name: guild.name, current_power: currentPower, member_count: members.length };
+    }).sort((a: any, b: any) => b.current_power - a.current_power)
+      .map((row: any, index: number) => ({ ...row, rank_position: index + 1 }));
+    const userId = typeof window === "undefined" ? null : localStorage.getItem("tribe_demo_uuid");
+    const myGuildId = memberships.find((member: any) => member.user_id === userId)?.guild_id;
+    return { data: {
+      event_key: "PREOPEN_GUILD_POWER_2026",
+      starts_at: "2026-09-03T15:00:00.000Z",
+      ends_at: "2026-09-08T15:00:00.000Z",
+      status: "ACTIVE",
+      is_current_context: true,
+      server_updated_at: new Date().toISOString(),
+      rows,
+      self_guild: rows.find((row: any) => row.guild_id === myGuildId) || null,
+    }, error: null };
   }
 
   if (funcName === "get_public_guild_power_rankings") {

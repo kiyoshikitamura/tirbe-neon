@@ -785,8 +785,8 @@
   filter: none;
 }
 
-.campaign-keyvisual-dialog{display:grid;gap:12px;text-align:center}
-.campaign-keyvisual-dialog img{display:block;width:100%;height:auto;aspect-ratio:860/1292;object-fit:cover;border-radius:8px}
+.campaign-keyvisual-dialog{display:grid;justify-items:center;gap:10px;text-align:center}
+.campaign-keyvisual-dialog img{display:block;width:min(100%,270px);height:auto;max-height:44dvh;aspect-ratio:860/1292;object-fit:contain;border-radius:8px}
 .campaign-keyvisual-dialog p{margin:0;color:var(--ui-text-primary);font-weight:700;line-height:1.65}
 
 .banner-info-overlay {

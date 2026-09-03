@@ -7,6 +7,12 @@ const CHARACTER_IDS = ["char_ageha_01", "char_reiji_01", "char_kengo_01", "char_
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(({ me, raidId, characterIds }) => {
     const now = new Date().toISOString();
+    const raidTown = new URLSearchParams(location.search).get("raidTown") || "roppongi";
+    const raidVariant = raidTown === "kawasaki"
+      ? { id: "RAID_KAWASAKI_V1", name: "ブレイクダウン" }
+      : raidTown === "yokohama"
+        ? { id: "RAID_YOKOHAMA_V1", name: "ブルー・レクイエム" }
+        : { id: "RAID_ROPPONGI_V1", name: "ロイヤル・フラッシュ" };
     localStorage.setItem("tribe_demo_uuid", me);
     localStorage.setItem("mock_auth_mode", "EMAIL");
     localStorage.setItem("mock_db_tutorial_progress", JSON.stringify([{ user_id: me, step_id: "AUTHENTICATION" }]));
@@ -20,8 +26,8 @@ test.beforeEach(async ({ page }) => {
     localStorage.setItem("mock_db_user_main_formations", JSON.stringify(owned.map((entry: any, index: number) => ({ user_id: me, slot: index + 1, user_character_id: entry.id }))));
     localStorage.setItem("mock_db_user_power_rankings", JSON.stringify([{ user_id: me, total_power: 61096, rank_position: 4, updated_at: now }]));
     localStorage.setItem("mock_db_user_items", JSON.stringify([{ id: "raid-ticket", user_id: me, item_id: "RAID_POINT_TICKET", quantity: 2 }]));
-    localStorage.setItem("mock_db_raid_bosses", JSON.stringify([{ id: raidId, boss_master_id: "RAID_ROPPONGI_V1", boss_name: "ロイヤル・フラッシュ", level: 30, current_hp: 25500000, max_hp: 34000000, base_id: "roppongi", profile_type: "PARTY", status: "ACTIVE", expires_at: new Date(Date.now() + 20 * 3600_000).toISOString(), skill_loadout: [] }]));
-    localStorage.setItem("mock_db_raid_boss_master", JSON.stringify([{ id: "RAID_ROPPONGI_V1", boss_name: "ロイヤル・フラッシュ", level: 30, max_hp: 34000000, atk: 8700, def: 7700, spd: 390, luk: 0, skills: [] }]));
+    localStorage.setItem("mock_db_raid_bosses", JSON.stringify([{ id: raidId, boss_master_id: raidVariant.id, boss_name: raidVariant.name, level: 30, current_hp: 25500000, max_hp: 34000000, base_id: raidTown, profile_type: "PARTY", status: "ACTIVE", expires_at: new Date(Date.now() + 20 * 3600_000).toISOString(), skill_loadout: [] }]));
+    localStorage.setItem("mock_db_raid_boss_master", JSON.stringify([{ id: raidVariant.id, boss_name: raidVariant.name, level: 30, max_hp: 34000000, atk: 8700, def: 7700, spd: 390, luk: 0, skills: [] }]));
     localStorage.setItem("mock_db_raid_damage_logs", JSON.stringify([
       { user_id: me, raid_boss_instance_id: raidId, raw_damage: 123456, created_at: now },
       ...[1, 2, 3].map((rank) => ({ user_id: `raid-rival-${rank}`, raid_boss_instance_id: raidId, raw_damage: 500000 - rank * 50000, created_at: now })),
@@ -101,4 +107,38 @@ test("RP zero opens canonical recovery without starting Raid", async ({ page }) 
   await page.getByRole("button", { name: "回復する" }).click();
   await expect(page.getByRole("dialog", { name: "RP回復" })).toContainText("所持 ×2");
   await expect(page.locator(".raid-battle-setup")).toHaveCount(0);
+});
+
+for (const town of [
+  { id: "kawasaki", label: "川崎" },
+  { id: "yokohama", label: "横浜" },
+]) {
+  test(`Raid ${town.label} decodes and keeps its canonical battle background`, async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await openRaid(page, `/?raidTown=${town.id}`);
+    await expect(page.getByRole("tab", { name: town.label })).toHaveAttribute("aria-selected", "true");
+    await page.getByRole("button", { name: "挑戦する" }).click();
+    await expect(page.locator(".raid-battle-setup")).toBeVisible();
+    expect(await page.locator(".raid-battle-setup").evaluate((node) => getComputedStyle(node).backgroundImage)).toContain(`bg_street_${town.id}.jpg`);
+  });
+}
+
+test("Raid does not expose a gradient-only battle screen while its background decodes", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const backgroundPattern = "**/bg/bg_street_kawasaki.jpg";
+  await page.route(backgroundPattern, (route) => route.abort());
+  await openRaid(page, "/?raidTown=kawasaki");
+  await page.unroute(backgroundPattern);
+  let releaseBackground: (() => void) | undefined;
+  const backgroundReleased = new Promise<void>((resolve) => { releaseBackground = resolve; });
+  await page.route(backgroundPattern, async (route) => {
+    await backgroundReleased;
+    await route.continue();
+  });
+  await page.getByRole("button", { name: "挑戦する" }).click();
+  await expect(page.locator(".outlaw-interaction-blocker")).toBeVisible();
+  await expect(page.locator(".raid-battle-setup")).toHaveCount(0);
+  releaseBackground?.();
+  await expect(page.locator(".raid-battle-setup")).toBeVisible();
+  await expect(page.locator(".outlaw-interaction-blocker")).toHaveCount(0);
 });

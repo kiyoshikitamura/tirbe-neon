@@ -362,7 +362,7 @@ function PublicProfileFixture() {
   }} currentUserId="qa-self" onClose={() => setOpen(false)} onRetry={() => undefined} onDm={() => undefined} /> : <button type="button" onClick={() => setOpen(true)}>公開プロフィールを開く</button>}</GameContext.Provider>;
 }
 
-type HomeScenario = "first-home-fresh" | "first-home-identity-loading" | "first-home-raid" | "first-home-guild-out" | "first-home-guild-in" | "first-home-guild-pending" | "first-home-favorite-missing" | "first-home-favorite-invalid" | "first-home-activity-self" | "first-home-character-tall" | "first-home-character-hair";
+type HomeScenario = "first-home-fresh" | "first-home-identity-loading" | "first-home-raid" | "first-home-guild-out" | "first-home-guild-in" | "first-home-guild-pending" | "first-home-favorite-missing" | "first-home-favorite-invalid" | "first-home-activity-self" | "first-home-character-tall" | "first-home-character-hair" | "first-home-campaign";
 
 function ProductionHomeFixture({ scenario }: { scenario: HomeScenario }) {
   const [openedProfileId, setOpenedProfileId] = useState<string | null>(null);
@@ -467,7 +467,7 @@ function ProductionHomeFixture({ scenario }: { scenario: HomeScenario }) {
           funnelMilestones: milestones,
           ctaAuthorityReady,
           guildDiscoveryState: ctaAuthorityReady && !guildJoined ? "available" : "pending",
-          bannerAuthority: "normal",
+          bannerAuthority: scenario === "first-home-campaign" ? "campaign" : "normal",
         }} />
         <MoveBaseModal />
         {openedProfileId && <output data-opened-profile-id={openedProfileId} />}

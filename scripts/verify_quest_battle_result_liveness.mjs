@@ -47,6 +47,16 @@ assert.match(
   "battle-owned rewards must not open a duplicate result modal",
 );
 assert.match(
+  patrolHook,
+  /invalidatePatrolBootstrap\(\);\s*setActivePatrols\(\(current\) => current\.filter\(\(entry\) => entry\.id !== patrolId\)\);\s*setHasActivePatrolBattle/,
+  "a successful claim must synchronously remove the completed Quest before leaving its battle result",
+);
+assert.match(
+  patrolHook,
+  /if \(!options\?\.suppressResultModal\) setShowPatrolRewardModal\(true\);[\s\S]*?setActivePatrols\(\(current\) => current\.filter/,
+  "non-battle claims must preserve their reward modal while removing the completed Quest card",
+);
+assert.match(
   patrol,
   /battleStartRef\.current = true;\s*\/\/ Rewards belong[\s\S]*?setLastPatrolRewards\(null\);\s*setShowPatrolRewardModal\(false\);/,
   "a later quest must clear the previous battle-owned reward projection",
@@ -70,6 +80,6 @@ assert.match(
 console.log(JSON.stringify({
   status: "PASS",
   questReplay: { pauseResetAtStart: true, pauseResetAtCompletion: true, authoritativeCursorAdvances: true, resultSettles: true },
-  questResult: { regularVictoryClaim: true, staleProjectionIndependent: true, duplicateModalSuppressed: true, ctaUnlocksWithRewards: true, destinationRestored: true },
+  questResult: { regularVictoryClaim: true, staleProjectionIndependent: true, duplicateModalSuppressed: true, completedPatrolRemovedSynchronously: true, nonBattleModalPreserved: true, ctaUnlocksWithRewards: true, destinationRestored: true },
   raidContractChanged: false,
 }, null, 2));

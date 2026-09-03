@@ -106,7 +106,12 @@ export default function InboxPanel() {
 
   return (
     <>
-      <FullScreenPanel title="受信箱" onClose={handleClose} className={presentClaimLoading ? "inbox-panel-pending" : ""}>
+      <FullScreenPanel
+        title="受信箱"
+        onClose={handleClose}
+        closeDisabled={presentClaimLoading}
+        className={presentClaimLoading ? "inbox-panel-pending" : ""}
+      >
         <div className="inbox-panel-container-inner" aria-busy={presentClaimLoading}>
           <SubTabNav
             tabs={[

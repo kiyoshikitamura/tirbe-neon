@@ -409,6 +409,7 @@ export default function CharacterTab() {
                         setConfirmDialogConfig({
                           ...resultDialog,
                           kind: "result",
+                          presentation: "legacy",
                           cancelText: "",
                           confirmText: "編成へ進む",
                           confirmVariant: "primary",
@@ -660,10 +661,11 @@ export default function CharacterTab() {
                     } : undefined,
                   });
                   if (completed) playCyberSe("FORMATION_CONFIRM");
-                  if (completed && onboardingState?.tutorial_step === "AUTO_FORMATION") {
-                    setFormationEditMode(false);
-                    setBottomModalTab(null);
-                  }
+                  // The authoritative tutorial transaction advances to DISPATCH
+                  // and switches to the Quest tab inside handleAutoFormation.
+                  // Keep this foreground mounted until that navigation commits;
+                  // closing it here can expose the underlying Growth screen for
+                  // one paint while the async caller still has AUTO_FORMATION.
                 } finally {
                   formationSubmittingRef.current = false;
                   setFormationSubmitting(false);

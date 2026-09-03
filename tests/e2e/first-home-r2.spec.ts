@@ -5,7 +5,7 @@ const viewports = [
   { width: 412, height: 915 },
 ] as const;
 
-type HomeScenario = "first-home-fresh" | "first-home-identity-loading" | "first-home-raid" | "first-home-guild-out" | "first-home-guild-in" | "first-home-guild-pending" | "first-home-favorite-missing" | "first-home-favorite-invalid" | "first-home-activity-self" | "first-home-character-tall" | "first-home-character-hair";
+type HomeScenario = "first-home-fresh" | "first-home-identity-loading" | "first-home-raid" | "first-home-guild-out" | "first-home-guild-in" | "first-home-guild-pending" | "first-home-favorite-missing" | "first-home-favorite-invalid" | "first-home-activity-self" | "first-home-character-tall" | "first-home-character-hair" | "first-home-campaign";
 
 async function openHomeScenario(page: Page, scenario: HomeScenario) {
   await page.goto(`/qa/presentation?scenario=${scenario}`);
@@ -354,6 +354,24 @@ test("raid discovery stays out of the Home stage while the authoritative raid ba
   await expect(page.locator(".mypage-power-panel")).toHaveCount(0);
   await page.locator(".mypage-current-location").click();
   await expect(page.getByRole("dialog", { name: "拠点移動" }).getByText("強敵襲来", { exact: true })).toBeVisible();
+});
+
+test("pre-open Home rotates exactly the two campaign banners and keeps ranking actions visible", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await openHomeScenario(page, "first-home-campaign");
+  await expect(page.locator(".banner-dots .dot")).toHaveCount(2);
+  await expect(page.locator('.banner-card[data-banner-id="gvg-prep"]')).toBeVisible();
+  await page.locator(".banner-arrow.right").click();
+  const rankingBanner = page.locator('.banner-card[data-banner-id="guild-power-ranking"]');
+  await expect(rankingBanner).toBeVisible();
+  await rankingBanner.click();
+
+  const dialog = page.getByRole("dialog", { name: "プレオープン限定ギルド総合力ランキングのご案内" });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByRole("button", { name: "閉じる", exact: true })).toBeVisible();
+  await expect(dialog.getByRole("button", { name: "ランキングを見る", exact: true })).toBeVisible();
+  const imageHeight = await dialog.locator(".campaign-keyvisual-dialog img").evaluate((node) => node.getBoundingClientRect().height);
+  expect(imageHeight).toBeLessThanOrEqual(0.44 * 844 + 1);
 });
 
 for (const viewport of viewports) {

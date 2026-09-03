@@ -209,11 +209,18 @@ export function useCharacterProgression(
       if (complete) {
         playCyberSe("LEVEL_UP");
         const characterName = CHARACTERS_MASTER.find((entry) => entry.id === character.character_id)?.jpName || "キャラクター";
+        const powerBefore = sumPower(getCharacterTotalStats(character, userEquipmentsList));
+        const powerAfter = sumPower(getCharacterTotalStats({ ...character, level: newLevel }, userEquipmentsList));
         setConfirmDialogConfig({
           isOpen: true,
           title: "レベルアップ結果",
-          message: `${characterName} が Lv.${previousLevel} → Lv.${newLevel} になりました。`,
-          confirmText: "OK", cancelText: "", presentation: "canonical",
+          message: createElement("div", { className: "growth-result-v0", "data-growth-result": "level-up" },
+            createElement("span", null, "CHARACTER GROWTH"),
+            createElement("strong", null, characterName),
+            createElement("p", { className: "growth-result-level" }, `Lv.${previousLevel} → Lv.${newLevel}`),
+            createElement("small", { className: "growth-result-power" }, `総合力 ${powerBefore.toLocaleString()} → ${powerAfter.toLocaleString()}（+${Math.max(0, powerAfter - powerBefore).toLocaleString()}）`),
+          ),
+          confirmText: "OK", cancelText: "", kind: "result", presentation: "legacy",
           onConfirm: () => setConfirmDialogConfig(null), onCancel: () => setConfirmDialogConfig(null),
         });
       }

@@ -48,6 +48,8 @@ assert.match(controller, /acknowledge_ranking_reward_notifications/);
 assert.match(controller, /onConfirm: acknowledge/);
 assert.match(controller, /onCancel: acknowledge/);
 assert.match(controller, /setPending\(null\);\s*setConfirmDialogConfig\(null\);/);
-assert.match(controller, /delivery: "INVENTORY"/);
+assert.match(controller, /hasSeasonItemRewards && !hasDailyItemRewards \? "PRESENT" : "INVENTORY"/);
+assert.match(controller, /デイリーランキング報酬はバッグへ直接付与されました/);
+assert.match(controller, /シーズンランキング報酬はプレゼントBOXへ付与されました/);
 
 console.log("Ranking reward UI contract: PASS");
