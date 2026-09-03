@@ -171,16 +171,20 @@ test("Ranking rewards use frozen canonical definitions and Raid season excludes 
   await page.getByRole("button", { name: "報酬確認" }).click();
   const powerRewards = page.getByRole("dialog", { name: "ランキング報酬確認" });
   await expect(powerRewards).toContainText("このランキングのシーズン報酬はありません");
-  await powerRewards.getByRole("button", { name: "デイリー", exact: true }).click();
-  await expect(powerRewards).toContainText("キャラクター経験値・大");
-  await expect(powerRewards).toContainText("装備経験値・大");
+  const dailyRewardTab = powerRewards.getByRole("button", { name: "デイリー", exact: true });
+  await dailyRewardTab.click();
+  await expect(dailyRewardTab).toHaveAttribute("aria-pressed", "true");
+  await expect(powerRewards).toContainText("強化ドリンク・大");
+  await expect(powerRewards).toContainText("カスタムオイル・大");
   await powerRewards.getByRole("button", { name: "閉じる" }).last().click();
 
   await page.locator(".ranking-category-nav").getByRole("button", { name: "バトル", exact: true }).click();
   await page.getByRole("button", { name: "報酬確認" }).click();
   const pvpRewards = page.getByRole("dialog", { name: "ランキング報酬確認" });
   await expect(pvpRewards).toContainText("日次");
-  await pvpRewards.getByRole("button", { name: "シーズン", exact: true }).click();
+  const seasonRewardTab = pvpRewards.getByRole("button", { name: "シーズン", exact: true });
+  await seasonRewardTab.click();
+  await expect(seasonRewardTab).toHaveAttribute("aria-pressed", "true");
   await expect(pvpRewards).toContainText("月次");
   await expect(pvpRewards).toContainText("ランダムSPガチャチケット");
   await pvpRewards.getByRole("button", { name: "閉じる" }).last().click();

@@ -207,7 +207,9 @@ test("Present bulk claim locks its surface through the canonical receipt", async
   await bulkClaim.click();
   const pendingPanel = page.locator(".inbox-panel-pending");
   await expect(pendingPanel).toBeVisible();
-  await expect(bulkClaim).toBeDisabled();
+  // OutlawButton swaps its accessible label while loading, so the original
+  // exact-name locator correctly disappears after the tap.
+  await expect(page.getByRole("button", { name: "一括受取中…", exact: true })).toBeDisabled();
 
   // Exercise real pointer hit-testing while the RPC is pending. The pending
   // surface must own both tab and close coordinates instead of passing the

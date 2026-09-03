@@ -100,6 +100,11 @@ async function continueFromTitle(page: Page) {
   await page.getByRole("button", { name: /続きから|データをお持ちの方/ }).click();
 }
 
+async function settleInitialAudio(page: Page) {
+  await expect(page.getByPlaceholder("メールアドレス")).toBeVisible();
+  await expect.poll(() => page.evaluate(() => document.documentElement.dataset.audioBgm)).toBe("HOME");
+}
+
 async function dismissLoginBonus(page: Page) {
   const loginBonus = page.getByRole("dialog", { name: "ログインボーナス" });
   await loginBonus.waitFor({ state: "visible", timeout: 3_000 }).catch(() => undefined);
@@ -121,31 +126,40 @@ test("Title continue unlocks audio once and starts the title scene lazily", asyn
 test("background visibility suspends and resumes an unlocked audio context", async ({ page }) => {
   await page.goto("/");
   await continueFromTitle(page);
-  await expect.poll(() => page.evaluate(() => window.__audioQa?.resumes)).toBe(1);
-  await expect.poll(() => page.evaluate(() => window.__audioQa?.starts)).toBe(1);
+  await settleInitialAudio(page);
+  const baseline = await page.evaluate(() => ({
+    resumes: window.__audioQa!.resumes,
+    suspends: window.__audioQa!.suspends,
+    starts: window.__audioQa!.starts,
+  }));
   await page.evaluate(() => {
     window.__audioQa!.hidden = true;
     document.dispatchEvent(new Event("visibilitychange"));
   });
-  await expect.poll(() => page.evaluate(() => window.__audioQa?.suspends)).toBe(1);
+  await expect.poll(() => page.evaluate(() => window.__audioQa?.suspends)).toBe(baseline.suspends + 1);
   await page.evaluate(() => {
     window.__audioQa!.hidden = false;
     document.dispatchEvent(new Event("visibilitychange"));
   });
-  await expect.poll(() => page.evaluate(() => window.__audioQa?.resumes)).toBe(2);
-  await expect.poll(() => page.evaluate(() => window.__audioQa?.starts)).toBe(2);
+  await expect.poll(() => page.evaluate(() => window.__audioQa?.resumes)).toBe(baseline.resumes + 1);
+  await expect.poll(() => page.evaluate(() => window.__audioQa?.starts)).toBe(baseline.starts + 1);
+  const recoveredStarts = baseline.starts + 1;
   await page.evaluate(() => {
     window.dispatchEvent(new Event("pageshow"));
     window.dispatchEvent(new Event("focus"));
   });
   await page.waitForTimeout(50);
-  expect(await page.evaluate(() => window.__audioQa?.starts)).toBe(2);
+  expect(await page.evaluate(() => window.__audioQa?.starts)).toBe(recoveredStarts);
 });
 
 test("foreground gesture recovers once when iOS blocks the automatic resume", async ({ page }) => {
   await page.goto("/");
   await continueFromTitle(page);
-  await expect.poll(() => page.evaluate(() => window.__audioQa?.starts)).toBe(1);
+  await settleInitialAudio(page);
+  const baseline = await page.evaluate(() => ({
+    resumes: window.__audioQa!.resumes,
+    starts: window.__audioQa!.starts,
+  }));
   await page.evaluate(() => {
     window.__audioQa!.hidden = true;
     document.dispatchEvent(new Event("visibilitychange"));
@@ -153,27 +167,31 @@ test("foreground gesture recovers once when iOS blocks the automatic resume", as
     window.__audioQa!.hidden = false;
     document.dispatchEvent(new Event("visibilitychange"));
   });
-  await expect.poll(() => page.evaluate(() => window.__audioQa?.resumes)).toBe(2);
-  expect(await page.evaluate(() => window.__audioQa?.starts)).toBe(1);
+  await expect.poll(() => page.evaluate(() => window.__audioQa?.resumes)).toBe(baseline.resumes + 1);
+  expect(await page.evaluate(() => window.__audioQa?.starts)).toBe(baseline.starts);
   await page.evaluate(() => window.dispatchEvent(new Event("pointerdown")));
-  await expect.poll(() => page.evaluate(() => window.__audioQa?.resumes)).toBe(3);
-  await expect.poll(() => page.evaluate(() => window.__audioQa?.starts)).toBe(2);
+  await expect.poll(() => page.evaluate(() => window.__audioQa?.resumes)).toBe(baseline.resumes + 2);
+  await expect.poll(() => page.evaluate(() => window.__audioQa?.starts)).toBe(baseline.starts + 1);
   await page.evaluate(() => window.dispatchEvent(new Event("touchend")));
   await page.waitForTimeout(50);
-  expect(await page.evaluate(() => window.__audioQa?.starts)).toBe(2);
+  expect(await page.evaluate(() => window.__audioQa?.starts)).toBe(baseline.starts + 1);
 });
 
 test("a closed iOS audio context is recreated without retaining a stale BGM source", async ({ page }) => {
   await page.goto("/");
   await continueFromTitle(page);
-  await expect.poll(() => page.evaluate(() => window.__audioQa?.starts)).toBe(1);
+  await settleInitialAudio(page);
+  const baseline = await page.evaluate(() => ({
+    contexts: window.__audioQa!.contexts,
+    starts: window.__audioQa!.starts,
+  }));
   await page.evaluate(() => {
     window.dispatchEvent(new Event("pagehide"));
     window.__audioQa!.forceState("closed");
     window.dispatchEvent(new Event("pageshow"));
   });
-  await expect.poll(() => page.evaluate(() => window.__audioQa?.contexts)).toBe(2);
-  await expect.poll(() => page.evaluate(() => window.__audioQa?.starts)).toBe(2);
+  await expect.poll(() => page.evaluate(() => window.__audioQa?.contexts)).toBe(baseline.contexts + 1);
+  await expect.poll(() => page.evaluate(() => window.__audioQa?.starts)).toBe(baseline.starts + 1);
 });
 
 test("missing audio assets stay silent without blocking title interaction", async ({ page }) => {
