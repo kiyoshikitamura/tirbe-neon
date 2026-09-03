@@ -9,12 +9,28 @@ begin
      or v_season.ends_at<>'2026-09-08 15:00:00+00'::timestamptz then
     raise exception 'pre-open guild Power JST boundary mismatch';
   end if;
+  if clock_timestamp()<v_season.starts_at then
+    if v_season.status<>'PREPARING' then
+      raise exception 'pre-open guild season activated before its inclusive start';
+    end if;
+    if not exists(select 1 from cron.job
+      where jobname='preopen-guild-power-activate-20260904-jst'
+        and schedule='* 15 3 9 *') then
+      raise exception 'pre-open guild activation cron mismatch';
+    end if;
+  elsif exists(select 1 from cron.job
+               where jobname='preopen-guild-power-activate-20260904-jst') then
+    raise exception 'successful pre-open activation cron was not unscheduled';
+  end if;
   if (select count(*) from public.cosmetic_master
       where id like 'guild_preopen_2026_%' and owner_scope='GUILD' and active)<>4 then
     raise exception 'pre-open guild cosmetic master mismatch';
   end if;
   if has_function_privilege('authenticated','public.finalize_preopen_guild_power_season()','execute') then
     raise exception 'authenticated role can execute the season finalizer';
+  end if;
+  if has_function_privilege('authenticated','public.activate_preopen_guild_power_season()','execute') then
+    raise exception 'authenticated role can execute the season activator';
   end if;
   if not has_function_privilege('authenticated','public.get_preopen_guild_power_ranking(integer,integer)','execute') then
     raise exception 'authenticated role cannot read the pre-open guild ranking';

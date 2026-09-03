@@ -117,23 +117,15 @@ on conflict(id) do update set
   source_type=excluded.source_type,source_reference=excluded.source_reference,
   metadata=excluded.metadata,active=excluded.active;
 
--- The launch season supersedes the generic live GUILD_POWER season only. Other
--- ranking categories and their season lifecycle are untouched.
-update public.ranking_seasons
-set status='CLOSED',updated_at=clock_timestamp()
-where ranking_type='GUILD_POWER' and status='ACTIVE'
-  and not (starts_at='2026-09-03 15:00:00+00'::timestamptz
-       and ends_at='2026-09-08 15:00:00+00'::timestamptz);
-
 insert into public.ranking_seasons(ranking_type,starts_at,ends_at,status)
 values(
   'GUILD_POWER',
   '2026-09-03 15:00:00+00'::timestamptz,'2026-09-08 15:00:00+00'::timestamptz,
-  case when clock_timestamp()<'2026-09-08 15:00:00+00'::timestamptz then 'ACTIVE' else 'FINALIZING' end
+  'PREPARING'
 )
 on conflict(ranking_type,starts_at) do update set
   ends_at=excluded.ends_at,
-  status=case when public.ranking_seasons.status='CLOSED' then 'CLOSED' else excluded.status end,
+  status=case when public.ranking_seasons.status='CLOSED' then 'CLOSED' else 'PREPARING' end,
   updated_at=clock_timestamp();
 
 insert into public.ranking_guild_power_season_master(
@@ -147,6 +139,56 @@ on conflict(event_key) do update set
   season_id=excluded.season_id,display_name=excluded.display_name,
   starts_at=excluded.starts_at,ends_at=excluded.ends_at,
   display_period_text=excluded.display_period_text;
+
+create or replace function public.activate_preopen_guild_power_season()
+returns jsonb language plpgsql security definer set search_path=public as $$
+declare
+  v_season public.ranking_seasons%rowtype;
+  v_job_id bigint;
+begin
+  select season.* into strict v_season
+  from public.ranking_seasons season
+  join public.ranking_guild_power_season_master master on master.season_id=season.id
+  where master.event_key='PREOPEN_GUILD_POWER_2026'
+  for update of season;
+  perform pg_advisory_xact_lock(hashtextextended('PREOPEN_GUILD_POWER_2026',0));
+
+  if v_season.status='CLOSED' then
+    select jobid into v_job_id from cron.job
+    where jobname='preopen-guild-power-activate-20260904-jst';
+    if v_job_id is not null then perform cron.unschedule(v_job_id); end if;
+    return jsonb_build_object('season_id',v_season.id,'status','ALREADY_CLOSED');
+  end if;
+  if clock_timestamp()<v_season.starts_at then
+    return jsonb_build_object('season_id',v_season.id,'status','NOT_STARTED');
+  end if;
+
+  -- Only the start-boundary authority may supersede the generic active season.
+  update public.ranking_seasons
+  set status='CLOSED',updated_at=clock_timestamp()
+  where ranking_type='GUILD_POWER' and status='ACTIVE' and id<>v_season.id;
+  update public.ranking_seasons
+  set status=case when clock_timestamp()<ends_at then 'ACTIVE' else 'FINALIZING' end,
+      updated_at=clock_timestamp()
+  where id=v_season.id;
+
+  select jobid into v_job_id from cron.job
+  where jobname='preopen-guild-power-activate-20260904-jst';
+  if v_job_id is not null then perform cron.unschedule(v_job_id); end if;
+  return jsonb_build_object(
+    'season_id',v_season.id,
+    'status',case when clock_timestamp()<v_season.ends_at then 'ACTIVE' else 'FINALIZING' end
+  );
+end;
+$$;
+
+do $$
+begin
+  if clock_timestamp()>='2026-09-03 15:00:00+00'::timestamptz then
+    perform public.activate_preopen_guild_power_season();
+  end if;
+end;
+$$;
 
 create or replace function public.finalize_preopen_guild_power_season()
 returns jsonb
@@ -167,6 +209,10 @@ begin
   join public.ranking_guild_power_season_master master on master.season_id=season.id
   where master.event_key='PREOPEN_GUILD_POWER_2026'
   for update of season;
+  if v_season.status='PREPARING' and clock_timestamp()>=v_season.starts_at then
+    perform public.activate_preopen_guild_power_season();
+    select * into strict v_season from public.ranking_seasons where id=v_season.id;
+  end if;
   perform pg_advisory_xact_lock(hashtextextended('PREOPEN_GUILD_POWER_2026',0));
 
   if clock_timestamp()<v_season.ends_at then
@@ -277,23 +323,39 @@ begin
 end;
 $$;
 
+do $$
+begin
+  if clock_timestamp()>='2026-09-08 15:00:00+00'::timestamptz then
+    perform public.finalize_preopen_guild_power_season();
+  end if;
+end;
+$$;
+
 -- A mutation after the exact close boundary first freezes the pre-mutation
 -- state. This closes the cron-delay gap without changing other rank types.
 create or replace function public.guard_preopen_guild_power_cutoff()
 returns trigger language plpgsql security definer set search_path=public as $$
 declare
   v_season_id uuid;
+  v_starts_at timestamptz;
   v_ends_at timestamptz;
+  v_status text;
   v_finalized boolean;
 begin
-  select season.id,season.ends_at,
+  select season.id,season.starts_at,season.ends_at,season.status,
     exists(select 1 from public.ranking_guild_power_finalization_audits audit
            where audit.season_id=season.id)
-  into strict v_season_id,v_ends_at,v_finalized
+  into strict v_season_id,v_starts_at,v_ends_at,v_status,v_finalized
   from public.ranking_guild_power_season_master master
   join public.ranking_seasons season on season.id=master.season_id
   where master.event_key='PREOPEN_GUILD_POWER_2026';
 
+  if clock_timestamp()<v_starts_at then
+    return null;
+  end if;
+  if v_status='PREPARING' then
+    perform public.activate_preopen_guild_power_season();
+  end if;
   if v_finalized then
     return null;
   elsif clock_timestamp()>=v_ends_at then
@@ -374,6 +436,10 @@ begin
   select master.* into strict v_master from public.ranking_guild_power_season_master master
   where master.event_key='PREOPEN_GUILD_POWER_2026';
   select * into strict v_season from public.ranking_seasons where id=v_master.season_id;
+  if clock_timestamp()>=v_season.starts_at and v_season.status='PREPARING' then
+    perform public.activate_preopen_guild_power_season();
+    select * into strict v_season from public.ranking_seasons where id=v_master.season_id;
+  end if;
   if clock_timestamp()>=v_season.ends_at and v_season.status<>'CLOSED' then
     perform public.finalize_preopen_guild_power_season();
     select * into strict v_season from public.ranking_seasons where id=v_master.season_id;
@@ -381,7 +447,7 @@ begin
   select member.guild_id into v_my_guild_id from public.guild_members member
   where member.user_id=v_uid;
   v_is_final:=v_season.status='CLOSED';
-  v_is_current_context:=not exists(
+  v_is_current_context:=clock_timestamp()>=v_season.starts_at and not exists(
     select 1 from public.ranking_seasons newer
     where newer.ranking_type=v_season.ranking_type
       and newer.starts_at>v_season.starts_at
@@ -546,6 +612,8 @@ grant all on public.ranking_reward_notifications to service_role;
 
 revoke all on function public.finalize_preopen_guild_power_season() from public,anon,authenticated;
 grant execute on function public.finalize_preopen_guild_power_season() to service_role;
+revoke all on function public.activate_preopen_guild_power_season() from public,anon,authenticated;
+grant execute on function public.activate_preopen_guild_power_season() to service_role;
 revoke all on function public.guard_preopen_guild_power_cutoff() from public,anon,authenticated;
 grant execute on function public.guard_preopen_guild_power_cutoff() to service_role;
 revoke all on function public.reject_guild_power_snapshot_mutation() from public,anon,authenticated;
@@ -558,14 +626,25 @@ grant execute on function public.get_my_pending_ranking_reward_notification(),
   public.acknowledge_ranking_reward_notifications(uuid[]) to authenticated,service_role;
 
 do $$
-declare v_job_id bigint;
+declare v_job_id bigint; v_activation_job_id bigint;
 begin
+  select jobid into v_activation_job_id from cron.job
+  where jobname='preopen-guild-power-activate-20260904-jst';
+  if v_activation_job_id is not null then perform cron.unschedule(v_activation_job_id); end if;
+  if clock_timestamp()<'2026-09-03 15:00:00+00'::timestamptz then
+    perform cron.schedule(
+      'preopen-guild-power-activate-20260904-jst','* 15 3 9 *',
+      $job$select public.activate_preopen_guild_power_season();$job$
+    );
+  end if;
   select jobid into v_job_id from cron.job where jobname='preopen-guild-power-finalize-20260909-jst';
   if v_job_id is not null then perform cron.unschedule(v_job_id); end if;
-  perform cron.schedule(
-    'preopen-guild-power-finalize-20260909-jst','* 15 8 9 *',
-    $job$select public.finalize_preopen_guild_power_season();$job$
-  );
+  if clock_timestamp()<'2026-09-08 15:00:00+00'::timestamptz then
+    perform cron.schedule(
+      'preopen-guild-power-finalize-20260909-jst','* 15 8 9 *',
+      $job$select public.finalize_preopen_guild_power_season();$job$
+    );
+  end if;
 end;
 $$;
 

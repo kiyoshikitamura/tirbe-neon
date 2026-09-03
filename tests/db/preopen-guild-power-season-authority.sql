@@ -18,6 +18,8 @@ declare
   v_snapshot_power bigint;
   v_current_power bigint;
   v_result jsonb;
+  v_activation_result jsonb;
+  v_previous_season_id uuid:=gen_random_uuid();
   v_pending jsonb;
   v_notification_ids uuid[];
   v_grant_count integer;
@@ -38,6 +40,30 @@ begin
   into v_other_seasons_before
   from public.ranking_seasons season where season.ranking_type<>'GUILD_POWER';
 
+  -- Before the inclusive start, pre-open stays PREPARING and the prior active
+  -- Guild Power season remains authoritative.
+  update public.ranking_seasons set status='PREPARING',
+    starts_at=clock_timestamp()+interval '1 day',ends_at=clock_timestamp()+interval '6 days'
+  where id=v_season_id;
+  update public.ranking_seasons set status='CLOSED'
+  where ranking_type='GUILD_POWER' and status='ACTIVE' and id<>v_season_id;
+  insert into public.ranking_seasons(id,ranking_type,starts_at,ends_at,status)
+  values(v_previous_season_id,'GUILD_POWER',clock_timestamp()-interval '10 days',
+    clock_timestamp()+interval '10 days','ACTIVE');
+  update public.ranking_guild_power_season_master
+  set starts_at=clock_timestamp()+interval '1 day',ends_at=clock_timestamp()+interval '6 days'
+  where season_id=v_season_id;
+  perform cron.unschedule(jobid) from cron.job
+  where jobname='preopen-guild-power-activate-20260904-jst';
+  perform cron.schedule('preopen-guild-power-activate-20260904-jst','* * * * *','select 1');
+  v_activation_result:=public.activate_preopen_guild_power_season();
+  if v_activation_result->>'status'<>'NOT_STARTED'
+     or (select status from public.ranking_seasons where id=v_season_id)<>'PREPARING'
+     or (select status from public.ranking_seasons where id=v_previous_season_id)<>'ACTIVE'
+     or not exists(select 1 from cron.job where jobname='preopen-guild-power-activate-20260904-jst') then
+    raise exception 'pre-start activation changed the current Guild Power context';
+  end if;
+
   -- Isolate existing guilds from this rollback-only fixture without guessing IDs.
   insert into public.ranking_guild_exclusions(guild_id,reason)
   select guild.id,'DB_CONTRACT_EXISTING' from public.guilds guild
@@ -55,6 +81,27 @@ begin
     (v_owned_3,v_user_3,v_character_id,1);
   insert into public.user_main_formations(user_id,slot,user_character_id) values
     (v_user_1,1,v_owned_1),(v_user_2,1,v_owned_2),(v_user_3,1,v_owned_3);
+
+  perform set_config('request.jwt.claim.sub',v_user_1::text,true);
+  v_result:=public.get_preopen_guild_power_ranking();
+  if coalesce((v_result->>'is_current_context')::boolean,true)
+     or jsonb_array_length(v_result->'rows')<>0 then
+    raise exception 'pre-start dedicated read did not fall back safely';
+  end if;
+
+  -- The inclusive start closes only the previous active Guild Power season,
+  -- activates pre-open and removes the transient start cron.
+  update public.ranking_seasons set starts_at=clock_timestamp(),
+    ends_at=clock_timestamp()+interval '5 days' where id=v_season_id;
+  update public.ranking_guild_power_season_master set starts_at=clock_timestamp(),
+    ends_at=clock_timestamp()+interval '5 days' where season_id=v_season_id;
+  v_activation_result:=public.activate_preopen_guild_power_season();
+  if v_activation_result->>'status'<>'ACTIVE'
+     or (select status from public.ranking_seasons where id=v_season_id)<>'ACTIVE'
+     or (select status from public.ranking_seasons where id=v_previous_season_id)<>'CLOSED'
+     or exists(select 1 from cron.job where jobname='preopen-guild-power-activate-20260904-jst') then
+    raise exception 'inclusive start activation contract failed';
+  end if;
 
   -- Move this transaction's boundary into the past. The next Power mutation
   -- must synchronously finalize before applying that mutation.
