@@ -12,6 +12,20 @@ async function openHomeScenario(page: Page, scenario: HomeScenario) {
   await expect(page.locator(`[data-home-scenario="${scenario}"]`)).toBeVisible();
 }
 
+test("Home leader tap uses the approved line for the active character ID", async ({ page }) => {
+  await openHomeScenario(page, "first-home-fresh");
+
+  await page.getByRole("button", { name: "アゲハに話しかける" }).click();
+  await expect(page.locator(".mypage-leader-line")).toHaveText("退屈してる暇ある？　夜はこれからでしょ。");
+});
+
+test("Home does not present a shared placeholder line when the character has no approved dialogue", async ({ page }) => {
+  await openHomeScenario(page, "first-home-character-hair");
+
+  await expect(page.getByRole("button", { name: /に話しかける$/ })).toHaveCount(0);
+  await expect(page.locator(".mypage-leader-line")).toHaveCount(0);
+});
+
 async function installPrimaryCtaObserver(page: Page) {
   await page.addInitScript(() => {
     const observed: string[] = [];

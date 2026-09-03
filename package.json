@@ -33,6 +33,7 @@
     "verify:character-ssr-candidates": "node scripts/verify_character_ssr_candidate_contract.mjs",
     "verify:character-ssr-candidate-db-migration": "node scripts/verify_character_ssr_candidate_db_migration.mjs",
     "verify:ssr-gacha-quotes": "node scripts/verify_ssr_gacha_quotes.mjs",
+    "verify:home-character-dialogue": "node scripts/verify_home_character_dialogue.mjs",
     "verify:gacha-character-town-backgrounds": "node --experimental-strip-types scripts/verify_gacha_character_town_backgrounds.mjs",
     "verify:gacha-phase6b": "node scripts/verify_gacha_phase6b_contract.mjs",
     "verify:battle-mvp-result": "node --experimental-strip-types scripts/verify_battle_mvp_result.mjs",

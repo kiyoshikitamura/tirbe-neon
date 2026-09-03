@@ -5,6 +5,7 @@ import { useGame } from "../context/GameContext";
 import { supabase } from "@/utils/supabase";
 import { resolveAvailableMyPageCreatives } from "@/domain/presentation/production_creatives";
 import { HOME_ACTION_PRESENTATION_SLOTS } from "@/domain/presentation/homeActionPresentation";
+import { resolveHomeCharacterDialogueLines } from "@/domain/presentation/homeCharacterDialogue";
 import { isDestinationAvailable } from "@/domain/operations/operations";
 import { resolvePresentableAssetUrl } from "@/utils/assetPresentation";
 import CharacterPresentation from "./character/CharacterPresentation";
@@ -138,7 +139,8 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
 
   // イベントバナースライドインジケーター
   const [bannerIndex, setBannerIndex] = useState(0);
-  const [leaderLine, setLeaderLine] = useState<string | null>(null);
+  const [leaderLine, setLeaderLine] = useState<{ characterId: string; text: string } | null>(null);
+  const leaderLineTimerRef = useRef<number | null>(null);
   const [funnelMilestones, setFunnelMilestones] = useState<Set<string>>(new Set(qaState?.funnelMilestones || []));
   const [funnelAuthorityOwnerUserId, setFunnelAuthorityOwnerUserId] = useState(qaState?.funnelMilestones ? "qa" : "");
   const [activationHandoffPending, setActivationHandoffPending] = useState(false);
@@ -322,6 +324,7 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
   const leaderMaster = leaderCharacterId
     ? CHARACTERS_MASTER.find((c) => c.id === leaderCharacterId)
     : undefined;
+  const leaderDialogueLines = resolveHomeCharacterDialogueLines(leaderCharacterId);
   const leaderImgUrl = leaderMaster ? getCharacterTransparentImg(leaderMaster.name) : null;
   const isSsrLeader = leaderMaster?.rarity === "SSR";
 
@@ -345,6 +348,9 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
 
   useEffect(() => {
     markHomeReloadStage("homeShellReady");
+    return () => {
+      if (leaderLineTimerRef.current !== null) window.clearTimeout(leaderLineTimerRef.current);
+    };
   }, []);
 
   useEffect(() => {
@@ -423,9 +429,14 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
   const homeEventState = isRaidActive ? "raid" : "calm";
   const completedPatrolsCount = activePatrols?.filter((patrol: { secondsLeft?: number }) => (patrol.secondsLeft || 0) <= 0).length || 0;
   const handleLeaderTap = () => {
-    const lines = ["今夜も、ここを守る。", "行くぞ。街は俺たちのものだ。", "仲間の準備はできてるか？"];
-    setLeaderLine(lines[Math.floor(Math.random() * lines.length)]);
-    window.setTimeout(() => setLeaderLine(null), 2600);
+    if (!leaderCharacterId || leaderDialogueLines.length === 0) return;
+    const text = leaderDialogueLines[Math.floor(Math.random() * leaderDialogueLines.length)];
+    setLeaderLine({ characterId: leaderCharacterId, text });
+    if (leaderLineTimerRef.current !== null) window.clearTimeout(leaderLineTimerRef.current);
+    leaderLineTimerRef.current = window.setTimeout(() => {
+      setLeaderLine(null);
+      leaderLineTimerRef.current = null;
+    }, 2600);
     playCyberSe("click");
   };
 
@@ -544,9 +555,9 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
           <div className={`mypage-leader-layer ${isSsrLeader ? "is-ssr" : ""}`} data-character-authority={leaderMaster ? leaderCharacterId : "placeholder"}>
             <CharacterPresentation src={leaderImgUrl || undefined} alt={leaderMaster?.name || "お気に入りキャラクター未設定"} variant="home-hero" rarity={leaderMaster?.rarity} frameKind={false} metadata={false} />
           </div>
-          {leaderMaster && <button className="mypage-leader-tap-target" onClick={handleLeaderTap} aria-label="リーダーに話しかける" />}
+          {leaderMaster && leaderDialogueLines.length > 0 && <button className="mypage-leader-tap-target" onClick={handleLeaderTap} aria-label={`${leaderMaster.jpName}に話しかける`} />}
         </>}
-        {leaderLine && <div className="mypage-leader-line">{leaderLine}</div>}
+        {leaderLine && leaderLine.characterId === leaderCharacterId && <div className="mypage-leader-line">{leaderLine.text}</div>}
 
         {/* 層構造装飾: z-4 称号プレートバナー */}
         {visibleEquippedTitle && (
