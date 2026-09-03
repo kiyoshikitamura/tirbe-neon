@@ -608,7 +608,10 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
           <span>{baseName}</span><small>{currentBase.file.toUpperCase()}</small><b aria-hidden="true">›</b>
         </button>
 
-        {onboardingState?.is_anonymous && onboardingState?.authentication_pending && <button
+        {session?.user?.is_anonymous === true
+          && onboardingState?.user_id === session.user.id
+          && onboardingState?.is_anonymous
+          && onboardingState?.authentication_pending && <button
           type="button"
           className="mypage-authentication-status active-scale-effect"
           onClick={() => { setShowAccountAuthenticationModal(true); playCyberSe("click"); }}

@@ -172,6 +172,30 @@ test("existing authenticated player never receives pending authentication UI", a
   await expect(page.getByRole("dialog", { name: "アカウント認証のご案内" })).toHaveCount(0);
 });
 
+test("authenticated session suppresses stale pending UI and preserves the Japanese username", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await seedPlayer(page, true);
+  await page.addInitScript((userId) => {
+    const users = JSON.parse(localStorage.getItem("mock_db_users") || "[]");
+    localStorage.setItem("mock_db_users", JSON.stringify(users.map((user: { id: string; username: string }) =>
+      user.id === userId ? { ...user, username: "ててててて" } : user
+    )));
+    // Reproduce the OAuth-return race: the live session is authenticated but
+    // the compact onboarding projection still contains the pre-link snapshot.
+    localStorage.setItem("mock_db_tutorial_progress", JSON.stringify([{
+      user_id: userId, step_id: "COMPLETE", authentication_pending: true,
+    }]));
+    localStorage.setItem("mock_db_user_account_auth_methods", JSON.stringify([{
+      user_id: userId, auth_method: "GOOGLE",
+    }]));
+  }, anonymousUserId);
+  await enterFromTitle(page, "続きから");
+
+  await expect(page.getByText("ててててて", { exact: true })).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByRole("button", { name: "未認証：アカウント認証を開く" })).toHaveCount(0);
+  await expect(page.getByRole("dialog", { name: "アカウント認証のご案内" })).toHaveCount(0);
+});
+
 test("pending Google authentication keeps the user id, callback origin, and clears pending UI", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await seedPlayer(page);
