@@ -22,6 +22,7 @@ declare
   v_previous_season_id uuid:=gen_random_uuid();
   v_pending jsonb;
   v_notification_ids uuid[];
+  v_acknowledged_count integer;
   v_grant_count integer;
 begin
   select master.season_id into strict v_season_id
@@ -176,9 +177,21 @@ begin
   end if;
   select array_agg(value::uuid) into v_notification_ids
   from jsonb_array_elements_text(v_pending->'notification_ids') ids(value);
-  if (public.acknowledge_ranking_reward_notifications(v_notification_ids)->>'acknowledged')::integer<>1
+  v_acknowledged_count:=(
+    public.acknowledge_ranking_reward_notifications(v_notification_ids)->>'acknowledged'
+  )::integer;
+  if v_acknowledged_count<>1 then
+    raise exception 'first notification acknowledgement did not update exactly one row';
+  end if;
+  if public.get_my_pending_ranking_reward_notification() is not null then
+    raise exception 'acknowledged notification remained pending';
+  end if;
+  v_acknowledged_count:=(
+    public.acknowledge_ranking_reward_notifications(v_notification_ids)->>'acknowledged'
+  )::integer;
+  if v_acknowledged_count<>0
      or public.get_my_pending_ranking_reward_notification() is not null then
-    raise exception 'notification acknowledgement is not one-time';
+    raise exception 'notification acknowledgement is not idempotent';
   end if;
 
   select count(*) into v_grant_count from public.ranking_guild_power_reward_grants
