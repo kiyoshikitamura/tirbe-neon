@@ -6,6 +6,8 @@ export type RankingRewardGrant = {
   itemId: string;
   quantity: number;
   grantedAt: string;
+  rewardKind: "ITEM" | "COSMETIC";
+  displayName?: string;
 };
 
 export type PendingRankingRewardNotification = {
@@ -14,6 +16,22 @@ export type PendingRankingRewardNotification = {
 };
 
 const nonEmptyString = (value: unknown): value is string => typeof value === "string" && value.length > 0;
+
+const GUILD_COSMETIC_NAMES: Record<string, string> = {
+  guild_preopen_2026_participation: "プレオープン参加記念ギルド装飾",
+  guild_preopen_2026_rank_1: "プレオープン第1位限定ギルド装飾",
+  guild_preopen_2026_rank_2: "プレオープン第2位限定ギルド装飾",
+  guild_preopen_2026_rank_3: "プレオープン第3位限定ギルド装飾",
+};
+
+function isCosmeticGrant(grant: Record<string, unknown>): boolean {
+  const rewardKind = String(grant.reward_kind ?? "").toUpperCase();
+  const displayName = String(grant.display_name ?? "");
+  return rewardKind === "COSMETIC"
+    || grant.ranking_category === "GUILD_POWER"
+    || /ギルド装飾/.test(displayName)
+    || /^guild_preopen_2026_/.test(String(grant.item_id ?? ""));
+}
 
 export function parsePendingRankingRewardNotification(value: unknown): PendingRankingRewardNotification | null {
   if (value == null) return null;
@@ -27,6 +45,7 @@ export function parsePendingRankingRewardNotification(value: unknown): PendingRa
     const periodKind = grant.period_kind;
     const rankPosition = Number(grant.rank_position);
     const quantity = Number(grant.quantity);
+    const rewardKind = isCosmeticGrant(grant) ? "COSMETIC" : "ITEM";
     if ((periodKind !== "DAILY" && periodKind !== "SEASON")
       || !nonEmptyString(grant.period_key)
       || !nonEmptyString(grant.ranking_category)
@@ -44,6 +63,10 @@ export function parsePendingRankingRewardNotification(value: unknown): PendingRa
       itemId: grant.item_id,
       quantity,
       grantedAt: grant.granted_at,
+      rewardKind,
+      displayName: nonEmptyString(grant.display_name)
+        ? grant.display_name
+        : rewardKind === "COSMETIC" ? GUILD_COSMETIC_NAMES[grant.item_id as string] || "ギルド装飾" : undefined,
     }];
   });
   return notificationIds.length > 0 && grants.length > 0 ? { notificationIds, grants } : null;
@@ -53,4 +76,26 @@ export function aggregateRankingRewardItems(grants: RankingRewardGrant[]): Array
   const totals = new Map<string, number>();
   for (const grant of grants) totals.set(grant.itemId, (totals.get(grant.itemId) || 0) + grant.quantity);
   return [...totals].map(([id, quantity]) => ({ id, quantity }));
+}
+
+export type RankingRewardReceipt = {
+  id: string;
+  quantity: number;
+  rewardKind: "ITEM" | "COSMETIC";
+  displayName?: string;
+};
+
+export function aggregateRankingRewardReceipts(grants: RankingRewardGrant[]): RankingRewardReceipt[] {
+  const totals = new Map<string, RankingRewardReceipt>();
+  for (const grant of grants) {
+    const key = `${grant.rewardKind}:${grant.itemId}`;
+    const current = totals.get(key);
+    totals.set(key, {
+      id: grant.itemId,
+      quantity: (current?.quantity || 0) + grant.quantity,
+      rewardKind: grant.rewardKind,
+      displayName: grant.displayName || current?.displayName,
+    });
+  }
+  return [...totals.values()];
 }

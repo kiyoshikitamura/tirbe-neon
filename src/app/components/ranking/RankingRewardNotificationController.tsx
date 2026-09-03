@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useGame } from "../../context/GameContext";
 import { canonicalItemName } from "@/domain/gameplay/canonical/items";
 import {
-  aggregateRankingRewardItems,
+  aggregateRankingRewardReceipts,
   parsePendingRankingRewardNotification,
   type PendingRankingRewardNotification,
 } from "@/domain/ranking/rankingRewardNotification";
@@ -31,10 +31,13 @@ export default function RankingRewardNotificationController() {
   const presentedKeyRef = useRef<string | null>(null);
 
   const pendingKey = pending?.notificationIds.join(":") || null;
-  const rewards = useMemo(() => aggregateRankingRewardItems(pending?.grants || []).map((reward) => ({
+  const rewards = useMemo(() => aggregateRankingRewardReceipts(pending?.grants || []).map((reward) => ({
     ...reward,
-    name: canonicalItemName(reward.id),
+    name: reward.displayName || canonicalItemName(reward.id),
+    kind: reward.rewardKind,
   })), [pending]);
+  const hasItemRewards = rewards.some((reward) => reward.kind === "ITEM");
+  const hasCosmeticRewards = rewards.some((reward) => reward.kind === "COSMETIC");
 
   useEffect(() => {
     const userId = session?.user?.id || null;
@@ -107,7 +110,9 @@ export default function RankingRewardNotificationController() {
     setConfirmDialogConfig({
       isOpen: true,
       title: "ランキング報酬獲得",
-      message: "ランキング報酬を獲得しました。",
+      message: hasCosmeticRewards
+        ? `${hasItemRewards ? "アイテム報酬はバッグへ直接付与されました。\n" : ""}ギルド装飾を獲得しました。\nランキング報酬の限定ギルド装飾は、正式オープン後のギルド装飾機能追加時に使用できるようになります。`
+        : "ランキング報酬はバッグへ直接付与されました。",
       confirmText: "閉じる",
       cancelText: "",
       onConfirm: acknowledge,
@@ -125,6 +130,8 @@ export default function RankingRewardNotificationController() {
     pendingKey,
     prepMissionDialogCheckComplete,
     rewards,
+    hasCosmeticRewards,
+    hasItemRewards,
     setConfirmDialogConfig,
     setGlobalInteractionBlocking,
     setRankingRewardNotificationCheckComplete,
