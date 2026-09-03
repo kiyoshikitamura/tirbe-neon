@@ -1,12 +1,13 @@
--- PREVIEW ONLY / READ-ONLY PREFLIGHT.
+-- PREVIEW ONLY / ROLLBACK-ONLY PREFLIGHT.
 -- Case: the gameplay profile "ててててて" remained on an anonymous UID while
 -- Google OAuth created a separate, empty authenticated UID.
--- This script makes no persistent change. Review every result before applying
+-- This script makes no persistent change. Its temporary inventory table is
+-- created inside a transaction that is always rolled back. Review every result before applying
 -- preview_tetetetete_uid_recovery_apply.sql.
 -- In the same session first run:
 --   select set_config('tribe.target_project_ref','sufvuqdnqohpfzkwxohq',false);
 
-begin transaction read only;
+begin;
 
 do $$
 declare
