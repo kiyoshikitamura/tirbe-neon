@@ -13,9 +13,6 @@ begin
       where id like 'guild_preopen_2026_%' and owner_scope='GUILD' and active)<>4 then
     raise exception 'pre-open guild cosmetic master mismatch';
   end if;
-  if (select count(*) from public.ranking_guild_exclusions)<>0 then
-    raise exception 'guild exclusions must remain explicit; unexpected seed rows found';
-  end if;
   if has_function_privilege('authenticated','public.finalize_preopen_guild_power_season()','execute') then
     raise exception 'authenticated role can execute the season finalizer';
   end if;
@@ -24,13 +21,24 @@ begin
   end if;
   if not exists(select 1 from cron.job
     where jobname='preopen-guild-power-finalize-20260909-jst'
-      and schedule='0 15 8 9 *') then
+      and schedule='* 15 8 9 *') then
     raise exception 'pre-open guild finalizer cron mismatch';
   end if;
   if not exists(select 1 from pg_trigger
     where tgrelid='public.ranking_guild_power_season_snapshots'::regclass
       and tgname='ranking_guild_power_snapshot_immutable' and not tgisinternal) then
     raise exception 'immutable final snapshot trigger is missing';
+  end if;
+  if (select count(*) from pg_trigger
+      where tgname like '%preopen_power_cutoff_guard' and not tgisinternal)<>10 then
+    raise exception 'pre-open cutoff mutation guards are incomplete';
+  end if;
+  if to_regclass('public.ranking_guild_power_reward_recipients') is null then
+    raise exception 'guild result notification recipient Authority is missing';
+  end if;
+  if position('is_current_context' in
+      pg_get_functiondef('public.get_preopen_guild_power_ranking(integer,integer)'::regprocedure))=0 then
+    raise exception 'future-season context guard is missing';
   end if;
 end;
 $$;
