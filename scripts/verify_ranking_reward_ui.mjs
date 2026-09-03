@@ -43,6 +43,8 @@ assert.deepEqual(aggregateRankingRewardItems(pending.grants), [{ id: "CASH", qua
 assert.equal(parsePendingRankingRewardNotification({ notification_ids: [], grants: [] }), null);
 
 const controller = readFileSync("src/app/components/ranking/RankingRewardNotificationController.tsx", "utf8");
+const dialog = readFileSync("src/app/components/ranking/RankingRewardDialog.tsx", "utf8");
+const dialogCss = readFileSync("src/app/components/ranking/RankingRewardDialog.css", "utf8");
 assert.match(controller, /get_my_pending_ranking_reward_notification/);
 assert.match(controller, /acknowledge_ranking_reward_notifications/);
 assert.match(controller, /onConfirm: acknowledge/);
@@ -51,5 +53,11 @@ assert.match(controller, /setPending\(null\);\s*setConfirmDialogConfig\(null\);/
 assert.match(controller, /hasSeasonItemRewards && !hasDailyItemRewards \? "PRESENT" : "INVENTORY"/);
 assert.match(controller, /デイリーランキング報酬はバッグへ直接付与されました/);
 assert.match(controller, /シーズンランキング報酬はプレゼントBOXへ付与されました/);
+assert.match(dialog, /className="ranking-reward-scroll"/);
+assert.match(dialog, /aria-label="ランキング報酬一覧"/);
+assert.match(dialogCss, /height:min\(72dvh,620px\)/);
+assert.match(dialogCss, /background:#131b29/);
+assert.match(dialogCss, /\.ranking-reward-scroll\{[^}]*overflow-y:auto/);
+assert.match(dialogCss, /\.ranking-reward-scroll::-webkit-scrollbar-thumb/);
 
 console.log("Ranking reward UI contract: PASS");
