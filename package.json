@@ -44,6 +44,7 @@
     "verify:login-bonus-production": "node scripts/verify_login_bonus_production.mjs",
     "verify:login-bonus-recognition": "node --experimental-strip-types scripts/verify_login_bonus_recognition.mjs",
     "verify:reward-supply": "node scripts/verify_reward_supply.mjs",
+    "verify:ranking-reward-ui": "node --experimental-strip-types scripts/verify_ranking_reward_ui.mjs",
     "generate:economy-foundation-db-migration": "node scripts/generate_economy_foundation_db_migration.mjs",
     "generate:character-awakening-copy-equivalent-migration": "node scripts/generate_character_awakening_copy_equivalent_migration.mjs",
     "verify:character-awakening-copy-equivalent": "node --experimental-strip-types scripts/verify_character_awakening_copy_equivalent.mjs",
@@ -159,6 +160,7 @@
     "verify:tn12-community-shell-ux": "node scripts/verify_tn12_community_shell_ux.mjs",
     "verify:tn09a-raid-playback-liveness": "node --experimental-strip-types scripts/verify_tn09a_raid_playback_liveness.mjs",
     "verify:tn09-raid-ranking": "node --experimental-strip-types scripts/verify_tn09_raid_ranking.mjs",
+    "verify:ranking-reward-regression": "node --experimental-strip-types scripts/verify_ranking_reward_regression.mjs",
     "verify:quest-battle-result-liveness": "node scripts/verify_quest_battle_result_liveness.mjs",
     "audit:release-db-readiness": "node scripts/verify_release_db_migration_readiness.mjs --allow-known-blockers",
     "verify:release-db-readiness": "node scripts/verify_release_db_migration_readiness.mjs"

@@ -44,6 +44,7 @@ import BrandedLoading from "./components/ui/BrandedLoading";
 import CanonicalDialog from "./components/ui/CanonicalDialog";
 import HomeResumeShell from "./components/HomeResumeShell";
 import { LoginBonusModal } from "./components/LoginBonusModal";
+import RankingRewardNotificationController from "./components/ranking/RankingRewardNotificationController";
 import { markHomeReloadStage, readHomeResumeSnapshot } from "./lib/homeResumePresentation";
 
 function AppContent() {
@@ -268,6 +269,7 @@ function AppContent() {
             <AccountAuthenticationModal />
 
             {/* Layer 6: 最上位の共通ダイアログとブロッカー */}
+            <RankingRewardNotificationController />
             <ConfirmDialog {...confirmDialogConfig} />
             <GlobalInteractionBlocker isBlocking={globalInteractionBlocking} />
           </>
