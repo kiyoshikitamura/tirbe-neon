@@ -47,6 +47,10 @@ begin
        'public.acknowledge_ranking_reward_notifications(uuid[])','execute') then
     raise exception 'ranking result one-time notification/ack contract is incomplete';
   end if;
+  if to_regclass('public.ranking_reward_notifications_recipient_period_uidx') is null
+     or to_regclass('public.ranking_reward_notifications_pending_idx') is null then
+    raise exception 'ranking notification exactly-once/pending indexes are missing';
+  end if;
   if position('is_current_context' in
       pg_get_functiondef('public.get_preopen_guild_power_ranking(integer,integer)'::regprocedure))=0 then
     raise exception 'future-season context guard is missing';

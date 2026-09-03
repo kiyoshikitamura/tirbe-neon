@@ -18,6 +18,8 @@ create table if not exists public.ranking_reward_notifications (
 create index if not exists ranking_reward_notifications_pending_idx
   on public.ranking_reward_notifications(recipient_user_id,awarded_at,id)
   where acknowledged_at is null;
+create unique index if not exists ranking_reward_notifications_recipient_period_uidx
+  on public.ranking_reward_notifications(recipient_user_id,period_kind,period_key);
 
 create table if not exists public.ranking_guild_power_season_master (
   season_id uuid primary key references public.ranking_seasons(id),
