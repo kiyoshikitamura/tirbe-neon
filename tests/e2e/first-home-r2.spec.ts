@@ -306,10 +306,10 @@ for (const viewport of viewports) {
     expect(geometry.locationHeight).toBeLessThanOrEqual(28);
     expect(geometry.missionBadgePosition).toBe("absolute");
     expect(geometry.bannerHeight).toBeLessThanOrEqual(58);
-    expect(geometry.bannerObjectFit).toBe("contain");
+    expect(geometry.bannerObjectFit).toBe("cover");
     expect(geometry.footerLabelSizes.every((size) => size <= 9)).toBe(true);
     expect(geometry.horizontalOverflow).toBeLessThanOrEqual(1);
-    expect(geometry.bannerFilter).toContain("brightness(1.24)");
+    expect(geometry.bannerFilter).toBe("none");
     expect(geometry.townBackgroundPosition).toContain("52%");
     expect(geometry.ssrAuraAnimation).toContain("mypage-ssr-leader-glow");
     expect(geometry.ssrSweepAnimation).toContain("mypage-ssr-leader-sweep");

@@ -70,6 +70,7 @@ type HomeTabQaState = Readonly<{
   funnelMilestones?: readonly string[];
   ctaAuthorityReady?: boolean;
   guildDiscoveryState?: "pending" | "error" | "empty" | "available";
+  bannerAuthority?: "normal" | "campaign";
 }>;
 
 type HomeActivity = {
@@ -167,7 +168,14 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
   const bannerAuthorityKeyRef = useRef("");
   // Do not render a guessed banner set before the server event authority has
   // answered. This prevents a normal banner from flashing during the campaign.
-  const [banners, setBanners] = useState<HomeBanner[]>([]);
+  const [banners, setBanners] = useState<HomeBanner[]>(() => qaState?.bannerAuthority === "normal"
+    ? (PRODUCTION_MY_PAGE_CREATIVES || []).map((creative) => ({ id: creative.id, title: "", img: creative.assetPath, destination: creative.destination }))
+    : qaState?.bannerAuthority === "campaign"
+      ? [
+        { id: "gvg-prep", eventId: "GVG_PREP_20260904", title: "", img: "/promotion/mypage_banner_gvg_prep.webp", destination: "mission:SPECIAL" },
+        { id: "guild-power-ranking", eventId: "GVG_PREP_20260904", title: "", img: "/promotion/mypage_banner_guild_power_ranking.webp", destination: "campaign:GUILD_POWER" },
+      ]
+      : []);
   const visibleBanners = useMemo(
     () => banners.filter((banner) => banner.destination !== "raid" || isRaidActive),
     [banners, isRaidActive],
@@ -230,6 +238,7 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
   }, [activeBannerIndex, visibleBanners]);
 
   useEffect(() => {
+    if (qaState?.bannerAuthority) return;
     if (!session?.user?.id) return;
     let cancelled = false;
     const loadBannerAuthority = async () => {
@@ -261,7 +270,7 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
       window.clearInterval(timer);
       document.removeEventListener("visibilitychange", refreshOnFocus);
     };
-  }, [featureOperatingStates, session?.user?.id]);
+  }, [featureOperatingStates, qaState?.bannerAuthority, session?.user?.id]);
 
   useEffect(() => {
     if (qaState?.funnelMilestones) return;

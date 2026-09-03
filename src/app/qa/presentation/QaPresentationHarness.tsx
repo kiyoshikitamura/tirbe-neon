@@ -467,6 +467,7 @@ function ProductionHomeFixture({ scenario }: { scenario: HomeScenario }) {
           funnelMilestones: milestones,
           ctaAuthorityReady,
           guildDiscoveryState: ctaAuthorityReady && !guildJoined ? "available" : "pending",
+          bannerAuthority: "normal",
         }} />
         <MoveBaseModal />
         {openedProfileId && <output data-opened-profile-id={openedProfileId} />}
