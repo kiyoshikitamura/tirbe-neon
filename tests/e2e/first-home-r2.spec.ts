@@ -344,11 +344,11 @@ test("raid discovery stays out of the Home stage while the authoritative raid ba
   await page.setViewportSize({ width: 390, height: 844 });
   await openHomeScenario(page, "first-home-fresh");
   await expect(page.locator(".mypage-event-chip.raid")).toHaveCount(0);
-  await expect(page.locator(".banner-dots .dot")).toHaveCount(2);
+  await expect(page.locator(".banner-dots .dot")).toHaveCount(4);
 
   await openHomeScenario(page, "first-home-raid");
   await expect(page.locator(".mypage-event-chip.raid")).toHaveCount(0);
-  await expect(page.locator(".banner-dots .dot")).toHaveCount(3);
+  await expect(page.locator(".banner-dots .dot")).toHaveCount(5);
   await expect(page.locator(".mypage-live-ticker--visual")).toContainText("KAI");
   await expect(page.locator(".mypage-live-ticker--visual")).toContainText("SSRを獲得");
   await expect(page.locator(".mypage-power-panel")).toHaveCount(0);
