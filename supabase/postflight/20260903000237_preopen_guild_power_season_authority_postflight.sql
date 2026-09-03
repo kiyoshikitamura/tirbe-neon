@@ -19,7 +19,13 @@ begin
   if not has_function_privilege('authenticated','public.get_preopen_guild_power_ranking(integer,integer)','execute') then
     raise exception 'authenticated role cannot read the pre-open guild ranking';
   end if;
-  if not exists(select 1 from cron.job
+  if exists(select 1 from public.ranking_guild_power_finalization_audits
+            where season_id=v_season.id) then
+    if exists(select 1 from cron.job
+              where jobname='preopen-guild-power-finalize-20260909-jst') then
+      raise exception 'finalized pre-open guild cron was not unscheduled';
+    end if;
+  elsif not exists(select 1 from cron.job
     where jobname='preopen-guild-power-finalize-20260909-jst'
       and schedule='* 15 8 9 *') then
     raise exception 'pre-open guild finalizer cron mismatch';
