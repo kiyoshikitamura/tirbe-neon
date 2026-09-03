@@ -69,8 +69,11 @@ begin
   select guild.id,'DB_CONTRACT_EXISTING' from public.guilds guild
   on conflict(guild_id) do nothing;
 
-  insert into public.users(id,username) values
-    (v_user_1,'DBCT-A'),(v_user_2,'DBCT-B'),(v_user_3,'DBCT-C');
+  -- Canonical guild membership requires player level 3. Other required user
+  -- state remains on the production defaults so this fixture exercises the
+  -- same initialization contract as a newly eligible player.
+  insert into public.users(id,username,level) values
+    (v_user_1,'DBCT-A',3),(v_user_2,'DBCT-B',3),(v_user_3,'DBCT-C',3);
   insert into public.guilds(id,name,leader_id) values
     (v_guild_1,'DBCT-G1',v_user_1),(v_guild_2,'DBCT-G2',v_user_2),(v_guild_3,'DBCT-G3',v_user_3);
   insert into public.guild_members(guild_id,user_id,role) values
