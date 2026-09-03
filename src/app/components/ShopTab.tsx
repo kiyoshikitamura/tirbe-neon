@@ -23,8 +23,7 @@ export default function ShopTab() {
     playCyberSe,
     profileLoading,
     upgradeLoading,
-    setConfirmDialogConfig,
-    setGlobalInteractionBlocking
+    setConfirmDialogConfig
   } = useGame();
 
   const [timeLeftStr, setTimeLeftStr] = useState<string>("");
@@ -132,12 +131,7 @@ export default function ShopTab() {
       confirmText: "購入する",
       onConfirm: async () => {
         setConfirmDialogConfig({ isOpen: false });
-        setGlobalInteractionBlocking(true);
-        try {
-          await handleBuyNormalProduct(product.id, currencyType);
-        } finally {
-          setGlobalInteractionBlocking(false);
-        }
+        await handleBuyNormalProduct(product.id, currencyType);
       },
       onCancel: () => {
         setConfirmDialogConfig({ isOpen: false });
@@ -145,10 +139,8 @@ export default function ShopTab() {
     });
   };
 
-  const handleBuyStripeClick = (productId: string) => {
-    setGlobalInteractionBlocking(true);
-    handleBuyStripeProduct(productId);
-    setTimeout(() => setGlobalInteractionBlocking(false), 2000);
+  const handleBuyStripeClick = async (productId: string) => {
+    await handleBuyStripeProduct(productId);
   };
 
   return (

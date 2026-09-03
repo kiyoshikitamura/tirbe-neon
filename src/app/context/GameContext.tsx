@@ -3672,7 +3672,6 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         p_items: product.items,
         p_product_title: product.title
       });
-      setGlobalInteractionBlocking(false);
 
       if (error || !rpcRes) {
         console.error("buy_normal_shop_product rpc error:", error);
@@ -3695,6 +3694,11 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       setErrorMessage("購入処理中にエラーが発生しました。");
       return false;
     } finally {
+      // Keep the application inert until either the result/error state has
+      // committed. Releasing immediately after the RPC left a tappable frame
+      // before the destination dialog's effect could mount it.
+      await waitForBrowserPaint();
+      setGlobalInteractionBlocking(false);
       setUpgradeLoading(false);
     }
   };
@@ -3740,7 +3744,6 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         p_is_beginner: isBeginner,
         p_purchase_limit: purchaseLimit
       });
-      setGlobalInteractionBlocking(false);
 
       if (error) {
         console.error("process_stripe_shop_purchase RPC error:", error);
@@ -3775,6 +3778,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       setErrorMessage("決済処理中にエラーが発生しました。");
       return false;
     } finally {
+      await waitForBrowserPaint();
+      setGlobalInteractionBlocking(false);
       setProfileLoading(false);
     }
   };
