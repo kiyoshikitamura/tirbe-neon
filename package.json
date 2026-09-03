@@ -158,6 +158,7 @@
     "verify:tn12-community-shell-ux": "node scripts/verify_tn12_community_shell_ux.mjs",
     "verify:tn09a-raid-playback-liveness": "node --experimental-strip-types scripts/verify_tn09a_raid_playback_liveness.mjs",
     "verify:tn09-raid-ranking": "node --experimental-strip-types scripts/verify_tn09_raid_ranking.mjs",
+    "verify:quest-battle-result-liveness": "node scripts/verify_quest_battle_result_liveness.mjs",
     "audit:release-db-readiness": "node scripts/verify_release_db_migration_readiness.mjs --allow-known-blockers",
     "verify:release-db-readiness": "node scripts/verify_release_db_migration_readiness.mjs"
   },

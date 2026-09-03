@@ -274,21 +274,28 @@ export default function PatrolTab() {
     }
   };
 
-  const handleClaim = async (pId: string) => {
+  const handleClaim = React.useCallback(async (pId: string, options?: { battleOwnsResult?: boolean }) => {
     if (questActionRef.current) return false;
     questActionRef.current = true;
     setGlobalInteractionBlocking(true);
     try {
-      return await handleClaimRewards(pId, { isTutorialReward: tutorialStep === "TUTORIAL_BATTLE" || tutorialBattleActive });
+      return await handleClaimRewards(pId, {
+        isTutorialReward: tutorialStep === "TUTORIAL_BATTLE" || tutorialBattleActive,
+        suppressResultModal: options?.battleOwnsResult === true,
+      });
     } finally {
       questActionRef.current = false;
       setGlobalInteractionBlocking(false);
     }
-  };
+  }, [handleClaimRewards, setGlobalInteractionBlocking, tutorialBattleActive, tutorialStep]);
 
   const handleBattleStart = async (patrol: any, battleNpc: any) => {
     if (!battleNpc || battleStartRef.current || battleEncounterLocked || patrol.id === settledPatrolEncounterId) return;
     battleStartRef.current = true;
+    // Rewards belong to the completed encounter that produced them. Clear the
+    // old projection before another battle can mount its result surface.
+    setLastPatrolRewards(null);
+    setShowPatrolRewardModal(false);
     setBattleStartingId(patrol.id);
     setGlobalInteractionBlocking(true);
     try {
@@ -357,19 +364,17 @@ export default function PatrolTab() {
     setLastPatrolRewards(null);
   }, [lastPatrolRewards, setLastPatrolRewards, setShowPatrolRewardModal, tutorialBattleActive, tutorialStep]);
 
-  // The battle result is the single tutorial result surface. Resolve the
-  // authoritative patrol reward while it remains mounted so WIN, rewards and
-  // the one Next CTA can be presented together.
+  // The battle result is the single result surface for every victorious quest.
+  // Resolution already committed battle_resolved before replay starts, so do
+  // not wait on the eventually-refreshed activePatrols projection here.
   React.useEffect(() => {
-    if (!tutorialBattleActive || battleState !== "RESULT" || showPatrolRewardModal || lastPatrolRewards) return;
+    if (battleState !== "RESULT" || showPatrolRewardModal || lastPatrolRewards) return;
     if (!settledPatrolEncounterId || autoRewardClaimRef.current === settledPatrolEncounterId) return;
-    const resolved = activePatrols.find((patrol: any) => patrol.id === settledPatrolEncounterId && patrol.battle_resolved);
-    if (!resolved) return;
     autoRewardClaimRef.current = settledPatrolEncounterId;
-    void handleClaim(settledPatrolEncounterId).then((claimed) => {
+    void handleClaim(settledPatrolEncounterId, { battleOwnsResult: true }).then((claimed) => {
       if (!claimed) autoRewardClaimRef.current = null;
     });
-  }, [activePatrols, battleState, lastPatrolRewards, settledPatrolEncounterId, showPatrolRewardModal, tutorialBattleActive]);
+  }, [battleState, handleClaim, lastPatrolRewards, settledPatrolEncounterId, showPatrolRewardModal]);
 
   const canRenderRewardResult = showPatrolRewardModal
     && lastPatrolRewards

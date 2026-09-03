@@ -384,7 +384,7 @@ export function usePatrol(
     return false;
   };
 
-  const handleClaimRewards = async (patrolId: string, options?: { isTutorialReward?: boolean }) => {
+  const handleClaimRewards = async (patrolId: string, options?: { isTutorialReward?: boolean; suppressResultModal?: boolean }) => {
     const targetPatrol = activePatrols.find(p => p.id === patrolId);
     if (!session || !targetPatrol) return false;
 
@@ -431,7 +431,7 @@ export function usePatrol(
       };
 
       setLastPatrolRewards(rewardSummary);
-      setShowPatrolRewardModal(true);
+      if (!options?.suppressResultModal) setShowPatrolRewardModal(true);
       void Promise.allSettled([
         syncBootstrapData(session.user.id),
         addGuildXpAndContributionByAction("QUEST", patrolId),

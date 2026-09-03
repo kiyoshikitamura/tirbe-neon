@@ -508,6 +508,9 @@ export function useBattle(options: UseBattleOptions) {
     setBattleResultReplayEvents([]);
     setBattleModeResultDetail(null);
     setBattleSkipPending(false);
+    // Skip pauses replay while it projects the terminal state. A completed
+    // battle must never leak that transport pause into the next encounter.
+    setIsAutoPaused(false);
     let officialGvgDefenseDeck: unknown = null;
     let officialGvgAttackIdForBattle: string | null = null;
     let officialGvgReplayIdForBattle: string | null = null;
@@ -2896,6 +2899,7 @@ export function useBattle(options: UseBattleOptions) {
     setBattleResultReplayEvents([]);
     setBattlePresentationContext(null);
     setBattleSkipPending(false);
+    setIsAutoPaused(false);
     setBattleModeResultDetail(null);
     if (destination === "raid") requestRaidTopRefresh?.();
     if (destination) navigateTab?.(destination);
