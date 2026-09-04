@@ -43,6 +43,15 @@ for (const file of sourceFiles) {
   assert.doesNotMatch(source, /VERCEL_PROJECT_PRODUCTION_URL|NEXT_PUBLIC_SITE_URL|NEXT_PUBLIC_APP_URL/);
 }
 
+const callbackSource = await readFile("src/app/auth/callback/page.tsx", "utf8");
+assert.doesNotMatch(
+  callbackSource,
+  /onAuthStateChange/,
+  "OAuth callback must not register an auth listener while Supabase is initializing",
+);
+assert.match(callbackSource, /AUTH_CALLBACK_TIMEOUT_MS\s*=\s*15_000/);
+assert.match(callbackSource, /Googleログインの確認がタイムアウトしました/);
+
 const bundleDirectory = process.env.OAUTH_BUNDLE_DIR?.trim();
 if (bundleDirectory) {
   const files = [];
