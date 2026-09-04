@@ -162,6 +162,8 @@
     "verify:tn09a-raid-playback-liveness": "node --experimental-strip-types scripts/verify_tn09a_raid_playback_liveness.mjs",
     "verify:tn09-raid-ranking": "node --experimental-strip-types scripts/verify_tn09_raid_ranking.mjs",
     "verify:ranking-reward-regression": "node --experimental-strip-types scripts/verify_ranking_reward_regression.mjs",
+    "verify:ranking-lifecycle-test-contract": "node scripts/verify_ranking_lifecycle_test_contract.mjs",
+    "test:ranking-lifecycle:local": "node scripts/run_local_ranking_lifecycle_test.mjs",
     "verify:preopen-guild-power-ui": "node --experimental-strip-types scripts/verify_preopen_guild_power_ui.mjs",
     "verify:preopen-promotion-assets": "node scripts/verify_preopen_promotion_assets.mjs",
     "verify:guild-cosmetic-notification-ui": "node --experimental-strip-types scripts/verify_guild_cosmetic_notification_ui.mjs",
