@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import { supabase } from "@/utils/supabase";
 
 type Category = "acquisition" | "active_retention" | "guild" | "content" | "revenue";
@@ -290,9 +289,8 @@ export default function KpiDashboard() {
               {loginLoading ? "Googleへ接続中…" : "Googleでログイン"}
             </button>
             {loginError && <p className="kpi-login-error" role="alert">{loginError}</p>}
-            <Link href="/">ゲームへ戻る</Link>
           </>}
-          {access === "denied" && <><p>この画面は運営管理者専用です。</p><Link href="/">ゲームへ戻る</Link></>}
+          {access === "denied" && <p>この画面は運営管理者専用です。</p>}
         </section>
       </main>
     );
