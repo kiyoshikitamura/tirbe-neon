@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { discardAnonymousAccountForSwitch, supabase } from "@/utils/supabase";
-import { getOAuthReturnUrl } from "@/utils/browserDetection";
+import { consumeRememberedOAuthReturnTo, getOAuthReturnUrl } from "@/utils/browserDetection";
 
 const ONBOARDING_AUTH_INTENT_KEY = "tribe_onboarding_auth_intent";
 const ONBOARDING_AUTH_INTENT_MAX_AGE_MS = 30 * 60 * 1000;
@@ -55,7 +55,14 @@ export default function AuthCallbackPage() {
     const returnToApp = (accountSwitch?: "google", accountSwitchError?: string) => {
       if (!active || redirected) return;
       redirected = true;
-      const destination = new URL(getOAuthReturnUrl());
+      const callbackUrl = new URL(window.location.href);
+      const rememberedReturnTo = consumeRememberedOAuthReturnTo();
+      const destination = new URL(
+        !callbackUrl.searchParams.has("return_to") && rememberedReturnTo
+          ? rememberedReturnTo
+          : getOAuthReturnUrl(),
+        callbackUrl.origin,
+      );
       if (accountSwitch) destination.searchParams.set("account_switch", accountSwitch);
       if (accountSwitchError) destination.searchParams.set("account_switch_error", accountSwitchError);
       window.location.replace(destination.toString());

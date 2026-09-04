@@ -1,7 +1,12 @@
 import assert from "node:assert/strict";
 import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
-import { getOAuthCallbackUrl, getOAuthReturnUrl } from "../src/utils/browserDetection.ts";
+import {
+  consumeRememberedOAuthReturnTo,
+  getOAuthCallbackUrl,
+  getOAuthReturnUrl,
+  rememberOAuthReturnTo,
+} from "../src/utils/browserDetection.ts";
 
 const previewOrigin = "https://tribe-neon-mobile-preview.vercel.app";
 const productionOrigin = "https://tirbe-neon.vercel.app";
@@ -43,6 +48,23 @@ for (const file of sourceFiles) {
   assert.doesNotMatch(source, /VERCEL_PROJECT_PRODUCTION_URL|NEXT_PUBLIC_SITE_URL|NEXT_PUBLIC_APP_URL/);
 }
 
+const originalWindow = globalThis.window;
+const storedValues = new Map();
+globalThis.window = {
+  location: { origin: previewOrigin },
+  localStorage: {
+    getItem: (key) => storedValues.get(key) ?? null,
+    removeItem: (key) => storedValues.delete(key),
+    setItem: (key, value) => storedValues.set(key, value),
+  },
+};
+rememberOAuthReturnTo("/admin/kpi");
+assert.equal(consumeRememberedOAuthReturnTo(), "/admin/kpi");
+assert.equal(consumeRememberedOAuthReturnTo(), null);
+rememberOAuthReturnTo("https://example.com/admin/kpi");
+assert.equal(consumeRememberedOAuthReturnTo(), null);
+globalThis.window = originalWindow;
+
 const callbackSource = await readFile("src/app/auth/callback/page.tsx", "utf8");
 assert.doesNotMatch(
   callbackSource,
@@ -51,6 +73,10 @@ assert.doesNotMatch(
 );
 assert.match(callbackSource, /AUTH_CALLBACK_TIMEOUT_MS\s*=\s*15_000/);
 assert.match(callbackSource, /Googleログインの確認がタイムアウトしました/);
+assert.match(callbackSource, /consumeRememberedOAuthReturnTo/);
+
+const kpiDashboardSource = await readFile("src/app/admin/kpi/KpiDashboard.tsx", "utf8");
+assert.match(kpiDashboardSource, /rememberOAuthReturnTo\("\/admin\/kpi"\)/);
 
 const bundleDirectory = process.env.OAUTH_BUNDLE_DIR?.trim();
 if (bundleDirectory) {

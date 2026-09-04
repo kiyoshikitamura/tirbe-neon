@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/utils/supabase";
+import { OAUTH_RETURN_INTENT_KEY, rememberOAuthReturnTo } from "@/utils/browserDetection";
 
 type Category = "acquisition" | "active_retention" | "guild" | "content" | "revenue";
 type PeriodType = "daily" | "monthly" | "cohort";
@@ -270,11 +271,13 @@ export default function KpiDashboard() {
     setLoginError(null);
     const callback = new URL("/auth/callback", window.location.origin);
     callback.searchParams.set("return_to", "/admin/kpi");
+    rememberOAuthReturnTo("/admin/kpi");
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: { redirectTo: callback.toString() },
     });
     if (error) {
+      window.localStorage.removeItem(OAUTH_RETURN_INTENT_KEY);
       setLoginError(error.message);
       setLoginLoading(false);
     }
