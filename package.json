@@ -81,6 +81,7 @@
     "verify:guild-production:development": "node scripts/verify_guild_development.mjs",
     "verify:operations-feature-state": "node scripts/verify_operations_feature_state.mjs",
     "verify:operations-db-migration": "node scripts/verify_operations_db_migration.mjs",
+    "verify:kpi-measurement-db-migration": "node scripts/verify_kpi_measurement_db_migration.mjs",
     "verify:operations-exposure": "node scripts/verify_operations_exposure.mjs",
     "verify:operations:development": "node scripts/verify_operations_development.mjs",
     "verify:preopen-ux": "node scripts/verify_preopen_ux.mjs",
