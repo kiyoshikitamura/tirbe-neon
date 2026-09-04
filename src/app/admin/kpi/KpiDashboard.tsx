@@ -57,6 +57,10 @@ const statusLabels = {
 
 const mockAdminPreview = process.env.NEXT_PUBLIC_USE_MOCK_DB === "true"
   && process.env.NEXT_PUBLIC_ENABLE_QA_TOOLS === "true";
+const kpiDataEnvironment = process.env.NEXT_PUBLIC_KPI_DATA_ENV === "production"
+  ? "production"
+  : "preview";
+const kpiDataEnvironmentLabel = kpiDataEnvironment === "production" ? "Production" : "Preview";
 
 function jstToday() {
   return new Intl.DateTimeFormat("sv-SE", {
@@ -280,7 +284,7 @@ export default function KpiDashboard() {
     return (
       <main className="kpi-shell kpi-access-shell">
         <section className="kpi-access-card">
-          <span className="kpi-kicker">TRIBE NEON / INTERNAL</span>
+          <span className="kpi-kicker">TRIBE NEON / {kpiDataEnvironment.toUpperCase()}</span>
           <h1>KPI Control Room</h1>
           {access === "loading" && <p>権限を確認しています…</p>}
           {access === "signed-out" && <>
@@ -304,12 +308,12 @@ export default function KpiDashboard() {
     <main className="kpi-shell">
       <header className="kpi-header">
         <div>
-          <span className="kpi-kicker">TRIBE NEON / PREVIEW</span>
+          <span className="kpi-kicker">TRIBE NEON / {kpiDataEnvironment.toUpperCase()}</span>
           <h1>KPI Control Room</h1>
           <p>集客 → ゲーム開始 → 定着 → ギルド形成 → 課金</p>
         </div>
         <div className="kpi-header-meta">
-          <span className="kpi-live-dot" /> Preview DB
+          <span className="kpi-live-dot" /> {kpiDataEnvironmentLabel} DB
           <small>最終更新 {formatTimestamp(lastUpdated)}</small>
         </div>
       </header>

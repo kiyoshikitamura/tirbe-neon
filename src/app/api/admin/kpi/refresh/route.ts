@@ -7,6 +7,10 @@ export const dynamic = "force-dynamic";
 const categories = new Set(["acquisition", "active_retention", "guild", "content", "revenue"]);
 const periodTypes = new Set(["daily", "monthly", "cohort"]);
 const mobilePattern = /Android|iPhone|iPad|iPod|Mobile|IEMobile|Opera Mini/i;
+const projectRefs = {
+  preview: "sufvuqdnqohpfzkwxohq",
+  production: "ktpolnkyyfkowxdmijww",
+} as const;
 
 function isIsoDate(value: unknown): value is string {
   return typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(`${value}T00:00:00Z`));
@@ -16,6 +20,9 @@ export async function POST(request: NextRequest) {
   if (process.env.NEXT_PUBLIC_APP_ENV !== "preview") {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
+  const dataEnvironment = process.env.NEXT_PUBLIC_KPI_DATA_ENV === "production"
+    ? "production"
+    : "preview";
   if (mobilePattern.test(request.headers.get("user-agent") || "")) {
     return NextResponse.json({ error: "モバイルからの集計更新は許可されていません。" }, { status: 403 });
   }
@@ -24,7 +31,18 @@ export async function POST(request: NextRequest) {
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
   if (!url || !anonKey || !serviceKey) {
-    return NextResponse.json({ error: "PreviewのKPIサーバー設定が未完了です。" }, { status: 503 });
+    return NextResponse.json({ error: `${dataEnvironment === "production" ? "Production" : "Preview"}のKPIサーバー設定が未完了です。` }, { status: 503 });
+  }
+
+  let projectHost: string;
+  try {
+    projectHost = new URL(url).hostname;
+  } catch {
+    return NextResponse.json({ error: "KPIデータベースURLが不正です。" }, { status: 503 });
+  }
+  const expectedHost = `${projectRefs[dataEnvironment]}.supabase.co`;
+  if (projectHost !== expectedHost) {
+    return NextResponse.json({ error: "KPIデータ環境とデータベース接続先が一致しません。" }, { status: 503 });
   }
 
   const authorization = request.headers.get("authorization") || "";
