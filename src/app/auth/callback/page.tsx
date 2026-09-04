@@ -5,6 +5,7 @@ import { discardAnonymousAccountForSwitch, supabase } from "@/utils/supabase";
 import { consumeRememberedOAuthReturnTo, getOAuthReturnUrl } from "@/utils/browserDetection";
 
 const ONBOARDING_AUTH_INTENT_KEY = "tribe_onboarding_auth_intent";
+const KPI_PASSWORD_RECOVERY_KEY = "tribe_kpi_password_recovery";
 const ONBOARDING_AUTH_INTENT_MAX_AGE_MS = 30 * 60 * 1000;
 const AUTH_CALLBACK_TIMEOUT_MS = 15_000;
 
@@ -51,6 +52,23 @@ export default function AuthCallbackPage() {
   useEffect(() => {
     let active = true;
     let redirected = false;
+
+    const hasKpiPasswordRecoveryIntent = () => {
+      try {
+        const value = JSON.parse(window.localStorage.getItem(KPI_PASSWORD_RECOVERY_KEY) || "null") as { startedAt?: number } | null;
+        const age = Date.now() - Number(value?.startedAt || 0);
+        return age >= 0 && age <= ONBOARDING_AUTH_INTENT_MAX_AGE_MS;
+      } catch {
+        return false;
+      }
+    };
+
+    const returnToPasswordSetup = () => {
+      if (!active || redirected) return;
+      redirected = true;
+      window.localStorage.removeItem(KPI_PASSWORD_RECOVERY_KEY);
+      window.location.replace("/auth/kpi-password");
+    };
 
     const returnToApp = (accountSwitch?: "google", accountSwitchError?: string) => {
       if (!active || redirected) return;
@@ -122,6 +140,10 @@ export default function AuthCallbackPage() {
           setError("Googleログイン後のセッションを確認できませんでした。");
           return;
         }
+        if (hasKpiPasswordRecoveryIntent()) {
+          returnToPasswordSetup();
+          return;
+        }
         if (switchingToExistingData) {
           if (!tutorialSession || tutorialSession.user.id !== loginIntent?.sourceUserId) {
             window.localStorage.removeItem("tribe_existing_google_login_intent");
@@ -185,6 +207,10 @@ export default function AuthCallbackPage() {
         return;
       }
       if (data.session) {
+        if (hasKpiPasswordRecoveryIntent()) {
+          returnToPasswordSetup();
+          return;
+        }
         returnToApp();
         return;
       }

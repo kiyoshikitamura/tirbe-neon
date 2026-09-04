@@ -62,6 +62,7 @@ const kpiDataEnvironment = process.env.NEXT_PUBLIC_KPI_DATA_ENV === "production"
   ? "production"
   : "preview";
 const kpiDataEnvironmentLabel = kpiDataEnvironment === "production" ? "Production" : "Preview";
+const KPI_PASSWORD_RECOVERY_KEY = "tribe_kpi_password_recovery";
 
 function jstToday() {
   return new Intl.DateTimeFormat("sv-SE", {
@@ -175,6 +176,7 @@ export default function KpiDashboard() {
   const [loginError, setLoginError] = useState<string | null>(null);
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
+  const [recoverySent, setRecoverySent] = useState(false);
   const [isMobile, setIsMobile] = useState(true);
 
   const allowedPeriods = useMemo<PeriodType[]>(() => {
@@ -293,6 +295,27 @@ export default function KpiDashboard() {
     setLoginLoading(false);
   };
 
+  const sendPasswordRecovery = async () => {
+    const email = loginEmail.trim().toLowerCase();
+    if (!email) {
+      setLoginError("メールアドレスを入力してください。");
+      return;
+    }
+    setLoginLoading(true);
+    setLoginError(null);
+    setRecoverySent(false);
+    window.localStorage.setItem(KPI_PASSWORD_RECOVERY_KEY, JSON.stringify({ startedAt: Date.now() }));
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: new URL("/auth/callback", window.location.origin).toString(),
+    });
+    if (error) {
+      window.localStorage.removeItem(KPI_PASSWORD_RECOVERY_KEY);
+      setLoginError("パスワード設定メールを送信できませんでした。");
+    }
+    else setRecoverySent(true);
+    setLoginLoading(false);
+  };
+
   if (access !== "admin") {
     return (
       <main className="kpi-shell kpi-access-shell">
@@ -326,7 +349,11 @@ export default function KpiDashboard() {
               <button className="kpi-password-login" type="submit" disabled={loginLoading}>
                 {loginLoading ? "確認中…" : "ログイン"}
               </button>
+              <button className="kpi-recovery-button" type="button" onClick={() => void sendPasswordRecovery()} disabled={loginLoading}>
+                パスワードを設定する
+              </button>
             </form>
+            {recoverySent && <p className="kpi-login-notice">設定メールを送信しました。メール内のリンクを開いてください。</p>}
             {loginError && <p className="kpi-login-error" role="alert">{loginError}</p>}
           </>}
           {access === "denied" && <p>この画面は運営管理者専用です。</p>}
