@@ -138,6 +138,7 @@
     "verify:supabase-target:preview": "node scripts/verify_supabase_target.mjs --environment preview",
     "verify:fixed-preview-parity": "node scripts/verify_fixed_preview_schema_parity.mjs",
     "verify:oauth-origin": "node --experimental-strip-types scripts/verify_oauth_origin_contract.mjs",
+    "verify:production-supabase-url": "node --experimental-strip-types scripts/verify_production_supabase_url.mjs",
     "supabase:guarded": "node scripts/run_guarded_supabase.mjs",
     "supabase:link:guarded": "node scripts/link_guarded_supabase.mjs",
     "supabase:link:development": "node scripts/link_guarded_supabase.mjs --environment development",

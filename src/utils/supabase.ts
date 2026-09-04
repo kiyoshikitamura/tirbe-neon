@@ -1,5 +1,6 @@
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import { MockSupabaseClient } from "./mock/MockSupabaseClient";
+import { isValidSupabaseUrl } from "./supabaseUrl";
 
 const appEnvironment = process.env.NEXT_PUBLIC_APP_ENV?.trim().toLowerCase() || "development";
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() || "";
@@ -17,7 +18,7 @@ if (!forceMock && (!supabaseUrl || !supabaseAnonKey)) {
   );
 }
 
-if (!forceMock && !/^https:\/\/[a-z0-9-]+\.supabase\.co\/?$/i.test(supabaseUrl)) {
+if (!forceMock && !isValidSupabaseUrl(supabaseUrl, appEnvironment)) {
   throw new Error(`NEXT_PUBLIC_SUPABASE_URL is not a valid Supabase project URL for ${appEnvironment}.`);
 }
 
