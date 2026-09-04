@@ -7,6 +7,7 @@ import {
 
 const nextConfig = await readFile("next.config.ts", "utf8");
 const page = await readFile("src/app/admin/kpi/page.tsx", "utf8");
+const dashboard = await readFile("src/app/admin/kpi/KpiDashboard.tsx", "utf8");
 const refreshRoute = await readFile("src/app/api/admin/kpi/refresh/route.ts", "utf8");
 const envExample = await readFile(".env.example", "utf8");
 
@@ -18,6 +19,11 @@ assert.match(nextConfig, /destination:\s*"\/admin\/kpi"/);
 assert.match(nextConfig, /permanent:\s*false/);
 
 assert.match(page, /validateProductionKpiRuntime/);
+assert.match(dashboard, /signInWithPassword/);
+assert.match(dashboard, /app_metadata\?\.role !== "admin"/);
+assert.match(dashboard, /autoComplete="username"/);
+assert.match(dashboard, /autoComplete="current-password"/);
+assert.doesNotMatch(dashboard, /signInWithOAuth/);
 assert.match(refreshRoute, /validateProductionKpiRuntime/);
 assert.match(envExample, /NEXT_PUBLIC_KPI_DATA_ENV=/);
 assert.match(envExample, /SUPABASE_SERVICE_ROLE_KEY=/);

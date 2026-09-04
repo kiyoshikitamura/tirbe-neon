@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import type { FormEvent } from "react";
 import { supabase } from "@/utils/supabase";
-import { OAUTH_RETURN_INTENT_KEY, rememberOAuthReturnTo } from "@/utils/browserDetection";
 
 type Category = "acquisition" | "active_retention" | "guild" | "content" | "revenue";
 type PeriodType = "daily" | "monthly" | "cohort";
@@ -173,6 +173,8 @@ export default function KpiDashboard() {
   const [message, setMessage] = useState<string | null>(null);
   const [loginLoading, setLoginLoading] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
   const [isMobile, setIsMobile] = useState(true);
 
   const allowedPeriods = useMemo<PeriodType[]>(() => {
@@ -265,22 +267,30 @@ export default function KpiDashboard() {
     setRefreshing(false);
   };
 
-  const loginWithGoogle = async () => {
+  const loginWithPassword = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
     if (loginLoading) return;
     setLoginLoading(true);
     setLoginError(null);
-    const callback = new URL("/auth/callback", window.location.origin);
-    callback.searchParams.set("return_to", "/admin/kpi");
-    rememberOAuthReturnTo("/admin/kpi");
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: { redirectTo: callback.toString() },
+    const email = loginEmail.trim().toLowerCase();
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password: loginPassword,
     });
     if (error) {
-      window.localStorage.removeItem(OAUTH_RETURN_INTENT_KEY);
-      setLoginError(error.message);
+      setLoginError("メールアドレスまたはパスワードを確認してください。");
       setLoginLoading(false);
+      return;
     }
+    if (data.session?.user.app_metadata?.role !== "admin") {
+      await supabase.auth.signOut();
+      setLoginError("このアカウントには管理者権限がありません。");
+      setLoginLoading(false);
+      return;
+    }
+    setLoginPassword("");
+    setAccess("admin");
+    setLoginLoading(false);
   };
 
   if (access !== "admin") {
@@ -292,9 +302,31 @@ export default function KpiDashboard() {
           {access === "loading" && <p>権限を確認しています…</p>}
           {access === "signed-out" && <>
             <p>管理者アカウントでログインしてください。</p>
-            <button className="kpi-google-login" type="button" onClick={() => void loginWithGoogle()} disabled={loginLoading}>
-              {loginLoading ? "Googleへ接続中…" : "Googleでログイン"}
-            </button>
+            <form className="kpi-login-form" onSubmit={(event) => void loginWithPassword(event)}>
+              <label htmlFor="kpi-login-email">メールアドレス</label>
+              <input
+                id="kpi-login-email"
+                type="email"
+                autoComplete="username"
+                value={loginEmail}
+                onChange={(event) => setLoginEmail(event.target.value)}
+                required
+                disabled={loginLoading}
+              />
+              <label htmlFor="kpi-login-password">パスワード</label>
+              <input
+                id="kpi-login-password"
+                type="password"
+                autoComplete="current-password"
+                value={loginPassword}
+                onChange={(event) => setLoginPassword(event.target.value)}
+                required
+                disabled={loginLoading}
+              />
+              <button className="kpi-password-login" type="submit" disabled={loginLoading}>
+                {loginLoading ? "確認中…" : "ログイン"}
+              </button>
+            </form>
             {loginError && <p className="kpi-login-error" role="alert">{loginError}</p>}
           </>}
           {access === "denied" && <p>この画面は運営管理者専用です。</p>}
