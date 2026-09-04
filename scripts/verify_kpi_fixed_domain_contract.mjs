@@ -10,7 +10,7 @@ const page = await readFile("src/app/admin/kpi/page.tsx", "utf8");
 const dashboard = await readFile("src/app/admin/kpi/KpiDashboard.tsx", "utf8");
 const refreshRoute = await readFile("src/app/api/admin/kpi/refresh/route.ts", "utf8");
 const snapshotsRoute = await readFile("src/app/api/admin/kpi/snapshots/route.ts", "utf8");
-const proxy = await readFile("proxy.ts", "utf8");
+const proxy = await readFile("src/proxy.ts", "utf8");
 const envExample = await readFile(".env.example", "utf8");
 
 for (const host of ["kpi.tribe-neon.com", "kpi-preview.tribe-neon.com"]) {
