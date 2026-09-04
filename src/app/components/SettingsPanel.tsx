@@ -148,7 +148,7 @@ export default function SettingsPanel() {
           <nav className="settings-legal-links" aria-label="法的情報">
             <Link href="/legal/terms?from=settings" onClick={rememberLegalReturn}>利用規約</Link>
             <Link href="/legal/privacy?from=settings" onClick={rememberLegalReturn}>プライバシーポリシー</Link>
-            <Link href="/legal/commercial?from=settings" onClick={rememberLegalReturn}>特定商取引法に基づく表記</Link>
+            <Link href="/legal/tokusho?from=settings" onClick={rememberLegalReturn}>特定商取引法に基づく表記</Link>
           </nav>
         </section>
         <div className="settings-panel-footer">

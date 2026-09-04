@@ -51,7 +51,7 @@ test("title screen opens the authentication menu", async ({ page }) => {
   await expect(page.locator(".title-view-container")).toHaveCSS("background-image", /branding\/title-key-visual\.png/);
   await expect(page.getByRole("link", { name: "利用規約" })).toHaveAttribute("href", "/legal/terms");
   await expect(page.getByRole("link", { name: "プライバシーポリシー" })).toHaveAttribute("href", "/legal/privacy");
-  await expect(page.getByRole("link", { name: "特定商取引法に基づく表記" })).toHaveAttribute("href", "/legal/commercial");
+  await expect(page.getByRole("link", { name: "特定商取引法に基づく表記" })).toHaveAttribute("href", "/legal/tokusho");
 
   await page.getByText("TAP TO START").click();
 

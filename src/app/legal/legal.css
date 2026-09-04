@@ -87,8 +87,18 @@
   font-size: 14px;
 }
 
-.legal-page-content ul {
+.legal-page-content ul,
+.legal-page-content ol {
   padding-left: 1.4em;
+}
+
+.legal-page-content li + li {
+  margin-top: 0.45em;
+}
+
+.legal-page-content a {
+  color: #80dfff;
+  text-underline-offset: 3px;
 }
 
 .legal-page-notice {

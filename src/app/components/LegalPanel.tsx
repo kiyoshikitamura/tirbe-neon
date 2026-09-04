@@ -5,7 +5,7 @@ import { useGame } from "../context/GameContext";
 const LEGAL_ROUTES: Record<string, string> = {
   tos: "/legal/terms",
   privacy: "/legal/privacy",
-  commercial: "/legal/commercial",
+  commercial: "/legal/tokusho",
 };
 
 export default function LegalPanel() {

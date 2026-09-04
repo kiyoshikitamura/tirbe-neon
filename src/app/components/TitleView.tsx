@@ -104,7 +104,7 @@ export default function TitleView() {
           <div className="title-legal-links" onClick={(event) => event.stopPropagation()}>
             <Link href="/legal/terms">利用規約</Link>
             <Link href="/legal/privacy">プライバシーポリシー</Link>
-            <Link href="/legal/commercial">特定商取引法に基づく表記</Link>
+            <Link href="/legal/tokusho">特定商取引法に基づく表記</Link>
           </div>
           <div className="title-copyright">
             <span>v0.1.0</span>

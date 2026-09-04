@@ -40,9 +40,9 @@ async function enterGame(page: Page) {
 }
 
 const legalRoutes = [
-  { path: "/legal/terms", title: "利用規約", notice: "開発・検証環境用の草案" },
-  { path: "/legal/privacy", title: "プライバシーポリシー", notice: "開発・検証環境用の草案" },
-  { path: "/legal/commercial", title: "特定商取引法に基づく表記", notice: "未確定" },
+  { path: "/legal/terms", title: "利用規約", body: "第18条（お問い合わせ）" },
+  { path: "/legal/privacy", title: "プライバシーポリシー", body: "第12条（お問い合わせ）" },
+  { path: "/legal/tokusho", title: "特定商取引法に基づく表記", body: "返品・キャンセル・返金" },
 ] as const;
 
 for (const viewport of [{ width: 390, height: 844 }, { width: 412, height: 915 }, { width: 1280, height: 900 }]) {
@@ -51,10 +51,17 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 412, height: 915 }
       await page.setViewportSize(viewport);
       await page.goto(legal.path);
       await expect(page.getByRole("heading", { name: legal.title, level: 1 })).toBeVisible();
-      await expect(page.locator(".legal-page-notice")).toContainText(legal.notice);
+      await expect(page).toHaveTitle(`${legal.title} | TRIBE NEON`);
+      await expect(page.locator(".legal-page-updated")).toContainText("2026年9月4日");
+      await expect(page.locator(".legal-page-content")).toContainText(legal.body);
+      await expect(page.getByRole("link", { name: "original.title.support@gmail.com" })).toHaveAttribute("href", "mailto:original.title.support@gmail.com");
+      await expect(page.locator(".legal-page-notice")).toHaveCount(0);
       await expect(page.getByRole("navigation", { name: "法的情報" }).getByRole("link")).toHaveCount(3);
       await expect(page.getByText("株式会社〇〇", { exact: false })).toHaveCount(0);
       await expect(page.getByText("info@example.com", { exact: false })).toHaveCount(0);
+      await expect(page.getByText("Code: Wirth-Dawn", { exact: false })).toHaveCount(0);
+      await expect(page.getByText("Stripe Customer Portal", { exact: false })).toHaveCount(0);
+      await expect(page.getByText("購入日から120日", { exact: false })).toHaveCount(0);
 
       const geometry = await page.locator(".legal-page").evaluate((root) => ({
         clientWidth: root.clientWidth,
@@ -81,7 +88,7 @@ test("authenticated Settings exposes the canonical legal routes", async ({ page 
   const legalNavigation = page.getByRole("navigation", { name: "法的情報" });
   await expect(legalNavigation.getByRole("link", { name: "利用規約" })).toHaveAttribute("href", "/legal/terms?from=settings");
   await expect(legalNavigation.getByRole("link", { name: "プライバシーポリシー" })).toHaveAttribute("href", "/legal/privacy?from=settings");
-  await expect(legalNavigation.getByRole("link", { name: "特定商取引法に基づく表記" })).toHaveAttribute("href", "/legal/commercial?from=settings");
+  await expect(legalNavigation.getByRole("link", { name: "特定商取引法に基づく表記" })).toHaveAttribute("href", "/legal/tokusho?from=settings");
 
   await legalNavigation.getByRole("link", { name: "利用規約" }).click();
   await expect(page.getByRole("button", { name: "閉じる", exact: true })).toBeVisible();
@@ -92,6 +99,12 @@ test("authenticated Settings exposes the canonical legal routes", async ({ page 
   await expect(page.locator(".header-mobile")).toBeVisible();
   await expect(page.getByRole("dialog", { name: "設定" })).toBeVisible();
   await expect(page).not.toHaveURL(/return_from=legal_settings/);
+});
+
+test("the legacy commercial route redirects to the canonical tokusho route", async ({ page }) => {
+  await page.goto("/legal/commercial?from=settings");
+  await expect(page).toHaveURL(/\/legal\/tokusho\?from=settings$/);
+  await expect(page.getByRole("heading", { name: "特定商取引法に基づく表記", level: 1 })).toBeVisible();
 });
 
 test("direct legal return query cannot bypass Title without a session marker", async ({ page }) => {
