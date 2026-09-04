@@ -347,6 +347,51 @@ test("email confirmation wait survives reload and finalizes after the callback s
   await expect.poll(async () => page.evaluate(() => localStorage.getItem("tribe_onboarding_email_intent"))).toBeNull();
 });
 
+test("verified email return without local intent resumes finalization before home", async ({ page }) => {
+  await page.addInitScript(() => {
+    const userId = "00000000-0000-4000-8000-000000000099";
+    localStorage.setItem("tribe_demo_uuid", userId);
+    localStorage.setItem("mock_auth_mode", "EMAIL");
+    localStorage.removeItem("tribe_onboarding_email_intent");
+    localStorage.setItem("mock_db_users", JSON.stringify([{
+      id: userId,
+      username: "メール確認済み",
+      current_base_id: "neon_tower",
+      favorite_character_id: "char_reiji_01",
+    }]));
+    localStorage.setItem("mock_db_tutorial_progress", JSON.stringify([{
+      user_id: userId,
+      step_id: "COMPLETE",
+      authentication_pending: false,
+    }]));
+    localStorage.setItem("mock_db_user_account_auth_methods", "[]");
+    localStorage.setItem("mock_db_auth_identities", JSON.stringify([{
+      user_id: userId,
+      provider: "email",
+      email: "confirmed@example.com",
+    }]));
+  });
+
+  await page.goto("/");
+
+  await expect(page.getByRole("dialog", { name: "ゲームデータを保存" })).toBeVisible();
+  await expect(page.getByRole("status")).toContainText("メール確認が完了しました");
+  await expect(page.getByRole("button", { name: "そのまま続ける" })).toHaveCount(0);
+  await expect(page.locator("header")).toHaveCount(0);
+  await expect(page.locator("footer")).toHaveCount(0);
+
+  await page.getByPlaceholder("パスワード（6文字以上）").fill("secure-pass-123");
+  await page.getByRole("button", { name: "パスワードを設定して完了" }).click();
+
+  await expect(page.getByRole("dialog", { name: "ゲームデータを保存" })).toBeHidden();
+  await expect.poll(async () => page.evaluate(() => ({
+    progress: JSON.parse(localStorage.getItem("mock_db_tutorial_progress") || "[]")[0]?.step_id,
+    method: JSON.parse(localStorage.getItem("mock_db_user_account_auth_methods") || "[]")[0]?.auth_method,
+  }))).toEqual({ progress: "AUTHENTICATION", method: "EMAIL" });
+  await expect(page.locator("header")).toBeVisible();
+  await expect(page.locator("footer")).toBeVisible();
+});
+
 test("email confirmation return with a different uid is rejected before finalization", async ({ page }) => {
   const sourceUserId = "00000000-0000-4000-8000-000000000099";
   const returnedUserId = "00000000-0000-4000-8000-000000000299";

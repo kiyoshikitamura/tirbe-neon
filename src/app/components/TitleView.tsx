@@ -16,8 +16,15 @@ export default function TitleView() {
   // creating a second anonymous lifecycle.
   const canStartNewGame = entryReady && !session;
   const isAnonymousSession = Boolean(session?.user?.is_anonymous);
+  const requiresEmailCompletion = Boolean(session
+    && !isAnonymousSession
+    && !onboardingState?.gameplay_authorized
+    && onboardingState?.tutorial_step === "COMPLETE"
+    && onboardingState?.auth_method === "EMAIL");
   const continueLabel = session
-    ? isAnonymousSession && !onboardingState?.gameplay_authorized
+    ? requiresEmailCompletion
+      ? "メール認証を完了"
+      : isAnonymousSession && !onboardingState?.gameplay_authorized
       ? "チュートリアルを続ける"
       : "続きから"
     : "データをお持ちの方";

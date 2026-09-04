@@ -879,13 +879,15 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         clearLegalSettingsReturn();
         setShowTitleView(true);
       }
-      const isVerifiedEmailReturn = Boolean(emailIntent
-        && nextState.user_id === emailIntent.userId
-        && !nextState.is_anonymous
+      // A verified email may return in a browser context without the local
+      // intent. Resume from the same-UID server projection instead of leaving
+      // the account on COMPLETE with gameplay_authorized=false.
+      const isVerifiedEmailReturn = Boolean(!nextState.is_anonymous
         && nextState.has_profile
         && nextState.tutorial_step === "COMPLETE"
         && nextState.auth_method === "EMAIL"
-        && nextState.identity_integrity_valid);
+        && nextState.identity_integrity_valid
+        && (!emailIntent || emailIntent.userId === userId));
       if (isVerifiedEmailReturn) {
         setShowTitleView(false);
         setShowAccountAuthenticationModal(true);
@@ -1102,10 +1104,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const userId = session?.user?.id;
-    const emailIntent = readEmailOnboardingIntent();
     const emailConfirmationPending = Boolean(
       userId
-      && emailIntent?.userId === userId
       && !session?.user?.is_anonymous
       && onboardingState?.user_id === userId
       && onboardingState?.tutorial_step === "COMPLETE"
@@ -2214,6 +2214,19 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       setTotalPowerLoading(false);
       setAuthenticatedProjectionOwnerUserId(userId);
       setOnboardingState(state);
+      const requiresEmailCompletion = Boolean(!state.is_anonymous
+        && state.has_profile
+        && state.tutorial_step === "COMPLETE"
+        && state.auth_method === "EMAIL"
+        && state.identity_integrity_valid
+        && !state.gameplay_authorized);
+      if (requiresEmailCompletion) {
+        setActiveTab("home");
+        setShowAccountAuthenticationModal(true);
+        setShowTitleView(false);
+        void syncBootstrapData(userId).catch((bootstrapError) => console.warn("Background resume bootstrap failed:", bootstrapError));
+        return true;
+      }
       if (state.tutorial_step === "TUTORIAL_BATTLE") {
         const { data: resumablePatrol } = await supabase
           .from("user_patrols")

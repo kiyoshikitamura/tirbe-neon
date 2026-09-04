@@ -283,20 +283,27 @@ export default function AccountAuthenticationModal() {
   const googleIdentityMismatch = Boolean(googleIntent && session?.user?.id && googleIntent.userId !== session.user.id);
   const providers = new Set((session?.user?.identities || []).map((identity: { provider?: string }) => identity.provider));
   const hasOnlyEmailIdentity = !session?.user?.is_anonymous && providers.has("email") && !providers.has("google");
-  const verifiedEmailReturn = Boolean(emailIntent
-    && hasOnlyEmailIdentity
-    && session?.user?.id === emailIntent.userId
-    && onboardingState?.user_id === emailIntent.userId
+  // Email confirmation can return in a new tab/browser context where the
+  // local intent is unavailable. The same-UID authenticated identity and the
+  // server onboarding projection are the durable authority for resuming the
+  // password/finalization step. A present mismatched intent still fails closed.
+  const emailCompletionAuthorityReady = Boolean(hasOnlyEmailIdentity
+    && session?.user?.id
+    && onboardingState?.user_id === session.user.id
     && onboardingState?.has_profile
-    && onboardingState?.tutorial_step === "COMPLETE");
+    && onboardingState?.tutorial_step === "COMPLETE"
+    && onboardingState?.auth_method === "EMAIL"
+    && onboardingState?.identity_integrity_valid
+    && !onboardingState?.gameplay_authorized);
   const emailIdentityMismatch = Boolean(emailIntent && session?.user?.id && emailIntent.userId !== session.user.id);
+  const displayedEmail = email || (emailCompletionAuthorityReady ? session?.user?.email || "" : "");
 
   const ownsAnonymousOnboardingState = session?.user?.is_anonymous === true
     && onboardingState?.user_id === session.user.id
     && onboardingState?.is_anonymous;
 
-  if ((!ownsAnonymousOnboardingState && !accountConflict && !googleIdentityMismatch && !verifiedEmailReturn && !emailIdentityMismatch)
-    || (!isTutorialCompletion && !showAccountAuthenticationModal && !googleIdentityMismatch && !verifiedEmailReturn && !emailIdentityMismatch)
+  if ((!ownsAnonymousOnboardingState && !accountConflict && !googleIdentityMismatch && !emailCompletionAuthorityReady && !emailIdentityMismatch)
+    || (!isTutorialCompletion && !showAccountAuthenticationModal && !googleIdentityMismatch && !emailCompletionAuthorityReady && !emailIdentityMismatch)
     || (showTitleView && hiddenForTitle)) return null;
 
   const continueWithoutAuthentication = async () => {
@@ -344,9 +351,14 @@ export default function AccountAuthenticationModal() {
     playCyberSe("click");
     if (hasOnlyEmailIdentity) {
       const emailIntent = readEmailOnboardingIntent();
-      if (!emailIntent || emailIntent.userId !== session?.user?.id) {
+      if (emailIntent && emailIntent.userId !== session?.user?.id) {
         window.localStorage.removeItem(EMAIL_ONBOARDING_INTENT_KEY);
         setError("メール連携の開始時と異なるユーザーが検出されました。データ保護のため連携を中止しました。");
+        endWorking();
+        return;
+      }
+      if (!emailCompletionAuthorityReady) {
+        setError("メール認証済みのゲームデータを安全に確認できませんでした。タイトルからもう一度お試しください。");
         endWorking();
         return;
       }
@@ -442,7 +454,7 @@ export default function AccountAuthenticationModal() {
   const pendingEmailNotice = session?.user?.is_anonymous && session?.user?.new_email
     ? `確認メールを ${session.user.new_email} に送信しました。メール内のリンクを開いてください。`
     : null;
-  const verifiedEmailNotice = hasOnlyEmailIdentity
+  const verifiedEmailNotice = emailCompletionAuthorityReady
     ? "メール確認が完了しました。パスワードを入力してアカウント連携を完了してください。"
     : null;
   const displayedNotice = notice || pendingEmailNotice || verifiedEmailNotice;
@@ -498,12 +510,12 @@ export default function AccountAuthenticationModal() {
           {working ? "連携中..." : "Googleアカウントを連携"}
         </button>
         <div className="auth-method-divider mt-3 mb-3"><span>またはメールで連携</span></div>
-        <input className="auth-input mb-2" type="email" placeholder="メールアドレス" value={email} onChange={(event) => setEmail(event.target.value)} disabled={hasOnlyEmailIdentity} />
+        <input className="auth-input mb-2" type="email" placeholder="メールアドレス" value={displayedEmail} onChange={(event) => setEmail(event.target.value)} disabled={hasOnlyEmailIdentity} />
         <input className="auth-input" type="password" placeholder="パスワード（6文字以上）" value={password} onChange={(event) => setPassword(event.target.value)} />
         <button className="semantic-cta semantic-cta--secondary mt-3 width-100" onClick={() => void connectEmail()} disabled={working || googleIdentityMismatch || emailIdentityMismatch} aria-busy={working}>
           {working ? "連携中..." : hasOnlyEmailIdentity ? "パスワードを設定して完了" : "メールアカウントを連携"}
         </button>
-        {isTutorialCompletion && <button className="semantic-cta semantic-cta--secondary mt-2 width-100" onClick={() => void continueWithoutAuthentication()} disabled={working}>
+        {isTutorialCompletion && session?.user?.is_anonymous && <button className="semantic-cta semantic-cta--secondary mt-2 width-100" onClick={() => void continueWithoutAuthentication()} disabled={working}>
           そのまま続ける
         </button>}
         {showAccountAuthenticationModal ? <button className="semantic-cta semantic-cta--secondary mt-2 width-100" onClick={closeFromMyPage} disabled={working}>
