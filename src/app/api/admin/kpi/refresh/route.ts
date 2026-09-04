@@ -30,23 +30,9 @@ export async function POST(request: NextRequest) {
   }
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
-  if (!url || !anonKey || !serviceKey) {
+  if (!url || !serviceKey) {
     return NextResponse.json({ error: "ProductionのKPIサーバー設定が未完了です。" }, { status: 503 });
-  }
-
-  const authorization = request.headers.get("authorization") || "";
-  const token = authorization.startsWith("Bearer ") ? authorization.slice(7) : "";
-  if (!token) return NextResponse.json({ error: "認証が必要です。" }, { status: 401 });
-
-  const authClient = createClient(url, anonKey, {
-    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
-  });
-  const { data: userData, error: authError } = await authClient.auth.getUser(token);
-  if (authError || !userData.user) return NextResponse.json({ error: "セッションが無効です。" }, { status: 401 });
-  if (userData.user.app_metadata?.role !== "admin") {
-    return NextResponse.json({ error: "管理者権限が必要です。" }, { status: 403 });
   }
 
   const body = await request.json().catch(() => null) as null | Record<string, unknown>;
@@ -75,7 +61,7 @@ export async function POST(request: NextRequest) {
     p_period_type: periodType,
     p_period_start: periodStart,
     p_period_end: periodEnd,
-    p_requested_by: userData.user.id,
+    p_requested_by: null,
   });
   if (refreshError || !runId) {
     return NextResponse.json({ error: refreshError?.message || "集計runを作成できませんでした。" }, { status: 500 });

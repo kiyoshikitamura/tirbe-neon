@@ -1,12 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { FormEvent } from "react";
-import { supabase } from "@/utils/supabase";
 
 type Category = "acquisition" | "active_retention" | "guild" | "content" | "revenue";
 type PeriodType = "daily" | "monthly" | "cohort";
-type AccessState = "loading" | "admin" | "signed-out" | "denied";
 
 type Snapshot = {
   run_id: string;
@@ -62,7 +59,6 @@ const kpiDataEnvironment = process.env.NEXT_PUBLIC_KPI_DATA_ENV === "production"
   ? "production"
   : "preview";
 const kpiDataEnvironmentLabel = kpiDataEnvironment === "production" ? "Production" : "Preview";
-const KPI_PASSWORD_RECOVERY_KEY = "tribe_kpi_password_recovery";
 
 function jstToday() {
   return new Intl.DateTimeFormat("sv-SE", {
@@ -164,7 +160,6 @@ function mockSnapshots(category: Category, periodType: PeriodType, date: string)
 }
 
 export default function KpiDashboard() {
-  const [access, setAccess] = useState<AccessState>(mockAdminPreview ? "admin" : "loading");
   const [category, setCategory] = useState<Category>("acquisition");
   const [periodType, setPeriodType] = useState<PeriodType>("daily");
   const [selectedDate, setSelectedDate] = useState(jstToday);
@@ -172,11 +167,6 @@ export default function KpiDashboard() {
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-  const [loginLoading, setLoginLoading] = useState(false);
-  const [loginError, setLoginError] = useState<string | null>(null);
-  const [loginEmail, setLoginEmail] = useState("");
-  const [loginPassword, setLoginPassword] = useState("");
-  const [recoverySent, setRecoverySent] = useState(false);
   const [isMobile, setIsMobile] = useState(true);
 
   const allowedPeriods = useMemo<PeriodType[]>(() => {
@@ -194,21 +184,7 @@ export default function KpiDashboard() {
     return () => query.removeEventListener("change", update);
   }, []);
 
-  useEffect(() => {
-    if (mockAdminPreview) return;
-    let active = true;
-    void supabase.auth.getSession().then(({ data }) => {
-      if (!active) return;
-      const user = data.session?.user;
-      if (!user) setAccess("signed-out");
-      else if (user.app_metadata?.role === "admin") setAccess("admin");
-      else setAccess("denied");
-    });
-    return () => { active = false; };
-  }, []);
-
   const loadSnapshots = useCallback(async () => {
-    if (access !== "admin") return;
     setLoading(true);
     setMessage(null);
     if (mockAdminPreview) {
@@ -216,20 +192,22 @@ export default function KpiDashboard() {
       setLoading(false);
       return;
     }
-    const { data, error } = await supabase.rpc("get_latest_kpi_snapshots", {
-      p_category: category,
-      p_period_type: periodType,
-      p_period_start: range.start,
-      p_period_end: range.end,
+    const params = new URLSearchParams({
+      category,
+      periodType,
+      periodStart: range.start,
+      periodEnd: range.end,
     });
-    if (error) {
+    const response = await fetch(`/api/admin/kpi/snapshots?${params}`, { cache: "no-store" });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) {
       setRows([]);
-      setMessage(`読込に失敗しました: ${error.message}`);
+      setMessage(`読込に失敗しました: ${result.error || "不明なエラー"}`);
     } else {
-      setRows((data || []) as Snapshot[]);
+      setRows((result.snapshots || []) as Snapshot[]);
     }
     setLoading(false);
-  }, [access, category, periodType, range.end, range.start]);
+  }, [category, periodType, range.end, range.start]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => { void loadSnapshots(); }, 0);
@@ -244,19 +222,12 @@ export default function KpiDashboard() {
   };
 
   const refresh = async () => {
-    if (isMobile || access !== "admin") return;
+    if (isMobile) return;
     setRefreshing(true);
     setMessage(null);
-    const { data: sessionData } = await supabase.auth.getSession();
-    const token = sessionData.session?.access_token;
-    if (!token) {
-      setMessage("セッションを確認できません。再ログインしてください。");
-      setRefreshing(false);
-      return;
-    }
     const response = await fetch("/api/admin/kpi/refresh", {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ category, periodType, periodStart: range.start, periodEnd: range.end }),
     });
     const result = await response.json().catch(() => ({}));
@@ -268,99 +239,6 @@ export default function KpiDashboard() {
     }
     setRefreshing(false);
   };
-
-  const loginWithPassword = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (loginLoading) return;
-    setLoginLoading(true);
-    setLoginError(null);
-    const email = loginEmail.trim().toLowerCase();
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password: loginPassword,
-    });
-    if (error) {
-      setLoginError("メールアドレスまたはパスワードを確認してください。");
-      setLoginLoading(false);
-      return;
-    }
-    if (data.session?.user.app_metadata?.role !== "admin") {
-      await supabase.auth.signOut();
-      setLoginError("このアカウントには管理者権限がありません。");
-      setLoginLoading(false);
-      return;
-    }
-    setLoginPassword("");
-    setAccess("admin");
-    setLoginLoading(false);
-  };
-
-  const sendPasswordRecovery = async () => {
-    const email = loginEmail.trim().toLowerCase();
-    if (!email) {
-      setLoginError("メールアドレスを入力してください。");
-      return;
-    }
-    setLoginLoading(true);
-    setLoginError(null);
-    setRecoverySent(false);
-    window.localStorage.setItem(KPI_PASSWORD_RECOVERY_KEY, JSON.stringify({ startedAt: Date.now() }));
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: new URL("/auth/callback", window.location.origin).toString(),
-    });
-    if (error) {
-      window.localStorage.removeItem(KPI_PASSWORD_RECOVERY_KEY);
-      setLoginError("パスワード設定メールを送信できませんでした。");
-    }
-    else setRecoverySent(true);
-    setLoginLoading(false);
-  };
-
-  if (access !== "admin") {
-    return (
-      <main className="kpi-shell kpi-access-shell">
-        <section className="kpi-access-card">
-          <span className="kpi-kicker">TRIBE NEON / {kpiDataEnvironment.toUpperCase()}</span>
-          <h1>KPI Control Room</h1>
-          {access === "loading" && <p>権限を確認しています…</p>}
-          {access === "signed-out" && <>
-            <p>管理者アカウントでログインしてください。</p>
-            <form className="kpi-login-form" onSubmit={(event) => void loginWithPassword(event)}>
-              <label htmlFor="kpi-login-email">メールアドレス</label>
-              <input
-                id="kpi-login-email"
-                type="email"
-                autoComplete="username"
-                value={loginEmail}
-                onChange={(event) => setLoginEmail(event.target.value)}
-                required
-                disabled={loginLoading}
-              />
-              <label htmlFor="kpi-login-password">パスワード</label>
-              <input
-                id="kpi-login-password"
-                type="password"
-                autoComplete="current-password"
-                value={loginPassword}
-                onChange={(event) => setLoginPassword(event.target.value)}
-                required
-                disabled={loginLoading}
-              />
-              <button className="kpi-password-login" type="submit" disabled={loginLoading}>
-                {loginLoading ? "確認中…" : "ログイン"}
-              </button>
-              <button className="kpi-recovery-button" type="button" onClick={() => void sendPasswordRecovery()} disabled={loginLoading}>
-                パスワードを設定する
-              </button>
-            </form>
-            {recoverySent && <p className="kpi-login-notice">設定メールを送信しました。メール内のリンクを開いてください。</p>}
-            {loginError && <p className="kpi-login-error" role="alert">{loginError}</p>}
-          </>}
-          {access === "denied" && <p>この画面は運営管理者専用です。</p>}
-        </section>
-      </main>
-    );
-  }
 
   const selectedCategory = categories.find((item) => item.id === category)!;
   const lastUpdated = rows[0]?.finished_at;

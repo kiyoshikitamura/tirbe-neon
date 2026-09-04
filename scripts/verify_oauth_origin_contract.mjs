@@ -76,7 +76,7 @@ assert.match(callbackSource, /Googleログインの確認がタイムアウト�
 assert.match(callbackSource, /consumeRememberedOAuthReturnTo/);
 
 const kpiDashboardSource = await readFile("src/app/admin/kpi/KpiDashboard.tsx", "utf8");
-assert.match(kpiDashboardSource, /signInWithPassword/);
+assert.doesNotMatch(kpiDashboardSource, /signInWithPassword/);
 assert.doesNotMatch(kpiDashboardSource, /signInWithOAuth/);
 
 const bundleDirectory = process.env.OAUTH_BUNDLE_DIR?.trim();
