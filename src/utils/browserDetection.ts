@@ -85,7 +85,18 @@ export function getOAuthReturnUrl(callbackUrl?: string): string {
   const value = callbackUrl ?? (typeof window === "undefined" ? "" : window.location.href);
   if (!value) return "/";
   const callback = removeOAuthParameters(new URL(value));
-  const destination = new URL("/", callback.origin);
-  callback.searchParams.forEach((paramValue, key) => destination.searchParams.append(key, paramValue));
+  const returnTo = callback.searchParams.get("return_to");
+  const returnDestination = returnTo?.startsWith("/")
+    && !returnTo.startsWith("//")
+    && !returnTo.includes("\\")
+    ? new URL(returnTo, callback.origin)
+    : null;
+  const safePath = returnDestination?.origin === callback.origin
+    ? `${returnDestination.pathname}${returnDestination.search}${returnDestination.hash}`
+    : "/";
+  const destination = new URL(safePath, callback.origin);
+  callback.searchParams.forEach((paramValue, key) => {
+    if (key !== "return_to") destination.searchParams.append(key, paramValue);
+  });
   return destination.toString();
 }

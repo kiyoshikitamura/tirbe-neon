@@ -7,11 +7,26 @@ const previewOrigin = "https://tribe-neon-mobile-preview.vercel.app";
 const productionOrigin = "https://tirbe-neon.vercel.app";
 const productionSupabaseRef = "ktpolnkyyfkowxdmijww";
 const branchPreviewOrigin = "https://tribe-neon-git-codex-human-ng-remediati-49702c-kiyoshi-kitamura.vercel.app";
+const kpiOrigins = ["https://kpi.tribe-neon.com", "https://kpi-preview.tribe-neon.com"];
 
-for (const origin of [previewOrigin, branchPreviewOrigin, productionOrigin, "http://localhost:3000"]) {
+for (const origin of [previewOrigin, branchPreviewOrigin, productionOrigin, ...kpiOrigins, "http://localhost:3000"]) {
   const callback = getOAuthCallbackUrl(`${origin}/?invite=ORIGIN-GATE`);
   assert.equal(callback, `${origin}/auth/callback?invite=ORIGIN-GATE`);
   assert.equal(getOAuthReturnUrl(`${callback}&code=redacted`), `${origin}/?invite=ORIGIN-GATE`);
+  assert.equal(
+    getOAuthReturnUrl(`${origin}/auth/callback?return_to=%2Fadmin%2Fkpi&code=redacted`),
+    `${origin}/admin/kpi`,
+  );
+  for (const unsafeReturnTo of [
+    "https://example.com/admin/kpi",
+    "//example.com/admin/kpi",
+    "/\\example.com/admin/kpi",
+  ]) {
+    const unsafeCallback = new URL("/auth/callback", origin);
+    unsafeCallback.searchParams.set("return_to", unsafeReturnTo);
+    unsafeCallback.searchParams.set("code", "redacted");
+    assert.equal(getOAuthReturnUrl(unsafeCallback.toString()), `${origin}/`);
+  }
 }
 
 const previewConfigSource = await readFile("scripts/configure_mobile_preview_auth.mjs", "utf8");
