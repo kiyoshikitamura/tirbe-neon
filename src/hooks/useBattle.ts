@@ -27,12 +27,14 @@ import {
   buildBattlePresentationUnit,
   recordBattleHpProjection,
   reconcileBattleHpFromReplay,
+  waitForBattleHpParityGate,
   waitForRenderedBattleActionHpParity,
   waitForRenderedBattleHpParity,
   type BattleActionPresentation,
 } from "@/domain/presentation/battlePresentationUnit";
 import { resolveBattleSkillLabel, safeBattleCharacterName } from "@/domain/presentation/battleSkillLabels";
 import { canonicalItemName } from "@/domain/gameplay/canonical/items";
+import { battleDisplayText } from "@/domain/presentation/battleTerminology";
 
 export type { UseBattleOptions, ParticipantState, CardState, SkillLogItem };
 
@@ -210,7 +212,7 @@ export function useBattle(options: UseBattleOptions) {
   const [ap, setAp] = useState<number>(0);
   const [maxAp, setMaxAp] = useState<number>(0);
   const [tactic, setTactic] = useState<CompatibleBattleTacticId>("ATTACK_PRIORITY");
-  const [battleSpeed, setBattleSpeed] = useState<number>(1); // 1 = 1x, 2 = 2x
+  const [battleSpeed, setBattleSpeed] = useState<number>(2); // 1 = 1x, 2 = 2x（初期値）
   const [isAutoPaused, setIsAutoPaused] = useState<boolean>(false);
   const [gvgTargetBaseId, setGvgTargetBaseId] = useState<string | null>(null);
   const [battleLoading, setBattleLoading] = useState<boolean>(false);
@@ -272,8 +274,10 @@ export function useBattle(options: UseBattleOptions) {
   const [actionPresentation, setActionPresentation] = useState<BattleActionPresentation | null>(null);
   const [authoritativeTimeline, setAuthoritativeTimeline] = useState<BattlePresentationTimelineNode[]>([]);
   const presentationTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const presentationGateGenerationRef = useRef(0);
 
   const clearPresentationTimers = useCallback(() => {
+    presentationGateGenerationRef.current += 1;
     presentationTimersRef.current.forEach(clearTimeout);
     presentationTimersRef.current = [];
   }, []);
@@ -504,6 +508,9 @@ export function useBattle(options: UseBattleOptions) {
     setBattleResultReplayEvents([]);
     setBattleModeResultDetail(null);
     setBattleSkipPending(false);
+    // Skip pauses replay while it projects the terminal state. A completed
+    // battle must never leak that transport pause into the next encounter.
+    setIsAutoPaused(false);
     let officialGvgDefenseDeck: unknown = null;
     let officialGvgAttackIdForBattle: string | null = null;
     let officialGvgReplayIdForBattle: string | null = null;
@@ -1243,8 +1250,8 @@ export function useBattle(options: UseBattleOptions) {
         setBattleLoading(false);
         const isInsufficientPoint = error?.code === "23514" || /insufficient pvp points/i.test(error?.message || "");
         setErrorMessage(isInsufficientPoint
-          ? "PvP Pointが不足しています。回復を待ってから、もう一度お試しください。"
-          : error?.message || "PvPバトルの開始をサーバーで確定できませんでした。もう一度お試しください。");
+          ? "BPが不足しています。回復を待ってから、もう一度お試しください。"
+          : battleDisplayText(error?.message) || "バトルの開始をサーバーで確定できませんでした。もう一度お試しください。");
         return;
       }
       if (replayMode === "RAID" && (!replaySessionId || error)) {
@@ -1375,7 +1382,7 @@ export function useBattle(options: UseBattleOptions) {
         const canonicalEnemies = patrolSnapshotToParticipants(replayCreation.data?.enemy_snapshot, true);
         if (canonicalPlayers.length === 0 || canonicalEnemies.length === 0) {
           setBattleLoading(false);
-          setErrorMessage("PvPバトルの正規編成を取得できませんでした。もう一度お試しください。");
+          setErrorMessage("バトルの正規編成を取得できませんでした。もう一度お試しください。");
           return;
         }
         initialPlayerParty = canonicalPlayers;
@@ -1408,7 +1415,7 @@ export function useBattle(options: UseBattleOptions) {
         if (resolveError || (resolvedReplay?.winner !== "PLAYER" && resolvedReplay?.winner !== "ENEMY") || events.length === 0) {
           console.warn("Failed to resolve PvP replay on the server:", resolveError?.message);
           setBattleLoading(false);
-          setErrorMessage("PvPバトルの勝敗をサーバーで確定できませんでした。もう一度お試しください。");
+          setErrorMessage("バトルの勝敗をサーバーで確定できませんでした。もう一度お試しください。");
           return;
         }
         officialPvpReplayIdForBattle = replaySessionId;
@@ -1447,6 +1454,9 @@ export function useBattle(options: UseBattleOptions) {
           })),
         };
         initialPlayerParty=canonicalPlayers; initialEnemyParty=canonicalEnemies;
+        // レイドReplayも不変Snapshotの参加者IDを使う。最初のACTIONより前に
+        // PvPと同じく同期参照も揃え、描画後Effectとの競合を防ぐ。
+        playerPartyStatesRef.current=canonicalPlayers; enemyPartyStatesRef.current=canonicalEnemies;
         setPlayerPartyStates(canonicalPlayers); setEnemyPartyStates(canonicalEnemies);
         setTimeline([...canonicalPlayers.map(p=>({id:p.id,name:p.name,isEnemy:false,spd:p.stats.spd})),...canonicalEnemies.map(p=>({id:p.id,name:p.name,isEnemy:true,spd:p.stats.spd}))].sort((a,b)=>b.spd-a.spd));
         officialRaidReplayIdForBattle=replaySessionId; officialRaidWinnerForBattle=resolvedReplay.winner; officialRaidEventsForBattle=events; officialRaidResultForBattle=resolvedReplay;
@@ -1686,6 +1696,7 @@ export function useBattle(options: UseBattleOptions) {
     setBattleSkipPending(true);
     setIsAutoPaused(true);
     clearPresentationTimers();
+    const gateGeneration = presentationGateGenerationRef.current;
     setBattleResultReplayEvents(events);
     setBattleRound(Math.max(1, Number(resultEvent.payload.rounds ?? resultEvent.round ?? 1)));
     // Skip intentionally projects the already-resolved replay endpoint. This
@@ -1699,11 +1710,12 @@ export function useBattle(options: UseBattleOptions) {
     setEnemyPartyStates(canonicalEnemies);
     if (typeof document !== "undefined") document.documentElement.dataset.battleHpSkipProjection = "true";
     const finishSkip = async () => {
-      const parity = await waitForRenderedBattleHpParity([...canonicalPlayers, ...canonicalEnemies]);
-      if (parity && !parity.parity) {
-        presentationTimersRef.current.push(setTimeout(() => void finishSkip(), 120));
-        return;
-      }
+      const gate = await waitForBattleHpParityGate(
+        () => waitForRenderedBattleHpParity([...canonicalPlayers, ...canonicalEnemies]),
+        { boundary: "SKIP", replayId: battleMode === "RAID" ? officialRaidReplayId : null, round: Number(resultEvent.payload.rounds ?? resultEvent.round ?? 1) },
+        { isActive: () => presentationGateGenerationRef.current === gateGeneration },
+      );
+      if (gate.status === "cancelled") return;
       void endBattleSession(resultEvent.payload.winner === "PLAYER" ? "VICTORY" : "DEFEAT");
     };
     presentationTimersRef.current.push(setTimeout(() => void finishSkip(), 0));
@@ -2258,16 +2270,24 @@ export function useBattle(options: UseBattleOptions) {
             .filter((group) => group.events.some((event) => event.type === "DAMAGE" || event.type === "HEAL" || event.type === "DEFEAT"))
             .map((group) => group.targetId));
           const hpTargets = [...nextPlayers, ...nextEnemies].filter((participant) => hpTargetIds.has(participant.id));
+          const gateGeneration = presentationGateGenerationRef.current;
           const finishAction = async () => {
-            const gate = await waitForRenderedBattleActionHpParity(hpTargets, {
-              round: actionEvent.round,
-              actorId: actionActorId,
-              replayStartCursor: outcomeUnit.replayStartCursor,
-            });
-            if (gate && !gate.parity) {
-              presentationTimersRef.current.push(setTimeout(() => void finishAction(), 120));
-              return;
-            }
+            const gate = await waitForBattleHpParityGate(
+              () => waitForRenderedBattleActionHpParity(hpTargets, {
+                round: actionEvent.round,
+                actorId: actionActorId,
+                replayStartCursor: outcomeUnit.replayStartCursor,
+              }),
+              {
+                boundary: "ACTION",
+                replayId: authoritativeReplayId,
+                round: actionEvent.round,
+                actorId: actionActorId,
+                replayCursor: outcomeUnit.replayStartCursor,
+              },
+              { isActive: () => presentationGateGenerationRef.current === gateGeneration },
+            );
+            if (gate.status === "cancelled") return;
             advanceReplayTo(outcomeUnit.nextReplayCursor);
           };
           presentationTimersRef.current.push(setTimeout(() => void finishAction(), remainingBudget));
@@ -2470,12 +2490,19 @@ export function useBattle(options: UseBattleOptions) {
           enemyPartyStatesRef.current = canonicalEnemies;
           setPlayerPartyStates(canonicalPlayers);
           setEnemyPartyStates(canonicalEnemies);
+          const gateGeneration = presentationGateGenerationRef.current;
           const finishCanonicalResult = async () => {
-            const hpParity = await waitForRenderedBattleHpParity([...canonicalPlayers, ...canonicalEnemies]);
-            if (hpParity && !hpParity.parity) {
-              presentationTimersRef.current.push(setTimeout(() => void finishCanonicalResult(), 120));
-              return;
-            }
+            const gate = await waitForBattleHpParityGate(
+              () => waitForRenderedBattleHpParity([...canonicalPlayers, ...canonicalEnemies]),
+              {
+                boundary: "RESULT",
+                replayId: authoritativeReplayId,
+                round: replayEvent.round,
+                replayCursor: authoritativeEventIndex,
+              },
+              { isActive: () => presentationGateGenerationRef.current === gateGeneration },
+            );
+            if (gate.status === "cancelled") return;
             clearPresentationTimers();
             setActionPresentation(null);
             setActiveSkillCutIn(null);
@@ -2622,12 +2649,12 @@ export function useBattle(options: UseBattleOptions) {
         resultLabel: "NPC模擬戦結果",
         stats: [
           { label: "MODE", value: "PRACTICE" },
-          { label: "PVP POINT", value: "消費なし" },
+          { label: "BP", value: "消費なし" },
           { label: "RANK", value: "変動なし" },
         ],
         reward: "報酬なし",
         note: "模擬戦は戦績・ランキング・報酬へ反映されません。",
-        continueLabel: "PvPへ戻る",
+        continueLabel: "バトルへ戻る",
         destination: "pvp",
       });
       setBattleState("RESULT");
@@ -2667,7 +2694,7 @@ export function useBattle(options: UseBattleOptions) {
     } else if (modeTemp === "PVP") {
       if (!hasOfficialPvpResult || !pvpResultTemp) {
         releaseBattlePresentation();
-        setErrorMessage("PvPのサーバー確定結果を確認できませんでした。");
+        setErrorMessage("バトルのサーバー確定結果を確認できませんでした。");
         return;
       }
       const pointsDiff = Number(pvpResultTemp.rankDelta ?? 0);
@@ -2688,8 +2715,8 @@ export function useBattle(options: UseBattleOptions) {
           { label: "BP", value: `${Number(pvpResultTemp.remainingPvpPoints ?? 0)}/5` },
         ],
         reward: `CASH +${rewardCash.toLocaleString()}`,
-        note: isFirstOfficialPvp ? "初戦の順位を確認して、次のレイドへ進もう。" : "PvPへ戻って次の対戦相手を選べます。",
-        continueLabel: isFirstOfficialPvp ? "ランキングを確認" : "PvPへ戻る",
+        note: isFirstOfficialPvp ? "初戦の順位を確認して、次のレイドへ進もう。" : "バトルへ戻って次の対戦相手を選べます。",
+        continueLabel: isFirstOfficialPvp ? "ランキングを確認" : "バトルへ戻る",
         destination: isFirstOfficialPvp ? "ranking" : "pvp",
       });
       setBattleState("RESULT");
@@ -2872,6 +2899,7 @@ export function useBattle(options: UseBattleOptions) {
     setBattleResultReplayEvents([]);
     setBattlePresentationContext(null);
     setBattleSkipPending(false);
+    setIsAutoPaused(false);
     setBattleModeResultDetail(null);
     if (destination === "raid") requestRaidTopRefresh?.();
     if (destination) navigateTab?.(destination);

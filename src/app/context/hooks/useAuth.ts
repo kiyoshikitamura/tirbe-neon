@@ -90,9 +90,18 @@ export function useAuth(
     }
     if (!beginAuthAction()) return;
     try {
+      // Keep the explicit title-login intent across the auth-state callback so
+      // a verified EMAIL player can enter only after the onboarding authority
+      // confirms that this UID owns playable data.
+      localStorage.setItem(EXISTING_GOOGLE_LOGIN_INTENT_KEY, JSON.stringify({
+        startedAt: Date.now(),
+        method: "EMAIL",
+        sourceUserId: session?.user?.id || null,
+      }));
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
     } catch (e: any) {
+      localStorage.removeItem(EXISTING_GOOGLE_LOGIN_INTENT_KEY);
       setErrorMessage(e.message);
     } finally {
       endAuthAction();
@@ -115,7 +124,7 @@ export function useAuth(
       }));
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
-        options: { redirectTo: getOAuthCallbackUrl() }
+        options: { redirectTo: getOAuthCallbackUrl(), queryParams: { prompt: "select_account" } }
       });
       if (error) throw error;
     } catch (e: any) {

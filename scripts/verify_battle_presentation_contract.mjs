@@ -94,6 +94,8 @@ const audioContract = read("src/audio/audioContract.ts");
 const fullSkillHarness = read("src/app/qa/battle-full-skill-load/BattleFullSkillLoadHarness.tsx");
 const globals = read("src/app/globals.css");
 const setup = read("src/app/components/SetupView.tsx");
+const mockRpc = read("src/utils/mock/mockRpc.ts");
+const snapshotMetadataMigration = read("supabase/migrations/20260902000232_battle_snapshot_presentation_metadata.sql");
 assert.match(runtime, /setBattleResultReplayEvents\(replayEventsTemp\)/, "Result must retain an immutable replay event snapshot");
 assert.match(runtime, /if \(tutorialBattleActive \|\| battleState !== "PLAYING"/, "In-battle skip must explicitly reject the first tutorial");
 assert.match(runtime, /find\(\(entry\) => entry\.type === "RESULT"\)/, "Skip must use the authoritative result event");
@@ -102,8 +104,13 @@ assert.match(viewer, /data-party-size=/, "Roster must expose its authoritative p
 assert.doesNotMatch(viewer, />CURRENT<|`NEXT \$\{index\}`/, "Battle V2 must not render CURRENT/NEXT presentation");
 assert.doesNotMatch(viewer, /className="battle-action-stage/, "Battle V2 must not render a central action stage");
 assert.match(runtime, /buildBattlePresentationUnit\(authoritativeEvents/, "Production replay must use the presentation-only ACTION builder");
+for (const field of ["characterId", "level", "awakeningLevel", "rarity"]) {
+  assert.match(snapshotMetadataMigration, new RegExp(`'${field}'`), `Production snapshot must project ${field}`);
+}
+assert.match(mockRpc, /rarity: characterMaster\?\.rarity \|\| "N"/, "Mock replay snapshot must preserve Canonical Character rarity");
 assert.match(runtime, /waitForRenderedBattleHpParity/, "RESULT must wait for rendered HP parity before leaving the field");
-assert.match(runtime, /setTimeout\(\(\) => void finishCanonicalResult\(\), 120\)/, "RESULT parity must retry the same canonical terminal event instead of stalling Journey playback");
+assert.match(runtime, /waitForBattleHpParityGate/, "ACTION, RESULT and Skip parity must use the finite liveness gate");
+assert.doesNotMatch(runtime, /setTimeout\(\(\) => void finishCanonicalResult\(\), 120\)/, "RESULT parity must not retry forever");
 assert.match(runtime, /playerPartyStatesRef\.current = canonicalPlayers;[\s\S]*enemyPartyStatesRef\.current = canonicalEnemies;/, "RESULT must commit the canonical terminal HP projection before its visual gate");
 assert.match(runtime, /waitForRenderedBattleActionHpParity/, "Every HP-changing ACTION must wait for DOM and fill parity before advancing");
 assert.match(runtime, /recordBattleHpProjection/, "Every ACTION HP projection must be traced before RESULT");

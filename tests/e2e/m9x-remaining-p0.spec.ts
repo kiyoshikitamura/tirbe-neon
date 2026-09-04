@@ -28,6 +28,8 @@ async function seedAuthenticatedPlayer(page: Page, asMaster = false) {
     const now = new Date().toISOString();
     localStorage.setItem("tribe_demo_uuid", me);
     localStorage.setItem("mock_auth_mode", "EMAIL");
+    const todayJst = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+    localStorage.setItem("mock_db_user_login_bonuses", JSON.stringify([{ user_id: me, current_day: 1, total_logins: 1, last_claimed_date: todayJst }]));
     localStorage.setItem("mock_db_users", JSON.stringify([
       { id: me, username: asMaster ? "Welcome Master" : "Journey Player", level: 8, cash: 10000, pvp_points: 5, rank_points: 1200, total_power: 20000, current_base_id: "shinjuku", last_active_at: now, guild_id: asMaster ? guildId : null },
       { id: master, username: "Human Master", level: 20, cash: 10000, total_power: 10000, current_base_id: "shinjuku", last_active_at: now, guild_id: guildId },
@@ -65,25 +67,28 @@ async function enterHome(page: Page) {
   if (await titleAction.isVisible()) await titleAction.click();
   if (await continueAction.isVisible()) await continueAction.click();
   await expect(header).toBeVisible();
+  const loginBonus = page.getByRole("dialog", { name: "ログインボーナス" });
+  await loginBonus.waitFor({ state: "visible", timeout: 3_000 }).catch(() => undefined);
+  if (await loginBonus.isVisible()) await loginBonus.getByRole("button", { name: "閉じる", exact: true }).click();
 }
 
 test("PvP uses the main formation, offers a weaker first opponent, and has no defense-deck UI", async ({ page }) => {
   await seedAuthenticatedPlayer(page);
   await enterHome(page);
-  await page.getByRole("button", { name: "喧嘩" }).click();
+  await page.getByRole("button", { name: "バトル", exact: true }).click();
   await expect(page.getByRole("button", { name: "防衛・履歴" })).toHaveCount(0);
   await expect(page.getByText(/防衛デッキ|防衛設定/)).toHaveCount(0);
   await expect(page.locator('.pvp-opponent-card')).toHaveCount(1);
   await expect(page.locator('.pvp-opponent-card')).toContainText("格下");
   await page.getByText("公式戦・模擬戦のルール").click();
-  await expect(page.getByText("勝敗報酬なし", { exact: true })).toHaveCount(2);
+  await expect(page.locator("p").filter({ hasText: "勝敗報酬なし" })).toHaveCount(2);
   await assertMobileWave(page, ".pvp-view", "pvp-no-defense-first-match");
 });
 
 test("Guild master edits the welcome message through the existing secure contract", async ({ page }) => {
   await seedAuthenticatedPlayer(page, true);
   await enterHome(page);
-  await page.getByRole("button", { name: "ギルド" }).click();
+  await page.getByRole("button", { name: "ギルド", exact: true }).click();
   await expect(page.locator(".guild-welcome-compact")).toContainText("来てくれてありがとう");
   await page.getByRole("button", { name: "ギルド設定" }).click();
   const welcome = page.locator(".editable-setting-section").filter({ hasText: "歓迎メッセージ" });
@@ -95,10 +100,12 @@ test("Guild master edits the welcome message through the existing secure contrac
   await page.getByRole("button", { name: "ギルドマイページへ戻る" }).click();
   await page.reload();
   const titleAction = page.getByRole("button", { name: "TAP TO START" });
-  if (await titleAction.isVisible()) await titleAction.click();
   const continueAction = page.getByRole("button", { name: "続きから" });
+  await expect(titleAction.or(continueAction).or(page.locator(".header-mobile"))).toBeVisible();
+  if (await titleAction.isVisible()) await titleAction.click();
   if (await continueAction.isVisible()) await continueAction.click();
-  await page.getByRole("button", { name: "ギルド" }).click();
+  await expect(page.locator(".header-mobile")).toBeVisible();
+  await page.getByRole("button", { name: "ギルド", exact: true }).click();
   await expect(page.locator(".guild-welcome-compact")).toContainText("みんなでレイドへ行こう");
 });
 
@@ -107,8 +114,13 @@ test("Title to Guild human response journey remains visible across every mobile 
   await assertMobileWave(page, ".title-view-overlay", "journey-title");
   await seedAuthenticatedPlayer(page);
   await page.reload();
+  const titleAction = page.getByRole("button", { name: "TAP TO START" });
+  const continueAction = page.getByRole("button", { name: "続きから" });
+  await expect(titleAction.or(continueAction).or(page.locator(".header-mobile"))).toBeVisible();
+  if (await titleAction.isVisible()) await titleAction.click();
+  if (await continueAction.isVisible()) await continueAction.click();
   await assertMobileWave(page, ".mypage-view", "journey-home");
-  await page.getByRole("button", { name: "ギルド" }).click();
+  await page.getByRole("button", { name: "ギルド", exact: true }).click();
   await assertMobileWave(page, ".guild-lobby-view", "journey-guild-discovery");
   await page.locator(".guild-detail-trigger").first().click();
   await expect(page.locator(".guild-public-status-grid")).toBeVisible();
@@ -124,14 +136,19 @@ test("Title to Guild human response journey remains visible across every mobile 
     localStorage.setItem("mock_db_board_posts", JSON.stringify(posts));
   }, { master, guildId });
   await page.reload();
-  const titleAction = page.getByRole("button", { name: "TAP TO START" });
-  if (await titleAction.isVisible()) await titleAction.click();
-  const continueAction = page.getByRole("button", { name: "続きから" });
-  if (await continueAction.isVisible()) await continueAction.click();
-  await page.getByRole("button", { name: "ギルド" }).click();
-  await page.getByRole("button", { name: "ギルドチャット" }).click();
-  await expect(page.getByRole("button", { name: /ギルド \(1\)/ })).toBeVisible();
-  await page.getByRole("button", { name: /ギルド \(1\)/ }).click();
+  const reloadedTitleAction = page.getByRole("button", { name: "TAP TO START" });
+  const reloadedContinueAction = page.getByRole("button", { name: "続きから" });
+  await expect(reloadedTitleAction.or(reloadedContinueAction).or(page.locator(".header-mobile"))).toBeVisible();
+  if (await reloadedTitleAction.isVisible()) await reloadedTitleAction.click();
+  if (await reloadedContinueAction.isVisible()) await reloadedContinueAction.click();
+  await expect(page.locator(".header-mobile")).toBeVisible();
+  const community = page.getByRole("button", { name: "コミュニティ", exact: true });
+  await expect(community.locator(".footer-unread-badge")).toHaveAttribute("aria-label", "コミュニティ未読1件");
+  await community.click();
+  const guildChannel = page.getByRole("button", { name: "ギルド (1)", exact: true });
+  await expect(guildChannel).toBeVisible();
+  await guildChannel.click();
+  await expect(page.locator(".tribe-chat-panel").getByRole("button", { name: "ギルド", exact: true })).toHaveClass(/active/);
   await expect(page.locator(".tribe-msg-bubble").filter({ hasText: "次のレイドで待ってるよ" })).toBeVisible();
   await assertMobileWave(page, ".tribe-modal-container-inner", "journey-human-response");
 });

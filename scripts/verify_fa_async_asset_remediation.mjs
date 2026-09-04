@@ -24,6 +24,13 @@ assert.match(progression, /handleEquipmentGrowthBatch/);
 assert.match(progression, /handleAutoEquipComposite/);
 assert.match(progression, /lockOwned: true, refresh: false/);
 assert.match(progression, /await syncBootstrapData\(session\.user\.id\);[\s\S]*endUpgradeActionAfterPaint/);
+const characterGrowthBatch = progression.slice(
+  progression.indexOf("const handleCharacterGrowthBatch"),
+  progression.indexOf("const handleCharacterAwaken"),
+);
+assert.match(characterGrowthBatch, /className: "growth-result-v0", "data-growth-result": "level-up"/);
+assert.match(characterGrowthBatch, /kind: "result", presentation: "legacy"/);
+assert.match(characterGrowthBatch, /playCyberSe\("LEVEL_UP"\)/);
 
 const characterUi = await read("src/app/components/character/CharacterSystemV2.tsx");
 assert.match(characterUi, /character-v2-pending-surface" disabled=\{game\.upgradeLoading\}/);

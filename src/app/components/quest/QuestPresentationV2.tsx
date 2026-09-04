@@ -114,8 +114,20 @@ export default function QuestPresentationV2() {
         const course = (game.patrolCourses || []).find((entry: any) => entry.id === patrol.courseId);
         const patrolTownName = TOWNS.find(([id]) => id === course?.town_id)?.[1] || townName;
         const character = CHARACTERS_MASTER.find((entry: any) => entry.id === patrol.characterId);
-        const npc = (game.patrolNpcs || []).find((entry: any) => entry.quest_id === patrol.courseId);
-        const battleEnemies = (course?.enemy_members || npc?.members || []).map((member: any) => ({
+        const canonicalEnemyMembers = Array.isArray(patrol.encounterSnapshot?.members)
+          ? patrol.encounterSnapshot.members
+          : [];
+        // The enemy party is generated for this exact dispatch and stored on
+        // user_patrols. Static Quest progression and the retired patrol_npcs
+        // master are not encounter authority.
+        const npc = canonicalEnemyMembers.length > 0 ? {
+          id: patrol.id,
+          quest_id: patrol.courseId,
+          npc_name: course?.name || "クエスト",
+          npc_level: Number(course?.recommended_level || canonicalEnemyMembers[0]?.level || 1),
+          members: canonicalEnemyMembers,
+        } : null;
+        const battleEnemies = canonicalEnemyMembers.map((member: any) => ({
           member,
           master: CHARACTERS_MASTER.find((entry: any) => entry.id === member.characterId),
         })).filter((entry: any) => entry.master);

@@ -134,6 +134,7 @@ export class MockSupabaseClient {
     signInWithOAuth: async ({ options }: any = {}) => {
       if (typeof window !== "undefined") {
         localStorage.setItem("mock_last_oauth_redirect_to", String(options?.redirectTo || ""));
+        localStorage.setItem("mock_last_oauth_query_params", JSON.stringify(options?.queryParams || {}));
         const existingId = localStorage.getItem("mock_existing_google_user_id");
         const switchIntent = JSON.parse(localStorage.getItem("tribe_existing_google_login_intent") || "null");
         if (existingId && switchIntent?.method === "GOOGLE_SWITCH") {
@@ -151,6 +152,9 @@ export class MockSupabaseClient {
       const userId = tokenParts[0];
       const authMode = tokenParts[1] || "EMAIL";
       if (!userId) return { data: { session: null }, error: { message: "Invalid session" } };
+      if (localStorage.getItem("mock_set_session_failure_user_id") === userId) {
+        return { data: { session: null }, error: { message: "Mock session switch failed" } };
+      }
       localStorage.setItem("tribe_demo_uuid", userId);
       localStorage.setItem("mock_auth_mode", authMode);
       const { data } = await this.auth.getSession();
@@ -177,6 +181,12 @@ export class MockSupabaseClient {
       if (localStorage.getItem("mock_email_confirmation_required") === "true") {
         localStorage.setItem("mock_pending_email", email);
         return { data: { user: { id: userId, email: null, new_email: email, is_anonymous: true, identities: [] } }, error: null };
+      }
+      const linkedUserId = localStorage.getItem("mock_email_link_user_id");
+      if (linkedUserId && linkedUserId !== userId) {
+        localStorage.setItem("tribe_demo_uuid", linkedUserId);
+        localStorage.setItem("mock_auth_mode", "EMAIL");
+        return { data: { user: { id: linkedUserId, email, is_anonymous: false, identities: [{ provider: "email", email }] } }, error: null };
       }
       localStorage.setItem("mock_auth_mode", "EMAIL");
       localStorage.removeItem("mock_pending_email");

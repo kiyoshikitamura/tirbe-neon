@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { ConfirmDialogConfig } from "@/app/components/ui/ConfirmDialog";
 import { sanitizeOperationsTab } from "@/domain/operations/operations";
+import { hasPendingLegalSettingsReturn } from "@/utils/legalSettingsReturn";
 
 export function useNavigation(playCyberSe: (type: string) => void, handleFirstUserInteraction: () => void) {
   const [activeTab, setActiveTabState] = useState<string>("home");
@@ -13,9 +14,10 @@ export function useNavigation(playCyberSe: (type: string) => void, handleFirstUs
   const [showTribeChatPanel, setShowTribeChatPanel] = useState<boolean>(false);
   const [showMoveBaseModal, setShowMoveBaseModal] = useState<boolean>(false);
   const [showLegalPage, setShowLegalPage] = useState<string | null>(null);
-  const [showTitleView, setShowTitleView] = useState<boolean>(true);
+  const [showTitleView, setShowTitleView] = useState<boolean>(() => !hasPendingLegalSettingsReturn());
   const [inboxPanelTab, setInboxPanelTab] = useState<"presents" | "news">("presents");
   const [rankingActiveTab, setRankingActiveTab] = useState<string>("power");
+  const [characterEntryView, setCharacterEntryView] = useState<"party" | null>(null);
   const [confirmDialogConfig, setConfirmDialogConfig] = useState<ConfirmDialogConfig | null>(null);
   const [globalInteractionBlocking, setGlobalInteractionBlocking] = useState<boolean>(false);
 
@@ -39,6 +41,7 @@ export function useNavigation(playCyberSe: (type: string) => void, handleFirstUs
     handleFirstUserInteraction();
     playCyberSe("click");
     setActiveTab(tabName);
+    setCharacterEntryView(tabName === "character" && subTab === "party" ? "party" : null);
     
     // パネル系を全て閉じる
     setShowInboxPanel(false);
@@ -77,6 +80,8 @@ export function useNavigation(playCyberSe: (type: string) => void, handleFirstUs
     setInboxPanelTab,
     rankingActiveTab,
     setRankingActiveTab,
+    characterEntryView,
+    setCharacterEntryView,
     confirmDialogConfig,
     setConfirmDialogConfig,
     globalInteractionBlocking,

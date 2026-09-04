@@ -4,6 +4,32 @@ import { useEffect, useState } from "react";
 import { discardAnonymousAccountForSwitch, supabase } from "@/utils/supabase";
 import { getOAuthReturnUrl } from "@/utils/browserDetection";
 
+const ONBOARDING_AUTH_INTENT_KEY = "tribe_onboarding_auth_intent";
+const ONBOARDING_AUTH_INTENT_MAX_AGE_MS = 30 * 60 * 1000;
+
+type GoogleOnboardingIntent = {
+  method: "GOOGLE";
+  userId: string;
+  startedAt: number;
+};
+
+function readGoogleOnboardingIntent(): { present: boolean; intent: GoogleOnboardingIntent | null } {
+  const rawIntent = window.localStorage.getItem(ONBOARDING_AUTH_INTENT_KEY);
+  if (!rawIntent) return { present: false, intent: null };
+  try {
+    const value = JSON.parse(rawIntent) as Partial<GoogleOnboardingIntent>;
+    const age = Date.now() - Number(value.startedAt || 0);
+    const valid = value.method === "GOOGLE"
+      && typeof value.userId === "string"
+      && value.userId.length > 0
+      && age >= 0
+      && age <= ONBOARDING_AUTH_INTENT_MAX_AGE_MS;
+    return { present: true, intent: valid ? value as GoogleOnboardingIntent : null };
+  } catch {
+    return { present: true, intent: null };
+  }
+}
+
 export default function AuthCallbackPage() {
   const [error, setError] = useState<string | null>(null);
 
@@ -53,8 +79,18 @@ export default function AuthCallbackPage() {
         } catch {
           loginIntent = null;
         }
+        const onboardingIntentState = readGoogleOnboardingIntent();
+        const onboardingIntent = onboardingIntentState.intent;
         const switchingToExistingData = loginIntent?.method === "GOOGLE_SWITCH";
         const tutorialSession = beforeExchange.session?.user?.is_anonymous ? beforeExchange.session : null;
+        if (onboardingIntentState.present && !onboardingIntent) {
+          setError("Google連携の開始情報を確認できませんでした。データ保護のため連携を中止しました。「はじめから」は押さず、サポートへお問い合わせください。");
+          return;
+        }
+        if (onboardingIntent && (!tutorialSession || tutorialSession.user.id !== onboardingIntent.userId)) {
+          setError("Google連携を開始したゲームデータのセッションを確認できませんでした。データ保護のため連携を中止しました。「はじめから」は押さず、サポートへお問い合わせください。");
+          return;
+        }
         const { data: exchangeData, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
         if (exchangeError) {
           setError(exchangeError.message);
@@ -91,6 +127,18 @@ export default function AuthCallbackPage() {
             return;
           }
           returnToApp();
+          return;
+        }
+        if (onboardingIntent && exchangeData.session.user.id !== onboardingIntent.userId) {
+          const { error: restoreError } = await supabase.auth.setSession({
+            access_token: tutorialSession!.access_token,
+            refresh_token: tutorialSession!.refresh_token,
+          });
+          if (restoreError) {
+            setError("元のゲームデータを保護できませんでした。この画面を閉じず、サポートへお問い合わせください。");
+            return;
+          }
+          setError("選択されたGoogleアカウントは別のユーザーに登録されています。元のゲームデータは保持されています。TRIBE NEONへ戻り、別のGoogleアカウントを選択してください。");
           return;
         }
         if (tutorialSession && exchangeData.session.user.id !== tutorialSession.user.id) {

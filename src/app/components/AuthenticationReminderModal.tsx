@@ -5,13 +5,21 @@ import CanonicalDialog from "./ui/CanonicalDialog";
 
 export default function AuthenticationReminderModal() {
   const {
+    session,
+    onboardingState,
     showAuthenticationReminder,
     setShowAuthenticationReminder,
     setShowAccountAuthenticationModal,
     playCyberSe,
   } = useGame();
 
-  if (!showAuthenticationReminder) return null;
+  const isPendingAnonymousSession = session?.user?.is_anonymous === true
+    && onboardingState?.user_id === session.user.id
+    && onboardingState?.is_anonymous
+    && onboardingState?.authentication_pending
+    && onboardingState?.gameplay_authorized;
+
+  if (!showAuthenticationReminder || !isPendingAnonymousSession) return null;
 
   const close = () => {
     playCyberSe("click");

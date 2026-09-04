@@ -16,8 +16,15 @@ export default function TitleView() {
   // creating a second anonymous lifecycle.
   const canStartNewGame = entryReady && !session;
   const isAnonymousSession = Boolean(session?.user?.is_anonymous);
+  const requiresEmailCompletion = Boolean(session
+    && !isAnonymousSession
+    && !onboardingState?.gameplay_authorized
+    && onboardingState?.tutorial_step === "COMPLETE"
+    && onboardingState?.auth_method === "EMAIL");
   const continueLabel = session
-    ? isAnonymousSession && !onboardingState?.gameplay_authorized
+    ? requiresEmailCompletion
+      ? "メール認証を完了"
+      : isAnonymousSession && !onboardingState?.gameplay_authorized
       ? "チュートリアルを続ける"
       : "続きから"
     : "データをお持ちの方";
@@ -97,7 +104,7 @@ export default function TitleView() {
           <div className="title-legal-links" onClick={(event) => event.stopPropagation()}>
             <Link href="/legal/terms">利用規約</Link>
             <Link href="/legal/privacy">プライバシーポリシー</Link>
-            <Link href="/legal/commercial">特定商取引法に基づく表記</Link>
+            <Link href="/legal/tokusho">特定商取引法に基づく表記</Link>
           </div>
           <div className="title-copyright">
             <span>v0.1.0</span>

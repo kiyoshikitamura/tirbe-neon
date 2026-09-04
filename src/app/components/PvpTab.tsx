@@ -11,8 +11,7 @@ import HubPage from "./ui/HubPage";
 import ScreenState from "./ui/ScreenState";
 import { useScreenReadiness } from "../hooks/useScreenReadiness";
 import { SCREEN_ASSET_MANIFESTS } from "../lib/screenManifests";
-import CharacterPresentation from "./character/CharacterPresentation";
-import { CHARACTERS_MASTER, getCharacterTransparentImg } from "@/utils/game_constants";
+import { CHARACTERS_MASTER } from "@/utils/game_constants";
 import { getCharacterLocationBackground, resolveCharacterLocationKey } from "@/utils/characterVisualAssets";
 import { supabase } from "@/utils/supabase";
 import PvpDeckPresentation from "./pvp/PvpDeckPresentation";
@@ -57,7 +56,6 @@ export default function PvpTab() {
     pvpNextRecoveryAt,
     totalPower,
     currentBaseId,
-    selectedLeader,
     selectedMembers,
     userItems,
     handleUseItem,
@@ -171,9 +169,6 @@ export default function PvpTab() {
       return { ownedId, owned, master };
     });
   }, [selectedMembers, userCharactersDbList]);
-  const playerLeaderMaster = CHARACTERS_MASTER.find((character: any) => character.id === selectedLeader);
-  const heroOpponent = pvpOpponents[0];
-  const heroOpponentLeader = heroOpponent ? opponentCharactersFor(heroOpponent)[0] : null;
   const pvpBackgroundPath = resolveCharacterLocationKey(currentBaseId) ? getCharacterLocationBackground(currentBaseId) : undefined;
 
   const handleRefreshOpponents = async () => {
@@ -199,17 +194,15 @@ export default function PvpTab() {
     <>
     <HubPage
       className="pvp-view"
-      title="喧嘩（PvP）"
+      title="バトル"
       status={readiness.status}
       onRetry={readiness.retry}
       hideVisualHeader
     >
-        <section className="pvp-hero" style={pvpBackgroundPath ? { "--pvp-hero-bg": `url(${pvpBackgroundPath})` } as React.CSSProperties : undefined} aria-label="PvP対戦">
-          <div className="pvp-hero-shade" aria-hidden="true" />
-          <CharacterPresentation className="pvp-hero-fighter is-player" src={playerLeaderMaster ? getCharacterTransparentImg(playerLeaderMaster.name) : undefined} alt={playerLeaderMaster?.jpName || "PLAYER"} variant="battle-leader" />
-          <CharacterPresentation className="pvp-hero-fighter is-opponent" src={heroOpponentLeader?.asset_identifier || undefined} alt={heroOpponentLeader?.display_name || "OPPONENT"} variant="battle-leader" />
+        <section className="pvp-hero" aria-label="バトル対戦">
+          <img src="/promotion/battle_page_header.webp" alt="バトル" />
         </section>
-        <section className="pvp-self-summary" aria-label="自分のPvP情報">
+        <section className="pvp-self-summary" aria-label="自分のバトル情報">
           <StatusMetric label="順位" value={ownPvpStanding === undefined ? "—" : <RankPresentation rank={ownPvpStanding?.rankPosition} />} />
           <StatusMetric label="RATE" value={displayedPvpRate.toLocaleString()} />
           <StatusMetric label="BP" value={pvpPoints} suffix={<span>/5</span>} />
@@ -253,7 +246,7 @@ export default function PvpTab() {
 
                 <details className="pvp-rules-help">
                   <summary>公式戦・模擬戦のルール</summary>
-                  <p><b>公式戦</b> PvP Point 1消費・Rating変動あり</p>
+                  <p><b>公式戦</b> BP 1消費・Rating変動あり</p>
                   <p><b>勝利</b> {rewardLabel("VICTORY")}</p>
                   <p><b>敗北</b> {rewardLabel("DEFEAT")}</p>
                   <p><b>模擬戦</b> 消費・報酬・Rating・Mission進捗なし</p>

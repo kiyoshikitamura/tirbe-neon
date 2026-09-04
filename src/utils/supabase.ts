@@ -65,8 +65,28 @@ export async function authenticateExistingEmailAccount(email: string, password: 
     if (!identity || window.localStorage.getItem("mock_existing_email_password") !== password) {
       return { session: null, error: new Error("メールアドレスまたはパスワードが正しくありません。") };
     }
+    const users = JSON.parse(window.localStorage.getItem("mock_db_users") || "[]");
+    const progress = JSON.parse(window.localStorage.getItem("mock_db_tutorial_progress") || "[]");
+    const methods = JSON.parse(window.localStorage.getItem("mock_db_user_account_auth_methods") || "[]");
+    const method = methods.find((row: any) => row.user_id === identity.user_id)?.auth_method || null;
+    const hasProfile = users.some((row: any) => row.id === identity.user_id);
+    const tutorialStep = progress.find((row: any) => row.user_id === identity.user_id)?.step_id || null;
+    const state = {
+      user_id: identity.user_id,
+      is_anonymous: false,
+      has_profile: hasProfile,
+      tutorial_step: tutorialStep,
+      authentication_pending: false,
+      auth_method: method,
+      identity_integrity_valid: method === "EMAIL",
+      gameplay_authorized: hasProfile && method === "EMAIL" && tutorialStep === "AUTHENTICATION",
+    };
+    if (!state.has_profile || !state.identity_integrity_valid || !state.gameplay_authorized || state.auth_method !== "EMAIL") {
+      return { session: null, state, error: new Error("既存のメール認証済みゲームデータを確認できませんでした。") };
+    }
     return {
-      session: { access_token: `mock:${identity.user_id}`, refresh_token: `mock:${identity.user_id}`, user: { id: identity.user_id } },
+      session: { access_token: `mock:${identity.user_id}:EMAIL`, refresh_token: `mock:${identity.user_id}:EMAIL`, user: { id: identity.user_id } },
+      state,
       error: null,
     };
   }
@@ -77,8 +97,15 @@ export async function authenticateExistingEmailAccount(email: string, password: 
   const { data, error } = await isolated.auth.signInWithPassword({ email, password });
   if (error || !data.session) return { session: null, error: error || new Error("既存アカウントを確認できませんでした。") };
   const { data: state, error: stateError } = await isolated.rpc("get_current_onboarding_state");
-  if (stateError || !state?.has_profile) {
-    return { session: null, error: stateError || new Error("既存のゲームデータを確認できませんでした。") };
+  const destinationIsValid = !stateError
+    && state?.user_id === data.session.user.id
+    && state?.is_anonymous === false
+    && state?.has_profile === true
+    && state?.identity_integrity_valid === true
+    && state?.gameplay_authorized === true
+    && state?.auth_method === "EMAIL";
+  if (!destinationIsValid) {
+    return { session: null, state, error: stateError || new Error("既存のメール認証済みゲームデータを確認できませんでした。") };
   }
-  return { session: data.session, error: null };
+  return { session: data.session, state, error: null };
 }

@@ -117,7 +117,7 @@ assert.deepEqual(inventory, {
   item: 18,
   townBackground: 7,
   gachaBackground: 3,
-  promotion: 14,
+  promotion: 23,
 });
 
 const rarityFrameDimensions = {};

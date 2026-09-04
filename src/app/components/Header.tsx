@@ -121,7 +121,7 @@ export default function Header() {
           <nav aria-label="ユーティリティ">
             <button type="button" onClick={() => runMenuAction(() => setShowSettingsPanel(true))}><img src="/ui/icon_settings.png" alt="" /><span>設定</span></button>
             <button type="button" onClick={() => runMenuAction(() => { setShowInboxPanel(true); setInboxPanelTab("news"); })}><img src="/ui/icon_news.png" alt="" /><span>お知らせ</span></button>
-            <button type="button" onClick={() => runMenuAction(() => { setShowInboxPanel(true); setInboxPanelTab("presents"); })}><img src="/ui/icon_present.png" alt="" /><span>プレゼント</span>{unclaimedPresentsCount > 0 && <b>{unclaimedPresentsCount}</b>}</button>
+            <button type="button" aria-label="プレゼント" onClick={() => runMenuAction(() => { setShowInboxPanel(true); setInboxPanelTab("presents"); })}><img src="/ui/icon_present.png" alt="" /><span>プレゼント</span>{unclaimedPresentsCount > 0 && <b aria-hidden="true">{unclaimedPresentsCount}</b>}</button>
             <button type="button" onClick={() => runMenuAction(() => setShowLoginBonusModal(true))}><img src="/ui/icon_present.png" alt="" /><span>ログインボーナス</span></button>
             <button type="button" onClick={() => runMenuAction(() => navigateTab("bag"))}><img src="/ui/icon_bag.png" alt="" /><span>バッグ</span></button>
           </nav>

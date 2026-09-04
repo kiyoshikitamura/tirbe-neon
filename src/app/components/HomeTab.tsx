@@ -5,8 +5,11 @@ import { useGame } from "../context/GameContext";
 import { supabase } from "@/utils/supabase";
 import { resolveAvailableMyPageCreatives } from "@/domain/presentation/production_creatives";
 import { HOME_ACTION_PRESENTATION_SLOTS } from "@/domain/presentation/homeActionPresentation";
+import { resolveHomeCharacterDialogueLines } from "@/domain/presentation/homeCharacterDialogue";
 import { isDestinationAvailable } from "@/domain/operations/operations";
 import { resolvePresentableAssetUrl } from "@/utils/assetPresentation";
+import { getJstDateString } from "@/utils/jst_date";
+import { normalizeRecentActivities, RECENT_ACTIVITY_WINDOW_MS } from "@/domain/social/recentActivity";
 import CharacterPresentation from "./character/CharacterPresentation";
 import UserIdentityRow from "./profile/UserIdentityRow";
 import CanonicalDialog from "./ui/CanonicalDialog";
@@ -65,8 +68,11 @@ function preloadAndDecodeHomeImage(src: string, timeoutMs = 8000): Promise<boole
 
 type HomeTabQaState = Readonly<{
   socialActivities?: readonly any[];
+  socialActivityNowMs?: number;
   funnelMilestones?: readonly string[];
   ctaAuthorityReady?: boolean;
+  guildDiscoveryState?: "pending" | "error" | "empty" | "available";
+  bannerAuthority?: "normal" | "campaign";
 }>;
 
 type HomeActivity = {
@@ -78,6 +84,16 @@ type HomeActivity = {
   actor_guild_name?: string | null;
   created_at?: string | null;
   [key: string]: unknown;
+};
+
+type HomeBanner = {
+  id: string;
+  title: string;
+  subtitle?: string;
+  ctaLabel?: string;
+  img: string | null;
+  destination: string | null;
+  eventId?: string;
 };
 
 function activityDescription(activity: HomeActivity) {
@@ -104,10 +120,13 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
     guildChats,
     chatUnreadCounts,
     setShowMissionPanel,
+    setMissionTab,
     setShowLoginBonusModal,
     setShowAccountAuthenticationModal,
     setShowMoveBaseModal,
     setShowTribeChatPanel,
+    setChatChannel,
+    setDmRecipientId,
     navigateTab,
     playCyberSe,
     selectedBgMode,
@@ -122,6 +141,7 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
     userGuildMember,
     pendingGuildJoinRequests,
     guildMembershipAuthorityReady,
+    guildDiscoveryState,
     featureOperatingStates,
     fetchPlayerDetail,
     setErrorMessage,
@@ -136,19 +156,29 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
 
   // イベントバナースライドインジケーター
   const [bannerIndex, setBannerIndex] = useState(0);
-  const [leaderLine, setLeaderLine] = useState<string | null>(null);
+  const [leaderLine, setLeaderLine] = useState<{ characterId: string; text: string } | null>(null);
+  const leaderLineTimerRef = useRef<number | null>(null);
   const [funnelMilestones, setFunnelMilestones] = useState<Set<string>>(new Set(qaState?.funnelMilestones || []));
   const [funnelAuthorityOwnerUserId, setFunnelAuthorityOwnerUserId] = useState(qaState?.funnelMilestones ? "qa" : "");
   const [activationHandoffPending, setActivationHandoffPending] = useState(false);
   const [socialActivities, setSocialActivities] = useState<HomeActivity[]>([...(qaState?.socialActivities || [])] as HomeActivity[]);
+  const [activityWindowNow, setActivityWindowNow] = useState(() => Date.now());
   const [showActivityLog, setShowActivityLog] = useState(false);
+  const [showGuildRankingCampaign, setShowGuildRankingCampaign] = useState(false);
+  const [guildRankingVisualReady, setGuildRankingVisualReady] = useState(false);
   const lastCtaImpression = useRef<string | null>(null);
-  const [banners, setBanners] = useState(() => PRODUCTION_MY_PAGE_CREATIVES?.map((creative) => ({
-    id: creative.id,
-    title: "",
-    img: creative.assetPath,
-    destination: creative.destination
-  })).filter((banner) => !banner.destination || isDestinationAvailable(banner.destination)) ?? []);
+  const lastBannerImpression = useRef<string | null>(null);
+  const bannerAuthorityKeyRef = useRef("");
+  // Do not render a guessed banner set before the server event authority has
+  // answered. This prevents a normal banner from flashing during the campaign.
+  const [banners, setBanners] = useState<HomeBanner[]>(() => qaState?.bannerAuthority === "normal"
+    ? (PRODUCTION_MY_PAGE_CREATIVES || []).map((creative) => ({ id: creative.id, title: "", img: creative.assetPath, destination: creative.destination }))
+    : qaState?.bannerAuthority === "campaign"
+      ? [
+        { id: "gvg-prep", eventId: "GVG_PREP_20260904", title: "", img: "/promotion/mypage_banner_gvg_prep.webp", destination: "mission:SPECIAL" },
+        { id: "guild-power-ranking", eventId: "GVG_PREP_20260904", title: "", img: "/promotion/mypage_banner_guild_power_ranking.webp", destination: "campaign:GUILD_POWER" },
+      ]
+      : []);
   const visibleBanners = useMemo(
     () => banners.filter((banner) => banner.destination !== "raid" || isRaidActive),
     [banners, isRaidActive],
@@ -157,6 +187,33 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
 
   const openBanner = (destination: string | null) => {
     if (!destination) return;
+    const currentBanner = visibleBanners[activeBannerIndex];
+    if (currentBanner?.eventId) void supabase.rpc("record_mission_event_telemetry", {
+      p_event_id: currentBanner.eventId,
+      p_event_name: "banner_click",
+      p_source: "rotation_banner",
+      p_mission_id: null,
+      p_metadata: { jst_date: getJstDateString() },
+    });
+    if (destination === "mission:SPECIAL") {
+      setMissionTab("SPECIAL");
+      setShowMissionPanel(true);
+      playCyberSe("click");
+      return;
+    }
+    if (destination === "campaign:GUILD_POWER") {
+      setGuildRankingVisualReady(false);
+      setShowGuildRankingCampaign(true);
+      playCyberSe("click");
+      return;
+    }
+    if (destination === "community") {
+      setDmRecipientId(null);
+      setChatChannel("GLOBAL");
+      setShowTribeChatPanel(true);
+      playCyberSe("click");
+      return;
+    }
     const [tab, subTab] = destination.split(":");
     navigateTab(tab, subTab);
     playCyberSe("click");
@@ -171,20 +228,56 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
   }, [visibleBanners.length]);
 
   useEffect(() => {
-    if (PRODUCTION_MY_PAGE_CREATIVES) return;
-    void supabase.from("home_banner_master").select("id, title, image_url, destination_value").order("priority", { ascending: false }).then(({ data, error }) => {
-      const released = (data || []).filter((item) => isDestinationAvailable(item.destination_value || "home", featureOperatingStates));
-      const presentable = released.flatMap((item) => {
-        const imageUrl = resolvePresentableAssetUrl(item.image_url);
-        return imageUrl ? [{ id: item.id, title: item.title, img: imageUrl, destination: item.destination_value || "home" }] : [];
-      });
-      if (!error && presentable.length) setBanners(presentable);
+    const banner = visibleBanners[activeBannerIndex];
+    if (!banner?.eventId || lastBannerImpression.current === banner.id) return;
+    lastBannerImpression.current = banner.id;
+    void supabase.rpc("record_mission_event_telemetry", {
+      p_event_id: banner.eventId,
+      p_event_name: "banner_impression",
+      p_source: "rotation_banner",
+      p_mission_id: null,
+      p_metadata: { jst_date: getJstDateString() },
     });
-  }, [featureOperatingStates]);
+  }, [activeBannerIndex, visibleBanners]);
 
   useEffect(() => {
-    setBanners((current) => current.filter((banner) => !banner.destination || isDestinationAvailable(banner.destination, featureOperatingStates)));
-  }, [featureOperatingStates]);
+    if (qaState?.bannerAuthority) return;
+    if (!session?.user?.id) return;
+    let cancelled = false;
+    const loadBannerAuthority = async () => {
+      const { data, error } = await supabase.rpc("get_active_mission_events");
+      if (cancelled || error || !Array.isArray(data)) return;
+      const prepEvent = data.find((event: any) => String(event.event_id || event.id || "") === "GVG_PREP_20260904");
+      const campaignOpen = prepEvent?.is_progress_active === true || prepEvent?.progress_open === true;
+      const nextBanners: HomeBanner[] = campaignOpen
+        ? [
+          { id: "gvg-prep", eventId: "GVG_PREP_20260904", title: "", img: resolvePresentableAssetUrl(prepEvent.banner_image_url) || "/promotion/mypage_banner_gvg_prep.webp", destination: "mission:SPECIAL" },
+          { id: "guild-power-ranking", eventId: "GVG_PREP_20260904", title: "", img: "/promotion/mypage_banner_guild_power_ranking.webp", destination: "campaign:GUILD_POWER" },
+        ]
+        : (PRODUCTION_MY_PAGE_CREATIVES || []).map((creative) => ({ id: creative.id, title: "", img: creative.assetPath, destination: creative.destination }));
+      const loadableBanners = nextBanners.filter((banner) => !banner.destination
+        || banner.destination === "community"
+        || banner.destination.startsWith("campaign:")
+        || banner.destination.startsWith("mission:")
+        || isDestinationAvailable(banner.destination, featureOperatingStates));
+      const loaded = await Promise.all(loadableBanners.map((banner) => banner.img ? preloadAndDecodeHomeImage(banner.img) : Promise.resolve(false)));
+      if (cancelled || loaded.some((value) => !value)) return;
+      const nextKey = loadableBanners.map((banner) => banner.id).join(":");
+      if (bannerAuthorityKeyRef.current === nextKey) return;
+      bannerAuthorityKeyRef.current = nextKey;
+      setBannerIndex(0);
+      setBanners(loadableBanners);
+    };
+    void loadBannerAuthority();
+    const timer = window.setInterval(() => void loadBannerAuthority(), 15000);
+    const refreshOnFocus = () => { if (document.visibilityState === "visible") void loadBannerAuthority(); };
+    document.addEventListener("visibilitychange", refreshOnFocus);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", refreshOnFocus);
+    };
+  }, [featureOperatingStates, qaState?.bannerAuthority, session?.user?.id]);
 
   useEffect(() => {
     if (qaState?.funnelMilestones) return;
@@ -204,10 +297,10 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
     if (!session?.user?.id) return;
     let active = true;
     void (async () => {
-      const { data, error } = await supabase.from("social_activity_feed").select("id,activity_type,actor_user_id,actor_display_name,guild_id,object_master_id,display_payload,permanent,created_at")
-        .order("permanent", { ascending: false }).order("created_at", { ascending: false }).limit(20);
+      const { data, error } = await supabase.rpc("get_recent_social_activity_feed", { p_limit: 20 });
       if (error || !active) return;
-      const visible = (data || []).filter((event: HomeActivity) => !["FRIEND", "GVG", "SHOP", "PAYMENT"].includes(String(event.activity_type || "").toUpperCase()));
+      const visible = normalizeRecentActivities((data || []) as HomeActivity[])
+        .filter((event: HomeActivity) => !["FRIEND", "GVG", "SHOP", "PAYMENT"].includes(String(event.activity_type || "").toUpperCase()));
       const actorIds = [...new Set(visible.map((event: HomeActivity) => event.actor_user_id).filter((id): id is string => Boolean(id)))];
       const profilesById = new Map<string, { username?: string | null; favorite_character_id?: string | null; guild_name?: string | null }>();
       if (actorIds.length > 0) {
@@ -230,6 +323,29 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
     return () => { active = false; };
   }, [qaState?.socialActivities, session?.user?.id]);
 
+  const socialActivityNowMs = qaState?.socialActivityNowMs ?? activityWindowNow;
+  const visibleSocialActivities = useMemo(
+    () => normalizeRecentActivities(socialActivities, socialActivityNowMs),
+    [socialActivities, socialActivityNowMs],
+  );
+
+  useEffect(() => {
+    if (qaState?.socialActivityNowMs != null) return;
+    const nextExpirationAt = socialActivities.reduce((nearest, activity) => {
+      const createdAt = Date.parse(activity.created_at || "");
+      const expiresAt = createdAt + RECENT_ACTIVITY_WINDOW_MS;
+      return Number.isFinite(expiresAt) && createdAt <= activityWindowNow && expiresAt >= activityWindowNow
+        ? Math.min(nearest, expiresAt)
+        : nearest;
+    }, Number.POSITIVE_INFINITY);
+    if (!Number.isFinite(nextExpirationAt)) return;
+    const timer = window.setTimeout(
+      () => setActivityWindowNow(Date.now()),
+      Math.max(10, nextExpirationAt - Date.now() + 10),
+    );
+    return () => window.clearTimeout(timer);
+  }, [activityWindowNow, qaState?.socialActivityNowMs, socialActivities]);
+
   const primaryCta = useMemo<{
     key: string; title: string; tab?: string; action?: "guild_chat" | "mission_handoff";
   } | null>(() => {
@@ -245,20 +361,22 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
     if (!funnelMilestones.has("first_free_skill_ten_pull")) return { key: "first_free_asset_gacha", title: "無料スキル／装備ガチャを引こう", tab: "gacha" };
     if (!funnelMilestones.has("first_free_equipment_ten_pull")) return { key: "first_free_asset_gacha", title: "無料スキル／装備ガチャを引こう", tab: "gacha" };
     if (!funnelMilestones.has("first_main_loadout")) return { key: "first_main_loadout", title: "装備を整えよう", tab: "character" };
-    if (!funnelMilestones.has("first_pvp")) return { key: "first_pvp", title: "最初のPvPへ挑戦", tab: "pvp" };
+    if (!funnelMilestones.has("first_pvp")) return { key: "first_pvp", title: "最初のバトルへ挑戦", tab: "pvp" };
     if (!funnelMilestones.has("first_raid") && isRaidActive) return { key: "first_raid", title: "開催中レイドへ", tab: "raid" };
     if (!userGuildMember) {
       if (pendingGuildJoinRequests.length > 0) return { key: "guild_pending", title: "ギルド申請を確認", tab: "guild" };
-      return { key: "guild_discovery", title: "ギルドに加入しよう", tab: "guild" };
+      const discoveryState = qaState?.guildDiscoveryState || guildDiscoveryState;
+      if (discoveryState === "empty") return { key: "guild_creation", title: "ギルドを設立しよう", tab: "guild" };
+      if (discoveryState === "available") return { key: "guild_discovery", title: "ギルドに加入しよう", tab: "guild" };
+      return null;
     }
-    if (!funnelMilestones.has("guild_activation")) return { key: "guild_home", title: "所属ギルドを確認", tab: "guild" };
     if (!funnelMilestones.has("activation_mission_handoff")) return {
       key: "activation_mission_handoff",
       title: "ミッションを進めよう",
       action: "mission_handoff",
     };
     return null;
-  }, [funnelMilestones, funnelAuthorityOwnerUserId, guildMembershipAuthorityReady, onboardingState, pendingGuildJoinRequests.length, qaState, session?.user?.id, userGuildMember, isRaidActive]);
+  }, [funnelMilestones, funnelAuthorityOwnerUserId, guildDiscoveryState, guildMembershipAuthorityReady, onboardingState, pendingGuildJoinRequests.length, qaState, session, userGuildMember, isRaidActive]);
 
   useEffect(() => {
     if (!session?.user?.id || !primaryCta || lastCtaImpression.current === primaryCta.key) return;
@@ -295,7 +413,7 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
       if (primaryCta.key === "first_free_asset_gacha") {
         setGuideGachaCategory(funnelMilestones.has("first_free_skill_ten_pull") ? "EQUIPMENT" : "SKILL");
       }
-      navigateTab(primaryCta.tab);
+      navigateTab(primaryCta.tab, primaryCta.key === "first_main_loadout" ? "party" : undefined);
     }
     playCyberSe("click");
   };
@@ -318,6 +436,7 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
   const leaderMaster = leaderCharacterId
     ? CHARACTERS_MASTER.find((c) => c.id === leaderCharacterId)
     : undefined;
+  const leaderDialogueLines = resolveHomeCharacterDialogueLines(leaderCharacterId);
   const leaderImgUrl = leaderMaster ? getCharacterTransparentImg(leaderMaster.name) : null;
   const isSsrLeader = leaderMaster?.rarity === "SSR";
 
@@ -341,6 +460,9 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
 
   useEffect(() => {
     markHomeReloadStage("homeShellReady");
+    return () => {
+      if (leaderLineTimerRef.current !== null) window.clearTimeout(leaderLineTimerRef.current);
+    };
   }, []);
 
   useEffect(() => {
@@ -412,21 +534,31 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
     }
   ];
 
-  const latestActivity = socialActivities[0];
+  const latestActivity = visibleSocialActivities[0];
   const activityText = latestActivity ? activityDescription(latestActivity) : null;
 
   const interiorName = PROFILE_INTERIORS.find((item) => item.id === interiorItem)?.name;
   const homeEventState = isRaidActive ? "raid" : "calm";
   const completedPatrolsCount = activePatrols?.filter((patrol: { secondsLeft?: number }) => (patrol.secondsLeft || 0) <= 0).length || 0;
   const handleLeaderTap = () => {
-    const lines = ["今夜も、ここを守る。", "行くぞ。街は俺たちのものだ。", "仲間の準備はできてるか？"];
-    setLeaderLine(lines[Math.floor(Math.random() * lines.length)]);
-    window.setTimeout(() => setLeaderLine(null), 2600);
+    if (!leaderCharacterId || leaderDialogueLines.length === 0) return;
+    const text = leaderDialogueLines[Math.floor(Math.random() * leaderDialogueLines.length)];
+    setLeaderLine({ characterId: leaderCharacterId, text });
+    if (leaderLineTimerRef.current !== null) window.clearTimeout(leaderLineTimerRef.current);
+    leaderLineTimerRef.current = window.setTimeout(() => {
+      setLeaderLine(null);
+      leaderLineTimerRef.current = null;
+    }, 2600);
     playCyberSe("click");
   };
 
   return (
-    <div className="mypage-view">
+    <div
+      className={`mypage-view ${visualReady ? "is-interactive" : "is-interaction-locked"}`}
+      data-home-interaction={visualReady ? "ready" : "blocked"}
+      aria-busy={!visualReady}
+      inert={!visualReady}
+    >
       <section
         key={latestActivity?.id || "empty"}
         className={`mypage-live-ticker mypage-live-ticker--visual ${homeEventState}`}
@@ -461,8 +593,8 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
         onClose={() => setShowActivityLog(false)}
         actions={[{ label: "閉じる", semantic: "secondary", onClick: () => setShowActivityLog(false) }]}
       >
-        {socialActivities.length > 0 ? <div className="mypage-activity-log" data-testid="activity-log">
-          {socialActivities.map((activity) => <article className="mypage-activity-log-row" key={activity.id}>
+        {visibleSocialActivities.length > 0 ? <div className="mypage-activity-log" data-testid="activity-log">
+          {visibleSocialActivities.map((activity) => <article className="mypage-activity-log-row" data-activity-id={activity.id} key={activity.id}>
             <UserIdentityRow
               variant="compact"
               userName={String(activity.actor_display_name || "プレイヤー")}
@@ -502,7 +634,10 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
           <span>{baseName}</span><small>{currentBase.file.toUpperCase()}</small><b aria-hidden="true">›</b>
         </button>
 
-        {onboardingState?.is_anonymous && onboardingState?.authentication_pending && <button
+        {session?.user?.is_anonymous === true
+          && onboardingState?.user_id === session.user.id
+          && onboardingState?.is_anonymous
+          && onboardingState?.authentication_pending && <button
           type="button"
           className="mypage-authentication-status active-scale-effect"
           onClick={() => { setShowAccountAuthenticationModal(true); playCyberSe("click"); }}
@@ -540,9 +675,9 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
           <div className={`mypage-leader-layer ${isSsrLeader ? "is-ssr" : ""}`} data-character-authority={leaderMaster ? leaderCharacterId : "placeholder"}>
             <CharacterPresentation src={leaderImgUrl || undefined} alt={leaderMaster?.name || "お気に入りキャラクター未設定"} variant="home-hero" rarity={leaderMaster?.rarity} frameKind={false} metadata={false} />
           </div>
-          {leaderMaster && <button className="mypage-leader-tap-target" onClick={handleLeaderTap} aria-label="リーダーに話しかける" />}
+          {leaderMaster && leaderDialogueLines.length > 0 && <button className="mypage-leader-tap-target" onClick={handleLeaderTap} aria-label={`${leaderMaster.jpName}に話しかける`} />}
         </>}
-        {leaderLine && <div className="mypage-leader-line">{leaderLine}</div>}
+        {leaderLine && leaderLine.characterId === leaderCharacterId && <div className="mypage-leader-line">{leaderLine.text}</div>}
 
         {/* 層構造装飾: z-4 称号プレートバナー */}
         {visibleEquippedTitle && (
@@ -599,12 +734,20 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
             <button
               className={`banner-card${visibleBanners[activeBannerIndex].id === "vip_pass" ? " vip" : ""}`}
               onClick={() => openBanner(visibleBanners[activeBannerIndex].destination)}
+              data-banner-id={visibleBanners[activeBannerIndex].id}
+              aria-label={visibleBanners[activeBannerIndex].id === "gvg-prep"
+                ? "ギルドバトル準備ミッション"
+                : visibleBanners[activeBannerIndex].id === "guild-power-ranking"
+                  ? "ギルド総合力ランキング"
+                  : visibleBanners[activeBannerIndex].title || "プロモーション"}
               aria-disabled={!visibleBanners[activeBannerIndex].destination}
             >
-              <img src={visibleBanners[activeBannerIndex].img} alt="Banner" className="banner-bg-img" />
-              <div className="banner-info-overlay">
-                <span className="banner-title">{visibleBanners[activeBannerIndex].title}</span>
-              </div>
+              {visibleBanners[activeBannerIndex].img
+                ? <img src={visibleBanners[activeBannerIndex].img!} alt="" className="banner-bg-img" onError={() => {
+                    const failedId = visibleBanners[activeBannerIndex].id;
+                    setBanners((current) => current.map((banner) => banner.id === failedId ? { ...banner, img: null } : banner));
+                  }} />
+                : <span className="banner-fallback-art" aria-hidden="true" />}
             </button>
             <button
               className="banner-arrow right"
@@ -639,6 +782,31 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
           </div>
         </div>
       </div>
+
+      {showGuildRankingCampaign && <CanonicalDialog
+        title="プレオープン限定 ギルド総合力ランキング"
+        ariaLabel="プレオープン限定ギルド総合力ランキングのご案内"
+        size="large"
+        onClose={() => setShowGuildRankingCampaign(false)}
+        loading={!guildRankingVisualReady}
+        actions={[
+          { label: "閉じる", semantic: "secondary", disabled: !guildRankingVisualReady, onClick: () => setShowGuildRankingCampaign(false) },
+          { label: "ランキングを見る", semantic: "primary", disabled: !guildRankingVisualReady, onClick: () => { setShowGuildRankingCampaign(false); navigateTab("ranking", "guild_power"); } },
+        ]}
+      >
+        <div className="campaign-keyvisual-dialog">
+          <img
+            src="/promotion/guild_power_ranking_keyvisual.webp"
+            alt="ギルド総合力ランキング"
+            onLoad={(event) => {
+              const image = event.currentTarget;
+              if (typeof image.decode === "function") void image.decode().catch(() => undefined).finally(() => setGuildRankingVisualReady(true));
+              else setGuildRankingVisualReady(true);
+            }}
+          />
+          <p>ギルドメンバー全員のメインデッキ総合力で順位が決まります。<br />報酬は限定ギルド装飾のみで、総合力やバトル性能には影響しません。</p>
+        </div>
+      </CanonicalDialog>}
 
     </div>
   );

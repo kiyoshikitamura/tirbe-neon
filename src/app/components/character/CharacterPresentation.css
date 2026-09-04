@@ -135,3 +135,4 @@
 @media (prefers-reduced-motion: reduce) {
   .character-presentation * { animation: none !important; }
 }
+.character-presentation.is-visual-loading > :is(.character-presentation-art,.character-presentation-frame,.character-presentation-rarity-badge,.character-presentation-attribute-badge){visibility:hidden}

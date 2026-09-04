@@ -39,6 +39,7 @@
 .mypage-visual-area.is-preparing > :not(.mypage-visual-loading) {
   visibility: hidden;
 }
+.mypage-view.is-interaction-locked{pointer-events:none;user-select:none}
 
 .mypage-visual-loading {
   position: absolute;
@@ -769,7 +770,7 @@
   text-align: left;
   border-radius: 8px;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 0;
 }
 
 .banner-card.vip {
@@ -781,8 +782,12 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
-  filter: brightness(1.24) saturate(1.08);
+  filter: none;
 }
+
+.campaign-keyvisual-dialog{display:grid;justify-items:center;gap:10px;text-align:center}
+.campaign-keyvisual-dialog img{display:block;width:min(100%,270px);height:auto;max-height:44dvh;aspect-ratio:860/1292;object-fit:contain;border-radius:8px}
+.campaign-keyvisual-dialog p{margin:0;color:var(--ui-text-primary);font-weight:700;line-height:1.65}
 
 .banner-info-overlay {
   position: absolute;
@@ -791,6 +796,10 @@
   display: flex;
   align-items: center;
   padding: 0 12px;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 1px;
 }
 
 .banner-title {
@@ -801,6 +810,9 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.banner-subtitle{color:rgba(255,255,255,.8);font-size:9px;font-weight:600;line-height:1.15}
+.banner-cta-label{position:absolute;right:10px;padding:4px 7px;border:1px solid rgba(0,240,255,.65);border-radius:4px;color:#fff;background:rgba(3,14,24,.8);font-size:9px;font-weight:800}
+.banner-fallback-art{position:absolute;inset:0;background:radial-gradient(circle at 78% 50%,rgba(229,50,110,.3),transparent 28%),linear-gradient(110deg,#07152a,#121329 50%,#24091b)}
 
 .banner-dots {
   display: flex;
@@ -1051,7 +1063,7 @@
 .banner-slide-wrapper { gap:5px; }
 .banner-arrow { width:27px;height:58px; }
 .banner-card { height:58px;border-radius:6px;background:#03070e; }
-.banner-bg-img { width:100%;height:100%;object-fit:contain;object-position:center; }
+.banner-bg-img { width:100%;height:100%;object-fit:cover;object-position:center; }
 
 .mypage-view .mypage-circle-menu-area {
   position:relative;

@@ -6,6 +6,7 @@ import OutlawButton from "./ui/OutlawButton";
 import CanonicalDialog from "./ui/CanonicalDialog";
 import CanonicalItemIcon from "./ui/CanonicalItemIcon";
 import { canonicalItemName } from "@/domain/gameplay/canonical/items";
+import { battleDisplayText } from "@/domain/presentation/battleTerminology";
 import "./InboxPanel.css";
 
 function PresentRewardIcon({ itemId }: { itemId: string }) {
@@ -83,7 +84,7 @@ export default function InboxPanel() {
           unclaimedPresents.map((p: any) => (
             <div key={p.id} className="inbox-present-item">
               <div className="inbox-present-info">
-                <div className="inbox-present-title">{p.title || p.message}</div>
+                <div className="inbox-present-title">{battleDisplayText(p.title || p.message)}</div>
                 <div className="inbox-present-reward">{(() => { const itemId = String(p.itemId || p.item_id || ""); const quantity = Number(p.qty ?? p.quantity ?? 0); return <><PresentRewardIcon itemId={itemId} /><span>{canonicalItemName(itemId)} <strong>× {quantity.toLocaleString()}</strong></span></>; })()}</div>
                 <div className="inbox-present-expire">{p.expireText || "期限なし"}</div>
               </div>
@@ -105,7 +106,12 @@ export default function InboxPanel() {
 
   return (
     <>
-      <FullScreenPanel title="受信箱" onClose={handleClose} className={presentClaimLoading ? "inbox-panel-pending" : ""}>
+      <FullScreenPanel
+        title="受信箱"
+        onClose={handleClose}
+        closeDisabled={presentClaimLoading}
+        className={presentClaimLoading ? "inbox-panel-pending" : ""}
+      >
         <div className="inbox-panel-container-inner" aria-busy={presentClaimLoading}>
           <SubTabNav
             tabs={[
