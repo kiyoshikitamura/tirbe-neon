@@ -11,6 +11,10 @@ for (const origin of [previewOrigin, productionOrigin, "http://localhost:3000"])
   const callback = getOAuthCallbackUrl(`${origin}/?invite=ORIGIN-GATE`);
   assert.equal(callback, `${origin}/auth/callback?invite=ORIGIN-GATE`);
   assert.equal(getOAuthReturnUrl(`${callback}&code=redacted`), `${origin}/?invite=ORIGIN-GATE`);
+  assert.equal(
+    getOAuthReturnUrl(`${origin}/auth/callback?return_to=%2Fadmin%2Fkpi&code=redacted`),
+    `${origin}/admin/kpi`,
+  );
 }
 
 const sourceFiles = [

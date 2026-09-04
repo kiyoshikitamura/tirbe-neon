@@ -167,6 +167,8 @@ export default function KpiDashboard() {
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [loginLoading, setLoginLoading] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
   const [isMobile, setIsMobile] = useState(true);
 
   const allowedPeriods = useMemo<PeriodType[]>(() => {
@@ -259,6 +261,22 @@ export default function KpiDashboard() {
     setRefreshing(false);
   };
 
+  const loginWithGoogle = async () => {
+    if (loginLoading) return;
+    setLoginLoading(true);
+    setLoginError(null);
+    const callback = new URL("/auth/callback", window.location.origin);
+    callback.searchParams.set("return_to", "/admin/kpi");
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: callback.toString() },
+    });
+    if (error) {
+      setLoginError(error.message);
+      setLoginLoading(false);
+    }
+  };
+
   if (access !== "admin") {
     return (
       <main className="kpi-shell kpi-access-shell">
@@ -266,7 +284,14 @@ export default function KpiDashboard() {
           <span className="kpi-kicker">TRIBE NEON / INTERNAL</span>
           <h1>KPI Control Room</h1>
           {access === "loading" && <p>権限を確認しています…</p>}
-          {access === "signed-out" && <><p>管理者アカウントでログインしてください。</p><Link href="/">ゲームへ戻る</Link></>}
+          {access === "signed-out" && <>
+            <p>管理者アカウントでログインしてください。</p>
+            <button className="kpi-google-login" type="button" onClick={() => void loginWithGoogle()} disabled={loginLoading}>
+              {loginLoading ? "Googleへ接続中…" : "Googleでログイン"}
+            </button>
+            {loginError && <p className="kpi-login-error" role="alert">{loginError}</p>}
+            <Link href="/">ゲームへ戻る</Link>
+          </>}
           {access === "denied" && <><p>この画面は運営管理者専用です。</p><Link href="/">ゲームへ戻る</Link></>}
         </section>
       </main>
