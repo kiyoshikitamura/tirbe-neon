@@ -8,6 +8,7 @@ const migrationNames = [
   "20260904000245_kpi_snapshot_foundation.sql",
   "20260904000246_kpi_snapshot_refresh_rpcs.sql",
   "20260904000247_kpi_measurement_security.sql",
+  "20260905000248_kpi_timeseries_dashboard.sql",
 ];
 const migrations = migrationNames.map((name) => ({
   name,
@@ -30,6 +31,11 @@ for (const token of [
   "Asia/Tokyo",
   "payment_closed",
   "observation_incomplete",
+  "p0-v2-timeseries",
+  "active.dau_authenticated",
+  "active.mau_anonymous",
+  "user.new_authenticated_eop",
+  "guild.member_total",
 ]) {
   assert.ok(combined.includes(token), `KPI migration set missing ${token}`);
 }

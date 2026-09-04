@@ -2,345 +2,148 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-type Category = "acquisition" | "active_retention" | "guild" | "content" | "revenue";
-type PeriodType = "daily" | "monthly" | "cohort";
-
-type Snapshot = {
-  run_id: string;
-  metric_id: string;
-  dimension_key: Record<string, string | number>;
-  value: number | string | null;
-  numerator: number | null;
-  denominator: number | null;
-  value_status: "provisional" | "final" | "not_applicable" | "unavailable";
-  null_reason: string | null;
-  calculated_at: string;
-  source_watermark: string;
-  finished_at: string;
+type View = "summary" | "guild" | "content";
+type Period = "daily" | "monthly";
+type Row = {
+  key: string;
+  status: "provisional" | "final" | "unavailable";
+  updatedAt: string | null;
+  [key: string]: string | number | null;
 };
 
-const categories: Array<{ id: Category; label: string; eyebrow: string }> = [
-  { id: "acquisition", label: "集客・新規", eyebrow: "ACQUISITION" },
-  { id: "active_retention", label: "アクティブ・継続", eyebrow: "RETENTION" },
+const views: Array<{ id: View; label: string; eyebrow: string }> = [
+  { id: "summary", label: "サマリー", eyebrow: "OVERVIEW" },
   { id: "guild", label: "ギルド", eyebrow: "COMMUNITY" },
   { id: "content", label: "コンテンツ", eyebrow: "CONTENT" },
-  { id: "revenue", label: "売上・課金", eyebrow: "REVENUE" },
 ];
-
-const metricLabels: Record<string, string> = {
-  "user.new_anonymous": "新規ユーザー（匿名）",
-  "user.new_authenticated": "新規ユーザー（認証）",
-  "user.new_total": "新規ユーザー合計",
-  "tutorial.completion_rate": "チュートリアル突破率",
-  "active.dau": "DAU",
-  "active.mau": "MAU",
-  "guild.valid_count": "有効ギルド数",
-  "guild.member_count": "ギルド人員数",
-  "guild.active_count": "アクティブギルド数",
-  "gacha.free10.character": "無料10連・キャラ",
-  "gacha.free10.skill": "無料10連・スキル",
-  "gacha.free10.equipment": "無料10連・装備",
-  "revenue.pu": "PU",
-  "revenue.gross": "売上",
-  "revenue.arppu": "ARPPU",
-  "revenue.arpu": "ARPU",
-};
-
-const statusLabels = {
-  provisional: "暫定",
-  final: "確定",
-  not_applicable: "対象外",
-  unavailable: "取得不可",
-} as const;
-
-const mockAdminPreview = process.env.NEXT_PUBLIC_USE_MOCK_DB === "true"
-  && process.env.NEXT_PUBLIC_ENABLE_QA_TOOLS === "true";
-const kpiDataEnvironment = process.env.NEXT_PUBLIC_KPI_DATA_ENV === "production"
-  ? "production"
-  : "preview";
-const kpiDataEnvironmentLabel = kpiDataEnvironment === "production" ? "Production" : "Preview";
+const dataEnvironment = process.env.NEXT_PUBLIC_KPI_DATA_ENV === "production" ? "Production" : "Preview";
 
 function jstToday() {
-  return new Intl.DateTimeFormat("sv-SE", {
-    timeZone: "Asia/Tokyo",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date());
+  return new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
 }
-
 function addDays(date: string, days: number) {
   const value = new Date(`${date}T00:00:00Z`);
   value.setUTCDate(value.getUTCDate() + days);
   return value.toISOString().slice(0, 10);
 }
-
-function periodRange(periodType: PeriodType, selectedDate: string) {
-  if (periodType !== "monthly") {
-    return { start: selectedDate, end: addDays(selectedDate, 1) };
-  }
-  const [year, month] = selectedDate.slice(0, 7).split("-").map(Number);
-  const start = `${year}-${String(month).padStart(2, "0")}-01`;
-  const next = new Date(Date.UTC(year, month, 1));
-  return { start, end: next.toISOString().slice(0, 10) };
+function currentRange(period: Period) {
+  const today = jstToday();
+  if (period === "daily") return { start: today, end: addDays(today, 1) };
+  const [year, month] = today.slice(0, 7).split("-").map(Number);
+  return { start: `${year}-${String(month).padStart(2, "0")}-01`, end: new Date(Date.UTC(year, month, 1)).toISOString().slice(0, 10) };
 }
-
 function formatTimestamp(value?: string | null) {
   if (!value) return "—";
-  return new Intl.DateTimeFormat("ja-JP", {
-    timeZone: "Asia/Tokyo",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-  }).format(new Date(value));
+  return new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" }).format(new Date(value));
 }
-
-function formatMetric(row: Snapshot) {
-  if (row.value_status === "not_applicable") return "N/A";
-  if (row.value == null) return "—";
-  const value = Number(row.value);
-  if (row.metric_id === "tutorial.completion_rate" || row.metric_id.startsWith("retention.")) {
-    return `${(value * 100).toLocaleString("ja-JP", { maximumFractionDigits: 1 })}%`;
-  }
-  if (row.metric_id === "revenue.gross" || row.metric_id === "revenue.arppu" || row.metric_id === "revenue.arpu") {
-    return `¥${value.toLocaleString("ja-JP", { maximumFractionDigits: 0 })}`;
-  }
-  return value.toLocaleString("ja-JP", { maximumFractionDigits: 0 });
+function numberValue(value: unknown, digits = 0) {
+  return typeof value === "number" && Number.isFinite(value) ? value.toLocaleString("ja-JP", { maximumFractionDigits: digits }) : "—";
 }
-
-function metricLabel(row: Snapshot) {
-  if (row.metric_id.startsWith("retention.d")) {
-    return `D${Number(row.metric_id.slice("retention.d".length))} 継続率`;
-  }
-  return metricLabels[row.metric_id] || row.metric_id;
+function percentValue(value: unknown) {
+  return typeof value === "number" && Number.isFinite(value) ? `${(value * 100).toLocaleString("ja-JP", { maximumFractionDigits: 1 })}%` : "—";
 }
-
-function dimensionLabel(row: Snapshot) {
-  const guildId = row.dimension_key?.guild_id;
-  if (guildId) return `Guild ${String(guildId).slice(0, 8)}`;
-  return null;
-}
-
-function mockSnapshots(category: Category, periodType: PeriodType, date: string): Snapshot[] {
-  const ids = category === "acquisition"
-    ? ["user.new_anonymous", "user.new_authenticated", "user.new_total", "tutorial.completion_rate"]
-    : category === "active_retention" && periodType === "cohort"
-      ? [1, 2, 3, 4, 5, 6, 7, 14, 21, 30, 60].map((day) => `retention.d${String(day).padStart(2, "0")}`)
-      : category === "active_retention"
-        ? [periodType === "monthly" ? "active.mau" : "active.dau"]
-        : category === "guild"
-          ? ["guild.valid_count", "guild.active_count", "guild.member_count"]
-          : category === "content"
-            ? ["gacha.free10.character", "gacha.free10.skill", "gacha.free10.equipment"]
-            : ["revenue.pu", "revenue.gross", "revenue.arppu", "revenue.arpu"];
-  const now = new Date().toISOString();
-  return ids.map((metricId, index) => {
-    const isRate = metricId.startsWith("retention.") || metricId === "tutorial.completion_rate";
-    const notApplicable = category === "revenue";
-    const dimensionKey: Record<string, string | number> = metricId === "guild.member_count"
-      ? { date, guild_id: "7b83f4c2-preview" }
-      : { date };
-    return {
-      run_id: "qa-preview",
-      metric_id: metricId,
-      dimension_key: dimensionKey,
-      value: notApplicable ? null : isRate ? Math.max(.18, .74 - index * .045) : [148, 51, 199, 27][index % 4],
-      numerator: notApplicable ? null : isRate ? Math.max(18, 74 - index * 4) : [148, 51, 199, 27][index % 4],
-      denominator: isRate ? 100 : null,
-      value_status: notApplicable ? "not_applicable" : index === 0 ? "provisional" : "final",
-      null_reason: notApplicable ? "payment_closed" : null,
-      calculated_at: now,
-      source_watermark: now,
-      finished_at: now,
-    };
-  });
+function periodLabel(key: string) { return key.replaceAll("-", "/"); }
+function statusCell(row: Row) {
+  return <span className={`kpi-row-status is-${row.status}`}>{row.status === "provisional" ? "暫定" : row.status === "final" ? "確定" : "—"}</span>;
 }
 
 export default function KpiDashboard() {
-  const [category, setCategory] = useState<Category>("acquisition");
-  const [periodType, setPeriodType] = useState<PeriodType>("daily");
-  const [selectedDate, setSelectedDate] = useState(jstToday);
-  const [rows, setRows] = useState<Snapshot[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [view, setView] = useState<View>("summary");
+  const [period, setPeriod] = useState<Period>("daily");
+  const [page, setPage] = useState(1);
+  const [rows, setRows] = useState<Row[]>([]);
+  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [refreshStep, setRefreshStep] = useState(0);
   const [message, setMessage] = useState<string | null>(null);
-  const [isMobile, setIsMobile] = useState(true);
+  const selectedView = views.find((item) => item.id === view)!;
+  const lastUpdated = useMemo(() => rows.map((row) => row.updatedAt).filter((value): value is string => !!value).sort().at(-1), [rows]);
 
-  const allowedPeriods = useMemo<PeriodType[]>(() => {
-    if (category === "active_retention") return ["daily", "monthly", "cohort"];
-    if (category === "guild") return ["daily"];
-    return ["daily", "monthly"];
-  }, [category]);
-  const range = useMemo(() => periodRange(periodType, selectedDate), [periodType, selectedDate]);
-
-  useEffect(() => {
-    const query = window.matchMedia("(max-width: 767px), (pointer: coarse)");
-    const update = () => setIsMobile(query.matches);
-    update();
-    query.addEventListener("change", update);
-    return () => query.removeEventListener("change", update);
-  }, []);
-
-  const loadSnapshots = useCallback(async () => {
+  const loadRows = useCallback(async () => {
     setLoading(true);
     setMessage(null);
-    if (mockAdminPreview) {
-      setRows(mockSnapshots(category, periodType, range.start));
-      setLoading(false);
-      return;
-    }
-    const params = new URLSearchParams({
-      category,
-      periodType,
-      periodStart: range.start,
-      periodEnd: range.end,
-    });
-    const response = await fetch(`/api/admin/kpi/snapshots?${params}`, { cache: "no-store" });
+    const response = await fetch(`/api/admin/kpi/timeseries?${new URLSearchParams({ view, period, page: String(page) })}`, { cache: "no-store" });
     const result = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      setRows([]);
-      setMessage(`読込に失敗しました: ${result.error || "不明なエラー"}`);
-    } else {
-      setRows((result.snapshots || []) as Snapshot[]);
-    }
+    if (!response.ok) { setRows([]); setMessage(result.error || "データを読み込めませんでした。"); }
+    else setRows(result.rows || []);
     setLoading(false);
-  }, [category, periodType, range.end, range.start]);
+  }, [page, period, view]);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => { void loadSnapshots(); }, 0);
+    const timer = window.setTimeout(() => { void loadRows(); }, 0);
     return () => window.clearTimeout(timer);
-  }, [loadSnapshots]);
-
-  const selectCategory = (nextCategory: Category) => {
-    setCategory(nextCategory);
-    if (nextCategory === "guild" || (nextCategory !== "active_retention" && periodType === "cohort")) {
-      setPeriodType("daily");
-    }
-  };
+  }, [loadRows]);
 
   const refresh = async () => {
-    if (isMobile) return;
-    setRefreshing(true);
-    setMessage(null);
-    const response = await fetch("/api/admin/kpi/refresh", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ category, periodType, periodStart: range.start, periodEnd: range.end }),
-    });
-    const result = await response.json().catch(() => ({}));
-    if (!response.ok) setMessage(result.error || "更新に失敗しました。");
-    else if (result.status !== "succeeded") setMessage(result.errorDetail || "集計が完了しませんでした。");
-    else {
-      setMessage("スナップショットを更新しました。");
-      await loadSnapshots();
+    if (refreshing) return;
+    const categories = view === "summary" ? ["acquisition", "active_retention", "revenue"] : [view];
+    const range = currentRange(period);
+    setRefreshing(true); setMessage(null); setPage(1);
+    for (let index = 0; index < categories.length; index += 1) {
+      setRefreshStep(index + 1);
+      const response = await fetch("/api/admin/kpi/refresh", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ category: categories[index], periodType: period, periodStart: range.start, periodEnd: range.end }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || result.status !== "succeeded") {
+        setMessage(result.error || result.errorDetail || `${categories[index]}の集計に失敗しました。`);
+        setRefreshing(false); setRefreshStep(0); return;
+      }
     }
-    setRefreshing(false);
+    setMessage(`${period === "daily" ? "本日" : "当月"}のSnapshotを更新しました。`);
+    setRefreshing(false); setRefreshStep(0); await loadRows();
   };
 
-  const selectedCategory = categories.find((item) => item.id === category)!;
-  const lastUpdated = rows[0]?.finished_at;
-  const provisionalCount = rows.filter((row) => row.value_status === "provisional").length;
-
+  const pages = Array.from({ length: Math.max(3, Math.min(5, page + 1)) }, (_, index) => index + 1);
   return (
     <main className="kpi-shell">
       <header className="kpi-header">
-        <div>
-          <span className="kpi-kicker">TRIBE NEON / {kpiDataEnvironment.toUpperCase()}</span>
-          <h1>KPI Control Room</h1>
-          <p>集客 → ゲーム開始 → 定着 → ギルド形成 → 課金</p>
-        </div>
-        <div className="kpi-header-meta">
-          <span className="kpi-live-dot" /> {kpiDataEnvironmentLabel} DB
-          <small>最終更新 {formatTimestamp(lastUpdated)}</small>
-        </div>
+        <div><span className="kpi-kicker">TRIBE NEON / INTERNAL</span><h1>KPI Control Room</h1><p>保存済みSnapshotによる日次・月次モニタリング</p></div>
+        <div className="kpi-header-meta"><strong><span className="kpi-live-dot" /> {dataEnvironment} DB</strong><small>最終更新 {formatTimestamp(lastUpdated)}</small></div>
       </header>
-
-      <nav className="kpi-funnel" aria-label="KPIカテゴリ">
-        {categories.map((item, index) => (
-          <button
-            key={item.id}
-            className={category === item.id ? "is-active" : ""}
-            onClick={() => selectCategory(item.id)}
-            type="button"
-          >
-            <span>{String(index + 1).padStart(2, "0")}</span>
-            <strong>{item.label}</strong>
-          </button>
-        ))}
+      <nav className="kpi-tabs" aria-label="KPI画面">
+        {views.map((item) => <button key={item.id} className={view === item.id ? "is-active" : ""} onClick={() => { setView(item.id); setPage(1); }} type="button">{item.label}</button>)}
       </nav>
-
-      <section className="kpi-toolbar" aria-label="集計条件">
-        <div className="kpi-title-block">
-          <span>{selectedCategory.eyebrow}</span>
-          <h2>{selectedCategory.label}</h2>
+      <section className="kpi-toolbar">
+        <div className="kpi-title-block"><span>{selectedView.eyebrow}</span><h2>{selectedView.label}</h2><small>{period === "daily" ? "1ページ30日" : "1ページ12か月"}・新しい順</small></div>
+        <div className="kpi-period-tabs" aria-label="集計単位">
+          <button type="button" className={period === "daily" ? "is-active" : ""} onClick={() => { setPeriod("daily"); setPage(1); }}>デイリー</button>
+          <button type="button" className={period === "monthly" ? "is-active" : ""} onClick={() => { setPeriod("monthly"); setPage(1); }}>マンスリー</button>
         </div>
-        <label>
-          集計単位
-          <select value={periodType} onChange={(event) => setPeriodType(event.target.value as PeriodType)}>
-            {allowedPeriods.map((period) => <option key={period} value={period}>{period === "daily" ? "デイリー" : period === "monthly" ? "マンスリー" : "コホート"}</option>)}
-          </select>
-        </label>
-        <label>
-          対象{periodType === "monthly" ? "月" : "日"}
-          <input
-            type={periodType === "monthly" ? "month" : "date"}
-            value={periodType === "monthly" ? selectedDate.slice(0, 7) : selectedDate}
-            onChange={(event) => setSelectedDate(periodType === "monthly" ? `${event.target.value}-01` : event.target.value)}
-          />
-        </label>
-        <button className="kpi-reload" type="button" onClick={() => void loadSnapshots()} disabled={loading}>
-          {loading ? "読込中" : "再読込"}
+        <button className="kpi-refresh" type="button" onClick={() => void refresh()} disabled={refreshing}>
+          {refreshing ? `集計中 ${refreshStep}/${view === "summary" ? 3 : 1}` : period === "daily" ? "本日の集計を更新" : "当月の集計を更新"}
         </button>
-        {!isMobile && (
-          <button className="kpi-refresh" type="button" onClick={() => void refresh()} disabled={refreshing}>
-            {refreshing ? "集計中…" : "このカテゴリを更新"}
-          </button>
-        )}
       </section>
-
-      <section className="kpi-status-strip">
-        <div><span>対象期間</span><strong>{range.start} — {range.end}</strong></div>
-        <div><span>指標数</span><strong>{rows.length}</strong></div>
-        <div><span>暫定値</span><strong>{provisionalCount}</strong></div>
-        <div><span>取得元</span><strong>保存済みSnapshot</strong></div>
-      </section>
-
       {message && <div className="kpi-message" role="status">{message}</div>}
-      {isMobile && <div className="kpi-mobile-notice">モバイルは閲覧専用です。更新はPCから実行してください。</div>}
-
-      <section className="kpi-grid" aria-busy={loading}>
-        {!loading && rows.length === 0 && (
-          <div className="kpi-empty">
-            <span>NO SNAPSHOT</span>
-            <h3>この期間はまだ集計されていません</h3>
-            <p>PCの「このカテゴリを更新」からスナップショットを生成してください。</p>
-          </div>
-        )}
-        {rows.map((row) => (
-          <article className="kpi-card" key={`${row.metric_id}-${JSON.stringify(row.dimension_key)}`}>
-            <div className="kpi-card-head">
-              <div>
-                <small>{dimensionLabel(row) || row.metric_id}</small>
-                <h3>{metricLabel(row)}</h3>
-              </div>
-              <span className={`kpi-status kpi-status-${row.value_status}`}>{statusLabels[row.value_status]}</span>
-            </div>
-            <strong className="kpi-value">{formatMetric(row)}</strong>
-            {(row.numerator != null || row.denominator != null) && (
-              <div className="kpi-fraction">
-                <span>分子 {row.numerator?.toLocaleString("ja-JP") ?? "—"}</span>
-                <span>分母 {row.denominator?.toLocaleString("ja-JP") ?? "—"}</span>
-              </div>
-            )}
-            <footer>
-              <span>{row.null_reason ? `理由: ${row.null_reason}` : "snapshot確定値"}</span>
-              <time>{formatTimestamp(row.calculated_at)}</time>
-            </footer>
-          </article>
-        ))}
+      <section className="kpi-table-card" aria-busy={loading}>
+        <div className="kpi-table-scroll">
+          <table className="kpi-table">
+            {view === "summary" && <><thead><tr>
+              <th>{period === "daily" ? "日付" : "月"}</th><th>{period === "daily" ? "DAU合計" : "MAU合計"}</th><th>認証</th><th>未認証</th>
+              <th>売上</th><th>PU</th><th>PUR</th><th>ARPPU</th><th>ARPU</th><th>新規合計</th><th>新規認証</th><th>新規未認証</th><th>状態</th>
+            </tr></thead><tbody>{rows.map((row) => <tr key={row.key}>
+              <td>{periodLabel(row.key)}</td><td>{numberValue(row.activeTotal)}</td><td>{numberValue(row.activeAuthenticated)}</td><td>{numberValue(row.activeAnonymous)}</td>
+              <td>N/A</td><td>N/A</td><td>N/A</td><td>N/A</td><td>N/A</td><td>{numberValue(row.newTotal)}</td><td>{numberValue(row.newAuthenticated)}</td><td>{numberValue(row.newAnonymous)}</td><td>{statusCell(row)}</td>
+            </tr>)}</tbody></>}
+            {view === "guild" && <><thead><tr>
+              <th>{period === "daily" ? "日付" : "月"}</th><th>有効数</th><th>アクティブ数</th><th>アクティブ率</th><th>総人員数</th><th>平均人員</th><th>新設</th><th>解散</th><th>状態</th>
+            </tr></thead><tbody>{rows.map((row) => <tr key={row.key}>
+              <td>{periodLabel(row.key)}</td><td>{numberValue(row.validGuilds)}</td><td>{numberValue(row.activeGuilds)}</td><td>{percentValue(row.activeRate)}</td><td>{numberValue(row.memberTotal)}</td><td>{numberValue(row.memberAverage, 1)}</td><td>{numberValue(row.createdGuilds)}</td><td>{numberValue(row.disbandedGuilds)}</td><td>{statusCell(row)}</td>
+            </tr>)}</tbody></>}
+            {view === "content" && <><thead><tr>
+              <th>{period === "daily" ? "日付" : "月"}</th><th>キャラ無料10連</th><th>スキル無料10連</th><th>装備無料10連</th><th>合計</th><th>状態</th>
+            </tr></thead><tbody>{rows.map((row) => <tr key={row.key}>
+              <td>{periodLabel(row.key)}</td><td>{numberValue(row.character)}</td><td>{numberValue(row.skill)}</td><td>{numberValue(row.equipment)}</td><td>{numberValue(row.total)}</td><td>{statusCell(row)}</td>
+            </tr>)}</tbody></>}
+          </table>
+          {loading && <div className="kpi-table-loading">読込中…</div>}
+        </div>
+        <footer className="kpi-pagination">
+          <button type="button" onClick={() => setPage((value) => Math.max(1, value - 1))} disabled={page === 1}>‹ 前へ</button>
+          {pages.map((value) => <button type="button" key={value} className={page === value ? "is-active" : ""} onClick={() => setPage(value)}>{value}</button>)}
+          <button type="button" onClick={() => setPage((value) => value + 1)}>次へ ›</button>
+        </footer>
       </section>
     </main>
   );

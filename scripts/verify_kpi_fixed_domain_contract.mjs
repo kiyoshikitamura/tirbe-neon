@@ -10,6 +10,7 @@ const page = await readFile("src/app/admin/kpi/page.tsx", "utf8");
 const dashboard = await readFile("src/app/admin/kpi/KpiDashboard.tsx", "utf8");
 const refreshRoute = await readFile("src/app/api/admin/kpi/refresh/route.ts", "utf8");
 const snapshotsRoute = await readFile("src/app/api/admin/kpi/snapshots/route.ts", "utf8");
+const timeseriesRoute = await readFile("src/app/api/admin/kpi/timeseries/route.ts", "utf8");
 const proxy = await readFile("src/proxy.ts", "utf8");
 const envExample = await readFile(".env.example", "utf8");
 
@@ -22,7 +23,7 @@ assert.match(nextConfig, /permanent:\s*false/);
 
 assert.match(page, /validateProductionKpiRuntime/);
 assert.doesNotMatch(dashboard, /supabase\.auth|signInWithPassword|signInWithOAuth/);
-assert.match(dashboard, /\/api\/admin\/kpi\/snapshots/);
+assert.match(dashboard, /\/api\/admin\/kpi\/timeseries/);
 assert.match(proxy, /KPI_BASIC_AUTH_USER/);
 assert.match(proxy, /KPI_BASIC_AUTH_PASSWORD/);
 assert.match(proxy, /WWW-Authenticate/);
@@ -34,6 +35,10 @@ assert.doesNotMatch(refreshRoute, /getUser|app_metadata|Bearer/);
 assert.match(snapshotsRoute, /kpi_aggregation_runs/);
 assert.match(snapshotsRoute, /kpi_metric_snapshots/);
 assert.doesNotMatch(snapshotsRoute, /refresh_kpi_snapshots/);
+assert.match(timeseriesRoute, /length:\s*30/);
+assert.match(timeseriesRoute, /length:\s*12/);
+assert.match(timeseriesRoute, /p0-v2-timeseries/);
+assert.doesNotMatch(timeseriesRoute, /refresh_kpi_snapshots/);
 assert.match(envExample, /NEXT_PUBLIC_KPI_DATA_ENV=/);
 assert.match(envExample, /SUPABASE_SERVICE_ROLE_KEY=/);
 assert.match(envExample, /KPI_BASIC_AUTH_USER=/);

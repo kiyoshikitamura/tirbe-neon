@@ -7,7 +7,6 @@ export const dynamic = "force-dynamic";
 
 const categories = new Set(["acquisition", "active_retention", "guild", "content", "revenue"]);
 const periodTypes = new Set(["daily", "monthly", "cohort"]);
-const mobilePattern = /Android|iPhone|iPad|iPod|Mobile|IEMobile|Opera Mini/i;
 
 function isIsoDate(value: unknown): value is string {
   return typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(`${value}T00:00:00Z`));
@@ -25,10 +24,6 @@ export async function POST(request: NextRequest) {
   if (!runtime.enabled) {
     return NextResponse.json({ error: `KPIサーバー設定を拒否しました: ${runtime.reason}` }, { status: 503 });
   }
-  if (mobilePattern.test(request.headers.get("user-agent") || "")) {
-    return NextResponse.json({ error: "モバイルからの集計更新は許可されていません。" }, { status: 403 });
-  }
-
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
   if (!url || !serviceKey) {
