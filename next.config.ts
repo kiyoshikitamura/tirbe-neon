@@ -4,6 +4,16 @@ const nextConfig: NextConfig = {
   // Visual acceptance screenshots must represent the release canvas rather
   // than the Next.js development toolbar badge.
   devIndicators: false,
+  async redirects() {
+    return [
+      {
+        source: "/",
+        has: [{ type: "host", value: "kpi-preview.tribe-neon.com" }],
+        destination: "/admin/kpi",
+        permanent: false,
+      },
+    ];
+  },
   async headers() {
     return [
       {
