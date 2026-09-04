@@ -599,6 +599,8 @@ test("Activity uses shared identity and respects reduced motion", async ({ page 
   await expect(dialog).toBeVisible();
   await expect(dialog.locator(".mypage-activity-log-row")).toHaveCount(12);
   await expect(dialog.locator("time")).toHaveCount(12);
+  await expect(dialog.locator(".mypage-activity-log-row").first()).toHaveAttribute("data-activity-id", "qa-activity-z");
+  await expect(dialog.locator('[data-activity-id="qa-activity-expired"]')).toHaveCount(0);
   const dialogGeometry = await dialog.evaluate((node) => {
     const header = node.querySelector<HTMLElement>(".canonical-dialog-header")!;
     const body = node.querySelector<HTMLElement>(".canonical-dialog-body")!;

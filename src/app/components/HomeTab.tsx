@@ -9,6 +9,7 @@ import { resolveHomeCharacterDialogueLines } from "@/domain/presentation/homeCha
 import { isDestinationAvailable } from "@/domain/operations/operations";
 import { resolvePresentableAssetUrl } from "@/utils/assetPresentation";
 import { getJstDateString } from "@/utils/jst_date";
+import { normalizeRecentActivities, RECENT_ACTIVITY_WINDOW_MS } from "@/domain/social/recentActivity";
 import CharacterPresentation from "./character/CharacterPresentation";
 import UserIdentityRow from "./profile/UserIdentityRow";
 import CanonicalDialog from "./ui/CanonicalDialog";
@@ -67,6 +68,7 @@ function preloadAndDecodeHomeImage(src: string, timeoutMs = 8000): Promise<boole
 
 type HomeTabQaState = Readonly<{
   socialActivities?: readonly any[];
+  socialActivityNowMs?: number;
   funnelMilestones?: readonly string[];
   ctaAuthorityReady?: boolean;
   guildDiscoveryState?: "pending" | "error" | "empty" | "available";
@@ -160,6 +162,7 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
   const [funnelAuthorityOwnerUserId, setFunnelAuthorityOwnerUserId] = useState(qaState?.funnelMilestones ? "qa" : "");
   const [activationHandoffPending, setActivationHandoffPending] = useState(false);
   const [socialActivities, setSocialActivities] = useState<HomeActivity[]>([...(qaState?.socialActivities || [])] as HomeActivity[]);
+  const [activityWindowNow, setActivityWindowNow] = useState(() => Date.now());
   const [showActivityLog, setShowActivityLog] = useState(false);
   const [showGuildRankingCampaign, setShowGuildRankingCampaign] = useState(false);
   const [guildRankingVisualReady, setGuildRankingVisualReady] = useState(false);
@@ -294,10 +297,10 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
     if (!session?.user?.id) return;
     let active = true;
     void (async () => {
-      const { data, error } = await supabase.from("social_activity_feed").select("id,activity_type,actor_user_id,actor_display_name,guild_id,object_master_id,display_payload,permanent,created_at")
-        .order("permanent", { ascending: false }).order("created_at", { ascending: false }).limit(20);
+      const { data, error } = await supabase.rpc("get_recent_social_activity_feed", { p_limit: 20 });
       if (error || !active) return;
-      const visible = (data || []).filter((event: HomeActivity) => !["FRIEND", "GVG", "SHOP", "PAYMENT"].includes(String(event.activity_type || "").toUpperCase()));
+      const visible = normalizeRecentActivities((data || []) as HomeActivity[])
+        .filter((event: HomeActivity) => !["FRIEND", "GVG", "SHOP", "PAYMENT"].includes(String(event.activity_type || "").toUpperCase()));
       const actorIds = [...new Set(visible.map((event: HomeActivity) => event.actor_user_id).filter((id): id is string => Boolean(id)))];
       const profilesById = new Map<string, { username?: string | null; favorite_character_id?: string | null; guild_name?: string | null }>();
       if (actorIds.length > 0) {
@@ -319,6 +322,29 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
     })();
     return () => { active = false; };
   }, [qaState?.socialActivities, session?.user?.id]);
+
+  const socialActivityNowMs = qaState?.socialActivityNowMs ?? activityWindowNow;
+  const visibleSocialActivities = useMemo(
+    () => normalizeRecentActivities(socialActivities, socialActivityNowMs),
+    [socialActivities, socialActivityNowMs],
+  );
+
+  useEffect(() => {
+    if (qaState?.socialActivityNowMs != null) return;
+    const nextExpirationAt = socialActivities.reduce((nearest, activity) => {
+      const createdAt = Date.parse(activity.created_at || "");
+      const expiresAt = createdAt + RECENT_ACTIVITY_WINDOW_MS;
+      return Number.isFinite(expiresAt) && createdAt <= activityWindowNow && expiresAt >= activityWindowNow
+        ? Math.min(nearest, expiresAt)
+        : nearest;
+    }, Number.POSITIVE_INFINITY);
+    if (!Number.isFinite(nextExpirationAt)) return;
+    const timer = window.setTimeout(
+      () => setActivityWindowNow(Date.now()),
+      Math.max(10, nextExpirationAt - Date.now() + 10),
+    );
+    return () => window.clearTimeout(timer);
+  }, [activityWindowNow, qaState?.socialActivityNowMs, socialActivities]);
 
   const primaryCta = useMemo<{
     key: string; title: string; tab?: string; action?: "guild_chat" | "mission_handoff";
@@ -350,7 +376,7 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
       action: "mission_handoff",
     };
     return null;
-  }, [funnelMilestones, funnelAuthorityOwnerUserId, guildDiscoveryState, guildMembershipAuthorityReady, onboardingState, pendingGuildJoinRequests.length, qaState, session?.user?.id, userGuildMember, isRaidActive]);
+  }, [funnelMilestones, funnelAuthorityOwnerUserId, guildDiscoveryState, guildMembershipAuthorityReady, onboardingState, pendingGuildJoinRequests.length, qaState, session, userGuildMember, isRaidActive]);
 
   useEffect(() => {
     if (!session?.user?.id || !primaryCta || lastCtaImpression.current === primaryCta.key) return;
@@ -508,7 +534,7 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
     }
   ];
 
-  const latestActivity = socialActivities[0];
+  const latestActivity = visibleSocialActivities[0];
   const activityText = latestActivity ? activityDescription(latestActivity) : null;
 
   const interiorName = PROFILE_INTERIORS.find((item) => item.id === interiorItem)?.name;
@@ -567,8 +593,8 @@ function MainMyPage({ qaState }: { qaState?: HomeTabQaState }) {
         onClose={() => setShowActivityLog(false)}
         actions={[{ label: "閉じる", semantic: "secondary", onClick: () => setShowActivityLog(false) }]}
       >
-        {socialActivities.length > 0 ? <div className="mypage-activity-log" data-testid="activity-log">
-          {socialActivities.map((activity) => <article className="mypage-activity-log-row" key={activity.id}>
+        {visibleSocialActivities.length > 0 ? <div className="mypage-activity-log" data-testid="activity-log">
+          {visibleSocialActivities.map((activity) => <article className="mypage-activity-log-row" data-activity-id={activity.id} key={activity.id}>
             <UserIdentityRow
               variant="compact"
               userName={String(activity.actor_display_name || "プレイヤー")}
