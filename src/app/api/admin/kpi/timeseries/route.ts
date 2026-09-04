@@ -46,6 +46,24 @@ function categoriesFor(view: View) {
   return [view];
 }
 
+function displayedMetricIds(view: View, period: Period) {
+  if (view === "summary") {
+    const active = period === "daily" ? "active.dau" : "active.mau";
+    return new Set([
+      active, `${active}_authenticated`, `${active}_anonymous`,
+      "user.new_total", "user.new_authenticated_eop", "user.new_anonymous_eop",
+      "revenue.gross", "revenue.pu", "revenue.pur", "revenue.arppu", "revenue.arpu",
+    ]);
+  }
+  if (view === "guild") {
+    return new Set([
+      "guild.valid_count", "guild.active_count", "guild.active_rate",
+      "guild.member_total", "guild.member_average", "guild.created_count", "guild.disbanded_count",
+    ]);
+  }
+  return new Set(["gacha.free10.character", "gacha.free10.skill", "gacha.free10.equipment"]);
+}
+
 export async function GET(request: NextRequest) {
   const runtime = validateProductionKpiRuntime({
     appEnvironment: process.env.NEXT_PUBLIC_APP_ENV,
@@ -124,7 +142,10 @@ export async function GET(request: NextRequest) {
     const usedRuns = categoriesFor(viewValue)
       .map((category) => latestRuns.get(`${periodStart}:${category}`))
       .filter((run): run is Run => !!run);
-    const statuses = usedRuns.flatMap((run) => [...(metricsByRun.get(run.run_id)?.values() || [])].map((item) => item.value_status));
+    const visibleMetrics = displayedMetricIds(viewValue, periodValue);
+    const statuses = usedRuns.flatMap((run) => [...(metricsByRun.get(run.run_id)?.values() || [])]
+      .filter((item) => visibleMetrics.has(item.metric_id))
+      .map((item) => item.value_status));
     const base = {
       key: displayKey,
       status: statuses.includes("provisional") ? "provisional" : usedRuns.length ? "final" : "unavailable",
