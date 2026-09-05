@@ -43,6 +43,7 @@ export const QA_PRESENTATION_SCENARIOS = [
   ["first-home-character-tall", "First Home / Tall Character"],
   ["first-home-character-hair", "First Home / Hair Volume Character"],
   ["first-home-campaign", "First Home / Pre-open Campaign"],
+  ["first-home-prep", "First Home / Preparation Dialog (RPC fixture)"],
 ] as const;
 
 export type QaPresentationScenarioId = typeof QA_PRESENTATION_SCENARIOS[number][0];

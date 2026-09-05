@@ -10,6 +10,7 @@ import GachaTab from "@/app/components/GachaTab";
 import CommonModals from "@/app/components/CommonModals";
 import Header from "@/app/components/Header";
 import HomeTab from "@/app/components/HomeTab";
+import PrepMissionEventDialogController from "@/app/components/mission/PrepMissionEventDialogController";
 import MoveBaseModal from "@/app/components/MoveBaseModal";
 import CharacterPresentation from "@/app/components/character/CharacterPresentation";
 import PageShell from "@/app/components/ui/PageShell";
@@ -365,6 +366,9 @@ function PublicProfileFixture() {
 type HomeScenario = "first-home-fresh" | "first-home-identity-loading" | "first-home-raid" | "first-home-guild-out" | "first-home-guild-in" | "first-home-guild-pending" | "first-home-favorite-missing" | "first-home-favorite-invalid" | "first-home-activity-self" | "first-home-character-tall" | "first-home-character-hair" | "first-home-campaign";
 
 function ProductionHomeFixture({ scenario }: { scenario: HomeScenario }) {
+  const prepQa = String(scenario) === "first-home-prep";
+  const [showPrepMissionDialog, setShowPrepMissionDialog] = useState(false);
+  const [prepMissionDialogCheckComplete, setPrepMissionDialogCheckComplete] = useState(false);
   const [openedProfileId, setOpenedProfileId] = useState<string | null>(null);
   const [showMoveBaseModal, setShowMoveBaseModal] = useState(false);
   const identityStartsPending = scenario === "first-home-identity-loading";
@@ -420,7 +424,14 @@ function ProductionHomeFixture({ scenario }: { scenario: HomeScenario }) {
     monthlyPassActive: false,
     isRaidActive: raidActive,
     raidBossBaseId: raidActive ? "shinjuku" : null,
-    session: null,
+    session: prepQa ? { user: { id: "00000000-0000-4000-8000-000000000405" } } : null,
+    loginBonusCheckComplete: true,
+    showLoginBonusModal: false,
+    showPrepMissionDialog,
+    setShowPrepMissionDialog,
+    prepMissionDialogCheckComplete,
+    setPrepMissionDialogCheckComplete,
+    setMissionTab: noop,
     activePatrols: [],
     onboardingState: { tutorial_step: "AUTHENTICATION", gameplay_authorized: true },
     userGuildMember: guildJoined && ctaAuthorityReady ? { role: "MEMBER" } : null,
@@ -470,9 +481,10 @@ function ProductionHomeFixture({ scenario }: { scenario: HomeScenario }) {
           funnelMilestones: milestones,
           ctaAuthorityReady,
           guildDiscoveryState: ctaAuthorityReady && !guildJoined ? "available" : "pending",
-          bannerAuthority: scenario === "first-home-campaign" ? "campaign" : "normal",
+          bannerAuthority: scenario === "first-home-campaign" || prepQa ? "campaign" : "normal",
         }} />
         <MoveBaseModal />
+        {prepQa && <PrepMissionEventDialogController />}
         {openedProfileId && <output data-opened-profile-id={openedProfileId} />}
       </PageShell>
     </div>
