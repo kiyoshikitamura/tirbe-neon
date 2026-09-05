@@ -60,6 +60,13 @@ begin
     or exists(select 1 from public.ranking_guild_power_reward_grants where season_id=s)
     or exists(select 1 from public.ranking_guild_power_finalization_audits where season_id=s)
     or exists(select 1 from public.guild_cosmetics where guild_id=g) then raise exception 'Premature settlement or entitlement'; end if;
+  -- Completed rewards survive a future Human-set close; progress does not.
+  perform public.evaluate_mission_progress(u,'PVP_FINALIZED_BATTLE_COUNT',3);
+  perform set_config('preopen.qa_clock','2100-01-01 00:00:00+09',true);
+  perform public.evaluate_mission_progress(u,'RAID_FINALIZED_BATTLE_COUNT',3);
+  if exists(select 1 from public.user_missions where user_id=u and mission_id='GVG_PREP_10' and current_progress>0) then raise exception 'Progress continued after end'; end if;
+  r:=public.claim_mission_reward('GVG_PREP_09');
+  if not coalesce((r->>'claimed')::boolean,false) then raise exception 'Earned reward lost after end'; end if;
 end;
 $$;
 select 'PASS: Sep 9/10 mission progress, individual/bulk claim, daily dialog, live ranking, cutoff, cron rejection, no entitlement' result;
