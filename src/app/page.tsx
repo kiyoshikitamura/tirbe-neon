@@ -35,6 +35,7 @@ import ConfirmDialog from "./components/ui/ConfirmDialog";
 import GlobalInteractionBlocker from "./components/ui/GlobalInteractionBlocker";
 import PageShell from "./components/ui/PageShell";
 import TitleView from "./components/TitleView";
+import TitleLegalFooter from "./components/TitleLegalFooter";
 import MoveBaseModal from "./components/MoveBaseModal";
 import TutorialWorldIntro from "./components/TutorialWorldIntro";
 import TutorialRuleGuide from "./components/TutorialRuleGuide";
@@ -128,6 +129,7 @@ function AppContent() {
             <BrandedLoading label="起動中" />
           )}
         </div>
+        <TitleLegalFooter boot />
       </div>
     );
   }
