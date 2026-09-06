@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { discardAnonymousAccountForSwitch, supabase } from "@/utils/supabase";
 import { consumeRememberedOAuthReturnTo, getOAuthReturnUrl } from "@/utils/browserDetection";
+import { commitAccountSwitchIdentityTransition, prepareAccountSwitchIdentityTransition, recordSameSubjectIdentityTransition } from "@/utils/kpiInstrumentation";
 
 const ONBOARDING_AUTH_INTENT_KEY = "tribe_onboarding_auth_intent";
 const ONBOARDING_AUTH_INTENT_MAX_AGE_MS = 30 * 60 * 1000;
@@ -138,6 +139,10 @@ export default function AuthCallbackPage() {
             returnToApp(undefined, "NO_EXISTING_GAME_DATA");
             return;
           }
+          const transitionEvidence = await prepareAccountSwitchIdentityTransition(
+            tutorialSession.access_token,
+            exchangeData.session.access_token,
+          );
           const { data: discarded, error: discardError } = await discardAnonymousAccountForSwitch(tutorialSession);
           if (discardError || discarded?.discardedUserId !== tutorialSession.user.id || discarded?.gameplayMerged !== false) {
             await supabase.auth.setSession({
@@ -148,6 +153,7 @@ export default function AuthCallbackPage() {
             returnToApp(undefined, "ANONYMOUS_DISCARD_FAILED");
             return;
           }
+          if (transitionEvidence) void commitAccountSwitchIdentityTransition(transitionEvidence, exchangeData.session.access_token);
           returnToApp();
           return;
         }
@@ -174,6 +180,9 @@ export default function AuthCallbackPage() {
           }
           returnToApp("google");
           return;
+        }
+        if (onboardingIntent && exchangeData.session.user.id === onboardingIntent.userId) {
+          void recordSameSubjectIdentityTransition(exchangeData.session.access_token);
         }
         returnToApp();
         return;
