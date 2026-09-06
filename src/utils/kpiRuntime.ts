@@ -1,5 +1,7 @@
 export const KPI_PRODUCTION_PROJECT_REF = "ktpolnkyyfkowxdmijww";
 export const KPI_PRODUCTION_STANDARD_ORIGIN = `https://${KPI_PRODUCTION_PROJECT_REF}.supabase.co`;
+export const KPI_PREVIEW_PROJECT_REF = "sufvuqdnqohpfzkwxohq";
+export const KPI_PREVIEW_STANDARD_ORIGIN = `https://${KPI_PREVIEW_PROJECT_REF}.supabase.co`;
 
 type KpiRuntimeConfig = {
   appEnvironment?: string;
@@ -44,4 +46,20 @@ export function validateProductionKpiRuntime(config: KpiRuntimeConfig): KpiRunti
     return { enabled: false, reason: "production_project_mismatch" };
   }
   return { enabled: true, origin: KPI_PRODUCTION_STANDARD_ORIGIN };
+}
+
+export function validateKpiV2Runtime(config: KpiRuntimeConfig) {
+  if (config.appEnvironment?.trim().toLowerCase() !== "preview") return { enabled: false as const, reason: "app_environment" };
+  const target = config.dataEnvironment?.trim().toLowerCase();
+  const expected = target === "production" ? KPI_PRODUCTION_STANDARD_ORIGIN : target === "preview" ? KPI_PREVIEW_STANDARD_ORIGIN : null;
+  if (!expected) return { enabled: false as const, reason: "data_environment" };
+  try {
+    const parsed = new URL(config.supabaseUrl?.trim() || "");
+    if (parsed.username || parsed.password || parsed.pathname !== "/" || parsed.search || parsed.hash || parsed.origin !== expected) {
+      return { enabled: false as const, reason: "project_mismatch" };
+    }
+    return { enabled: true as const, origin: expected, dataEnvironment: target };
+  } catch {
+    return { enabled: false as const, reason: "project_mismatch" };
+  }
 }

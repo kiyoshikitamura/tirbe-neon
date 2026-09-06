@@ -40,9 +40,9 @@ Authenticated HTTP acceptance of the V2 routes could not be executed because no 
 - Daily materialization recommended before scale: Retention cohorts, community/effective-active-guild series, and acquisition/guild windows once fact volume makes multi-page reads material.
 - Snapshot: formal release decisions and immutable as-of evidence after its evaluator definition is fixed. No cron was added.
 
-## Post-tutorial Gacha mapping evidence
+## Post-tutorial Gacha mapping — fixed
 
-The strongest repository candidates are `SKILL_NORMAL` and `EQUIP_NORMAL`: migration 00220 accepts exactly those IDs and maps them to `first_free_skill_ten_pull` / `first_free_equipment_ten_pull`; the runtime advances from the free Skill ten-pull to Equipment; the Gacha tab exposes SKILL/EQUIPMENT categories. This remains a candidate, not a fixed KPI mapping.
+The canonical presentation mapping is fixed as Type 1 = `SKILL_NORMAL` / スキルガチャ and Type 2 = `EQUIP_NORMAL` / 装備ガチャ. Migration 00220 accepts exactly those IDs and maps them to `first_free_skill_ten_pull` / `first_free_equipment_ten_pull`; the runtime guide follows the same order. Existing DB enums and event semantics remain unchanged.
 
 ## Production preflight
 
@@ -51,8 +51,7 @@ Read-only repeat result: head 00248, history 00249 absent, 10 dependencies prese
 ## Remaining specification gaps
 
 1. Account-switch Retention attribution.
-2. Post-tutorial Gacha mapping (candidate only).
-3. Formal Open approximate-threshold tolerance.
-4. Community continuity period.
+2. Formal Open approximate-threshold tolerance.
+3. Community continuity period.
 
-M3 Dashboard V2 UI should not be called acceptance-ready until the protected Preview API probe is completed. UI implementation can proceed against the committed response contract in parallel, but Production release remains unapproved.
+M3 Dashboard V2 UI may proceed against the committed response contract while protected HTTP acceptance remains blocked. Production release remains unapproved.

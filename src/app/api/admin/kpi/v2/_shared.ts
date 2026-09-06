@@ -109,11 +109,11 @@ export async function acquisition(service: SupabaseClient, range: NonNullable<Re
     .select("journey_id,occurred_at").eq("event_type", "TITLE_ARRIVED")
     .gte("occurred_at", range.fromAt).lt("occurred_at", range.toAt).range(from, to));
   const ids = [...new Set(titleRows.map((row) => row.journey_id))];
-  if (!ids.length) return { metric: metric("acquisition.game_start_rate", 0, 0, 0.8), journeys: { started_at: null, last_fact_at: null, bound: 0, unbound: 0 } };
+  if (!ids.length) return { metric: metric("acquisition.game_start_rate", 0, 0, 0.8), journeys: { started_at: null, last_fact_at: null, bound: 0, unbound: 0 }, steps: ["TITLE_ARRIVED", "TAP_TO_START", "WORLD_INTRO_STARTED", "WORLD_INTRO_COMPLETED", "NAME_COMPLETED", "GAME_START_BOUND"].map((event_type) => ({ event_type, journeys: 0 })) };
   const [{ data: journeys }, { data: bindings }, { data: allFacts }] = await Promise.all([
     service.from("kpi_acquisition_journeys").select("journey_id,started_at,source").in("journey_id", ids),
     service.from("kpi_acquisition_subject_bindings").select("journey_id,subject_id,bound_at").in("journey_id", ids),
-    service.from("kpi_acquisition_journey_facts").select("journey_id,occurred_at").in("journey_id", ids).order("occurred_at", { ascending: false }),
+    service.from("kpi_acquisition_journey_facts").select("journey_id,event_type,occurred_at").in("journey_id", ids).order("occurred_at", { ascending: false }),
   ]);
   const accepted = new Set(((journeys || []) as any[]).filter((row) => row.source !== "qa_v1").map((row) => row.journey_id));
   const acceptedBindings = ((bindings || []) as any[]).filter((row) => accepted.has(row.journey_id));
@@ -132,6 +132,12 @@ export async function acquisition(service: SupabaseClient, range: NonNullable<Re
     .filter((row) => acceptedIds.includes(row.journey_id) && subjectById.get(row.subject_id)?.registered_at)
     .map((row) => row.journey_id)).size;
   const facts = ((allFacts || []) as any[]).filter((row) => accepted.has(row.journey_id));
+  const eventTypes = ["TITLE_ARRIVED", "TAP_TO_START", "WORLD_INTRO_STARTED", "WORLD_INTRO_COMPLETED", "NAME_COMPLETED"];
+  const steps = eventTypes.map((eventType) => {
+    const count = new Set(facts.filter((row) => acceptedIds.includes(row.journey_id) && row.event_type === eventType).map((row) => row.journey_id)).size;
+    return { event_type: eventType, journeys: count };
+  });
+  steps.push({ event_type: "GAME_START_BOUND", journeys: numerator });
   return {
     metric: metric("acquisition.game_start_rate", numerator, acceptedIds.length, 0.8),
     journeys: {
@@ -139,6 +145,7 @@ export async function acquisition(service: SupabaseClient, range: NonNullable<Re
       last_fact_at: facts.map((row) => row.occurred_at).sort().at(-1) || null,
       bound: numerator, unbound: acceptedIds.length - numerator,
     },
+    steps,
   };
 }
 
@@ -152,7 +159,66 @@ export async function tutorial(service: SupabaseClient, range: NonNullable<Retur
     ? await service.from("kpi_canonical_tutorial_completions_v1").select("subject_id,completed_at").in("subject_id", ids)
     : { data: [] as any[] };
   const completed = new Set(((completionData || []) as any[]).map((row) => row.subject_id));
-  return { metric: metric("tutorial.canonical_complete_rate", completed.size, ids.length, 0.6), strong_target: 0.7 };
+  const { data: factData } = ids.length
+    ? await service.from("kpi_tutorial_journey_facts").select("subject_id,fact_type,occurred_at").in("subject_id", ids)
+    : { data: [] as any[] };
+  const factTypes = ["TUTORIAL_GACHA_COMPLETED", "TUTORIAL_BATTLE_COMPLETED", "AUTH_CHOICE_SELECTED", "AUTH_CHOICE_RESOLVED", "FIRST_MYPAGE_ACCESS_CONFIRMED"];
+  return {
+    metric: metric("tutorial.canonical_complete_rate", completed.size, ids.length, 0.6),
+    strong_target: 0.7,
+    steps: [
+      { fact_type: "GAME_START", subjects: ids.length, observation_status: "complete" },
+      ...factTypes.map((factType) => ({
+        fact_type: factType,
+        subjects: new Set(((factData || []) as any[]).filter((row) => row.fact_type === factType && !excluded(periods, row.subject_id, row.occurred_at)).map((row) => row.subject_id)).size,
+        observation_status: factType === "FIRST_MYPAGE_ACCESS_CONFIRMED" ? "complete" : "partial",
+      })),
+    ],
+  };
+}
+
+export async function postTutorial(service: SupabaseClient, range: NonNullable<ReturnType<typeof rangeFrom>>) {
+  const { data: completionData, error: completionError } = await service.from("kpi_canonical_tutorial_completions_v1")
+    .select("subject_id,completed_at").gte("completed_at", range.fromAt).lt("completed_at", range.toAt).limit(100000);
+  if (completionError) throw completionError;
+  const periods = await exclusions(service);
+  const completions = ((completionData || []) as any[]).filter((row) => !excluded(periods, row.subject_id, row.completed_at));
+  const subjectIds = completions.map((row) => row.subject_id);
+  if (!subjectIds.length) return {
+    cohort: 0,
+    metrics: ["SKILL_NORMAL", "EQUIP_NORMAL", "CHARACTER", "BATTLE", "RAID"].map((key) => ({ key, uu: key === "CHARACTER" ? null : 0, observation_status: key === "CHARACTER" ? "unavailable" : "complete" })),
+  };
+  const { data: subjectData, error: subjectError } = await service.from("kpi_subjects").select("subject_id,source_user_id").in("subject_id", subjectIds);
+  if (subjectError) throw subjectError;
+  const subjectBySource = new Map(((subjectData || []) as any[]).filter((row) => row.source_user_id).map((row) => [row.source_user_id, row.subject_id]));
+  const sourceIds = [...subjectBySource.keys()];
+  const [{ data: gachaData, error: gachaError }, { data: milestoneData, error: milestoneError }] = await Promise.all([
+    service.from("kpi_gacha_execution_facts").select("subject_id,gacha_id,completed_at").in("subject_id", subjectIds).in("gacha_id", ["SKILL_NORMAL", "EQUIP_NORMAL"]),
+    sourceIds.length
+      ? service.from("user_funnel_milestones").select("user_id,milestone,first_occurred_at").in("user_id", sourceIds).in("milestone", ["first_battle", "first_raid"])
+      : Promise.resolve({ data: [] as any[], error: null }),
+  ]);
+  if (gachaError) throw gachaError;
+  if (milestoneError) throw milestoneError;
+  const completedAt = new Map(completions.map((row) => [row.subject_id, row.completed_at]));
+  const afterCompletion = (subjectId: string, at: string) => !!completedAt.get(subjectId) && Date.parse(at) >= Date.parse(completedAt.get(subjectId));
+  const gachaCount = (gachaId: string) => new Set(((gachaData || []) as any[])
+    .filter((row) => row.gacha_id === gachaId && afterCompletion(row.subject_id, row.completed_at)).map((row) => row.subject_id)).size;
+  const milestoneCount = (milestone: string) => new Set(((milestoneData || []) as any[]).filter((row) => {
+    const subjectId = subjectBySource.get(row.user_id);
+    return subjectId && row.milestone === milestone && afterCompletion(subjectId, row.first_occurred_at);
+  }).map((row) => subjectBySource.get(row.user_id))).size;
+  return {
+    cohort: completions.length,
+    metrics: [
+      { key: "SKILL_NORMAL", label: "スキルガチャ", uu: gachaCount("SKILL_NORMAL"), observation_status: "complete" },
+      { key: "EQUIP_NORMAL", label: "装備ガチャ", uu: gachaCount("EQUIP_NORMAL"), observation_status: "complete" },
+      { key: "CHARACTER", label: "Character", uu: null, observation_status: "unavailable", reason: "canonical_character_activation_authority_not_fixed" },
+      { key: "BATTLE", label: "Battle", uu: milestoneCount("first_battle"), observation_status: "complete" },
+      { key: "RAID", label: "Raid", uu: milestoneCount("first_raid"), observation_status: "complete" },
+    ],
+    authority: { SKILL_NORMAL: "kpi_gacha_execution_facts", EQUIP_NORMAL: "kpi_gacha_execution_facts", BATTLE: "user_funnel_milestones.first_battle", RAID: "user_funnel_milestones.first_raid" },
+  };
 }
 
 export async function guild(service: SupabaseClient, range: NonNullable<ReturnType<typeof rangeFrom>>) {
@@ -268,7 +334,7 @@ export async function validation(service: SupabaseClient, range: NonNullable<Ret
       const cpm = totals.impressions === 0 ? null : totals.spend * 1000 / totals.impressions;
       return {
         date,
-        cpc: scalarMetric("marketing.cpc", cpc, 28.5, { pass: cpc != null && cpc <= 28.5, reason: cpc == null ? "zero_denominator" : null }),
+        cpc: metric("marketing.cpc", totals.spend, totals.clicks, 28.5, { pass: cpc != null && cpc <= 28.5, reason: cpc == null ? "zero_denominator" : null }),
         clicks: scalarMetric("marketing.clicks", totals.clicks, 350),
         ctr: scalarMetric("marketing.ctr", ctr, 0.007, { reason: ctr == null ? "zero_denominator" : null }),
         cpm: scalarMetric("marketing.cpm", cpm, null, { status: cpm == null ? "NOT_READY" : "UNAVAILABLE", reason: cpm == null ? "zero_denominator" : "no_gate_threshold" }),
