@@ -28,7 +28,9 @@ Status remains `BLOCKED — authenticated HTTP acceptance only`. Implementation,
 
 ## Remaining Preview acceptance
 
-Deploy this M3 commit to the dedicated branch target whose bundle contains `https://sufvuqdnqohpfzkwxohq.supabase.co`, then repeat desktop/mobile visual checks. Authenticated live-data checks remain part of the M2 blocker rather than a UI design blocker.
+M3 UI commit `998b40990dea19fcaebc77a70abf22a8689dbcbc` deployed successfully to `https://tribe-neon-293vgv8gt-kiyoshi-kitamura.vercel.app`. Its public client bundle contains only the expected Preview Supabase origin `https://sufvuqdnqohpfzkwxohq.supabase.co`.
+
+The protected route currently returns fail-closed HTTP 503 with `Cache-Control: no-store`, rather than the previously accepted unauthenticated 401 challenge. This indicates the deployment does not currently have usable KPI Basic-auth configuration, so live protected rendering, authenticated parity, and HTTP latency remain blocked. No bypass was added. Local production-build browser acceptance covers M3 layout and states; the live HTTP blocker remains owned by M2.
 
 ## Remaining specification gaps
 
