@@ -1,5 +1,6 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
+import { calculateCommunityContinuity, calculateFormalOpenStatus, calculateFormalRetention } from "@/utils/kpiFormalOpen";
 
 export const TIMEZONE = "Asia/Tokyo";
 export const DEFINITION_VERSION = "kpi-v2-20260906";
@@ -278,7 +279,7 @@ export async function retention(service: SupabaseClient, range: NonNullable<Retu
     .select("id", { count: "exact", head: true }).eq("transition_type", "ACCOUNT_SWITCH_TO_EXISTING")
     .gte("occurred_at", range.fromAt).lt("occurred_at", range.toAt);
   if (transitionError) throw transitionError;
-  return { cohorts, identity: "subject_id", account_switch_diagnostic_count: transitionCount || 0 };
+  return { cohorts, formal_open: calculateFormalRetention(cohorts), identity: "subject_id", account_switch_diagnostic_count: transitionCount || 0 };
 }
 
 export async function community(service: SupabaseClient, range: NonNullable<ReturnType<typeof rangeFrom>>) {
@@ -291,14 +292,16 @@ export async function community(service: SupabaseClient, range: NonNullable<Retu
   if (error) throw error;
   const rows = (effective || []) as any[];
   const dates = [...new Set(rows.map((row) => row.activity_date))];
-  return { target: 18, continuity_status: "UNAVAILABLE", reason: "community_continuity_period_not_defined", series: dates.map((date) => ({
+  const series = dates.map((date) => ({
     date,
     active_guild_count: rows.filter((row) => row.activity_date === date && row.is_active_guild).length,
     effective_active_guild_count: rows.filter((row) => row.activity_date === date && row.is_effective_active_guild).length,
     guild_active_uu: rows.filter((row) => row.activity_date === date).reduce((sum, row) => sum + Number(row.game_active_members || 0), 0),
     guild_chat_active_uu: (chat || []).filter((row: any) => row.activity_date_jst === date).reduce((sum: number, row: any) => sum + Number(row.chat_active_uu || 0), 0),
     guild_chat_message_count: (chat || []).filter((row: any) => row.activity_date_jst === date).reduce((sum: number, row: any) => sum + Number(row.message_count || 0), 0),
-  })) };
+  }));
+  const effectiveActiveGuild = calculateCommunityContinuity(series, range.today, range.to);
+  return { target: 18, continuity_status: effectiveActiveGuild.status, reason: effectiveActiveGuild.reason, effective_active_guild: effectiveActiveGuild, series };
 }
 
 export async function marketing(service: SupabaseClient, range: NonNullable<ReturnType<typeof rangeFrom>>, grain: string | null) {
@@ -314,8 +317,8 @@ export async function marketing(service: SupabaseClient, range: NonNullable<Retu
 }
 
 export async function validation(service: SupabaseClient, range: NonNullable<ReturnType<typeof rangeFrom>>, grain: string | null) {
-  const [acquisitionResult, tutorialResult, guildResult, marketingResult] = await Promise.all([
-    acquisition(service, range), tutorial(service, range), guild(service, range), marketing(service, range, grain),
+  const [acquisitionResult, tutorialResult, guildResult, marketingResult, retentionResult, communityResult] = await Promise.all([
+    acquisition(service, range), tutorial(service, range), guild(service, range), marketing(service, range, grain), retention(service, range), community(service, range),
   ]);
   let marketingDays: unknown[] = [];
   if (marketingResult.status !== "UNAVAILABLE") {
@@ -342,6 +345,18 @@ export async function validation(service: SupabaseClient, range: NonNullable<Ret
       };
     });
   }
+  const latestMarketing = (marketingDays as any[]).at(-1);
+  const formalRetention = retentionResult.formal_open;
+  const components: Record<string, string> = {
+    marketing: latestMarketing?.gate_status || "NOT_READY",
+    acquisition: acquisitionResult.metric.status,
+    tutorial: tutorialResult.metric.status,
+    guild_chat_activation: guildResult.chat_activation.status,
+    ...Object.fromEntries(formalRetention.map((item) => [`retention_d${item.metric_key.at(-1)}`, item.status])),
+    community_continuity: communityResult.effective_active_guild.status,
+  };
+  const overall = calculateFormalOpenStatus(components);
+  const evaluatedAt = new Date().toISOString();
   return {
     definition_version: DEFINITION_VERSION, timezone: TIMEZONE, as_of: new Date().toISOString(),
     acquisition: acquisitionResult.metric,
@@ -351,8 +366,16 @@ export async function validation(service: SupabaseClient, range: NonNullable<Ret
     marketing: marketingResult.status === "UNAVAILABLE"
       ? { status: "UNAVAILABLE", reason: marketingResult.reason, days: [] }
       : { status: marketingDays.length ? "AVAILABLE" : "NOT_READY", reason: marketingDays.length ? null : "no_jpy_data", days: marketingDays },
-    formal_open_status: "UNAVAILABLE",
-    formal_open_reason: "decision_tolerance_and_community_continuity_not_defined",
+    formal_open: {
+      ...overall,
+      evaluated_at: evaluatedAt,
+      timezone: TIMEZONE,
+      components,
+      retention: Object.fromEntries(formalRetention.map((item) => [`d${item.metric_key.at(-1)}`, item])),
+      effective_active_guild: communityResult.effective_active_guild,
+    },
+    formal_open_status: overall.status,
+    formal_open_reason: overall.reasons[0] || null,
   };
 }
 

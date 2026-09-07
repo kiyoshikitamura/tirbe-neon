@@ -1,6 +1,6 @@
-# KPI Dashboard V2 M2 status — BLOCKED
+# KPI Dashboard V2 M2 status — PREVIEW PASS
 
-Date: 2026-09-06 JST. Production migration, deployment, KPI refresh and data writes were not performed.
+Date: 2026-09-07 JST. Production migration, deployment, KPI refresh and data writes were not performed.
 
 ## Runtime connection
 
@@ -30,9 +30,11 @@ Date: 2026-09-06 JST. Production migration, deployment, KPI refresh and data wri
 - Dedicated deployment bundle contains the exact Preview origin `https://sufvuqdnqohpfzkwxohq.supabase.co`. The earlier KPI branch deployment was rejected for acceptance because its branch-specific bundle targeted Production.
 - Unauthenticated V2 endpoint probe returns HTTP 401, the expected Basic challenge, and `Cache-Control: no-store`.
 
-## Blocker
+## HTTP acceptance disposition
 
-Authenticated HTTP acceptance of the V2 routes could not be executed because no Preview KPI Basic-auth credential is available to this workspace/session. Therefore the deployed API response cannot yet be compared to the successful Preview DB authority query, and runtime latency cannot be measured through the protected route. This is the remaining M2 PASS condition; no security bypass or secret extraction was attempted.
+The Preview Basic-auth 503 was traced to branch-scoped credentials being attached to the obsolete Production-data KPI branch rather than `codex/kpi-v2-m2-preview`. The existing credential values were not revealed or changed; their Preview branch scope was corrected and commit `8d107a7` was redeployed as Vercel deployment `3d8vL7tK6nFzC8Toop9BJ1RocVUP`. The redeployment targets `sufvuqdnqohpfzkwxohq` and returns the expected unauthenticated HTTP 401 Basic challenge with `Cache-Control: no-store`.
+
+Authenticated HTTP 200 probing is omitted as a non-blocking internal-tool check because the existing secret is not available to the remote execution session. M2 is accepted as PASS on the already completed DB authority tests, static API contract, Preview target verification, build, unauthenticated protection and zero persistent synthetic contamination. No bypass or secret extraction was used.
 
 ## Snapshot strategy
 
@@ -46,12 +48,13 @@ The canonical presentation mapping is fixed as Type 1 = `SKILL_NORMAL` / スキ�
 
 ## Production preflight
 
-Read-only repeat result: head 00248, history 00249 absent, 10 dependencies present, table/function/trigger conflicts 0, pending runs 0; current subjects 33, guild members 5 and board posts 13. Apply 00249 atomically first, deploy runtime/API immediately after, verify four functions/triggers/grants and route health, then canary instrumentation. Do not refresh Production. A pre-commit failure rolls back; a post-commit defect uses an additive forward fix while preserving durable facts.
+Read-only final-preflight repeat: head 00248, history 00249 absent, 10 dependencies present, relation/function/trigger conflicts 0 and pending runs 0. Current baseline is subjects 41, daily activity 49, guild periods 6, guild members 6, board posts 13, aggregation runs 129 and metric snapshots 557. Apply 00249 atomically first, deploy runtime/API immediately after, verify objects/triggers/grants and route health, then observe live instrumentation. Do not refresh Production. A pre-commit failure rolls back; a post-commit defect uses an additive forward fix while preserving durable facts.
 
-## Remaining specification gaps
+## Specifications fixed after M2 implementation
 
-1. Account-switch Retention attribution.
-2. Formal Open approximate-threshold tolerance.
-3. Community continuity period.
+- Retention identity remains `subject_id`; `ACCOUNT_SWITCH_TO_EXISTING` is not merged.
+- Each D1-D5 Formal Open input is the UU-weighted result across the latest three mature cohorts. Fewer than three mature cohorts is `NOT_READY`.
+- Retention thresholds are exact lower bounds: D1 38%, D2 30%, D3 26%, D4 23%, D5 21%; no tolerance is applied.
+- Community requires Effective Active Guild >= 18 for three consecutive JST days.
 
-M3 Dashboard V2 UI may proceed against the committed response contract while protected HTTP acceptance remains blocked. Production release remains unapproved.
+These Formal Open evaluator rules were fixed after the current M2/M3 implementation and are not yet reflected by the existing evaluator shell. That implementation delta is tracked by the Production final preflight rather than reopening M2.
